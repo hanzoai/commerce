@@ -83,6 +83,13 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
+	// Ignore test webhooks
+	if !event.Live {
+		// TODO: Support this?
+		c.String(200, "ok")
+		return
+	}
+
 	// Get App Engine context
 	ctx := middleware.GetAppEngine(c)
 
