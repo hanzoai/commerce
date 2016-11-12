@@ -24,6 +24,7 @@ func Defaults() *Config {
 	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
+	config.Stripe.BankAccount = "ba_14trEsCSRlllXCwPzT8vGYiK"
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
 
