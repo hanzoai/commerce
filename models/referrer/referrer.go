@@ -9,8 +9,10 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referralprogram"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
@@ -24,10 +26,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Referrer struct {
 	mixin.Model
 
-	Code    string  `json:"code"`
-	Program Program `json:"program"`
-	OrderId string  `json:"orderId"`
-	UserId  string  `json:"userId"`
+	Code      string  `json:"code"`
+	Program   Program `json:"program"`
+	ProgramId string  `json:"programId"`
+	OrderId   string  `json:"orderId"`
+	UserId    string  `json:"userId"`
 
 	AffiliateId     string              `json:"affiliateId,omitempty"`
 	Affiliate       affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
@@ -102,6 +105,13 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 		r.Update()
 	}
 
+	if r.ProgramId != "" {
+		prog := referralprogram.New(r.Db)
+		if err := prog.GetById(r.ProgramId); err != nil {
+
+		}
+	}
+
 	// Apply any program actions if they are configured
 	if len(r.Program.Actions) > 0 {
 		if err := r.Program.ApplyActions(r); err != nil {
@@ -138,4 +148,45 @@ func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 	transactions := make([]*transaction.Transaction, 0)
 	_, err := transaction.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(transactions)
 	return transactions, err
+}
+
+// Referral Program stuff
+
+func (r *Referrer) TestTrigger(p *Program) error {
+	switch p.Trigger.Type {
+	case CreditGreaterThan:
+		return nil
+	case ReferralsGreaterThan:
+		return nil
+	}
+
+	return nil
+}
+
+func (r *Referrer) ApplyActions(p *Program) error {
+	for i, _ := range p.ReferralTriggers {
+		action := p.Actions[i]
+		switch action.Type {
+		case StoreCredit:
+			return saveStoreCredit(r, action.Amount, action.Currency)
+		case Refund:
+		}
+	}
+
+	// No actions triggered for this referral
+	return nil
+}
+
+// Credit user with store credit by saving transaction
+func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) error {
+	trans := transaction.New(r.Db)
+	trans.Type = transaction.Deposit
+	trans.Amount = amount
+	trans.Currency = cur
+	trans.SourceId = r.Id()
+	trans.SourceKind = r.Kind()
+	trans.UserId = r.UserId
+	trans.Notes = "Deposit due to referral"
+	trans.Tags = "referral"
+	return trans.Create()
 }
