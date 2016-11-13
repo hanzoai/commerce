@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"appengine"
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
@@ -15,6 +16,7 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
@@ -75,7 +77,7 @@ func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, typ referral.Type, rfn Referrent) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
@@ -119,7 +121,7 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 	if r.Program.Trigger.Type == "" {
 		// Deprecate this soon
 		if len(r.Program.Actions) > 0 {
-			if err := r.ApplyActions(&r.Program); err != nil {
+			if err := r.ApplyActions(ctx, orgId, &r.Program); err != nil {
 				return rfl, err
 			}
 		}
@@ -128,7 +130,7 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 			if err != nil {
 				return rfl, err
 			}
-			if err := r.ApplyActions(&r.Program); err != nil {
+			if err := r.ApplyActions(ctx, orgId, &r.Program); err != nil {
 				return rfl, err
 			}
 		}
@@ -208,7 +210,7 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error)
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(p *referralprogram.ReferralProgram) error {
+func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, p *referralprogram.ReferralProgram) error {
 	for _, action := range p.Actions {
 		// Only execute if state isn't done
 		done, ok := r.State[action.Name+"_done"].(bool)
@@ -224,6 +226,8 @@ func (r *Referrer) ApplyActions(p *referralprogram.ReferralProgram) error {
 		case referralprogram.Refund:
 			return nil
 		case referralprogram.SendUserEmail:
+			fn := delay.FuncByKey("referrer-send-user-email")
+			fn.Call(ctx, orgId, action.EmailTemplate, r.UserId)
 			return nil
 		}
 	}

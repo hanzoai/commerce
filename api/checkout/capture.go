@@ -125,7 +125,7 @@ func saveReferral(ctx appengine.Context, org *organization.Organization, ord *or
 	}
 
 	// Save referral
-	rfl, err := ref.SaveReferral(referral.NewOrder, ord)
+	rfl, err := ref.SaveReferral(ctx, org.Id(), referral.NewOrder, ord)
 	if err != nil {
 		log.Warn("Unable to save referral: %v", err, ctx)
 		return
