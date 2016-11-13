@@ -190,6 +190,17 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error)
 			}
 		}
 
+		// 'Forward' any balance increments from this trigger executing
+		for _, action := range p.Actions {
+			if action.Type == referralprogram.StoreCredit && action.Currency == p.Trigger.Currency {
+				done, ok := r.State[action.Name+"_done"].(bool)
+				if action.Once && (!ok || !done) {
+					continue
+				}
+				balance += int(action.Amount)
+			}
+		}
+
 		// Check trigger
 		if balance > p.Trigger.CreditGreaterThan {
 			return true, nil
