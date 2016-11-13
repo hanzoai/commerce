@@ -77,11 +77,11 @@ func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, typ referral.Type, rfn Referrent) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, event referral.Event, rfn Referrent) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
-	rfl.Type = typ
+	rfl.Type = event
 	rfl.Referrer.Id = r.Id()
 	rfl.Referrer.AffiliateId = r.AffiliateId
 	rfl.Referrer.UserId = r.UserId
@@ -119,6 +119,7 @@ func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, typ referra
 
 	// Apply any program actions if they are configured
 	if r.Program.Trigger.Type == "" {
+		log.Debug("Old Triggers")
 		// Deprecate this soon
 		if len(r.Program.Actions) > 0 {
 			if err := r.ApplyActions(ctx, orgId, &r.Program); err != nil {
@@ -126,7 +127,8 @@ func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, typ referra
 			}
 		}
 	} else {
-		if ok, err := r.TestTrigger(&r.Program); ok {
+		log.Debug("New Triggers")
+		if ok, err := r.TestTrigger(&r.Program, event); ok {
 			if err != nil {
 				return rfl, err
 			}
@@ -169,35 +171,42 @@ func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 
 // Referral Program stuff
 
-func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error) {
+func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram, event referral.Event) (bool, error) {
+	if p.Trigger.Event != "" && event != p.Trigger.Event {
+		log.Debug("Event mismatch '%s' != '%s'", event, p.Trigger.Event)
+		return false, nil
+	}
+
 	switch p.Trigger.Type {
 	case referralprogram.CreditGreaterThan:
+		log.Debug("CreditGreaterThan Trigger")
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", p.Trigger.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
 			return false, err
 		}
 
 		// Total balance
 		balance := 0
 		for _, t := range trans {
-			if t.Currency == p.Trigger.Currency {
-				if t.Type == transaction.Withdraw {
-					balance -= int(t.Amount)
-				} else {
-					balance += int(t.Amount)
-				}
+			if t.Type == transaction.Withdraw {
+				balance -= int(t.Amount)
+			} else {
+				balance += int(t.Amount)
 			}
 		}
 
 		// 'Forward' any balance increments from this trigger executing
 		for _, action := range p.Actions {
+			log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, p.Trigger.Currency)
 			if action.Type == referralprogram.StoreCredit && action.Currency == p.Trigger.Currency {
 				done, ok := r.State[action.Name+"_done"].(bool)
-				if action.Once && (!ok || !done) {
+				if action.Once && ok && done {
+					log.Debug("Don't forward since this was executed once")
 					continue
 				}
 				balance += int(action.Amount)
+				log.Debug("Balance Amount %s", balance)
 			}
 		}
 
@@ -206,6 +215,8 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error)
 			return true, nil
 		}
 	case referralprogram.ReferralsGreaterThan:
+		log.Debug("ReferralsGreaterThan Trigger")
+
 		// Count number of referrals
 		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
 			return false, err
@@ -215,6 +226,7 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error)
 		}
 		return false, nil
 	default:
+		log.Debug("Unknown Trigger")
 		return false, errors.New(fmt.Sprintf("Unknown Trigger '%s'", p.Trigger.Type))
 	}
 
@@ -225,18 +237,27 @@ func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, p *referral
 	for _, action := range p.Actions {
 		// Only execute if state isn't done
 		done, ok := r.State[action.Name+"_done"].(bool)
-		if action.Once && (!ok || !done) {
+		if action.Once && ok && done {
+			log.Debug("This was executed once")
 			continue
 		}
 
 		switch action.Type {
 		case referralprogram.StoreCredit:
-			r.State[action.Name+"_done"] = true
-			r.MustUpdate()
+			if !done && action.Once {
+				r.State[action.Name+"_done"] = true
+				r.MustUpdate()
+			}
+
 			return saveStoreCredit(r, action.Amount, action.Currency)
-		case referralprogram.Refund:
-			return nil
+		// case referralprogram.Refund:
+		// 	return nil
 		case referralprogram.SendUserEmail:
+			if !done && action.Once {
+				r.State[action.Name+"_done"] = true
+				r.MustUpdate()
+			}
+
 			fn := delay.FuncByKey("referrer-send-user-email")
 			fn.Call(ctx, orgId, action.EmailTemplate, r.UserId)
 			return nil

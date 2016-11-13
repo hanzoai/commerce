@@ -10,12 +10,9 @@ type ActionType string
 type TriggerType string
 
 const (
-	StoreCredit   ActionType = "Credit" // Add credit to user's balance
-	Refund        ActionType = "Refund" // Refund part of the payment on a order
+	StoreCredit ActionType = "Credit" // Add credit to user's balance
+	// Refund        ActionType = "Refund" // Refund part of the payment on a order
 	SendUserEmail ActionType = "SendUserEmail"
-
-	CreditGreaterThan    TriggerType = "CreditGreaterThan"
-	ReferralsGreaterThan TriggerType = "ReferralsGreaterThan"
 )
 
 type SendTransactionalUserEmailAction struct {
@@ -27,9 +24,9 @@ type CreditAction struct {
 	Amount   currency.Cents `json:"amount,omitempty"`
 }
 
-type PercentAction struct {
-	Percent float64 `json:"percent,omitempty"`
-}
+// type PercentAction struct {
+// 	Percent float64 `json:"percent,omitempty"`
+// }
 
 // Union of possible actions
 type Action struct {
@@ -38,9 +35,14 @@ type Action struct {
 	Once bool       `json:"once"`
 
 	CreditAction
-	PercentAction
+	// PercentAction
 	SendTransactionalUserEmailAction
 }
+
+const (
+	CreditGreaterThan    TriggerType = "CreditGreaterThan"
+	ReferralsGreaterThan TriggerType = "ReferralsGreaterThan"
+)
 
 type CreditGreaterThanTrigger struct {
 	CreditGreaterThan int           `json:"creditGreaterThan,omitempty"`
@@ -53,6 +55,8 @@ type ReferralsGreaterThanTrigger struct {
 
 // Union of possible triggers
 type Trigger struct {
+	Event referral.Event `json:"event"`
+
 	Type TriggerType `json:"type"`
 	CreditGreaterThanTrigger
 	ReferralsGreaterThanTrigger
@@ -67,6 +71,4 @@ type ReferralProgram struct {
 	ReferralTriggers []int    `json:"triggers"` // Deprecate soon, keep until that point in time
 	Trigger          Trigger  `json:"trigger"`
 	Actions          []Action `json:"actions"`
-
-	Event referral.Type `json:"event"`
 }
