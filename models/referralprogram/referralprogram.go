@@ -11,17 +11,15 @@ type TriggerType string
 
 const (
 	StoreCredit   ActionType = "Credit" // Add credit to user's balance
-	Refund                   = "Refund" // Refund part of the payment on a order
+	Refund        ActionType = "Refund" // Refund part of the payment on a order
 	SendUserEmail ActionType = "SendUserEmail"
-)
 
-const (
 	CreditGreaterThan    TriggerType = "CreditGreaterThan"
-	ReferralsGreaterThan             = "ReferralsGreaterThan"
+	ReferralsGreaterThan TriggerType = "ReferralsGreaterThan"
 )
 
 type SendTransactionalUserEmailAction struct {
-	Template string `json:"template"`
+	EmailTemplate string `json:"template"`
 }
 
 type CreditAction struct {
