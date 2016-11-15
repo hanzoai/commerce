@@ -45,6 +45,14 @@ type API struct {
 	client *gochimp3.API
 }
 
+type Error struct {
+	*gochimp3.APIError
+}
+
+func newError(err error) *Error {
+	return &Error{err.(*gochimp3.APIError)}
+}
+
 func New(ctx appengine.Context, apiKey string) *API {
 	api := new(API)
 	api.ctx = ctx
@@ -57,11 +65,11 @@ func New(ctx appengine.Context, apiKey string) *API {
 	return api
 }
 
-func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error {
+func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) *Error {
 	list, err := api.client.GetList(ml.Mailchimp.ListId, nil)
 	if err != nil {
 		log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
-		return err
+		return newError(err)
 	}
 
 	status := "subscribed"
@@ -89,7 +97,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 	// Try to update subscriber, create new member if that fails.
 	if _, err := list.UpdateMember(s.Md5(), req); err != nil {
 		_, err := list.CreateMember(req)
-		return err
+		return newError(err)
 	}
 	return nil
 }
@@ -684,19 +692,19 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 	return err
 }
 
-func (api API) DeleteVariant(storeId, productId string, vari *variant.Variant) error {
+func (api API) DeleteVariant(storeId, productId string, vari *variant.Variant) *Error {
 	stor, err := api.client.GetStore(storeId, nil)
 	if err != nil {
 		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
-		return err
+		return newError(err)
 	}
 
 	prod, err := stor.GetProduct(productId, nil)
 	if err != nil {
 		log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
-		return err
+		return newError(err)
 	}
 
 	_, err = prod.DeleteVariant(vari.Id())
-	return err
+	return newError(err)
 }
