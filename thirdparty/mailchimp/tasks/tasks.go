@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) {
+var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {
 	db := datastore.New(ctx)
 	ml := mailinglist.FromJSON(db, mlJSON)
 	s := subscriber.FromJSON(db, sJSON)
@@ -19,11 +19,12 @@ var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, m
 	if err := api.Subscribe(ml, s); err != nil {
 		if err.Status == 401 {
 			log.Warn("Invalid API Key: %v", err, ctx)
-			return
+			return nil
 		}
 
 		if err.Status > 499 {
-			panic(err)
+			return err
 		}
 	}
+	return nil
 })
