@@ -120,6 +120,15 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Referral),
 	},
 
+	"referralprogram": Permissions{
+		"create": masks(Admin, WriteReferrer),
+		"delete": masks(Admin, WriteReferrer),
+		"patch":  masks(Admin, ReadReferrer|WriteReferrer),
+		"update": masks(Admin, ReadReferrer|WriteReferrer),
+		"get":    masks(Admin, ReadReferrer),
+		"list":   masks(Admin, Referrer),
+	},
+
 	"referrer": Permissions{
 		"create": masks(Admin, WriteReferrer),
 		"delete": masks(Admin, WriteReferrer),
