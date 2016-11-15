@@ -6,11 +6,11 @@ import (
 	"crowdstart.com/models/types/currency"
 )
 
-type Type string
+type Event string
 
 const (
-	NewOrder Type = "new-order"
-	NewUser       = "new-user"
+	NewOrder Event = "new-order"
+	NewUser  Event = "new-user"
 )
 
 type Referrer struct {
@@ -28,7 +28,7 @@ type Fee struct {
 type Referral struct {
 	mixin.Model
 
-	Type Type `json:"type"`
+	Type Event `json:"event"`
 
 	// User created by referral
 	UserId string `json:"userId"`
