@@ -259,11 +259,13 @@ func (u *User) GetByEmail(email string) error {
 }
 
 func (u *User) LoadReferrals() error {
+	u.Referrers = make([]referrer.Referrer, 0)
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
 		return err
 	}
 
-	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+	u.Referrals = make([]referral.Referral, 0)
+	if _, err := referral.Query(u.Db).Filter("Referrer.UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
 		return err
 	}
 
@@ -273,6 +275,7 @@ func (u *User) LoadReferrals() error {
 }
 
 func (u *User) LoadOrders() error {
+	u.Orders = make([]order.Order, 0)
 	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
 		return err
 	}
@@ -293,6 +296,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 
 	u.Affiliate = *aff
 
+	u.PendingFees = make([]fee.Fee, 0)
 	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
