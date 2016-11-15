@@ -68,7 +68,7 @@ type ReferralProgram struct {
 	Name string `json:"name"`
 
 	// Trigger is the number of referrals, 0 means it triggers on every referral
-	ReferralTriggers []int    `json:"triggers"` // Deprecate soon, keep until that point in time
-	Trigger          Trigger  `json:"trigger"`
-	Actions          []Action `json:"actions"`
+	Triggers []int    `json:"triggers"` // Deprecate soon, keep until that point in time
+	Trigger  Trigger  `json:"trigger"`
+	Actions  []Action `json:"actions"`
 }
