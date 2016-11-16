@@ -35,7 +35,10 @@ type SerializedException struct {
 
 // Copied verbatim from raven-go
 func serializedPacket(packet *raven.Packet) (r io.Reader, contentType string) {
-	packetJSON := packet.JSON()
+	packetJSON, err := packet.JSON()
+	if err != nil {
+		panic(err)
+	}
 
 	// Only deflate/base64 the packet if it is bigger than 1KB, as there is
 	// overhead.
