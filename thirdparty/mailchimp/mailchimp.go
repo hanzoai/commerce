@@ -45,14 +45,6 @@ type API struct {
 	client *gochimp3.API
 }
 
-type Error struct {
-	*gochimp3.APIError
-}
-
-func newError(err error) *Error {
-	return &Error{err.(*gochimp3.APIError)}
-}
-
 func New(ctx appengine.Context, apiKey string) *API {
 	api := new(API)
 	api.ctx = ctx
@@ -96,8 +88,9 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 
 	// Try to update subscriber, create new member if that fails.
 	if _, err := list.UpdateMember(s.Md5(), req); err != nil {
-		_, err := list.CreateMember(req)
-		return newError(err)
+		if _, err := list.CreateMember(req); err != nil {
+			return newError(err)
+		}
 	}
 	return nil
 }
