@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/bit"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/session"
 )
@@ -121,6 +122,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Verify token signature
 		if ok, err := tok.Verify(ctx, org.SecretKey); !ok {
+			log.Error("Token Verify Error: '%s'", err, ctx)
 			http.Fail(c, 403, "Unable to verify token.", err)
 			return
 		}
