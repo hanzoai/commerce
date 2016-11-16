@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {
+var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {
 	db := datastore.New(ctx)
 	ml := mailinglist.FromJSON(db, mlJSON)
 	s := subscriber.FromJSON(db, sJSON)

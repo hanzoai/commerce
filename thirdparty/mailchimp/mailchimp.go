@@ -59,6 +59,11 @@ func New(ctx appengine.Context, apiKey string) *API {
 
 func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) *Error {
 	return wrapError(func() error {
+		if ml.Mailchimp.ListId == "" {
+			log.Warn("Failed to subscribe, list ID missing: %v", ml, api.ctx)
+			return nil
+		}
+
 		list, err := api.client.GetList(ml.Mailchimp.ListId, nil)
 		if err != nil {
 			log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
