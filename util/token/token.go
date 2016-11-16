@@ -9,7 +9,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"crowdstart.com/util/bit"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 )
 
@@ -80,18 +79,17 @@ func (t *Token) getJWT() *jwt.Token {
 	return jwt
 }
 
-func (t *Token) Verify(ctx appengine.Context, secret []byte) bool {
+func (t *Token) Verify(ctx appengine.Context, secret []byte) (bool, error) {
 	parts := strings.Split(t.TokenString, ".")
 
 	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {
-		log.Warn("err %v", err, ctx)
-		return false
+		return false, err
 	}
 
 	// Update secret on token
 	t.Secret = secret
 
-	return true
+	return true, nil
 }
 
 func New(name string, subject string, permissions bit.Mask, secret []byte) *Token {
