@@ -166,7 +166,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 	return int(id)
 }
 
-func decodeNamespace(ctx appengine.Context, encoded int) (string, error) {
+func decodeNamespace(ctx appengine.Context, encoded int) (ns string, err error) {
 	// Default namespace
 	if encoded == 0 {
 		return "", nil
@@ -175,8 +175,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) (string, error) {
 	id := int64(encoded)
 	ns, ok := idToNamespace[id]
 	if !ok {
-		ns, err := getName(ctx, id)
-		if err != nil {
+		if ns, err = getName(ctx, id); err != nil {
 			return "", err
 		}
 
