@@ -17,6 +17,10 @@ var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, m
 	s := subscriber.FromJSON(db, sJSON)
 	api := mailchimp.New(ctx, ml.Mailchimp.APIKey)
 	if err := api.Subscribe(ml, s); err != nil {
+		if err.APIError == nil {
+			return err
+		}
+
 		if err.Status == 401 {
 			log.Warn("Invalid API Key: %v", err, ctx)
 			return nil
