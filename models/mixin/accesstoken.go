@@ -92,7 +92,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 
 func (at *AccessToken) RemoveToken(name string) {
 	num := len(at.Tokens)
-	tokens := make([]token.Token, 0, num)
+	tokens := make([]token.Token, 0)
 	if num <= 0 {
 		at.Tokens = tokens
 		return
