@@ -118,7 +118,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	// tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
 	tok.Id = jwt.Claims["jti"].(string)
 	tok.EntityId = jwt.Claims["sub"].(string)
-	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
+	tok.Permissions = bit.Field(jwt.Claims["bit"].(int64))
 	tok.jwt = jwt
 	tok.Secret = secret
 
