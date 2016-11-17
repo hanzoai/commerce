@@ -122,7 +122,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Verify token signature
 		if ok, err := tok.Verify(ctx, org.SecretKey); !ok {
-			log.Error("Org '%s' == '%s', Token '%s', Verify error '%s'", org.Id(), tok.EntityId, tok, err, ctx)
+			log.Error("Org '%s' == '%s', Token '%s' == '%s', Verify error '%s'", org.Id(), tok.EntityId, tok, accessToken, err, ctx)
 			http.Fail(c, 403, "Unable to verify token.", err)
 			return
 		}
