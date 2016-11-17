@@ -10,9 +10,7 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/test/ae"
-	"crowdstart.com/util/token"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -335,19 +333,19 @@ var _ = Describe("Referrer", func() {
 			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
 		})
 
-		FIt("Really?", func() {
-			str := "EK9E344442BI5nia9i82pdi98ip0jvqz"
-			arr := make([]byte, len(str))
-			copy(arr[:], str)
-			tok, err := token.FromString("eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJiaXQiOjQ1MDM2MTcwNzU2NzUxNzIsImp0aSI6ImZBcnVLbXhLUXE0Iiwic3ViIjoiNE5UeFhsUXJ0YiJ9.fOUs-H-ALpW2LtZfwT7D1sAn3Ipq7NYvnTclRZGXwRK7XvIBBovQgjB8xmezllH65LYR6hl_Wz8tr6wREJV_OQ", arr)
-			tok.Secret = arr
-			Expect(err).ToNot(HaveOccurred())
-			ok, err := tok.Verify(ctx, arr)
-			log.Error("Yay %s", tok.Secret)
-			log.Error("2 %s", tok.String())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ok).To(Equal(true))
-		})
+		// FIt("Really?", func() {
+		// 	str := "EK9E344442BI5nia9i82pdi98ip0jvqz"
+		// 	arr := make([]byte, len(str))
+		// 	copy(arr[:], str)
+		// 	tok, err := token.FromString("eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJiaXQiOjQ1MDM2MTcwNzU2NzUxNzIsImp0aSI6ImZBcnVLbXhLUXE0Iiwic3ViIjoiNE5UeFhsUXJ0YiJ9.fOUs-H-ALpW2LtZfwT7D1sAn3Ipq7NYvnTclRZGXwRK7XvIBBovQgjB8xmezllH65LYR6hl_Wz8tr6wREJV_OQ", arr)
+		// 	tok.Sec = arr
+		// 	Expect(err).ToNot(HaveOccurred())
+		// 	ok, err := tok.Verify(ctx, arr)
+		// 	log.Error("Yay %s", tok.Secret)
+		// 	log.Error("2 %s", tok.String())
+		// 	Expect(err).ToNot(HaveOccurred())
+		// 	Expect(ok).To(Equal(true))
+		// })
 
 		// Deprecate soon
 		It("should work with old balance triggers", func() {
