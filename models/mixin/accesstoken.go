@@ -53,6 +53,7 @@ func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
 func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
 	for _, tok := range at.Tokens {
 		if tok.Name == name {
+			tok.Secret = at.SecretKey
 			return &tok, nil
 		}
 	}
