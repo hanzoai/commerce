@@ -63,6 +63,7 @@ type PayPalAccount struct {
 
 type StripeAccount struct {
 	// Very important to never store these!
+	Name   string `json:"name,omitempty" datastore:"-"`
 	Number string `json:"number,omitempty" datastore:"-"`
 	CVC    string `json:"cvc,omitempty" datastore:"-"`
 
