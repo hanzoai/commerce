@@ -25,7 +25,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		// hardcoded for Stoned
 		now := time.Now()
 		startDate := time.Date(2016, time.November, 21, 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(2016, time.November, 22, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2016, time.November, 24, 0, 0, 0, 0, time.UTC)
 		daysTotal := endDate.Sub(startDate).Hours() / 24
 		days := now.Sub(startDate).Hours() / 24
 		daysComplete := days / daysTotal
