@@ -96,7 +96,11 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 					switch c.Type {
 					case coupon.Flat:
 						log.Debug("Flat %d", c.Amount, ctx)
-						discount += currency.Cents(item.Quantity * c.Amount)
+						quantity := item.Quantity
+						if c.Once {
+							quantity = 1
+						}
+						discount += currency.Cents(quantity * c.Amount)
 					case coupon.Percent:
 						log.Debug("Percent %d", c.Amount, ctx)
 						discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
