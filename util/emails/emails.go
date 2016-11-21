@@ -237,6 +237,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 			"currency":        currencyCode,
 			"items":           items,
 			"shippingaddress": map[string]interface{}{
+				"name":       ord.ShippingAddress.Name,
 				"line1":      ord.ShippingAddress.Line1,
 				"line2":      ord.ShippingAddress.Line2,
 				"postalcode": ord.ShippingAddress.PostalCode,
@@ -254,6 +255,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
 		"ORDER_CURRENCY":                    currencyCode,
+		"ORDER_SHIPPING_ADDRESS_NAME":       ord.ShippingAddress.Name,
 		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
 		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
 		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
