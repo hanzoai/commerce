@@ -32,7 +32,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		startPct := 40.0
 
-		progress := math.Min(startPct+((80.0-startPct)*daysComplete), 99.9)
+		progress := math.Min(startPct+((100.0-startPct)*daysComplete), 99.9)
 		// Go has no math.Round, sadly
 		f, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", progress), 64)
 		http.Render(c, 200, ProgressRes{f})
