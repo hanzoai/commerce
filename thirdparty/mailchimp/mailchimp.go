@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 
 	. "crowdstart.com/models"
@@ -245,7 +246,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) *Error {
 		lines := make([]gochimp3.LineItem, 0)
 		for i, line := range car.Items {
 			lines = append(lines, gochimp3.LineItem{
-				ID:               strconv.Itoa(i + 1),
+				ID:               "line" + strconv.Itoa(i),
 				ProductID:        line.ProductId,
 				ProductVariantID: line.Id(),
 				Quantity:         line.Quantity,
@@ -310,7 +311,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) *Error {
 		lines := make([]gochimp3.LineItem, 0)
 		for i, line := range car.Items {
 			lines = append(lines, gochimp3.LineItem{
-				ID:               strconv.Itoa(i),
+				ID:               "line" + strconv.Itoa(i),
 				ProductID:        line.ProductId,
 				ProductVariantID: line.Id(),
 				Quantity:         line.Quantity,
@@ -390,7 +391,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 		lines := make([]gochimp3.LineItem, 0)
 		for i, line := range ord.Items {
 			lines = append(lines, gochimp3.LineItem{
-				ID:               strconv.Itoa(i),
+				ID:               "line" + strconv.Itoa(i),
 				ProductID:        line.ProductId,
 				ProductVariantID: line.Id(),
 				Quantity:         line.Quantity,
@@ -455,13 +456,16 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 			UpdatedAtForeign:   ord.UpdatedAt,
 		}
 
+		log.Debug("Create Order Request: '%v'", json.Encode(req), ord.Db.Context)
+
 		stor, err := api.client.GetStore(storeId, nil)
 		if err != nil {
 			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
 			return err
 		}
 
-		_, err = stor.CreateOrder(req)
+		res, err := stor.CreateOrder(req)
+		log.Debug("Create Order Response: '%v'", json.Encode(res), ord.Db.Context)
 		return err
 	})
 }
@@ -478,7 +482,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) *Error {
 		lines := make([]gochimp3.LineItem, 0)
 		for i, line := range ord.Items {
 			lines = append(lines, gochimp3.LineItem{
-				ID:               strconv.Itoa(i),
+				ID:               "line" + strconv.Itoa(i),
 				ProductID:        line.ProductId,
 				ProductVariantID: line.Id(),
 				Quantity:         line.Quantity,
