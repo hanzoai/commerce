@@ -18,6 +18,7 @@ import (
 	_ "appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
+	_ "crowdstart.com/api/checkout/tasks"
 	_ "crowdstart.com/cron/tasks"
 	_ "crowdstart.com/models/fixtures"
 	_ "crowdstart.com/models/migrations"
