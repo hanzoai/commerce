@@ -1,14 +1,9 @@
-package checkout
+package tasks
 
 import (
 	"appengine"
 
-	"github.com/gin-gonic/gin"
-
-	"crowdstart.com/api/checkout/balance"
-	"crowdstart.com/api/checkout/null"
-	"crowdstart.com/api/checkout/stripe"
-	"crowdstart.com/api/checkout/tasks"
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/cart"
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
@@ -20,46 +15,33 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
 
 	. "crowdstart.com/models"
 )
 
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
-	var err error
-	var payments []*payment.Payment
+var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId string, ordId string) {
+	db := datastore.New(ctx)
+	org := organization.New(db)
+	ord := order.New(db)
 
-	switch ord.Type {
-	case "null":
-		ord, payments, err = null.Capture(org, ord)
-	case "balance":
-		ord, payments, err = balance.Capture(org, ord)
-	case "stripe":
-		ord, payments, err = stripe.Capture(org, ord)
-	case "paypal":
-		payments = ord.Payments
-	default:
-		// TODO: return nil, errors.New("Invalid order type")
-		ord, payments, err = stripe.Capture(org, ord)
+	org.MustGetById(orgId)
+	ord.MustGetById(ordId)
+
+	payments := make([]*payment.Payment, 0)
+	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(payments); err != nil {
+		log.Error("Unable to find payments associated with order '%s'", ord.Id())
 	}
 
-	if err != nil {
-		return err
-	}
-
-	ctx := ord.Context()
-
-	updateOrder(ctx, ord, payments)
-
-	if err := saveOrder(ctx, ord, payments); err != nil {
-		return err
-	}
-
-	tasks.CaptureAsync.Call(ctx, org.Id(), ord.Id())
-
-	return nil
-}
+	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
+	saveRedemptions(ctx, ord)
+	saveReferral(ctx, org, ord)
+	updateCart(ctx, ord)
+	updateStats(ctx, org, ord, payments)
+	updateMailchimp(ctx, org, ord)
+})
 
 func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
 	totalPaid := 0
