@@ -18,7 +18,7 @@ var _ = New("mailchimp-orders",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "kanoa").Get(); err != nil {
+		if _, err := org.Query().Filter("Name=", "stoned").Get(); err != nil {
 			panic(err)
 		}
 		return []interface{}{org.Mailchimp.APIKey, org.Mailchimp.ListId, org.DefaultStore}
