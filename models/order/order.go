@@ -333,11 +333,7 @@ func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner)
 }
 
 func (o Order) NumberFromId() int {
-	ids, err := hashid.Decode(o.Id())
-	if err != nil {
-		panic(err)
-	}
-	return ids[1]
+	return o.IntId()
 }
 
 func (o Order) OrderDay() string {
