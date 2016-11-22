@@ -40,7 +40,10 @@ var _ = New("mailchimp-orders",
 		}
 
 		client := mailchimp.New(db.Context, apiKey)
-		client.CreateOrder(defaultStore, ord)
+		// Create order in mailchimp
+		if err := client.CreateOrder(defaultStore, ord); err != nil {
+			log.Warn("Failed to create Mailchimp order: %v", err, db.Context)
+		}
 
 		// Update cart
 		car := cart.New(ord.Db)
