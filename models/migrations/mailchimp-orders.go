@@ -14,7 +14,7 @@ import (
 
 var _ = New("mailchimp-orders",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "stoned")
 
 		db := ds.New(c)
 		org := organization.New(db)

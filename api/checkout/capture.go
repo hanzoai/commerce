@@ -17,6 +17,7 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
@@ -60,6 +61,17 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	saveReferral(ctx, org, ord)
 	updateCart(ctx, ord)
 	updateStats(ctx, org, ord, payments)
+
+	// Save user as customer in Mailchimp if configured
+	if org.Mailchimp.APIKey != "" {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+
+		// Create order in mailchimp
+		if err := client.CreateOrder(org.DefaultStore, ord); err != nil {
+			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
+		}
+	}
 
 	return nil
 }
