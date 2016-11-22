@@ -205,7 +205,7 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 			} else {
 				// Delete cart in mailchimp
 				if err := client.DeleteCart(org.DefaultStore, car); err != nil {
-					log.Warn("Failed to create Mailchimp order: %v", err, ctx)
+					log.Warn("Failed to delete Mailchimp cart: %v", err, ctx)
 				}
 			}
 		}
