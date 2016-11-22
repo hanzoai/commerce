@@ -10,6 +10,7 @@ import (
 
 type Document struct {
 	Id_    string
+	Number float64
 	UserId string
 
 	ProductIds string
@@ -69,6 +70,7 @@ func (o Order) Document() mixin.Document {
 
 	return &Document{
 		o.Id(),
+		float64(o.NumberFromId()),
 		o.UserId,
 
 		strings.Join(productIds, " "),
