@@ -118,6 +118,9 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 		ord.ShippingAddress.Name = usr.Name()
 	}
 
+	// Ensure key is allocated before setting parent
+	ord.Key()
+
 	// Order is parented to user
 	ord.Parent = usr.Key()
 	ord.UserId = usr.Id()

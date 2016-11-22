@@ -169,7 +169,12 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 
-		It("Should create subsequen orders with monotonically increasing order numbers", func() {
+		It("Should return correct order number", func() {
+			ord := getOrder(res.Id())
+			Expect(ord.Number).To(Equal(res.Number))
+		})
+
+		It("Should create subsequent orders with monotonically increasing order numbers", func() {
 			res2 := order.New(db)
 			cl.Post("/checkout/authorize", req, res2)
 			res3 := order.New(db)
