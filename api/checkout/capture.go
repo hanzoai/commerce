@@ -8,7 +8,6 @@ import (
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/null"
 	"crowdstart.com/api/checkout/stripe"
-	"crowdstart.com/api/checkout/tasks"
 	"crowdstart.com/models/cart"
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
@@ -56,8 +55,14 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 		return err
 	}
 
-	tasks.CaptureAsync.Call(ctx, org.Id(), ord.Id())
+	// TODO: Run in task(CaptureAsync), no need to block call on rest of this
+	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
+	saveRedemptions(ctx, ord)
+	saveReferral(ctx, org, ord)
+	updateCart(ctx, ord)
+	updateStats(ctx, org, ord, payments)
 
+	updateMailchimp(ctx, org, ord)
 	return nil
 }
 
