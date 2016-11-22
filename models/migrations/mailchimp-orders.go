@@ -18,7 +18,7 @@ var _ = New("mailchimp-orders",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "kanoa").Get(); err != nil {
+		if _, err := org.Query().Filter("Name=", "stoned").Get(); err != nil {
 			panic(err)
 		}
 		return []interface{}{org.Mailchimp.APIKey, org.Mailchimp.ListId, org.DefaultStore}
@@ -40,7 +40,10 @@ var _ = New("mailchimp-orders",
 		}
 
 		client := mailchimp.New(db.Context, apiKey)
-		client.CreateOrder(defaultStore, ord)
+		// Create order in mailchimp
+		if err := client.CreateOrder(defaultStore, ord); err != nil {
+			log.Warn("Failed to create Mailchimp order: %v", err, db.Context)
+		}
 
 		// Update cart
 		car := cart.New(ord.Db)
