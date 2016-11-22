@@ -25,13 +25,14 @@ import (
 var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId string, ordId string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
-	ord := order.New(db)
+	nsdb := datastore.New(org.Namespaced(ctx))
+	ord := order.New(nsdb)
 
 	org.MustGetById(orgId)
 	ord.MustGetById(ordId)
 
 	payments := make([]*payment.Payment, 0)
-	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(payments); err != nil {
+	if _, err := payment.Query(nsdb).Ancestor(ord.Key()).GetAll(payments); err != nil {
 		log.Error("Unable to find payments associated with order '%s'", ord.Id())
 	}
 
