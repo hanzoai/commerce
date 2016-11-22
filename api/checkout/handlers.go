@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
 )
@@ -48,7 +49,9 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
+	log.JSON(ord)
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+	log.JSON(ord)
 	http.Render(c, 200, ord)
 }
 
