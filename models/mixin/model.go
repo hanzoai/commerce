@@ -291,7 +291,7 @@ func (m *Model) NewKey() datastore.Key {
 	kind := m.Kind()
 
 	if m.key == nil {
-		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+		m.key = m.Db.AllocateOrphanKey(kind, m.Parent)
 		return m.key
 	}
 
