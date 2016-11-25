@@ -62,6 +62,28 @@ func create(c *gin.Context) {
 		return
 	}
 
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+
+	usr2 := user.New(db)
+	// Email can't already exist or if it does, can't have a password
+	if err := usr2.GetByEmail(usr.Email); err == nil {
+		if len(usr2.PasswordHash) > 0 {
+			http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
+			return
+		} else {
+			// Transfer name from request user to queried out user if successful
+			req.User = usr2
+			if usr.FirstName != "" && usr.FirstName != "\u263A" {
+				usr2.FirstName = usr.FirstName
+			}
+			if usr.LastName != "" && usr.FirstName != "\u263A" {
+				usr2.LastName = usr.LastName
+			}
+
+			usr = usr2
+		}
+	}
+
 	if !org.SignUpOptions.NoNameRequired {
 		if usr.FirstName == "" || usr.FirstName == "\u263A" {
 			http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
@@ -86,17 +108,9 @@ func create(c *gin.Context) {
 		usr.LastName = ""
 	}
 
-	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
-
-	// Email can't already exist
-	if err := usr.GetByEmail(usr.Email); err == nil {
-		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
-		return
-	}
-
 	// Email must be valid
 	if ok := emailRegex.MatchString(usr.Email); !ok {
-		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
+		http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("Email is not valid"))
 		return
 	}
 
