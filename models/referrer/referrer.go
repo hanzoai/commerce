@@ -117,25 +117,9 @@ func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, event refer
 		r.Program = *prog
 	}
 
-	// Apply any program actions if they are configured
-	if r.Program.Trigger.Type == "" {
-		log.Debug("Old Triggers")
-		// Deprecate this soon
-		if len(r.Program.Actions) > 0 {
-			if err := r.ApplyActions(ctx, orgId, &r.Program); err != nil {
-				return rfl, err
-			}
-		}
-	} else {
-		log.Debug("New Triggers")
-		if ok, err := r.TestTrigger(&r.Program, event); ok {
-			if err != nil {
-				return rfl, err
-			}
-			if err := r.ApplyActions(ctx, orgId, &r.Program); err != nil {
-				return rfl, err
-			}
-		}
+	// Apply any program actions if applicable
+	if err := r.ApplyActions(ctx, orgId, event, &r.Program); err != nil {
+		return rfl, err
 	}
 
 	return rfl, nil
@@ -171,18 +155,20 @@ func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 
 // Referral Program stuff
 
-func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram, event referral.Event) (bool, error) {
-	if p.Trigger.Event != "" && event != p.Trigger.Event {
-		log.Debug("Event mismatch '%s' != '%s'", event, p.Trigger.Event)
+func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Event) (bool, error) {
+	trig := action.Trigger
+
+	if trig.Event != "" && event != trig.Event {
+		log.Debug("Event mismatch '%s' != '%s'", event, trig.Event)
 		return false, nil
 	}
 
-	switch p.Trigger.Type {
+	switch trig.Type {
 	case referralprogram.CreditGreaterThan:
 		log.Debug("CreditGreaterThan Trigger")
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", p.Trigger.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
 			return false, err
 		}
 
@@ -197,21 +183,19 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram, event referra
 		}
 
 		// 'Forward' any balance increments from this trigger executing
-		for _, action := range p.Actions {
-			log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, p.Trigger.Currency)
-			if action.Type == referralprogram.StoreCredit && action.Currency == p.Trigger.Currency {
-				done, ok := r.State[action.Name+"_done"].(bool)
-				if action.Once && ok && done {
-					log.Debug("Don't forward since this was executed once")
-					continue
-				}
+		log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, trig.Currency)
+		if action.Type == referralprogram.StoreCredit && action.Currency == trig.Currency {
+			done, ok := r.State[action.Name+"_done"].(bool)
+			if action.Once && ok && done {
+				log.Debug("Don't forward since this was executed once")
+			} else {
 				balance += int(action.Amount)
 				log.Debug("Balance Amount %s", balance)
 			}
 		}
 
 		// Check trigger
-		if balance > p.Trigger.CreditGreaterThan {
+		if balance > int(trig.CreditGreaterThan) {
 			return true, nil
 		}
 	case referralprogram.ReferralsGreaterThan:
@@ -221,20 +205,38 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram, event referra
 		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
 			return false, err
 			// Check trigger
-		} else if count > p.Trigger.ReferralsGreaterThan {
+		} else if count > trig.ReferralsGreaterThan {
 			return true, nil
 		}
 		return false, nil
+	case referralprogram.Always:
+		return true, nil
 	default:
 		log.Debug("Unknown Trigger")
-		return false, errors.New(fmt.Sprintf("Unknown Trigger '%s'", p.Trigger.Type))
+		return false, errors.New(fmt.Sprintf("Unknown Trigger '%s'", trig.Type))
 	}
 
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, p *referralprogram.ReferralProgram) error {
+func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram) error {
+	old := len(r.Program.Triggers) > 0
+	if old {
+		log.Debug("Old Triggers")
+	} else {
+		log.Debug("New Triggers")
+	}
+
 	for _, action := range p.Actions {
+		if !old {
+			if ok, err := r.TestTrigger(action, event); !ok {
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		// Only execute if state isn't done
 		done, ok := r.State[action.Name+"_done"].(bool)
 		if action.Once && ok && done {
