@@ -51,10 +51,14 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.ReferralsGreaterThan
-			prog.Trigger.ReferralsGreaterThan = 0
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.ReferralsGreaterThan,
+						ReferralsGreaterThanTrigger: referralprogram.ReferralsGreaterThanTrigger{
+							ReferralsGreaterThan: 0,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					CreditAction: referralprogram.CreditAction{
 						Currency: currency.USD,
@@ -98,10 +102,14 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.ReferralsGreaterThan
-			prog.Trigger.ReferralsGreaterThan = 1
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.ReferralsGreaterThan,
+						ReferralsGreaterThanTrigger: referralprogram.ReferralsGreaterThanTrigger{
+							ReferralsGreaterThan: 1,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					CreditAction: referralprogram.CreditAction{
 						Currency: currency.USD,
@@ -145,10 +153,14 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.ReferralsGreaterThan
-			prog.Trigger.ReferralsGreaterThan = 0
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.ReferralsGreaterThan,
+						ReferralsGreaterThanTrigger: referralprogram.ReferralsGreaterThanTrigger{
+							ReferralsGreaterThan: 0,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					Once: true,
 					CreditAction: referralprogram.CreditAction{
@@ -193,11 +205,15 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.CreditGreaterThan
-			prog.Trigger.CreditGreaterThan = 6
-			prog.Trigger.Currency = currency.USD
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.CreditGreaterThan,
+						CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
+							CreditGreaterThan: 0,
+							Currency:          currency.USD,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					CreditAction: referralprogram.CreditAction{
 						Currency: currency.USD,
@@ -241,11 +257,15 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.CreditGreaterThan
-			prog.Trigger.CreditGreaterThan = 7
-			prog.Trigger.Currency = currency.USD
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.CreditGreaterThan,
+						CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
+							CreditGreaterThan: 7,
+							Currency:          currency.USD,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					CreditAction: referralprogram.CreditAction{
 						Currency: currency.USD,
@@ -289,11 +309,15 @@ var _ = Describe("Referrer", func() {
 			usr.MustCreate()
 
 			prog := referralprogram.New(db)
-			prog.Trigger.Type = referralprogram.CreditGreaterThan
-			prog.Trigger.CreditGreaterThan = 6
-			prog.Trigger.Currency = currency.USD
 			prog.Actions = []referralprogram.Action{
 				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.ReferralsGreaterThan,
+						CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
+							CreditGreaterThan: 6,
+							Currency:          currency.USD,
+						},
+					},
 					Type: referralprogram.StoreCredit,
 					Once: true,
 					CreditAction: referralprogram.CreditAction{
