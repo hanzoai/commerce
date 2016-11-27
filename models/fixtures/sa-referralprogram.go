@@ -19,8 +19,10 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 	nsDb := datastore.New(org.Namespaced(org.Context()))
 
 	rp := referralprogram.New(nsDb)
-
 	rp.Name = "Stoned Referral Program"
+	rp.GetOrCreate("Name=", rp.Name)
+	rp.MustSetKey("Vm4tdRX5uO")
+
 	rp.Actions = []referralprogram.Action{
 		referralprogram.Action{
 			Type: referralprogram.StoreCredit,
