@@ -37,16 +37,19 @@ type Action struct {
 	CreditAction
 	// PercentAction
 	SendTransactionalUserEmailAction
+
+	Trigger Trigger `json:"trigger"`
 }
 
 const (
 	CreditGreaterThan    TriggerType = "CreditGreaterThan"
 	ReferralsGreaterThan TriggerType = "ReferralsGreaterThan"
+	Always               TriggerType = "Always"
 )
 
 type CreditGreaterThanTrigger struct {
-	CreditGreaterThan int           `json:"creditGreaterThan,omitempty"`
-	Currency          currency.Type `json:"currency,omitempty"`
+	CreditGreaterThan currency.Cents `json:"creditGreaterThan,omitempty"`
+	Currency          currency.Type  `json:"currency,omitempty"`
 }
 
 type ReferralsGreaterThanTrigger struct {
@@ -69,6 +72,5 @@ type ReferralProgram struct {
 
 	// Trigger is the number of referrals, 0 means it triggers on every referral
 	Triggers []int    `json:"triggers"` // Deprecate soon, keep until that point in time
-	Trigger  Trigger  `json:"trigger"`
 	Actions  []Action `json:"actions"`
 }
