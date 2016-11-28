@@ -3123,6 +3123,27 @@ transformers:
       import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
+- kind: cart
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
+  connector_options:
+    # TODO: Add connector options here--these are specific to each connector.
+  property_map:
+    - property: __key__
+      external_name: key
+      export_transform: transform.key_id_or_name_as_string
+
+    - property: Id_
+      external_name: Id_
+      # Type: String Stats: 150196 properties of this type in this kind.
+
+    - property: CreatedAt
+      external_name: CreatedAt
+      # Type: Date/Time Stats: 150196 properties of this type in this kind.
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+
+    - property: Email
+      external_name: Email
 
 - kind: subscriber
   connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
