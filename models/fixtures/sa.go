@@ -67,6 +67,26 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	//org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmed.html")
 	//org.Email.User.EmailConfirmed.Enabled = false
 
+	org.Stripe.AccessToken = ""
+	org.Stripe.Live.Livemode = true
+	org.Stripe.Live.PublishableKey = "pk_live_HYt7tGsPrtvKKDCjH9zYQ8KG"
+	org.Stripe.Live.RefreshToken = ""
+	org.Stripe.Live.Scope = "read_write"
+	org.Stripe.Live.TokenType = "bearer"
+	org.Stripe.Live.UserId = "acct_1978ZsDEqW0iccHt"
+
+	org.Stripe.Test.AccessToken = ""
+	org.Stripe.Test.Livemode = false
+	org.Stripe.Test.PublishableKey = "pk_test_vIu4eBlMDi6HlylbfzNFEst7"
+	org.Stripe.Test.RefreshToken = ""
+	org.Stripe.Test.Scope = "read_write"
+	org.Stripe.Test.TokenType = "bearer"
+	org.Stripe.Test.UserId = "acct_1978ZsDEqW0iccHt"
+
+	org.Stripe.PublishableKey = "pk_live_HYt7tGsPrtvKKDCjH9zYQ8KG"
+	org.Stripe.RefreshToken = ""
+	org.Stripe.UserId = "acct_1978ZsDEqW0iccHt"
+
 	// Save org into default namespace
 	org.MustUpdate()
 
@@ -92,7 +112,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 
 	// Create earphone product
 	prod := product.New(nsdb)
-	prod.Slug = "stoned"
+	prod.Slug = "earphone"
 	prod.GetOrCreate("Slug=", prod.Slug)
 	prod.MustSetKey("MrbcmBZbsd")
 	prod.Name = "Stoned Earphones"

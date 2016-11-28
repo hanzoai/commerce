@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
@@ -73,6 +74,21 @@ var _ = BeforeSuite(func() {
 	usr2.SetPassword("ilikedragons")
 	usr2.Enabled = false
 	usr2.MustPut()
+
+	usr3 := user.New(db)
+	usr3.FirstName = "Z"
+	usr3.LastName = "T"
+	usr3.Email = "zack@taylor.edu"
+	usr3.Enabled = false
+	usr3.MustPut()
+
+	usr4 := user.New(db)
+	usr4.FirstName = "Z"
+	usr4.LastName = "T"
+	usr4.Email = "dev@hanzo.ai"
+	usr4.SetPassword("blackisthenewred")
+	usr4.Enabled = true
+	usr4.MustPut()
 })
 
 // Tear-down appengine context
@@ -80,11 +96,67 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
+type createRes struct {
+	user.User
+
+	Token string `json:"token"`
+}
+
 type loginRes struct {
 	Token string `json:"token"`
 }
 
 var _ = Describe("account", func() {
+	Context("Create", func() {
+		It("Should create an account", func() {
+			req := `{
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res))
+			Expect(res.User.FirstName).To(Equal("Zack"))
+			Expect(res.User.LastName).To(Equal("Taylor"))
+			Expect(res.User.Email).To(Equal("dev@hanzo.ai"))
+		})
+
+		It("Should create an account if it already exists but has no password", func() {
+			req := `{
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "zack@taylor.edu",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res))
+			Expect(res.FirstName).To(Equal("Zack"))
+			Expect(res.LastName).To(Equal("Taylor"))
+			Expect(res.Email).To(Equal("zack@taylor.edu"))
+		})
+
+		It("Should create not create account if it already exists and has a password", func() {
+			req := `{
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res, 400))
+		})
+	})
+
 	Context("Login", func() {
 		It("Should allow login with proper credentials", func() {
 			req := `{
