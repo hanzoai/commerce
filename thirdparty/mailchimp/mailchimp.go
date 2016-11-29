@@ -80,7 +80,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 			EmailAddress: s.Email,
 			Status:       status,
 			MergeFields:  s.MergeFields(),
-			Interests:    make(map[string]interface{}),
+			Interests:    make(map[string]bool),
 			Language:     s.Client.Language,
 			VIP:          false,
 			Location: &gochimp3.MemberLocation{
