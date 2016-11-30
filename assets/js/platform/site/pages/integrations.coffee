@@ -96,7 +96,7 @@ class Integrations extends Page
       integrations: []
 
     for m in @models['analytics']
-      if m._validated
+      if m? and m._validated
         model.integrations.push(m)
 
     @saving = true
