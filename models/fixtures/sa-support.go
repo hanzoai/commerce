@@ -13,7 +13,7 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.MustGet("Name=", org.Name)
+	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
 	u.Email = "gina@verus.io"
