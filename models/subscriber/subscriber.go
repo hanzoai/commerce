@@ -42,11 +42,11 @@ func (s Subscriber) Md5() string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func (s Subscriber) MergeFields() Map {
-	fields := make(Map)
+func (s Subscriber) MergeFields() map[string]string {
+	fields := make(map[string]string)
 
 	for k, v := range s.Metadata {
-		fields[k] = v
+		fields[k] = fmt.Sprintf("%v", v)
 	}
 
 	// Update metadata with some extra client data
