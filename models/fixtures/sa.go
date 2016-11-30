@@ -68,6 +68,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	//org.Email.User.EmailConfirmed.Enabled = false
 
 	org.Stripe.AccessToken = ""
+	org.Stripe.Live.AccessToken = ""
 	org.Stripe.Live.Livemode = true
 	org.Stripe.Live.PublishableKey = "pk_live_HYt7tGsPrtvKKDCjH9zYQ8KG"
 	org.Stripe.Live.RefreshToken = ""
