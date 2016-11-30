@@ -109,12 +109,8 @@ func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, event refer
 		r.Update()
 	}
 
-	if r.ProgramId != "" {
-		prog := referralprogram.New(r.Db)
-		if err := prog.GetById(r.ProgramId); err != nil {
-			return rfl, err
-		}
-		r.Program = *prog
+	if err := r.LoadReferralProgram(); err != nil {
+		return rfl, err
 	}
 
 	// Apply any program actions if applicable
@@ -123,6 +119,22 @@ func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, event refer
 	}
 
 	return rfl, nil
+}
+
+func (r *Referrer) LoadReferralProgram() error {
+	if r.ProgramId == "" {
+		return nil
+	}
+
+	prog := referralprogram.New(r.Db)
+
+	if err := prog.GetById(r.ProgramId); err != nil {
+		return err
+	}
+
+	r.Program = *prog
+
+	return nil
 }
 
 func (r *Referrer) LoadAffiliate() error {
