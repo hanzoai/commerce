@@ -19,6 +19,7 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 	u := user.New(db)
 	u.Email = "gina@verus.io"
 	u.GetOrCreate("Email=", u.Email)
+	u.Delete()
 	u.FirstName = "Gina"
 	u.LastName = "Kelling"
 	u.Organizations = []string{org.Id()}
@@ -28,6 +29,7 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 	u2 := user.New(db)
 	u2.Email = "dev@hanzo.ai"
 	u2.GetOrCreate("Email=", u2.Email)
+	u.Delete()
 	u2.FirstName = "Ali"
 	u2.LastName = "Kelling"
 	u2.Organizations = []string{org.Id()}
