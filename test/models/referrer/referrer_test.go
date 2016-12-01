@@ -98,6 +98,54 @@ var _ = Describe("Referrer", func() {
 			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
 		})
 
+		It("should work with multiple referral triggers", func() {
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			prog := referralprogram.New(db)
+			prog.Actions = []referralprogram.Action{
+				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.Always,
+					},
+					Name: "test",
+					Type: referralprogram.StoreCredit,
+					CreditAction: referralprogram.CreditAction{
+						Currency: currency.USD,
+						Amount:   currency.Cents(7),
+					},
+				},
+				referralprogram.Action{
+					Trigger: referralprogram.Trigger{
+						Type: referralprogram.Always,
+					},
+					Name: "test2",
+					Type: referralprogram.StoreCredit,
+					CreditAction: referralprogram.CreditAction{
+						Currency: currency.USD,
+						Amount:   currency.Cents(7),
+					},
+				},
+			}
+			prog.MustCreate()
+
+			rfr := referrer.Fake(db, usr.Id())
+			rfr.ProgramId = prog.Id()
+			rfr.MustCreate()
+
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			Expect(err).ToNot(HaveOccurred())
+			rfl.MustCreate()
+
+			err = usr.LoadReferrals()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(usr.Referrals)).To(Equal(1))
+
+			err = usr.CalculateBalances()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
+		})
+
 		It("should not fire everytime for referral triggers", func() {
 			usr := user.Fake(db)
 			usr.MustCreate()
