@@ -45,6 +45,9 @@ import (
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
 	stripeApi "crowdstart.com/thirdparty/stripe/api"
+
+	// Side effect import because of cyclical dependency
+	_ "crowdstart.com/models/referrer/tasks"
 )
 
 func Route(api router.Router) {
