@@ -26,6 +26,7 @@ import (
 	. "crowdstart.com/models"
 )
 
+// Make the context less ambiguous, saveReferral needs org context for example
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
@@ -59,7 +60,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	// TODO: Run in task(CaptureAsync), no need to block call on rest of this
 	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
 	saveRedemptions(ctx, ord)
-	saveReferral(ctx, org, ord)
+	saveReferral(org, ord)
 	updateCart(ctx, ord)
 	updateStats(ctx, org, ord, payments)
 
@@ -111,7 +112,8 @@ func saveRedemptions(ctx appengine.Context, ord *order.Order) {
 	}
 }
 
-func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
+func saveReferral(org *organization.Organization, ord *order.Order) {
+	ctx := org.Context()
 	db := ord.Db
 
 	// Check for referrer

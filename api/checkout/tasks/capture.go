@@ -89,7 +89,8 @@ func saveRedemptions(ctx appengine.Context, ord *order.Order) {
 	}
 }
 
-func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
+func saveReferral(org *organization.Organization, ord *order.Order) {
+	ctx := org.Context()
 	db := ord.Db
 
 	// Check for referrer
