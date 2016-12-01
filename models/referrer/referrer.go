@@ -22,8 +22,6 @@ import (
 	"crowdstart.com/util/timeutil"
 
 	. "crowdstart.com/models"
-
-	_ "crowdstart.com/models/referrer/tasks"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
