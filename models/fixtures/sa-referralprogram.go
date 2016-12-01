@@ -63,11 +63,11 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			},
 
 			Trigger: referralprogram.Trigger{
-				Type: referralprogram.CreditGreaterThan,
+				Type: referralprogram.CreditGreaterThanOrEquals,
 
-				CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
-					Currency:          currency.PNT,
-					CreditGreaterThan: currency.Cents(840),
+				CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
+					Currency:                  currency.PNT,
+					CreditGreaterThanOrEquals: currency.Cents(840),
 				},
 			},
 		},
@@ -82,11 +82,11 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			},
 
 			Trigger: referralprogram.Trigger{
-				Type: referralprogram.CreditGreaterThan,
+				Type: referralprogram.CreditGreaterThanOrEquals,
 
-				CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
-					Currency:          currency.PNT,
-					CreditGreaterThan: currency.Cents(1680),
+				CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
+					Currency:                  currency.PNT,
+					CreditGreaterThanOrEquals: currency.Cents(1680),
 				},
 			},
 		},
@@ -101,11 +101,11 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			},
 
 			Trigger: referralprogram.Trigger{
-				Type: referralprogram.CreditGreaterThan,
+				Type: referralprogram.CreditGreaterThanOrEquals,
 
-				CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
-					Currency:          currency.PNT,
-					CreditGreaterThan: currency.Cents(2520),
+				CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
+					Currency:                  currency.PNT,
+					CreditGreaterThanOrEquals: currency.Cents(2520),
 				},
 			},
 		},
@@ -120,11 +120,11 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			},
 
 			Trigger: referralprogram.Trigger{
-				Type: referralprogram.CreditGreaterThan,
+				Type: referralprogram.CreditGreaterThanOrEquals,
 
-				CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
-					Currency:          currency.PNT,
-					CreditGreaterThan: currency.Cents(3360),
+				CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
+					Currency:                  currency.PNT,
+					CreditGreaterThanOrEquals: currency.Cents(3360),
 				},
 			},
 		},
@@ -139,11 +139,11 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			},
 
 			Trigger: referralprogram.Trigger{
-				Type: referralprogram.CreditGreaterThan,
+				Type: referralprogram.CreditGreaterThanOrEquals,
 
-				CreditGreaterThanTrigger: referralprogram.CreditGreaterThanTrigger{
-					Currency:          currency.PNT,
-					CreditGreaterThan: currency.Cents(4200),
+				CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
+					Currency:                  currency.PNT,
+					CreditGreaterThanOrEquals: currency.Cents(4200),
 				},
 			},
 		},
