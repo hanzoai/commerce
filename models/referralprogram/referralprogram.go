@@ -42,18 +42,18 @@ type Action struct {
 }
 
 const (
-	CreditGreaterThan    TriggerType = "CreditGreaterThan"
-	ReferralsGreaterThan TriggerType = "ReferralsGreaterThan"
-	Always               TriggerType = "Always"
+	CreditGreaterThanOrEquals    TriggerType = "CreditGreaterThanOrEquals"
+	ReferralsGreaterThanOrEquals TriggerType = "ReferralsGreaterThanOrEquals"
+	Always                       TriggerType = "Always"
 )
 
-type CreditGreaterThanTrigger struct {
-	CreditGreaterThan currency.Cents `json:"creditGreaterThan,omitempty"`
-	Currency          currency.Type  `json:"currency,omitempty"`
+type CreditGreaterThanOrEqualsTrigger struct {
+	CreditGreaterThanOrEquals currency.Cents `json:"creditGreaterThanOrEquals,omitempty"`
+	Currency                  currency.Type  `json:"currency,omitempty"`
 }
 
-type ReferralsGreaterThanTrigger struct {
-	ReferralsGreaterThan int `json:"referralsGreaterThan,omitempty"`
+type ReferralsGreaterThanOrEqualsTrigger struct {
+	ReferralsGreaterThanOrEquals int `json:"referralsGreaterThanOrEquals,omitempty"`
 }
 
 // Union of possible triggers
@@ -61,8 +61,8 @@ type Trigger struct {
 	Event referral.Event `json:"event"`
 
 	Type TriggerType `json:"type"`
-	CreditGreaterThanTrigger
-	ReferralsGreaterThanTrigger
+	CreditGreaterThanOrEqualsTrigger
+	ReferralsGreaterThanOrEqualsTrigger
 }
 
 type ReferralProgram struct {
