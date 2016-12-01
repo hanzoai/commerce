@@ -18,7 +18,7 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Co
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	if err := org.GetById(orgId); err != nil {
-		log.Error("Could not get organization '%s'", orgId, ctx)
+		log.Error("Could not get organization '%s', %s", orgId, err, ctx)
 		return
 	}
 
