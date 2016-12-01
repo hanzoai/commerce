@@ -176,8 +176,8 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	}
 
 	switch trig.Type {
-	case referralprogram.CreditGreaterThan:
-		log.Debug("CreditGreaterThan Trigger")
+	case referralprogram.CreditGreaterThanOrEquals:
+		log.Debug("CreditGreaterThanOrEquals Trigger")
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
 		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
@@ -207,17 +207,17 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 		}
 
 		// Check trigger
-		if balance > int(trig.CreditGreaterThan) {
+		if balance >= int(trig.CreditGreaterThanOrEquals) {
 			return true, nil
 		}
-	case referralprogram.ReferralsGreaterThan:
-		log.Debug("ReferralsGreaterThan Trigger")
+	case referralprogram.ReferralsGreaterThanOrEquals:
+		log.Debug("ReferralsGreaterThanOrEquals Trigger")
 
 		// Count number of referrals
 		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
 			return false, err
 			// Check trigger
-		} else if count > trig.ReferralsGreaterThan {
+		} else if count >= trig.ReferralsGreaterThanOrEquals {
 			return true, nil
 		}
 		return false, nil
