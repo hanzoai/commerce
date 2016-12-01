@@ -217,7 +217,12 @@ func (f *Function) Once(ctx appengine.Context, name string, delay time.Duration,
 func FuncByKey(key string) *Function {
 	f, ok := Funcs[key]
 	if !ok {
-		panic(fmt.Errorf("delay: key %s not found in delay.Funcs", key))
+		keys := []string{}
+		for k := range Funcs {
+			keys = append(keys, k)
+		}
+
+		panic(fmt.Errorf("delay: key %s not found in delay.Funcs(%s)", key, keys))
 	}
 	return f
 }
