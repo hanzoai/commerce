@@ -177,7 +177,6 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 
 	switch trig.Type {
 	case referralprogram.CreditGreaterThanOrEquals:
-		log.Debug("CreditGreaterThanOrEquals Trigger")
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
 		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
@@ -194,8 +193,10 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 			}
 		}
 
+		log.Warn("CreditGreaterThanOrEquals Trigger, Balance: '%s %s'", balance, trig.Currency, r.Context())
+
 		// 'Forward' any balance increments from this trigger executing
-		log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, trig.Currency)
+		log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, trig.Currency, r.Context())
 		if action.Type == referralprogram.StoreCredit && action.Currency == trig.Currency {
 			done, ok := r.State[action.Name+"_done"].(bool)
 			if action.Once && ok && done {
@@ -224,7 +225,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	case referralprogram.Always:
 		return true, nil
 	default:
-		log.Debug("Unknown Trigger")
+		log.Error("Unknown Trigger '%s'", trig.Type, r.Context())
 		return false, errors.New(fmt.Sprintf("Unknown Trigger '%s'", trig.Type))
 	}
 
@@ -263,7 +264,9 @@ func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event refer
 				r.MustUpdate()
 			}
 
-			return saveStoreCredit(r, action.Amount, action.Currency)
+			if err := saveStoreCredit(r, action.Amount, action.Currency); err != nil {
+				return err
+			}
 		// case referralprogram.Refund:
 		// 	return nil
 		case referralprogram.SendUserEmail:
@@ -274,7 +277,10 @@ func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event refer
 
 			fn := delay.FuncByKey("referrer-send-user-email")
 			fn.Call(ctx, orgId, action.EmailTemplate, r.UserId)
-			return nil
+			// return nil
+		default:
+			log.Error("Unknown Action '%s'", action.Type, r.Context())
+			return errors.New(fmt.Sprintf("Unknown Action '%s'", action.Type))
 		}
 	}
 
