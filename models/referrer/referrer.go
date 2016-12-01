@@ -193,7 +193,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 			}
 		}
 
-		log.Warn("CreditGreaterThanOrEquals Trigger, Balance: '%s %s'", balance, trig.Currency, r.Context())
+		log.Debug("CreditGreaterThanOrEquals Trigger, Balance: '%d %s'", balance, trig.Currency, r.Context())
 
 		// 'Forward' any balance increments from this trigger executing
 		log.Debug("Looking at actions with credit to forward '%s': '%s' ? '%s'", action.Type, action.Currency, trig.Currency, r.Context())
