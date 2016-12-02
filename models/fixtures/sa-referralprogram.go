@@ -135,7 +135,7 @@ var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *
 			Once: true,
 
 			SendTransactionalUserEmailAction: referralprogram.SendTransactionalUserEmailAction{
-				EmailTemplate: "referral-level-4-reached",
+				EmailTemplate: "referral-level-5-reached",
 			},
 
 			Trigger: referralprogram.Trigger{
