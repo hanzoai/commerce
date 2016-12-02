@@ -49,7 +49,7 @@ var sendTemplate = delay.Func("send-email-template", func(ctx appengine.Context,
 		req.AddMergeVar(mandrill.Var{k, v})
 	}
 
-	log.Debug("Sending email to %s", toEmail, ctx)
+	log.Debug("Sending '%s' email to '%s'", template, toEmail, ctx)
 
 	// Send template
 	if err := mandrill.SendTemplate(ctx, &req); err != nil {
