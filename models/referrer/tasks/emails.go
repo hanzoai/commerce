@@ -10,7 +10,6 @@ import (
 	"appengine"
 
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
-	emails "crowdstart.com/util/emails"
 )
 
 // Fire webhooks
@@ -23,8 +22,7 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Co
 	}
 
 	// User Welcome stuff
-	conf := org.Email.User.Welcome.Config(org)
-	if !emails.MandrillEnabled(ctx, org, conf) {
+	if !org.Email.Defaults.Enabled {
 		return
 	}
 
@@ -37,15 +35,12 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Co
 	}
 
 	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	fromEmail := org.Email.Defaults.FromEmail
+	fromName := org.Email.Defaults.FromName
 
 	// To
 	toEmail := usr.Email
 	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
 
 	// Create Merge Vars
 	vars := map[string]interface{}{
@@ -58,5 +53,5 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Co
 	}
 
 	// Send Email
-	mandrill.SendTemplate(ctx, templateName, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, templateName, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, "", vars)
 })
