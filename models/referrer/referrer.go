@@ -276,6 +276,7 @@ func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event refer
 			}
 
 			fn := delay.FuncByKey("referrer-send-user-email")
+			log.Debug("Sending Email Template '%s'", action.EmailTemplate, ctx)
 			fn.Call(ctx, orgId, action.EmailTemplate, r.UserId)
 			// return nil
 		default:
