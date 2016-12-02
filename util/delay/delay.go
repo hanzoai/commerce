@@ -110,8 +110,6 @@ func (f *Function) Call(c appengine.Context, args ...interface{}) error {
 		log.Warn(err)
 		return err
 	}
-	t.Name = f.name
-	_, err = taskqueue.Add(c, t, queue)
 
 	// Override name
 	if f.name != "" {
