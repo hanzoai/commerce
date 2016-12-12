@@ -17,6 +17,7 @@ import (
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/strings"
 	"crowdstart.com/util/template"
 )
 
@@ -75,8 +76,7 @@ func Search(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	// Detect order numbers
-	_, err := strconv.Atoi(q)
-	if err != nil {
+	if _, err := strconv.Atoi(strings.StripWhitespace(q)); err == nil {
 		q = "Number:" + q
 	}
 
