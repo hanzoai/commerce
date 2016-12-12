@@ -2,6 +2,7 @@ package admin
 
 import (
 	"sort"
+	"strconv"
 
 	"appengine/search"
 
@@ -72,6 +73,12 @@ type SearchResults struct {
 
 func Search(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
+
+	// Detect order numbers
+	_, err := strconv.Atoi(q)
+	if err != nil {
+		q = "Number:" + q
+	}
 
 	u := user.User{}
 	index, err := search.Open(u.Kind())
