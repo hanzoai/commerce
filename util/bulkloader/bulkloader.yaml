@@ -2946,8 +2946,8 @@ transformers:
       external_name: ReferrerId
       # Type: String Stats: 1396 properties of this type in this kind.
 
-    - property: ReferrerUserId
-      external_name: ReferrerUserId
+    - property: Referrer.UserId
+      external_name: Referrer.UserId
       # Type: String Stats: 1396 properties of this type in this kind.
 
     - property: UpdatedAt
