@@ -26,7 +26,7 @@ class Gmap extends View
   refresh: ()->
     if @model?[@addressField]?
       address = @model[@addressField].line1 + ' ' +
-        @model[@addressField].line2 + ' ' +
+        ((@model[@addressField].line2 + ' ') if @model[@addressField].line2) +
         @model[@addressField].city + ' ' +
         @model[@addressField].state + ' ' +
         @model[@addressField].postalCode + ' ' +
