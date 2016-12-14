@@ -155,12 +155,14 @@ func create(c *gin.Context) {
 	ref := referrer.New(usr.Db)
 
 	// if ReferrerId refers to non-existing token, then remove from order
-	if err := ref.GetById(usr.ReferrerId); err != nil {
-		usr.ReferrerId = ""
-	} else {
-		// Try to save referral, save updated referrer
-		if _, err := ref.SaveReferral(org.Db.Context, org.Id(), referral.NewUser, usr); err != nil {
-			log.Warn("Unable to save referral: %v", err, c)
+	if usr.ReferrerId != "" {
+		if err := ref.GetById(usr.ReferrerId); err != nil {
+			usr.ReferrerId = ""
+		} else {
+			// Try to save referral, save updated referrer
+			if _, err := ref.SaveReferral(org.Db.Context, org.Id(), referral.NewUser, usr); err != nil {
+				log.Warn("Unable to save referral: %v", err, c)
+			}
 		}
 	}
 
