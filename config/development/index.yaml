@@ -49,3 +49,8 @@ indexes:
   - name: Name
   - name: CalculatedTimestamp
     direction: desc
+
+- kind: payment
+  properties:
+  - name: __key__
+    direction: desc
