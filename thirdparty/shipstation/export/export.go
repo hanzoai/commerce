@@ -8,15 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
 	aeds "appengine/datastore"
 
 	"github.com/gin-gonic/gin"
-	"github.com/qedus/nds"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/lineitem"
+	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -393,10 +392,10 @@ func Export(c *gin.Context) {
 
 	// Fetch users
 	users := make([]*user.User, len(keys))
-	if err := nds.GetMulti(ctx, keys, users); err != nil {
+	if err := multi.Get(db, keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
 
-		if me, ok := err.(appengine.MultiError); ok {
+		if me, ok := err.(multi.MultiError); ok {
 			for _, merr := range me {
 				log.Warn(merr, c)
 			}
