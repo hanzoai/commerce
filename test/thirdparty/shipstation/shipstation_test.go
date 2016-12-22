@@ -28,7 +28,7 @@ var _ = Describe("shipstation", func() {
 		})
 
 		It("Should export orders", func() {
-			w := cl.Get("/suchtees/shipstation?action=export", nil)
+			w := bacl.Get("/shipstation/suchtees?action=export", nil)
 			log.Error(w.Body)
 		})
 	})
