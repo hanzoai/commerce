@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/models/fixtures"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
 
@@ -20,10 +21,11 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
-	org *organization.Organization
-	cl  *ginclient.Client
+	ctx  ae.Context
+	db   *datastore.Datastore
+	org  *organization.Organization
+	cl   *ginclient.Client
+	bacl *ginclient.Client
 )
 
 // Setup appengine context
@@ -35,7 +37,9 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 
 	// Run default fixtures to setup organization and default store
-	fixtures.Organization(c)
+	org = fixtures.Organization(c).(*organization.Organization)
+	accessToken := org.AddToken("test-published-key", permission.Admin)
+	org.MustUpdate()
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
@@ -46,10 +50,17 @@ var _ = BeforeSuite(func() {
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
 		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
+		r.Header.Set("Authorization", accessToken)
 	})
 
-	// Add API routes to client
+	bacl := ginclient.New(ctx)
+	bacl.Defaults(func(r *http.Request) {
+		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
+	})
+
+	// Add API routes to clients
 	api.Route(cl.Router)
+	api.Route(bacl.Router)
 })
 
 // Tear-down appengine context
