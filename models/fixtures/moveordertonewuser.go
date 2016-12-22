@@ -22,12 +22,17 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 
 	ctx := org.Context()
 
+	log.Warn("Moving '%v' orders to '%v'", oldEmail, newEmail, ctx)
 	nsDb := datastore.New(org.Namespaced(ctx))
 	oldUsr := user.New(nsDb)
-	oldUsr.GetById(oldEmail)
+	if err := oldUsr.GetById(oldEmail); err != nil {
+		log.Error(err, ctx)
+	}
 
 	newUsr := user.New(nsDb)
-	newUsr.GetById(newEmail)
+	if err := newUsr.GetById(newEmail); err != nil {
+		log.Error(err, ctx)
+	}
 
 	ords := make([]*order.Order, 0)
 	if _, err := order.Query(db).
@@ -35,6 +40,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 		GetAll(&ords); err != nil {
 		log.Error(err, ctx)
 	}
+	log.Warn("Moving %v orders", len(ords), ctx)
 
 	for _, ord := range ords {
 		oldOK := ord.Key()
@@ -56,6 +62,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 			GetAll(&pays); err != nil {
 			log.Error(err, ctx)
 		}
+		log.Warn("Moving %v payments", len(ords), ctx)
 
 		for _, pay := range pays {
 			oldPK := pay.Key()
