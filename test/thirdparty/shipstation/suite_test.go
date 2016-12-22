@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/fixtures"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
 
@@ -36,9 +35,7 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 
 	// Run default fixtures to setup organization and default store
-	org = fixtures.Organization(c).(*organization.Organization)
-	accessToken := org.AddToken("test-published-key", permission.Admin)
-	org.MustUpdate()
+	fixtures.Organization(c)
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
@@ -48,7 +45,7 @@ var _ = BeforeSuite(func() {
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
 	})
 
 	// Add API routes to client
