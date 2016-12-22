@@ -35,7 +35,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 	}
 
 	ords := make([]*order.Order, 0)
-	if _, err := order.Query(db).
+	if _, err := order.Query(nsDb).
 		Filter("UserId=", oldUsr.Id()).
 		GetAll(&ords); err != nil {
 		log.Error(err, ctx)
@@ -44,7 +44,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 
 	for _, ord := range ords {
 		oldOK := ord.Key()
-		newOK := db.NewKey(ord.Kind(), oldOK.StringID(), oldOK.IntID(), newUsr.Key())
+		newOK := nsDb.NewKey(ord.Kind(), oldOK.StringID(), oldOK.IntID(), newUsr.Key())
 
 		ord.SetKey(newOK)
 		if err := ord.Put(); err != nil {
@@ -57,7 +57,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 		}
 
 		pays := make([]*payment.Payment, 0)
-		if _, err := payment.Query(db).
+		if _, err := payment.Query(nsDb).
 			Filter("OrderId", ord.Id()).
 			GetAll(&pays); err != nil {
 			log.Error(err, ctx)
@@ -66,7 +66,7 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 
 		for _, pay := range pays {
 			oldPK := pay.Key()
-			newPK := db.NewKey(pay.Kind(), oldPK.StringID(), oldPK.IntID(), newOK)
+			newPK := nsDb.NewKey(pay.Kind(), oldPK.StringID(), oldPK.IntID(), newOK)
 
 			pay.SetKey(newPK)
 			if err := pay.Put(); err != nil {
