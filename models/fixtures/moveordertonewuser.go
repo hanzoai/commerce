@@ -42,8 +42,9 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 	}
 	log.Warn("Moving %v orders", len(ords), ctx)
 
-	for _, ord := range ords {
-		ord.GetById(ord.Id_)
+	for _, o := range ords {
+		ord := order.New(nsDb)
+		ord.GetById(o.Id_)
 		oldOK := ord.Key()
 		newOK := nsDb.NewKey(ord.Kind(), oldOK.StringID(), oldOK.IntID(), newUsr.Key())
 
@@ -65,8 +66,9 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 		}
 		log.Warn("Moving %v payments", len(ords), ctx)
 
-		for _, pay := range pays {
-			pay.GetById(pay.Id_)
+		for _, p := range pays {
+			pay := payment.New(nsDb)
+			pay.GetById(p.Id_)
 			oldPK := pay.Key()
 			newPK := nsDb.NewKey(pay.Kind(), oldPK.StringID(), oldPK.IntID(), newOK)
 
