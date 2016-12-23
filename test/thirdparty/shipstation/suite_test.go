@@ -44,14 +44,13 @@ var _ = BeforeSuite(func() {
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
 
-	// Create client so we can make requests
+	// Client for API calls
 	cl = ginclient.New(ctx)
-
-	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
+	// Client for basic auth calls
 	bacl = ginclient.New(ctx)
 	bacl.Defaults(func(r *http.Request) {
 		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
