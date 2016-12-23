@@ -49,11 +49,10 @@ var _ = BeforeSuite(func() {
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
 		r.Header.Set("Authorization", accessToken)
 	})
 
-	bacl := ginclient.New(ctx)
+	bacl = ginclient.New(ctx)
 	bacl.Defaults(func(r *http.Request) {
 		r.SetBasicAuth("dev@hanzo.ai", "suchtees")
 	})
