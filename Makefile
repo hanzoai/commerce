@@ -59,7 +59,6 @@ gae_production = config/production \
 tools = github.com/nsf/gocode \
         github.com/rogpeppe/godef \
         github.com/jstemmer/gotags \
-		golang.org/x/tools/cmd/goimports \
         github.com/klauspost/asmfmt/cmd/asmfmt
 
 # Various patches for SDK
