@@ -85,8 +85,9 @@ import (
 // 		</Items>
 // 	</Order>
 // </Orders>
-func removeCommas(s string) string {
-	return strings.Replace(s, ",", "", -1)
+
+func formatFloat(s string) string {
+	return strings.Replace(s, ",", "", -1)[1:]
 }
 
 func parseDate(s string) time.Time {
@@ -159,7 +160,7 @@ func newItem(ord *order.Order, item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = removeCommas(item.DisplayPrice(ord.Currency))
+	si.UnitPrice = formatFloat(item.DisplayPrice(ord.Currency))
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
 	si.WeightUnits = string(item.WeightUnit)
@@ -257,9 +258,9 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderTotal = removeCommas(ord.DisplayTotal())
-	so.TaxAmount = removeCommas(ord.DisplayTax())
-	so.ShippingAmount = removeCommas(ord.DisplayShipping())
+	so.OrderTotal = formatFloat(ord.DisplayTotal())
+	so.TaxAmount = formatFloat(ord.DisplayTax())
+	so.ShippingAmount = formatFloat(ord.DisplayShipping())
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		so.Items.Items[i] = newItem(ord, item)
