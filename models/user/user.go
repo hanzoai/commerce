@@ -132,9 +132,6 @@ func (u User) Document() mixin.Document {
 }
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
-	// Ensure we're initialized
-	u.Defaults()
-
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
 		return err
