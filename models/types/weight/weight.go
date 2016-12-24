@@ -4,9 +4,9 @@ import "strconv"
 
 const (
 	Pound    Unit = "lb"
-	Ounce         = "oz"
-	Kilogram      = "kg"
-	Gram          = "g"
+	Ounce    Unit = "oz"
+	Kilogram Unit = "kg"
+	Gram     Unit = "g"
 )
 
 type Mass float64
@@ -16,6 +16,21 @@ func (m Mass) String() string {
 }
 
 type Unit string
+
+// Print nice names
+func (u Unit) Name() string {
+	switch u {
+	case "lb":
+		return "Pound"
+	case "oz":
+		return "Ounce"
+	case "kg":
+		return "Kilogram"
+	case "g":
+		return "Gram"
+	}
+	return ""
+}
 
 // Convert everything to grams
 var conversions = map[Unit]float64{Pound: 453.592, Ounce: 28.3495, Kilogram: 1000, Gram: 1}
