@@ -163,7 +163,7 @@ func newItem(ord *order.Order, item lineitem.LineItem) Item {
 	si.UnitPrice = formatFloat(item.DisplayPrice(ord.Currency))
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
-	si.WeightUnits = string(item.WeightUnit)
+	si.WeightUnits = item.WeightUnit.Name()
 
 	return si
 }
