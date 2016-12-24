@@ -303,11 +303,20 @@ func (m *Model) NewKey() datastore.Key {
 	return key
 }
 
+// Check if we have a previously created entity
+func (m *Model) Created() bool {
+	if timeutil.IsZero(m.CreatedAt) {
+		return false
+	} else {
+		return true
+	}
+}
+
 // Put entity in datastore
 func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
-	if timeutil.IsZero(m.CreatedAt) {
+	if !m.Created() {
 		m.CreatedAt = now
 	}
 	m.UpdatedAt = now
