@@ -35,7 +35,7 @@ var _ = Describe("shipstation", func() {
 		})
 
 		It("Should export orders", func() {
-			w := bacl.Get("/shipstation/suchtees?action=export&start_date=01/02/2006 15:04&end_date=01/01/2020 16:20", nil)
+			w := bacl.Get("/shipstation/suchtees?action=export&start_date=01/02/2006 15:04&end_date=01/01/2020 16:20&page=1", nil)
 			log.Error(w.Body)
 		})
 	})
