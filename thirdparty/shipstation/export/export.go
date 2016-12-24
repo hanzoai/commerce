@@ -15,7 +15,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -391,16 +390,10 @@ func Export(c *gin.Context) {
 	}
 
 	// Fetch users
-	users := make([]*user.User, len(keys))
-	if err := multi.Get(db, keys, users); err != nil {
+
+	users := make([]user.User, len(keys))
+	if err := db.GetMulti(keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
-
-		if me, ok := err.(multi.MultiError); ok {
-			for _, merr := range me {
-				log.Warn(merr, c)
-			}
-		}
-
 		log.Warn("Found users: %v", users, c)
 	}
 
@@ -408,14 +401,7 @@ func Export(c *gin.Context) {
 	for i, ord := range validOrders {
 		usr := users[i]
 
-		// How does this even happen?
-		if usr == nil {
-			res.Orders[i] = nil
-			log.Error("User should exist for order %v", ord, c)
-			continue
-		}
-
-		customer := newCustomer(ord, usr)
+		customer := newCustomer(ord, &usr)
 		res.Orders[i].Customer = customer
 
 		// Can't ship to someone without a country
