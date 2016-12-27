@@ -21,8 +21,7 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 	}
 
 	db := datastore.New(nsctx)
-
-	if err := db.RunInTransaction(func(db *datastore.Datastore) error {
+	err = db.RunInTransaction(func(db *datastore.Datastore) error {
 		agg := aggregate.New(db)
 		aggregate.Init(agg, name, t, freq)
 
@@ -55,7 +54,9 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 		}
 
 		return nil
-	}, nil); err != nil {
+	})
+
+	if err != nil {
 		// Poor man's retry
 		panic(err)
 	}

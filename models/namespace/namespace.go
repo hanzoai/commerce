@@ -41,5 +41,5 @@ func (n *Namespace) Put() (err error) {
 		} else {
 			return n.Model.Put()
 		}
-	}, &datastore.TransactionOptions{XG: true})
+	}, datastore.TransactionOptions{XG: true})
 }
