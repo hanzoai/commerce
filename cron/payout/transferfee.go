@@ -84,7 +84,7 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 		// Save models
 		models := []interface{}{tr, fe}
 		return multi.Update(models)
-	}, nil)
+	})
 
 	// Bail out if error happened creating transactions, any changes in
 	// transaction will have been rolled back.
