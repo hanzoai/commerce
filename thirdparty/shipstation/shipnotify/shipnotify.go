@@ -110,6 +110,7 @@ func ShipNotify(c *gin.Context) {
 	ok, err := ord.Query().Filter("Number=", id).Get()
 	if !ok || err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
+		c.String(200, "ok\n")
 		return
 	}
 
@@ -132,4 +133,6 @@ func ShipNotify(c *gin.Context) {
 	ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
 
 	ord.MustPut()
+
+	c.String(200, "ok\n")
 }
