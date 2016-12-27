@@ -74,7 +74,7 @@ type Entity interface {
 
 	// Datastore
 	Datastore() *datastore.Datastore
-	RunInTransaction(fn func() error, opts ...*datastore.TransactionOptions) error
+	RunInTransaction(fn func() error, opts ...datastore.TransactionOptions) error
 
 	// Query
 	Query() *ModelQuery
@@ -550,7 +550,7 @@ func (m *Model) Datastore() *datastore.Datastore {
 }
 
 // Run in transaction using model's current context
-func (m *Model) RunInTransaction(fn func() error, opts ...*datastore.TransactionOptions) error {
+func (m *Model) RunInTransaction(fn func() error, opts ...datastore.TransactionOptions) error {
 	return datastore.RunInTransaction(m.Context(), func(db *datastore.Datastore) error {
 		return fn()
 	}, opts...)
