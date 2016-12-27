@@ -59,12 +59,7 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 
 // Get order from id
 func (q *Query) orderFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
-	key, err := newKeyFromInt(q.ctx, "order", id, nil)
-	if err != nil {
-		return nil, false, err
-	}
-
-	key, ok, err := q.ByKey(key, dst)
+	key, ok, err := q.Filter("Number=", id).First(dst)
 	if err != nil {
 		return nil, false, err
 	}
