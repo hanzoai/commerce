@@ -16,25 +16,27 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 	org.Name = "stoned"
 	org.GetOrCreate("Name=", org.Name)
 
-	u := user.New(db)
-	u.Email = "gina@verus.io"
-	u.GetOrCreate("Email=", u.Email)
-	u.Delete()
-	u.FirstName = "Gina"
-	u.LastName = "Kelling"
-	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("veruspassword!")
-	u.Put()
+	datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
+		u := user.New(db)
+		u.Email = "gina@verus.io"
+		u.GetOrCreate("Email=", u.Email)
+		u.FirstName = "Gina"
+		u.LastName = "Kelling"
+		u.Organizations = []string{org.Id()}
+		u.PasswordHash, _ = password.Hash("veruspassword!")
+		u.MustPut()
 
-	u2 := user.New(db)
-	u2.Email = "dev@hanzo.ai"
-	u2.GetOrCreate("Email=", u2.Email)
-	u.Delete()
-	u2.FirstName = "Ali"
-	u2.LastName = "Kelling"
-	u2.Organizations = []string{org.Id()}
-	u2.PasswordHash, _ = password.Hash("veruspassword!")
-	u2.Put()
+		u2 := user.New(db)
+		u2.Email = "dev@hanzo.ai"
+		u2.GetOrCreate("Email=", u2.Email)
+		u2.FirstName = "Ali"
+		u2.LastName = "Kelling"
+		u2.Organizations = []string{org.Id()}
+		u2.PasswordHash, _ = password.Hash("veruspassword!")
+		u2.MustPut()
+
+		return nil
+	})
 
 	return org
 })
