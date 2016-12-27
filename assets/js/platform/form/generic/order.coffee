@@ -21,6 +21,7 @@ class OrderForm extends Form
     input('createdAt', '', 'static-date'),
     input('updatedAt', '', 'static-date'),
 
+    input('shippingAddress.name', 'Recipient Name', 'required'),
     input('shippingAddress.line1', 'Street Address', 'required'),
     input('shippingAddress.line2', 'Apt/Suite Number'),
     input('shippingAddress.city', 'City', 'required'),
