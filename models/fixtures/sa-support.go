@@ -25,7 +25,10 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 		u.Organizations = []string{org.Id()}
 		u.PasswordHash, _ = password.Hash("veruspassword!")
 		u.MustPut()
+		return nil
+	}, datastore.TransactionOptions{XG: true})
 
+	datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
 		u2 := user.New(db)
 		u2.Email = "dev@hanzo.ai"
 		u2.GetOrCreate("Email=", u2.Email)
@@ -34,7 +37,6 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 		u2.Organizations = []string{org.Id()}
 		u2.PasswordHash, _ = password.Hash("veruspassword!")
 		u2.MustPut()
-
 		return nil
 	}, datastore.TransactionOptions{XG: true})
 
