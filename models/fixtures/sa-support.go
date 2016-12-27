@@ -12,10 +12,6 @@ import (
 var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
-	org := organization.New(db)
-	org.Name = "stoned"
-	org.GetOrCreate("Name=", org.Name)
-
 	datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
 		u := user.New(db)
 		u.Email = "gina@verus.io"
