@@ -8,8 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	aeds "appengine/datastore"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
@@ -107,11 +105,10 @@ func ShipNotify(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	ctx := db.Context
 
 	ord := order.New(db)
-	key := aeds.NewKey(ctx, ord.Kind(), "", int64(id), nil)
-	if err := ord.Get(key); err != nil {
+	ok, err := ord.Query().Filter("Number=", id).Get()
+	if !ok || err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
 		return
 	}

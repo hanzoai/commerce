@@ -47,7 +47,7 @@ type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
 
-	Number int `json:"number,omitempty" datastore:"-"`
+	Number int `json:"number,omitempty"`
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
@@ -210,6 +210,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
 	o.Items_ = string(json.EncodeBytes(o.Items))
 	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
+	o.Number = o.NumberFromId()
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
