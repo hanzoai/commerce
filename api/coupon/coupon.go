@@ -19,13 +19,14 @@ func getCoupon(c *gin.Context) {
 
 	db := datastore.New(c)
 	cpn := coupon.New(db)
-	if cpn.Dynamic {
-		http.Fail(c, 400, "Failed to get dynamic coupon", nil)
-		return
-	}
 
 	if err := cpn.GetById(couponid); err != nil {
 		http.Fail(c, 404, "Failed to get coupon", err)
+		return
+	}
+
+	if cpn.Dynamic {
+		http.Fail(c, 400, "Failed to get dynamic coupon", nil)
 		return
 	}
 
