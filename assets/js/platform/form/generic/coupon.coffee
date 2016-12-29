@@ -21,7 +21,9 @@ class CouponForm extends Form
     input('code', 'Coupon Code', 'required unique unique-api:coupon')
     input('type', 'Coupon Type', 'coupon-type-select')
     input('amount', 'Coupon Amount', 'money'),
+    input('limit', 'Limit', 'numeric'),
     input('enabled', 'Enabled', 'switch'),
+    input('dynamic', 'Dynamic', 'switch'),
     input('productId', 'Select a Product', 'product-type-select')
 
     input('createdAt', '', 'static-date'),
