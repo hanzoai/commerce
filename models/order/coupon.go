@@ -24,7 +24,7 @@ func (o *Order) GetCoupons() error {
 
 	for i := 0; i < num; i++ {
 		cpn := coupon.New(db)
-		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+		code := strings.TrimSpace(o.CouponCodes[i])
 
 		log.Debug("CODE: %s", code)
 		err := cpn.GetById(code)
