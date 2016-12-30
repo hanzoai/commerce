@@ -25,10 +25,10 @@ func getCoupon(c *gin.Context) {
 		return
 	}
 
-	if cpn.Dynamic {
-		http.Fail(c, 400, "Failed to get dynamic coupon", nil)
-		return
-	}
+	// if cpn.Dynamic {
+	// 	http.Fail(c, 400, "Failed to get dynamic coupon", nil)
+	// 	return
+	// }
 
 	// Check if coupon has been used
 	cpn.Enabled = cpn.Redeemable()
