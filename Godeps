@@ -17,7 +17,7 @@ github.com/huandu/facebook master
 github.com/icrowley/fake master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
 github.com/mattn/goveralls master
-github.com/mholt/binding master
+github.com/mholt/binding 5594cf7a0fc126359d4ba7094fa65e9bf666e429
 github.com/modocache/gover master
 github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
