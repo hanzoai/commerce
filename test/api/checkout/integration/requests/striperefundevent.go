@@ -70,7 +70,7 @@ var StripeRefundEvent = `
 		"cvc_check": null,
 		"dynamic_last4": null,
 		"exp_month": 12,
-		"exp_year": 2016,
+		"exp_year": 2042,
 		"funding": "credit",
 		"last4": "4242",
 		"metadata": {
