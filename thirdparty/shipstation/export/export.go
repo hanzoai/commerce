@@ -201,7 +201,7 @@ func newCustomer(ord *order.Order, usr *user.User) *Customer {
 	sc.BillTo.Email = CDATA(usr.Email)
 	sc.BillTo.Phone = CDATA(usr.Phone)
 
-	sc.ShipTo.Name = CDATA(usr.Name())
+	sc.ShipTo.Name = CDATA(ord.ShippingAddress.Name)
 	sc.ShipTo.Phone = CDATA(usr.Phone)
 	sc.ShipTo.Address1 = CDATA(ord.ShippingAddress.Line1)
 	sc.ShipTo.Address2 = CDATA(ord.ShippingAddress.Line2)
