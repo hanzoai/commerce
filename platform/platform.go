@@ -67,6 +67,7 @@ func init() {
 	dash.POST("/keys", admin.NewKeys)
 
 	dash.GET("/sendorderconfirmation/:id", admin.SendOrderConfirmation)
+	dash.GET("/sendrefundconfirmation/:id", admin.SendRefundConfirmation)
 
 	dash.GET("/organization", admin.Organization)
 	dash.POST("/organization", admin.UpdateOrganization)
