@@ -142,10 +142,17 @@ class OrderUserStaticForm extends BasicFormView
         console.log e.stack
         riot.update()
 
-  resendConfirmation: (event)->
+  resendOrderConfirmation: (event)->
     api = Api.get 'platform'
 
     api.get('sendorderconfirmation/' + @orderId)
+    $(event.target).html 'Sent!'
+    @sending = true
+
+  resendRefundConfirmation: (event)->
+    api = Api.get 'platform'
+
+    api.get('sendrefundconfirmation/' + @orderId)
     $(event.target).html 'Sent!'
     @sending = true
 
