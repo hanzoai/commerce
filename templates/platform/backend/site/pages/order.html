@@ -37,7 +37,7 @@
               <div class="col-xs-6">
                 <button type="submit" class="btn btn-block btn-dark">Save</button>
               </div>
-              <div class="{ col-xs-6: model.paymentStatus != 'refunded', col-xs-8: model.paymentStatus == 'refunded' }">
+              <div class="col-xs-6">
                 <button type="reset" class="btn btn-block btn-default">Reset</button>
               </div>
             </div>
@@ -219,7 +219,7 @@
                   <div class="col-xs-12" style="padding:0">
                     <button __disabled="{ sending }" onclick="{ resendOrderConfirmation }" type="button" class="btn btn-block btn-dark">Resend Confirmation</button>
                   </div>
-                  <div class="col-xs-12" style="padding:0">
+                  <div class="col-xs-12 mt20" style="padding:0">
                     <button if="{ parent.model.refunded }" __disabled="{ sending }" onclick="{ resendRefundConfirmation }" type="button" class="btn btn-block btn-dark">Resend Refund</button>
                   </div>
                 </div>
