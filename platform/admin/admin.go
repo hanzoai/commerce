@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json/http"
@@ -149,6 +150,29 @@ func SendOrderConfirmation(c *gin.Context) {
 	u.MustGetById(o.UserId)
 
 	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
+
+	c.Writer.WriteHeader(204)
+}
+
+func SendRefundConfirmation(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(middleware.GetNamespace(c))
+
+	o := order.New(db)
+	id := c.Params.ByName("id")
+	o.MustGetById(id)
+
+	u := user.New(db)
+	u.MustGetById(o.UserId)
+
+	p := payment.New(db)
+	p.MustGetById(o.PaymentIds[0])
+
+	if o.PaymentStatus == payment.Refunded {
+		emails.SendPartialRefundEmail(db.Context, org, o, u, p)
+	} else if o.Refunded > 0 {
+		emails.SendFullRefundEmail(db.Context, org, o, u, p)
+	}
 
 	c.Writer.WriteHeader(204)
 }
