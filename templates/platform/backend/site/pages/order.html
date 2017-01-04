@@ -220,7 +220,7 @@
                     <button __disabled="{ sending }" onclick="{ resendOrderConfirmation }" type="button" class="btn btn-block btn-dark">Resend Confirmation</button>
                   </div>
                   <div class="col-xs-12" style="padding:0">
-                    <button if="{ model.refunded }" __disabled="{ sending }" onclick="{ resendRefundConfirmation }" type="button" class="btn btn-block btn-dark">Resend Refund</button>
+                    <button if="{ parent.model.refunded }" __disabled="{ sending }" onclick="{ resendRefundConfirmation }" type="button" class="btn btn-block btn-dark">Resend Refund</button>
                   </div>
                 </div>
               </div>
