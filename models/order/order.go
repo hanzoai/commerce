@@ -529,6 +529,10 @@ func (o Order) DisplayRefunded() string {
 	return DisplayPrice(o.Currency, o.Refunded)
 }
 
+func (o Order) DisplayRemaining() string {
+	return DisplayPrice(o.Currency, o.Total-o.Refunded)
+}
+
 func (o Order) Description() string {
 	if o.Items == nil {
 		return ""
