@@ -169,9 +169,9 @@ func SendRefundConfirmation(c *gin.Context) {
 	p.MustGetById(o.PaymentIds[0])
 
 	if o.Refunded == o.Paid {
-		emails.SendPartialRefundEmail(db.Context, org, o, u, p)
-	} else if o.Refunded > 0 {
 		emails.SendFullRefundEmail(db.Context, org, o, u, p)
+	} else if o.Refunded > 0 {
+		emails.SendPartialRefundEmail(db.Context, org, o, u, p)
 	}
 
 	c.Writer.WriteHeader(204)
