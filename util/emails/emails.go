@@ -325,14 +325,15 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 	items := make([]map[string]interface{}, len(ord.Items))
 	vars := map[string]interface{}{
 		"order": map[string]interface{}{
-			"number":          ord.DisplayId(),
-			"displaysubtotal": ord.DisplaySubtotal(),
-			"displaytax":      ord.DisplayTax(),
-			"displayshipping": ord.DisplayShipping(),
-			"displaytotal":    ord.DisplayTotal(),
-			"displayrefunded": ord.DisplayRefunded(),
-			"currency":        currencyCode,
-			"items":           items,
+			"number":           ord.DisplayId(),
+			"displaysubtotal":  ord.DisplaySubtotal(),
+			"displaytax":       ord.DisplayTax(),
+			"displayshipping":  ord.DisplayShipping(),
+			"displaytotal":     ord.DisplayTotal(),
+			"displayrefunded":  ord.DisplayRefunded(),
+			"displayremaining": ord.DisplayRemaining(),
+			"currency":         currencyCode,
+			"items":            items,
 			"shippingaddress": map[string]interface{}{
 				"line1":      ord.ShippingAddress.Line1,
 				"line2":      ord.ShippingAddress.Line2,
@@ -351,6 +352,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
 		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
+		"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
 		"ORDER_CURRENCY":                    currencyCode,
 		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
 		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
