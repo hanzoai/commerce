@@ -22,7 +22,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var emailRegex = regexp.MustCompile("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,4})")
+var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
 
 type createReq struct {
 	*user.User
