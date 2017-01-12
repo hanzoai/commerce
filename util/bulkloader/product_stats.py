@@ -17,9 +17,10 @@ if __name__ == '__main__':
         header = dict((k.strip(),i) for i,k in enumerate(first_row))
 
         items_idx  = header['Items_']
-        status_idx = header['PaymentStatus']
+        status_idx = header['Status']
         test_idx   = header['Test']
         total_idx  = header['Total']
+        paid_idx   = header['Paid']
 
         total_ordered  = 0
         total_refunded = 0
@@ -35,14 +36,15 @@ if __name__ == '__main__':
             except:
                 print 'Failed to load item row', i
                 continue
+
             status = row[status_idx]
+            paid   = row[paid_idx]
 
             for item in items:
-                if item['productId'] == '84cguxepxk':
-                    if status == 'paid':
-                        total_ordered  += item['quantity']
-                    else:
-                        total_refunded += item['quantity']
+                if status == 'open':
+                    total_ordered  += item['quantity']
+                elif status == 'cancelled':
+                    total_refunded += item['quantity']
 
-        print 'Total units ordered', total_ordered
-        print 'Total units refuneded', total_refunded
+        print 'Total open orders', total_ordered
+        print 'Total orders refunded', total_refunded
