@@ -93,6 +93,7 @@ class Orders(Export):
     name   = 'Order'
     fields = {
         'UserId': str,
+        'Metadata_': str,
     }
 
 if __name__ == '__main__':
@@ -111,6 +112,9 @@ if __name__ == '__main__':
         writer = csv.writer(f)
         writer.writerow(['Email', 'FirstName', 'LastName'])
         for _, order in orders.items():
-            user = users.get(order.user_id, None)
-            if user:
-                writer.writerow([user.email, user.first_name, user.last_name])
+            if order.metadata_ == '{"batch":"2"}':
+                print 'batch 2'
+            else:
+                user = users.get(order.user_id, None)
+                if user:
+                    writer.writerow([user.email, user.first_name, user.last_name])
