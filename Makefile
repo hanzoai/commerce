@@ -57,9 +57,18 @@ gae_production = config/production \
 				 platform
 
 tools = github.com/nsf/gocode \
-        github.com/rogpeppe/godef \
+        github.com/alecthomas/gometalinter \
+        github.com/fatih/motion \
+        github.com/golang/lint/golint \
+        github.com/josharian/impl \
         github.com/jstemmer/gotags \
-        github.com/klauspost/asmfmt/cmd/asmfmt
+        github.com/kisielk/errcheck \
+        github.com/klauspost/asmfmt/cmd/asmfmt \
+        github.com/rogpeppe/godef \
+        github.com/zmb3/gogetdoc \
+        golang.org/x/tools/cmd/goimports \
+        golang.org/x/tools/cmd/gorename \
+        golang.org/x/tools/cmd/guru
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
@@ -228,7 +237,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > .sdk/gpm
 	chmod +x .sdk/gpm
 
 .sdk/gopath/bin/ginkgo:
@@ -266,6 +275,9 @@ serve-no-reload: assets
 # GOLANG TOOLS
 tools:
 	$(goapp) get $(tools)
+	# rm .sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go
+	# rm .sdk/gopath/src/gopkg.in/alecthomas/kingpin.v2/guesswidth_unix.go
+	# rm .sdk/gopath/src/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go
 	$(goapp) install $(tools)
 	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
