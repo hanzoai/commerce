@@ -21,6 +21,7 @@ if __name__ == '__main__':
         test_idx   = header['Test']
         total_idx  = header['Total']
         paid_idx   = header['Paid']
+        batch_idx  = header['Metadata_']
 
         total_ordered  = 0
         total_refunded = 0
@@ -39,8 +40,12 @@ if __name__ == '__main__':
 
             status = row[status_idx]
             paid   = row[paid_idx]
+            batch  = row[batch_idx]
 
             for item in items:
+                if batch == '{"batch":"2"}':
+                    print 'batch 2'
+                    continue
                 if status == 'open':
                     total_ordered  += item['quantity']
                 elif status == 'cancelled':
