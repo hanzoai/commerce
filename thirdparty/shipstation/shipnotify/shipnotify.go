@@ -124,13 +124,15 @@ func ShipNotify(c *gin.Context) {
 		log.Panic("Unable to unmarshal XML: %v", err, c)
 	}
 
-	ord.FulfillmentStatus = "shipped"
-	ord.Fulfillment.TrackingNumber = req.TrackingNumber
-	ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
-	ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
-	ord.Fulfillment.Service = req.Service
-	ord.Fulfillment.Carrier = req.Carrier
-	ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
+	if ord.Fulfillment.TrackingNumber != req.TrackingNumber {
+		ord.FulfillmentStatus = "shipped"
+		ord.Fulfillment.TrackingNumber = req.TrackingNumber
+		ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
+		ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
+		ord.Fulfillment.Service = req.Service
+		ord.Fulfillment.Carrier = req.Carrier
+		ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
+	}
 
 	ord.MustPut()
 
