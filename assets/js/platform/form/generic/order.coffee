@@ -149,6 +149,13 @@ class OrderUserStaticForm extends BasicFormView
     $(event.target).html 'Sent!'
     @sending = true
 
+  resendShippingConfirmation: (event)->
+    api = Api.get 'platform'
+
+    api.get('sendfulfillmentconfirmation/' + @orderId)
+    $(event.target).html 'Sent!'
+    @sending = true
+
   resendRefundConfirmation: (event)->
     api = Api.get 'platform'
 
