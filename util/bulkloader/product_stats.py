@@ -16,12 +16,13 @@ if __name__ == '__main__':
         first_row = next(f).split(',')
         header = dict((k.strip(),i) for i,k in enumerate(first_row))
 
-        items_idx  = header['Items_']
-        status_idx = header['Status']
-        test_idx   = header['Test']
-        total_idx  = header['Total']
-        paid_idx   = header['Paid']
-        batch_idx  = header['Metadata_']
+        items_idx   = header['Items_']
+        status_idx  = header['Status']
+        test_idx    = header['Test']
+        total_idx   = header['Total']
+        paid_idx    = header['Paid']
+        batch_idx   = header['Metadata_']
+        country_idx = header['ShippingAddress.Country']
 
         total_ordered  = 0
         total_refunded = 0
@@ -38,18 +39,20 @@ if __name__ == '__main__':
                 print 'Failed to load item row', i
                 continue
 
-            status = row[status_idx]
-            paid   = row[paid_idx]
-            batch  = row[batch_idx]
+            status  = row[status_idx]
+            paid    = row[paid_idx]
+            batch   = row[batch_idx]
+            country = row[country_idx]
 
             for item in items:
                 if batch == '{"batch":"2"}':
-                    print 'batch 2'
+                    continue
+                if country.lower() != "us":
                     continue
                 if status == 'open':
                     total_ordered  += item['quantity']
                 elif status == 'cancelled':
                     total_refunded += item['quantity']
 
-        print 'Total open orders', total_ordered
-        print 'Total orders refunded', total_refunded
+        print 'Total units ordered in batch 1:', total_ordered
+        # print 'Total units refunded', total_refunded
