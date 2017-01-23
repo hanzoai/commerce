@@ -154,6 +154,25 @@ func SendOrderConfirmation(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
+func SendFulfillmentConfirmation(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(middleware.GetNamespace(c))
+
+	o := order.New(db)
+	id := c.Params.ByName("id")
+	o.MustGetById(id)
+
+	u := user.New(db)
+	u.MustGetById(o.UserId)
+
+	p := payment.New(db)
+	p.MustGetById(o.PaymentIds[0])
+
+	emails.SendFulfillmentEmail(db.Context, org, o, u, p)
+
+	c.Writer.WriteHeader(204)
+}
+
 func SendRefundConfirmation(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
