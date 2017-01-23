@@ -554,7 +554,7 @@ func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization,
 			"createdmonthname": ord.CreatedAt.Month().String(),
 			"createdyear":      ord.CreatedAt.Year(),
 			"fulfillment": map[string]interface{}{
-				"trackingNumber": ord.Fulfillment.TrackingNumber,
+				"trackingnumber": ord.Fulfillment.TrackingNumber,
 				"service":        ord.Fulfillment.Service,
 				"carrier":        ord.Fulfillment.Carrier,
 			},
