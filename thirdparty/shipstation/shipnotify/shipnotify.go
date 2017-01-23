@@ -11,7 +11,10 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
 )
 
@@ -132,6 +135,14 @@ func ShipNotify(c *gin.Context) {
 		ord.Fulfillment.Service = req.Service
 		ord.Fulfillment.Carrier = req.Carrier
 		ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
+
+		usr := user.New(db)
+		usr.MustGetById(ord.UserId)
+
+		pay := payment.New(db)
+		pay.MustGetById(ord.PaymentIds[0])
+
+		emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
 	}
 
 	ord.MustPut()
