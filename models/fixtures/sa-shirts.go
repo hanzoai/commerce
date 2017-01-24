@@ -21,66 +21,83 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
 		// Create earphone product
 		prod := product.New(nsdb)
-		prod.Slug = "shirt-black-s"
+		prod.Slug = "shirt-men-black-s"
 		prod.GetOrCreate("Slug=", prod.Slug)
-		prod.Name = "Stoned Shirt - Black - Small"
+		prod.Name = "Stoned Shirt - Men's - Black - Small"
 		prod.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod.Price = currency.Cents(3000)
+		prod.Currency = currency.USD
+		prod.ListPrice = currency.Cents(3000)
+		prod.Price = currency.Cents(2200)
 		prod.Inventory = 9000
 		prod.Preorder = false
 		prod.Hidden = false
 		prod.MustUpdate()
+
 		// Create earphone product
 		prod1 := product.New(nsdb)
-		prod1.Slug = "shirt-black-m"
+		prod1.Slug = "shirt-men-black-m"
 		prod1.GetOrCreate("Slug=", prod.Slug)
-		prod1.Name = "Stoned Shirt - Black - Medium"
+		prod1.Name = "Stoned Shirt - Men's - Black - Medium"
 		prod1.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod1.Price = currency.Cents(3000)
+		prod1.Currency = currency.USD
+		prod1.ListPrice = currency.Cents(3000)
+		prod1.Price = currency.Cents(2200)
 		prod1.Inventory = 9000
 		prod1.Preorder = false
 		prod1.Hidden = false
 		prod1.MustUpdate()
+
 		// Create earphone product
 		prod2 := product.New(nsdb)
-		prod2.Slug = "shirt-black-l"
+		prod2.Slug = "shirt-men-black-l"
 		prod2.GetOrCreate("Slug=", prod.Slug)
-		prod2.Name = "Stoned Shirt - Black - Large"
+		prod2.Name = "Stoned Shirt - Men's - Black - Large"
 		prod2.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod2.Price = currency.Cents(3000)
+		prod2.Currency = currency.USD
+		prod2.ListPrice = currency.Cents(3000)
+		prod2.Price = currency.Cents(2200)
 		prod2.Inventory = 9000
 		prod2.Preorder = false
 		prod2.Hidden = false
 		prod2.MustUpdate()
+
 		// Create earphone product
 		prod3 := product.New(nsdb)
-		prod3.Slug = "shirt-black-xl"
+		prod3.Slug = "shirt-men-black-xl"
 		prod3.GetOrCreate("Slug=", prod.Slug)
-		prod3.Name = "Stoned Shirt - Black - XL"
+		prod3.Name = "Stoned Shirt - Men's - Black - XL"
 		prod3.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod3.Price = currency.Cents(3000)
+		prod3.Currency = currency.USD
+		prod3.ListPrice = currency.Cents(3000)
+		prod3.Price = currency.Cents(2200)
 		prod3.Inventory = 9000
 		prod3.Preorder = false
 		prod3.Hidden = false
 		prod3.MustUpdate()
+
 		// Create earphone product
 		prod4 := product.New(nsdb)
-		prod4.Slug = "shirt-black-xxl"
+		prod4.Slug = "shirt-men-black-xxl"
 		prod4.GetOrCreate("Slug=", prod.Slug)
-		prod4.Name = "Stoned Shirt - Black - XXL"
+		prod4.Name = "Stoned Shirt - Men's - Black - XXL"
 		prod4.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod4.Price = currency.Cents(3000)
+		prod4.Currency = currency.USD
+		prod4.ListPrice = currency.Cents(3000)
+		prod4.Price = currency.Cents(2200)
 		prod4.Inventory = 9000
 		prod4.Preorder = false
 		prod4.Hidden = false
 		prod4.MustUpdate()
+
 		// Create earphone product
 		prod5 := product.New(nsdb)
-		prod5.Slug = "shirt-black-xxxl"
+		prod5.Slug = "shirt-men-black-xxxl"
 		prod5.GetOrCreate("Slug=", prod.Slug)
-		prod5.Name = "Stoned Shirt - Black - XXXL"
+		prod5.Name = "Stoned Shirt - Men's - Black - XXXL"
 		prod5.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-		prod5.Price = currency.Cents(3000)
+		prod5.Currency = currency.USD
+		prod5.ListPrice = currency.Cents(3000)
+		prod5.Price = currency.Cents(2200)
 		prod5.Inventory = 9000
 		prod5.Preorder = false
 		prod5.Hidden = false
@@ -89,6 +106,94 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		return nil
 	}, datastore.TransactionOptions{XG: true})
 
+	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
+		// Create earphone product
+		prod := product.New(nsdb)
+		prod.Slug = "shirt-women-black-s"
+		prod.GetOrCreate("Slug=", prod.Slug)
+		prod.Name = "Stoned Shirt - Women's - Black - Small"
+		prod.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod.Currency = currency.USD
+		prod.ListCurrency = currency.USD
+		prod.ListPrice = currency.Cents(3000)
+		prod.Price = currency.Cents(2200)
+		prod.Inventory = 9000
+		prod.Preorder = false
+		prod.Hidden = false
+		prod.MustUpdate()
+
+		// Create earphone product
+		prod1 := product.New(nsdb)
+		prod1.Slug = "shirt-women-black-m"
+		prod1.GetOrCreate("Slug=", prod.Slug)
+		prod1.Name = "Stoned Shirt - Women's - Black - Medium"
+		prod1.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod1.Currency = currency.USD
+		prod1.ListPrice = currency.Cents(3000)
+		prod1.Price = currency.Cents(2200)
+		prod1.Inventory = 9000
+		prod1.Preorder = false
+		prod1.Hidden = false
+		prod1.MustUpdate()
+
+		// Create earphone product
+		prod2 := product.New(nsdb)
+		prod2.Slug = "shirt-women-black-l"
+		prod2.GetOrCreate("Slug=", prod.Slug)
+		prod2.Name = "Stoned Shirt - Women's - Black - Large"
+		prod2.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod2.Currency = currency.USD
+		prod2.ListPrice = currency.Cents(3000)
+		prod2.Price = currency.Cents(2200)
+		prod2.Inventory = 9000
+		prod2.Preorder = false
+		prod2.Hidden = false
+		prod2.MustUpdate()
+
+		// Create earphone product
+		prod3 := product.New(nsdb)
+		prod3.Slug = "shirt-women-black-xl"
+		prod3.GetOrCreate("Slug=", prod.Slug)
+		prod3.Name = "Stoned Shirt - Women's - Black - XL"
+		prod3.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod3.Currency = currency.USD
+		prod3.ListPrice = currency.Cents(3000)
+		prod3.Price = currency.Cents(2200)
+		prod3.Inventory = 9000
+		prod3.Preorder = false
+		prod3.Hidden = false
+		prod3.MustUpdate()
+
+		// Create earphone product
+		prod4 := product.New(nsdb)
+		prod4.Slug = "shirt-women-black-xxl"
+		prod4.GetOrCreate("Slug=", prod.Slug)
+		prod4.Name = "Stoned Shirt - Women's - Black - XXL"
+		prod4.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod4.Currency = currency.USD
+		prod4.ListPrice = currency.Cents(3000)
+		prod4.Price = currency.Cents(2200)
+		prod4.Inventory = 9000
+		prod4.Preorder = false
+		prod4.Hidden = false
+		prod4.MustUpdate()
+
+		// Create earphone product
+		prod5 := product.New(nsdb)
+		prod5.Slug = "shirt-women-black-xxxl"
+		prod5.GetOrCreate("Slug=", prod.Slug)
+		prod5.Name = "Stoned Shirt - Women's - Black - XXXL"
+		prod5.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod5.Currency = currency.USD
+		prod5.ListPrice = currency.Cents(3000)
+		prod5.Price = currency.Cents(2200)
+		prod5.Inventory = 9000
+		prod5.Preorder = false
+		prod5.Hidden = false
+		prod5.MustUpdate()
+
+		return nil
+	}, datastore.TransactionOptions{XG: true})
 	// datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
 	// 	// Create earphone product
 	// 	prod2 := product.New(nsdb)
@@ -96,7 +201,10 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 	// 	prod2.GetOrCreate("Slug=", prod.Slug)
 	// 	prod2.Name = ""
 	// 	prod2.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
-	// 	prod2.Price = currency.Cents(3000)
+	// 	prod2.Currency = currency.USD
+	// prod2.ListPrice = currency.Cents(3000)
+	// prod2.Price = currency.Cents(2200)
+
 	// 	prod2.Inventory = 9000
 	// 	prod2.Preorder = false
 	// 	prod2.Hidden = false
