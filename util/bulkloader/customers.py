@@ -108,13 +108,10 @@ if __name__ == '__main__':
     orders = Orders(args.orders).read_csv()
     users = Users(args.users).read_csv()
 
-    with open('users.csv','w') as f:
+    with open('customers.csv','w') as f:
         writer = csv.writer(f)
         writer.writerow(['Email', 'FirstName', 'LastName'])
         for _, order in orders.items():
-            if order.metadata_ == '{"batch":"2"}':
-                print 'batch 2'
-            else:
-                user = users.get(order.user_id, None)
-                if user:
-                    writer.writerow([user.email, user.first_name, user.last_name])
+            user = users.get(order.user_id, None)
+            if user:
+                writer.writerow([user.email, user.first_name, user.last_name])
