@@ -38,6 +38,7 @@ var kinds = map[string]int{
 	"discount":        37,
 	"webhook":         38,
 	"referralprogram": 39,
+	"review":          40,
 }
 
 var kindsReversed = make(map[int]string)
