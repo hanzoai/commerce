@@ -139,15 +139,15 @@ if __name__ == '__main__':
             if order.total == 50:
                 continue
 
-            # Get batch number
-            batch = 1
-            if order.metadata_ == '{"batch":"2"}':
-                batch = 2
-
             # Only match customers in reamaze database
             user = users[order.user_id]
             if user.email not in contacts:
                 continue
+
+            # Get batch number
+            batch = 1
+            if order.metadata_ == '{"batch":"2"}':
+                batch = 2
 
             # Get quantity ordered
             quantity = 0
