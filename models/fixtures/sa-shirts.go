@@ -114,7 +114,6 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod.Name = "Stoned Shirt - Women's - Black - Small"
 		prod.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
 		prod.Currency = currency.USD
-		prod.ListCurrency = currency.USD
 		prod.ListPrice = currency.Cents(3000)
 		prod.Price = currency.Cents(2200)
 		prod.Inventory = 9000
@@ -183,6 +182,182 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod5.Slug = "shirt-women-black-xxxl"
 		prod5.GetOrCreate("Slug=", prod.Slug)
 		prod5.Name = "Stoned Shirt - Women's - Black - XXXL"
+		prod5.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod5.Currency = currency.USD
+		prod5.ListPrice = currency.Cents(3000)
+		prod5.Price = currency.Cents(2200)
+		prod5.Inventory = 9000
+		prod5.Preorder = false
+		prod5.Hidden = false
+		prod5.MustUpdate()
+
+		return nil
+	}, datastore.TransactionOptions{XG: true})
+
+	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
+		// Create earphone product
+		prod := product.New(nsdb)
+		prod.Slug = "shirt-men-white-s"
+		prod.GetOrCreate("Slug=", prod.Slug)
+		prod.Name = "Stoned Shirt - Men's - White - Small"
+		prod.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod.Currency = currency.USD
+		prod.ListPrice = currency.Cents(3000)
+		prod.Price = currency.Cents(2200)
+		prod.Inventory = 9000
+		prod.Preorder = false
+		prod.Hidden = false
+		prod.MustUpdate()
+
+		// Create earphone product
+		prod1 := product.New(nsdb)
+		prod1.Slug = "shirt-men-white-m"
+		prod1.GetOrCreate("Slug=", prod.Slug)
+		prod1.Name = "Stoned Shirt - Men's - White - Medium"
+		prod1.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod1.Currency = currency.USD
+		prod1.ListPrice = currency.Cents(3000)
+		prod1.Price = currency.Cents(2200)
+		prod1.Inventory = 9000
+		prod1.Preorder = false
+		prod1.Hidden = false
+		prod1.MustUpdate()
+
+		// Create earphone product
+		prod2 := product.New(nsdb)
+		prod2.Slug = "shirt-men-white-l"
+		prod2.GetOrCreate("Slug=", prod.Slug)
+		prod2.Name = "Stoned Shirt - Men's - White - Large"
+		prod2.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod2.Currency = currency.USD
+		prod2.ListPrice = currency.Cents(3000)
+		prod2.Price = currency.Cents(2200)
+		prod2.Inventory = 9000
+		prod2.Preorder = false
+		prod2.Hidden = false
+		prod2.MustUpdate()
+
+		// Create earphone product
+		prod3 := product.New(nsdb)
+		prod3.Slug = "shirt-men-white-xl"
+		prod3.GetOrCreate("Slug=", prod.Slug)
+		prod3.Name = "Stoned Shirt - Men's - White - XL"
+		prod3.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod3.Currency = currency.USD
+		prod3.ListPrice = currency.Cents(3000)
+		prod3.Price = currency.Cents(2200)
+		prod3.Inventory = 9000
+		prod3.Preorder = false
+		prod3.Hidden = false
+		prod3.MustUpdate()
+
+		// Create earphone product
+		prod4 := product.New(nsdb)
+		prod4.Slug = "shirt-men-white-xxl"
+		prod4.GetOrCreate("Slug=", prod.Slug)
+		prod4.Name = "Stoned Shirt - Men's - White - XXL"
+		prod4.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod4.Currency = currency.USD
+		prod4.ListPrice = currency.Cents(3000)
+		prod4.Price = currency.Cents(2200)
+		prod4.Inventory = 9000
+		prod4.Preorder = false
+		prod4.Hidden = false
+		prod4.MustUpdate()
+
+		// Create earphone product
+		prod5 := product.New(nsdb)
+		prod5.Slug = "shirt-men-white-xxxl"
+		prod5.GetOrCreate("Slug=", prod.Slug)
+		prod5.Name = "Stoned Shirt - Men's - White - XXXL"
+		prod5.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod5.Currency = currency.USD
+		prod5.ListPrice = currency.Cents(3000)
+		prod5.Price = currency.Cents(2200)
+		prod5.Inventory = 9000
+		prod5.Preorder = false
+		prod5.Hidden = false
+		prod5.MustUpdate()
+
+		return nil
+	}, datastore.TransactionOptions{XG: true})
+
+	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
+		// Create earphone product
+		prod := product.New(nsdb)
+		prod.Slug = "shirt-women-white-s"
+		prod.GetOrCreate("Slug=", prod.Slug)
+		prod.Name = "Stoned Shirt - Women's - White - Small"
+		prod.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod.Currency = currency.USD
+		prod.ListPrice = currency.Cents(3000)
+		prod.Price = currency.Cents(2200)
+		prod.Inventory = 9000
+		prod.Preorder = false
+		prod.Hidden = false
+		prod.MustUpdate()
+
+		// Create earphone product
+		prod1 := product.New(nsdb)
+		prod1.Slug = "shirt-women-white-m"
+		prod1.GetOrCreate("Slug=", prod.Slug)
+		prod1.Name = "Stoned Shirt - Women's - White - Medium"
+		prod1.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod1.Currency = currency.USD
+		prod1.ListPrice = currency.Cents(3000)
+		prod1.Price = currency.Cents(2200)
+		prod1.Inventory = 9000
+		prod1.Preorder = false
+		prod1.Hidden = false
+		prod1.MustUpdate()
+
+		// Create earphone product
+		prod2 := product.New(nsdb)
+		prod2.Slug = "shirt-women-white-l"
+		prod2.GetOrCreate("Slug=", prod.Slug)
+		prod2.Name = "Stoned Shirt - Women's - White - Large"
+		prod2.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod2.Currency = currency.USD
+		prod2.ListPrice = currency.Cents(3000)
+		prod2.Price = currency.Cents(2200)
+		prod2.Inventory = 9000
+		prod2.Preorder = false
+		prod2.Hidden = false
+		prod2.MustUpdate()
+
+		// Create earphone product
+		prod3 := product.New(nsdb)
+		prod3.Slug = "shirt-women-white-xl"
+		prod3.GetOrCreate("Slug=", prod.Slug)
+		prod3.Name = "Stoned Shirt - Women's - White - XL"
+		prod3.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod3.Currency = currency.USD
+		prod3.ListPrice = currency.Cents(3000)
+		prod3.Price = currency.Cents(2200)
+		prod3.Inventory = 9000
+		prod3.Preorder = false
+		prod3.Hidden = false
+		prod3.MustUpdate()
+
+		// Create earphone product
+		prod4 := product.New(nsdb)
+		prod4.Slug = "shirt-women-white-xxl"
+		prod4.GetOrCreate("Slug=", prod.Slug)
+		prod4.Name = "Stoned Shirt - Women's - White - XXL"
+		prod4.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
+		prod4.Currency = currency.USD
+		prod4.ListPrice = currency.Cents(3000)
+		prod4.Price = currency.Cents(2200)
+		prod4.Inventory = 9000
+		prod4.Preorder = false
+		prod4.Hidden = false
+		prod4.MustUpdate()
+
+		// Create earphone product
+		prod5 := product.New(nsdb)
+		prod5.Slug = "shirt-women-white-xxxl"
+		prod5.GetOrCreate("Slug=", prod.Slug)
+		prod5.Name = "Stoned Shirt - Women's - White - XXXL"
 		prod5.Description = "The cover, the myth, the legend. The Stoned shirt everyone has asked for."
 		prod5.Currency = currency.USD
 		prod5.ListPrice = currency.Cents(3000)
