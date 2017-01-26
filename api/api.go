@@ -37,6 +37,7 @@ import (
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
 	referrerApi "crowdstart.com/api/referrer"
+	reviewApi "crowdstart.com/api/review"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
@@ -101,6 +102,7 @@ func Route(api router.Router) {
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
+	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
 
