@@ -34,7 +34,10 @@ class RowParser(object):
             if typ == str:
                 attrs.append(prop)
             elif typ == json:
-                attrs.append(json.loads(prop))
+                try:
+                    attrs.append(json.loads(prop))
+                except:
+                    attrs.append({})
             else:
                 attrs.append(typ(prop))
 
@@ -127,24 +130,29 @@ if __name__ == '__main__':
             if email:
                 contacts.add(email)
 
-    total_ordered = 0
+    total_ordered  = 0
+    total_refunded = 0
 
     for order in orders.values():
-        if order.metadata_ == '{"batch":"2"}':
-            continue
+        # if order.metadata_ == '{"batch":"2"}':
+        #     continue
         if order.test:
             continue
         if order.total == 50:
             continue
         # if order.shipping_address_country != 'us':
         #     continue
-        if order.status != 'open':
-            continue
+        # if order.status != 'open':
+        #     continue
 
-        if users[order.user_id].email not in contacts:
-            continue
+        # if users[order.user_id].email not in contacts:
+        #     continue
 
         for item in order.items_:
-            total_ordered  += item['quantity']
+            if order.status == 'open':
+                total_ordered  += item['quantity']
+            elif order.status == 'cancelled':
+                total_refunded += item['quantity']
 
-    print total_ordered
+    print 'Total units ordered', total_ordered
+    print 'Total units refunded', total_refunded

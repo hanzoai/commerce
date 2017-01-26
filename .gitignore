@@ -37,3 +37,4 @@ templates/platform/docs/_generated/*.html
 
 _export
 **/*.coverprofile.*
+.ipynb_checkpoints/
