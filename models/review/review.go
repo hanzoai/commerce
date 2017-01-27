@@ -5,8 +5,6 @@ import "crowdstart.com/models/mixin"
 type Review struct {
 	mixin.Model
 
-	Id string `json:"id"`
-
 	UserId string `json:"userId"`
 
 	ProductId string `json:"productId"`
