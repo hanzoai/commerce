@@ -195,6 +195,11 @@ type Organization struct {
 		ImmediateLogin  bool `json:"immediateLogin"`
 	} `json:"signUpOptions" datastore:",noindex"`
 
+	Recaptcha struct {
+		Enabled   bool
+		SecretKey string
+	} `json:"-" datastore:",noindex"`
+
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
 

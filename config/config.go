@@ -82,10 +82,6 @@ type Config struct {
 		WebhookURL  string
 	}
 
-	Recaptcha struct {
-		SecretKey string
-	}
-
 	Mandrill struct {
 		APIKey    string
 		FromEmail string
@@ -237,7 +233,6 @@ var Mandrill = config.Mandrill
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes
-var Recaptcha = config.Recaptcha
 var Redis = config.Redis
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
