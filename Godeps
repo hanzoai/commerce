@@ -31,6 +31,8 @@ github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
+github.com/dpapathanasiou/go-recaptcha
 golang.org/x/crypto/bcrypt master
 golang.org/x/tools/cmd/cover master
 gopkg.in/yaml.v2
+

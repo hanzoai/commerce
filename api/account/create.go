@@ -6,9 +6,11 @@ import (
 	"strings"
 	"time"
 
+	recaptcha "github.com/dpapathanasiou/go-recaptcha"
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth/password"
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/referral"
@@ -28,11 +30,16 @@ type createReq struct {
 	*user.User
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
+	Captcha         string `json:"g-recaptcha-response"`
 }
 
 type createRes struct {
 	*user.User
 	Token string `json:"token,omitempty"`
+}
+
+func init() {
+	recaptcha.Init(config.Recaptcha.SecretKey)
 }
 
 func create(c *gin.Context) {
@@ -50,6 +57,11 @@ func create(c *gin.Context) {
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	if !recaptcha.Confirm("crowdstart.com", req.Captcha) {
+		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 		return
 	}
 
