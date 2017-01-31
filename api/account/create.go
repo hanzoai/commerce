@@ -2,15 +2,18 @@ package account
 
 import (
 	"errors"
+	"io/ioutil"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
 
-	recaptcha "github.com/dpapathanasiou/go-recaptcha"
+	"appengine"
+	"appengine/urlfetch"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth/password"
-	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/referral"
@@ -38,8 +41,41 @@ type createRes struct {
 	Token string `json:"token,omitempty"`
 }
 
-func init() {
-	recaptcha.Init(config.Recaptcha.SecretKey)
+type RecaptchaResponse struct {
+	Success     bool      `json:"success"`
+	ChallengeTS time.Time `json:"challenge_ts"`
+	Hostname    string    `json:"hostname"`
+	ErrorCodes  []int     `json:"error-codes"`
+}
+
+func recaptcha(ctx appengine.Context, privateKey, response string) bool {
+	log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
+	client := urlfetch.Client(ctx)
+	r := RecaptchaResponse{}
+	resp, err := client.PostForm("https://www.google.com/recaptcha/api/siteverify",
+		url.Values{
+			"secret":   {privateKey},
+			"response": {response},
+			// "remoteip": {remoteIp},
+		})
+	if err != nil {
+		log.Error("Captcha post error: %s", err, ctx)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	log.Warn("Captcha %s", body, ctx)
+	if err != nil {
+		log.Error("Read error: could not read body: %s", err, ctx)
+		return false
+	}
+	err = json.Unmarshal(body, &r)
+	log.Warn("Captcha %v", r, ctx)
+	if err != nil {
+		log.Error("Read error: got invalid JSON: %s", err, ctx)
+		return false
+	}
+
+	return r.Success
 }
 
 func create(c *gin.Context) {
@@ -54,13 +90,15 @@ func create(c *gin.Context) {
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
 
+	log.Warn("Request:\n%s", c.Request.Body, db.Context)
+
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
-	if !recaptcha.Confirm("crowdstart.com", req.Captcha) {
+	if org.Recaptcha.Enabled && !recaptcha(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
 		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 		return
 	}
