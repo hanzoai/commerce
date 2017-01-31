@@ -33,6 +33,8 @@ func Defaults() *Config {
 	config.Stripe.LiveSecretKey = ""
 	config.Stripe.LivePublishablKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 
+	config.Recaptcha.SecretKey = "6LfX1hMUAAAAABO6yv5LGq4TJLxUiF7s9_gy7hQv"
+
 	config.Mandrill.FromName = "Crowdstart"
 	config.Mandrill.FromEmail = "noreply@crowdstart.com"
 
