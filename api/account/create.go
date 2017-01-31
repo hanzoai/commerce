@@ -49,7 +49,7 @@ type RecaptchaResponse struct {
 }
 
 func recaptcha(ctx appengine.Context, privateKey, response string) bool {
-	log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
+	// log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
 	client := urlfetch.Client(ctx)
 	r := RecaptchaResponse{}
 	resp, err := client.PostForm("https://www.google.com/recaptcha/api/siteverify",
@@ -63,13 +63,13 @@ func recaptcha(ctx appengine.Context, privateKey, response string) bool {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	log.Warn("Captcha %s", body, ctx)
+	log.Debug("Captcha %s", body, ctx)
 	if err != nil {
 		log.Error("Read error: could not read body: %s", err, ctx)
 		return false
 	}
 	err = json.Unmarshal(body, &r)
-	log.Warn("Captcha %v", r, ctx)
+	log.Debug("Captcha %v", r, ctx)
 	if err != nil {
 		log.Error("Read error: got invalid JSON: %s", err, ctx)
 		return false
@@ -89,8 +89,6 @@ func create(c *gin.Context) {
 	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
-
-	log.Warn("Request:\n%s", c.Request.Body, db.Context)
 
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
