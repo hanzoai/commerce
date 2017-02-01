@@ -48,18 +48,22 @@ var _ = Describe("review", func() {
 			prod.MustCreate()
 
 			req = review.Fake(db, usr.Id(), prod.Id())
+			req.Enabled = false
 			req.MustCreate()
 
 			res = review.New(db)
-			cl.Get("/review/"+req.Id(), res)
 		})
 
-		It("Should create new reviews", func() {
-			Expect(res.UserId).To(Equal(req.UserId))
-			Expect(res.ProductId).To(Equal(req.ProductId))
-			Expect(res.Name).To(Equal(req.Name))
-			Expect(res.Comment).To(Equal(req.Comment))
-			Expect(res.Rating).To(Equal(req.Rating))
+		It("Should not get disabled reviews", func() {
+			req.Enabled = false
+			req.MustUpdate()
+			cl.Get("/review/"+req.Id(), nil, 404)
+		})
+
+		It("Should get enabled reviews", func() {
+			req.Enabled = true
+			req.MustUpdate()
+			cl.Get("/review/"+req.Id(), nil, 200)
 		})
 	})
 })
