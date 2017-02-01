@@ -10,4 +10,4 @@ r = s.orders.list()
 
 with open('shipwire.json') as f:
     for order in r.all_serial():
-        f.write(json.dumps(order) + '\n')
+        f.write(json.dumps(order['resource']) + '\n')
