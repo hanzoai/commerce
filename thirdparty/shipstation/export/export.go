@@ -329,12 +329,8 @@ func Export(c *gin.Context) {
 	log.Debug("Page %s, err %s", page, err, c)
 
 	// Get start/end dates
-	// startDate := parseDate(query.Get("start_date"))
-	// endDate := parseDate(query.Get("end_date"))
-
-	// Temporarily disable export by querying orders that don't exist
-	startDate := parseDate("04/20/2020 04:20")
-	endDate := parseDate("04/20/2020 04:20")
+	startDate := parseDate(query.Get("start_date"))
+	endDate := parseDate(query.Get("end_date"))
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
