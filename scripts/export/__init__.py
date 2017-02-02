@@ -86,11 +86,10 @@ class Export(object):
     fields = {}
 
     def __init__(self, filename):
-        class_name = self.__class__.__name__
-
-        self.filename = filename
-        self.header   = self.parse_header()
-        self.constructor    = recordtype(class_name, [snake(f) for f in self.fields])
+        class_name       = self.__class__.__name__
+        self.filename    = filename
+        self.header      = self.parse_header()
+        self.constructor = recordtype(class_name, [snake(f) for f in self.fields])
 
     def parse_header(self):
         """
@@ -108,9 +107,15 @@ class Export(object):
 
     def ignore(self, obj):
         """
-        Ignore an arbitrary object.
+        Ignore specific objects.
         """
         return False
+
+    def hydrate(self, obj):
+        """
+        Hydrate an object.
+        """
+        return obj
 
     def read_csv(self):
         """
@@ -122,7 +127,7 @@ class Export(object):
             for row in csv.reader(f):
                 obj = parser.parse(row)
                 if not self.ignore(obj):
-                    yield obj
+                    yield self.hydrate(obj)
 
     def to_list(self):
         """
