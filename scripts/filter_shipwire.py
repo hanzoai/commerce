@@ -11,9 +11,6 @@ import json
 import os
 
 if False:
-    s = Shipwire(username='dev@hanzo.ai',
-                 password='',
-                 host='api.shipwire.com')
 
     r = s.orders.list()
 
@@ -85,14 +82,55 @@ class Orders(Export):
     name = 'Order'
     fields = { 'Status' : str, 'PaymentStatus' : str }
 
-CliArgs = namedtuple('CliArgs', ['orders', 'users'])
+def submit_test_order(sw, order):
+    v = {
+        'orderNo' : 'filter-shipwire-test',
+        'shipTo' : {
+            'name' : 'Imran Hameed',
+            'address1' : '33 N Almadden Blvd Unit 1601',
+            'city' : 'San Jose',
+            'state' : 'CA',
+            'country' : 'USA',
+        },
+        'items' : [
+            {
+                'sku' : 'TestSku1',
+                'quantity' : 3,
+            }
+        ],
+    }
+    json_v = json.dumps(v)
+    pprint(json_v)
+
+    if True:
+        resp = sw.order.create(json=v)
+        print '######### BEGIN shipwire response ='
+        print '######### resp.status'
+        pprint(resp.status)
+        print '######### resp.message'
+        pprint(resp.message)
+        print '######### resp.json'
+        pprint(resp.json)
+        print '######### resp.location'
+        pprint(resp.location)
+        print '######### resp.warnings'
+        pprint(resp.warnings)
+        print '######### resp.errors'
+        pprint(resp.errors)
+        print '######### END shipwire response ='
+
+def shipwire_login():
+    return Shipwire(username='dev@hanzo.ai', password='', host='api.shipwire.com')
+
+CliArgs = namedtuple('CliArgs', ['orders', 'users', 'shipwire_orders'])
 
 def parse_cli():
     parser = argparse.ArgumentParser()
     parser.add_argument('--orders', type=str, action='store', nargs=1, required=True, help='path to the crowdstart order csv')
     parser.add_argument('--users', type=str, action='store', nargs=1, required=True, help='path to the crowdstart users csv')
+    parser.add_argument('--shipwire-orders', type=str, action='store', nargs=1, required=True, help='path to the shipwire orders json, as produced by scripts/list_shipwire.py')
     args = parser.parse_args()
-    return CliArgs(orders=args.orders[0], users=args.users[0])
+    return CliArgs(orders=args.orders[0], users=args.users[0], shipwire_orders=args.shipwire_orders[0])
 
 def main():
     args = parse_cli()
@@ -106,6 +144,9 @@ def main():
     canceled_orders = list(ifilter(canceled_order, orders))
     invalid_orders = list(ifilter(lambda order: not open_order(order) and not canceled_order(order), orders))
     print 'open orders: %r; canceled orders: %r, invalid orders: %r, total orders = %r' % (len(open_orders), len(canceled_orders), len(invalid_orders), len(orders))
+
+    sw = shipwire_login()
+    submit_test_order(sw, None)
 
 if __name__ == '__main__':
     main()
