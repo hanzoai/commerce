@@ -1511,6 +1511,9 @@ transformers:
       external_name: key
       export_transform: transform.key_id_or_name_as_string
 
+    - property: Number
+      external_name: Number
+
     - property: Adjustment
       external_name: Adjustment
       # Type: Integer Stats: 41662 properties of this type in this kind.

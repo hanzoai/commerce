@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from export import Export, json, latest_csv, to_csv
+from datetime import datetime
 from shipwire import *
+from shipwire_export import read_cached, write_cached
 
 
 class User(Export):
@@ -11,6 +13,7 @@ class User(Export):
         'LastName': str,
     }
 
+
 class Order(Export):
     def __init__(self, filename, users):
         super(Order, self).__init__(filename)
@@ -19,12 +22,14 @@ class Order(Export):
     fields = {
         # Fields in CSV
         'Id_': str,
+        'CreatedAt': lambda x: datetime.strptime(x, '%Y-%m-%dT%H:%M:%S'),
         'Items_': json,
-        'Metadata_': str,
+        'Metadata_': json,
         'Status': lambda x: x.lower(),
         'PaymentStatus': lambda x: x.lower(),
         'Test': bool,
         'UserId': str,
+        'Number': str,
         'Total': int,
         'ShippingAddress.Name': str,
         'ShippingAddress.Country': lambda x: x.upper(),
@@ -45,21 +50,31 @@ class Order(Export):
         return order.test or order.total == 50
 
     def hydrate(self, order):
-        # Add batch number
-        order.batch = 1
-        if order.metadata_ == '{"batch":"2"}':
-            order.batch = 2
+        def determine_batch(order):
+            batch = order.metadata_['batch']
+            if batch == '2':
+                return 2
+            elif batch == 'f2k':
+                return 'f2k'
+            else:
+                return 1
 
-        # Add info from users
-        user = self.users[order.user_id]
+        # Process batch metadata
+        order.batch = determine_batch(order)
 
         # Hydrate order with user data
+        user = self.users[order.user_id]
         order.email      = user.email
         order.first_name = user.first_name
         order.last_name  = user.last_name
+
         return order
 
+
 def get_orders():
+    # Read out processed orders from shipwire local copy
+    ss_orders = set(x['orderNo'] for x in read_cached() if x['status'] != 'cancelled')
+
     def open_order(order):
         return order.status == 'open' and order.payment_status == 'paid'
 
@@ -71,6 +86,15 @@ def get_orders():
 
     def batch1(order):
         return order.batch == 1
+
+    def f2k(order):
+        return order.batch == 'f2k'
+
+    def processed(order):
+        return order.number in ss_orders
+
+    def from2016(order):
+        return order.created_at.year == 2016
 
     # Read latest exports
     order_csv = latest_csv('order')
@@ -85,16 +109,15 @@ def get_orders():
 
     # Select orders we care about
     def selection(order):
-        # Filter orders based on what we care about
-        if not open_order(order):
-            return False
-        if cancelled_order(order):
-            return False
-        if not batch1(order):
-            return False
-        if not domestic(order):
-            return False
-        return True
+        return all([
+            open_order(order),
+            not cancelled_order(order),
+            domestic(order),
+            not processed(order),
+            # from2016(order),
+            # batch1(order),
+            f2k(order),
+        ])
 
     selected_orders = filter(selection, orders)
 
@@ -112,7 +135,8 @@ def shipwire_login():
                     host='api.shipwire.com')
 
 
-def submit_orders():
+def submit_orders(orders):
+    sw = shipwire_login()
     v = {
         'options': {
             'serviceLevelCode': 'GD',
@@ -155,6 +179,6 @@ def submit_orders():
 
 
 if __name__ == '__main__':
+    # write_cached()
     orders = get_orders()
-    # sw = shipwire_login()
-    # submit_test_order(sw, None)
+    # submit_orders(orders)
