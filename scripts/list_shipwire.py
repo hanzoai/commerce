@@ -8,6 +8,6 @@ s = Shipwire(username='dev@hanzo.ai',
 
 r = s.orders.list()
 
-with open('shipwire.json') as f:
+with open('shipwire.json', 'w') as f:
     for order in r.all_serial():
         f.write(json.dumps(order['resource']) + '\n')
