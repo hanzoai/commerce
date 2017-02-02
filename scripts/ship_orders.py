@@ -91,7 +91,10 @@ def get_orders():
         return not open(order) and not cancelled(order) and not disputed(order)
 
     def domestic(order):
-        return order.shipping_address_country != 'us'
+        return order.shipping_address_country == 'US'
+
+    def international(order):
+        return not domestic(order)
 
     def batch1(order):
         return order.batch == 1
