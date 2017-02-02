@@ -1,6 +1,10 @@
 package review
 
-import "crowdstart.com/models/mixin"
+import (
+	"crowdstart.com/models/mixin"
+
+	. "crowdstart.com/models"
+)
 
 type Review struct {
 	mixin.Model
@@ -15,4 +19,7 @@ type Review struct {
 	Rating  int    `json:"rating"`
 
 	Enabled bool `json:"-"`
+
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
