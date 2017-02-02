@@ -33,6 +33,7 @@ static/v1.js
 *.bak
 *.orig
 *.coverprofile
+*.json
 templates/platform/docs/_generated/*.html
 
 _export
