@@ -35,6 +35,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Hartmannstraße 4",
@@ -55,7 +58,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Tim
 	u = user.New(nsdb)
@@ -65,6 +68,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Moerser Str. 167",
@@ -85,7 +91,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Denada
 	u = user.New(nsdb)
@@ -95,6 +101,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "3 Sandal Street",
@@ -116,7 +125,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Jack Hutton
 	u = user.New(nsdb)
@@ -126,6 +135,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "17 Crossman Street",
@@ -146,7 +158,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Allie Grace Macpherson
 	u = user.New(nsdb)
@@ -156,6 +168,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "13347 Orange Blossom Way",
@@ -177,7 +192,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Wesley Metten
 	u = user.New(nsdb)
@@ -187,6 +202,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Vordensteinstraat 133",
@@ -207,7 +225,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Elizabeth Carolyn Sanz
 	u = user.New(nsdb)
@@ -217,6 +235,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "9830 Dale Avenue",
@@ -239,7 +260,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Jesse Chrysler
 	u = user.New(nsdb)
@@ -249,6 +270,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "9455 151st St",
@@ -270,7 +294,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Robert L Rusch
 	u = user.New(nsdb)
@@ -280,6 +304,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "515 W 7th St",
@@ -302,7 +329,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Joshua Lee Marchant & Jesse
 	u = user.New(nsdb)
@@ -312,6 +339,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName + " & Jesse",
 		Line1:      "8 The Hermitage",
@@ -333,7 +363,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Jesper Eriksson
 	u = user.New(nsdb)
@@ -343,6 +373,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Krusbärsvägen 6",
@@ -364,7 +397,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Jesper Eriksson
 	u = user.New(nsdb)
@@ -374,6 +407,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Krusbärsvägen 6",
@@ -395,7 +431,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	// Celia Chen
 	u = user.New(nsdb)
@@ -405,6 +441,9 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
+	o.Parent = u.Key()
+	o.UserId = u.Id()
+	o.PaymentStatus = order.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "2709W 37th AVE",
@@ -426,7 +465,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.MustPut()
+	o.GetOrCreate("UserId=", u.Id())
 
 	return org
 })
