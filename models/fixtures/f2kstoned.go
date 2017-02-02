@@ -13,7 +13,7 @@ import (
 	. "crowdstart.com/models"
 )
 
-var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
+var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
@@ -31,7 +31,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Cedric Robin Stefan"
 	u.LastName = "Sander"
-	u.Email = "cedric.sander@fade2karma.com"
+	u.Email = "senfglas@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -61,7 +61,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Tim"
 	u.LastName = "Bergmann"
-	u.Email = "tim.bergmann@fade2karma.com"
+	u.Email = "theude@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -91,7 +91,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Denada"
 	u.LastName = "Nuzi"
-	u.Email = "denada.nuzi@fade2karma.com"
+	u.Email = "deniasaur@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -122,7 +122,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Jack"
 	u.LastName = "Hutton"
-	u.Email = "jack.hutton@fade2karma.com"
+	u.Email = "j4ckiechan@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -152,7 +152,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Allie Grace"
 	u.LastName = "Macpherson"
-	u.Email = "allie.macpherson@fade2karma.com"
+	u.Email = "alliestrasza@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -183,7 +183,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Wesley"
 	u.LastName = "Metten"
-	u.Email = "wesley.metten@fade2karma.com"
+	u.Email = "shadybunny@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -213,7 +213,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Elizabeth Carolyn"
 	u.LastName = "Sanz"
-	u.Email = "elizabeth.carolyn@fade2karma.com"
+	u.Email = "okayitsrosh@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -245,7 +245,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Jesse"
 	u.LastName = "Chrysler"
-	u.Email = "jesse.chrysler@fade2karma.com"
+	u.Email = "control@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -276,7 +276,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Robert L"
 	u.LastName = "Rusch"
-	u.Email = "robert.rusch@fade2karma.com"
+	u.Email = "varranis@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -308,7 +308,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Joshua Lee"
 	u.LastName = "Marchant"
-	u.Email = "joshua.marchant@fade2karma.com"
+	u.Email = "joshua@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -339,7 +339,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Jesper"
 	u.LastName = "Eriksson"
-	u.Email = "jesper.eriksson@fade2karma.com"
+	u.Email = "freakeh@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
@@ -401,7 +401,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	u = user.New(nsdb)
 	u.FirstName = "Celia"
 	u.LastName = "Chen"
-	u.Email = "celia.chen@fade2karma.com"
+	u.Email = "ceecee@fade2karma.com"
 	u.GetOrCreate("Email=", u.Email)
 
 	o = order.New(nsdb)
