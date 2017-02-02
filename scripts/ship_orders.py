@@ -75,11 +75,20 @@ def get_orders():
     # Read out processed orders from shipwire local copy
     ss_orders = set(x['orderNo'] for x in read_cached() if x['status'] != 'cancelled')
 
-    def open_order(order):
+    def open(order):
         return order.status == 'open' and order.payment_status == 'paid'
 
-    def cancelled_order(order):
+    def cancelled(order):
         return order.status == 'cancelled' or order.payment_status == 'refunded'
+
+    def locked(order):
+        return order.status == 'locked'
+
+    def disputed(order):
+        return order.payment_status == 'disputed'
+
+    def invalid(order):
+        return not open(order) and not cancelled(order) and not disputed(order)
 
     def domestic(order):
         return order.shipping_address_country != 'us'
@@ -103,23 +112,26 @@ def get_orders():
     orders = Order(order_csv, users).to_list()
 
     # Create several lists for accounting purposes
-    open_orders      = filter(open_order, orders)
-    cancelled_orders = filter(cancelled_order, orders)
-    invalid_orders   = filter(lambda order: not open_order(order) and not cancelled_order(order), orders)
+    open_orders      = filter(open, orders)
+    cancelled_orders = filter(cancelled, orders)
+    invalid_orders   = filter(invalid, orders)
+    disputed_orders  = filter(disputed, orders)
 
     # Select orders we care about
-    def selection(order):
+    def predicates(order):
         return all([
-            open_order(order),
-            not cancelled_order(order),
-            domestic(order),
+            open(order),
+            not cancelled(order),
+            not disputed(order),
+            not locked(order),
             not processed(order),
+            domestic(order),
+            batch1(order),
             # from2016(order),
-            # batch1(order),
-            f2k(order),
+            # f2k(order),
         ])
 
-    selected_orders = filter(selection, orders)
+    selected_orders = filter(predicates, orders)
 
     totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
                                invalid_orders, selected_orders))
