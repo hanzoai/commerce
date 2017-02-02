@@ -1846,6 +1846,10 @@ transformers:
       external_name: SecondarySalesforceId_
       # Type: String Stats: 41662 properties of this type in this kind.
 
+    - property: ShippingAddress.Name
+      external_name: ShippingAddress.Name
+      # Type: String Stats: 41662 properties of this type in this kind.
+
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
       # Type: String Stats: 41662 properties of this type in this kind.
