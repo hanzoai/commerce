@@ -13,6 +13,9 @@ func (r *Review) Init(db *datastore.Datastore) {
 }
 
 func (r *Review) Defaults() {
+	if r != nil {
+		r.Metadata = make(map[string]interface{})
+	}
 }
 
 func New(db *datastore.Datastore) *Review {
