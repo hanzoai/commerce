@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/user"
 
@@ -37,7 +38,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Hartmannstraße 4",
@@ -70,7 +71,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Moerser Str. 167",
@@ -103,7 +104,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "3 Sandal Street",
@@ -137,7 +138,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "17 Crossman Street",
@@ -170,7 +171,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "13347 Orange Blossom Way",
@@ -204,7 +205,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Vordensteinstraat 133",
@@ -237,7 +238,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "9830 Dale Avenue",
@@ -272,7 +273,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "9455 151st St",
@@ -306,7 +307,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "515 W 7th St",
@@ -341,7 +342,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName + " & Jesse",
 		Line1:      "8 The Hermitage",
@@ -375,7 +376,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Krusbärsvägen 6",
@@ -409,7 +410,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "Krusbärsvägen 6",
@@ -443,7 +444,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o = order.New(nsdb)
 	o.Parent = u.Key()
 	o.UserId = u.Id()
-	o.PaymentStatus = order.Paid
+	o.PaymentStatus = payment.Paid
 	o.ShippingAddress = Address{
 		Name:       u.FirstName + " " + u.LastName,
 		Line1:      "2709W 37th AVE",
