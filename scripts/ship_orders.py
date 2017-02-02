@@ -137,10 +137,16 @@ def get_orders():
     selected_orders = filter(predicates, orders)
 
     totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
-                               invalid_orders, selected_orders))
-    print 'orders total: %r, open: %r, cancelled: %r, invalid: %r, total: %r' % totals
-    for order in invalid_orders:
-        print order
+                               disputed_orders, invalid_orders,
+                               selected_orders))
+    print 'Order statistics'
+    print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, Selected: {}'.format(*totals)
+
+    if invalid_orders:
+        print 'Found the following invalid orders:'
+        for order in invalid_orders:
+            print order
+
     return selected_orders
 
 
