@@ -22,6 +22,9 @@ class Order(Export):
 
 
 class Shipwire(object):
+    """
+    Simple wrapper around Shipwire library.
+    """
 
     def __init__(self):
         self.sw = shipwire.Shipwire(username='dev@hanzo.ai',
@@ -64,10 +67,7 @@ class Shipwire(object):
         res = self.sw.order.create(json=payload)
 
         print '######### BEGIN'
-        print '######### res.status'
-        print res.status
-        print '######### res.message'
-        print res.message
+        print res.status, res.message
         print '######### res.json'
         print json.dumps(res.json, indent=4)
         print '######### res.location'
