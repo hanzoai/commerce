@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from datetime import datetime
+from itertools import islice
 import os
 
 from export import Export, json, latest_csv, to_csv
@@ -152,6 +153,12 @@ if __name__ == '__main__':
         from2016(order),
         # f2k(order),
     )))
+
+    # Sort by value
+    orders.sort(key=lambda x: x.total, reverse=True)
+
+    # Top 10
+    orders = islice(orders, 10)
 
     # Write orders to CSV
     to_csv(orders, 'orders.csv')
