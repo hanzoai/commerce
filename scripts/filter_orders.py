@@ -16,6 +16,7 @@ class User(Export):
 
 
 class Order(Export):
+
     def __init__(self, filename, users, s_orders):
         super(Order, self).__init__(filename)
         self.users    = users
@@ -59,7 +60,7 @@ class Order(Export):
     }
 
     def ignore(self, order):
-        """Ignore test orders"""
+        """Ignore test orders."""
         return order.test or order.total == 50
 
     def hydrate(self, order):
@@ -77,7 +78,7 @@ class Order(Export):
         order.batch = determine_batch(order)
 
         # Hydrate order with user data
-        user = self.users[order.user_id]
+        user             = self.users[order.user_id]
         order.email      = user.email
         order.first_name = user.first_name
         order.last_name  = user.last_name
@@ -85,21 +86,19 @@ class Order(Export):
         # Hydrate order with shipwire data
         s_order = self.s_orders.get(order.number, None)
         if s_order:
-            order.s_status       = s_order['status']
-            order.s_country      = s_order['shipTo']['resource']['country']
-            order.s_state        = s_order['shipTo']['resource']['state']
-            order.s_city         = s_order['shipTo']['resource']['city']
-            order.s_postal_code  = s_order['shipTo']['resource']['postalCode']
-            order.s_address1     = s_order['shipTo']['resource']['address1']
-            order.s_address2     = s_order['shipTo']['resource']['address2']
+            order.s_status      = s_order['status']
+            order.s_country     = s_order['shipTo']['resource']['country']
+            order.s_state       = s_order['shipTo']['resource']['state']
+            order.s_city        = s_order['shipTo']['resource']['city']
+            order.s_postal_code = s_order['shipTo']['resource']['postalCode']
+            order.s_address1    = s_order['shipTo']['resource']['address1']
+            order.s_address2    = s_order['shipTo']['resource']['address2']
 
         return order
 
 
 def get_orders():
-    """
-    Return orders matching some predicate(s).
-    """
+    """Return orders matching some predicate(s)."""
 
     # Various predicates to use for filtering orders
     def open(order):
@@ -139,14 +138,14 @@ def get_orders():
     s_orders = dict((x['orderNo'], x) for x in read_cached())
 
     # Load latest users, orders
-    users  = User(latest_csv('user')).to_dict()
+    users = User(latest_csv('user')).to_dict()
     orders = Order(latest_csv('order'), users, s_orders).to_list()
 
     # Calculate some stats
-    open_orders      = len([x for x in orders if open(x)])
+    open_orders = len([x for x in orders if open(x)])
     cancelled_orders = len([x for x in orders if cancelled(x)])
-    invalid_orders   = len([x for x in orders if invalid(x)])
-    disputed_orders  = len([x for x in orders if disputed(x)])
+    invalid_orders = len([x for x in orders if invalid(x)])
+    disputed_orders = len([x for x in orders if disputed(x)])
 
     # Filter for orders we care about
     def predicates(order):
