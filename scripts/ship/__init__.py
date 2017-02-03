@@ -1,11 +1,11 @@
-from shipwire import *
 import json
+import shipwire
 
 
 def connect():
-    return Shipwire(username='dev@hanzo.ai',
-                    password='',
-                    host='api.shipwire.com')
+    return shipwire.Shipwire(username='dev@hanzo.ai',
+                             password='',
+                             host='api.shipwire.com')
 
 
 class Shipwire(object):
