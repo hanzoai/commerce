@@ -23,5 +23,7 @@ func setOrg(c *gin.Context) {
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("shipwire")
 
+	api.GET("/:organization", setOrg, webhook.Process)
+	api.HEAD("/:organization", setOrg, webhook.Process)
 	api.POST("/:organization", setOrg, webhook.Process)
 }
