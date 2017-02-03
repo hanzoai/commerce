@@ -72,8 +72,9 @@ class Order(Export):
 
 
 def get_orders():
-    # Read out processed orders from shipwire local copy
-    ss_orders = set(x['orderNo'] for x in read_cached() if x['status'] != 'cancelled')
+    # Read out processed orders from local shipwire db
+    ss_orders = read_cached()
+    processed_orders = set(x['orderNo'] for x in ss_orders if x['status'] != 'cancelled')
 
     def open(order):
         return order.status == 'open' and order.payment_status == 'paid'
@@ -115,26 +116,27 @@ def get_orders():
     orders = Order(order_csv, users).to_list()
 
     # Create several lists for accounting purposes
-    open_orders      = filter(open, orders)
-    cancelled_orders = filter(cancelled, orders)
-    invalid_orders   = filter(invalid, orders)
-    disputed_orders  = filter(disputed, orders)
+    open_orders      = [x for x in orders if open(x)]
+    cancelled_orders = [x for x in orders if cancelled(x)]
+    invalid_orders   = [x for x in orders if invalid(x)]
+    disputed_orders  = [x for x in orders if disputed(x)]
 
     # Select orders we care about
     def predicates(order):
         return all([
-            open(order),
-            not cancelled(order),
-            not disputed(order),
-            not locked(order),
-            not processed(order),
-            domestic(order),
-            batch1(order),
+            processed(order),
+            # open(order),
+            # not cancelled(order),
+            # not disputed(order),
+            # not locked(order),
+            # not processed(order),
+            # domestic(order),
+            # batch1(order),
             # from2016(order),
             # f2k(order),
         ])
 
-    selected_orders = filter(predicates, orders)
+    selected_orders = [x for x in orders if predicates(x)]
 
     totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
                                disputed_orders, invalid_orders,
