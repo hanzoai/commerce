@@ -70,7 +70,7 @@ def to_csv(rows, filename, fields=()):
 
 def latest_csv(kind):
     """Find latest export CSV for a given kind."""
-    files = filter(os.path.isfile, glob.glob('_export/*.csv'))
+    files = filter(os.path.isfile, glob.glob('_export/*crowdstart-us*.csv'))
     files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     for fn in files:
         if fn.split('-')[1] == kind.lower():
