@@ -3,7 +3,9 @@ package webhook
 import (
 	"time"
 
-	"../response"
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/thirdparty/shipwire/response"
 )
 
 // Webhook Response Body
@@ -24,4 +26,8 @@ type Message struct {
 	UniqueEventId         string      `json:"uniqueEventID"`
 	WebhookSubscriptionId int         `json:"webhookSubscriptionID"`
 	Body                  MessageBody `json:"body"`
+}
+
+func Process(c *gin.Context) {
+	c.String(200, "ok\n")
 }
