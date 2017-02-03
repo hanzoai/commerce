@@ -1,7 +1,6 @@
 import json
 import shipwire
 
-
 def connect():
     return shipwire.Shipwire(username='dev@hanzo.ai',
                              password='',
