@@ -109,10 +109,10 @@ def get_orders(filter):
     orders = Order(latest_csv('order'), users, s_orders).to_list()
 
     # Calculate some stats
-    open_orders      = len([x for x in orders if open(x)])
-    cancelled_orders = len([x for x in orders if cancelled(x)])
-    invalid_orders   = len([x for x in orders if invalid(x)])
-    disputed_orders  = len([x for x in orders if disputed(x)])
+    open_orders      = sum(1 for x in orders if open(x))
+    cancelled_orders = sum(1 for x in orders if cancelled(x))
+    invalid_orders   = sum(1 for x in orders if invalid(x))
+    disputed_orders  = sum(1 for x in orders if disputed(x))
 
     # Filter orders
     filtered_orders  = [x for x in orders if filter(x)]
