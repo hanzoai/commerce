@@ -5,7 +5,7 @@ import os
 
 from export import Export, json, latest_csv, to_csv
 from export.filter import *
-from shipwire import read_cache, write_cache
+from shipping import read_cache, write_cache
 
 
 class User(Export):
@@ -141,18 +141,21 @@ if __name__ == '__main__':
     else:
         print 'Using cached shipwire.json'
 
+    # Get specific order
+    orders = get_orders(lambda order: order.number == '1350026')
+
     # Filter orders
-    orders = get_orders(lambda order: all((
-        # open(order),
-        # not cancelled(order),
-        # not disputed(order),
-        # not locked(order),
-        # not processed(order),
-        # domestic(order),
-        # batch1(order),
-        # from2016(order),
-        f2k(order),
-    )))
+    # orders = get_orders(lambda order: all((
+    #     # open(order),
+    #     # not cancelled(order),
+    #     # not disputed(order),
+    #     # not locked(order),
+    #     # not processed(order),
+    #     # domestic(order),
+    #     # batch1(order),
+    #     # from2016(order),
+    #     f2k(order),
+    # )))
 
     # Sort by value
     # orders.sort(key=lambda x: x.total, reverse=True)
