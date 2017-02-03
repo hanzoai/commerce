@@ -1,10 +1,13 @@
-# -*- coding: utf-8 -*-
-import re
 import csv
+import glob
 import json
 import os
-import glob
+import re
+import sys
 from datetime import datetime
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 
 def snake(name):
@@ -57,7 +60,8 @@ def to_csv(rows, filename, fields=()):
 
         def write(obj):
             values = (getattr(obj, x) for x in fields)
-            writer.writerow([to_json(x) for x in values])
+            serialized = [to_json(x) for x in values]
+            writer.writerow(serialized)
 
         write(first)
         for row in rows:

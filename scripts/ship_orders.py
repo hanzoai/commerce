@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from datetime import datetime
 
-from export import Export, json, latest_csv, to_csv
-from shipping import Shipwire
+from util.export import Export, json, latest_csv, to_csv
+from util.shipwire import Shipwire
 
 
 class Order(Export):
