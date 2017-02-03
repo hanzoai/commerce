@@ -97,42 +97,8 @@ class Order(Export):
         return order
 
 
-def get_orders():
+def get_orders(filter):
     """Return orders matching some predicate(s)."""
-
-    # Various predicates to use for filtering orders
-    def open(order):
-        return order.status == 'open' and order.payment_status == 'paid'
-
-    def cancelled(order):
-        return order.status == 'cancelled' or order.payment_status == 'refunded'
-
-    def locked(order):
-        return order.status == 'locked'
-
-    def disputed(order):
-        return order.payment_status == 'disputed'
-
-    def invalid(order):
-        return not open(order) and not cancelled(order) and not disputed(order)
-
-    def domestic(order):
-        return order.shipping_address_country == 'US'
-
-    def international(order):
-        return not domestic(order)
-
-    def batch1(order):
-        return order.batch == 1
-
-    def f2k(order):
-        return order.batch == 'f2k'
-
-    def processed(order):
-        return order.s_status and order.s_status != 'cancelled'
-
-    def from2016(order):
-        return order.created_at.year == 2016
 
     # Load shipwire orders
     s_orders = dict((x['orderNo'], x) for x in read_cached())
@@ -147,31 +113,8 @@ def get_orders():
     invalid_orders   = len([x for x in orders if invalid(x)])
     disputed_orders  = len([x for x in orders if disputed(x)])
 
-    # Filter for orders we care about
-    def predicates(order):
-        """
-        Predicates to check before selecting order to ship. For example, to
-        ship a single order:
-
-        if order.id_ == 'qnirQmhvHO4q0IrG947':
-            return True
-        else:
-            return False
-        """
-
-        return all((
-            open(order),
-            not cancelled(order),
-            not disputed(order),
-            not locked(order),
-            not processed(order),
-            domestic(order),
-            batch1(order),
-            # from2016(order),
-            # f2k(order),
-        ))
-
-    filtered_orders = [x for x in orders if predicates(x)]
+    # Filter orders
+    filtered_orders  = [x for x in orders if filter(x)]
 
     # Print stats and flag any invalid orders
     print 'Order statistics'
@@ -187,11 +130,61 @@ def get_orders():
     return filtered_orders
 
 
+# Various predicates to use for filtering orders
+def open(order):
+    return order.status == 'open' and order.payment_status == 'paid'
+
+def cancelled(order):
+    return order.status == 'cancelled' or order.payment_status == 'refunded'
+
+def locked(order):
+    return order.status == 'locked'
+
+def disputed(order):
+    return order.payment_status == 'disputed'
+
+def invalid(order):
+    return not open(order) and not cancelled(order) and not disputed(order)
+
+def domestic(order):
+    return order.shipping_address_country == 'US'
+
+def international(order):
+    return not domestic(order)
+
+def batch1(order):
+    return order.batch == 1
+
+def f2k(order):
+    return order.batch == 'f2k'
+
+def processed(order):
+    return order.s_status and order.s_status != 'cancelled'
+
+def from2016(order):
+    return order.created_at.year == 2016
+
+
 if __name__ == '__main__':
+    # Write shipewire JSON if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
         write_cached()
     else:
         print 'Using cached shipwire.json'
-    orders = get_orders()
+
+    # Filter orders
+    orders = get_orders(lambda order: all((
+        open(order),
+        not cancelled(order),
+        not disputed(order),
+        not locked(order),
+        not processed(order),
+        domestic(order),
+        batch1(order),
+        # from2016(order),
+        # f2k(order),
+    )))
+
+    # Write orders to CSV
     to_csv(orders, 'filtered_orders.csv')
