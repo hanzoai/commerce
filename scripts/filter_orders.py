@@ -143,16 +143,26 @@ def get_orders():
 
     # Filter for orders we care about
     def predicates(order):
+        """
+        Predicates to check before selecting order to ship. For example, to
+        ship a single order:
+
+        if order.id_ == 'qnirQmhvHO4q0IrG947':
+            return True
+        else:
+            return False
+        """
+
         return all([
-            # open(order),
-            # not cancelled(order),
-            # not disputed(order),
-            # not locked(order),
-            # not processed(order),
-            # domestic(order),
-            # batch1(order),
+            open(order),
+            not cancelled(order),
+            not disputed(order),
+            not locked(order),
+            not processed(order),
+            domestic(order),
+            batch1(order),
             # from2016(order),
-            f2k(order),
+            # f2k(order),
         ])
 
     filtered_orders = [x for x in orders if predicates(x)]
