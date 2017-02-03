@@ -41,12 +41,14 @@ class Order(Export):
         'ShippingAddress.Line1':      lambda x: x.upper(),
         'ShippingAddress.Line2':      lambda x: x.upper(),
 
-        # Virtual fields, hydrated or populated later
+        # Hydrated by user
         'email':      None,
         'first_name': None,
         'last_name':  None,
         'batch':      None,
 
+
+        # Hydrated by shipwire
         's_status':      None,
         's_country':     None,
         's_state':       None,
@@ -57,9 +59,11 @@ class Order(Export):
     }
 
     def ignore(self, order):
+        """Ignore test orders"""
         return order.test or order.total == 50
 
     def hydrate(self, order):
+        """Hydrate order object using user and shipwire data."""
         def determine_batch(order):
             batch = order.metadata_['batch']
             if batch == '2':
@@ -78,7 +82,7 @@ class Order(Export):
         order.first_name = user.first_name
         order.last_name  = user.last_name
 
-        # Hydrate order with ss data
+        # Hydrate order with shipwire data
         s_order = self.s_orders.get(order.number, None)
         if s_order:
             order.s_status       = s_order['status']
@@ -93,6 +97,11 @@ class Order(Export):
 
 
 def get_orders():
+    """
+    Return orders matching some predicate(s).
+    """
+
+    # Various predicates to use for filtering orders
     def open(order):
         return order.status == 'open' and order.payment_status == 'paid'
 
@@ -126,18 +135,18 @@ def get_orders():
     def from2016(order):
         return order.created_at.year == 2016
 
-    # Read in shipwire orders
+    # Load shipwire orders
     s_orders = dict((x['orderNo'], x) for x in read_cached())
 
-    # Read latest exports
+    # Load latest users, orders
     users  = User(latest_csv('user')).to_dict()
     orders = Order(latest_csv('order'), users, s_orders).to_list()
 
-    # Create several lists for accounting purposes
-    open_orders      = [x for x in orders if open(x)]
-    cancelled_orders = [x for x in orders if cancelled(x)]
-    invalid_orders   = [x for x in orders if invalid(x)]
-    disputed_orders  = [x for x in orders if disputed(x)]
+    # Calculate some stats
+    open_orders      = len([x for x in orders if open(x)])
+    cancelled_orders = len([x for x in orders if cancelled(x)])
+    invalid_orders   = len([x for x in orders if invalid(x)])
+    disputed_orders  = len([x for x in orders if disputed(x)])
 
     # Filter for orders we care about
     def predicates(order):
@@ -151,7 +160,7 @@ def get_orders():
             return False
         """
 
-        return all([
+        return all((
             open(order),
             not cancelled(order),
             not disputed(order),
@@ -161,15 +170,14 @@ def get_orders():
             batch1(order),
             # from2016(order),
             # f2k(order),
-        ])
+        ))
 
     filtered_orders = [x for x in orders if predicates(x)]
 
     # Print stats and flag any invalid orders
     print 'Order statistics'
-    totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
-                                    disputed_orders, invalid_orders,
-                                    filtered_orders))
+    totals = (len(orders), open_orders, cancelled_orders, disputed_orders,
+              invalid_orders, len(filtered_orders))
     print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, Filtered: {}'.format(*totals)
 
     if invalid_orders:
