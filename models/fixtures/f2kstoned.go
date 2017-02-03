@@ -59,7 +59,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Tim
 	u = user.New(nsdb)
@@ -92,7 +92,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Denada
 	u = user.New(nsdb)
@@ -126,7 +126,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Jack Hutton
 	u = user.New(nsdb)
@@ -159,7 +159,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Allie Grace Macpherson
 	u = user.New(nsdb)
@@ -193,7 +193,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Wesley Metten
 	u = user.New(nsdb)
@@ -226,7 +226,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Elizabeth Carolyn Sanz
 	u = user.New(nsdb)
@@ -261,7 +261,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Jesse Chrysler
 	u = user.New(nsdb)
@@ -295,7 +295,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Robert L Rusch
 	u = user.New(nsdb)
@@ -330,7 +330,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Joshua Lee Marchant & Jesse
 	u = user.New(nsdb)
@@ -364,7 +364,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Jesper Eriksson
 	u = user.New(nsdb)
@@ -398,7 +398,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	// Celia Chen
 	u = user.New(nsdb)
@@ -432,7 +432,7 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 		"batch": "f2k",
 	}
 	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
+	o.MustPut()
 
 	return org
 })
