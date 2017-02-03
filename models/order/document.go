@@ -46,6 +46,8 @@ type Document struct {
 	FulfillmentStatus string
 	Preorder          string
 	Confirmed         string
+
+	TrackingNumber string
 }
 
 func (d Document) Id() string {
