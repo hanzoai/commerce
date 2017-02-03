@@ -13,18 +13,26 @@ class Shipwire(object):
     Simple wrapper around Shipwire library.
     """
 
-    def __init__(self):
-        self.sw = connect()
+    def __init__(self, debug=True):
+        self.sw    = connect()
+        self.debug = debug
+
+    def cancel_order(self, order):
+        external_id = 'E' + order.id_
+        res = self.sw.order.cancel(id=external_id)
+        self.log(external_id, res)
+        return res
 
     def submit_order(self, order):
-        # Only handle earphones for now
-        sku = '686696998137'
+        sku      = '686696998137'
         quantity = 0
+
+        # Only handle earphones for now
         for item in order.items_:
             if item['productId'] == 'wycZ3j0kFP0JBv':
                 quantity += item['quantity']
 
-        payload = {
+        req = {
             'orderNo':    order.number,
             'externalId': order.id_,
             'options': {
@@ -48,10 +56,15 @@ class Shipwire(object):
             ],
         }
 
-        print json.dumps(payload, indent=4)
+        res = self.sw.order.create(json=req)
+        self.log(req, res)
+        return res
 
-        res = self.sw.order.create(json=payload)
+    def log(self, req, res):
+        if not self.debug:
+            return
 
+        print json.dumps(req, indent=4)
         print '######### BEGIN'
         print res.status, res.message
         print '######### res.json'
