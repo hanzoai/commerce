@@ -17,7 +17,6 @@ class User(Export):
 
 
 class Order(Export):
-
     def __init__(self, filename, users, s_orders):
         super(Order, self).__init__(filename)
         self.users    = users
