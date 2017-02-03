@@ -40,11 +40,11 @@ class Shipwire(object):
                 quantity += item['quantity']
 
         payload = {
+            'orderNo':    order.number,
+            'externalId': order.id_,
             'options': {
                 'serviceLevelCode': 'GD',
             },
-            'orderNo': order.number,
-            'externalId': order.id_,
             'shipTo': {
                 'email':    order.email,
                 'name':     order.shipping_address_name,
@@ -78,8 +78,10 @@ class Shipwire(object):
         print res.errors
         print '######### END'
 
+
 if __name__ == '__main__':
+    sw     = Shipwire()
     orders = Order('filtered_orders.csv').to_list()
-    sw = Shipwire()
+
     for order in orders:
         sw.submit_order(order)
