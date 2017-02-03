@@ -1,7 +1,6 @@
 import json
 import shipwire
 
-
 def connect():
     return shipwire.Shipwire(username='dev@hanzo.ai',
                              password='',
@@ -78,12 +77,6 @@ class Shipwire(object):
         print '######### END'
 
 
-def read_cache():
-    with open('shipwire.json') as f:
-        for line in f:
-            yield json.loads(line)
-
-
 def write_cache():
     sw = connect()
     r  = sw.orders.list()
@@ -91,3 +84,9 @@ def write_cache():
     with open('shipwire.json', 'w') as f:
         for order in r.all_serial():
             f.write(json.dumps(order['resource']) + '\n')
+
+
+def read_cache():
+    with open('shipwire.json') as f:
+        for line in f:
+            yield json.loads(line)
