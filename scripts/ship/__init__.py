@@ -31,13 +31,14 @@ class Shipwire(object):
                 'serviceLevelCode': 'GD',
             },
             'shipTo': {
-                'email':    order.email,
-                'name':     order.shipping_address_name,
-                'address1': order.shipping_address_line1,
-                'address2': order.shipping_address_line2,
-                'city':     order.shipping_address_city,
-                'state':    order.shipping_address_state,
-                'country':  order.shipping_address_country,
+                'email':      order.email,
+                'name':       order.shipping_address_name,
+                'address1':   order.shipping_address_line1,
+                'address2':   order.shipping_address_line2,
+                'city':       order.shipping_address_city,
+                'state':      order.shipping_address_state,
+                'country':    order.shipping_address_country,
+                'postalCode': order.shipping_address_postal_code,
             },
             'items': [
                 {
