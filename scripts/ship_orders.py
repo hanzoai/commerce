@@ -3,12 +3,13 @@ from export import Export, json, latest_csv, to_csv
 from datetime import datetime
 import shipwire
 
+
 class Order(Export):
     fields = {
-        'id_':           str,
-        'items_':        json,
-        'number':        str,
-        'email':         str,
+        'id_':    str,
+        'items_': json,
+        'number': str,
+        'email':  str,
 
         'shipping_address_name':        str,
         'shipping_address_country':     str,
@@ -19,7 +20,9 @@ class Order(Export):
         'shipping_address_line2':       str,
     }
 
+
 class Shipwire(object):
+
     def __init__(self):
         self.sw = shipwire.Shipwire(username='dev@hanzo.ai',
                                     password='',
@@ -27,7 +30,7 @@ class Shipwire(object):
 
     def submit_order(self, order):
         # Only handle earphones for now
-        sku      = '686696998137'
+        sku = '686696998137'
         quantity = 0
         for item in order.items_:
             if item['productId'] == 'wycZ3j0kFP0JBv':
@@ -39,16 +42,16 @@ class Shipwire(object):
             },
             'orderNo': order.number,
             'externalId': order.id_,
-            'shipTo' : {
-                'email':     order.email,
-                'name':      order.shipping_address_name,
-                'address1':  order.shipping_address_line1,
-                'address2':  order.shipping_address_line2,
-                'city':      order.shipping_address_city,
-                'state':     order.shipping_address_state,
-                'country':   order.shipping_address_country,
+            'shipTo': {
+                'email':    order.email,
+                'name':     order.shipping_address_name,
+                'address1': order.shipping_address_line1,
+                'address2': order.shipping_address_line2,
+                'city':     order.shipping_address_city,
+                'state':    order.shipping_address_state,
+                'country':  order.shipping_address_country,
             },
-            'items' : [
+            'items': [
                 {
                     'sku':      sku,
                     'quantity': quantity,
