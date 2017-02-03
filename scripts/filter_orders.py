@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 from datetime import datetime
-from itertools import islice
 import os
 
-from export import Export, json, latest_csv, to_csv
-from export.filter import *
-import shipping
-import reamaze
+from util import reamaze
+from util import shipwire
+from util.export import Export, json, latest_csv, to_csv
+from util.export.filter import *
 
 
 class User(Export):
@@ -118,7 +117,7 @@ def get_orders(filter):
     r_users = {x['email'] for x in reamaze.read_cache()}
 
     # Load Shipwire orders
-    s_orders = {x['orderNo']: x for x in shipping.read_cache()}
+    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
 
     # Load latest users, orders
     users  = User(latest_csv('user')).to_dict()
@@ -153,7 +152,7 @@ if __name__ == '__main__':
     # Fetch Shipwire db if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
-        shipping.write_cache()
+        shipwire.write_cache()
 
     # Fetch Reamaze db if needed
     if not os.path.exists('reamaze.json'):
@@ -172,7 +171,7 @@ if __name__ == '__main__':
         not processed(order),
         # domestic(order),
         batch1(order),
-        partial_refund(order),
+        # partial_refund(order),
         # contacted_us(order),
         # from2016(order),
         # f2k(order),

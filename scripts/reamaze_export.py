@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from reamaze import write_cache
+from util import reamaze
 
 if __name__ == '__main__':
-    write_cache()
+    reamaze.write_cache()
