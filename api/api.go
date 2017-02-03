@@ -45,6 +45,7 @@ import (
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
+	shipwireApi "crowdstart.com/thirdparty/shipwire"
 	stripeApi "crowdstart.com/thirdparty/stripe/api"
 
 	// Side effect import because of cyclical dependency
@@ -129,6 +130,9 @@ func Route(api router.Router) {
 
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
+
+	// Shipwire custom store API endpoints
+	shipwireApi.Route(api)
 
 	// Stripe callback, webhook
 	stripeApi.Route(api)

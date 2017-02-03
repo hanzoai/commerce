@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/shipwire/webhook"
 	"crowdstart.com/util/log"
@@ -22,9 +21,7 @@ func setOrg(c *gin.Context) {
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := router.Group("shipstation")
+	api := router.Group("shipwire")
 
-	basicAuth := middleware.BasicAuth()
-
-	api.POST("/:organization", basicAuth, webhook.Process)
+	api.POST("/:organization", setOrg, webhook.Process)
 }
