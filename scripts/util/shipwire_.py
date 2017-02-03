@@ -16,6 +16,10 @@ class Shipwire(object):
         self.sw    = connect()
         self.debug = debug
 
+    def create_webhook(self, webhook):
+        res = self.sw.webhooks.create(json=webhook)
+        self.log(webhook, res)
+
     def cancel_order(self, order):
         external_id = 'E' + order.id_
         res = self.sw.order.cancel(id=external_id)
