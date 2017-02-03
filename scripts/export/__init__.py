@@ -1,3 +1,4 @@
+from datetime import datetime
 import csv
 import glob
 import json
@@ -33,9 +34,21 @@ def from_bool(b):
 
 def from_json(obj):
     """
-    Deserialize JSON column into appropriate Python object.
+    Deserialize JSON object.
     """
     return json.loads(obj)
+
+
+def to_json(obj):
+    """
+    Serialize object to JSON, but do not quote strings.
+    """
+    def serializer(obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        raise TypeError ("Type not serializable")
+    s = json.dumps(obj, default=serializer)
+    return re.sub(r'^"|"$', '', s)
 
 
 class Parser(object):
@@ -174,7 +187,8 @@ def to_csv(entities, filename, fields=None):
         writer = csv.writer(f)
         writer.writerow(fields)
         for entity in entities:
-            writer.writerow([getattr(entity, field) for field in fields])
+            values = [getattr(entity, field) for field in fields]
+            writer.writerow([to_json(s) for s in values])
 
 
 def latest_csv(kind):
