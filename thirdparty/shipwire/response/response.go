@@ -1,13 +1,10 @@
 package response
 
-type Ref struct {
-	ResourceLocation string   `json:"resourceLocation"`
-	Resource         Resource `json:"resource"`
-}
+import "time"
 
-type Resource struct {
-	// Order
-	Warehouse
+type WarehouseRef struct {
+	ResourceLocation string    `json:"resourceLocation"`
+	Resource         Warehouse `json:"resource"`
 }
 
 type Warehouse struct {
@@ -24,189 +21,203 @@ type Warehouse struct {
 	Referrer            string `json:"referrer"`
 }
 
-// // Order Body
-// type Order struct {
-// 	Id int `json:"id"`
-// 	ExternalId string `json:"externalId"`
-// 	TransactionId string `json:"transactionId"`
-//     OrderNo string `json:"orderNo"`
-// 	ProcessAfterDate time.Time `json:"processAfterDate"`
-// 	NeedsReview int `json:"needsReview"`
-// 	VendorId int `json:"vendorId"`
-// 	VendorName string `json:"vendorName"`
-// 	CommerceName string `json:"commerceName"`
-// 	Status string `json:"status"`
-// 	LastUpdatedDate time.Time `json:"lastUpdatedDate"`
-// 	Holds Ref `json:"holds"`
-// 	Items Ref `json:"items"`
-// 	Trackings Ref `json:"trackings"`
-// 	Returns Ref `json:"returns"`
-// 	SplitOrders Ref `json:"splitOrders"`
-//     Options Ref `json:"options"`
-// 	Price Ref `json:"pricing"`
-//         "pricing": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "shipping": 5.25,
-//                 "packaging": 0.00,
-//                 "insurance": 0.00,
-//                 "handling": 2.75,
-//                 "total": 8.00
-//             }
-//         },
-//         # Shipping source information
-//         "shipFrom": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "company": "We Sell'em Co."
-//             }
-//         },
-//         # Receipient shipping address information
-//         "shipTo": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 # Recipient details
-//                 "email": "audrey.horne@greatnothern.com",
-//                 "name": "Audrey Horne",
-//                 "company": "Audrey's Bikes",
-//                 "address1": "6501 Railroad Avenue SE",
-//                 "address2": "Room 315",
-//                 "address3": "",
-//                 "city": "Snoqualmie",
-//                 "state": "WA",
-//                 "postalCode": "98065",
-//                 "country": "US",
-//                 "phone": "4258882556",
-//                 "isCommercial": 0,
-//                 "isPoBox": 0
-//             }
-//         },
-//         # Invoiced amounts
-//         "commercialInvoice": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "shippingValue": 4.85,
-//                 "insuranceValue": 6.57,
-//                 "additionalValue": 8.29,
-//                 "documentLocation": "https://api.shipwire.com/api/v3/orders/12345/commercialInvoice"
-//             }
-//         },
-//         # Messages to include in packages
-//         "packingList": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 # First message
-//                 "message1": {
-//                     "resourceLocation": null,
-//                     "resource": {
-//                         "document": "packing-list",
-//                         "header": "Enjoy this product!",
-//                         "location": "lhs",
-//                         "body": "This must be where pies go when they die. Enjoy!"
-//                     }
-//                 },
-//                 "message2": {
-//                     "resourceLocation": null,
-//                     "resource": {
-//                         "document": null,
-//                         "header": null,
-//                         "location": null,
-//                         "body": null
-//                     }
-//                 },
-//                 "message3": {
-//                     "resourceLocation": null,
-//                     "resource": {
-//                         "document": null,
-//                         "header": null,
-//                         "location": null,
-//                         "body": null
-//                     }
-//                 },
-//                 "other": {
-//                     "resourceLocation": null,
-//                     "resource": {
-//                         "document": null,
-//                         "header": null,
-//                         "location": null,
-//                         "body": null
-//                     }
-//                 },
-//                 "documentLocation": "https://api.shipwire.com/api/v3/orders/12345/packingList"
-//             }
-//         },
-//         "shippingLabel": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "orderId": 12345,
-//                 "externalId": null,
-//                 "warehouseId": 11,
-//                 "warehouseExternalId": null,
-//                 "documentLocation": "https://api.shipwire.com/api/v3/orders/12345/shippingLabel"
-//             }
-//         },
-//         # Package routing details
-//         "routing": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "warehouseId": 11,
-//                 "warehouseExternalId": null,
-//                 "warehouseName": "LA",
-//                 "originLongitude": 34.0416,
-//                 "originLatitude": -117.369,
-//                 "destinationLongitude": -122.1738,
-//                 "destinationLatitude": 37.4337
-//             }
-//         },
-//         # Order proccessing events
-//         "events": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "createdDate": "2014-06-10T13:48:44-07:00",
-//                 "pickedUpDate": null,
-//                 "submittedDate": null,
-//                 "processedDate": null,
-//                 "completedDate": null,
-//                 "expectedDate": "2014-06-12T00:00:00-07:00",
-//                 "cancelledDate": null,
-//                 "returnedDate": null,
-//                 "lastManualUpdateDate": null
-//             }
-//         },
-//         "pricingEstimate": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "total": 0,
-//                 "insurance": 0,
-//                 "shipping": 0,
-//                 "packaging": 0,
-//                 "handling": 0
-//             }
-//         },
-//         "shipwireAnywhere": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "status": null
-//             }
-//         },
-//         "splitOrders": {
-//             {
-//                 "resourceLocation": "https://api.shipwire.com/api/v3/orders/12345/splitOrders?offset=0&limit=20",
-//                 "resource": {
-//                     "offset": 0,
-//                     "total": 0,
-//                     "previous": null,
-//                     "next": null,
-//                     "items": []
-//                 }
-//             }
-//         },
-//         "freightSummary": {
-//             "resourceLocation": null,
-//             "resource": {
-//                 "totalWeight": "2.30",
-//                 "weightUnit": "LB",
-//                 "measurementType": "total"
-//             }
-//         }
-// }
+type PricingRef struct {
+	ResourceLocation string  `json:"resourceLocation"`
+	Resource         Pricing `json:"resource"`
+}
+
+type Pricing struct {
+	Shipping  float64 `json:"shipping"`
+	Packaging float64 `json:"packaging"`
+	Insurance float64 `json:"insurance"`
+	Handling  float64 `json:"handling"`
+	Total     float64 `json:"total"`
+}
+
+type ShipFromRef struct {
+	ResourceLocation string   `json:"resourceLocation"`
+	Resource         ShipFrom `json:"resource"`
+}
+
+type ShipFrom struct {
+	Company string `json:"company"`
+}
+
+type ShipToRef struct {
+	ResourceLocation string `json:"resourceLocation"`
+	Resource         ShipTo `json:"resource"`
+}
+
+type ShipTo struct {
+	Email        string `json:"email"`
+	Name         string `json:"name"`
+	Company      string `json:"company"`
+	Address1     string `json:"address1"`
+	Address2     string `json:"address2"`
+	Address3     string `json:"address3"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	PostalCode   string `json:"postalCode"`
+	Country      string `json:"country"`
+	Phone        string `json:"phone"`
+	IsCommercial int    `json:"isCommercial"`
+	IsPoBox      int    `json:"isPoBox"`
+}
+
+type CommercialInvoiceRef struct {
+	ResourceLocation string            `json:"resourceLocation"`
+	Resource         CommercialInvoice `json:"resource"`
+}
+
+type CommercialInvoice struct {
+	ShippingValue         float64 `json:"shippingValue"`
+	InsuranceValue        float64 `json:"insuranceValue"`
+	AdditionalValue       float64 `json:"additionalValue"`
+	DocumentationLocation string  `json:"documentationLocation"`
+}
+
+type OrderRef struct {
+	ResourceLocation string `json:"resourceLocation"`
+	Resource         Order  `json:"resource"`
+}
+
+// Order Body
+type Order struct {
+	Id               int       `json:"id"`
+	ExternalId       string    `json:"externalId"`
+	TransactionId    string    `json:"transactionId"`
+	OrderNo          string    `json:"orderNo"`
+	ProcessAfterDate time.Time `json:"processAfterDate"`
+	NeedsReview      int       `json:"needsReview"`
+	VendorId         int       `json:"vendorId"`
+	VendorName       string    `json:"vendorName"`
+	CommerceName     string    `json:"commerceName"`
+	Status           string    `json:"status"`
+	LastUpdatedDate  time.Time `json:"lastUpdatedDate"`
+	// Holds HoldsRef `json:"holds"`
+	// Items ItemsRef `json:"items"`
+	Trackings TrackingsRef `json:"trackings"`
+	// Returns ReturnsRef `json:"returns"`
+	// SplitOrders SplitOrdersRef `json:"splitOrders"`
+	// Options OptionsRef `json:"options"`
+	// Pricing PricingRef `json:"pricing"`
+	// ShipFrom ShipFromRef `json:"shipFrom"`
+	// ShipTo ShipToRef `json:"shipTo"`
+	// "packingList": {
+	// "resourceLocation": null,
+	// "resource": {
+	// # First message
+	// "message1": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "document": "packing-list",
+	// "header": "Enjoy this product!",
+	// "location": "lhs",
+	// "body": "This must be where pies go when they die. Enjoy!"
+	// }
+	// },
+	// "message2": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "document": null,
+	// "header": null,
+	// "location": null,
+	// "body": null
+	// }
+	// },
+	// "message3": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "document": null,
+	// "header": null,
+	// "location": null,
+	// "body": null
+	// }
+	// },
+	// "other": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "document": null,
+	// "header": null,
+	// "location": null,
+	// "body": null
+	// }
+	// },
+	// "documentLocation": "https://api.shipwire.com/api/v3/orders/12345/packingList"
+	// }
+	// },
+	// "shippingLabel": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "orderId": 12345,
+	// "externalId": null,
+	// "warehouseId": 11,
+	// "warehouseExternalId": null,
+	// "documentLocation": "https://api.shipwire.com/api/v3/orders/12345/shippingLabel"
+	// }
+	// },
+	// # Package routing details
+	// "routing": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "warehouseId": 11,
+	// "warehouseExternalId": null,
+	// "warehouseName": "LA",
+	// "originLongitude": 34.0416,
+	// "originLatitude": -117.369,
+	// "destinationLongitude": -122.1738,
+	// "destinationLatitude": 37.4337
+	// }
+	// },
+	// # Order proccessing events
+	// "events": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "createdDate": "2014-06-10T13:48:44-07:00",
+	// "pickedUpDate": null,
+	// "submittedDate": null,
+	// "processedDate": null,
+	// "completedDate": null,
+	// "expectedDate": "2014-06-12T00:00:00-07:00",
+	// "cancelledDate": null,
+	// "returnedDate": null,
+	// "lastManualUpdateDate": null
+	// }
+	// },
+	// "pricingEstimate": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "total": 0,
+	// "insurance": 0,
+	// "shipping": 0,
+	// "packaging": 0,
+	// "handling": 0
+	// }
+	// },
+	// "shipwireAnywhere": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "status": null
+	// }
+	// },
+	// "splitOrders": {
+	// {
+	// "resourceLocation": "https://api.shipwire.com/api/v3/orders/12345/splitOrders?offset=0&limit=20",
+	// "resource": {
+	// "offset": 0,
+	// "total": 0,
+	// "previous": null,
+	// "next": null,
+	// "items": []
+	// }
+	// }
+	// },
+	// "freightSummary": {
+	// "resourceLocation": null,
+	// "resource": {
+	// "totalWeight": "2.30",
+	// "weightUnit": "LB",
+	// "measurementType": "total"
+	// }
+	// }
+}
