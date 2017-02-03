@@ -44,3 +44,7 @@ def from2016(order):
 
 def contacted_us(order):
     return order.r_user
+
+
+def partial_refund(order):
+    return order.refunded != 0
