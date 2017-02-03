@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from shipwire import write_cache
+from util import shipwire
 
 if __name__ == '__main__':
-    write_cache()
+    shipwire.write_cache()
