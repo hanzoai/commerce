@@ -150,7 +150,7 @@ if __name__ == '__main__':
         not processed(order),
         domestic(order),
         batch1(order),
-        from2016(order),
+        # from2016(order),
         # f2k(order),
     )))
 
