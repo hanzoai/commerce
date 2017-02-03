@@ -37,18 +37,25 @@ def to_json(obj):
     return re.sub(r'^"|"$', '', s)
 
 
-def to_csv(entities, filename, fields=None):
+def to_csv(rows, filename, fields=()):
     """Write list of entities into CSV."""
+    rows  = iter(rows)
+    first = next(rows)
 
     if not fields:
-        fields = guess_fields(entities[0])
+        fields = guess_fields(first)
 
     with open(filename, 'w') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
-        for entity in entities:
-            values = [getattr(entity, field) for field in fields]
-            writer.writerow([to_json(s) for s in values])
+
+        def write(obj):
+            values = (getattr(obj, x) for x in fields)
+            writer.writerow([to_json(x) for x in values])
+
+        write(first)
+        for row in rows:
+            write(row)
 
 
 def latest_csv(kind):
