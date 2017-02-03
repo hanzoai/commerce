@@ -5,7 +5,7 @@ import os
 
 from export import Export, json, latest_csv, to_csv
 from export.filter import *
-import shipwire
+from ship import read_cache, write_cache
 
 
 class User(Export):
@@ -102,7 +102,7 @@ def get_orders(filter):
     """Return orders matching some predicate(s)."""
 
     # Load Shipwire orders
-    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
+    s_orders = {x['orderNo']: x for x in read_cache()}
 
     # Load latest users, orders
     users  = User(latest_csv('user')).to_dict()
@@ -137,28 +137,28 @@ if __name__ == '__main__':
     # Fetch Shipwire db if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
-        shipwire.write_cache()
+        write_cache()
     else:
         print 'Using cached shipwire.json'
 
     # Filter orders
     orders = get_orders(lambda order: all((
-        open(order),
-        not cancelled(order),
-        not disputed(order),
-        not locked(order),
-        not processed(order),
-        domestic(order),
-        batch1(order),
+        # open(order),
+        # not cancelled(order),
+        # not disputed(order),
+        # not locked(order),
+        # not processed(order),
+        # domestic(order),
+        # batch1(order),
         # from2016(order),
-        # f2k(order),
+        f2k(order),
     )))
 
     # Sort by value
-    orders.sort(key=lambda x: x.total, reverse=True)
+    # orders.sort(key=lambda x: x.total, reverse=True)
 
     # Top 10
-    orders = islice(orders, 10)
+    # orders = islice(orders, 10)
 
     # Write orders to CSV
     to_csv(orders, 'orders.csv')
