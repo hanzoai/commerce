@@ -11,9 +11,7 @@ csv.field_size_limit(sys.maxsize)
 
 
 def snake(name):
-    """
-    Converts a Go-style name into the Python equivalent.
-    """
+    """Converts a Go-style name into the Python equivalent."""
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
     s3 = s2.replace('.', '')
@@ -21,9 +19,7 @@ def snake(name):
 
 
 def from_bool(b):
-    """
-    Deserialize boolean column into Python bool.
-    """
+    """Deserialize boolean column into Python bool."""
     if b == 'True':
         return True
     elif b == 'False':
@@ -33,28 +29,24 @@ def from_bool(b):
 
 
 def from_json(obj):
-    """
-    Deserialize JSON object.
-    """
+    """Deserialize JSON object."""
     return json.loads(obj)
 
 
 def to_json(obj):
-    """
-    Serialize object to JSON, but do not quote strings.
-    """
+    """Serialize object to JSON, but do not quote strings."""
     def serializer(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
-        raise TypeError ("Type not serializable")
+        raise TypeError("Type not serializable")
     s = json.dumps(obj, default=serializer)
     return re.sub(r'^"|"$', '', s)
 
 
 class Parser(object):
     """
-    Parses CSV row into Python objects with specified attributes, transforming
-    columns as necessary.
+    Parses CSV row into Python objects with specified attributes,
+    transforming columns as necessary.
     """
 
     def __init__(self, constructor, header, fields):
@@ -71,7 +63,7 @@ class Parser(object):
 
         for field, transform in self.fields.items():
             # Skip virtual columns
-            if transform == None:
+            if transform is None:
                 values.append(None)
                 continue
 
@@ -99,41 +91,33 @@ class Export(object):
     fields = {}
 
     def __init__(self, filename):
-        class_name       = self.__class__.__name__
-        self.filename    = filename
-        self.header      = self.parse_header()
-        self.constructor = recordtype(class_name, [snake(f) for f in self.fields])
+        class_name    = self.__class__.__name__
+        self.filename = filename
+        self.header   = self.parse_header()
+        self.constructor = recordtype(
+            class_name, [
+                snake(f) for f in self.fields])
 
     def parse_header(self):
-        """
-        Create map for CSV colum layout based on header.
-        """
+        """Create map for CSV colum layout based on header."""
         with open(self.filename) as f:
             first_row = next(f).split(',')
-            return dict((k.strip(),i) for i,k in enumerate(first_row))
+            return dict((k.strip(), i) for i, k in enumerate(first_row))
 
     def get_parser(self):
-        """
-        Get parser for this export.
-        """
+        """Get parser for this export."""
         return Parser(self.constructor, self.header, self.fields)
 
     def ignore(self, obj):
-        """
-        Ignore specific objects.
-        """
+        """Ignore specific objects."""
         return False
 
     def hydrate(self, obj):
-        """
-        Hydrate an object.
-        """
+        """Hydrate an object."""
         return obj
 
     def read_csv(self):
-        """
-        Lazily read CSV converting rows into records.
-        """
+        """Lazily read CSV converting rows into records."""
         with open(self.filename) as f:
             next(f)  # Skip header
             parser = self.get_parser()
@@ -143,15 +127,11 @@ class Export(object):
                     yield self.hydrate(obj)
 
     def to_list(self):
-        """
-        Convert export into list of records.
-        """
+        """Convert export into list of records."""
         return list(self.read_csv())
 
     def to_dict(self, key='id_'):
-        """
-        Convert export into dict of records using some key.
-        """
+        """Convert export into dict of records using some key."""
         d = {}
         for obj in self.read_csv():
             k = getattr(obj, key)
@@ -160,10 +140,7 @@ class Export(object):
 
 
 def guess_fields(obj):
-    """
-    Guess fields expected to export based on public attributes of a Python
-    object.
-    """
+    """Guess fields expected to export based on public attributes of a Python object."""
     fields = []
     for attr in dir(obj):
         if attr.startswith('_'):
@@ -176,9 +153,7 @@ def guess_fields(obj):
 
 
 def to_csv(entities, filename, fields=None):
-    """
-    Write list of entities into CSV.
-    """
+    """Write list of entities into CSV."""
 
     if not fields:
         fields = guess_fields(entities[0])
@@ -192,9 +167,7 @@ def to_csv(entities, filename, fields=None):
 
 
 def latest_csv(kind):
-    """
-    Find latest export CSV for a given kind.
-    """
+    """Find latest export CSV for a given kind."""
     files = filter(os.path.isfile, glob.glob('_export/*.csv'))
     files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     for fn in files:
