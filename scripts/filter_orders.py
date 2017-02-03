@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from datetime import datetime
 import os
+from itertools import islice
 
 from util import reamaze
 from util import shipwire
@@ -160,28 +161,31 @@ if __name__ == '__main__':
         reamaze.write_cache()
 
     # Get specific order
-    orders = get_orders(lambda order: order.number == '4110023')
+    # orders = get_orders(lambda order: order.number == '4110023')
 
     # Filter orders
-    # orders = get_orders(lambda order: all((
-    #     open(order),
-    #     not cancelled(order),
-    #     not disputed(order),
-    #     not locked(order),
-    #     not processed(order),
-    #     # domestic(order),
-    #     batch1(order),
-    #     # partial_refund(order),
-    #     # contacted_us(order),
-    #     # from2016(order),
-    #     # f2k(order),
-    # )))
+    orders = get_orders(lambda order: all((
+        open(order),
+        not cancelled(order),
+        not disputed(order),
+        not locked(order),
+        not processed(order),
+        domestic(order),
+        batch1(order),
+        # partial_refund(order),
+        # contacted_us(order),
+        # from2016(order),
+        # f2k(order),
+    )))
 
-    # Sort by total paid
+    # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
 
+    # Sort by age
+    # orders.sort(key=lambda x: x.created_at)
+
     # Top 10
-    # orders = islice(orders, 40)
+    orders = islice(orders, 10)
 
     # Write orders to CSV
     to_csv(orders, 'orders.csv')
