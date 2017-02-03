@@ -6,7 +6,7 @@ type Ref struct {
 }
 
 type Resource struct {
-	Order
+	// Order
 	Warehouse
 }
 
