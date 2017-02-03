@@ -144,16 +144,17 @@ def get_orders():
     # Filter for orders we care about
     def predicates(order):
         return all([
-            open(order),
-            not cancelled(order),
-            not disputed(order),
-            not locked(order),
-            not processed(order),
-            domestic(order),
-            batch1(order),
+            # open(order),
+            # not cancelled(order),
+            # not disputed(order),
+            # not locked(order),
+            # not processed(order),
+            # domestic(order),
+            # batch1(order),
             # from2016(order),
-            # f2k(order),
+            f2k(order),
         ])
+
     filtered_orders = [x for x in orders if predicates(x)]
 
     # Print stats and flag any invalid orders
@@ -178,4 +179,4 @@ if __name__ == '__main__':
     else:
         print 'Using cached shipwire.json'
     orders = get_orders()
-    to_csv(orders, 'selected_orders.csv')
+    to_csv(orders, 'filtered_orders.csv')
