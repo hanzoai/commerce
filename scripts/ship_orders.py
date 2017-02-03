@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from export import Export, json, latest_csv, to_csv
-import shipwire
+from ship import Shipwire
 
 
 class Order(Export):
@@ -19,9 +19,9 @@ class Order(Export):
         'shipping_address_postal_code': str,
         'shipping_address_line1':       str,
         'shipping_address_line2':       str,
-k   }
+    }
 
 if __name__ == '__main__':
-    sw = shipwire.Shipwire()
+    sw = Shipwire()
     for order in Order('orders.csv').read_csv():
         sw.submit_order(order)
