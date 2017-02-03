@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from export import Export, json, latest_csv, to_csv
-from ship import Shipwire
+from shipwire import Shipwire
 
 
 class Order(Export):
