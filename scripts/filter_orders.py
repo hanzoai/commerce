@@ -2,7 +2,7 @@
 import os
 from datetime import datetime
 from export import Export, json, latest_csv, to_csv
-from export.filters import *
+from export.filter import *
 from shipwire import *
 from shipwire_export import read_cached, write_cached
 
