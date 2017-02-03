@@ -114,24 +114,26 @@ def get_orders(filter):
     disputed_orders  = sum(1 for x in orders if disputed(x))
 
     # Filter orders
-    filtered_orders  = [x for x in orders if filter(x)]
+    selected_orders  = [x for x in orders if filter(x)]
 
-    # Print stats and flag any invalid orders
+    # Print stats
     print 'Order statistics'
     totals = (len(orders), open_orders, cancelled_orders, disputed_orders,
-              invalid_orders, len(filtered_orders))
-    print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, Filtered: {}'.format(*totals)
+              invalid_orders, len(selected_orders))
+    print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, selected: {}'.format(*totals)
 
+    # Print any invalid orders
     if invalid_orders:
         print 'Found the following invalid orders:'
-        for order in invalid_orders:
-            print order
+        for order in orders:
+            if invalid(order):
+                print order
 
-    return filtered_orders
+    return selected_orders
 
 
 if __name__ == '__main__':
-    # Write shipewire JSON if needed
+    # Fetch Shipwire db if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
         write_cached()
@@ -152,4 +154,4 @@ if __name__ == '__main__':
     )))
 
     # Write orders to CSV
-    to_csv(orders, 'filtered_orders.csv')
+    to_csv(orders, 'orders.csv')
