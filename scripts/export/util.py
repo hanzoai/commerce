@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import re
 import csv
 import json
@@ -29,11 +30,16 @@ def guess_fields(obj):
 
 def to_json(obj):
     """Serialize object to JSON, but do not quote strings."""
+    if isinstance(obj, basestring):
+        return obj
+
     def serializer(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
         raise TypeError("Type not serializable")
+
     s = json.dumps(obj, default=serializer)
+
     return re.sub(r'^"|"$', '', s)
 
 
