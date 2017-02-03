@@ -36,6 +36,8 @@ class Order(Export):
         'UserId':        str,
         'Number':        str,
         'Total':         int,
+        'Paid':          int,
+        'Refunded':      int,
 
         'ShippingAddress.Name':       str,
         'ShippingAddress.Country':    lambda x: x.upper(),
@@ -168,17 +170,18 @@ if __name__ == '__main__':
         not disputed(order),
         not locked(order),
         not processed(order),
-        domestic(order),
+        # domestic(order),
         batch1(order),
-        contacted_us(order),
+        partial_refund(order),
+        # contacted_us(order),
         # from2016(order),
         # f2k(order),
     )))
 
-    # # Sort by value
-    # orders.sort(key=lambda x: x.total, reverse=True)
+    # Sort by total paid
+    # orders.sort(key=lambda x: x.paid, reverse=True)
 
-    # # Top 10
+    # Top 10
     # orders = islice(orders, 40)
 
     # Write orders to CSV
