@@ -400,40 +400,6 @@ var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
 	o.Tally()
 	o.GetOrCreate("UserId=", u.Id())
 
-	// Jesper Eriksson
-	u = user.New(nsdb)
-	u.FirstName = "Jesper"
-	u.LastName = "Eriksson"
-	u.Email = "jesper.eriksson@fade2karma.com"
-	u.GetOrCreate("Email=", u.Email)
-
-	o = order.New(nsdb)
-	o.Parent = u.Key()
-	o.UserId = u.Id()
-	o.PaymentStatus = payment.Paid
-	o.ShippingAddress = Address{
-		Name:       u.FirstName + " " + u.LastName,
-		Line1:      "Krusbärsvägen 6",
-		City:       "Ljung",
-		State:      "Västra Götaland",
-		PostalCode: "52442",
-		Country:    "SE",
-	}
-
-	o.Items = []lineitem.LineItem{
-		lineitem.LineItem{
-			ProductId:   p.Id(),
-			ProductName: p.Name,
-			ProductSlug: p.Slug,
-			Quantity:    1,
-		},
-	}
-	o.Metadata = Map{
-		"batch": "f2k",
-	}
-	o.Tally()
-	o.GetOrCreate("UserId=", u.Id())
-
 	// Celia Chen
 	u = user.New(nsdb)
 	u.FirstName = "Celia"
