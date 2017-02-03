@@ -1,10 +1,13 @@
-# -*- coding: utf-8 -*-
-import re
 import csv
+import glob
 import json
 import os
-import glob
+import re
+import sys
 from datetime import datetime
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 
 def snake(name):
@@ -57,7 +60,8 @@ def to_csv(rows, filename, fields=()):
 
         def write(obj):
             values = (getattr(obj, x) for x in fields)
-            writer.writerow([to_json(x) for x in values])
+            serialized = [to_json(x) for x in values]
+            writer.writerow(serialized)
 
         write(first)
         for row in rows:
@@ -66,7 +70,7 @@ def to_csv(rows, filename, fields=()):
 
 def latest_csv(kind):
     """Find latest export CSV for a given kind."""
-    files = filter(os.path.isfile, glob.glob('_export/*.csv'))
+    files = filter(os.path.isfile, glob.glob('_export/*crowdstart-us*.csv'))
     files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     for fn in files:
         if fn.split('-')[1] == kind.lower():
