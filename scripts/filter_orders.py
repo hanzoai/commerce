@@ -8,17 +8,17 @@ from shipwire_export import read_cached, write_cached
 
 class User(Export):
     fields = {
-        'Id_': str,
-        'Email': str,
+        'Id_':       str,
+        'Email':     str,
         'FirstName': str,
-        'LastName': str,
+        'LastName':  str,
     }
 
 
 class Order(Export):
     def __init__(self, filename, users, s_orders):
         super(Order, self).__init__(filename)
-        self.users     = users
+        self.users    = users
         self.s_orders = s_orders
 
     fields = {
@@ -130,10 +130,8 @@ def get_orders():
     s_orders = dict((x['orderNo'], x) for x in read_cached())
 
     # Read latest exports
-    order_csv = latest_csv('order')
-    user_csv  = latest_csv('user')
-    users = User(user_csv).to_dict()
-    orders = Order(order_csv, users, s_orders).to_list()
+    users  = User(latest_csv('user')).to_dict()
+    orders = Order(latest_csv('order'), users, s_orders).to_list()
 
     # Create several lists for accounting purposes
     open_orders      = [x for x in orders if open(x)]
@@ -170,8 +168,8 @@ def get_orders():
     # Print stats and flag any invalid orders
     print 'Order statistics'
     totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
-                               disputed_orders, invalid_orders,
-                               filtered_orders))
+                                    disputed_orders, invalid_orders,
+                                    filtered_orders))
     print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, Filtered: {}'.format(*totals)
 
     if invalid_orders:
