@@ -81,7 +81,7 @@ class Shipwire(object):
 
 if __name__ == '__main__':
     sw     = Shipwire()
-    orders = Order('filtered_orders.csv').to_list()
+    orders = Order('orders.csv').to_list()
 
     for order in orders:
         sw.submit_order(order)
