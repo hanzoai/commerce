@@ -126,7 +126,7 @@ def get_orders():
     def from2016(order):
         return order.created_at.year == 2016
 
-    # Read in shipstation orders
+    # Read in shipwire orders
     ss_orders = dict((x['orderNo'], x) for x in read_cached())
 
     # Read latest exports
@@ -149,13 +149,14 @@ def get_orders():
             not disputed(order),
             not locked(order),
             not processed(order),
-            # domestic(order),
-            # batch1(order),
+            domestic(order),
+            batch1(order),
             # from2016(order),
             # f2k(order),
         ])
     filtered_orders = [x for x in orders if predicates(x)]
 
+    # Print stats and flag any invalid orders
     print 'Order statistics'
     totals = tuple(len(x) for x in (orders, open_orders, cancelled_orders,
                                disputed_orders, invalid_orders,
