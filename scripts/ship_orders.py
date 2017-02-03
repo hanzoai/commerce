@@ -22,8 +22,6 @@ class Order(Export):
 k   }
 
 if __name__ == '__main__':
-    sw     = shipwire.Shipwire()
-    orders = Order('orders.csv').to_list()
-
-    for order in orders:
+    sw = shipwire.Shipwire()
+    for order in Order('orders.csv').read_csv():
         sw.submit_order(order)
