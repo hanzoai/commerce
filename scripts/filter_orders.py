@@ -16,10 +16,10 @@ class User(Export):
 
 
 class Order(Export):
-    def __init__(self, filename, users, ss_orders):
+    def __init__(self, filename, users, s_orders):
         super(Order, self).__init__(filename)
         self.users     = users
-        self.ss_orders = ss_orders
+        self.s_orders = s_orders
 
     fields = {
         'Id_':           str,
@@ -47,13 +47,13 @@ class Order(Export):
         'last_name':  None,
         'batch':      None,
 
-        'ss_status':      None,
-        'ss_country':     None,
-        'ss_state':       None,
-        'ss_city':        None,
-        'ss_postal_code': None,
-        'ss_address1':    None,
-        'ss_address2':    None,
+        's_status':      None,
+        's_country':     None,
+        's_state':       None,
+        's_city':        None,
+        's_postal_code': None,
+        's_address1':    None,
+        's_address2':    None,
     }
 
     def ignore(self, order):
@@ -79,15 +79,15 @@ class Order(Export):
         order.last_name  = user.last_name
 
         # Hydrate order with ss data
-        ss_order = self.ss_orders.get(order.number, None)
-        if ss_order:
-            order.ss_status       = ss_order['status']
-            order.ss_country      = ss_order['shipTo']['resource']['country']
-            order.ss_state        = ss_order['shipTo']['resource']['state']
-            order.ss_city         = ss_order['shipTo']['resource']['city']
-            order.ss_postal_code  = ss_order['shipTo']['resource']['postalCode']
-            order.ss_address1     = ss_order['shipTo']['resource']['address1']
-            order.ss_address2     = ss_order['shipTo']['resource']['address2']
+        s_order = self.s_orders.get(order.number, None)
+        if s_order:
+            order.s_status       = s_order['status']
+            order.s_country      = s_order['shipTo']['resource']['country']
+            order.s_state        = s_order['shipTo']['resource']['state']
+            order.s_city         = s_order['shipTo']['resource']['city']
+            order.s_postal_code  = s_order['shipTo']['resource']['postalCode']
+            order.s_address1     = s_order['shipTo']['resource']['address1']
+            order.s_address2     = s_order['shipTo']['resource']['address2']
 
         return order
 
@@ -121,19 +121,19 @@ def get_orders():
         return order.batch == 'f2k'
 
     def processed(order):
-        return order.ss_status and order.ss_status != 'cancelled'
+        return order.s_status and order.s_status != 'cancelled'
 
     def from2016(order):
         return order.created_at.year == 2016
 
     # Read in shipwire orders
-    ss_orders = dict((x['orderNo'], x) for x in read_cached())
+    s_orders = dict((x['orderNo'], x) for x in read_cached())
 
     # Read latest exports
     order_csv = latest_csv('order')
     user_csv  = latest_csv('user')
     users = User(user_csv).to_dict()
-    orders = Order(order_csv, users, ss_orders).to_list()
+    orders = Order(order_csv, users, s_orders).to_list()
 
     # Create several lists for accounting purposes
     open_orders      = [x for x in orders if open(x)]
