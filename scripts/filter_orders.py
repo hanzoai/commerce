@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 from datetime import datetime
-from itertools import islice
 import os
+from itertools import islice
 
-from export import Export, json, latest_csv, to_csv
-from export.filter import *
-from shipwire import read_cache, write_cache
+from util import reamaze
+from util import shipwire
+from util.export import Export, json, latest_csv, to_csv
+from util.export.filter import *
 
 
 class User(Export):
@@ -18,10 +19,11 @@ class User(Export):
 
 
 class Order(Export):
-    def __init__(self, filename, users, s_orders):
+    def __init__(self, filename, users=None, s_orders=None, r_users=None):
         super(Order, self).__init__(filename)
         self.users    = users
         self.s_orders = s_orders
+        self.r_users  = r_users
 
     fields = {
         'Id_':           str,
@@ -34,6 +36,8 @@ class Order(Export):
         'UserId':        str,
         'Number':        str,
         'Total':         int,
+        'Paid':          int,
+        'Refunded':      int,
 
         'ShippingAddress.Name':       str,
         'ShippingAddress.Country':    lambda x: x.upper(),
@@ -58,6 +62,9 @@ class Order(Export):
         's_postal_code': None,
         's_address1':    None,
         's_address2':    None,
+
+        # Hydrated by reamaze
+        'r_user': None,
     }
 
     def ignore(self, order):
@@ -79,21 +86,27 @@ class Order(Export):
         order.batch = determine_batch(order)
 
         # Hydrate order with user data
-        user             = self.users[order.user_id]
-        order.email      = user.email
-        order.first_name = user.first_name
-        order.last_name  = user.last_name
+        if self.users:
+            user             = self.users[order.user_id]
+            order.email      = user.email
+            order.first_name = user.first_name
+            order.last_name  = user.last_name
 
         # Hydrate order with Shipwire data
-        s_order = self.s_orders.get(order.number, None)
-        if s_order:
-            order.s_status      = s_order['status']
-            order.s_country     = s_order['shipTo']['resource']['country']
-            order.s_state       = s_order['shipTo']['resource']['state']
-            order.s_city        = s_order['shipTo']['resource']['city']
-            order.s_postal_code = s_order['shipTo']['resource']['postalCode']
-            order.s_address1    = s_order['shipTo']['resource']['address1']
-            order.s_address2    = s_order['shipTo']['resource']['address2']
+        if self.s_orders:
+            s_order = self.s_orders.get(order.number, None)
+            if s_order:
+                order.s_status      = s_order['status']
+                order.s_country     = s_order['shipTo']['resource']['country']
+                order.s_state       = s_order['shipTo']['resource']['state']
+                order.s_city        = s_order['shipTo']['resource']['city']
+                order.s_postal_code = s_order['shipTo']['resource']['postalCode']
+                order.s_address1    = s_order['shipTo']['resource']['address1']
+                order.s_address2    = s_order['shipTo']['resource']['address2']
+
+        if self.r_users:
+            if order.email in self.r_users:
+                order.r_user = True
 
         return order
 
@@ -101,12 +114,15 @@ class Order(Export):
 def get_orders(filter):
     """Return orders matching some predicate(s)."""
 
+    # Load Reamaze contacts
+    r_users = {x['email'] for x in reamaze.read_cache()}
+
     # Load Shipwire orders
-    s_orders = {x['orderNo']: x for x in read_cache()}
+    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
 
     # Load latest users, orders
     users  = User(latest_csv('user')).to_dict()
-    orders = Order(latest_csv('order'), users, s_orders).to_list()
+    orders = Order(latest_csv('order'), users, s_orders, r_users).to_list()
 
     # Calculate some stats
     open_orders      = sum(1 for x in orders if open(x))
@@ -137,28 +153,39 @@ if __name__ == '__main__':
     # Fetch Shipwire db if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
-        write_cache()
-    else:
-        print 'Using cached shipwire.json'
+        shipwire.write_cache()
+
+    # Fetch Reamaze db if needed
+    if not os.path.exists('reamaze.json'):
+        print 'Fetching latest orders from Shipwire...'
+        reamaze.write_cache()
+
+    # Get specific order
+    # orders = get_orders(lambda order: order.number == '4110023')
 
     # Filter orders
     orders = get_orders(lambda order: all((
-        # open(order),
-        # not cancelled(order),
-        # not disputed(order),
-        # not locked(order),
-        # not processed(order),
-        # domestic(order),
-        # batch1(order),
+        open(order),
+        not cancelled(order),
+        not disputed(order),
+        not locked(order),
+        not processed(order),
+        domestic(order),
+        batch1(order),
+        # partial_refund(order),
+        # contacted_us(order),
         # from2016(order),
-        f2k(order),
+        # f2k(order),
     )))
 
-    # Sort by value
-    # orders.sort(key=lambda x: x.total, reverse=True)
+    # Sort by amount paid
+    # orders.sort(key=lambda x: x.paid, reverse=True)
+
+    # Sort by age
+    # orders.sort(key=lambda x: x.created_at)
 
     # Top 10
-    # orders = islice(orders, 10)
+    orders = islice(orders, 10)
 
     # Write orders to CSV
     to_csv(orders, 'orders.csv')
