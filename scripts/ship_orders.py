@@ -1,37 +1,37 @@
 #!/usr/bin/env python
 from export import Export, json, latest_csv, to_csv
 from datetime import datetime
-from shipwire import *
+import shipwire
 
 class Order(Export):
     fields = {
-        'Id_':           str,
-        'Items_':        json,
-        'Number':        str,
-        'Email':         str,
+        'id_':           str,
+        'items_':        json,
+        'number':        str,
+        'email':         str,
 
-        'ShippingAddress.Name':       str,
-        'ShippingAddress.Country':    str,
-        'ShippingAddress.State':      str,
-        'ShippingAddress.City':       str,
-        'ShippingAddress.PostalCode': str,
-        'ShippingAddress.Line1':      str,
-        'ShippingAddress.Line2':      str,
+        'shipping_address_name':        str,
+        'shipping_address_country':     str,
+        'shipping_address_state':       str,
+        'shipping_address_city':        str,
+        'shipping_address_postal_code': str,
+        'shipping_address_line1':       str,
+        'shipping_address_line2':       str,
     }
 
 class Shipwire(object):
     def __init__(self):
-        self.client = Shipwire(username='dev@hanzo.ai',
-                               password='',
-                               host='api.shipwire.com')
+        self.sw = shipwire.Shipwire(username='dev@hanzo.ai',
+                                    password='',
+                                    host='api.shipwire.com')
 
     def submit_order(self, order):
         # Only handle earphones for now
         sku      = '686696998137'
         quantity = 0
         for item in order.items_:
-            if item.productId == 'wycZ3j0kFP0JBv':
-                quantity += item.quantity
+            if item['productId'] == 'wycZ3j0kFP0JBv':
+                quantity += item['quantity']
 
         payload = {
             'options': {
@@ -58,25 +58,25 @@ class Shipwire(object):
 
         print json.dumps(payload, indent=4)
 
-        res = sw.order.create(json=payload)
+        res = self.sw.order.create(json=payload)
 
         print '######### BEGIN'
         print '######### res.status'
-        pprint(res.status)
+        print res.status
         print '######### res.message'
-        pprint(res.message)
+        print res.message
         print '######### res.json'
-        pprint(res.json)
+        print json.dumps(res.json, indent=4)
         print '######### res.location'
-        pprint(res.location)
+        print res.location
         print '######### res.warnings'
-        pprint(res.warnings)
+        print res.warnings
         print '######### res.errors'
-        pprint(res.errors)
+        print res.errors
         print '######### END'
 
 if __name__ == '__main__':
     orders = Order('filtered_orders.csv').to_list()
     sw = Shipwire()
-    for order in order:
+    for order in orders:
         sw.submit_order(order)
