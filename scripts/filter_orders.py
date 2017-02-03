@@ -157,7 +157,7 @@ if __name__ == '__main__':
 
     # Fetch Reamaze db if needed
     if not os.path.exists('reamaze.json'):
-        print 'Fetching latest orders from Shipwire...'
+        print 'Fetching latest contacts from Reamaze...'
         reamaze.write_cache()
 
     # Get specific order
