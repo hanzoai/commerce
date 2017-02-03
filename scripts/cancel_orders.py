@@ -24,4 +24,4 @@ class Order(Export):
 if __name__ == '__main__':
     sw = Shipwire()
     for order in Order('orders.csv').read_csv():
-        sw.submit_order(order)
+        sw.cancel_order(order)
