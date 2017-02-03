@@ -138,14 +138,14 @@ def get_orders():
     s_orders = dict((x['orderNo'], x) for x in read_cached())
 
     # Load latest users, orders
-    users = User(latest_csv('user')).to_dict()
+    users  = User(latest_csv('user')).to_dict()
     orders = Order(latest_csv('order'), users, s_orders).to_list()
 
     # Calculate some stats
-    open_orders = len([x for x in orders if open(x)])
+    open_orders      = len([x for x in orders if open(x)])
     cancelled_orders = len([x for x in orders if cancelled(x)])
-    invalid_orders = len([x for x in orders if invalid(x)])
-    disputed_orders = len([x for x in orders if disputed(x)])
+    invalid_orders   = len([x for x in orders if invalid(x)])
+    disputed_orders  = len([x for x in orders if disputed(x)])
 
     # Filter for orders we care about
     def predicates(order):
