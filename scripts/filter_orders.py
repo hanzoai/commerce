@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import os
 from datetime import datetime
+import os
+
 from export import Export, json, latest_csv, to_csv
 from export.filter import *
-from shipwire import *
-from shipwire_export import read_cached, write_cached
+import shipwire
 
 
 class User(Export):
@@ -49,7 +49,7 @@ class Order(Export):
         'batch':      None,
 
 
-        # Hydrated by shipwire
+        # Hydrated by Shipwire
         's_status':      None,
         's_country':     None,
         's_state':       None,
@@ -64,7 +64,7 @@ class Order(Export):
         return order.test or order.total == 50
 
     def hydrate(self, order):
-        """Hydrate order object using user and shipwire data."""
+        """Hydrate order object using user and Shipwire data."""
         def determine_batch(order):
             batch = order.metadata_['batch']
             if batch == '2':
@@ -83,7 +83,7 @@ class Order(Export):
         order.first_name = user.first_name
         order.last_name  = user.last_name
 
-        # Hydrate order with shipwire data
+        # Hydrate order with Shipwire data
         s_order = self.s_orders.get(order.number, None)
         if s_order:
             order.s_status      = s_order['status']
@@ -100,8 +100,8 @@ class Order(Export):
 def get_orders(filter):
     """Return orders matching some predicate(s)."""
 
-    # Load shipwire orders
-    s_orders = {x['orderNo']: x for x in read_cached()}
+    # Load Shipwire orders
+    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
 
     # Load latest users, orders
     users  = User(latest_csv('user')).to_dict()
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     # Fetch Shipwire db if needed
     if not os.path.exists('shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
-        write_cached()
+        shipwire.write_cache()
     else:
         print 'Using cached shipwire.json'
 
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         not processed(order),
         domestic(order),
         batch1(order),
-        # from2016(order),
+        from2016(order),
         # f2k(order),
     )))
 
