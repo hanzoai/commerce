@@ -160,22 +160,22 @@ if __name__ == '__main__':
         reamaze.write_cache()
 
     # Get specific order
-    # orders = get_orders(lambda order: order.number == '5150018')
+    orders = get_orders(lambda order: order.number == '4110023')
 
     # Filter orders
-    orders = get_orders(lambda order: all((
-        open(order),
-        not cancelled(order),
-        not disputed(order),
-        not locked(order),
-        not processed(order),
-        # domestic(order),
-        batch1(order),
-        # partial_refund(order),
-        # contacted_us(order),
-        # from2016(order),
-        # f2k(order),
-    )))
+    # orders = get_orders(lambda order: all((
+    #     open(order),
+    #     not cancelled(order),
+    #     not disputed(order),
+    #     not locked(order),
+    #     not processed(order),
+    #     # domestic(order),
+    #     batch1(order),
+    #     # partial_refund(order),
+    #     # contacted_us(order),
+    #     # from2016(order),
+    #     # f2k(order),
+    # )))
 
     # Sort by total paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
