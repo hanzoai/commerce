@@ -40,3 +40,11 @@ def processed(order):
 
 def from2016(order):
     return order.created_at.year == 2016
+
+
+def contacted_us(order):
+    return order.r_user
+
+
+def partial_refund(order):
+    return order.refunded != 0
