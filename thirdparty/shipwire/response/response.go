@@ -76,6 +76,33 @@ type CommercialInvoice struct {
 	DocumentationLocation string  `json:"documentationLocation"`
 }
 
+type TrackingRef struct {
+	ResourceLocation string   `json:"resourceLocation"`
+	Resource         Tracking `json:"resource"`
+}
+
+type Tracking struct {
+	Id                  int       `json:"id"`
+	OrderId             int       `json:"orderId"`
+	OrderExternalId     string    `json:"orderExternalId"`
+	Tracking            string    `json:"tracking"`
+	Carrier             string    `json:"carrier"`
+	Url                 string    `json:"url"`
+	Summary             string    `json:"summary"`
+	SummaryDate         time.Time `json:"summaryDate"`
+	LabelCreatedDate    time.Time `json:"labelCreatedDate"`
+	TrackedDate         time.Time `json:"trackedDate"`
+	FirstScanDate       time.Time `json:"firstScanDate"`
+	FirstScanRegion     string    `json:"firstScanRegion"`
+	FirstScanPostalCode string    `json:"firstScanPostalCode"`
+	FirstScanCountry    string    `json:"firstScanCountry"`
+	DeliveredDate       time.Time `json:"deliveredDate"`
+	DeliveryCity        string    `json:"deliveryCity"`
+	DeliveryRegion      string    `json:"deliveryRegion"`
+	DeliveryPostalCode  string    `json:"DeliveryPostalCode"`
+	DeliveryCountry     string    `json:"DeliveryCountry"`
+}
+
 type OrderRef struct {
 	ResourceLocation string `json:"resourceLocation"`
 	Resource         Order  `json:"resource"`
@@ -96,7 +123,7 @@ type Order struct {
 	LastUpdatedDate  time.Time `json:"lastUpdatedDate"`
 	// Holds HoldsRef `json:"holds"`
 	// Items ItemsRef `json:"items"`
-	Trackings TrackingsRef `json:"trackings"`
+	// Trackings TrackingsRef `json:"trackings"`
 	// Returns ReturnsRef `json:"returns"`
 	// SplitOrders SplitOrdersRef `json:"splitOrders"`
 	// Options OptionsRef `json:"options"`
