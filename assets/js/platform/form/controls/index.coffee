@@ -465,8 +465,10 @@ class FulfillmentStatusSelect extends BasicSelectView
   tag: 'fulfillment-status-select'
   options: ()->
     unfulfilled:    'Unfulfilled'
-    shipped:        'Shipped'
+    labelled:       'Labelled'
     processing:     'Processing'
+    shipped:        'Shipped'
+    delivered:      'Delivered'
     cancelled:      'Cancelled'
 
 FulfillmentStatusSelect.register()
