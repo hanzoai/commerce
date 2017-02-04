@@ -10,8 +10,10 @@ type FulfillmentStatus string
 
 const (
 	FulfillmentUnfulfilled FulfillmentStatus = "unfulfilled"
-	FulfillmentShipped     FulfillmentStatus = "shipped"
+	FulfillmentLabelled    FulfillmentStatus = "labelled"
 	FulfillmentProcessing  FulfillmentStatus = "processing"
+	FulfillmentShipped     FulfillmentStatus = "shipped"
+	FulfillmentDelivered   FulfillmentStatus = "delivered"
 	FulFillmentCancelled   FulfillmentStatus = "cancelled"
 )
 
@@ -21,5 +23,6 @@ type Fulfillment struct {
 	TrackingNumber string         `json:"trackingNumber,omitempty"`
 	CreatedAt      time.Time      `json:"createdAt,omitempty"`
 	ShippedAt      time.Time      `json:"shippedAt,omitempty"`
+	DeliveredAt    time.Time      `json:"deliveredAt,omitempty"`
 	Cost           currency.Cents `json:"cost,omitempty"`
 }
