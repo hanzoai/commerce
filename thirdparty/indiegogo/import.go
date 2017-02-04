@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/models/user"
 )
 
-func ImportCSV(db *datastore.Datastore, filename string) {
+func Import(db *datastore.Datastore, filename string) {
 	for record := range csv.Iterator(filename) {
 		if config.IsDevelopment && record.Index > 25 {
 			break // Only import first 25 in development
