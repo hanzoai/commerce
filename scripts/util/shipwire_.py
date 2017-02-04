@@ -26,7 +26,7 @@ class Shipwire(object):
         self.log(external_id, res)
         return res
 
-    def submit_order(self, order):
+    def ship_order(self, order, level='GD'):
         sku      = '686696998137'
         quantity = 0
 
@@ -39,7 +39,7 @@ class Shipwire(object):
             'orderNo':    order.number,
             'externalId': order.id_,
             'options': {
-                'serviceLevelCode': 'GD',
+                'serviceLevelCode': level,
             },
             'shipTo': {
                 'email':      order.email,
