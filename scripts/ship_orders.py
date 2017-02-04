@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-from datetime import datetime
-
-from util.export import Export, json, latest_csv, to_csv
+from util.export import Export, json
 from util import shipwire
 
 
@@ -21,7 +19,8 @@ class Order(Export):
         'shipping_address_line2':       str,
     }
 
+
 if __name__ == '__main__':
     sw = shipwire.Shipwire()
     for order in Order('orders.csv').read_csv():
-        sw.submit_order(order)
+        sw.ship_order(order, level='2D')
