@@ -61,6 +61,8 @@ func Process(c *gin.Context) {
 }
 
 func tracking(c *gin.Context, t response.Tracking) {
+	log.Warn("Tracking Information:\n%v", t, c)
+
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
