@@ -4537,8 +4537,8 @@ previous button's border...
 }
 /* Label Text */
 .highcharts-container .highcharts-axis-labels text {
-  /* color: #AAA !important; */
-  /* fill: #AAA !important; */
+  color: #AAA !important;
+  fill: #AAA !important;
 }
 /*===============================================
   jQuery Spinner
@@ -16783,7 +16783,7 @@ ol.timeline-list li.timeline-item .timeline-date {
 }
 /* Default Borders */
 .br-a {
-  /* border: 1px solid #eeeeee !important; */
+  border: 1px solid #eeeeee !important;
 }
 .br-l {
   border-left: 1px solid #eeeeee !important;
