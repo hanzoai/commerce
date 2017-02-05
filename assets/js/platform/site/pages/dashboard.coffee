@@ -42,25 +42,27 @@ class Dashboard extends Page
     }]
     yAxis: [
       {
+        legend:
+          enabled: false
         floor: 0
         labels:
           format: '{value:.2f}'
           style:
-            color: Highcharts.getOptions().colors[2]
+            color: 'green'
         title:
           text: 'Sales',
           style:
-              color: Highcharts.getOptions().colors[2]
+              color: 'green'
       },
       {
         floor: 0
         labels:
           style:
-            color: Highcharts.getOptions().colors[0]
+            color: 'grey'
         title:
           text: 'Count',
           style:
-              color: Highcharts.getOptions().colors[0]
+              color: 'grey'
         opposite: true
       },
     ]

@@ -4,10 +4,9 @@
 <head>
   <!-- Meta, title, CSS, favicons, etc. -->
   <meta charset="utf-8">
-  <title>Crowdstart</title>
+  <title>Hanzo</title>
 
-  <meta name="description" content="Crowdstart is a brand new crowdfunding platform">
-  <meta name="author" content="verusmedia">
+  <meta name="author" content="Hanzo, inc">
   <meta name="robots" content="noindex, nofollow">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -63,9 +62,8 @@
     <header class="navbar navbar-fixed-top navbar-shadow bg-dark">
       <div class="navbar-branding">
         <a href="/" class="navbar-brand">
-          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:30px; opacity: 0.5;margin-right:5px; margin-bottom:5px">
-          Crowdstart
-          <span style="font-size: 0.6em; color: lightgrey">Beta</span>
+          <img src="{{ staticUrl }}/frontend/img/logo.png">
+          Hanzo
         </a>
         <span id="toggle_sidemenu_l" class="ad ad-lines"></span>
       </div>
@@ -75,9 +73,6 @@
         </div>
       </form>
       <ul class="nav navbar-nav navbar-right">
-        <li class="menu-divider hidden-xs">
-          <i class="fa fa-circle"></i>
-        </li>
         <li class="dropdown menu-merge">
           <a href="#" class="dropdown-toggle fw600" data-toggle="dropdown">
             <span class="hidden-xs pl15"> {{ ctx.organization.FullName }} </span>
@@ -419,6 +414,12 @@
   <!--   , 500) -->
 
   <!-- </script> -->
-</body>
 
+<script src="http://localhost:8090/bebop.min.js"></script>
+<script>
+  var bebop = new Bebop({port: 8090});
+  bebop.debug = true;
+  bebop.connect();
+</script>
+</body>
 </html>
