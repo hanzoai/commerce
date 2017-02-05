@@ -137,7 +137,8 @@ def get_orders(filter):
     print 'Order statistics'
     totals = (len(orders), open_orders, cancelled_orders, disputed_orders,
               invalid_orders, len(selected_orders))
-    print '  Total: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, selected: {}'.format(*totals)
+    print '  Total orders: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, selected: {}'.format(*totals)
+    print '  Total units in selection:', sum(x.items_[0]['quantity'] for x in selected_orders)
 
     # Print any invalid orders
     if invalid_orders:
@@ -161,22 +162,21 @@ if __name__ == '__main__':
         reamaze.write_cache()
 
     # Get specific order
-    orders = get_orders(lambda order: order.number == '9210264')
+    # orders = get_orders(lambda order: order.number == '5450048')
 
     # # Filter orders
-    # orders = get_orders(lambda order: all((
-    #     open(order),
-    #     not cancelled(order),
-    #     not disputed(order),
-    #     not locked(order),
-    #     not processed(order),
-    #     domestic(order),
-    #     batch1(order),
-    #     # partial_refund(order),
-    #     # contacted_us(order),
-    #     # from2016(order),
-    #     # f2k(order),
-    # )))
+    orders = get_orders(lambda order: all((
+        open(order),
+        # cancelled(order),
+        not disputed(order),
+        not locked(order),
+        not processed(order),
+        # domestic(order),
+        # batch1(order),
+        # partial_refund(order),
+        # contacted_us(order),
+        from2016(order),
+    )))
 
     # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
