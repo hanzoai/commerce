@@ -4537,8 +4537,8 @@ previous button's border...
 }
 /* Label Text */
 .highcharts-container .highcharts-axis-labels text {
-  color: #AAA !important;
-  fill: #AAA !important;
+  /* color: #AAA !important; */
+  /* fill: #AAA !important; */
 }
 /*===============================================
   jQuery Spinner
@@ -16783,7 +16783,7 @@ ol.timeline-list li.timeline-item .timeline-date {
 }
 /* Default Borders */
 .br-a {
-  border: 1px solid #eeeeee !important;
+  /* border: 1px solid #eeeeee !important; */
 }
 .br-l {
   border-left: 1px solid #eeeeee !important;
@@ -18266,7 +18266,9 @@ body.sb-top #toggle_sidemenu_t {
   color: #ffffff;
 }
 .navbar[class*='bg-'] .caret.caret-tp {
-  border-top-color: rgba(255, 255, 255, 0.3);
+  margin-top: 2px;
+  margin-left: 5px;
+  border-top-color: rgba(255, 255, 255, 0.8);
 }
 .navbar[class*='bg-'] #toggle_sidemenu_l,
 .navbar[class*='bg-'] #toggle_sidemenu_l:hover,
@@ -18287,17 +18289,14 @@ body.sb-top #toggle_sidemenu_t {
   border-color: transparent;
 }
 .navbar[class*='bg-'] .navbar-search.alt input {
-  color: #BBB;
-  color: rgba(255, 255, 255, 0.8);
-  background-color: #BBB;
-  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.15);
   border-color: transparent;
 }
 .navbar[class*='bg-'] .navbar-search.alt input:focus {
   border-color: transparent;
 }
 .navbar[class*='bg-'].navbar-shadow {
-  border-bottom: 1px solid transparent;
   box-shadow: none;
 }
 /*==========================================================
