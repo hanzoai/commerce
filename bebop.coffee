@@ -64,6 +64,7 @@ files =
 module.exports =
   cwd: process.cwd()
 
+  host: 'localhost'
   port: 8090
 
   exclude: [
