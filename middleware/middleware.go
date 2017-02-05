@@ -28,8 +28,8 @@ func LiveReload() gin.HandlerFunc {
 		// If 200 and text/html content-type inject bebop script for live reload
 		if c.Writer.Status() == 200 && c.Writer.Header().Get("Content-Type") == "text/html; charset=utf-8" {
 			injectScript := []byte(`<!-- Live reload via bebop -->
-<script src="http://localhost:1987/bebop.js"></script>
-<script>try {(new Bebop({port: 1987})).connect()} catch(err) {}</script>`)
+<script src="http://localhost:8090/bebop.min.js"></script>
+<script>try {(new Bebop({port: 8090})).connect()} catch(err) {}</script>`)
 			c.Writer.Write(injectScript)
 		}
 	}
