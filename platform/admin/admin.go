@@ -24,9 +24,9 @@ import (
 
 // Index
 func Index(c *gin.Context) {
-	url := config.UrlFor("platform", "/dashboard")
+	url := config.UrlFor("platform")
 	log.Debug("Redirecting to %s", url)
-	c.Redirect(301, url)
+	c.Redirect(302, url)
 }
 
 func Dashboard(c *gin.Context) {
