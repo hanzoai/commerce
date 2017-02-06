@@ -5,21 +5,17 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/cart"
-	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/delay"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
-
-	. "crowdstart.com/models"
 )
 
 var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId string, ordId string) {
@@ -31,49 +27,23 @@ var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId
 	org.MustGetById(orgId)
 	ord.MustGetById(ordId)
 
-	updateMailchimp(ctx, org, ord)
-	// payments := make([]*payment.Payment, 0)
-	// if _, err := payment.Query(nsdb).Ancestor(ord.Key()).GetAll(payments); err != nil {
-	// 	log.Error("Unable to find payments associated with order '%s'", ord.Id())
-	// }
+	payments := make([]*payment.Payment, 0)
+	if _, err := payment.Query(nsdb).Ancestor(ord.Key()).GetAll(payments); err != nil {
+		log.Error("Unable to find payments associated with order '%s'", ord.Id())
+	}
 
-	// sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
-	// saveRedemptions(ctx, ord)
-	// saveReferral(ctx, org, ord)
-	// updateCart(ctx, ord)
-	// updateStats(ctx, org, ord, payments)
-	// updateMailchimp(ctx, org, ord)
+	sendOrderConfirmation(ctx, org, ord)
+	saveRedemptions(ctx, ord)
+	saveReferral(ctx, org, ord)
+	updateCart(ctx, ord)
+	updateStats(ctx, org, ord, payments)
+	updateMailchimp(ctx, org, ord)
 })
 
-func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
-	totalPaid := 0
-
-	for _, pay := range payments {
-		totalPaid += int(pay.Amount)
-	}
-
-	ord.Paid = currency.Cents(int(ord.Paid) + totalPaid)
-	if ord.Paid == ord.Total {
-		ord.PaymentStatus = payment.Paid
-	}
-}
-
-func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
-	vals := []interface{}{ord}
-
-	for _, pay := range payments {
-		vals = append(vals, pay)
-	}
-
-	return multi.Update(vals)
-}
-
-func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order, buyer Buyer) {
+func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
 	// Send Create user
 	usr := new(user.User)
-	usr.Email = buyer.Email
-	usr.FirstName = buyer.FirstName
-	usr.LastName = buyer.LastName
+	usr.GetById(ord.UserId)
 	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
 }
 
@@ -89,8 +59,7 @@ func saveRedemptions(ctx appengine.Context, ord *order.Order) {
 	}
 }
 
-func saveReferral(org *organization.Organization, ord *order.Order) {
-	ctx := org.Context()
+func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
 	db := ord.Db
 
 	// Check for referrer
