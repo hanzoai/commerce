@@ -8,6 +8,7 @@
   min-height: 100px
 
 .bg-dark
+  color: white !important
   background: rgba(47,212,165,1);
   background: -moz-linear-gradient(top, rgba(47,212,165,1) 0%, rgba(34,212,168,1) 100%);
   background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(47,212,165,1)), color-stop(100%, rgba(34,212,168,1)));
@@ -15,6 +16,9 @@
   background: -o-linear-gradient(top, rgba(47,212,165,1) 0%, rgba(34,212,168,1) 100%);
   background: -ms-linear-gradient(top, rgba(47,212,165,1) 0%, rgba(34,212,168,1) 100%);
   background: linear-gradient(to bottom, rgba(47,212,165,1) 0%, rgba(34,212,168,1) 100%);
+
+.caret.caret-tp
+  border-top-color: white
 
 #sidebar_left
   background-color: #242424 !important
@@ -26,23 +30,33 @@
   background-color: #fcfcfc !important
   padding 0 20px !important
 
-.navbar-brand img
-  width: 42px
-  margin-bottom: 2px
-  margin-right: 8px
+#toggle_sidemenu img
+  color: #666;
+  cursor: pointer;
+  width: 32px;
+  float: none !important
+  margin: 14px
+
+.navbar-brand
+  float: none !important
+  margin-left: -24px
 
 .navbar-branding
+  font-size: 22px
   font-weight: 500
 
-.navbar-form.navbar-search input
-  height: 32px
-  padding: 0 18px !important
-  border-radius: 16px !important
-  background-color: rgba(0,0,0,0.060) !important
+@media(min-width: 900px)
+  .navbar-form.navbar-search input
+    height: 32px
+    padding: 0 18px !important
+    border-radius: 16px !important
+    background-color: rgba(0,0,0,0.060) !important
+    width: 222px
 
-.navbar-form
-  margin-top: 14px
-  margin-bottom: 14px
+  .navbar-form
+    margin-top: 14px
+    margin-bottom: 14px
+    padding: 0px
 
 #topbar.alt
   background: #fff !important
