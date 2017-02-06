@@ -22,9 +22,6 @@
 =================================================================
 */
 
-/* Include Lato font from Google Web Fonts */
-@import url('//fonts.googleapis.com/css?family=Lato:300,400,400italic,500,500italic,600,600italic,700,700italic');
-
 /* Preloader */
 #page-wrapper.page-loading {
     overflow: hidden;
@@ -97,18 +94,34 @@
 
 /* Main Structure */
 body {
-    font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #454e59;
-    background-color: #454e59;
+  font-family: "Open sans";
+  background: #9669bf;
+}
+
+footer {
+  color: rgba(255,255,255,0.8) !important;
+  font-size: 1.2em;
 }
 
 #login-container {
-    position: absolute;
-    width: 300px;
-    top: 30px;
-    left: 50%;
-    margin-left: -150px;
-    z-index: 1000;
+  font-size: 12px;
+  position: absolute;
+  width: 300px;
+  top: 30px;
+  left: 50%;
+  margin-left: -150px;
+  z-index: 1000;
+}
+
+#login-container h1 {
+  margin: 32px;
+  font-size: 42px;
+}
+
+#login-container img {
+  margin-top: -9px;
+  margin-right: 6px;
+  height: 42px;
 }
 
 #page-container,
@@ -946,8 +959,8 @@ a.sidebar-title:focus {
 }
 
 .block-title {
-    margin: -20px -15px 20px;
-    border-bottom: 2px solid #dae0e8;
+    margin: -20px -15px 10px;
+    border-bottom: 1px solid transparent;
     border-top-left-radius: 2px;
     border-top-right-radius: 2px;
     background: rgba(218, 224, 232, .15);
@@ -2840,8 +2853,9 @@ fieldset[disabled] .btn-default.active {
 }
 
 .btn-primary {
-    background-color: #5ccdde;
-    border-color: #5ccdde;
+  padding: 8px 16px;
+  background-color: #5cdeb4;
+  border: none;
 }
 
 .btn-primary:hover,
