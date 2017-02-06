@@ -148,9 +148,6 @@
   <script src="{{ staticUrl }}/vendor/jquery/jquery-1.11.1.min.js"></script>
   <script src="{{ staticUrl }}/vendor/jquery/jquery_ui/jquery-ui.min.js"></script>
 
-  <!-- Google Maps -->
-  <script src="//maps.google.com/maps/api/js?sensor=true"></script>
-
   <!-- CodeMirror -->
   <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/codemirror.min.js"></script>
   <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/mode/javascript/javascript.min.js"></script>
@@ -166,7 +163,7 @@
   <!-- JvectorMap Plugin + US Map (more maps in plugin/backend folder) -->
   <script src="{{ staticUrl }}/vendor/plugins/jvectormap/jquery.jvectormap.min.js"></script>
   <script src="{{ staticUrl }}/vendor/plugins/jvectormap/assets/jquery-jvectormap-us-lcc-en.js"></script>
-  <script src="{{ staticUrl }}/vendor/plugins/map/gmaps.min.js"></script>
+
 
   <!-- Bootstrap Tabdrop Plugin -->
   <script src="{{ staticUrl }}/vendor/plugins/tabdrop/bootstrap-tabdrop.js"></script>
@@ -248,7 +245,9 @@
   {% endfor %}
 
   </script>
-  <!-- END: PAGE SCRIPTS -->
+
+  <!-- Google Maps -->
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDy4fT-yRH42E975H9K6teKApDYCL3beAo&callback=gmapsInit" type="text/javascript"></script>
 
 </body>
 </html>

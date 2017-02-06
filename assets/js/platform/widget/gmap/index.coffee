@@ -4,6 +4,15 @@ crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 View = crowdcontrol.view.View
 
+# Detect async google maps script loading
+gmapsLoaded = false
+needsRefresh = []
+
+window.gmapsInit = ->
+  gmapsLoaded = true
+  fn() for fn in needsRefresh
+
+
 class Gmap extends View
   tag: 'gmap'
   addressField: 'address'
@@ -23,7 +32,11 @@ class Gmap extends View
       @model = model
       @refresh()
 
-  refresh: ()->
+  refresh: ->
+    return unless gmapsLoaded
+
+    GMaps = require 'gmaps'
+
     if @model?[@addressField]?
       address = @model[@addressField].line1 + ' ' +
         ((@model[@addressField].line2 + ' ') if @model[@addressField].line2) +
@@ -54,13 +67,10 @@ class Gmap extends View
 
   js: (opts)->
     super()
-
     @addressField = opts.addressfield ? @addressField
-
     $(@root).addClass('map')
-
-    @on 'update', ()=>
-      @refresh()
+    @on 'update', => @refresh()
+    needsRefresh.push => @refresh() unless gmapsLoaded
 
 Gmap.register()
 
