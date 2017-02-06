@@ -12,7 +12,6 @@ window.gmapsInit = ->
   gmapsLoaded = true
   fn() for fn in needsRefresh
 
-
 class Gmap extends View
   tag: 'gmap'
   addressField: 'address'
@@ -38,12 +37,14 @@ class Gmap extends View
     GMaps = require 'gmaps'
 
     if @model?[@addressField]?
-      address = @model[@addressField].line1 + ' ' +
-        ((@model[@addressField].line2 + ' ') if @model[@addressField].line2) +
-        @model[@addressField].city + ' ' +
-        @model[@addressField].state + ' ' +
-        @model[@addressField].postalCode + ' ' +
-        @model[@addressField].country
+      line1         = @model[@addressField].line1 ? ''
+      line2         = @model[@addressField].line2 ? ''
+      city          = @model[@addressField].city ? ''
+      state         = @model[@addressField].state ? ''
+      postalCode    = @model[@addressField].postalCode ? ''
+      country       = @model[@addressField].country ? ''
+
+      address = line1 + ' ' + line2 + ' ' + city + ' ' + state + ' ' + postalCode + ' ' + country
 
     if address != @lastAddress
       @lastAddress = address
