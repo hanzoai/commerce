@@ -19,6 +19,9 @@ dispatch:
   - url: "www.crowdstart.com/*"
     module: platform
 
+  - url: "dash.hanzo.io/*"
+    module: platform
+
   - url: "a.vifijo.com/*"
     module: api
 
