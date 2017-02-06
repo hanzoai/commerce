@@ -205,7 +205,7 @@ var Core = function(options) {
       // Functions Calls
       sbOnLoadCheck();
       $("#toggle_sidemenu_t").on('click', sidebarTopToggle);
-      $("#toggle_sidemenu_l").on('click', sidebarLeftToggle);
+      $("#toggle_sidemenu").on('click', sidebarLeftToggle);
       $("#toggle_sidemenu_r").on('click', sidebarRightToggle);
 
       // Attach debounced resize handler

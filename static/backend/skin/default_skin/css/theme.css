@@ -18361,7 +18361,7 @@ body.sb-top #toggle_sidemenu_t {
     height: 60px;
     margin: 0;
     font-size: 24px;
-    color: #AAA;
+    color: white;
     border-radius: 0;
     border: 0;
     text-align: center;
@@ -20046,108 +20046,7 @@ body.sb-l-m #sidebar_left.nano > .nano-content {
 body.sb-l-m.mobile-view .nano > .nano-pane {
   display: none !important;
 }
-/*==========================================================
-  I. Sidebar Responsive Settings - Added via Update v1.2.
-     If window <900px create even smaller minified sidebar
-=========================================================== */
-@media (max-width: 900px) {
-  /* Sidebar Minified State */
-  body.sb-l-m #sidebar_left {
-    width: 45px;
-  }
-  body.sb-l-m #sidebar_left:before {
-    width: 45px;
-  }
-  /* Sidebar-menu Top Level - Icon */
-  body.sb-l-m .sidebar-menu > li > a > span:nth-child(1) {
-    left: -1px;
-    width: 45px;
-    font-size: 18px;
-  }
-  /* Sidebar-menu Top Level - Title */
-  body.sb-l-m .sidebar-menu > li > a > .sidebar-title {
-    position: absolute;
-    left: 45px;
-    top: -4px;
-    width: 180px;
-    height: 44px;
-    line-height: 44px;
-    font-size: 14px;
-    font-weight: 300;
-    padding-left: 15px;
-    border-left: 1px solid #222;
-    background-color: #282d33;
-  }
-  /* Sidebar-menu Sub Level */
-  body.sb-l-m .sidebar-menu > li > ul {
-    position: absolute;
-    left: 45px;
-    top: 38px;
-    width: 180px;
-    height: auto;
-    border-left: 1px solid #222;
-    padding-bottom: 7px;
-    overflow: hidden;
-  }
-  /* Sidebar-menu Multi Level */
-  body.sb-l-m .sidebar-menu > li > ul > li ul {
-    width: 180px;
-  }
-  /* Sidebar-menu Sub Level - Link Padding */
-  body.sb-l-m .sidebar-menu li > ul > li > a {
-    padding: 8px 20px 8px 20px;
-  }
-  /* Sidebar-menu Multi Level - Link Padding */
-  body.sb-l-m .sidebar-menu li > ul > li > ul > li a {
-    padding: 8px 20px 8px 35px;
-  }
-  /* Adjust Primary Content Container - Sidebar Minified */
-  body.sb-l-m #content_wrapper {
-    margin-left: 45px;
-  }
-  /* Adjust Primary Content Container - Sidebar Hidden */
-  body.sb-l-c.sb-l-m #content_wrapper {
-    margin-left: 0;
-  }
-  /* Adjust Navbar Logo/Branding - Hide Logo */
-  body.sb-l-o .navbar-brand,
-  body.sb-l-m .navbar-brand {
-    display: none;
-  }
-  /* Adjust Navbar Logo/Branding - Adjust Width */
-  body.sb-l-o .navbar-branding,
-  body.sb-l-m .navbar-branding {
-    max-width: 45px;
-    margin-right: 5px;
-  }
-  /* Adjust Navbar Toggle - Sidebar Open */
-  body.sb-l-o .navbar #toggle_sidemenu_l {
-    transform: rotate(90deg);
-  }
-  /* Adjust Navbar Toggle - Sidebar Minified */
-  body.sb-l-o.sb-l-m .navbar #toggle_sidemenu_l {
-    transform: rotate(0deg);
-  }
-  /* Adjust Navbar Toggle - Sidebar Open + Minified */
-  body.sb-l-o .navbar #toggle_sidemenu_l,
-  body.sb-l-m .navbar #toggle_sidemenu_l {
-    width: 45px;
-  }
-  /* Hide sidebar user menu button when the sidebar is
-    collapsed. As it's not accessible in this mode*/
-  .sb-l-o .navbar .sidebar-menu-toggle,
-  .sb-l-c .navbar .sidebar-menu-toggle {
-    margin-left: 10px;
-    display: none;
-  }
-  #toggle_sidemenu_r {
-    margin-top: 4px;
-  }
-  body.sb-l-m #sidebar_left.sidebar-light .sidebar-menu > li > a > .sidebar-title,
-  body.sb-l-m #sidebar_left.sidebar-light .sidebar-menu > li > ul {
-    left: 44px;
-  }
-}
+
 /* ==============================================
    Right Sidebar
      A. Default Closed State
@@ -20502,10 +20401,6 @@ body.sb-r-o #toggle_sidemenu_r span.glyphicons {
   #topbar {
     padding: 10px 6px 10px 14px;
   }
-  #topbar.alt {
-    min-height: 40px;
-    padding: 10px 6px 10px 14px;
-  }
   #topbar .topbar-dropdown {
     display: none !important;
   }
@@ -20589,11 +20484,6 @@ body.sb-l-c #content-footer.affix {
 }
 body.sb-l-m #content-footer.affix {
   margin-left: 60px;
-}
-@media (max-width: 900px) {
-  body.sb-l-m #content-footer.affix {
-    margin-left: 45px;
-  }
 }
 /* ================================================
    PAGES - In Order

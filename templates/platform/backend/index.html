@@ -4,7 +4,7 @@
 <head>
   <!-- Meta, title, CSS, favicons, etc. -->
   <meta charset="utf-8">
-  <title>Hanzo</title>
+  <title>hanzo</title>
 
   <meta name="author" content="Hanzo, inc">
   <meta name="robots" content="noindex, nofollow">
@@ -61,22 +61,23 @@
     <!-- Start: Header -->
     <header class="navbar navbar-fixed-top navbar-shadow bg-dark">
       <div class="navbar-branding">
-        <a href="/" class="navbar-brand">
-          <img src="{{ staticUrl }}/frontend/img/logo.png">
-          Hanzo
+        <span id="toggle_sidemenu">
+          <img src="{{ staticUrl }}/backend/img/logo.svg">
+        </span>
+        <a href="{{ urlFor("platform", "/dashboard") }}" class="navbar-brand">
+          hanzo
         </a>
-        <span id="toggle_sidemenu_l" class="ad ad-lines"></span>
       </div>
-      <form action="#search" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
-        <div class="form-group">
-          <input type="text" id="q" name="q" class="form-control search" placeholder="Search...">
-        </div>
-      </form>
       <ul class="nav navbar-nav navbar-right">
+        <form action="#search" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
+          <div class="form-group">
+            <input type="text" id="q" name="q" class="form-control search" placeholder="Search...">
+          </div>
+        </form>
         <li class="dropdown menu-merge">
           <a href="#" class="dropdown-toggle fw600" data-toggle="dropdown">
             <span class="hidden-xs pl15"> {{ ctx.organization.FullName }} </span>
-            <span class="caret caret-tp hidden-xs"></span>
+            <span class="caret caret-tp"></span>
           </a>
           <ul class="dropdown-menu list-group dropdown-persist w250" role="menu">
             <li class="list-group-item">
