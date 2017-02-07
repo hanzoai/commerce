@@ -3,23 +3,29 @@
   </head>
   <body>
     <strong>User</strong>
+    <br>
+    <br>
     <a href="{{ urlFor("platform") }}/#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a>
-    <hr>
     <a href="#" onclick="document.getElementById('user').style.display='block'; return false;" target="_blank">View JSON</a>
     <pre id="user" style="display:none">
-      {{ usr.JSONString() }}
       <hr>
+      {{ usr.JSONString() }}
     </pre>
+    <hr>
+    <br>
+    <br>
     <strong>Orders</strong>
+    <br>
     {% for ord in ords %}
       <br>
       <a href="{{ urlFor("platform") }}/#order/{{ order.Id() }}" target="_blank">{{ ord.Number }}</a>
       <hr>
       <a href="#" onclick="document.getElementById('order{{ ord.Number }}').style.display='block'; return false;" target="_blank">View JSON</a>
       <pre id="order{{ ord.Number }}" style="display:none">
-        {{ ord.JSONString() }}
         <hr>
+        {{ ord.JSONString() }}
       </pre>
+      <hr>
     {% endfor %}
   </body>
 </html>
