@@ -44,6 +44,7 @@ import (
 	xdApi "crowdstart.com/api/xd"
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
+	reamazeApi "crowdstart.com/thirdparty/reamaze"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
 	shipwireApi "crowdstart.com/thirdparty/shipwire"
 	stripeApi "crowdstart.com/thirdparty/stripe/api"
@@ -127,6 +128,9 @@ func Route(api router.Router) {
 
 	// Access token API
 	accessTokenApi.Route(api)
+
+	// Reamaze custom store API endpoints
+	reamazeApi.Route(api)
 
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
