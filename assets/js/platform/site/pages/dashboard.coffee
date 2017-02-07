@@ -50,21 +50,21 @@ class Dashboard extends Page
         pointBorderColor: '#1BE7FF'
         pointBackgroundColor: 'C0F8FF'
         borderColor: '#1BE7FF'
-        yAxesGroup: 'Currency',
+        yAxisID: 'Currency',
       ,
         label: 'Orders',
         data: []
         pointBorderColor: '#6EEB83'
         pointBackgroundColor: '#D7F9DD'
         borderColor: '#6EEB83'
-        yAxesGroup: 'Count',
+        yAxisID: 'Count',
       ,
         label: 'Users',
         data: []
         pointBorderColor: '#FF5714'
         pointBackgroundColor: '#FFD1BE'
         borderColor: '#FF5714'
-        yAxesGroup: 'Count',
+        yAxisID: 'Count',
       ]
     options:
       scales:
@@ -73,7 +73,7 @@ class Dashboard extends Page
           position: 'bottom'
         ]
         yAxes: [
-          name: 'Currency'
+          id: 'Currency'
           type: 'linear'
           position: "left"
           ticks:
@@ -81,10 +81,10 @@ class Dashboard extends Page
             callback: (value)->
               v = parseInt(value * 100, 10) / 100
               ret = "#{util.currency.getSymbol(currencyModel.value)}#{v}"
-              ret += "(#{currencyModel.value.toUpperCase()})" if currencyModel.value
+              ret += " (#{currencyModel.value.toUpperCase()})" if currencyModel.value
               return ret
         ,
-          name: 'Count'
+          id: 'Count'
           type: 'linear'
           position: "right"
           ticks:
