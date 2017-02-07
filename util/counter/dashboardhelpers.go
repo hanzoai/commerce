@@ -131,8 +131,13 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 	data.TotalOrders = orders
 	data.DailySales = make(currencyValues)
+	data.DailySales[currency.USD] = make([]int, buckets)
 
-	log.Debug("Currencies %v", currencies)
+	// Default initialization
+	data.TotalSales[currency.USD] = 0
+	data.DailyOrders = make([]int, buckets)
+	data.DailyUsers = make([]int, buckets)
+	data.DailySubscribers = make([]int, buckets)
 
 	for _, cr := range currencies {
 		cur := currency.Type(cr)
