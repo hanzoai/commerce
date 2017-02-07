@@ -37,10 +37,15 @@
         });
       });
     </script>
+    <style>
+      body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 0.8em;
+      }
+    </style>
   </head>
   <body>
     <strong>User</strong>
-    <br>
     <br>
     <a href="{{ urlFor("platform") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
     <a class="user-click" href="#">View JSON</a>
@@ -56,7 +61,6 @@
     <hr>
     <br>
     <strong>Orders</strong>
-    <br>
     {% for ord in ords %}
       <br>
       <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
