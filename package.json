@@ -14,6 +14,7 @@
     "bluebird": "2.9.34",
     "blueimp-canvas-to-blob": "2.1.1",
     "card": "1.0.0",
+    "chart.js": "2.4.0",
     "coffee-script": "1.11.1",
     "crowdcontrol": "1.0.54",
     "crowdstart-analytics": "0.2.16",
