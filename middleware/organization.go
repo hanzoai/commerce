@@ -37,7 +37,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 		org := organization.New(db)
 		err := org.GetById(orgId)
 		if err != nil {
-			log.Warn("Unable to acquire organization.")
+			log.Warn("Unable to acquire organization.", c)
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
 			c.AbortWithStatus(302)
