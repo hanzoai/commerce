@@ -1,5 +1,13 @@
 <html>
   <head>
+    <script type="text/javascript">
+      window.onload = function() {
+        window.parent.postMessage({
+          message: 'reamaze:resize',
+          height: document.body.scrollHeight
+        }, "*");
+      };
+    </script>
   </head>
   <body>
     <strong>User</strong>
