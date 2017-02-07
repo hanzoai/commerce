@@ -15,7 +15,7 @@
 
       var show = function(sel) {
         return function(e) {
-          $(sel).css('display', 'block');
+          $(sel).toggle();
           window.parent.postMessage({
             message: 'reamaze:resize',
             height: document.body.scrollHeight
