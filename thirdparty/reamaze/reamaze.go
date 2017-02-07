@@ -4,12 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/reamaze/custommodule"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 
 	"crypto/hmac"
+	"crypto/sha256"
 )
 
 // CheckMAC reports whether messageMAC is a valid HMAC tag for message.
@@ -24,12 +26,12 @@ func verifyHMAC(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
 	q := c.Request.URL.Query()
-	hmac := q.Get("hmac")
+	hmacStr := q.Get("hmac")
 
 	q.Del("hmac")
-	queryStr = q.Encode()
+	queryStr := q.Encode()
 
-	if checkMAC(queryStr, hmac, org.Reamaze.Secret) {
+	if checkMAC([]byte(queryStr), []byte(hmacStr), []byte(org.Reamaze.Secret)) {
 		log.Panic("Reamaze signature is not valid", c)
 	}
 }
