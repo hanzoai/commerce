@@ -36,10 +36,9 @@ func Dashboard(c *gin.Context) {
 	var orgNames []*organization.Organization
 
 	if verusEmailRe.MatchString(usr.Email) {
-		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
+		if _, err := organization.Query(db).Filter("Enabled=", true).GetAll(&orgNames); err != nil {
 			log.Warn("Unable to fetch organizations for switcher.")
 		}
-
 		usr.IsOwner = true
 	} else {
 		orgIds := usr.Organizations
@@ -49,9 +48,7 @@ func Dashboard(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			if org.Enabled {
-				orgNames = append(orgNames, org)
-			}
+			orgNames = append(orgNames, org)
 		}
 
 		org := middleware.GetOrganization(c)
