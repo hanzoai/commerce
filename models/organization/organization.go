@@ -181,6 +181,10 @@ type Organization struct {
 		ErrorUrl   string
 	} `json:"-" datastore:",noindex"`
 
+	Reamaze struct {
+		Secret string
+	} `json:"-" datastore:"`
+
 	// Signup options
 	SignUpOptions struct {
 		// Controls the enabled status of account after creation
