@@ -17,15 +17,16 @@
     <strong>User</strong>
     <br>
     <br>
-    <a href="{{ urlFor("platform") }}/#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a>
-    <br>
+    <a href="{{ urlFor("platform") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
     <a href="#" onclick="document.getElementById('user').style.display='block'; return false;" target="_blank">View JSON</a>
-    <pre id="user" style="display:none">
+    <div id="user">
       <hr>
       <script type="text/javascript">
-        $('#user').append(JSON.stringify(JSON.parse({{ usr.JSONString() }}), null, 2));
+        $('#user pre').append(JSON.stringify(JSON.parse('{{ usr.JSONString() | safe }}'), null, 2));
       </script>
-    </pre>
+      <pre style="display:none">
+      </pre>
+    </div>
     <hr>
     <br>
     <br>
@@ -33,15 +34,16 @@
     <br>
     {% for ord in ords %}
       <br>
-      <a href="{{ urlFor("platform") }}/#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a>
-      <br>
+      <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
       <a href="#" onclick="document.getElementById('order{{ ord.Number }}').style.display='block'; return false;" target="_blank">View JSON</a>
-      <pre id="order{{ ord.Number }}" style="display:none">
+      <div id="order{{ ord.Number }}">
         <hr>
         <script type="text/javascript">
-          $('#order{{ ord.Number }}').append(JSON.stringify(JSON.parse({{ ord.JSONString() }}), null, 2));
+          $('#order{{ ord.Number }} pre').append(JSON.stringify(JSON.parse('{{ ord.JSONString() | safe }}'), null, 2));
         </script>
-      </pre>
+        <pre style="display:none">
+        </pre>
+      </div>
       <hr>
     {% endfor %}
   </body>
