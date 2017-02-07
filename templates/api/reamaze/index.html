@@ -1,5 +1,10 @@
 <html>
   <head>
+    <script
+      src="https://code.jquery.com/jquery-2.2.4.min.js"
+      integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+      crossorigin="anonymous">
+    </script>
     <script type="text/javascript">
       window.onload = function() {
         window.parent.postMessage({
@@ -7,50 +12,63 @@
           height: document.body.scrollHeight
         }, "*");
       };
-      window.show = function(id) {
-        document.getElementById(id).style.display='block';
-        window.parent.postMessage({
-          message: 'reamaze:resize',
-          height: document.body.scrollHeight
-        }, "*");
-        return false;
-      }
+
+      var show = function(sel) {
+        return function(e) {
+          $(sel).css('display', 'block');
+          window.parent.postMessage({
+            message: 'reamaze:resize',
+            height: document.body.scrollHeight
+          }, "*");
+          e.stopPropagation();
+          e.preventDefault();
+          return false;
+        }
+      };
+
+      $(document).ready(function() {
+        $('.user-click').click(show('#user'));
+      });
+
+      $(document).ready(function() {
+        $('.order-click').each(function() {
+          var $el = $(this)
+          $el.click(show('#order' + $el.attr('data-number')));
+        });
+      });
     </script>
-  <script
-    src="https://code.jquery.com/jquery-2.2.4.min.js"
-    integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
-    crossorigin="anonymous"></script>
   </head>
   <body>
     <strong>User</strong>
     <br>
     <br>
     <a href="{{ urlFor("platform") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
-    <a href="#" onclick="show('user')" target="_blank">View JSON</a>
-    <div id="user">
+    <a class="user-click" href="#">View JSON</a>
+    <div id="user" style="display:none">
       <hr>
       <script type="text/javascript">
-        $('#user pre').append(JSON.stringify(JSON.parse('{{ usr.JSONString() | safe }}'), null, 2));
+        $(document).ready(function(){
+          $('#user pre').append(JSON.stringify(JSON.parse('{{ usr.JSONString() | safe }}'), null, 2));
+        });
       </script>
-      <pre style="display:none">
-      </pre>
+      <pre></pre>
     </div>
     <hr>
-    <br>
     <br>
     <strong>Orders</strong>
     <br>
     {% for ord in ords %}
       <br>
       <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
-      <a href="#" onclick="show('order{{ ord.Number }}')" target="_blank">View JSON</a>
-      <div id="order{{ ord.Number }}">
+      <a class="order-click" data-number="{{ ord.Number }}" href="#">View JSON</a>
+      <div id="order{{ ord.Number }}" style="display:none">
         <hr>
         <script type="text/javascript">
-          $('#order{{ ord.Number }} pre').append(JSON.stringify(JSON.parse('{{ ord.JSONString() | safe }}'), null, 2));
+          $(document).ready(function(){
+            $('#order{{ ord.Number }} pre').append(JSON.stringify(JSON.parse('{{ ord.JSONString() | safe }}'), null, 2));
+          });
         </script>
-        <pre style="display:none">
-        </pre>
+        <pre></pre>
       </div>
       <hr>
     {% endfor %}
