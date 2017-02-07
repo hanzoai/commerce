@@ -21,7 +21,7 @@ func init() {
 
 	// Frontend
 	// router.GET("/", frontend.Index)
-	router.GET("/", admin.Dashboard)
+	router.GET("/", loginRequired, acquireUser, acquireOrganization, admin.Dashboard)
 	router.GET("/about", frontend.About)
 	router.GET("/contact", frontend.Contact)
 	router.GET("/faq", frontend.Faq)
