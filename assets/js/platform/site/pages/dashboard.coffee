@@ -16,6 +16,11 @@ crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 Api = crowdcontrol.data.Api
 
+# hack
+currencyModel =
+  name: 'currency'
+  value: ''
+
 class Dashboard extends Page
   tag: 'page-dashboard'
   icon: 'glyphicon glyphicon-home'
@@ -36,61 +41,113 @@ class Dashboard extends Page
       @refresh()
 
   chartModel:
-    xAxis: [{
-      categories: []
-      crosshair: true
-    }]
-    yAxis: [
-      {
-        legend:
-          enabled: false
-        floor: 0
-        labels:
-          format: '{value:.2f}'
-          style:
-            color: 'green'
-        title:
-          text: 'Sales',
-          style:
-              color: 'green'
-      },
-      {
-        floor: 0
-        labels:
-          style:
-            color: 'grey'
-        title:
-          text: 'Count',
-          style:
-              color: 'grey'
-        opposite: true
-      },
-    ]
-    series: [
-      {
-        name: 'Sales'
-        type: 'areaspline'
+    type: 'line',
+    data:
+      labels: []
+      datasets: [
+        label: 'Sales',
         data: []
-        tooltip:
-          valueSuffix: ' '
-      }
-      {
-        name: 'Orders'
-        type: 'spline'
-        yAxis: 1
+        pointBorderColor: '#1BE7FF'
+        pointBackgroundColor: 'C0F8FF'
+        borderColor: '#1BE7FF'
+        yAxesGroup: 'Currency',
+      ,
+        label: 'Orders',
         data: []
-        tooltip:
-          valueSuffix: ' '
-      }
-      {
-        name: 'Users'
-        type: 'spline'
-        yAxis: 1
+        pointBorderColor: '#6EEB83'
+        pointBackgroundColor: '#D7F9DD'
+        borderColor: '#6EEB83'
+        yAxesGroup: 'Count',
+      ,
+        label: 'Users',
         data: []
-        tooltip:
-          valueSuffix: ' '
-      }
-    ]
+        pointBorderColor: '#FF5714'
+        pointBackgroundColor: '#FFD1BE'
+        borderColor: '#FF5714'
+        yAxesGroup: 'Count',
+      ]
+    options:
+      scales:
+        xAxes: [
+          type: 'category',
+          position: 'bottom'
+        ]
+        yAxes: [
+          name: 'Currency'
+          type: 'linear'
+          position: "left"
+          ticks:
+            beginAtZero: true
+            callback: (value)->
+              v = parseInt(value * 100, 10) / 100
+              ret = "#{util.currency.getSymbol(currencyModel.value)}#{v}"
+              ret += "(#{currencyModel.value.toUpperCase()})" if currencyModel.value
+              return ret
+        ,
+          name: 'Count'
+          type: 'linear'
+          position: "right"
+          ticks:
+            beginAtZero: true
+        ]
+      responsive: false
+
+  # chartModel:
+  #   xAxis: [{
+  #     categories: []
+  #     crosshair: true
+  #   }]
+  #   yAxis: [
+  #     {
+  #       legend:
+  #         enabled: false
+  #       floor: 0
+  #       labels:
+  #         format: '{value:.2f}'
+  #         style:
+  #           color: 'green'
+  #       title:
+  #         text: 'Sales',
+  #         style:
+  #             color: 'green'
+  #     },
+  #     {
+  #       floor: 0
+  #       labels:
+  #         style:
+  #           color: 'grey'
+  #       title:
+  #         text: 'Count',
+  #         style:
+  #             color: 'grey'
+  #       opposite: true
+  #     },
+  #   ]
+  #   series: [
+  #     {
+  #       name: 'Sales'
+  #       type: 'areaspline'
+  #       data: []
+  #       tooltip:
+  #         valueSuffix: ' '
+  #     }
+  #     {
+  #       name: 'Orders'
+  #       type: 'spline'
+  #       yAxis: 1
+  #       data: []
+  #       tooltip:
+  #         valueSuffix: ' '
+  #     }
+  #     {
+  #       name: 'Users'
+  #       type: 'spline'
+  #       yAxis: 1
+  #       data: []
+  #       tooltip:
+  #         valueSuffix: ' '
+  #     }
+  #   ]
 
   # For the period select
   currencyModel:
@@ -179,7 +236,7 @@ class Dashboard extends Page
         if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth() && d1.getDate() == date.getDate()
           d2 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 0,0,0)
           @percent = (d1.getTime() - d2.getTime()) / 8.64e+7
-        @chartModel.xAxis[0].categories = [
+        @chartModel.data.labels = [
           '00:00'
           '01:00'
           '02:00'
@@ -211,7 +268,7 @@ class Dashboard extends Page
         if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth() && d1.getDate() == date.getDate()
           @percent = (date.getDay() + 1) / 7
         compareDay -= 7
-        @chartModel.xAxis[0].categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        @chartModel.data.labels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
       when 'month'
         daysInMonth = lastDayInMonth()
@@ -219,7 +276,7 @@ class Dashboard extends Page
         for d in [1..daysInMonth]
           categories.push "#{month}/#{d}"
 
-        @chartModel.xAxis[0].categories = categories
+        @chartModel.data.labels = categories
         d1 = new Date()
         if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth()
           @percent = day / daysInMonth
@@ -243,6 +300,7 @@ class Dashboard extends Page
           throw new Error 'Form failed to load: '
       )]
     ).then((rets)=>
+      currencyModel = @currencyModel
       @currencyCount = 0
       for currency, cents of @model.TotalSales
         @currencyOptions[currency.toLowerCase()] = currency.toUpperCase()
@@ -328,11 +386,36 @@ class Dashboard extends Page
         sales = @model.DailyOrders.map (val)->
           return 0
 
-      @chartModel.series[0].data = sales
-      @chartModel.series[1].data = @model.DailyOrders
-      @chartModel.series[2].data = @model.DailyUsers
+      salesXY = []
+      for k, v of sales
+        i = parseInt k, 10
+        salesXY[i] =
+          x: i
+          y: v
 
-      @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currencyModel.value)}{value:.2f} (#{@currencyModel.value.toUpperCase()})"
+      ordersXY = []
+      for k, v of @model.DailyOrders
+        i = parseInt k, 10
+        ordersXY[i] =
+          x: i
+          y: v
+
+      usersXY = []
+      for k, v of @model.DailyUsers
+        i = parseInt k, 10
+        usersXY[i] =
+          x: i
+          y: v
+
+      @chartModel.data.datasets[0].data = salesXY
+      @chartModel.data.datasets[1].data = ordersXY
+      @chartModel.data.datasets[2].data = usersXY
+
+      # @chartModel.data.datasets[0].data = sales
+      # @chartModel.data.datasets[1].data = @model.DailyOrders
+      # @chartModel.data.datasets[2].data = @model.DailyUsers
+
+      # @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currencyModel.value)}{value:.2f} (#{@currencyModel.value.toUpperCase()})"
 
       @chartObs.trigger Events.Visual.NewData, @chartModel
 
