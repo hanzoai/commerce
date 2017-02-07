@@ -49,7 +49,9 @@ func Dashboard(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			orgNames = append(orgNames, org)
+			if org.Enabled {
+				orgNames = append(orgNames, org)
+			}
 		}
 
 		org := middleware.GetOrganization(c)
