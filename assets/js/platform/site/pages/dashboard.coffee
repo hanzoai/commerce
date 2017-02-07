@@ -75,7 +75,7 @@ class Dashboard extends Page
         yAxes: [
           id: 'Currency'
           type: 'linear'
-          position: "left"
+          position: 'left'
           ticks:
             beginAtZero: true
             callback: (value)->
@@ -83,12 +83,18 @@ class Dashboard extends Page
               ret = "#{util.currency.getSymbol(currencyModel.value)}#{v}"
               ret += " (#{currencyModel.value.toUpperCase()})" if currencyModel.value
               return ret
+          scaleLabel:
+            display: true
+            labelString: 'Revenue'
         ,
           id: 'Count'
           type: 'linear'
-          position: "right"
+          position: 'right'
           ticks:
             beginAtZero: true
+          scaleLabel:
+            display: true
+            labelString: 'Amount'
         ]
       responsive: false
 
