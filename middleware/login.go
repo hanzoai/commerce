@@ -29,7 +29,7 @@ func LoginRequired(moduleName string) gin.HandlerFunc {
 			return
 		}
 
-		log.Warn("Access denied, redirecting to login page")
+		log.Warn("Access denied, redirecting to login page", c)
 		c.Redirect(302, config.UrlFor(moduleName, "/login"))
 		c.AbortWithStatus(302)
 	}
@@ -42,7 +42,7 @@ func LogoutRequired(moduleName string) gin.HandlerFunc {
 			return
 		}
 
-		log.Warn("Already logged in, redirecting to module")
+		log.Warn("Already logged in, redirecting to module", c)
 		c.Redirect(302, config.UrlFor(moduleName))
 		c.AbortWithStatus(302)
 	}
