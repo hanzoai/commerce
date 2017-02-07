@@ -30,7 +30,7 @@ func Serve(c *gin.Context) {
 	var ords []*order.Order
 	if _, err := order.Query(db).Filter("UserId=", usr.Id()).GetAll(ords); err != nil {
 		log.Warn("Orders not found for email: %v", email, c)
-		http.Fail(c, 400, "Orders not found for orders", err)
+		http.Fail(c, 400, fmt.Sprintf("Orders not found for email: %v", email), err)
 		return
 	}
 
