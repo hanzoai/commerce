@@ -1,0 +1,25 @@
+<html>
+  <head>
+  </head>
+  <body>
+    <strong>User</strong>
+    <a href="{{ urlFor("platform") }}/#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a>
+    <hr>
+    <a href="#" onclick="document.getElementById('user').style.display='block'; return false;" target="_blank">View JSON</a>
+    <pre id="user" style="display:none">
+      {{ usr.JSONString() }}
+      <hr>
+    </pre>
+    <strong>Orders</strong>
+    {% for ord in ords %}
+      <br>
+      <a href="{{ urlFor("platform") }}/#order/{{ order.Id() }}" target="_blank">{{ ord.Number }}</a>
+      <hr>
+      <a href="#" onclick="document.getElementById('order{{ ord.Number }}').style.display='block'; return false;" target="_blank">View JSON</a>
+      <pre id="order{{ ord.Number }}" style="display:none">
+        {{ ord.JSONString() }}
+        <hr>
+      </pre>
+    {% endfor %}
+  </body>
+</html>
