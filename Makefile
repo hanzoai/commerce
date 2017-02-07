@@ -310,7 +310,7 @@ auth:
 	gcloud auth login
 	appcfg.py list_versions config/staging
 
-deploy: assets-min docs deploy-app
+deploy: assets-min deploy-app
 
 deploy-debug: assets deploy-app
 

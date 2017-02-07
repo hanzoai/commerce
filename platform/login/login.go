@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.com/auth"
 	"crowdstart.com/auth/password"
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
@@ -46,7 +47,7 @@ func Login(c *gin.Context) {
 func LoginSubmit(c *gin.Context) {
 	if _, err := loginUser(c); err == nil {
 		log.Debug("Success")
-		c.Redirect(301, "dashboard")
+		c.Redirect(302, config.UrlFor("platform"))
 	} else {
 		log.Debug("Failure")
 		log.Debug("%#v", err)
@@ -60,5 +61,5 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		log.Panic("Error while logging out \n%v", err)
 	}
-	c.Redirect(302, "/")
+	c.Redirect(302, config.UrlFor("platform"))
 }

@@ -20,7 +20,8 @@ func init() {
 	acquireOrganization := middleware.AcquireOrganization("platform")
 
 	// Frontend
-	router.GET("/", frontend.Index)
+	// router.GET("/", frontend.Index)
+	router.GET("/", loginRequired, acquireUser, acquireOrganization, admin.Dashboard)
 	router.GET("/about", frontend.About)
 	router.GET("/contact", frontend.Contact)
 	router.GET("/faq", frontend.Faq)
@@ -58,7 +59,6 @@ func init() {
 	// Admin dashboard
 	dash := router.Group("")
 	dash.Use(loginRequired, acquireUser, acquireOrganization)
-	dash.GET("/dashboard", admin.Dashboard)
 
 	dash.GET("/profile", user.Profile)
 	dash.POST("/profile", user.ContactSubmit)
