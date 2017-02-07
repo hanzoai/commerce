@@ -8,6 +8,10 @@
         }, "*");
       };
     </script>
+  <script
+    src="https://code.jquery.com/jquery-2.2.4.min.js"
+    integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+    crossorigin="anonymous"></script>
   </head>
   <body>
     <strong>User</strong>
@@ -17,7 +21,9 @@
     <a href="#" onclick="document.getElementById('user').style.display='block'; return false;" target="_blank">View JSON</a>
     <pre id="user" style="display:none">
       <hr>
-      {{ usr.JSONString() }}
+      <script type="text/javascript">
+        $('#user').append(JSON.stringify(JSON.parse({{ usr.JSONString() }}), null, 2));
+      </script>
     </pre>
     <hr>
     <br>
@@ -31,7 +37,9 @@
       <a href="#" onclick="document.getElementById('order{{ ord.Number }}').style.display='block'; return false;" target="_blank">View JSON</a>
       <pre id="order{{ ord.Number }}" style="display:none">
         <hr>
-        {{ ord.JSONString() }}
+        <script type="text/javascript">
+          $('#order{{ ord.Number }}').append(JSON.stringify(JSON.parse({{ ord.JSONString() }}), null, 2));
+        </script>
       </pre>
       <hr>
     {% endfor %}
