@@ -34,5 +34,9 @@ func Serve(c *gin.Context) {
 		return
 	}
 
+	for _, ord := range ords {
+		ord.Init(db)
+	}
+
 	template.Render(c, "reamaze/index.html", "usr", usr, "ords", ords)
 }
