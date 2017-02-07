@@ -34,6 +34,6 @@ func Serve(c *gin.Context) {
 		return
 	}
 
-	template.Render(c, "backend/reamaze/index.html", "usr", usr, "ords", ords)
+	template.Render(c, "reamaze/index.html", "usr", usr, "ords", ords)
 	c.String(200, "ok\n")
 }
