@@ -20,7 +20,7 @@ func Production() *Config {
 	config.Hosts["cdn"] = "cdn.crowdstart.com"
 	config.Hosts["checkout"] = "secure.crowdstart.com"
 	config.Hosts["default"] = "static.crowdstart.com"
-	config.Hosts["platform"] = "www.crowdstart.com"
+	config.Hosts["platform"] = "dash.hanzo.io"
 	config.Hosts["preorder"] = "preorder.crowdstart.com"
 	config.Hosts["store"] = "store.crowdstart.com"
 
