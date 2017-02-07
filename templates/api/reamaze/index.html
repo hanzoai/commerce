@@ -7,6 +7,14 @@
           height: document.body.scrollHeight
         }, "*");
       };
+      window.show = function(id) {
+        document.getElementById(id).style.display='block';
+        window.parent.postMessage({
+          message: 'reamaze:resize',
+          height: document.body.scrollHeight
+        }, "*");
+        return false;
+      }
     </script>
   <script
     src="https://code.jquery.com/jquery-2.2.4.min.js"
@@ -18,7 +26,7 @@
     <br>
     <br>
     <a href="{{ urlFor("platform") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
-    <a href="#" onclick="document.getElementById('user').style.display='block'; return false;" target="_blank">View JSON</a>
+    <a href="#" onclick="show('user')" target="_blank">View JSON</a>
     <div id="user">
       <hr>
       <script type="text/javascript">
@@ -35,7 +43,7 @@
     {% for ord in ords %}
       <br>
       <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
-      <a href="#" onclick="document.getElementById('order{{ ord.Number }}').style.display='block'; return false;" target="_blank">View JSON</a>
+      <a href="#" onclick="show('order{{ ord.Number }}')" target="_blank">View JSON</a>
       <div id="order{{ ord.Number }}">
         <hr>
         <script type="text/javascript">
