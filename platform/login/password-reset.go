@@ -132,5 +132,5 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	auth.Login(c, user)
 
 	// Redirect to profile
-	c.Redirect(302, config.UrlFor("platform", "/dashboard"))
+	c.Redirect(302, config.UrlFor("platform"))
 }
