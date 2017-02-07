@@ -32,6 +32,18 @@ func EncodeBytes(value interface{}) []byte {
 	return b
 }
 
+func EncodeIndentBytes(value interface{}, prefix, indent string) []byte {
+	var b []byte
+	var err error
+
+	b, err = json.MarshalIndent(value, prefix, indent)
+
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+	return b
+}
+
 func EncodeRaw(value interface{}) json.RawMessage {
 	return json.RawMessage(EncodeBytes(value))
 }
