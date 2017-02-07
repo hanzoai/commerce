@@ -13,7 +13,7 @@ import (
 func AcquireUser(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if u, err := auth.GetCurrentUser(c); err != nil {
-			log.Warn("Unable to acquire user.")
+			log.Warn("Unable to acquire user.", c)
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
 			c.AbortWithStatus(302)
