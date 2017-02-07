@@ -64,7 +64,10 @@
     {% for ord in ords %}
       <br>
       <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
-      <a class="order-click" data-number="{{ ord.Number }}" href="#">View JSON</a>
+      <a class="order-click" data-number="{{ ord.Number }}" href="#">View JSON</a> |
+      {% if ord.Payments[0] %}
+      <a href="//dashboard.stripe.com/payments/{{ ord.Payments[0].Account.ChargeId }}">View Stripe</a>
+      {% endif %}
       <div id="order{{ ord.Number }}" style="display:none">
         <hr>
         <script type="text/javascript">
