@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
 
-	. "crowdstart.com/models/types/analytics"
+	. "hanzo.io/models/types/analytics"
 )
 
 var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {

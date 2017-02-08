@@ -3,9 +3,9 @@ package test
 import (
 	"time"
 
-	// "crowdstart.com/util/log"
+	// "hanzo.io/util/log"
 
-	. "crowdstart.com/models/types/schedule"
+	. "hanzo.io/models/types/schedule"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

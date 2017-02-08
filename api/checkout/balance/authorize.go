@@ -3,10 +3,10 @@ package balance
 import (
 	"errors"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
 )
 
 var InsufficientCredit = errors.New("Insufficient credit")

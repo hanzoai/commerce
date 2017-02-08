@@ -1,9 +1,9 @@
 package referralprogram
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/types/currency"
 )
 
 type ActionType string

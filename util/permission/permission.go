@@ -1,7 +1,7 @@
 package permission
 
 import (
-	"crowdstart.com/util/bit"
+	"hanzo.io/util/bit"
 )
 
 // There are three types of users that permissions commonly accomodate:

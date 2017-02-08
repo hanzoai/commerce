@@ -8,10 +8,10 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/discount/scope"
+	"hanzo.io/datastore"
+	"hanzo.io/models/discount/scope"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 // Computes memcache key, using format:

@@ -1,11 +1,11 @@
 package stripe_test
 
 import (
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func stripeVerifyCharge(pay *payment.Payment) {

@@ -1,12 +1,12 @@
 package test
 
 import (
-	"crowdstart.com/models/cart"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/user"
+	"hanzo.io/models/cart"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/user"
 	"github.com/icrowley/fake"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("cart", func() {

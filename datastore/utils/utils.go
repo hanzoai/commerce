@@ -3,7 +3,7 @@ package utils
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 // Helper to ignore tedious field mismatch errors (but warn appropriately

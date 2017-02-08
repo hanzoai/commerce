@@ -1,6 +1,6 @@
 package token
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "token"
 

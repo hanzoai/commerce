@@ -6,18 +6,18 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/datastore/parallel"
-	// "crowdstart.com/models"
+	"hanzo.io/datastore"
+	"hanzo.io/datastore/parallel"
+	// "hanzo.io/models"
 
-	// "crowdstart.com/util/queries"
-	"crowdstart.com/util/task"
+	// "hanzo.io/util/queries"
+	"hanzo.io/util/task"
 
-	"crowdstart.com/models/campaign"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
-	// . "crowdstart.com/thirdparty/salesforce"
+	"hanzo.io/models/campaign"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
+	// . "hanzo.io/thirdparty/salesforce"
 )
 
 // Deferred Tasks
