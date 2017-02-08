@@ -3,12 +3,12 @@ package reamaze
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/reamaze/custommodule"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/router"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/reamaze/custommodule"
+	"hanzo.io/util/log"
+	"hanzo.io/util/router"
 
 	"crypto/hmac"
 	"crypto/sha256"
