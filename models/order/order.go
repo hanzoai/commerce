@@ -2,52 +2,47 @@ package order
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
-
-	aeds "appengine/datastore"
 
 	"github.com/dustin/go-humanize"
 
+	aeds "google.golang.org/appengine/datastore"
+
+	"hanzo.io/config"
 	"hanzo.io/datastore"
-	"hanzo.io/models/affiliate"
 	"hanzo.io/models/coupon"
-	"hanzo.io/models/discount"
-	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/pricing"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
-	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
-	"hanzo.io/models/lineitem"
+	. "hanzo.io/models/lineitem"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Status string
 
 const (
 	Cancelled Status = "cancelled"
-	Completed Status = "completed"
-	Locked    Status = "locked"
-	OnHold    Status = "on-hold"
-	Open      Status = "open"
+	Completed        = "completed"
+	Locked           = "locked"
+	OnHold           = "on-hold"
+	Open             = "open"
 )
 
 type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
 
-	Number int `json:"number,omitempty"`
+	Number int `json:"number,omitempty" datastore:"-"`
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
@@ -55,15 +50,8 @@ type Order struct {
 	// Associated campaign
 	CampaignId string `json:"campaignId,omitempty"`
 
-	// Associated user or buyer.
+	// Associated Hanzo user or buyer.
 	UserId string `json:"userId,omitempty"`
-	Email  string `json:"email,omitempty"`
-
-	// Associated cart
-	CartId string `json:"cartId,omitempty"`
-
-	// Associated referrer
-	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Status
 	Status            Status            `json:"status"`
@@ -75,16 +63,16 @@ type Order struct {
 
 	// Order is unconfirmed if user has not declared (either implicitly or
 	// explicitly) precise order variant options.
-	Unconfirmed bool `json:"unconfirmed,omitempty"`
+	Unconfirmed bool `json:"unconfirmed"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
 
 	// Payment processor type - paypal, stripe, etc
-	Type payment.Type `json:"type,omitempty"`
+	Type string `json:"type"`
 
 	// Shipping method
-	ShippingMethod string `json:"shippingMethod,omitempty"`
+	ShippingMethod string `json:"shippingMethod"`
 
 	// Sum of the line item amounts. Amount in cents.
 	LineTotal currency.Cents `json:"lineTotal"`
@@ -108,249 +96,116 @@ type Order struct {
 	Total currency.Cents `json:"total"`
 
 	// Amount owed to the seller. Amount in cents.
-	Balance currency.Cents `json:"balance,omitempty"`
+	Balance currency.Cents `json:"balance"`
 
 	// Gross amount paid to the seller. Amount in cents.
-	Paid currency.Cents `json:"paid,omitempty"`
+	Paid currency.Cents `json:"paid"`
 
 	// integer	Amount refunded by the seller. Amount in cents.
 	Refunded currency.Cents `json:"refunded"`
 
-	Company         string  `json:"company,omitempty"`
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items  []lineitem.LineItem `json:"items" datastore:"-"`
-	Items_ string              `json:"-" datastore:",noindex"`
+	Items  []LineItem `json:"items"`
+	Items_ string     `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
 
-	Discounts  []*discount.Discount `json:"discounts,omitempty" datastore:"-"`
-	Discounts_ string               `json:"-" datastore:",noindex"` // need props
+	Coupons      []coupon.Coupon `json:"coupons,omitempty"`
+	CouponCodes  []string        `json:"couponCodes,omitempty"`
+	CouponCodes_ string          `json:"-"` // need props
+	ReferrerId   string          `json:"referrerId,omitempty"`
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex"`
-	CouponCodes []string        `json:"couponCodes,omitempty" datastore:",noindex"`
-
-	PaymentIds []string           `json:"payments" datastore:",noindex"`
-	Payments   []*payment.Payment `json:"-" datastore:"-"`
-
-	// Date order was cancelled at
-	CancelledAt time.Time `json:"cancelledAt,omitempty"`
+	PaymentIds  []string `json:"payments"`
+	PaymentIds_ string   `json:"-"'` // need props
 
 	// Fulfillment information
 	Fulfillment Fulfillment `json:"fulfillment"`
 
-	// gift options
-	Gift        bool   `json:"gift"`                                       // Is this a gift?
-	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
-	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
-
-	// Mailchimp tracking information
-	Mailchimp struct {
-		Id           string `json:"id,omitempty" datastore:",noindex"`
-		CampaignId   string `json:"campaignId,omitempty"`
-		TrackingCode string `json:"trackingCode,omitempty" datastore:",noindex"`
-	} `json:"mailchimp,omitempty"`
+	// Series of events that have occured relevant to this order
+	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty" datastore:",noindex"`
-
 	Test bool `json:"-"` // Whether our internal test flag is active or not
+
+	Gift        bool   `json:"gift"`        // Is this a gift?
+	GiftMessage string `json:"giftMessage"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 }
 
-func (o *Order) Validator() *val.Validator {
-	return val.New()
+func (o *Order) Defaults() {
+	o.Status = Open
+	o.PaymentStatus = payment.Unpaid
+	o.FulfillmentStatus = FulfillmentUnfulfilled
+	o.Adjustments = make([]Adjustment, 0)
+	o.History = make([]Event, 0)
+	o.Items = make([]LineItem, 0)
+	o.Metadata = make(Map)
+	o.Coupons = make([]coupon.Coupon, 0)
 }
 
-func (o *Order) Load(c <-chan aeds.Property) (err error) {
-	// Ensure we're initialized
-	o.Defaults()
-
-	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
-		return err
+func (o Order) CalculateFee(percent float64) currency.Cents {
+	// Default to config.Fee if percent is not provided
+	if percent <= 0 {
+		percent = config.Fee
 	}
 
-	// Set order number
-	o.Number = o.NumberFromId()
-
-	// Deserialize from datastore
-	if len(o.Discounts_) > 0 {
-		err = json.DecodeBytes([]byte(o.Discounts_), &o.Discounts)
-	}
-
-	if len(o.Items_) > 0 {
-		err = json.DecodeBytes([]byte(o.Items_), &o.Items)
-	}
-
-	if len(o.Metadata_) > 0 {
-		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
-	}
-
-	// Initalize coupons
-	for _, coup := range o.Coupons {
-		coup.Init(o.Model.Db)
-	}
-
-	// Initalize discounts
-	for _, dis := range o.Discounts {
-		dis.Init(o.Model.Db)
-	}
-
-	return err
-}
-
-func (o *Order) Save(c chan<- aeds.Property) (err error) {
-	// Serialize unsupported properties
-	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
-	o.Items_ = string(json.EncodeBytes(o.Items))
-	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
-	o.Number = o.NumberFromId()
-
-	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
-}
-
-func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
-	log.Info("Add Affiliate Fee")
-
-	if o.ReferrerId == "" {
-		// No referrer, no need to check affiliate
-		log.Warn("No ReferrerId")
-		return fees, nil
-	}
-
-	ctx := o.Context()
-	db := datastore.New(ctx)
-
-	// Lookup referrer
-	ref := referrer.New(db)
-	if err := ref.GetById(o.ReferrerId); err != nil {
-		log.Warn("No Referrer")
-		return fees, err
-	}
-
-	if ref.AffiliateId == "" {
-		// No affiliate, no fee
-		log.Warn("No Affiliate Id")
-		return fees, nil
-	}
-
-	// Lookup affiliate
-	aff := affiliate.New(db)
-	if err := aff.GetById(ref.AffiliateId); err != nil {
-		log.Warn("No Affiliate")
-		return fees, err
-	}
-
-	// Compute fees
-	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
-	platformFee := currency.Cents(math.Ceil(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
-
-	// Create affiliate fee
-	fe := fee.New(db)
-	fe.Name = "Affiliate commission"
-	fe.Parent = aff.Key()
-	fe.Type = fee.Affiliate
-	fe.Currency = o.Currency
-	fe.AffiliateId = aff.Id()
-	fe.Amount = affFee
-
-	fees = append(fees, fe)
-
-	// Create platform fee
-	fe = fee.New(db)
-	fe.Name = "Affiliate fee"
-	fe.Type = fee.Platform
-	fe.Currency = o.Currency
-	fe.Amount = platformFee
-
-	return append(fees, fe), nil
-}
-
-func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fee {
-	ctx := o.Context()
-	db := datastore.New(ctx)
-
-	// Add platform fee
-	fe := fee.New(db)
-	fe.Name = "Platform fee"
-	fe.Parent = pricing.Key(ctx)
-	fe.Type = fee.Platform
-	fe.Currency = o.Currency
-	fe.Amount = pricing.Card.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Card.Percent)) // Round up for platform fee
-
-	return append(fees, fe)
-}
-
-func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*fee.Fee, error) {
-	ctx := o.Context()
-	db := datastore.New(ctx)
-
-	// Add partner fees
-	for _, partner := range partners {
-		fe := fee.New(db)
-		fe.Name = "Partner fee"
-		fe.Parent = partner.Key(ctx)
-		fe.Type = fee.Platform
-		fe.Currency = o.Currency
-		fe.Amount = partner.Commission.Flat + currency.Cents(math.Floor(float64(o.Total)*partner.Commission.Percent))
-		fees = append(fees, fe)
-	}
-
-	return fees, nil
-}
-
-func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
-	fees := make([]*fee.Fee, 0)
-	total := currency.Cents(0)
-
-	// Add Affiliate fees
-	fees, err := o.AddAffiliateFee(pricing, fees)
-	if err != nil {
-		return total, fees, err
-	}
-
-	// Add Platform fees
-	fees = o.AddPlatformFee(pricing, fees)
-
-	// Add Partner fees
-	fees, err = o.AddPartnerFee(partners, fees)
-	if err != nil {
-		return total, fees, err
-	}
-
-	// Calculate total fee collected
-	for _, fe := range fees {
-		total += fe.Amount
-	}
-
-	return total, fees, nil
+	return currency.Cents(math.Floor(float64(o.Total) * percent))
 }
 
 func (o Order) NumberFromId() int {
-	ids, err := hashid.Decode(o.Id())
-	if err != nil {
-		panic(err)
+	if o.Id_ == "" {
+		return -1
 	}
-	return ids[1]
+	return hashid.Decode(o.Id_)[1]
 }
 
-func (o Order) OrderDay() string {
-	return string(o.CreatedAt.Day())
+// Get line items from datastore
+func (o *Order) GetCoupons() error {
+	o.DedupeCouponCodes()
+	db := o.Model.Db
+	ctx := db.Context
+
+	num := len(o.CouponCodes)
+	o.Coupons = make([]coupon.Coupon, num, num)
+	keys := make([]datastore.Key, num, num)
+
+	for i := 0; i < num; i++ {
+		c := coupon.New(db)
+		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
+		if err != nil {
+			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
+			return err
+		}
+
+		if !ok {
+			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
+			return errors.New("Invalid coupon code: " + code)
+		}
+
+		keys[i] = c.Key()
+	}
+
+	return db.GetMulti(keys, o.Coupons)
 }
 
-func (o Order) OrderMonthName() string {
-	return o.CreatedAt.Month().String()
-}
-
-func (o Order) OrderYear() string {
-	return string(o.CreatedAt.Year())
+func (o *Order) DedupeCouponCodes() {
+	found := make(map[string]bool)
+	j := 0
+	for i, code := range o.CouponCodes {
+		if !found[code] {
+			found[code] = true
+			o.CouponCodes[j] = o.CouponCodes[i]
+			j++
+		}
+	}
+	o.CouponCodes = o.CouponCodes[:j]
 }
 
 // Check if there is a discount
@@ -359,6 +214,107 @@ func (o Order) HasDiscount() bool {
 		return true
 	}
 	return false
+}
+
+// Update discount using coupon codes/order info.
+func (o *Order) UpdateDiscount() {
+	o.Discount = 0
+
+	num := len(o.CouponCodes)
+
+	ctx := o.Model.Db.Context
+
+	for i := 0; i < num; i++ {
+		c := &o.Coupons[i]
+		if !c.ValidFor(o.CreatedAt) {
+			continue
+		}
+
+		if c.ItemId() == "" {
+			// Not per product
+			switch c.Type {
+			case coupon.Flat:
+				o.Discount += currency.Cents(c.Amount)
+			case coupon.Percent:
+				for _, item := range o.Items {
+					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+				}
+			case coupon.FreeShipping:
+				o.Discount += currency.Cents(int(o.Shipping))
+			}
+		} else {
+			// Coupons per product
+			for _, item := range o.Items {
+				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
+				if item.Id() == c.ItemId() {
+					switch c.Type {
+					case coupon.Flat:
+						o.Discount += currency.Cents(item.Quantity * c.Amount)
+					case coupon.Percent:
+						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+					case coupon.FreeItem:
+						o.Discount += currency.Cents(item.Price)
+					}
+
+					// Break out unless required to apply to each product
+					if c.Once {
+						break
+					}
+				}
+			}
+		}
+	}
+}
+
+// Update discount using coupon codes/order info.
+// Refactor later when we have more time to think about it
+func (o *Order) UpdateCouponItems() error {
+	nCodes := len(o.CouponCodes)
+
+	items := make([]LineItem, 0)
+	for _, item := range o.Items {
+		if item.AddedBy != "coupon" {
+			items = append(items, item)
+		}
+	}
+
+	o.Items = items
+
+	for i := 0; i < nCodes; i++ {
+		c := &o.Coupons[i]
+		if !c.ValidFor(o.CreatedAt) {
+			continue
+		}
+		if c.ProductId == "" {
+			switch c.Type {
+			case coupon.FreeItem:
+				o.Items = append(o.Items, LineItem{
+					ProductId: c.FreeProductId,
+					VariantId: c.FreeVariantId,
+					Quantity:  c.FreeQuantity,
+					Free:      true,
+					AddedBy:   "coupon",
+				})
+			}
+		} else {
+			for _, item := range o.Items {
+				if item.ProductId == c.ProductId {
+					switch c.Type {
+					case coupon.FreeItem:
+						o.Items = append(o.Items, LineItem{
+							ProductId: c.FreeProductId,
+							VariantId: c.FreeVariantId,
+							Quantity:  c.FreeQuantity,
+							Free:      true,
+							AddedBy:   "coupon",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // Update order's payment status based on payments
@@ -435,10 +391,8 @@ func (o *Order) UpdatePaymentStatus() {
 
 // Get line items from datastore
 func (o *Order) GetItemEntities() error {
-	db := o.Datastore()
-	ctx := o.Context()
-
-	log.JSON("Getting underlying entities for:", o.Items)
+	db := o.Model.Db
+	ctx := o.Model.Db.Context
 
 	nItems := len(o.Items)
 	keys := make([]datastore.Key, nItems, nItems)
@@ -482,6 +436,63 @@ func (o *Order) UpdateFromEntities() {
 	}
 }
 
+// Calculate total of an order
+func (o *Order) Tally() {
+	// Update total
+	subtotal := 0
+	nItems := len(o.Items)
+	for i := 0; i < nItems; i++ {
+		subtotal += o.Items[i].Quantity * int(o.Items[i].Price)
+	}
+	o.LineTotal = currency.Cents(subtotal)
+
+	// TODO: Make this use shipping/tax information
+	discount := int(o.Discount)
+	shipping := int(o.Shipping)
+	tax := int(o.Tax)
+	subtotal = subtotal - discount
+	total := subtotal + tax + shipping
+
+	o.Subtotal = currency.Cents(subtotal)
+	o.Total = currency.Cents(total)
+}
+
+// Update order with information from datastore and tally
+func (o *Order) UpdateAndTally(stor *store.Store) error {
+	ctx := o.Db.Context
+
+	// Get coupons from datastore
+	if err := o.GetCoupons(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get coupons")
+	}
+
+	// Update the list of free coupon items
+	o.UpdateCouponItems()
+
+	// Get underlying product/variant entities
+	if err := o.GetItemEntities(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get underlying line items")
+	}
+
+	// Update against store listings
+	if stor != nil {
+		o.UpdateEntities(stor)
+	}
+
+	// Update line items using that information
+	o.UpdateFromEntities()
+
+	// Update discount amount
+	o.UpdateDiscount()
+
+	// Tally up order again
+	o.Tally()
+
+	return nil
+}
+
 func (o Order) ItemsJSON() string {
 	return json.Encode(o.Items)
 }
@@ -506,31 +517,31 @@ func (o Order) DisplayCreatedAt() string {
 }
 
 func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Currency, o.Subtotal)
+	return DisplayPrice(o.Subtotal)
 }
 
 func (o Order) DisplayDiscount() string {
-	return DisplayPrice(o.Currency, o.Discount)
+	return DisplayPrice(o.Discount)
 }
 
 func (o Order) DisplayTax() string {
-	return DisplayPrice(o.Currency, o.Tax)
+	return DisplayPrice(o.Tax)
 }
 
 func (o Order) DisplayShipping() string {
-	return DisplayPrice(o.Currency, o.Shipping)
+	return DisplayPrice(o.Shipping)
 }
 
 func (o Order) DisplayTotal() string {
-	return DisplayPrice(o.Currency, o.Total)
+	return DisplayPrice(o.Total)
 }
 
-func (o Order) DisplayRefunded() string {
-	return DisplayPrice(o.Currency, o.Refunded)
+func (o Order) DecimalTotal() uint64 {
+	return uint64(FloatPrice(o.Total) * 100)
 }
 
-func (o Order) DisplayRemaining() string {
-	return DisplayPrice(o.Currency, o.Total-o.Refunded)
+func (o Order) DecimalFee() uint64 {
+	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
 
 func (o Order) Description() string {
@@ -566,9 +577,11 @@ func (o Order) DescriptionLong() string {
 }
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
-	payments := make([]*payment.Payment, 0)
-	if err := payment.Query(o.Db).Ancestor(o.Key()).GetModels(&payments); err != nil {
+	slice, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll()
+
+	if err != nil {
 		return nil, err
 	}
-	return payments, nil
+
+	return slice.([]*payment.Payment), nil
 }

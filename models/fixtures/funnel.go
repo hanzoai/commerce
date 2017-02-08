@@ -23,7 +23,7 @@ var Funnel = New("espy-test-funnel", func(c *gin.Context) *funnel.Funnel {
 		},
 	}
 
-	f.MustPut()
+	f.MustCreate()
 
 	return f
 })

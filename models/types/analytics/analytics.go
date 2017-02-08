@@ -1,7 +1,6 @@
 package analytics
 
 import (
-	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 )
 
@@ -65,39 +64,25 @@ type Integration struct {
 	Event string `json:"event,omitempty"`
 	Id    string `json:"id,omitempty"`
 
-	// Sampling percentage
-	Sampling float64 `json:"sampling,omitempty"`
+	Src struct {
+		Url  string `json:"url,omitempty"`
+		Type string `json:"type,omitempty"`
+	} `json:"src,omitempty"`
 
 	// Available integrations
-	Custom
+	Generic
+	FacebookAudiences
 	FacebookConversions
-	FacebookPixel
-	GoogleAdWords
 	GoogleAnalytics
-}
-
-// Override value for a given event
-type Value struct {
-	Percent float64        `json:"percent,omitempty"`
-	Value   currency.Cents `json:"value,omitempty"`
-}
-
-// Event specific value overrides
-type Values struct {
-	Currency         currency.Type `json:"currency,omitempty"`
-	ViewedProduct    Value         `json:"viewedProduct,omitempty"`
-	AddedProduct     Value         `json:"addedProduct,omitempty"`
-	InitiateCheckout Value         `json:"initiateCheckout,omitempty"`
-	AddPaymentInfo   Value         `json:"addPaymentInfo,omitempty"`
+	GoogleAdWords
 }
 
 // Integration specific properties
-type Custom struct {
+type Generic struct {
 	Code string `json:"code,omitempty"`
 }
 
-type FacebookPixel struct {
-	Values Values `json:"values,omitempty"`
+type FacebookAudiences struct {
 }
 
 type FacebookConversions struct {
@@ -109,10 +94,4 @@ type GoogleAnalytics struct {
 }
 
 type GoogleAdWords struct {
-}
-
-type Heap struct {
-}
-
-type Sentry struct {
 }

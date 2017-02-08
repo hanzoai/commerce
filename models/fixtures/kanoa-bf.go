@@ -29,21 +29,21 @@ var _ = New("kanoa-bf", func(c *gin.Context) *organization.Organization {
 	prod.Name = "Cap"
 	prod.Price = 0
 	prod.Currency = currency.USD
-	prod.MustPut()
+	prod.MustUpdate()
 
 	now := time.Now()
 
 	// Black Friday Coupon
 	cpn := coupon.New(db)
-	cpn.Code_ = "BLACKANDBLUE"
-	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Code = "BLACKANDBLUE"
+	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Black Friday Coupon"
 	cpn.Type = "free-item"
 	cpn.StartDate = now
 	cpn.Enabled = true
 	cpn.FreeProductId = prod.Id()
 	cpn.FreeQuantity = 1
-	cpn.MustPut()
+	cpn.MustUpdate()
 
 	return org
 })

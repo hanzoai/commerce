@@ -10,8 +10,8 @@ import (
 
 type Document struct {
 	Id_    string
-	Number float64
 	UserId string
+	Number float64
 
 	ProductIds string
 
@@ -46,8 +46,6 @@ type Document struct {
 	FulfillmentStatus string
 	Preorder          string
 	Confirmed         string
-
-	TrackingNumber string
 }
 
 func (d Document) Id() string {
@@ -72,8 +70,8 @@ func (o Order) Document() mixin.Document {
 
 	return &Document{
 		o.Id(),
-		float64(o.NumberFromId()),
 		o.UserId,
+		float64(o.NumberFromId()),
 
 		strings.Join(productIds, " "),
 
@@ -93,7 +91,7 @@ func (o Order) Document() mixin.Document {
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
 
-		string(o.Type),
+		o.Type,
 
 		o.CreatedAt,
 		o.UpdatedAt,
@@ -108,6 +106,5 @@ func (o Order) Document() mixin.Document {
 		string(o.FulfillmentStatus),
 		string(preorder),
 		string(confirmed),
-		string(o.Fulfillment.TrackingNumber),
 	}
 }

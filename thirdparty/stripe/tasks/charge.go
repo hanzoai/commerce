@@ -5,12 +5,12 @@ import (
 
 	"github.com/stripe/stripe-go/charge"
 
-	"appengine"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
 	"hanzo.io/util/log"
 )
 
@@ -43,19 +43,15 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 }
 
 // Synchronize payment using charge
-var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
-	log.Debug("Charge %s", ch, ctx)
-
+var ChargeSync = delay.Func("stripe-charge-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using charge
 	pay, ok, err := getPaymentFromCharge(ctx, &ch)
 	if err != nil {
-		log.Error("Failed to query for payment associated with charge '%s', namespace: '%s': %v\n%#v", ch.ID, err, ch, ctx)
+		log.Error("Failed to query for payment associated with charge '%s': %v", ch.ID, err, ctx)
 		return
 	}
-
-	log.Debug("Payment Id: %v from ChargeId: %v", pay.Id(), ch.ID, ctx)
 
 	if !ok {
 		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
@@ -67,20 +63,11 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	fees, err := pay.GetFees()
-	if err != nil {
-		log.Error("Failed to query for fees associated with charge '%s': %v", ch.ID, err, ctx)
-		return
-	}
-
 	// Update payment using charge
 	err = pay.RunInTransaction(func() error {
 		log.Debug("Payment before: %+v", pay, ctx)
 		UpdatePaymentFromCharge(pay, &ch)
 		log.Debug("Payment after: %+v", pay, ctx)
-		log.Debug("Fees before: %+v", fees, ctx)
-		UpdateFeesFromPayment(fees, pay)
-		log.Debug("Fees after: %+v", fees, ctx)
 
 		return pay.Put()
 	})

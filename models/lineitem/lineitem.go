@@ -1,6 +1,7 @@
 package lineitem
 
 import (
+	"errors"
 	"fmt"
 
 	"hanzo.io/datastore"
@@ -13,10 +14,12 @@ import (
 	. "hanzo.io/models"
 )
 
+var InvalidLineItem = errors.New("Invalid line item. Ensure ID, slug or SKU is correct.")
+
 type LineItem struct {
 	mixin.Salesforce
 
-	CollectionId string `json:"collectionId,omitempty"`
+	CollectionId string `json:"collectionId"`
 
 	Product     *product.Product `json:"-" datastore:"-"`
 	ProductId   string           `json:"productId,omitempty"`
@@ -36,16 +39,16 @@ type LineItem struct {
 
 	// Unit weight
 	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit,omitempty"`
+	WeightUnit weight.Unit `json:"weightUnit"`
 
 	// Whether taxes apply to this line item
 	Taxable bool `json:"taxable"`
 
 	// Item should be considered free due to coupon being applied or whatnot.
-	Free bool `json:"free,omitempty"`
+	Free bool `json:"free"`
 
 	// Non-user party which added this lineitem (coupon or otherwise).
-	AddedBy string `json:"addedBy,omitempty"`
+	AddedBy string `json:"addedBy"`
 }
 
 func (li LineItem) ToMap() map[string]interface{} {
@@ -67,12 +70,12 @@ func (li LineItem) TotalPrice() currency.Cents {
 	return li.Price * currency.Cents(li.Quantity)
 }
 
-func (li LineItem) DisplayPrice(t currency.Type) string {
-	return DisplayPrice(t, li.Price)
+func (li LineItem) DisplayPrice() string {
+	return DisplayPrice(li.Price)
 }
 
-func (li LineItem) DisplayTotalPrice(t currency.Type) string {
-	return DisplayPrice(t, li.TotalPrice())
+func (li LineItem) DisplayTotalPrice() string {
+	return DisplayPrice(li.TotalPrice())
 }
 
 func (li LineItem) Id() string {
@@ -80,15 +83,6 @@ func (li LineItem) Id() string {
 		return li.VariantId
 	}
 	return li.ProductId
-}
-
-// Check if id is valid identifier for this line item
-func (li LineItem) HasId(id string) bool {
-	if id == li.ProductId || id == li.VariantId || id == li.ProductSlug || id == li.VariantSKU {
-		return true
-	}
-
-	return false
 }
 
 func (li LineItem) DisplayName() string {
@@ -110,85 +104,51 @@ func (li LineItem) DisplayId() string {
 	return li.ProductSlug
 }
 
-// Returns the key and entity represented by this line item.
-func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, mixin.Entity, error) {
-	if li.VariantId != "" {
-		li.Variant = variant.New(db)
-		li.Variant.SetKey(li.VariantId)
-		return li.Variant.Key(), li.Variant, nil
-	}
-
+// Returns the entity represented by this line item, which can be used later to
+// update it's price. If key is nil, this product is already fleshed out and
+// does not need to be fetched.
+func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
 	if li.ProductId != "" {
 		li.Product = product.New(db)
-		li.Product.SetKey(li.ProductId)
-		return li.Product.Key(), li.Product, nil
-	}
-
-	if li.VariantSKU != "" {
-		li.Variant = variant.New(db)
-		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).GetKey()
+		err := li.Product.SetKey(li.ProductId)
 		if err != nil {
 			return nil, nil, err
 		}
+		return li.Product.Key(), li.Product, nil
+	}
 
-		if !ok {
-			return nil, nil, fmt.Errorf("Variant for lineitem does not exist: %v", li)
+	if li.VariantId != "" {
+		li.Variant = variant.New(db)
+		err := li.Variant.SetKey(li.VariantId)
+		if err != nil {
+			return nil, nil, err
 		}
-
 		return li.Variant.Key(), li.Variant, nil
 	}
 
 	if li.ProductSlug != "" {
 		li.Product = product.New(db)
-		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).GetKey()
+		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).KeysOnly().First()
 		if err != nil {
 			return nil, nil, err
 		}
-
-		if !ok {
-			return nil, nil, fmt.Errorf("Product for lineitem does not exist: %v", li)
-		}
-
 		if ok {
 			return li.Product.Key(), li.Product, nil
 		}
 	}
 
-	return nil, nil, LineItemError{li}
-}
-
-// Set product by id
-func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int) error {
-	prod := product.New(db)
-	if err := prod.GetById(id); err != nil {
-		return err
+	if li.VariantSKU != "" {
+		li.Variant = variant.New(db)
+		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).KeysOnly().First()
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return li.Variant.Key(), li.Variant, nil
+		}
 	}
 
-	li.Product = prod
-	li.ProductId = prod.Id()
-	li.ProductName = prod.Name
-	li.ProductSlug = prod.Slug
-	li.Quantity = quantity
-	li.Price = prod.Price
-
-	return nil
-}
-
-// Set variant by id
-func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int) error {
-	vari := variant.New(db)
-	if err := vari.GetById(id); err != nil {
-		return err
-	}
-
-	li.Variant = vari
-	li.VariantId = vari.Id()
-	li.VariantName = vari.Name
-	li.VariantSKU = vari.SKU
-	li.Quantity = quantity
-	li.Price = vari.Price
-
-	return nil
+	return nil, nil, InvalidLineItem
 }
 
 func (li *LineItem) Update() {
@@ -209,7 +169,7 @@ func (li *LineItem) Update() {
 		li.VariantSKU = li.Variant.SKU
 		li.Taxable = li.Variant.Taxable
 		li.Weight = li.Variant.Weight
-		li.WeightUnit = li.Variant.WeightUnit
+		li.WeightUnit = li.Product.WeightUnit
 	}
 }
 

@@ -1,45 +1,43 @@
 package ae
 
 import (
+	"golang.org/x/net/context"
+
 	"hanzo.io/util/log"
-	"hanzo.io/util/test/ae/aetest"
-	"hanzo.io/util/test/ae/appenginetesting"
-	"hanzo.io/util/test/ae/context"
+	"hanzo.io/util/test/ae/env"
 	"hanzo.io/util/test/ae/options"
+
+	"github.com/zeekay/aetest"
 )
 
 // aliased for simplicity
-type Context context.Context
 type Options options.Options
+type Instance aetest.Instance
 
-func NewContext(args ...Options) Context {
+func NewContext(opts ...Options) (context.Context, Instance, error) {
 	var (
-		opts options.Options
-		ctx  Context
-		err  error
+		_opts options.Options
+		ctx   context.Context
+		inst  aetest.Instance
+		err   error
 	)
 
 	// Parse options
-	switch len(args) {
+	switch len(opts) {
 	case 0:
-		opts = opts
+		_opts = _opts
 	case 1:
-		opts = options.Options(args[0])
+		_opts = options.Options(opts[0])
 	default:
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	// Detect backend to use and create context
-	if opts.PreferAppengineTesting || len(opts.TaskQueues) > 0 {
-		ctx, err = appenginetesting.New(opts)
-	} else {
-		ctx, err = aetest.New(opts)
-	}
+	ctx, inst, err = env.New(_opts)
 
 	// Blow up if we couldn't get a context.
 	if err != nil {
 		log.Panic("Failed to create context: %v", err)
 	}
 
-	return ctx
+	return ctx, inst, err
 }

@@ -3,11 +3,11 @@ package tasks
 import (
 	"time"
 
-	"appengine"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
 	"hanzo.io/util/log"
 )
 
@@ -24,8 +24,8 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 }
 
 // Synchronize payment using dispute
-var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
-	log.Debug("Dispute %s", dispute, ctx)
+var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx context.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
+	log.Warn("DISPUTE SYNC")
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get charge from Stripe
@@ -53,20 +53,9 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		return
 	}
 
-	fees, err := pay.GetFees()
-	if err != nil {
-		log.Error("Failed to query for fees associated with charge '%s': %v", ch.ID, err, ctx)
-		return
-	}
-
 	// Update payment using dispute
 	err = pay.RunInTransaction(func() error {
 		UpdatePaymentFromDispute(pay, &dispute)
-		// Update fees as necessary
-		log.Debug("Fees before: %+v", fees, ctx)
-		UpdateFeesFromPayment(fees, pay)
-		log.Debug("Fees after: %+v", fees, ctx)
-
 		return pay.Put()
 	})
 

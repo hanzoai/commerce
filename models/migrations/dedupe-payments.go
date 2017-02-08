@@ -11,18 +11,18 @@ import (
 
 var _ = New("dedupe-payments",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
 		// Bail out if we've been previously deleted
-		if pay.Deleted {
+		if pay.Deleted || pay.Test {
 			return
 		}
 
 		// See if we have a valid order
 		ord := order.New(db)
-		if err := ord.GetById(pay.OrderId); err != nil {
+		if err := ord.Get(pay.OrderId); err != nil {
 			// Not a good payment, no matching order
 			deletePayment(db.Context, pay)
 		}

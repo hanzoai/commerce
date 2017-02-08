@@ -24,7 +24,7 @@ var Variant = New("variant", func(c *gin.Context) *variant.Variant {
 	v.ProductId = prod.Id()
 	v.Price = 2000
 	v.Currency = currency.USD
-	v.MustPut()
+	v.MustUpdate()
 
 	v2 := variant.New(db)
 	v2.Parent = prod.Key()
@@ -35,10 +35,10 @@ var Variant = New("variant", func(c *gin.Context) *variant.Variant {
 	v2.ProductId = prod.Id()
 	v2.Price = 2000
 	v2.Currency = currency.USD
-	v2.MustPut()
+	v2.MustUpdate()
 
 	prod.Variants = []*variant.Variant{v, v2}
-	prod.Put()
+	prod.MustUpdate()
 
 	return v
 })

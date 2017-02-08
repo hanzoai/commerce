@@ -1,7 +1,7 @@
 package netlify
 
 import (
-	"appengine"
+	"golang.org/x/net/context"
 
 	"hanzo.io/util/log"
 
@@ -9,11 +9,11 @@ import (
 )
 
 type Client struct {
-	ctx    appengine.Context
+	ctx    context.Context
 	client *netlify.Client
 }
 
-func New(ctx appengine.Context, accessToken string) *Client {
+func New(ctx context.Context, accessToken string) *Client {
 	log.Debug("Creating Netlify client using AccessToken: '%s'", accessToken, ctx)
 
 	client := newOauthClient(ctx, accessToken)
@@ -23,7 +23,7 @@ func New(ctx appengine.Context, accessToken string) *Client {
 		client: netlify.NewClient(&netlify.Config{
 			AccessToken: accessToken,
 			HttpClient:  client,
-			UserAgent:   "Crowdstart/1.0",
+			UserAgent:   "Hanzo/1.0",
 		}),
 	}
 }

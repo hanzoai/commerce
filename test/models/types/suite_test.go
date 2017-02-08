@@ -3,6 +3,8 @@ package test
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"hanzo.io/datastore"
 	"hanzo.io/util/test/ae"
 	. "hanzo.io/util/test/ginkgo"
@@ -13,17 +15,18 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
+	ctx  context.Context
+	inst ae.Instance
+	db   *datastore.Datastore
 )
 
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
+	ctx, inst, _ = ae.NewContext()
 	db = datastore.New(ctx)
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	inst.Close()
 })

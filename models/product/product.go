@@ -3,7 +3,7 @@ package product
 import (
 	"reflect"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
@@ -31,11 +31,12 @@ type Product struct {
 
 	// Unique human readable id
 	Slug string `json:"slug"`
+	SKU  string `json:"sku"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency  currency.Type  `json:"currency"`
 	Price     currency.Cents `json:"price"`
-	ListPrice currency.Cents `json:"listPrice,omitempty"`
+	ListPrice currency.Cents `json:"listPrice"`
 
 	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`
@@ -61,9 +62,8 @@ type Product struct {
 	Description string `json:"description", datastore:",noindex"`
 
 	// Product Media
-	Header Media   `json:"header"`
-	Image  Media   `json:"image"`
-	Media  []Media `json:"media"`
+	HeaderImage Media   `json:"headerImage"`
+	Media       []Media `json:"media"`
 
 	// Is the product available
 	Available bool `json:"available"`
@@ -126,12 +126,13 @@ func (p *Product) Validator() *val.Validator {
 	// 	return errs
 }
 
-func (p *Product) Load(c <-chan aeds.Property) (err error) {
+func (p *Product) Load(properties []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+	err = datastore.LoadStruct(p, properties)
+	if err != nil {
 		return err
 	}
 
@@ -147,13 +148,13 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (p *Product) Save(c chan<- aeds.Property) (err error) {
+func (p *Product) Save() ([]aeds.Property, error) {
 	// Serialize unsupported properties
 	p.Variants_ = string(json.EncodeBytes(&p.Variants))
 	p.Options_ = string(json.Encode(&p.Options))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+	return datastore.SaveStruct(p)
 }
 
 func (p Product) DisplayName() string {
@@ -170,7 +171,7 @@ func (p Product) DisplayImage() Media {
 }
 
 func (p Product) DisplayPrice() string {
-	return DisplayPrice(p.Currency, p.MinPrice())
+	return DisplayPrice(p.MinPrice())
 }
 
 func (p Product) MinPrice() currency.Cents {

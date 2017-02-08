@@ -3,25 +3,24 @@ package balance
 import (
 	"errors"
 
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transaction"
-	"hanzo.io/util/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*aeds.Key, []*payment.Payment, error) {
 	db := ord.Db
 
-	// Get payments for this order
 	payments := make([]*payment.Payment, 0)
-	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments); err != nil {
-		return nil, payments, err
+	keys, err := payment.Query(db).Ancestor(ord.Key()).LoadAll(&payments)
+	if err != nil {
+		return nil, nil, nil, err
 	}
-
-	log.Debug("payments %v", payments)
 
 	// Capture any uncaptured payments
 	for _, p := range payments {
@@ -43,5 +42,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		}
 	}
 
-	return ord, payments, nil
+	return ord, keys, payments, nil
 }

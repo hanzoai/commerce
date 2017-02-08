@@ -3,13 +3,13 @@ package account
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/app"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -85,10 +85,28 @@ func login(c *gin.Context) {
 		return
 	}
 
-	// Return a new token with user id set
-	tok := middleware.GetToken(c)
-	tok.Set("user-id", usr.Id())
-	tok.Set("exp", time.Now().Add(time.Hour*24*7))
+	// Validate login claim set
+	claims := middleware.GetClaims(c)
 
-	http.Render(c, 200, loginRes{tok.String()})
+	ap := middleware.GetApp(c)
+	tokName := app.PublishedKey
+	if claims.Test {
+		tokName = app.TestPublishedKey
+	}
+
+	tok, ok, err := ap.GetApiKeyByName(tokName)
+	if !ok {
+		log.Error(err, c)
+		http.Fail(c, 401, "Api key has been revoked", errors.New("Api key has been revoked"))
+		return
+	}
+
+	// Issue customer token
+	aTokString, err := tok.IssueAccessToken(usr.Id(), ap.SecretKey)
+	if err != nil {
+		http.Fail(c, 500, "Could not issue login credentials", errors.New("Could not issue login credentials"))
+		return
+	}
+
+	http.Render(c, 200, loginRes{aTokString})
 }

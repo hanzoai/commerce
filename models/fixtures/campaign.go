@@ -22,6 +22,6 @@ var Campaign = New("campaign", func(c *gin.Context) *campaign.Campaign {
 	campaign.Title = "Such shirt!"
 	campaign.Description = "Shirt that bring much happiness."
 
-	campaign.MustPut()
+	campaign.MustUpdate()
 	return campaign
 })

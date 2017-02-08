@@ -1,8 +1,6 @@
 package migrations
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/models/order"
@@ -17,7 +15,7 @@ import (
 
 var _ = New("collapse-orders-by-user",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -33,7 +31,7 @@ var _ = New("collapse-orders-by-user",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", strings.Replace(usr.Email, "!______", "", 1)).Order("-CreatedAt").Get(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}
@@ -67,22 +65,23 @@ var _ = New("collapse-orders-by-user",
 		var referrals []*referral.Referral
 		var payments []*payment.Payment
 
-		if _, err := referrer.Query(db).Filter("OrderId=", oldid).GetAll(&referrers); err != nil {
+		if _, err := referrer.Query(db).Filter("OrderId=", oldid).LoadAll(&referrers); err != nil {
 			log.Warn("Failed to query out referrers, OrderId: %v", oldid, err, ctx)
 			return
 		}
 
-		if _, err := referral.Query(db).Filter("OrderId=", oldid).GetAll(&referrals); err != nil {
+		if _, err := referral.Query(db).Filter("OrderId=", oldid).LoadAll(&referrals); err != nil {
 			log.Warn("Failed to query out referrals, OrderId: %v", oldid, err, ctx)
 			return
 		}
 
-		if _, err := payment.Query(db).Filter("OrderId=", oldid).GetAll(&payments); err != nil {
+		if _, err := payment.Query(db).Filter("OrderId=", oldid).LoadAll(&payments); err != nil {
 			log.Warn("Failed to query out payments, OrderId: %v", oldid, err, ctx)
 			return
 		}
 
 		for _, ref := range referrers {
+			ref.OrderId = ord.Id()
 			ref.Init(db)
 			if err := ref.Put(); err != nil {
 				log.Warn("Failed to update referrer: %v", ref, err, ctx)

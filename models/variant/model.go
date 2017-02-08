@@ -1,28 +1,24 @@
 package variant
 
-import "hanzo.io/datastore"
-
-var kind = "variant"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (v Variant) Kind() string {
-	return kind
+	return "variant"
 }
 
 func (v *Variant) Init(db *datastore.Datastore) {
 	v.Model.Init(db, v)
 }
 
-func (v *Variant) Defaults() {
-	v.Options = make([]Option, 0)
-}
-
 func New(db *datastore.Datastore) *Variant {
 	v := new(Variant)
 	v.Init(db)
-	v.Defaults()
 	return v
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

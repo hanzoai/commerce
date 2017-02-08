@@ -1,6 +1,9 @@
 package namespace
 
 import (
+	"golang.org/x/net/context"
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/log"
@@ -15,22 +18,22 @@ type Namespace struct {
 
 func (n *Namespace) NameExists(name string) (ok bool, err error) {
 	n.RunInTransaction(func() error {
-		_, ok, err = n.IdExists(name)
+		_, ok, err = n.Model.KeyExists(name)
 		return err
 	})
+
 	return ok, err
 }
 
 // Override put on model
 func (n *Namespace) Put() (err error) {
-	return n.RunInTransaction(func() error {
+	return aeds.RunInTransaction(n.Db.Context, func(ctx context.Context) error {
 		// Set key
 		n.SetKey(n.Name)
 
 		// Check if namespace exists
 		ok, err := n.Exists()
-		if err != nil && err != datastore.ErrNoSuchEntity {
-			log.Warn("Failed to check for existence of namespace: %v", err)
+		if err != nil && err != datastore.KeyNotFound {
 			return err
 		}
 
@@ -41,5 +44,5 @@ func (n *Namespace) Put() (err error) {
 		} else {
 			return n.Model.Put()
 		}
-	}, datastore.TransactionOptions{XG: true})
+	}, &aeds.TransactionOptions{XG: true})
 }

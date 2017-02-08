@@ -12,13 +12,15 @@ import (
 	"net/http"
 	"strings"
 
-	"appengine"
-	"appengine/delay"
-	"appengine/urlfetch"
+	"golang.org/x/net/context"
 
-	"github.com/getsentry/raven-go"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/urlfetch"
+
+	raven "github.com/getsentry/raven-go"
 
 	"hanzo.io/config"
+	"hanzo.io/util/log"
 )
 
 const userAgent = "appengine-go-raven/1.0"
@@ -35,10 +37,7 @@ type SerializedException struct {
 
 // Copied verbatim from raven-go
 func serializedPacket(packet *raven.Packet) (r io.Reader, contentType string) {
-	packetJSON, err := packet.JSON()
-	if err != nil {
-		panic(err)
-	}
+	packetJSON := packet.JSON()
 
 	// Only deflate/base64 the packet if it is bigger than 1KB, as there is
 	// overhead.
@@ -56,7 +55,7 @@ func serializedPacket(packet *raven.Packet) (r io.Reader, contentType string) {
 
 // App Engine transport, uses appengine/urlfetch to deliver packets
 type AppEngineTransport struct {
-	ctx appengine.Context
+	ctx context.Context
 }
 
 // Send a packet
@@ -84,12 +83,12 @@ func (t *AppEngineTransport) Send(url, authHeader string, packet *raven.Packet) 
 	return nil
 }
 
-func NewClient(ctx appengine.Context) (client *raven.Client, err error) {
+func NewClient(ctx context.Context) (client *raven.Client, err error) {
 	// NOTE: Creates a weird worker thread processing buffer of requests, we'll close
 	// immediately after capturing this packet.
 	client, err = raven.NewClient(config.SentryDSN, map[string]string{})
 	if err != nil {
-		ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
+		log.Error("Unable to create Sentry client: %v, %v", client, err, ctx)
 		return client, err
 	}
 
@@ -142,7 +141,7 @@ func deserializeException(exception SerializedException) *raven.Exception {
 	return exc
 }
 
-var CaptureException = delay.Func("sentry-capture-exception", func(ctx appengine.Context, requestURI string, serialized SerializedException) {
+var CaptureException = delay.Func("sentry-capture-exception", func(ctx context.Context, requestURI string, serialized SerializedException) {
 	client, err := NewClient(ctx)
 	if err != nil {
 		return

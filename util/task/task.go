@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strconv"
 
-	"appengine"
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,47 +17,51 @@ import (
 )
 
 var (
-	Registry    = make(map[string][]*Task)
+	Registry    = make(map[string][]interface{})
 	contextType = reflect.TypeOf((**gin.Context)(nil)).Elem()
 )
 
-// A Task which can be invoked later by name or HTTP handler
 type Task struct {
-	Name     string
-	Number   int
-	Value    reflect.Value
-	Function interface{}
-	Delay    *Delay
+	ExpectsQuery bool
+	Fn           interface{}
+	Value        reflect.Value
+	DelayFn      *delay.Function
 }
 
-// Details about a Task's delay function, if created with special task.Func helper
-type Delay struct {
-	Function *delay.Function
-	Name     string
-}
-
-// Create a new task and register it
-func New(name string, fn interface{}) *Task {
+func NewTask(fn interface{}) *Task {
 	task := new(Task)
-	task.Name = name
 
-	// Store function details for later
-	task.Function = fn
+	// Check type of worker func to ensure it matches required signature.
+	t := reflect.TypeOf(fn)
+
+	// Ensure that fn is actually a func
+	if t.Kind() != reflect.Func {
+		log.Panic("Function is required for second parameter")
+	}
+
+	// fn should be a function that takes at least three arguments
+	argNum := t.NumIn()
+	if argNum < 1 {
+		log.Panic("Function requires at least one argument")
+	}
+
+	// First argument fn should be gin.Context
+	if t.In(0) != contextType {
+		log.Panic("First argument must be *gin.Context: %v", t)
+	}
+
+	// Get reflect.Value of fn so we can call from delay.Func
 	task.Value = reflect.ValueOf(fn)
-
-	// Automatically register task and save number for this task name
-	task.Number = Register(name, task)
-
 	return task
 }
 
-// Register a new task in task registry
-func Register(name string, tasks ...*Task) int {
+// Register a new task
+func Register(name string, tasks ...interface{}) int {
 	// Create slice for task set
 	_tasks, ok := Registry[name]
 
 	if !ok {
-		_tasks = make([]*Task, 0)
+		_tasks = make([]interface{}, 0)
 	}
 
 	// Append tasks
@@ -81,7 +85,7 @@ func Names() []string {
 	return tasks
 }
 
-// Run task(s) associated with a given name
+// Run task
 func Run(ctx *gin.Context, name string, args ...interface{}) {
 	tasks, ok := Registry[name]
 
@@ -90,26 +94,26 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	}
 
 	for i := 0; i < len(tasks); i++ {
-		switch v := tasks[i].Function.(type) {
+		switch v := tasks[i].(type) {
 		case *delay.Function:
 			v.Call(middleware.GetAppEngine(ctx), args...)
-		case func(appengine.Context):
+		case func(context.Context):
 			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
-		case func(appengine.Context, ...interface{}):
+		case func(context.Context, ...interface{}):
 			v(middleware.GetAppEngine(ctx), args...)
 		case func(*gin.Context):
 			v(ctx)
 		case func(*gin.Context, ...interface{}):
 			v(ctx, args...)
-		case *Delay:
-			v.Function.Call(middleware.GetAppEngine(ctx), fakecontext.NewContext(ctx))
+		case *Task:
+			v.DelayFn.Call(middleware.GetAppEngine(ctx), fakecontext.NewContext(ctx))
 		default:
 			log.Panic("Don't know how to call %v", reflect.ValueOf(v).Type(), ctx)
 		}
 	}
 }
 
-func getGinContext(ctx appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
+func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
 		if c, err := fakectx.Context(&ctx); err == nil {
@@ -120,45 +124,21 @@ func getGinContext(ctx appengine.Context, fakectx *fakecontext.Context, ok bool)
 	return gincontext.New(ctx)
 }
 
-// Ensure callbacks passed to `Func` match required signature
-func checkFunc(fn interface{}) {
-	// Check type of worker func to ensure it matches required signature.
-	t := reflect.TypeOf(fn)
-
-	// Ensure that fn is actually a func
-	if t.Kind() != reflect.Func {
-		log.Panic("Function is required for second parameter")
-	}
-
-	// fn should be a function that takes at least three arguments
-	argNum := t.NumIn()
-	if argNum < 1 {
-		log.Panic("Function requires at least one argument")
-	}
-
-	// First argument fn should be gin.Context
-	if t.In(0) != contextType {
-		log.Panic("First argument must be *gin.Context: %v", t)
-	}
-}
-
 // Creates a new delay.Func which will call our fn with gin.Context, etc.
 func Func(name string, fn interface{}) *delay.Function {
-	// Make sure this is a valid func
-	checkFunc(fn)
+	task := NewTask(fn)
 
-	// Create new task
-	task := New(name, fn)
-	task.Delay = new(Delay)
+	// Automatically register task
+	n := Register(name, task)
 
-	// Increment name for delay.Func if this is a duplicate func
-	dname := task.Name
-	if task.Number > 1 {
-		dname = dname + "-" + strconv.Itoa(task.Number)
+	// Increment name for delayFn if this is a duplicate func
+	if n > 1 {
+		name = name + "-" + strconv.Itoa(n)
 	}
 
-	// Create actual delay.Func
-	dfunc := delay.Func(dname, func(c appengine.Context, args ...interface{}) {
+	// Create actual delay func
+	delayFn := delay.Func(name, func(c context.Context, args ...interface{}) {
+		log.Debug("Args: %#v", args, c)
 		// Try to retrieve fake context from args
 		var fakectx *fakecontext.Context
 		var ok bool
@@ -189,12 +169,8 @@ func Func(name string, fn interface{}) *delay.Function {
 		task.Value.Call(in)
 	})
 
-	// Use delay.Func as task.Function
-	task.Function = dfunc
+	// Save reference to delay function for easy access from Task
+	task.DelayFn = delayFn
 
-	// Save details of delay func
-	task.Delay.Name = dname
-	task.Delay.Function = dfunc
-
-	return dfunc
+	return delayFn
 }

@@ -3,10 +3,10 @@ package form
 import (
 	"fmt"
 
-	"appengine"
+	"golang.org/x/net/context"
 
 	"hanzo.io/config"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
@@ -16,10 +16,10 @@ import (
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
-// Add subscriber to mailing list
-func forward(ctx appengine.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
-	if !ml.Forward.Enabled {
-		return
+// Forward subscriber
+func forward(ctx context.Context, org *organization.Organization, f *form.Form, s interface{}) error {
+	if !f.Forward.Enabled {
+		return nil
 	}
 
 	replyTo := ""
@@ -35,16 +35,16 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	}
 
 	// Forward form submission
-	toEmail := ml.Forward.Email
-	toName := ml.Forward.Name
+	toEmail := f.Forward.Email
+	toName := f.Forward.Name
 	fromEmail := "noreply@hanzo.io"
-	fromName := "Crowdstart"
-	subject := "New submission for form " + ml.Name
+	fromName := "Hanzo"
+	subject := "New submission for form " + f.Name
 
 	html := ""
 	for k, v := range metadata {
 		html += fmt.Sprintf("<b>%s</b>: %s<br><br>", k, v)
 	}
 
-	mandrill.Forward.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html)
+	return mandrill.Forward.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html)
 }

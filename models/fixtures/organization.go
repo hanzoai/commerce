@@ -4,10 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/models/types/analytics"
 )
@@ -16,23 +14,24 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	db := datastore.New(c)
 
 	// Such tees owner &operator
-	usr := User(c).(*user.User)
+	user := User(c).(*user.User)
 
 	// Our fake T-shirt company
 	org := organization.New(db)
 	org.Name = "suchtees"
 	org.GetOrCreate("Name=", org.Name)
 
+	// Our fake T-shirt company continued
 	org.FullName = "Such Tees, Inc."
-	org.Owners = []string{usr.Id()}
+	org.Owners = []string{user.Id()}
 	org.Website = "http://suchtees.com"
 	org.SecretKey = []byte("prettyprettyteesplease")
 
 	// Saved stripe tokens
-	org.Stripe.Test.UserId = "acct_16fNBDH4ZOGOmFfW"
+	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
 	org.Stripe.Test.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Test.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.Test.RefreshToken = "rt_9MArkOe9fEf4bDRstgha9Ma6r6W5JM5c3LWlWFBRwv9iA2qi"
+	org.Stripe.Test.RefreshToken = "rt_6kqLkyTC8IgfJOSlxjECmGaJfLbWyhy2BY3GgXry4tlzm6rZ"
 
 	// You can only have one set of test credentials, so live/test are the same.
 	org.Stripe.Live.UserId = org.Stripe.Test.UserId
@@ -45,8 +44,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
-	org.Paypal.ConfirmUrl = "http://hanzo.io"
-	org.Paypal.CancelUrl = "http://hanzo.io"
+	org.Paypal.ConfirmUrl = "http://www.hanzo.io"
+	org.Paypal.CancelUrl = "http://www.hanzo.io"
 
 	org.Paypal.Live.Email = "dev@hanzo.ai"
 	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"
@@ -60,37 +59,34 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Paypal.Test.SecurityPassword = ""
 	org.Paypal.Test.SecuritySignature = ""
 
-	// Add default access tokens
-	org.AddDefaultTokens()
-	log.Debug("Adding tokens: %v", org.Tokens)
-
 	// Add default analytics config
 	integrations := []Integration{
 		Integration{
-			Type: "facebook-pixel",
+			Type: "facebook-audiences",
 			Id:   "920910517982389",
+		},
+		Integration{
+			Type:  "facebook-conversions",
+			Id:    "6025763568614",
+			Event: "Sign-up",
 		},
 		Integration{
 			Type: "google-analytics",
 			Id:   "UA-65099214-1",
 		},
+		Integration{
+			Type:  "google-adwords",
+			Id:    "945491661",
+			Event: "Sign-up",
+		},
 	}
 	org.Analytics = Analytics{integrations}
 
 	// Save org into default namespace
-	org.MustPut()
-
-	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	org.MustUpdate()
 
 	// Add org to user and also save
-	usr.Organizations = []string{org.Id()}
-	usr.MustPut()
+	user.Organizations = []string{org.Id()}
+	user.MustUpdate()
 	return org
 })

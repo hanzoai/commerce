@@ -20,7 +20,7 @@ func Production() *Config {
 	config.Hosts["cdn"] = "cdn.hanzo.io"
 	config.Hosts["checkout"] = "secure.hanzo.io"
 	config.Hosts["default"] = "static.hanzo.io"
-	config.Hosts["platform"] = "dash.hanzo.io"
+	config.Hosts["platform"] = "www.hanzo.io"
 	config.Hosts["preorder"] = "preorder.hanzo.io"
 	config.Hosts["store"] = "store.hanzo.io"
 
@@ -36,8 +36,8 @@ func Production() *Config {
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
 	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
 	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
+	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
@@ -49,6 +49,10 @@ func Production() *Config {
 	config.Salesforce.ConsumerSecret = ""
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 	config.Netlify.AccessToken = "1739f774d10d95de710c35a3184c7e71d086e5e750cc99c6648274240e9377de"
+
+	config.Cloudflare.Email = "dev@hanzo.ai"
+	config.Cloudflare.Key = ""
+	config.Cloudflare.ZoneId = "1deb14dde82d473feb78d14b28d02193"
 
 	return config
 }

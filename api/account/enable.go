@@ -2,8 +2,6 @@ package account
 
 import (
 	"errors"
-	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -11,26 +9,9 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
-	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 )
-
-type twoStageEnableReq struct {
-	*user.User
-
-	Password        string `json:"password"`
-	PasswordConfirm string `json:"passwordConfirm"`
-}
-
-func (r twoStageEnableReq) GetPassword() string {
-	return r.Password
-}
-
-func (r twoStageEnableReq) GetPasswordConfirm() string {
-	return r.PasswordConfirm
-}
 
 func enable(c *gin.Context) {
 	org := middleware.GetOrganization(c)
@@ -55,27 +36,6 @@ func enable(c *gin.Context) {
 		return
 	}
 
-	if org.SignUpOptions.TwoStageEnabled {
-		usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
-
-		req := &twoStageEnableReq{User: usr}
-
-		if err := json.Decode(c.Request.Body, req); err != nil {
-			http.Fail(c, 400, "Failed decode request body", err)
-			return
-		}
-
-		if req.Password != "" {
-			if err := resetPassword(usr, req); err != nil {
-				switch err {
-				case PasswordMismatchError, PasswordMinLengthError:
-					http.Fail(c, 400, err.Error(), err)
-					return
-				}
-			}
-		}
-	}
-
 	// Set user as enabled
 	usr.Enabled = true
 	if err := usr.Put(); err != nil {
@@ -83,22 +43,14 @@ func enable(c *gin.Context) {
 		return
 	}
 
-	// Token reuseable if no password is set
-	if len(usr.PasswordHash) > 0 {
-		// Save token
-		tok.Used = true
-		if err := tok.Put(); err != nil {
-			log.Warn("Unable to update token", err, c)
-		}
+	// Save token
+	tok.Used = true
+	if err := tok.Put(); err != nil {
+		log.Warn("Unable to update token", err, c)
 	}
 
 	// Send account confirmed email
-	ctx := middleware.GetAppEngine(c)
-	emails.SendEmailConfirmedEmail(ctx, org, usr)
+	sendEmailConfirmed(c, org, usr)
 
-	loginTok := middleware.GetToken(c)
-	loginTok.Set("user-id", usr.Id())
-	loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
-
-	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.String()})
+	http.Render(c, 200, gin.H{"status": "ok"})
 }

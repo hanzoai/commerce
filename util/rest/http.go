@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
@@ -21,12 +21,12 @@ import (
 
 // Wrapped model, with a few display helpers
 type endpoint struct {
-	mixin.Model
 	rest   *Rest
 	id     string
 	count  string
 	prefix string
 	kind   string
+	entity mixin.Entity
 }
 
 func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
@@ -34,14 +34,15 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
 	endpoint.rest = r
 	endpoint.kind = r.Kind
-	endpoint.Model = mixin.Model{Db: db, Entity: r.newKind()}
+	endpoint.entity = r.entity
+	r.entity.Init(db)
 	return endpoint
 }
 
 func (e *endpoint) FirstId() string {
 	if e.id == "" {
-		if ok, _ := e.Model.Query().Get(); ok {
-			e.id = e.Model.Id()
+		if ok, _ := e.entity.Query().First(); ok {
+			e.id = e.entity.Id()
 		} else {
 			e.id = "<id>"
 		}
@@ -52,7 +53,7 @@ func (e *endpoint) FirstId() string {
 
 func (e *endpoint) EntityCount() string {
 	if e.count == "" {
-		count, _ := e.Query().All().Count()
+		count, _ := e.entity.Query().Count()
 		e.count = strconv.Itoa(count)
 	}
 

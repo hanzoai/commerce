@@ -2,8 +2,8 @@ package site
 
 import (
 	"hanzo.io/thirdparty/netlify"
+	"hanzo.io/util/event"
 	"hanzo.io/util/log"
-	"hanzo.io/util/webhook"
 )
 
 // Create
@@ -23,8 +23,7 @@ func (s *Site) BeforeCreate() error {
 }
 
 func (s *Site) AfterCreate() error {
-	webhook.Emit(s.Context(), s.Namespace(), "site.created", s)
-	return nil
+	return event.Emit(s.Context(), s.Namespace(), "site.created", s)
 }
 
 // Update
@@ -41,8 +40,7 @@ func (s *Site) BeforeUpdate(previous *Site) error {
 }
 
 func (s *Site) AfterUpdate(previous *Site) error {
-	webhook.Emit(s.Context(), s.Namespace(), "site.spdated", s)
-	return nil
+	return event.Emit(s.Context(), s.Namespace(), "site.updated", s)
 }
 
 // Delete
@@ -55,6 +53,5 @@ func (s *Site) BeforeDelete() error {
 }
 
 func (s *Site) AfterDelete() error {
-	webhook.Emit(s.Context(), s.Namespace(), "site.deleted", s)
-	return nil
+	return event.Emit(s.Context(), s.Namespace(), "site.deleted", s)
 }

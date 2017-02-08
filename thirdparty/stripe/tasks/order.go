@@ -3,8 +3,8 @@ package tasks
 import (
 	"time"
 
-	"appengine"
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
+var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
@@ -25,7 +25,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 	}
 
 	err := ord.RunInTransaction(func() error {
-		err := ord.GetById(orderId)
+		err := ord.Get(orderId)
 		if err != nil {
 			return err
 		}
@@ -33,6 +33,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 		// Update order using latest payment information
 		log.Debug("Order before: %+v", ord, ctx)
 		ord.UpdatePaymentStatus()
+		ord.Refunded += refunded
 		log.Debug("Order after: %+v", ord, ctx)
 
 		return ord.Put()

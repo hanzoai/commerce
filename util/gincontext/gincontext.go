@@ -4,7 +4,7 @@ import (
 	"log"
 	"testing"
 
-	"appengine"
+	"golang.org/x/net/context"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,14 +12,14 @@ import (
 	"hanzo.io/models/organization"
 )
 
-func New(ctx ...appengine.Context) *gin.Context {
-	var _ctx appengine.Context
+func New(ctx ...context.Context) *gin.Context {
+	var _ctx context.Context
 
 	switch len(ctx) {
 	case 1:
 		_ctx = ctx[0]
 	default:
-		log.Panic("At most one appengine.Context argument may be specified.")
+		log.Panic("At most one context.Context argument may be specified.")
 	}
 
 	// Setup default gin Context for tests
@@ -28,7 +28,7 @@ func New(ctx ...appengine.Context) *gin.Context {
 	return c
 }
 
-func SetDefaults(c *gin.Context, ctx appengine.Context) {
+func SetDefaults(c *gin.Context, ctx context.Context) {
 	c.Set("appengine", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)

@@ -23,5 +23,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.PUT("/:organizationid/analytics", adminRequired, analytics.Set)
 	api.PATCH("/:organizationid/analytics", adminRequired, analytics.Update)
 
+	router.GET("/a/:organizationid", analyticsJs)
+	router.GET("/a/:organizationid/analytics.js", analyticsJs)
+	router.GET("/n/:organizationid/native.js", nativeJs)
+
 	api.Route(router, args...)
 }

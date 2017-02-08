@@ -8,10 +8,8 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/middleware"
-	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 )
 
 func get(c *gin.Context) {
@@ -24,11 +22,6 @@ func get(c *gin.Context) {
 
 	if err := usr.LoadOrders(); err != nil {
 		http.Fail(c, 500, "User order data could get be queried", err)
-		return
-	}
-
-	if err := usr.LoadAffiliateAndPendingFees(); err != nil {
-		http.Fail(c, 500, "User affiliate '"+usr.AffiliateId+"' could get be queried", err)
 		return
 	}
 
@@ -59,9 +52,7 @@ func update(c *gin.Context) {
 }
 
 func patch(c *gin.Context) {
-	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
-	ctx := org.Db.Context
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
@@ -91,14 +82,6 @@ func patch(c *gin.Context) {
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to update user", err)
 	} else {
-		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
-
-		// Update customer in mailchimp for this user
-		if err := client.UpdateCustomer(org.DefaultStore, usr); err != nil {
-			log.Warn("Failed to update Mailchimp customer: %v", err, ctx)
-		}
-
 		http.Render(c, 200, usr)
 	}
 }

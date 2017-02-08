@@ -16,18 +16,20 @@ func Iterator(filename string) <-chan Record {
 	ch := make(chan Record)
 
 	go func() {
-		file, err := os.Open(filename)
-		defer file.Close()
+		// Open CSV file
+		csvfile, err := os.Open(filename)
+		defer csvfile.Close()
 		if err != nil {
 			log.Fatal("Failed to open CSV File: %v", err)
 		}
 
-		reader := csv.NewReader(file)
+		reader := csv.NewReader(csvfile)
 		reader.FieldsPerRecord = -1
 
 		// Skip header
 		reader.Read()
 
+		// Consume CSV
 		for i := 0; true; i++ {
 			// Loop until exhausted
 			row, err := reader.Read()
@@ -41,6 +43,5 @@ func Iterator(filename string) <-chan Record {
 		}
 		close(ch)
 	}()
-
 	return ch
 }

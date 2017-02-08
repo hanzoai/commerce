@@ -7,7 +7,7 @@ import (
 	"hanzo.io/util/template"
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 var template503 = `
@@ -21,7 +21,7 @@ var template503 = `
 		</style>
 	</head>
 	<body>
-		<h4>503 Service Unavailable (crowdstart/1.0.0)</h4>
+		<h4>503 Service Unavailable (hanzo/1.0.0)</h4>
 		<p>Service termporarily unvailable.</p>
 	</body>
 </html>

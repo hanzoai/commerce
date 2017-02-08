@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 var demoMode = true
@@ -63,8 +63,6 @@ type Config struct {
 	}
 
 	Stripe struct {
-		BankAccount string
-
 		// Current id/keys based on development mode
 		ClientId       string
 		SecretKey      string
@@ -111,15 +109,9 @@ type Config struct {
 
 	// Cloudflare {
 	Cloudflare struct {
-		Email string
-		Key   string
-		Zone  string
-	}
-
-	// Redis
-	Redis struct {
-		Url      string
-		Password string
+		Email  string
+		Key    string
+		ZoneId string
 	}
 
 	// Current working dir
@@ -191,11 +183,11 @@ func Get() *Config {
 
 	if !appengine.IsDevAppServer() {
 		switch Env {
-		case "crowdstart-staging":
+		case "hanzo-staging":
 			cachedConfig = Staging()
-		case "crowdstart-sandbox":
+		case "hanzo-sandbox":
 			cachedConfig = Sandbox()
-		case "crowdstart-us":
+		case "hanzo-production":
 			cachedConfig = Production()
 		}
 	}
@@ -233,7 +225,6 @@ var Mandrill = config.Mandrill
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes
-var Redis = config.Redis
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
 var Secret = config.Secret

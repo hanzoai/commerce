@@ -1,99 +1,171 @@
 package test
 
 import (
-	"github.com/stripe/stripe-go"
+	"errors"
+	"net/http"
+	"testing"
 
-	"hanzo.io/models/lineitem"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/net/context"
+
+	"hanzo.io/datastore"
 	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/product"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/variant"
-	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/test/ae"
+	"hanzo.io/util/test/ginclient"
 
+	. "hanzo.io/test/thirdparty/stripe/request"
+	_ "hanzo.io/thirdparty/stripe/tasks"
+	stripeApi "hanzo.io/thirdparty/stripe/webhook"
 	. "hanzo.io/util/test/ginkgo"
 )
 
-// Create a mock stripe charge
-func fakeCharge() *stripe.Charge {
-	ch := new(stripe.Charge)
-	ch.ID = "ch_000000000000000000000000"
-	ch.Live = true
-	ch.Meta = make(map[string]string)
-	return ch
+var (
+	ctx    context.Context
+	inst   ae.Instance
+	c      *gin.Context
+	client *ginclient.Client
+	db     *datastore.Datastore
+	org    *organization.Organization
+)
+
+func Test(t *testing.T) {
+	Setup("thirdparty/stripe/webhook", t)
 }
 
-// Create a mock stripe event
-func fakeEvent(name string, obj interface{}) *stripe.Event {
-	ev := new(stripe.Event)
-	ev.UserID = "1"
-	ev.Live = true
-	ev.Type = name
-	ev.ID = "evt_000000000000000000000000"
-	ev.Data = new(stripe.EventData)
-	ev.Data.Raw = json.EncodeRaw(obj)
-	return ev
+var _ = BeforeSuite(func() {
+	ctx, inst, _ = ae.NewContext(ae.Options{
+		Modules:    []string{"default"},
+		TaskQueues: []string{"default"},
+		LogChild:   true,
+	})
+	c = gincontext.New(ctx)
+	db = datastore.New(c)
+
+	org = organization.New(db)
+	org.Stripe.UserId = "1"
+	org.Stripe.Test.UserId = "1"
+	org.Put()
+
+	client = ginclient.New(ctx)
+	client.Setup(func(r *http.Request) {})
+
+	stripeApi.Route(client.Router)
+})
+
+var _ = AfterSuite(func() {
+	inst.Close()
+})
+
+// func mockStripeDisputeEvent(event, status string) (*order.Order, *payment.Payment) {
+// 	ord := order.New(db)
+// 	ord.Put()
+
+// 	pay := payment.New(db)
+// 	pay.OrderId = ord.Id()
+// 	pay.Amount = currency.Cents(1000)
+// 	pay.Put()
+
+// 	ord.PaymentIds = []string{pay.Id()}
+// 	ord.Total = currency.Cents(1000)
+// 	ord.Put()
+
+// 	request := CreateDispute(event, status)
+// 	w := client.PostRawJSON("/stripe/webhook", request)
+// 	Expect(w.Code).To(Equal(200))
+
+// 	pay2 := payment.New(db)
+// 	pay2.GetById(pay.Id())
+
+// 	ord2 := order.New(db)
+// 	ord2.GetById(ord.Id())
+
+// 	return ord2, pay2
+// }
+
+func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *payment.Payment) {
+	refunded := false
+
+	ord := order.New(db)
+	ord.Put()
+
+	pay := payment.New(db)
+	pay.OrderId = ord.Id()
+	pay.Amount = currency.Cents(1000)
+	if status == "refunded" {
+		refunded = true
+	}
+	pay.Put()
+
+	ord.PaymentIds = []string{pay.Id()}
+	ord.Total = currency.Cents(1000)
+	ord.Put()
+
+	request := CreatePayment(event, ord.Id(), pay.Id(), status, refunded, captured)
+	w := client.PostRawJSON("/stripe/webhook", request)
+	Expect(w.Code).To(Equal(200))
+
+	pay2 := payment.New(db)
+	ord2 := order.New(db)
+	err := Retry(20, func() error {
+		pay2.GetById(pay.Id())
+		if pay.Status == pay2.Status {
+			return errors.New("error")
+		}
+
+		ord2.GetById(ord.Id())
+		return nil
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	return ord2, pay2
 }
 
-var _ = Describe("Stripe Webhook", func() {
-	var req *stripe.Event
-	var ord *order.Order
-	var pay *payment.Payment
+var _ = Describe("Stripe Webhook Events", func() {
+	Context("Respond To charge.updated Events", func() {
+		It("Succeeded = true", func() {
+			ord, pay := mockStripeChargeEvent("charge.updated", "succeeded", true)
 
-	Before(func() {
-		// Create fake product, variant
-		prod := product.Fake(db)
-		prod.MustCreate()
-		vari := variant.Fake(db, prod.Id())
-		vari.MustCreate()
+			Expect(payment.Paid).To(Equal(string(pay.Status)))
+			Expect(payment.Paid).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Open).To(Equal(string(ord.Status)))
 
-		// Create fake order
-		ord = order.Fake(db, lineitem.Fake(vari))
-
-		// Create fake payment
-		pay = payment.Fake(db)
-		pay.Parent = ord.Key()
-		pay.OrderId = ord.Id()
-		pay.Amount = currency.Cents(ord.Total)
-		ord.PaymentIds = []string{pay.Id()}
-
-		// Save order
-		ord.MustCreate()
-		pay.MustCreate()
-	})
-
-	JustBefore(func() {
-		cl.Post("/stripe/webhook", req, nil, 200)
-	})
-
-	Context("charge.updated Event", func() {
-		Context("charge.status = succeeded", func() {
-			Before(func() {
-				ch := fakeCharge()
-				ch.Paid = true
-				ch.Status = "succeeded"
-				ch.Amount = uint64(ord.Total)
-				ch.Currency = stripe.Currency(ord.Currency)
-				ch.Meta["order"] = ord.Id()
-				ch.Meta["payment"] = pay.Id()
-				req = fakeEvent("charge.updated", ch)
-			})
-
-			It("Should update payment", func() {
-				id := pay.Id()
-				pay = payment.New(db)
-				pay.GetById(id)
-				log.JSON(pay)
-			})
+			Expect(ord.Paid).To(Equal(pay.Amount))
 		})
 
-		Context("charge.status = failed", func() {
-			// ord, pay := mockStripeChargeEvent("charge.updated", "failed", true)
+		It("Status = failed", func() {
+			ord, pay := mockStripeChargeEvent("charge.updated", "failed", true)
+
+			Expect(payment.Failed).To(Equal(string(pay.Status)))
+			Expect(payment.Failed).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 
-		Context("charge.status = refunded", func() {
-			// ord, pay := mockStripeChargeEvent("charge.updated", "refunded", true)
+		It("Status = refunded", func() {
+			ord, pay := mockStripeChargeEvent("charge.updated", "refunded", true)
+
+			Expect(payment.Refunded).To(Equal(string(pay.Status)))
+			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 	})
+
+	// Context("Respond To charge.dispute.updated Events", func() {
+	// 	It("Status = won", func() {
+	// 		ord, pay := mockStripeChargeEvent("charge.dispute.updated", "won", true)
+	// 		Expect(payment.Paid).To(Equal(string(pay.Status)))
+	// 		Expect(payment.Paid).To(Equal(string(ord.PaymentStatus)))
+	// 		Expect(order.Open).To(Equal(ord.Status))
+	// 	})
+
+	// 	It("Status = lost", func() {
+	// 		ord, pay := mockStripeChargeEvent("charge.dispute.updated", "won", true)
+	// 		Expect(payment.Refunded).To(Equal(string(pay.Status)))
+	// 		Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+	// 		Expect(order.Cancelled).To(Equal(ord.Status))
+	// 	})
+	// })
 })

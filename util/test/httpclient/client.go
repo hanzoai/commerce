@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine"
+	"golang.org/x/net/context"
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"
@@ -14,7 +14,7 @@ import (
 )
 
 type Client struct {
-	context    appengine.Context
+	context    context.Context
 	moduleName string
 	baseURL    string
 }

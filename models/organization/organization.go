@@ -4,17 +4,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/ryanuber/go-glob"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
 
-	"appengine"
+	"github.com/gin-gonic/gin"
+	glob "github.com/ryanuber/go-glob"
 
 	"hanzo.io/models/mixin"
+	token "hanzo.io/models/token2"
 	"hanzo.io/models/types/analytics"
-	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/connect"
-	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
@@ -69,13 +69,13 @@ type EmailConfig struct {
 
 type Organization struct {
 	mixin.Model
-	mixin.AccessToken
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
-	Owners     []string `json:"owners,omitempty" datastore:",noindex"`
-	Admins     []string `json:"admins,omitempty" datastore:",noindex"`
-	Moderators []string `json:"moderators,omitempty" datastore:",noindex"`
+	Owners     []string `json:"owners,omitempty"`
+	Owners_    string   `json:"-"` // props
+	Admins     []string `json:"admins,omitempty"`
+	Moderators []string `json:"moderators,omitempty"`
 	Enabled    bool     `json:"enabled"`
 
 	BillingEmail string  `json:"billingEmail,omitempty"`
@@ -86,30 +86,20 @@ type Organization struct {
 	Timezone string `json:"timezone"`
 
 	Country string `json:"country"`
-	TaxId   string `json:"taxId"`
+	TaxId   string `json:"-"`
 
-	// Fee structure for this organization
-	Fees pricing.Fees `json:"fees" datastore:",noindex"`
-
-	// Partner fees (private, should be up to partner to disclose)
-	Partners []pricing.Partner `json:"-" datastore:",noindex"`
+	Fee float64 `json:"fee"`
 
 	// Analytics config
-	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
+	Analytics analytics.Analytics `json:"analytics"`
 
-	// Email config
-	Email EmailConfig `json:"email" datastore:",noindex"`
+	Email EmailConfig `json:"email"`
 
-	// Default store
-	DefaultStore string `json:"defaultStore"`
-
-	// Plan settings
 	Plan struct {
 		PlanId    string
 		StartDate time.Time
 	} `json:"-"`
 
-	// Salesforce settings
 	Salesforce struct {
 		AccessToken        string `json:"accessToken"`
 		DefaultPriceBookId string `json:"defaultPriceBookId"`
@@ -118,31 +108,29 @@ type Organization struct {
 		InstanceUrl  string `json:"instanceUrl"`
 		IssuedAt     string `json:"issuedAt"`
 		RefreshToken string `json:"refreshToken"`
-		Signature    string `json:"signature" datastore:",noindex"`
+		Signature    string `json:"signature"`
 	} `json:"-"`
 
-	// Paypal connection
 	Paypal struct {
 		Live struct {
 			Email             string `json:"paypalEmail"`
 			SecurityUserId    string
-			SecurityPassword  string `datastore:",noindex"`
-			SecuritySignature string `datastore:",noindex"`
+			SecurityPassword  string
+			SecuritySignature string
 			ApplicationId     string
 		}
 		Test struct {
 			Email             string `json:"paypalEmail"`
 			SecurityUserId    string
-			SecurityPassword  string `datastore:",noindex"`
-			SecuritySignature string `datastore:",noindex"`
+			SecurityPassword  string
+			SecuritySignature string
 			ApplicationId     string
 		}
 
-		ConfirmUrl string `json:"confirmUrl" datastore:",noindex"`
-		CancelUrl  string `json:"cancelUrl" datastore:",noindex"`
+		ConfirmUrl string `json:"confirmUrl"`
+		CancelUrl  string `json:"cancelUrl"`
 	} `json:"-"`
 
-	// Stripe connection
 	Stripe struct {
 		// For convenience duplicated
 		AccessToken    string
@@ -151,22 +139,14 @@ type Organization struct {
 		UserId         string
 
 		// Save entire live and test tokens
-		Live connect.Token `datastore:",noindex"`
-		Test connect.Token `datastore:",noindex"`
+		Live connect.Token
+		Test connect.Token
 	} `json:"-"`
 
-	// Mailchimp settings
-	Mailchimp struct {
-		ListId string `json:"listId"`
-		APIKey string `json:"apiKey"`
-	} `json:"-"`
-
-	// Mandrill settings
 	Mandrill struct {
 		APIKey string
 	} `json:"-"`
 
-	// Netlify settings
 	Netlify struct {
 		AccessToken string
 		CreatedAt   time.Time
@@ -175,36 +155,22 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
-	// Affiliate configuration
-	Affiliate struct {
-		SuccessUrl string
-		ErrorUrl   string
-	} `json:"-" datastore:",noindex"`
-
-	// Signup options
-	SignUpOptions struct {
-		// Controls the enabled status of account after creation
-		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
-
-		// Turns off required backend checks
-		NoNameRequired     bool `json:"noNameRequired"`
-		NoPasswordRequired bool `json:"noPasswordRequired"`
-
-		// Requires password set on create confirmation
-		TwoStageEnabled bool `json:"twoStageEnabled"`
-		ImmediateLogin  bool `json:"immediateLogin"`
-	} `json:"signUpOptions" datastore:",noindex"`
-
-	Recaptcha struct {
-		Enabled   bool
-		SecretKey string
-	} `json:"-" datastore:",noindex"`
+	// TODO: Delete?
+	GoogleAnalytics string `json:"googleAnalytics"`
+	FacebookTag     string `json:"facebookTag"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
 
 	// List of comma deliminated email globs that result in charges of 50 cents
-	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
+	EmailWhitelist string `json:"emailWhitelist"`
+
+	SecretKey []byte `json:"-"`
+}
+
+func (o *Organization) Defaults() {
+	o.Admins = make([]string, 0)
+	o.Moderators = make([]string, 0)
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
@@ -221,15 +187,58 @@ func (o *Organization) Validator() *val.Validator {
 	return val.New().Check("FullName").Exists()
 }
 
-func (o *Organization) AddDefaultTokens() {
-	o.RemoveToken("live-secret-key")
-	o.RemoveToken("live-published-key")
-	o.RemoveToken("test-secret-key")
-	o.RemoveToken("test-published-key")
-	o.AddToken("live-secret-key", permission.Admin|permission.Live)
-	o.AddToken("live-published-key", permission.Published|permission.Live|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
-	o.AddToken("test-secret-key", permission.Admin|permission.Test)
-	o.AddToken("test-published-key", permission.Published|permission.Test|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
+func (o *Organization) ResetReferenceToken(usr *user.User, claims token.Claims) (*token.Token, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, UserNotTopLevel
+	}
+
+	o.RevokeReferenceToken(usr)
+
+	tok := token.New(o.Db)
+
+	claims.OrganizationName = o.Name
+	claims.UserId = usr.Id()
+	claims.Type = token.Reference
+	claims.JTI = tok.Id()
+	claims.IssuedAt = time.Now().Unix()
+
+	tok.Claims = claims
+	tok.AccessPeriod = 24
+
+	if _, err := tok.Encode(o.SecretKey); err != nil {
+		return nil, err
+	}
+
+	tok.MustCreate()
+
+	return tok, nil
+}
+
+func (o *Organization) GetReferenceToken(usr *user.User) (*token.Token, bool, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, false, UserNotTopLevel
+	}
+
+	tok := token.New(o.Db)
+
+	if ok, err := tok.Query().Filter("Claims.OrganizationName=", o.Name).Filter("Claims.Type=", token.Reference).Filter("Revoked=", false).Filter("Claims.UserId=", usr.Id()).First(); !ok {
+		return nil, false, err
+	}
+
+	return tok, true, nil
+}
+
+func (o *Organization) RevokeReferenceToken(usr *user.User) (*token.Token, bool, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, false, UserNotTopLevel
+	}
+
+	if tok, ok, err := o.GetReferenceToken(usr); !ok {
+		return nil, false, err
+	} else {
+		tok.Revoke()
+		return tok, true, nil
+	}
 }
 
 func userId(userOrId interface{}) string {
@@ -284,13 +293,13 @@ func (o *Organization) AddOwner(userOrId string) {
 }
 
 // Get namespaced context for this organization
-func (o Organization) Namespaced(ctx interface{}) appengine.Context {
-	var _ctx appengine.Context
+func (o Organization) Namespaced(ctx interface{}) context.Context {
+	var _ctx context.Context
 
 	switch v := ctx.(type) {
 	case *gin.Context:
-		_ctx = v.MustGet("appengine").(appengine.Context)
-	case appengine.Context:
+		_ctx = v.MustGet("appengine").(context.Context)
+	case context.Context:
 		_ctx = v
 	}
 
@@ -323,11 +332,4 @@ func (o Organization) IsTestEmail(email string) bool {
 	}
 
 	return false
-}
-
-func (o Organization) Pricing() (*pricing.Fees, []pricing.Partner) {
-	// Ensure our id is set on fees used
-	fees := o.Fees
-	fees.Id = o.Id()
-	return &fees, o.Partners
 }

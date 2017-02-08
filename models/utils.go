@@ -16,20 +16,13 @@ func FloatPrice(price currency.Cents) float64 {
 	return math.Floor(float64(price)*100+0.5) / 10000
 }
 
-func DisplayPrice(t currency.Type, price currency.Cents) string {
-	f := ""
-	if t.IsZeroDecimal() {
-		f = strconv.FormatFloat(float64(price), 'f', 0, 64)
-	} else {
-		f = strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
-	}
+// TODO: Make this work with non-decimal currencies
+func DisplayPrice(price currency.Cents) string {
+	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
 	bits := strings.Split(f, ".")
-	decimal := ""
-	if len(bits) > 1 {
-		decimal = "." + bits[1]
-	}
+	decimal := bits[1]
 	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return t.Symbol() + humanize.Comma(integer) + decimal
+	return humanize.Comma(integer) + "." + decimal
 }
 
 // Non-breaking hyphens in title
@@ -44,7 +37,7 @@ func SplitParagraph(text string) []string {
 func GetNamespaces(c interface{}) []string {
 	namespaces := make([]string, 0)
 	db := datastore.New(c)
-	keys, err := db.Query("__namespace__").GetKeys()
+	keys, err := db.Query("__namespace__").KeysOnly().GetAll(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +52,7 @@ func GetNamespaces(c interface{}) []string {
 func GetKinds(c interface{}) []string {
 	kinds := make([]string, 0)
 	db := datastore.New(c)
-	keys, err := db.Query("__kind__").GetKeys()
+	keys, err := db.Query("__kind__").KeysOnly().GetAll(nil)
 	if err != nil {
 		panic(err)
 	}

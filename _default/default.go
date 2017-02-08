@@ -1,40 +1,35 @@
 package _default
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
 	"hanzo.io/middleware"
 	"hanzo.io/util/exec"
-	hashid "hanzo.io/util/hashid/http"
 	"hanzo.io/util/log"
 	"hanzo.io/util/router"
 	"hanzo.io/util/task"
 	"hanzo.io/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
-	_ "appengine/remote_api"
+	_ "google.golang.org/appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
-	_ "hanzo.io/api/checkout/tasks"
-	_ "hanzo.io/cron/tasks"
 	_ "hanzo.io/models/fixtures"
 	_ "hanzo.io/models/migrations"
-	_ "hanzo.io/models/referrer/tasks"
-	_ "hanzo.io/models/webhook/tasks"
+	_ "hanzo.io/models/trigger/tasks"
 	_ "hanzo.io/thirdparty/mailchimp/tasks"
 	_ "hanzo.io/thirdparty/mandrill/tasks"
 	_ "hanzo.io/util/aggregate/tasks"
 	_ "hanzo.io/util/analytics/tasks"
+	_ "hanzo.io/util/webhook/tasks"
 	// _ "hanzo.io/thirdparty/salesforce/tasks"
 	_ "hanzo.io/thirdparty/stripe/tasks"
 )
 
 func Init() {
-	gin.SetMode(gin.ReleaseMode)
-
 	router := router.New("default")
 
 	// Index, development has nice index with links
@@ -55,7 +50,6 @@ func Init() {
 
 	// Setup routes for tasks
 	task.SetupRoutes(router)
-	hashid.SetupRoutes(router)
 
 	// Development-only routes below
 	if config.IsProduction {

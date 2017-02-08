@@ -1,4 +1,4 @@
-application: crowdstart-staging
+application: hanzo-staging
 module: default
 version: v1
 
@@ -24,16 +24,6 @@ handlers:
 
 - url: /wake-up
   script: _go_app
-
-- url: /hashid
-  script: _go_app
-  login: admin
-  secure: always
-
-- url: /hashid/.*
-  script: _go_app
-  login: admin
-  secure: always
 
 - url: /tasks
   script: _go_app

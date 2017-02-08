@@ -4,41 +4,43 @@ import "fmt"
 
 // DO NOT ALPHABETIZE THESE
 var kinds = map[string]int{
-	"bundle":          0,
-	"campaign":        1,
-	"collection":      2,
-	"coupon":          3,
-	"namespace":       4,
-	"order":           5,
-	"organization":    6,
-	"payment":         7,
-	"plan":            8,
-	"event":           9,
-	"product":         10,
-	"store":           11,
-	"token":           12,
-	"user":            13,
-	"variant":         14,
-	"mailinglist":     15,
-	"subscriber":      16,
-	"referral":        17,
-	"referrer":        18,
-	"transaction":     19,
-	"funnel":          20,
-	"aggregate":       21,
-	"site":            22,
-	"deploy":          23,
-	"submission":      24,
-	"cart":            31,
-	"affiliate":       32,
-	"fee":             33,
-	"transfer":        34,
-	"reversal":        35,
-	"partner":         36,
-	"discount":        37,
-	"webhook":         38,
-	"referralprogram": 39,
-	"review":          40,
+	"bundle":       0,
+	"campaign":     1,
+	"collection":   2,
+	"coupon":       3,
+	"namespace":    4,
+	"order":        5,
+	"organization": 6,
+	"payment":      7,
+	"plan":         8,
+	"event":        9,
+	"product":      10,
+	"store":        11,
+	"token":        12,
+	"user":         13,
+	"variant":      14,
+	"form":         15,
+	"subscriber":   16,
+	"referral":     17,
+	"referrer":     18,
+	"transaction":  19,
+	"funnel":       20,
+	"aggregate":    21,
+	"site":         22,
+	"deploy":       23,
+	"submission":   24,
+	"subscription": 25,
+	"app":          26,
+	"log":          27,
+	"segment":      29,
+	"trigger":      30,
+	"cart":         31,
+	"affiliate":    32,
+	"fee":          33,
+	"transfer":     34,
+	"reversal":     35,
+	"partner":      36,
+	"discount":     37,
 }
 
 var kindsReversed = make(map[int]string)
@@ -53,14 +55,14 @@ func encodeKind(kind string) int {
 	if encoded, ok := kinds[kind]; ok {
 		return encoded
 	} else {
-		panic(fmt.Sprintf("Unknown kind '%s', register in util/hashid/kind.go", kind))
+		panic(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
 	}
 }
 
-func decodeKind(encoded int) (string, error) {
+func decodeKind(encoded int) string {
 	if kind, ok := kindsReversed[encoded]; ok {
-		return kind, nil
+		return kind
 	} else {
-		return "", fmt.Errorf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded)
+		panic(fmt.Sprintf("Unknown encoded kind %v. Please register in util/hashid/kind.go.", encoded))
 	}
 }

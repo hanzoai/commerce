@@ -3,15 +3,16 @@ package tasks
 import (
 	"time"
 
-	"appengine"
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/aggregate"
 	"hanzo.io/util/log"
 )
 
-var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
+var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
 	freq := aggregate.Frequency(f)
 
 	nsctx, err := appengine.Namespace(ctx, namespace)
@@ -21,7 +22,8 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 	}
 
 	db := datastore.New(nsctx)
-	err = db.RunInTransaction(func(db *datastore.Datastore) error {
+
+	if err := db.RunInTransaction(func(ctx context.Context) error {
 		agg := aggregate.New(db)
 		aggregate.Init(agg, name, t, freq)
 
@@ -54,14 +56,12 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 		}
 
 		return nil
-	})
-
-	if err != nil {
+	}, nil); err != nil {
 		// Poor man's retry
 		panic(err)
 	}
 })
 
-func UpsertAggregate(ctx appengine.Context, namespace, name, typ string, t time.Time, f aggregate.Frequency, deltaValue int, deltaVectorValue []int64) {
+func UpsertAggregate(ctx context.Context, namespace, name, typ string, t time.Time, f aggregate.Frequency, deltaValue int, deltaVectorValue []int64) {
 	upsertAggregate.Call(ctx, namespace, name, typ, t, string(f), deltaValue, deltaVectorValue)
 }

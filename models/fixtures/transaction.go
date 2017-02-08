@@ -19,7 +19,7 @@ var Transaction = New("transaction", func(c *gin.Context) *transaction.Transacti
 	tran.Type = "deposit"
 	tran.Currency = currency.USD
 	tran.Amount = 1000
-	tran.MustPut()
+	tran.MustUpdate()
 
 	return tran
 })

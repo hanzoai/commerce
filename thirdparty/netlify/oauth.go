@@ -2,10 +2,9 @@ package netlify
 
 import (
 	"net/http"
-	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/urlfetch"
 )
 
 type OauthTransport struct {
@@ -18,13 +17,14 @@ func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err e
 	return t.Transport.RoundTrip(req)
 }
 
-func newOauthClient(ctx appengine.Context, accessToken string) *http.Client {
+func newOauthClient(ctx context.Context, accessToken string) *http.Client {
 	client := urlfetch.Client(ctx)
 	client.Transport = &OauthTransport{
 		AccessToken: accessToken,
 		Transport: &urlfetch.Transport{
-			Context:  ctx,
-			Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+			Context: ctx,
+			AllowInvalidServerCertificate: false,
+			// Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 		},
 	}
 	return client

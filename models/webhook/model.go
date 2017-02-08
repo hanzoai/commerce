@@ -1,28 +1,24 @@
 package webhook
 
-import "hanzo.io/datastore"
-
-var kind = "webhook"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (w Webhook) Kind() string {
-	return kind
+	return "webhook"
 }
 
 func (w *Webhook) Init(db *datastore.Datastore) {
 	w.Model.Init(db, w)
 }
 
-func (w *Webhook) Defaults() {
-	w.Events = make(Events)
-}
-
 func New(db *datastore.Datastore) *Webhook {
 	w := new(Webhook)
 	w.Init(db)
-	w.Defaults()
 	return w
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

@@ -18,12 +18,7 @@ var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
 	// org.Owners = []string{u.Id()}
 	org.Website = "http://www.seavalshop.com"
 	org.SecretKey = []byte("81vHRE006iW4Ap4lu148M2Pc1b57cT57")
-	org.AddDefaultTokens()
-
-	org.Fees.Card.Flat = 50
-	org.Fees.Card.Percent = 0.05
-	org.Fees.Affiliate.Flat = 30
-	org.Fees.Affiliate.Percent = 0.30
+	org.Fee = 0.05
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
@@ -64,13 +59,13 @@ var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
 	// org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
-	org.Put()
+	org.MustUpdate()
 
 	// Save namespace so we can decode keys for this organization later
 	// ns := namespace.New(db)
 	// ns.Name = org.Name
 	// ns.IntId = org.Key().IntID()
-	// err := ns.Put()
+	// err := ns.Create()
 	// if err != nil {
 	// 	log.Warn("Failed to put namespace: %v", err)
 	// }

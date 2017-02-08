@@ -1,30 +1,24 @@
 package store
 
-import "hanzo.io/datastore"
-
-var kind = "store"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (s Store) Kind() string {
-	return kind
+	return "store"
 }
 
 func (s *Store) Init(db *datastore.Datastore) {
 	s.Model.Init(db, s)
 }
 
-func (s *Store) Defaults() {
-	s.Listings = make(Listings)
-	s.ShippingRateTable = make(ShippingRateTable)
-}
-
 func New(db *datastore.Datastore) *Store {
 	s := new(Store)
 	s.Init(db)
-	s.Defaults()
-	s.Defaults()
 	return s
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

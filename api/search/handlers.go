@@ -8,13 +8,13 @@ import (
 	"hanzo.io/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
-	adminRequired := middleware.TokenRequired(permission.Admin)
+func Route(r router.Router, args ...gin.HandlerFunc) {
+	adminRequired := middleware.TokenRequired(permission.Published)
 	namespaced := middleware.Namespace()
 
-	group := router.Group("search")
-	group.Use(middleware.AccessControl("*"))
+	api := r.Group("search")
+	// api.Use(middleware.AccessControl("*"))
 
-	group.GET("/user", adminRequired, namespaced, searchUser)
-	group.GET("/order", adminRequired, namespaced, searchOrder)
+	api.GET("/", adminRequired, namespaced, searchAll)
+	api.GET("/:kind", adminRequired, namespaced, searchKind)
 }

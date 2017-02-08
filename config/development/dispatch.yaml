@@ -1,20 +1,11 @@
-application: crowdstart-us
+application: hanzo-production
 
 dispatch:
   - url: "*/api/*"
     module: api
 
-  # - url: "*/cdn/*"
-  #   module: cdn
-
-  # - url: "*/analytics/*"
-  #   module: analytics
-
-  - url: "*/admin/*"
-    module: platform
-
-  - url: "*/platform/*"
-    module: platform
+  - url: "*/analytics/*"
+    module: analytics
 
   - url: "*/default/*"
     module: default
