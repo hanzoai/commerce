@@ -10,7 +10,7 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "Crowdstart"
+	config.SiteTitle = "Hanzo"
 
 	config.Fee = 0.05
 
@@ -24,7 +24,6 @@ func Defaults() *Config {
 	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
-	config.Stripe.BankAccount = "ba_14trEsCSRlllXCwPzT8vGYiK"
 	config.Stripe.DevelopmentClientId = "ca_REDACTED"
 	config.Stripe.ProductionClientId = "ca_REDACTED"
 
@@ -33,11 +32,8 @@ func Defaults() *Config {
 	config.Stripe.LiveSecretKey = ""
 	config.Stripe.LivePublishablKey = "pk_live_REDACTED"
 
-	config.Mandrill.FromName = "Crowdstart"
+	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.io"
-
-	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
-	config.Redis.Password = ""
 
 	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1"
 	config.Netlify.ClientId = ""
@@ -45,7 +41,7 @@ func Defaults() *Config {
 
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""
-	config.Cloudflare.Zone = "hanzo.io"
+	config.Cloudflare.ZoneId = "hanzo.io"
 
 	return config
 }

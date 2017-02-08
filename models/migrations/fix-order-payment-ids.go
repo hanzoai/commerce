@@ -31,7 +31,7 @@ var _ = New("flag-order-payment-ids",
 			return
 		}
 
-		if _, err := payment.Query(db).Filter("OrderId=", ord.Id()).GetAll(&pays); err != nil {
+		if _, err := payment.Query(db).Filter("OrderId=", ord.Id()).LoadAll(&pays); err != nil {
 			log.Error(err, db.Context)
 			return
 		}

@@ -24,7 +24,8 @@ type Bundle struct {
 	Description string `datastore:",noindex" json:"description"`
 
 	// Image/Video/Other Media to show in a gallery
-	Media []Media `json:"media"`
+	Media  []Media `json:"media"`
+	Media_ string  `json:"-"` // does NOT need props
 
 	// Is the bundle available
 	Available bool `json:"available"`
@@ -44,8 +45,16 @@ type Bundle struct {
 
 	// Lists of products or specific product variants that are part of this
 	// bundle
-	ProductIds []string `json:"productIds"`
-	VariantIds []string `json:"variantIds"`
+	ProductIds  []string `json:"productIds"`
+	ProductIds_ string   `json:"-"` // need props
+	VariantIds  []string `json:"variantIds"`
+	VariantIds_ string   `json:"-"` // need props
+}
+
+func (c *Bundle) Defaults() {
+	c.Media = make([]Media, 0)
+	c.ProductIds = make([]string, 0)
+	c.VariantIds = make([]string, 0)
 }
 
 func (c *Bundle) Validator() *val.Validator {

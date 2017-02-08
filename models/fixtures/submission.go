@@ -13,7 +13,7 @@ var Submission = New("submission", func(c *gin.Context) *submission.Submission {
 	sub.Email = "fan@suchfan.com"
 	sub.Metadata["message"] = "Hi I am a fan!"
 
-	sub.MustPut()
+	sub.MustCreate()
 
 	return sub
 })

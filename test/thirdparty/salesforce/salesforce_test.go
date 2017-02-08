@@ -1,21 +1,18 @@
 package test
 
 import (
-	"appengine"
-
-	"github.com/zeekay/aetest"
+	"golang.org/x/net/context"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/salesforce"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
 )
 
 // func Test(t *testing.T) {
-// 	log.SetVerbose(testing.Verbose())
-// 	RegisterFailHandler(Fail)
-// 	RunSpecs(t, "salesforce")
+// 	Setup("thirdparty/salesforce", t)
 // }
 
 type MockSObjectTypes struct {
@@ -60,7 +57,7 @@ func (s *MockSObjectSerializeable) Read(so salesforce.SObjectCompatible) error {
 
 func (s *MockSObjectSerializeable) Load(db *datastore.Datastore) salesforce.SObjectCompatible {
 	s.Ref = user.New(db)
-	db.GetById(s.ExternalId(), s.Ref)
+	db.Get(s.ExternalId(), s.Ref)
 	return s.Ref
 }
 
@@ -120,12 +117,13 @@ func (a *MockSalesforceClient) GetStatusCode() int {
 	return 204
 }
 
-func (a *MockSalesforceClient) GetContext() appengine.Context {
+func (a *MockSalesforceClient) GetContext() context.Context {
 	return ctx
 }
 
 var (
-	ctx aetest.Context
+	ctx  context.Context
+	inst ae.Instance
 	// user   models.User
 	params *ClientParams
 )
@@ -133,6 +131,7 @@ var (
 var _ = BeforeSuite(func() {
 	// var err error
 	// ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	ctx, inst, _ = ae.NewContext()
 	// Expect(err).ToNot(HaveOccurred())
 
 	// user = models.User{
@@ -166,7 +165,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
+	err := inst.Close()
 	Expect(err).ToNot(HaveOccurred())
 })
 
@@ -203,20 +202,20 @@ var _ = Describe("User (de)serialization", func() {
 	// 		Expect(reflect.DeepEqual(user, u)).To(Equal(true))
 	// 	})
 
-	// 	It("Contact should treat CrowdstartIdC as ExternalId", func() {
-	// 		contact := salesforce.Contact{CrowdstartIdC: "1234"}
-	// 		Expect(contact.CrowdstartIdC).To(Equal(contact.ExternalId()))
+	// 	It("Contact should treat HanzoIdC as ExternalId", func() {
+	// 		contact := salesforce.Contact{HanzoIdC: "1234"}
+	// 		Expect(contact.HanzoIdC).To(Equal(contact.ExternalId()))
 
 	// 		contact.SetExternalId("4321")
-	// 		Expect("4321").To(Equal(contact.CrowdstartIdC))
+	// 		Expect("4321").To(Equal(contact.HanzoIdC))
 	// 	})
 
-	// 	It("Account should treat CrowdstartIdC as ExternalId", func() {
-	// 		account := salesforce.Account{CrowdstartIdC: "1234"}
-	// 		Expect(account.CrowdstartIdC).To(Equal(account.ExternalId()))
+	// 	It("Account should treat HanzoIdC as ExternalId", func() {
+	// 		account := salesforce.Account{HanzoIdC: "1234"}
+	// 		Expect(account.HanzoIdC).To(Equal(account.ExternalId()))
 
 	// 		account.SetExternalId("4321")
-	// 		Expect("4321").To(Equal(account.CrowdstartIdC))
+	// 		Expect("4321").To(Equal(account.HanzoIdC))
 	// 	})
 	// })
 
@@ -228,8 +227,8 @@ var _ = Describe("User (de)serialization", func() {
 	// 		contact := salesforce.Contact{}
 	// 		contact.Read(&user)
 	// 		contact.Push(&client)
-	// 		// blank out the CrowdstartIdC since it is never serialized
-	// 		contact.CrowdstartIdC = ""
+	// 		// blank out the HanzoIdC since it is never serialized
+	// 		contact.HanzoIdC = ""
 
 	// 		// Verify that the client received the correct inputs
 	// 		Expect(params.Verb).To(Equal("PATCH"))
@@ -250,8 +249,8 @@ var _ = Describe("User (de)serialization", func() {
 	// 		account := salesforce.Account{}
 	// 		account.Read(&user)
 	// 		account.Push(&client)
-	// 		// blank out the CrowdstartIdC since it is never serialized
-	// 		account.CrowdstartIdC = ""
+	// 		// blank out the HanzoIdC since it is never serialized
+	// 		account.HanzoIdC = ""
 
 	// 		// Verify that the client received the correct inputs
 	// 		Expect(params.Verb).To(Equal("PATCH"))
@@ -300,11 +299,11 @@ var _ = Describe("User (de)serialization", func() {
 
 	// 		// Create reference objects for testing from user
 	// 		refAccount := salesforce.Account{}
-	// 		refAccount.CrowdstartIdC = "Id"
+	// 		refAccount.HanzoIdC = "Id"
 	// 		refAccount.Read(&user)
 
 	// 		refContact := salesforce.Contact{}
-	// 		refContact.CrowdstartIdC = "Id"
+	// 		refContact.HanzoIdC = "Id"
 	// 		refContact.Read(&user)
 
 	// 		// Set the bodies to be decoded

@@ -10,27 +10,24 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/urlfetch"
+
 	"hanzo.io/config"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/paypal/responses"
 	"hanzo.io/util/log"
-
-	"appengine"
-	"appengine/urlfetch"
 )
 
 type Client struct {
-	ctx appengine.Context
+	ctx context.Context
 }
 
-func New(ctx appengine.Context) *Client {
+func New(ctx context.Context) *Client {
 	return &Client{ctx: ctx}
-}
-
-func escape(s string) string {
-	return strings.Replace(s, "%", "%%", -1)
 }
 
 func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organization) {
@@ -50,7 +47,7 @@ func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organiz
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
-func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Organization) (string, error) {
+func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
@@ -61,6 +58,9 @@ func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Or
 	}
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
+	if usr.PaypalEmail != "" {
+		data.Set("senderEmail", usr.PaypalEmail)
+	}
 
 	cur := pay.Currency
 
@@ -100,7 +100,7 @@ func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Or
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Debug("%v", escape(string(dump)), c.ctx)
+	log.Debug("%v", log.Escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -142,7 +142,7 @@ func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Or
 	return paymentResponse.PayKey, nil
 }
 
-func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *organization.Organization) error {
+func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *order.Order, org *organization.Organization) error {
 	cur := pay.Currency
 
 	data := url.Values{}
@@ -202,7 +202,7 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *o
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Debug("%v", escape(string(dump)), c.ctx)
+	log.Debug("%v", log.Escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -235,9 +235,9 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *o
 	return nil
 }
 
-func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, org *organization.Organization) (string, error) {
-	payKey, err := c.Pay(pay, ord, org)
-	c.SetPaymentOptions(pay, ord, org)
+func (c Client) GetPayKey(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
+	payKey, err := c.Pay(pay, usr, ord, org)
+	c.SetPaymentOptions(pay, usr, ord, org)
 	return payKey, err
 }
 

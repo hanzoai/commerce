@@ -12,9 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
 
-	"appengine"
-	"appengine/memcache"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
 	"hanzo.io/middleware"

@@ -1,13 +1,22 @@
 package user
 
 import (
+	"strings"
 	"time"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
+
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/country"
+	"hanzo.io/util/searchpartial"
 )
 
 type Document struct {
-	Id_               string
+	mixin.DocumentLoadSaver `search:"-"`
+
+	Id_   string
+	Kind_ search.Atom `search:",facet"`
+
 	Email             search.Atom
 	EmailPartials     string
 	Username          string
@@ -46,4 +55,51 @@ type Document struct {
 
 func (d Document) Id() string {
 	return string(d.Id_)
+}
+
+func (u User) Document() mixin.Document {
+	emailUser := strings.Split(u.Email, "@")[0]
+	d := &Document{
+		mixin.DocumentLoadSaver{},
+		u.Id(),
+		search.Atom(u.Kind()),
+		search.Atom(u.Email),
+		searchpartial.Partials(emailUser) + " " + emailUser,
+		u.Username,
+		searchpartial.Partials(u.Username),
+		u.FirstName,
+		searchpartial.Partials(u.FirstName),
+		u.LastName,
+		searchpartial.Partials(u.LastName),
+		u.Phone,
+
+		u.BillingAddress.Line1,
+		u.BillingAddress.Line2,
+		u.BillingAddress.City,
+		u.BillingAddress.State,
+		u.BillingAddress.Country,
+		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
+		u.BillingAddress.PostalCode,
+
+		u.ShippingAddress.Line1,
+		u.ShippingAddress.Line2,
+		u.ShippingAddress.City,
+		u.ShippingAddress.State,
+		u.ShippingAddress.Country,
+		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
+		u.ShippingAddress.PostalCode,
+
+		u.CreatedAt,
+		u.UpdatedAt,
+
+		u.Accounts.Stripe.BalanceTransactionId,
+		u.Accounts.Stripe.CardId,
+		u.Accounts.Stripe.ChargeId,
+		u.Accounts.Stripe.CustomerId,
+		u.Accounts.Stripe.LastFour,
+	}
+
+	d.DocumentLoadSaver.Document = d
+
+	return d
 }

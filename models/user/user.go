@@ -3,50 +3,41 @@ package user
 import (
 	"strings"
 
-	aeds "appengine/datastore"
-	"appengine/search"
-
 	"hanzo.io/auth/password"
-	"hanzo.io/datastore"
-	"hanzo.io/models/affiliate"
-	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/subscriber"
 	"hanzo.io/models/transaction"
-	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
 	"hanzo.io/util/log"
-	"hanzo.io/util/searchpartial"
 	"hanzo.io/util/val"
+
+	token "hanzo.io/models/token2"
 
 	. "hanzo.io/models"
 )
 
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+type UAuth struct {
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash []byte `schema:"-" datastore:",noindex" json:"-"`
 
-type User struct {
-	mixin.Model
-	mixin.Counter
-	mixin.Salesforce
+	ReferenceTokens []*token.Token `json:"referenceTokens,omitempty" datastore:"-"`
+}
 
-	// Crowdstart Id, found in default namespace
+type UAccount struct {
+	// Hanzo Id, found in default namespace
 	Cid string `json:"-"`
 
-	Username        string   `json:"username,omitempty"`
-	FirstName       string   `json:"firstName"`
-	LastName        string   `json:"lastName"`
-	Company         string   `json:"company,omitempty"`
-	Phone           string   `json:"phone,omitempty"`
-	BillingAddress  Address  `json:"billingAddress,omitempty"`
-	ShippingAddress Address  `json:"shippingAddress,omitempty"`
-	Email           string   `json:"email"`
-	PaypalEmail     string   `json:"paypalEmail,omitempty"`
-	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"-" datastore:",noindex"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Company   string `json:"company"`
+	Phone     string `json:"phone"`
+
+	// Deprecate this
+	Organizations []string `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
@@ -60,118 +51,46 @@ type User struct {
 		Verified    bool   `facebook:"verified" datastore:"-"`
 	} `json:"-"`
 
-	// Account to use for new orders when customer creates new orders
-	Accounts struct {
-		Stripe payment.Account `json:"stripe,omitempty"`
-		PayPal payment.Account `json:"paypal,omitempty"`
-		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"-" datastore:",noindex"`
-
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Referrals   []referral.Referral `json:"referrals,omitempty" datastore:"-"`
-	Referrers   []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
-	Orders      []order.Order       `json:"orders,omitempty" datastore:"-"`
-	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
-	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
-
-	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
-
-	ReferrerId string `json:"referrerId,omitempty"`
-
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty" datastore",noindex"`
-
-	IsOwner bool `json:"owner,omitempty" datastore:"-"`
-
-	AffiliateId string `json:"affiliateId,omitempty"`
+	History []Event `json:"-"`
 }
 
-func (u User) Document() mixin.Document {
-	emailUser := strings.Split(u.Email, "@")[0]
-	return &Document{
-		u.Id(),
-		search.Atom(u.Email),
-		searchpartial.Partials(emailUser) + " " + emailUser,
-		u.Username,
-		searchpartial.Partials(u.Username),
-		u.FirstName,
-		searchpartial.Partials(u.FirstName),
-		u.LastName,
-		searchpartial.Partials(u.LastName),
-		u.Phone,
+type UCustomer struct {
+	PaypalEmail     string  `json:"paypalEmail"`
+	BillingAddress  Address `json:"billingAddress,omitempty"`
+	ShippingAddress Address `json:"shippingAddress,omitempty"`
 
-		u.BillingAddress.Line1,
-		u.BillingAddress.Line2,
-		u.BillingAddress.City,
-		u.BillingAddress.State,
-		u.BillingAddress.Country,
-		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.BillingAddress.PostalCode,
+	// Account to use for new orders when customer creates new orders
+	Accounts struct {
+		Stripe Account `json:"stripe,omitempty"`
+		PayPal Account `json:"paypal,omitempty"`
+		Affirm Account `json:"affirm,omitempty"`
+	} `json:"-"`
 
-		u.ShippingAddress.Line1,
-		u.ShippingAddress.Line2,
-		u.ShippingAddress.City,
-		u.ShippingAddress.State,
-		u.ShippingAddress.Country,
-		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.ShippingAddress.PostalCode,
+	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
+	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
+	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
 
-		u.CreatedAt,
-		u.UpdatedAt,
-
-		u.Accounts.Stripe.BalanceTransactionId,
-		u.Accounts.Stripe.CardId,
-		u.Accounts.Stripe.ChargeId,
-		u.Accounts.Stripe.CustomerId,
-		u.Accounts.Stripe.LastFour,
-	}
+	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 }
 
-func (u *User) Load(c <-chan aeds.Property) (err error) {
-	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
-		return err
-	}
+type User struct {
+	mixin.Model
+	mixin.Salesforce
 
-	// Update balance when queried out
-	// now := time.Now()
-	// var transactions []transaction.Transaction
-	// if _, err = transaction.Query(u.Db).Filter("CreatedAt >=", u.Credit.LastUpdated).GetAll(&transactions); err != nil {
-	// 	return
-	// }
-
-	// for _, trans := range transactions {
-	// 	switch trans.Type {
-	// 	case transaction.Deposit:
-	// 		u.Credit.Amount += trans.Amount
-	// 	case transaction.Withdraw:
-	// 		u.Credit.Amount -= trans.Amount
-	// 	}
-	// }
-
-	// u.Credit.LastUpdated = now
-
-	// Deserialize from datastore
-	if len(u.Metadata_) > 0 {
-		err = json.DecodeBytes([]byte(u.Metadata_), &u.Metadata)
-	}
-
-	return
+	UAccount
+	UAuth
+	UCustomer
 }
 
-func (u *User) Save(c chan<- aeds.Property) (err error) {
-	// Serialize unsupported properties
-	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
-
-	// sanitize email
-	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
-
-	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(u, c))
+func (u *User) Defaults() {
+	u.Metadata = make(Map)
+	u.History = make([]Event, 0)
 }
 
 func (u User) Name() string {
@@ -240,10 +159,11 @@ func (u *User) GetByEmail(email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	log.Debug("Searching for user '%v'", email)
 
-	ok, err := u.Query().Filter("Email=", email).Get()
+	// Build query to return user
+	ok, err := u.Query().Filter("Email=", email).First()
 
 	if err != nil {
-		log.Warn("Unable to find user by email: '%v'", err)
+		log.Warn("Unable to fetch user from datastore: '%v'", err)
 		return err
 	}
 
@@ -256,45 +176,19 @@ func (u *User) GetByEmail(email string) error {
 }
 
 func (u *User) LoadReferrals() error {
-	u.Referrers = make([]referrer.Referrer, 0)
-	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).LoadAll(&u.Referrers); err != nil {
 		return err
 	}
 
-	u.Referrals = make([]referral.Referral, 0)
-	if _, err := referral.Query(u.Db).Filter("Referrer.UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).LoadAll(&u.Referrals); err != nil {
 		return err
 	}
-
-	log.Warn("Referrals %v", u.Referrals)
 
 	return nil
 }
 
 func (u *User) LoadOrders() error {
-	u.Orders = make([]order.Order, 0)
-	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (u *User) LoadAffiliateAndPendingFees() error {
-	if u.AffiliateId == "" {
-		return nil
-	}
-
-	aff := affiliate.New(u.Db)
-
-	if err := aff.GetById(u.AffiliateId); err != nil {
-		return err
-	}
-
-	u.Affiliate = *aff
-
-	u.PendingFees = make([]fee.Fee, 0)
-	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
+	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).LoadAll(&u.Orders); err != nil {
 		return err
 	}
 
@@ -302,13 +196,14 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	trans := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
+	trans, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetEntities()
+	if err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range trans {
+	for i := range trans {
+		t := trans[i].(*transaction.Transaction)
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {
@@ -331,6 +226,43 @@ func (u *User) SetPassword(newPassword string) error {
 	return nil
 }
 
+func (u *User) GetSub(segmentId string) (*subscriber.Subscriber, error) {
+	sub := subscriber.New(u.Db)
+	if ok, _ := sub.Query().Filter("UserId=", u.Id()).Filter("SegmentId=", segmentId).First(); !ok {
+		if ok, err := sub.Query().Filter("Email=", u.Email).Filter("SegmentId=", segmentId).First(); !ok {
+			return nil, err
+		}
+	}
+
+	sub.UserId = u.Id()
+
+	return sub, sub.Update()
+}
+
+func (u *User) GetOrCreateSub(segmentId string) (*subscriber.Subscriber, error) {
+	// create a corresponding sub
+	sub, err := u.GetSub(segmentId)
+
+	if err != nil {
+		sub = subscriber.New(u.Db)
+		sub.Email = u.Email
+		sub.UserId = u.Id()
+		sub.SegmentId = segmentId
+		return sub, sub.Create()
+	}
+
+	return sub, nil
+}
+
+func (u *User) DeleteSub(segmentId string) error {
+	sub, err := u.GetSub(segmentId)
+	if err == nil {
+		return sub.Delete()
+	}
+
+	return nil
+}
+
 // Check if user is part of an organization
 func (u *User) InOrganization(orgId string) bool {
 	for i := range u.Organizations {
@@ -346,4 +278,16 @@ func (u *User) AddOrganization(orgId string) {
 	if !u.InOrganization(orgId) {
 		u.Organizations = append(u.Organizations, orgId)
 	}
+}
+
+func (u *User) LoadReferenceTokens() error {
+	slice, err := token.Query(u.Db).
+		Filter("Claims.UserId=", u.Id()).
+		Filter("Claims.Type=", token.Reference).
+		Filter("Revoked=", false).
+		GetAll()
+
+	u.ReferenceTokens = slice.([]*token.Token)
+
+	return err
 }

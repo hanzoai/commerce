@@ -1,4 +1,4 @@
-application: crowdstart-sandbox
+application: hanzo-sandbox
 
 dispatch:
   - url: "sandbox.hanzo.io/*"

@@ -3,11 +3,10 @@ package migrations
 import (
 	"strings"
 
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/delay"
 
 	"github.com/gin-gonic/gin"
-
-	"appengine"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
@@ -25,16 +24,16 @@ func testModeError(err error) bool {
 }
 
 // Update charge in case order/pay id is missing in metadata
-var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx appengine.Context, payId string) {
+var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx context.Context, payId string) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
-	if err := pay.GetById(payId); err != nil {
+	if err := pay.Get(payId); err != nil {
 		log.Error("Unable to get payment: %v", err, ctx)
 		return
 	}
 
 	ord := order.New(db)
-	if err := ord.GetById(pay.OrderId); err != nil {
+	if err := ord.Get(pay.OrderId); err != nil {
 		log.Error("Unable to get order for payment '%s': %v", payId, err, ctx)
 		return
 	}

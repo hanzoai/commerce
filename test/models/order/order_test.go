@@ -3,6 +3,8 @@ package test
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/lineitem"
@@ -19,14 +21,15 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
-	ord *order.Order
+	ctx  context.Context
+	inst ae.Instance
+	db   *datastore.Datastore
+	ord  *order.Order
 )
 
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
+	ctx, inst, _ = ae.NewContext()
 	db = datastore.New(ctx)
 
 	// Mock gin context that we can use with fixtures
@@ -37,7 +40,7 @@ var _ = BeforeSuite(func() {
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	inst.Close()
 })
 
 var _ = Describe("Order", func() {

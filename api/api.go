@@ -1,13 +1,14 @@
 package api
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
+	"hanzo.io/models/campaign"
 	"hanzo.io/models/collection"
-	"hanzo.io/models/discount"
+	"hanzo.io/models/coupon"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
@@ -16,44 +17,33 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	"hanzo.io/models/transaction"
-	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/models/webhook"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
-	accessTokenApi "hanzo.io/api/accesstoken"
 	accountApi "hanzo.io/api/account"
-	affiliateApi "hanzo.io/api/affiliate"
-	campaignApi "hanzo.io/api/campaign"
-	cartApi "hanzo.io/api/cart"
+	authApi "hanzo.io/api/auth"
 	checkoutApi "hanzo.io/api/checkout"
-	couponApi "hanzo.io/api/coupon"
 	dataApi "hanzo.io/api/data"
 	deployApi "hanzo.io/api/deploy"
 	formApi "hanzo.io/api/form"
-	namespaceApi "hanzo.io/api/namespace"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
 	referrerApi "hanzo.io/api/referrer"
-	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
 	storeApi "hanzo.io/api/store"
+	subscriptionApi "hanzo.io/api/subscription"
 	userApi "hanzo.io/api/user"
-	xdApi "hanzo.io/api/xd"
-
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
 	shipstationApi "hanzo.io/thirdparty/shipstation"
-	shipwireApi "hanzo.io/thirdparty/shipwire"
-	stripeApi "hanzo.io/thirdparty/stripe/api"
-
-	// Side effect import because of cyclical dependency
-	_ "hanzo.io/models/referrer/tasks"
+	stripeApi "hanzo.io/thirdparty/stripe/webhook"
 )
 
-func Route(api router.Router) {
+func init() {
 	tokenRequired := middleware.TokenRequired()
+
+	api := router.New("api")
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -61,9 +51,10 @@ func Route(api router.Router) {
 	} else {
 		api.GET("/", router.Ok)
 		api.HEAD("/", router.Empty)
-
 		api.GET("/ping", router.Ok)
 		api.HEAD("/ping", router.Empty)
+		api.GET("/humans.txt", router.Humans)
+		api.GET("/robots.txt", router.Robots)
 	}
 
 	// Use permissive CORS policy for all API routes.
@@ -74,80 +65,82 @@ func Route(api router.Router) {
 
 	// Organization APIs, namespaced by organization
 
-	// Checkout APIs (charge, authorize, capture)
-	checkoutApi.Route(api)
+	/////////////////////////////////
+	// Customer Token/API Key APIs
+	/////////////////////////////////
+	accountApi.Route(api, tokenRequired)
+
+	///////////////////////////////////
+	// API Key and Access Token APIs
+	///////////////////////////////////
 
 	// Models with public RESTful API
-	rest.New(collection.Collection{}).Route(api, tokenRequired)
-	rest.New(discount.Discount{}).Route(api, tokenRequired)
-	rest.New(product.Product{}).Route(api, tokenRequired)
-	rest.New(referral.Referral{}).Route(api, tokenRequired)
-	rest.New(site.Site{}).Route(api, tokenRequired)
-	rest.New(submission.Submission{}).Route(api, tokenRequired)
-	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
-	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
-	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
-	rest.New(variant.Variant{}).Route(api, tokenRequired)
-	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
+	rest.New(collection.Collection{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(coupon.Coupon{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(product.Product{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(referral.Referral{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(site.Site{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(submission.Submission{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(transaction.Transaction{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	rest.New(variant.Variant{}).Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+
+	// Checkout APIs (charge, authorize, capture)
+	checkoutApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
-	paymentApi.Route(api, tokenRequired)
+	paymentApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
-	accountApi.Route(api, tokenRequired)
-	affiliateApi.Route(api, tokenRequired)
-	campaignApi.Route(api, tokenRequired)
-	cartApi.Route(api, tokenRequired)
-	couponApi.Route(api, tokenRequired)
-	deployApi.Route(api, tokenRequired)
-	formApi.Route(api, tokenRequired)
-	orderApi.Route(api, tokenRequired)
-	referrerApi.Route(api, tokenRequired)
-	reviewApi.Route(api, tokenRequired)
-	storeApi.Route(api, tokenRequired)
-	userApi.Route(api, tokenRequired)
+	// Hanzo APIs, using default namespace (internal use only)
+	campaign := rest.New(campaign.Campaign{})
+	campaign.DefaultNamespace = true
+	campaign.Prefix = "/_/"
+	campaign.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
-	// Crowdstart APIs, using default namespace (internal use only)
-	organizationApi.Route(api, tokenRequired)
+	organizationApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
-	token.Prefix = "/c/"
-	token.Route(api, tokenRequired)
+	token.Prefix = "/_/"
+	token.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	user := rest.New(user.User{})
 	user.DefaultNamespace = true
-	user.Prefix = "/c/"
-	user.Route(api, tokenRequired)
+	user.Prefix = "/_/"
+	user.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
-	searchApi.Route(api, tokenRequired)
+	deployApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	formApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	orderApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	storeApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	referrerApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	subscriptionApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	userApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+
+	searchApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+
+	dataApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	// Namespace API
-	namespaceApi.Route(api)
+	// namespaceApi.Route(api)
 
 	// Access token API
-	accessTokenApi.Route(api)
+	// accessTokenApi.Route(api)
+
+	//////////////
+	// Webhooks
+	//////////////
+
+	// Auth Api
+	authApi.Route(api)
 
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
 
-	// Shipwire custom store API endpoints
-	shipwireApi.Route(api)
-
-	// Stripe callback, webhook
+	// Stripe webhook
 	stripeApi.Route(api)
 
 	// Paypal IPN
 	paypalApi.Route(api)
-
-	// Data Api
-	dataApi.Route(api)
-
-	// XDomain proxy.html
-	xdApi.Route(api)
-}
-
-func init() {
-	api := router.New("api")
-	Route(api)
 }

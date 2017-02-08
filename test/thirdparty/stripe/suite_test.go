@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"golang.org/x/net/context"
+
 	"hanzo.io/datastore"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
@@ -13,9 +15,10 @@ import (
 )
 
 var (
-	c   *gin.Context
-	ctx ae.Context
-	db  *datastore.Datastore
+	c    *gin.Context
+	ctx  context.Context
+	inst ae.Instance
+	db   *datastore.Datastore
 )
 
 func Test(t *testing.T) {
@@ -23,11 +26,11 @@ func Test(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
+	ctx, inst, _ = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
 })
 
 var _ = AfterSuite(func() {
-	ctx.Close()
+	inst.Close()
 })

@@ -6,9 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 )
 
@@ -32,12 +30,12 @@ func dashboard(c *gin.Context) {
 
 	log.Warn("date %v\n period %v", date, period)
 
-	org := middleware.GetOrganization(c)
+	// org := middleware.GetOrganization(c)
 
-	data, err := counter.GetDashboardData(org.Db.Context, period, date, -8*3600, org)
-	if err != nil {
-		http.Fail(c, 500, "Failed to load data", err)
-	} else {
-		http.Render(c, 200, data)
-	}
+	// data, err := counter.GetDashboardData(org.Db.Context, period, date, -8*3600, org)
+	// if err != nil {
+	// 	http.Fail(c, 500, "Failed to load data", err)
+	// } else {
+	// 	http.Render(c, 200, data)
+	// }
 }

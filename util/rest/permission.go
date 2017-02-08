@@ -30,15 +30,6 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Campaign),
 	},
 
-	"cart": Permissions{
-		"create": masks(Admin, Published),
-		"delete": masks(Admin),
-		"patch":  masks(Admin, Published),
-		"update": masks(Admin, Published),
-		"get":    masks(Admin),
-		"list":   masks(Admin),
-	},
-
 	"collection": Permissions{
 		"create": masks(Admin, WriteCollection),
 		"delete": masks(Admin, WriteCollection),
@@ -57,13 +48,13 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Coupon),
 	},
 
-	"mailinglist": Permissions{
-		"create": masks(Admin, WriteMailingList),
-		"delete": masks(Admin, WriteMailingList),
-		"patch":  masks(Admin, ReadMailingList|WriteMailingList),
-		"update": masks(Admin, ReadMailingList|WriteMailingList),
-		"get":    masks(Admin, ReadMailingList),
-		"list":   masks(Admin, MailingList),
+	"form": Permissions{
+		"create": masks(Admin, WriteForm),
+		"delete": masks(Admin, WriteForm),
+		"patch":  masks(Admin, ReadForm|WriteForm),
+		"update": masks(Admin, ReadForm|WriteForm),
+		"get":    masks(Admin, ReadForm),
+		"list":   masks(Admin, Form),
 	},
 
 	"order": Permissions{
@@ -112,21 +103,12 @@ var DefaultPermissions = map[string]Permissions{
 	},
 
 	"referral": Permissions{
-		"create": masks(Admin, WriteReferral|Published),
+		"create": masks(Admin, WriteReferral),
 		"delete": masks(Admin, WriteReferral),
-		"patch":  masks(Admin, ReadReferral|WriteReferral|Published),
-		"update": masks(Admin, ReadReferral|WriteReferral|Published),
+		"patch":  masks(Admin, ReadReferral|WriteReferral),
+		"update": masks(Admin, ReadReferral|WriteReferral),
 		"get":    masks(Admin, ReadReferral),
 		"list":   masks(Admin, Referral),
-	},
-
-	"referralprogram": Permissions{
-		"create": masks(Admin, WriteReferrer),
-		"delete": masks(Admin, WriteReferrer),
-		"patch":  masks(Admin, ReadReferrer|WriteReferrer),
-		"update": masks(Admin, ReadReferrer|WriteReferrer),
-		"get":    masks(Admin, ReadReferrer),
-		"list":   masks(Admin, Referrer),
 	},
 
 	"referrer": Permissions{

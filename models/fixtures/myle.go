@@ -5,11 +5,8 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-
-	"hanzo.io/util/log"
 )
 
 var Myle = New("myle", func(c *gin.Context) *organization.Organization {
@@ -26,25 +23,15 @@ var Myle = New("myle", func(c *gin.Context) *organization.Organization {
 	u.LastName = "Walker"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("mylepassword!")
-	u.Put()
+	u.MustCreate()
 
 	org.FullName = "Myle"
 	org.Owners = []string{u.Id()}
 	org.Website = "http://www.getmyle.com"
 	org.SecretKey = []byte("197brMavJ20e3Q4rTFVpXu2IMESCu9vM")
-	org.AddDefaultTokens()
 
 	// Save org into default namespace
-	org.Put()
-
-	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	org.MustUpdate()
 
 	return org
 })

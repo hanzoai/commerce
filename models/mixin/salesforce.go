@@ -5,7 +5,7 @@ import "time"
 type Salesforce struct {
 	PrimarySalesforceId_   string    `json:"-"`
 	SecondarySalesforceId_ string    `json:"-"`
-	ExternalId_            string    `json:"-"`
+	ExternalId_            string    `json:"_"`
 	LastSync_              time.Time `json:"-"`
 }
 

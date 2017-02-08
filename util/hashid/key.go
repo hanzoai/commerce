@@ -1,26 +1,21 @@
 package hashid
 
 import (
-	"fmt"
-	"time"
+	"errors"
+	"strconv"
 
-	"appengine"
-	aeds "appengine/datastore"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
-	"github.com/qedus/nds"
-
-	"hanzo.io/datastore/utils"
+	"hanzo.io/datastore"
 	"hanzo.io/models/namespace/consts"
 	"hanzo.io/util/log"
-
-	"hanzo.io/datastore/iface"
 )
 
 var (
 	idToNamespace = make(map[int64]string)
 	namespaceToId = make(map[string]int64)
-
-	IgnoreFieldMismatch = utils.IgnoreFieldMismatch
 )
 
 func cache(namespace string, id int64) {
@@ -28,109 +23,16 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-type Model struct {
-	Id_       string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Deleted   bool
-}
-
 type Namespace struct {
-	// Included for compatibility with namespace models
-	Model
-
 	IntId int64
 	Name  string
 }
 
-func fmtNs(ns string) string {
-	if ns == "" {
-		return "default"
-	}
-	return ns
-}
-
-// Get root key for namespaces
-func getRoot(ctx appengine.Context) *aeds.Key {
+func getRoot(ctx context.Context) *aeds.Key {
 	return aeds.NewKey(ctx, "namespace", "", consts.RootKey, nil)
 }
 
-// Query for namespace by Name
-func queryNamespace(ctx appengine.Context, filter string, value interface{}) (*Namespace, bool, error) {
-	ns := new(Namespace)
-
-	// Get namespaced context for namespaces
-	ctx = getNamespaceContext(ctx)
-
-	// Use namespace root to ensure a strongly consistent query
-	root := getRoot(ctx)
-
-	// Filter for namespace by name
-	q := aeds.NewQuery("namespace").
-		Ancestor(root).
-		Filter(filter, value).
-		Limit(1)
-
-	// Run query
-	key, err := q.Run(ctx).Next(ns)
-
-	// Nothing found
-	if key == nil {
-		return nil, false, nil
-	}
-
-	// Error trying run query
-	if err != nil {
-		return nil, false, err
-	}
-
-	// Found it
-	return ns, true, nil
-}
-
-// Get IntID for namespace
-func getId(ctx appengine.Context, name string) int64 {
-	if name == consts.Namespace {
-		return 0
-	}
-
-	ns, ok, err := queryNamespace(ctx, "Name=", name)
-
-	// Blow up if we can't complete query or find namespace
-	if err != nil {
-		panic(err.Error())
-	}
-
-	if !ok {
-		panic(fmt.Errorf("Namespace '%s' does not exist", name))
-	}
-
-	return ns.IntId
-}
-
-// Get namespace from organization using it's IntID
-func getName(ctx appengine.Context, id int64) (string, error) {
-	if id == 0 {
-		return consts.Namespace, nil
-	}
-
-	ns, ok, err := queryNamespace(ctx, "IntId=", id)
-
-	// Query failed for some inexplicable reason
-	if err != nil {
-		return "", err
-	}
-
-	// Failed to find matching namespace
-	if !ok {
-		return "", fmt.Errorf("Namespace with id %d does not exist", id)
-	}
-
-	return ns.Name, nil
-}
-
-// Get namespaced context
-func getContext(ctx appengine.Context, namespace string) appengine.Context {
+func getContext(ctx context.Context, namespace string) context.Context {
 	if namespace == "" {
 		return ctx
 	}
@@ -143,13 +45,64 @@ func getContext(ctx appengine.Context, namespace string) appengine.Context {
 	return ctx
 }
 
-// Get namespaced context for namespaces
-func getNamespaceContext(ctx appengine.Context) appengine.Context {
+func getNamespaceContext(ctx context.Context) context.Context {
 	return getContext(ctx, consts.Namespace)
 }
 
+// Get IntID by querying organization from it's namespace name
+func getId(ctx context.Context, namespace string) int64 {
+	if namespace == consts.Namespace {
+		return 0
+	}
+
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
+	ns := Namespace{}
+
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("Name=", namespace).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err.Error())
+	}
+	if !ok {
+		panic("Failed to retrieve namespace with Name: " + namespace)
+	}
+
+	return ns.IntId
+}
+
+// Get namespace from organization using it's IntID
+func getNamespace(ctx context.Context, id int64) string {
+	if id == 0 {
+		return consts.Namespace
+	}
+
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
+	ns := Namespace{}
+
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("IntId=", id).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err.Error())
+	}
+	if !ok {
+		panic("Failed to retrieve namespace with Id: " + strconv.Itoa(int(id)))
+	}
+
+	return ns.Name
+}
+
 // Encodes organzation namespace into it's IntID
-func encodeNamespace(ctx appengine.Context, namespace string) int {
+func encodeNamespace(ctx context.Context, namespace string) int {
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -166,27 +119,25 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 	return int(id)
 }
 
-func decodeNamespace(ctx appengine.Context, encoded int) (ns string, err error) {
+func decodeNamespace(ctx context.Context, encoded int) string {
 	// Default namespace
 	if encoded == 0 {
-		return "", nil
+		return ""
 	}
 
 	id := int64(encoded)
-	ns, ok := idToNamespace[id]
+	namespace, ok := idToNamespace[id]
 	if !ok {
-		if ns, err = getName(ctx, id); err != nil {
-			return "", err
-		}
+		namespace = getNamespace(ctx, id)
 
 		// Cache result
-		cache(ns, id)
+		cache(namespace, id)
 	}
 
-	return ns, nil
+	return namespace
 }
 
-func EncodeKey(ctx appengine.Context, key iface.Key) string {
+func EncodeKey(ctx context.Context, key datastore.Key) string {
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -215,84 +166,59 @@ func EncodeKey(ctx appengine.Context, key iface.Key) string {
 		namespace = encodeNamespace(ctx, key.Namespace())
 	}
 
+	log.Debug("Encoded %v namespace:'%v'", ids, decodeNamespace(ctx, namespace))
+
 	// Append namespace
 	ids = append(ids, namespace)
 
-	encoded := Encode(ids...)
-
-	log.Debug("%s%v encoded to '%s'", fmtNs(key.Namespace()), key, encoded)
-
-	return encoded
+	return Encode(ids...)
 }
 
-func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	ids, err := Decode(encoded)
-	if err != nil {
-		return nil, err
-	}
+func DecodeKey(ctx context.Context, encoded string) (key *aeds.Key, err error) {
+	// Catch panic from Decode
+	defer func() {
+		if r := recover(); r != nil {
+			switch v := r.(type) {
+			case string:
+				err = errors.New(v)
+			case error:
+				err = v
+			default:
+				err = errors.New("I don't even")
+			}
+		}
+	}()
 
+	ids := Decode(encoded)
 	n := len(ids)
 
-	// A valid key without parents will have exactly 3 segments: namespace,
-	// kind and intid. For each parent we expect two more segments.
-	if n < 3 || (n-3)%2 == 1 {
-		return key, fmt.Errorf("Invalid number of segments: %v", ids)
+	// Check for invalid keys.
+	if n < 3 {
+		return key, errors.New("Invalid number of key segments")
 	}
 
 	// Set namespace
-	ns, err := decodeNamespace(ctx, ids[n-1])
-	if err != nil {
-		return nil, err
-	}
-
-	ctx = getContext(ctx, ns)
+	namespace := decodeNamespace(ctx, ids[n-1])
+	ctx = getContext(ctx, namespace)
 
 	// root key
-	kind, err := decodeKind(ids[n-3])
-	if err != nil {
-		return nil, err
-	}
-	key = aeds.NewKey(ctx, kind, "", int64(ids[n-2]), nil)
+	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)
 
 	// root key is always last key, so reverse through list to recreate key
 	for i := n - 4; i >= 0; i = i - 2 {
-		kind, err := decodeKind(ids[i-1])
-		if err != nil {
-			return nil, err
-		}
-		key = aeds.NewKey(ctx, kind, "", int64(ids[i]), key)
+		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
 	}
 
-	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(ns), key)
+	log.Debug("Decoded %v namespace:'%v'", ids[:len(ids)-1], namespace)
 
 	return key, nil
 }
 
-func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
+func MustDecodeKey(ctx context.Context, encoded string) (key *aeds.Key) {
 	key, err := DecodeKey(ctx, encoded)
 	if err != nil {
 		panic(err)
 	}
 
 	return key
-}
-
-func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
-	key, err := DecodeKey(ctx, encoded)
-	if err != nil {
-		return false, err
-	}
-
-	// Try to query out matching key
-	err = nds.Get(ctx, key, Model{})
-
-	if err == aeds.ErrNoSuchEntity {
-		return false, nil
-	}
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }

@@ -1,41 +1,42 @@
 package user
 
 import (
-	"strings"
-
-	"hanzo.io/util/webhook"
+	"hanzo.io/util/counter"
+	"hanzo.io/util/event"
 )
 
 // Hooks
-func (u *User) BeforeCreate() error {
-	u.Username = strings.ToLower(u.Username)
-	u.Email = strings.ToLower(u.Email)
-	return nil
-}
-
-func (u *User) BeforeUpdate(prev *User) error {
-	u.Username = strings.ToLower(u.Username)
-	u.Email = strings.ToLower(u.Email)
-	return nil
-}
-
+// Only fires when user is not in default namespace
 func (u *User) AfterCreate() error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
+	if u.Namespace() == "" {
+		return nil
+	}
 
-	u.Increment()
-	u.IncrementDay()
-	u.IncrementHour()
-	u.IncrementMonth()
+	// Increment user totals
+	ctx := u.Context()
+	key := u.Kind()
+	now := u.CreatedAt
 
-	return nil
+	counter.Increment(ctx, key)
+	counter.IncrementHour(ctx, key, now)
+	counter.IncrementDay(ctx, key, now)
+	counter.IncrementMonth(ctx, key, now)
+
+	return event.Emit(ctx, u.Namespace(), "user.created", u)
 }
 
-func (u *User) AfterUpdate(prev *User) error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.updated", u)
-	return nil
+func (u *User) AfterUpdate(previous *User) error {
+	if u.Namespace() == "" {
+		return nil
+	}
+
+	return event.Emit(u.Context(), u.Namespace(), "user.updated", u)
 }
 
 func (u *User) AfterDelete() error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.deleted", u)
-	return nil
+	if u.Namespace() == "" {
+		return nil
+	}
+
+	return event.Emit(u.Context(), u.Namespace(), "user.deleted", u)
 }

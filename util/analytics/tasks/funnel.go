@@ -1,8 +1,9 @@
 package tasks
 
 import (
-	"appengine"
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/aggregate"
@@ -12,7 +13,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, namespace, eventId string) {
+var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {
 	nsctx, err := appengine.Namespace(ctx, namespace)
 	if err != nil {
 		log.Error("Could not namespace %v, %v", namespace, err, ctx)
@@ -28,15 +29,15 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 		return
 	}
 
-	fs := make([]*funnel.Funnel, 0)
-	_, err = funnel.Query(db).GetAll(fs)
+	fs, err := funnel.Query(db).GetEntities()
 	if err != nil {
 		log.Error("Could not get funnel %v", err, ctx)
 		return
 	}
 
 	// Loop over funnels
-	for _, f := range fs {
+	for i := range fs {
+		f := fs[i].(*funnel.Funnel)
 
 		updateFunnel := false
 		var counts = make([]int64, len(f.Events))
@@ -52,7 +53,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 					// Get the last time this event happened, we want to track unique passes through the funnel
 					if i > 0 {
 						// Only if it is no the first event though (kind of pointless)
-						previousSameEvent.Query().Filter("SessionId=", event.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp<", event.CalculatedTimestamp).Order("-CalculatedTimestamp").Get()
+						previousSameEvent.Query().Filter("SessionId=", event.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp<", event.CalculatedTimestamp).Order("-CalculatedTimestamp").First()
 					}
 					found = true
 					break
@@ -73,7 +74,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 				previousStep := f.Events[last]
 				for _, option := range previousStep {
 					e := analytics.New(db)
-					ok, err := e.Query().Filter("SessionId=", currentEvent.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp>=", previousSameEvent.CalculatedTimestamp).Filter("CalculatedTimestamp<=", currentEvent.CalculatedTimestamp).Order("-CalculatedTimestamp").Get()
+					ok, err := e.Query().Filter("SessionId=", currentEvent.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp>=", previousSameEvent.CalculatedTimestamp).Filter("CalculatedTimestamp<=", currentEvent.CalculatedTimestamp).Order("-CalculatedTimestamp").First()
 					if err != nil {
 						log.Error("Could not get latest analytics event", err, ctx)
 						return
@@ -106,6 +107,6 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 	}
 })
 
-func UpdateFunnels(ctx appengine.Context, namespace, eventId string) {
+func UpdateFunnels(ctx context.Context, namespace, eventId string) {
 	updateFunnels.Call(ctx, namespace, eventId)
 }

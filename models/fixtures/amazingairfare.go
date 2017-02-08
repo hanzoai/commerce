@@ -23,18 +23,13 @@ var AmazingAirfare = New("amazingairfare", func(c *gin.Context) *organization.Or
 	u.LastName = "Grabham"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("amazingairfarepassword!")
-	u.Put()
+	u.MustCreate()
 
 	org.FullName = "Amazing Airfare"
 	org.Owners = []string{u.Id()}
 	org.Website = "http://amazingairfare.net"
 	org.SecretKey = []byte("8z317zTRE005g4Am2kt19a1a56aS5969")
-	org.AddDefaultTokens()
-
-	org.Fees.Card.Flat = 50
-	org.Fees.Card.Percent = 0.05
-	org.Fees.Affiliate.Flat = 30
-	org.Fees.Affiliate.Percent = 0.30
+	org.Fee = 0.05
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
@@ -75,16 +70,7 @@ var AmazingAirfare = New("amazingairfare", func(c *gin.Context) *organization.Or
 	// org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
-	org.Put()
-
-	// Save namespace so we can decode keys for this organization later
-	// ns := namespace.New(db)
-	// ns.Name = org.Name
-	// ns.IntId = org.Key().IntID()
-	// err := ns.Put()
-	// if err != nil {
-	// 	log.Warn("Failed to put namespace: %v", err)
-	// }
+	org.MustCreate()
 
 	return org
 })

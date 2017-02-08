@@ -3,14 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
 )
 
 var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
@@ -19,30 +13,22 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "kanoa"
 	org.GetOrCreate("Name=", org.Name)
-	org.MustSetKey("8ATEOkEnSl")
 
-	usr := user.New(db)
-	usr.Email = "cival@getkanoa.com"
-	usr.GetOrCreate("Email=", usr.Email)
-	usr.FirstName = "Cival"
-	usr.LastName = ""
-	usr.Organizations = []string{org.Id()}
-	usr.PasswordHash, _ = password.Hash("1Kanoa23")
-	usr.MustUpdate()
+	// u := user.New(db)
+	// u.Email = "cival@getkanoa.com"
+	// u.GetOrCreate("Email=", u.Email)
+	// u.FirstName = "Cival"
+	// u.LastName = ""
+	// u.Organizations = []string{org.Id()}
+	// u.PasswordHash, _ = password.Hash("1Kanoa23")
+	// u.Put()
 
-	org.FullName = "KANOA Inc"
-	org.Owners = []string{usr.Id()}
-	org.Website = "http://www.getkanoa.com"
-	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.AddDefaultTokens()
-
-	org.Fees.Card.Flat = 50
-	org.Fees.Card.Percent = 0.05
-	org.Fees.Affiliate.Flat = 30
-	org.Fees.Affiliate.Percent = 0.30
-
-	org.Mailchimp.APIKey = ""
-	org.Mailchimp.ListId = "23ad4e4ba4"
+	// org.FullName = "KANOA Inc"
+	// org.Owners = []string{u.Id()}
+	// org.Website = "http://www.getkanoa.com"
+	// org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
+	// org.AddDefaultTokens()
+	// org.Fee = 0.05
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
@@ -84,39 +70,6 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 
 	// Save org into default namespace
 	org.MustUpdate()
-
-	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.GetOrCreate("Name=", ns.Name)
-	ns.IntId = org.Key().IntID()
-	ns.MustUpdate()
-
-	nsdb := datastore.New(org.Namespaced(db.Context))
-
-	// Create default store
-	stor := store.New(nsdb)
-	stor.Name = "development"
-	stor.GetOrCreate("Name=", stor.Name)
-	stor.MustSetKey("7RtpEPYmCnJrnB")
-	stor.Prefix = "/"
-	stor.Currency = currency.USD
-	stor.Mailchimp.APIKey = ""
-	stor.Mailchimp.ListId = "23ad4e4ba4"
-	stor.MustUpdate()
-
-	// Create earphone product
-	prod := product.New(nsdb)
-	prod.Slug = "earphone"
-	prod.GetOrCreate("Slug=", prod.Slug)
-	prod.MustSetKey("84cguxepxk")
-	prod.Name = "KANOA Earphone"
-	prod.Description = "2 Ear Buds, 1 Charging Case, 3 Ergonomic Ear Tips, 1 Micro USB Cable"
-	prod.Price = currency.Cents(19999)
-	prod.Inventory = 9000
-	prod.Preorder = true
-	prod.Hidden = false
-	prod.MustUpdate()
 
 	return org
 })

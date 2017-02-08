@@ -1,8 +1,11 @@
 package plan
 
-import "hanzo.io/datastore"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
 
-var kind = "plan"
+	. "hanzo.io/models"
+)
 
 func (p Plan) Kind() string {
 	return "plan"
@@ -13,15 +16,15 @@ func (p *Plan) Init(db *datastore.Datastore) {
 }
 
 func (p *Plan) Defaults() {
+	p.Metadata = make(Map)
 }
 
 func New(db *datastore.Datastore) *Plan {
 	p := new(Plan)
 	p.Init(db)
-	p.Defaults()
 	return p
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

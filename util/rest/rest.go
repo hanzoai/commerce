@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
-
-	"appengine"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,9 +14,8 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/reflect"
 	"hanzo.io/util/router"
+	"hanzo.io/util/structs"
 )
 
 var restApis = make([]*Rest, 0)
@@ -52,11 +48,10 @@ type Rest struct {
 	Delete           gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
+	entity mixin.Entity
+
 	middleware []gin.HandlerFunc
 	routes     routeMap
-
-	entityType reflect.Type
-	sliceType  reflect.Type
 }
 
 type Pagination struct {
@@ -71,12 +66,9 @@ func (r *Rest) Init(prefix string) {
 	r.routes = make(routeMap)
 }
 
-func (r *Rest) InitModel(entity mixin.Kind) {
-	// Get type of entity
-	r.entityType = reflect.ValueOf(entity).Type()
-	ptrType := reflect.ValueOf(r.newKind()).Type()
-	r.sliceType = reflect.SliceOf(ptrType)
-	r.Kind = r.newKind().Kind()
+func (r *Rest) InitModel(kind mixin.Kind) {
+	r.entity = mixin.EntityFromKind(kind)
+	r.Kind = kind.Kind()
 	r.ParamId = r.Kind + "id"
 	r.routes = make(routeMap)
 
@@ -85,7 +77,8 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	}
 
 	// Introspect model to determine default sort field
-	for _, name := range reflect.FieldNames(entity) {
+	fields := structs.FieldNames(kind)
+	for _, name := range fields {
 		if name == "Slug" || name == "SKU" {
 			r.DefaultSortField = name
 			return
@@ -94,7 +87,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 
 	// Use Id_ as default sort field if nothing is specified.
 	if r.DefaultSortField == "" {
-		r.DefaultSortField = "CreatedAt"
+		r.DefaultSortField = "Id_"
 	}
 }
 
@@ -258,45 +251,6 @@ func (r Rest) defaultRoutes() []route {
 	}
 }
 
-func (r Rest) newKind() mixin.Kind {
-	return reflect.New(r.entityType).Interface().(mixin.Kind)
-}
-
-// Returns a new interface of this entity type
-func (r Rest) newEntity(c *gin.Context) mixin.Entity {
-	// Increase timeout
-	ctx := middleware.GetAppEngine(c)
-	ctx = appengine.Timeout(ctx, 15*time.Second)
-
-	// Create a new entity
-	db := datastore.New(ctx)
-	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
-	model := mixin.Model{Db: db, Entity: entity}
-
-	// Disable Put/Delete if in test mode
-	if middleware.GetPermissions(c).Has(permission.Test) {
-		model.Mock = false // force mock off due to testing issues
-	}
-
-	// Set model on entity
-	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-	field.Set(reflect.ValueOf(model))
-
-	// Initialize entity
-	entity.Init(db)
-
-	return entity
-}
-
-// helper which returns a slice which is compatible with this entity
-func (r Rest) newEntitySlice() interface{} {
-	// Create pointer to a slice value and set it to the slice
-	slice := reflect.MakeSlice(r.sliceType, 0, 0)
-	ptr := reflect.New(slice.Type())
-	ptr.Elem().Set(slice)
-	return ptr.Interface()
-}
-
 func (r Rest) Render(c *gin.Context, status int, data interface{}) {
 	http.Render(c, status, data)
 }
@@ -305,17 +259,23 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 	http.Fail(c, status, message, err)
 }
 
+func (r Rest) zeroEntity(c *gin.Context) mixin.Entity {
+	db := datastore.New(c)
+	entity := r.entity.Zero()
+	entity.Init(db)
+	return entity
+}
+
 func (r Rest) get(c *gin.Context) {
 	if !r.CheckPermissions(c, "get") {
 		return
 	}
 
 	id := c.Params.ByName(r.ParamId)
-
-	entity := r.newEntity(c)
+	entity := r.zeroEntity(c)
 
 	if err := entity.GetById(id); err != nil {
-		// TODO: When is this a 404?
+		// TODO: When is this not a 404?
 		r.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -328,8 +288,10 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	entity := r.newEntity(c)
-	entities := r.newEntitySlice()
+	// Create entity so we can create new Queries
+	entity := r.zeroEntity(c)
+
+	// Parse query
 	query := c.Request.URL.Query()
 
 	// Determine deafult sort order
@@ -339,14 +301,13 @@ func (r Rest) list(c *gin.Context) {
 	}
 
 	// Create query
-	q := entity.Query().All().Order(sortField)
+	q := entity.Query().Order(sortField)
 
 	// Update query with page/display params
 	var display int
 	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
-	limitStr := query.Get("limit")
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -367,21 +328,16 @@ func (r Rest) list(c *gin.Context) {
 		}
 	}
 
-	if _, err = q.GetAll(entities); err != nil {
+	entities, err := q.GetAll()
+	if err != nil {
 		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
 
-	count, err := entity.Query().All().Count()
+	count, err := entity.Query().Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
-	}
-
-	if limitStr != "" {
-		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
-			count = limit
-		}
 	}
 
 	r.Render(c, 200, Pagination{
@@ -394,10 +350,12 @@ func (r Rest) list(c *gin.Context) {
 
 func (r Rest) create(c *gin.Context) {
 	if !r.CheckPermissions(c, "create") {
+		log.Warn("No permission to create '%s'", r.Kind)
 		return
 	}
 
-	entity := r.newEntity(c)
+	// Create new entity
+	entity := r.zeroEntity(c)
 
 	if err := json.Decode(c.Request.Body, entity); err != nil {
 		r.Fail(c, 400, "Failed decode request body", err)
@@ -420,22 +378,20 @@ func (r Rest) update(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 
-	entity := r.newEntity(c)
+	// Create new entity
+	entity := r.zeroEntity(c)
 
 	// Try to retrieve key from datastore
-	key, ok, err := entity.IdExists(id)
+	ok, err := entity.IdExists(id)
 	if !ok {
-		if err != nil {
-			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
-			return
-		}
-
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
-	// Preserve original key
-	entity.SetKey(key)
+	if err != nil {
+		r.Fail(c, 500, "Failed to retrieve key for "+id, err)
+		return
+	}
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {
@@ -459,7 +415,9 @@ func (r Rest) patch(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 
-	entity := r.newEntity(c)
+	// Create new entity
+	entity := r.zeroEntity(c)
+
 	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
@@ -485,7 +443,10 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	id := c.Params.ByName(r.ParamId)
-	entity := r.newEntity(c)
+
+	// Create new entity
+	entity := r.zeroEntity(c)
+
 	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
@@ -493,8 +454,7 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	db := entity.Datastore()
-	key := db.NewIncompleteKey("deleted", nil)
-	if _, err := db.Put(key, entity); err != nil {
+	if _, err := db.Put("deleted", entity); err != nil {
 		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
 		return
 	}

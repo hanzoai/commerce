@@ -21,7 +21,7 @@ var _ = New("mark-dangling-payments-for-deletion",
 		ord := order.New(db)
 
 		// Try and lookup order
-		err := ord.GetById(oid)
+		err := ord.Get(oid)
 
 		// Update payment accordingly
 		switch err {

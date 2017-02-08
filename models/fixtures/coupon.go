@@ -1,7 +1,6 @@
 package fixtures
 
 import (
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,57 +18,43 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	p := Product(c)
 
 	cpn := coupon.New(db)
-	cpn.Code_ = strings.ToUpper("sad-coupon")
-	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Code = "sad-coupon"
+	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Sad Coupon"
 	cpn.Type = "flat"
+	cpn.StartDate = now
 	cpn.EndDate = now.Add(Month)
 	cpn.Once = true
 	cpn.Enabled = true
 	cpn.Amount = 500
 	cpn.ProductId = p.Id()
 
-	cpn.MustPut()
+	cpn.MustUpdate()
 
 	cpn = coupon.New(db)
-	cpn.Code_ = strings.ToUpper("such-coupon")
-	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Code = "such-coupon"
+	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Such Coupon"
 	cpn.Type = "flat"
+	cpn.StartDate = now
 	cpn.EndDate = now.Add(Month)
 	cpn.Once = true
 	cpn.Enabled = true
 	cpn.Amount = 500
 
-	cpn.MustPut()
+	cpn.MustUpdate()
 
 	cpn = coupon.New(db)
-	cpn.Code_ = strings.ToUpper("FREE-DOGE")
-	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Code = "FREE-DOGE"
+	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Free DogeShirt"
 	cpn.Type = "free-item"
+	cpn.StartDate = now
 	cpn.EndDate = now.Add(Month)
 	cpn.Once = true
 	cpn.Enabled = true
 	cpn.FreeProductId = "doge-shirt"
 	cpn.FreeQuantity = 1
-
-	cpn.MustPut()
-
-	cpn = coupon.New(db)
-	cpn.Code_ = strings.ToUpper("NO-DOGE-LEFT-BEHIND")
-	cpn.GetOrCreate("Code=", cpn.Code_)
-	cpn.Dynamic = true
-	cpn.Limit = 1
-	cpn.Name = "Free DogeShirt"
-	cpn.Type = "free-item"
-	cpn.EndDate = now.Add(Month)
-	cpn.Once = true
-	cpn.Enabled = true
-	cpn.FreeProductId = "doge-shirt"
-	cpn.FreeQuantity = 1
-
-	cpn.MustPut()
-
+	cpn.MustUpdate()
 	return cpn
 })

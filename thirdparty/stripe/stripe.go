@@ -3,20 +3,37 @@ package stripe
 import (
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/urlfetch"
 
-	"github.com/stripe/stripe-go"
+	stripe "github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
+
+	"hanzo.io/models/payment"
+	"hanzo.io/models/subscription"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/stripe/errors"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
-func New(ctx appengine.Context, accessToken string) *Client {
+type Client struct {
+	*client.API
+	ctx context.Context
+}
+
+type Payable interface {
+	ToCard() *stripe.CardParams
+}
+
+func New(ctx context.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
+	ctx, _ = context.WithTimeout(ctx, time.Second*60)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
+		Context: ctx,
+		AllowInvalidServerCertificate: false,
 	}
 	stripe.SetBackend(stripe.APIBackend, nil)
 	stripe.SetHTTPClient(httpClient)
@@ -26,9 +43,371 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	return &Client{sc, ctx}
 }
 
-// Enable debug logging in development
-func init() {
-	if appengine.IsDevAppServer() {
-		stripe.LogLevel = 2
+// Covert a payment model into a card card we can use for authorization
+func ToCard(pay Payable) *stripe.CardParams {
+	card := pay.ToCard()
+	return card
+}
+
+// Subscribe to a plan
+func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
+	log.Debug("sub.Plan %v", sub.Plan)
+	params := &stripe.SubParams{
+		Plan: sub.Plan.StripeId,
 	}
+
+	switch v := source.(type) {
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("user", v.Id())
+	}
+
+	params.AddMeta("plan", sub.Plan.Id())
+
+	s, err := c.Subs.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Account.SubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = time.Unix(s.Ended, 0)
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = string(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Update subscribe to a plan
+func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer: sub.Account.CustomerId,
+		Plan:     sub.Plan.StripeId,
+		Quantity: uint64(sub.Quantity),
+	}
+
+	params.AddMeta("plan", sub.Plan.Id())
+
+	s, err := c.Subs.Update(sub.Account.SubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Account.SubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = string(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Subscribe to a plan
+func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer:  sub.Account.CustomerId,
+		EndCancel: true,
+	}
+	s, err := c.Subs.Get(sub.Account.SubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	_, err = c.Subs.Cancel(sub.Account.SubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Account.SubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+	sub.CanceledAt = time.Now()
+	sub.EndCancel = true
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = string(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Do authorization, return token
+func (c Client) Authorize(pay Payable) (*Token, error) {
+	t, err := c.API.Tokens.New(&stripe.TokenParams{
+		Card: ToCard(pay),
+	})
+
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Cast back to our token
+	return (*Token)(t), err
+}
+
+// Attempts to refund payment and updates the payment in datastore
+func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
+	if refundAmount > pay.Amount {
+		return pay, errors.RefundGreaterThanPayment
+	}
+
+	if refundAmount+pay.AmountRefunded > pay.Amount {
+		return pay, errors.RefundGreaterThanPayment
+	}
+
+	if pay.Status == payment.Unpaid {
+		log.Warn("Order's payment is unpaid when trying to refund: %#v", pay, c.ctx)
+		return pay, errors.UnableToRefundUnpaidTransaction
+	}
+
+	// Process refund with Stripe
+	refund, err := c.API.Refunds.New(&stripe.RefundParams{
+		Charge: pay.Account.ChargeId,
+		Amount: uint64(refundAmount),
+	})
+
+	if err != nil {
+		log.Error("Error refunding payment %s", err.Error())
+		return pay, err
+	}
+
+	// Update payment
+	pay.AmountRefunded = currency.Cents(refund.Amount)
+	if pay.AmountRefunded == pay.Amount {
+		pay.Status = payment.Refunded
+	}
+
+	return pay, pay.Put()
+}
+
+// Get an exising Stripe card
+func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: customerId,
+	}
+
+	card, err := c.API.Cards.Get(cardId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Get Stripe customer
+func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{}
+	params.SetSource(token)
+
+	customerId := user.Accounts.Stripe.CustomerId
+
+	customer, err := c.API.Customers.Get(customerId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Update Stripe customer
+func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{
+		Email: user.Email,
+	}
+
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	params.AddMeta("user", user.Id())
+
+	customerId := user.Accounts.Stripe.CustomerId
+
+	customer, err := c.API.Customers.Update(customerId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Create new stripe customer
+func (c Client) NewCustomer(user *user.User, token string) (*Customer, error) {
+	params := &stripe.CustomerParams{
+		Desc:  user.Name(),
+		Email: user.Email,
+	}
+
+	if token != "" {
+		params.SetSource(token)
+	}
+
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	params.AddMeta("user", user.Id())
+
+	customer, err := c.API.Customers.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Add new card to Stripe customer
+func (c Client) AddCard(token string, user *user.User) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: user.Accounts.Stripe.CustomerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Update card associated with Stripe customer
+func (c Client) UpdateCard(token string, user *user.User) (*Card, error) {
+	acct := user.Accounts.Stripe
+	customerId := acct.CustomerId
+	cardId := acct.CardId
+
+	params := &stripe.CardParams{
+		Customer: customerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.Update(cardId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Card)(card), err
+}
+
+func (c Client) GetCharge(chargeId string) (*Charge, error) {
+	params := &stripe.ChargeParams{}
+	params.Expand("balance_transaction")
+	charge, err := c.API.Charges.Get(chargeId, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return (*Charge)(charge), err
+}
+
+// Update Stripe charge
+func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
+	pay.Metadata["order"] = pay.OrderId
+	pay.Metadata["payment"] = pay.Id()
+	pay.Metadata["user"] = pay.Buyer.UserId
+
+	// Create params for update
+	params := &stripe.ChargeParams{
+		Desc: pay.Description,
+		// Email: pay.Buyer.Email,
+	}
+
+	// Update metadata
+	for k, v := range pay.Metadata {
+		s, ok := v.(string)
+		if ok {
+			params.AddMeta(k, s)
+		}
+	}
+
+	id := pay.Account.ChargeId
+
+	charge, err := c.API.Charges.Update(id, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Charge)(charge), err
+}
+
+// Create new charge
+func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
+	params := &stripe.ChargeParams{
+		Amount:    uint64(pay.Amount),
+		Currency:  stripe.Currency(pay.Currency),
+		Customer:  pay.Account.CustomerId,
+		Desc:      pay.Description,
+		Fee:       uint64(pay.Fee),
+		NoCapture: true,
+		// Email:     pay.Buyer.Email,
+	}
+
+	// Update with our user metadata
+	for k, v := range pay.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	params.AddMeta("order", pay.OrderId)
+	params.AddMeta("payment", pay.Id())
+
+	switch v := source.(type) {
+	case string:
+		params.SetSource(v)
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("user", v.Id())
+	}
+
+	params.Expand("balance_transaction")
+
+	// Create charge
+	ch, err := c.API.Charges.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Update charge Id on payment
+	pay.Account.ChargeId = ch.ID
+
+	return (*Charge)(ch), err
+}
+
+// Capture charge
+func (c Client) Capture(id string) (*Charge, error) {
+	log.Debug("Capture %v", id)
+	ch, err := c.API.Charges.Capture(id, nil)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Charge)(ch), err
 }

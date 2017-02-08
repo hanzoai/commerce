@@ -8,10 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"
@@ -25,8 +24,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string      `json:"name"`
-	Content interface{} `json:"content"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
 }
 
 type RcptMergeVars struct {
@@ -69,7 +68,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language,omitempty"`
+		MergeLanguage string          `json:"merge_language"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
@@ -133,6 +132,7 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
+	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req
@@ -157,7 +157,7 @@ func GetTemplate(filename string) string {
 
 // PingMandrill checks if our credentials/url are okay
 // Returns true if Mandrill replies with  a 200 OK
-func Ping(ctx appengine.Context) bool {
+func Ping(ctx context.Context) bool {
 	url := root + "/users/ping.json"
 
 	str := fmt.Sprintf(`{"key": "%s"}`, config.Mandrill.APIKey)
@@ -177,7 +177,7 @@ func Ping(ctx appengine.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
+func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send-template.json"
 
@@ -189,10 +189,6 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	}
 
 	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(60) * time.Second,
-	}
 	res, err := client.Do(hreq)
 	if err != nil {
 		return err
@@ -205,10 +201,10 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
 }
 
-func Send(ctx appengine.Context, req *SendReq) error {
+func Send(ctx context.Context, req *SendReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send.json"
 
@@ -232,5 +228,5 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
 }

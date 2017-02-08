@@ -1,14 +1,6 @@
 package webhook
 
-import (
-	aeds "appengine/datastore"
-
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/util/json"
-)
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+import "hanzo.io/models/mixin"
 
 type Events map[string]bool
 
@@ -32,27 +24,6 @@ type Webhook struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (s *Webhook) Load(c <-chan aeds.Property) (err error) {
-	// Ensure we're initialized
-	s.Defaults()
-
-	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
-		return err
-	}
-
-	// Deserialize from datastore
-	if len(s.Events_) > 0 {
-		err = json.DecodeBytes([]byte(s.Events_), &s.Events)
-	}
-
-	return err
-}
-
-func (s *Webhook) Save(c chan<- aeds.Property) (err error) {
-	// Serialize unsupported properties
-	s.Events_ = string(json.EncodeBytes(&s.Events))
-
-	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+func (w *Webhook) Defaults() {
+	w.Events = make(Events)
 }

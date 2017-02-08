@@ -1,0 +1,71 @@
+package: "hanzo.io"
+ignore:
+- appengine
+- hanzo.io
+excludeDirs:
+- node_modules
+import:
+- package: github.com/cenkalti/backoff
+  version: master
+- package: github.com/davecgh/go-spew/spew
+  version: master
+- package: github.com/dgrijalva/jwt-go
+  version: v2.7.0
+- package: github.com/dustin/go-humanize
+  version: master
+- package: github.com/flosch/pongo2
+  version: master
+- package: github.com/getsentry/raven-go
+  version: master
+- package: github.com/gin-gonic/gin
+  version: master
+- package: github.com/go-errors/errors
+  version: master
+- package: github.com/gorilla/schema
+  version: master
+- package: github.com/gorilla/sessions
+  version: master
+- package: github.com/hashicorp/golang-lru
+  version: master
+- package: github.com/huandu/facebook
+  version: master
+- package: github.com/julienschmidt/httprouter
+  version: 8c199fb6259ffc1af525cc3ad52ee60ba8359669
+- package: github.com/mattbaird/gochimp
+  version: master
+- package: github.com/mholt/binding
+  version: master
+- package: github.com/netlify/netlify-go
+  version: master
+- package: github.com/onsi/ginkgo/ginkgo
+  version: master
+- package: github.com/onsi/gomega
+  version: master
+- package: github.com/qedus/nds
+  version: master
+- package: github.com/ryanuber/go-glob
+  version: master
+- package: github.com/speps/go-hashids
+  version: master
+- package: github.com/stripe/stripe-go
+  version: v17.1.0
+- package: github.com/vanng822/go-premailer/premailer
+  version: master
+- package: github.com/vincent-petithory/countries
+  version: master
+- package: github.com/zeekay/aetest
+  version: master
+- package: github.com/zeekay/go-logging
+  version: master
+- package: golang.org/x/crypto/bcrypt
+  version: master
+- package: golang.org/x/net/context
+  version: master
+- package: golang.org/x/oauth2/google
+  version: master
+- package: google.golang.org/api/storage/v1
+  version: master
+- package: google.golang.org/appengine
+  version: master
+- package: google.golang.org/grpc
+  version: master

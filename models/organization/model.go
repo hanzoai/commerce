@@ -2,41 +2,23 @@ package organization
 
 import (
 	"hanzo.io/datastore"
-	"hanzo.io/models/types/pricing"
+	"hanzo.io/models/mixin"
 )
 
-var kind = "organization"
-
 func (o Organization) Kind() string {
-	return kind
+	return "organization"
 }
 
 func (o *Organization) Init(db *datastore.Datastore) {
 	o.Model.Init(db, o)
-	o.AccessToken.Init(o)
-}
-
-func (o *Organization) Defaults() {
-	o.Admins = make([]string, 0)
-	o.Moderators = make([]string, 0)
-
-	o.Enabled = true
-
-	o.Fees.Card.Flat = 50
-	o.Fees.Card.Percent = 0.05
-	o.Fees.Affiliate.Flat = 30
-	o.Fees.Affiliate.Percent = 0.30
-
-	o.Partners = make([]pricing.Partner, 0)
 }
 
 func New(db *datastore.Datastore) *Organization {
-	o := new(Organization)
-	o.Init(db)
-	o.Defaults()
-	return o
+	r := new(Organization)
+	r.Init(db)
+	return r
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

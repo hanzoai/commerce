@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine"
+	"golang.org/x/net/context"
 
 	"github.com/gin-gonic/gin"
 
@@ -108,7 +108,7 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error) {
+func (c Context) Context(aectx *context.Context) (ctx *gin.Context, err error) {
 	ctx = new(gin.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
@@ -132,7 +132,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 		if id, ok := value.(string); ok {
 			db := datastore.New(*aectx)
 			org := organization.New(db)
-			org.GetById(id)
+			org.Get(id)
 			ctx.Set("organization", org)
 		}
 	}

@@ -17,6 +17,6 @@ var Collection = New("collection", func(c *gin.Context) *collection.Collection {
 	collection.Published = true
 	collection.Available = true
 
-	collection.MustPut()
+	collection.MustUpdate()
 	return collection
 })

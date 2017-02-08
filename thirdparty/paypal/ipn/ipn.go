@@ -10,9 +10,10 @@ import (
 	"net/url"
 	"time"
 
-	"appengine"
+	"golang.org/x/net/context"
 
-	"appengine/urlfetch"
+	aeds "google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,6 +24,8 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/util/log"
 	"hanzo.io/util/router"
+
+	checkoutApi "hanzo.io/api/checkout"
 )
 
 // Read body from response
@@ -41,7 +44,7 @@ func readBody(res *http.Response) (string, error) {
 	return string(bytes), nil
 }
 
-func respond(ctx appengine.Context, message url.Values) (string, error) {
+func respond(ctx context.Context, message url.Values) (string, error) {
 	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, bytes.NewBufferString(message.Encode()))
 	if err != nil {
 		log.Panic("Could create request: %s", err, ctx)
@@ -51,10 +54,10 @@ func respond(ctx appengine.Context, message url.Values) (string, error) {
 	log.Debug("IPN response: %s", string(dump), ctx)
 
 	// Create client
+	ctx, _ = context.WithTimeout(ctx, 20*time.Second)
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	// Make Post request
@@ -111,7 +114,7 @@ func Webhook(c *gin.Context) {
 
 	// Update payment
 	pay := payment.New(db)
-	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).Get()
+	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
 		log.Panic("Could not find PayKey: %s", err, ctx)
 		return
@@ -140,19 +143,19 @@ func Webhook(c *gin.Context) {
 		ord.PaymentStatus = pay.Status
 
 		// No need to call Refund API.
-		pay.MustUpdate()
-		ord.MustUpdate()
+		pay.MustPut()
+		ord.MustPut()
 		return
 	}
 
 	if pay.Amount != ipnMessage.Amount || pay.Currency != ipnMessage.Currency {
 		// Probably fraud.
 		pay.Status = payment.Fraudulent
-		pay.MustUpdate()
+		pay.MustPut()
 
 		ord.Status = order.Cancelled
 		ord.PaymentStatus = pay.Status
-		ord.MustUpdate()
+		ord.MustPut()
 
 		// call refund API
 		return
@@ -160,10 +163,10 @@ func Webhook(c *gin.Context) {
 
 	// Looking good.
 	pay.Status = payment.Paid
-	pay.MustUpdate()
+	pay.MustPut()
 
-	// TODO: Make this part of the payment model API
-	// checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
+	// Increment counters and figure update referrer things
+	checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

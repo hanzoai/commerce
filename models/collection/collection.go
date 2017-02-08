@@ -26,7 +26,8 @@ type Collection struct {
 	Description string `datastore:",noindex" json:"description"`
 
 	// Image/Video/Other Media to show in a gallery
-	Media []Media `json:"media"`
+	Media  []Media `json:"media"`
+	Media_ string  `json:"-"'` // no props
 
 	// Is the collection available
 	Available bool `json:"available"`
@@ -49,10 +50,19 @@ type Collection struct {
 	OutOfStock bool `json:"outOfStock"`
 
 	// Lists of products or specific product variants that are part of this collection
-	ProductIds []string `json:"productIds"`
-	VariantIds []string `json:"variantIds"`
+	ProductIds  []string `json:"productIds"`
+	ProductIds_ string   `json:"-"` // need props
+	VariantIds  []string `json:"variantIds"`
+	VariantIds_ string   `json:"-"` // need props
 
 	History []Event `json:"-"`
+}
+
+func (c *Collection) Defaults() {
+	c.Media = make([]Media, 0)
+	c.ProductIds = make([]string, 0)
+	c.VariantIds = make([]string, 0)
+	c.History = make([]Event, 0)
 }
 
 func (c *Collection) Validator() *val.Validator {

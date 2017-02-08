@@ -27,19 +27,15 @@ type AccessToken struct {
 	currentToken *token.Token
 }
 
-func (at *AccessToken) Init(e Entity) {
-	at.Entity = e
-}
-
 func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
-	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)
+	t := token.New(name, permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
 	return t.String()
 }
 
 func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
-	if tok1.Id != tok2.Id {
+	if tok1.Jti != tok2.Jti {
 		return ErrorExpiredToken
 	}
 
@@ -52,13 +48,11 @@ func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
 
 func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
 	for _, tok := range at.Tokens {
-		if tok.Name == name {
-			tok.Secret = at.SecretKey
+		if tok.Type == name {
+			tok.SetSecret(at.SecretKey)
 			return &tok, nil
 		}
 	}
-
-	log.Warn("Token not found by name '%s'", name)
 	return nil, TokenNotFoundByName
 }
 
@@ -67,33 +61,35 @@ func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
 	if err != nil {
 		panic(err)
 	}
+	tok.SetSecret(at.SecretKey)
 	return tok
 }
 
 func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
-	tok, err := token.FromString(accessToken, at.SecretKey)
+	tok, err := token.Parse(accessToken, at.SecretKey)
 	if err != nil {
-		return tok, err
+		return nil, err
 	}
 
+	// Unneeded anymore
 	// Try to fetch model using EntityId on token
-	if err := at.Entity.GetById(tok.EntityId); err != nil {
-		return tok, err
-	}
+	// if err := at.Entity.Get(tok.); err != nil {
+	// 	return tok, err
+	// }
 
 	for _, _tok := range at.Tokens {
-		if tok.Id == _tok.Id {
+		if tok.Jti == _tok.Jti {
+			tok.SetSecret(at.SecretKey)
 			return tok, at.CompareToken(tok, &_tok)
 		}
 	}
 
-	log.Warn("Token not found: %v", tok)
 	return tok, TokenNotFound
 }
 
 func (at *AccessToken) RemoveToken(name string) {
 	num := len(at.Tokens)
-	tokens := make([]token.Token, 0)
+	tokens := make([]token.Token, 0, num)
 	if num <= 0 {
 		at.Tokens = tokens
 		return
@@ -102,7 +98,7 @@ func (at *AccessToken) RemoveToken(name string) {
 	// Loop over tokens looking for token to delete. We need to check every
 	// token in case a duplicate was saved
 	for i := 0; i < num; i++ {
-		if at.Tokens[i].Name != name {
+		if at.Tokens[i].Type != name {
 			tokens = append(tokens, at.Tokens[i])
 		}
 	}

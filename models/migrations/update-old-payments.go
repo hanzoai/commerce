@@ -3,7 +3,7 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"golang.org/x/net/context"
 
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
@@ -17,7 +17,7 @@ import (
 var accessToken = ""
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error {
+func updateChargeFromPayment(ctx context.Context, pay *payment.Payment) error {
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
@@ -31,7 +31,7 @@ func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error 
 }
 
 // Ensure order has right payment id
-func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.Payment) error {
+func orderNeedsPaymentId(ctx context.Context, ord *order.Order, pay *payment.Payment) error {
 	if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
 		log.Warn("Payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
 		ord.PaymentIds = []string{pay.Id()}
@@ -45,7 +45,7 @@ func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.P
 	return nil
 }
 
-func deletePayment(ctx appengine.Context, pay *payment.Payment) error {
+func deletePayment(ctx context.Context, pay *payment.Payment) error {
 	pay.Deleted = true
 	if err := pay.Put(); err != nil {
 		log.Error("Unable to mark payment '%s' as deleted: %v", pay.Id(), err, ctx)
@@ -71,7 +71,7 @@ var _ = New("update-old-payments",
 
 		// Query out payments with matching chargeId's, only one is linked to a
 		// real order, and the charge should be pointed at that one.
-		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
+		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).LoadAll(&payments)
 		if err != nil {
 			log.Error("Unable query for payments: %v", err, ctx)
 			return
@@ -93,7 +93,7 @@ var _ = New("update-old-payments",
 
 			// See if we have a valid order
 			ord = order.New(db)
-			if err := ord.GetById(p.OrderId); err != nil {
+			if err := ord.Get(p.OrderId); err != nil {
 				// Not a good payment, no matching order
 				deletePayment(ctx, p)
 			} else {

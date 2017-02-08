@@ -8,13 +8,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
 	"hanzo.io/util/log"
 )
 
@@ -108,12 +107,12 @@ func ShipNotify(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
+	ctx := db.Context
 
 	ord := order.New(db)
-	ok, err := ord.Query().Filter("Number=", id).Get()
-	if !ok || err != nil {
+	key := aeds.NewKey(ctx, ord.Kind(), "", int64(id), nil)
+	if err := ord.Get(key); err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
-		c.String(200, "ok\n")
 		return
 	}
 
@@ -127,25 +126,13 @@ func ShipNotify(c *gin.Context) {
 		log.Panic("Unable to unmarshal XML: %v", err, c)
 	}
 
-	if ord.Fulfillment.TrackingNumber != req.TrackingNumber {
-		ord.FulfillmentStatus = "shipped"
-		ord.Fulfillment.TrackingNumber = req.TrackingNumber
-		ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
-		ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
-		ord.Fulfillment.Service = req.Service
-		ord.Fulfillment.Carrier = req.Carrier
-		ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
-
-		usr := user.New(db)
-		usr.MustGetById(ord.UserId)
-
-		pay := payment.New(db)
-		pay.MustGetById(ord.PaymentIds[0])
-
-		emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
-	}
+	ord.FulfillmentStatus = "shipped"
+	ord.Fulfillment.TrackingNumber = req.TrackingNumber
+	ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
+	ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
+	ord.Fulfillment.Service = req.Service
+	ord.Fulfillment.Carrier = req.Carrier
+	ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
 
 	ord.MustPut()
-
-	c.String(200, "ok\n")
 }

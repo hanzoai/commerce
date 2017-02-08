@@ -9,14 +9,13 @@ import (
 type Card stripe.Card
 type CardParams stripe.CardParams
 type Charge stripe.Charge
-type ChargeListParams stripe.ChargeListParams
 type ChargeParams stripe.ChargeParams
+type ChargeListParams stripe.ChargeListParams
 type Customer stripe.Customer
 type Dispute stripe.Dispute
-type Event stripe.Event
-type Reversal stripe.Reversal
 type Token stripe.Token
-type Transfer stripe.Transfer
+type Event stripe.Event
+type Sub stripe.Sub
 
 const ReportFraudulent = charge.ReportFraudulent
 const ReportSafe = charge.ReportSafe

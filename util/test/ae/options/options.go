@@ -6,12 +6,12 @@ type Options struct {
 	Modules                  []string
 	TaskQueues               []string
 	PreferAppengineTesting   bool
-	Noisy                    bool
+	LogChild                 bool
 }
 
 func (c *Options) SetDefaults() {
 	if c.AppId == "" {
-		c.AppId = "crowdstart-us"
+		c.AppId = "hanzo-production"
 	}
 
 	if c.TaskQueues == nil {

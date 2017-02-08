@@ -7,18 +7,46 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
+	"hanzo.io/util/template"
+
+	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 type resetReq struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Id       string `json:"id"`
+}
+
+func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) error {
+	conf := org.Email.User.PasswordReset.Config(org)
+	if !conf.Enabled || org.Mandrill.APIKey == "" {
+		return nil
+	}
+
+	// From
+	fromName := conf.FromName
+	fromEmail := conf.FromEmail
+
+	// To
+	toEmail := usr.Email
+	toName := usr.Name()
+
+	// Subject
+	subject := conf.Subject
+
+	// Render email
+	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
+
+	// Send Email
+	ctx := middleware.GetAppEngine(c)
+	return mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }
 
 func reset(c *gin.Context) {
@@ -54,8 +82,7 @@ func reset(c *gin.Context) {
 	}
 
 	// Send email
-	ctx := middleware.GetAppEngine(c)
-	emails.SendPasswordResetEmail(ctx, org, usr, tok)
+	sendPasswordReset(c, org, usr, tok)
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }
