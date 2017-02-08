@@ -4,9 +4,9 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/hashid"
+	"hanzo.io/models/types/commission"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/hashid"
 )
 
 // Partner pricing fees

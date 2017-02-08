@@ -3,11 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/types/form"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/types/form"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("mailinglist-types",

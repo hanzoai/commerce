@@ -1,8 +1,8 @@
 package affiliate
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/schedule"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/schedule"
 )
 
 var kind = "affiliate"

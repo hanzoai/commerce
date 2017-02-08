@@ -3,16 +3,16 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/counter"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/user"
+	"hanzo.io/util/counter"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("fix-currency-set",

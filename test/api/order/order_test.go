@@ -5,12 +5,12 @@ import (
 
 	"github.com/icrowley/fake"
 
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/variant"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/product"
+	"hanzo.io/models/variant"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("order", func() {

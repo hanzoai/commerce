@@ -1,10 +1,10 @@
 package affiliate
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/country"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/commission"
+	"hanzo.io/models/types/country"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore, userId string) *Affiliate {

@@ -7,8 +7,8 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore/iface"
-	. "crowdstart.com/datastore/utils"
+	"hanzo.io/datastore/iface"
+	. "hanzo.io/datastore/utils"
 )
 
 type Kind interface {

@@ -6,12 +6,12 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/models/types/country"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/types/thankyou"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/thankyou"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 var cwd, _ = os.Getwd()

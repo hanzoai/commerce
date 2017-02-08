@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/cart"
-	"crowdstart.com/models/coupon"
+	"hanzo.io/models/cart"
+	"hanzo.io/models/coupon"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("fix-coupons-in-cart",

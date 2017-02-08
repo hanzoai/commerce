@@ -9,10 +9,10 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
-	// "crowdstart.com/models"
-	"crowdstart.com/models/campaign"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	// "hanzo.io/models"
+	"hanzo.io/models/campaign"
+	"hanzo.io/util/log"
 
 	"appengine/urlfetch"
 )

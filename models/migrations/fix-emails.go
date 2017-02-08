@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/token"
-	"crowdstart.com/models/user"
+	"hanzo.io/models/token"
+	"hanzo.io/models/user"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("fix-emails",

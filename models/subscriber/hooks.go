@@ -1,7 +1,7 @@
 package subscriber
 
 import (
-	"crowdstart.com/util/webhook"
+	"hanzo.io/util/webhook"
 )
 
 // Hooks

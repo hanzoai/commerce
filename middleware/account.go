@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json/http"
 )
 
 func AccountRequired() gin.HandlerFunc {

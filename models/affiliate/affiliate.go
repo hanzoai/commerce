@@ -1,10 +1,10 @@
 package affiliate
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/schedule"
-	"crowdstart.com/thirdparty/stripe/connect"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/commission"
+	"hanzo.io/models/types/schedule"
+	"hanzo.io/thirdparty/stripe/connect"
 )
 
 type Affiliate struct {

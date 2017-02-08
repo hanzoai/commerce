@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 func dedupeOrders(db *ds.Datastore, ord *order.Order, currentUsr, masterUsr *user.User) {

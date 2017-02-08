@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
 )
 
 var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {

@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/discount"
-	"crowdstart.com/models/discount/rule"
-	"crowdstart.com/models/discount/scope"
-	"crowdstart.com/models/discount/target"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/discount"
+	"hanzo.io/models/discount/rule"
+	"hanzo.io/models/discount/scope"
+	"hanzo.io/models/discount/target"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
 )
 
 var Discount = New("discount", func(c *gin.Context) *discount.Discount {

@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/types/thankyou"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/types/thankyou"
 )
 
 var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingList {

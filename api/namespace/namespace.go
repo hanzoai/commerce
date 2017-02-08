@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/util/log"
 )
 
 type Organization struct {
