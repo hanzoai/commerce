@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/cart"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/rest"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/cart"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/rest"
 )
 
 type SetReq struct {

@@ -3,12 +3,12 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/checkout/stripe"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {

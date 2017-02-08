@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/fee"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/thirdparty/stripe/tasks"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/fee"
+	"hanzo.io/models/payment"
+	"hanzo.io/thirdparty/stripe/tasks"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("payment-fee-status-update",

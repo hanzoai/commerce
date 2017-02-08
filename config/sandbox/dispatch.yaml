@@ -1,5 +1,5 @@
 application: crowdstart-sandbox
 
 dispatch:
-  - url: "sandbox.crowdstart.com/*"
+  - url: "sandbox.hanzo.io/*"
     module: api

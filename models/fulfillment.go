@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/types/currency"
 )
 
 type FulfillmentStatus string

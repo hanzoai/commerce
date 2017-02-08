@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/bundle"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/variant"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/bundle"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/product"
+	"hanzo.io/models/store"
+	"hanzo.io/models/variant"
+	"hanzo.io/util/json/http"
 )
 
 var types = map[string]reflect.Type{

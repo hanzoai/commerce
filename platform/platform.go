@@ -1,13 +1,12 @@
 package platform
 
 import (
-	"crowdstart.com/middleware"
-	"crowdstart.com/platform/admin"
-	"crowdstart.com/platform/docs"
-	"crowdstart.com/platform/frontend"
-	"crowdstart.com/platform/login"
-	"crowdstart.com/platform/user"
-	"crowdstart.com/util/router"
+	"hanzo.io/middleware"
+	"hanzo.io/platform/admin"
+	"hanzo.io/platform/frontend"
+	"hanzo.io/platform/login"
+	"hanzo.io/platform/user"
+	"hanzo.io/util/router"
 )
 
 // Defines the routes for the platform
@@ -22,22 +21,22 @@ func init() {
 	// Frontend
 	// router.GET("/", frontend.Index)
 	router.GET("/", loginRequired, acquireUser, acquireOrganization, admin.Dashboard)
-	router.GET("/about", frontend.About)
-	router.GET("/contact", frontend.Contact)
-	router.GET("/faq", frontend.Faq)
-	router.GET("/features", frontend.Features)
-	router.GET("/how-it-works", frontend.HowItWorks)
-	router.GET("/pricing", frontend.Pricing)
-	router.GET("/privacy", frontend.Privacy)
-	router.GET("/team", frontend.Team)
-	router.GET("/terms", frontend.Terms)
+	// router.GET("/about", frontend.About)
+	// router.GET("/contact", frontend.Contact)
+	// router.GET("/faq", frontend.Faq)
+	// router.GET("/features", frontend.Features)
+	// router.GET("/how-it-works", frontend.HowItWorks)
+	// router.GET("/pricing", frontend.Pricing)
+	// router.GET("/privacy", frontend.Privacy)
+	// router.GET("/team", frontend.Team)
+	// router.GET("/terms", frontend.Terms)
 
 	// Docs
-	router.GET("/docs", docs.GettingStarted)
-	router.GET("/docs/api", docs.API)
-	router.GET("/docs/checkout", docs.Checkout)
-	router.GET("/docs/crowdstart.js", docs.CrowdstartJS)
-	router.GET("/docs/salesforce", docs.Salesforce)
+	// router.GET("/docs", docs.GettingStarted)
+	// router.GET("/docs/api", docs.API)
+	// router.GET("/docs/checkout", docs.Checkout)
+	// router.GET("/docs/crowdstart.js", docs.CrowdstartJS)
+	// router.GET("/docs/salesforce", docs.Salesforce)
 
 	// Login
 	router.GET("/login", logoutRequired, login.Login)

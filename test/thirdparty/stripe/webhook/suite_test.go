@@ -5,15 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/test/ae"
-	"crowdstart.com/util/test/ginclient"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/test/ae"
+	"hanzo.io/util/test/ginclient"
 
-	stripeApi "crowdstart.com/thirdparty/stripe/api"
+	stripeApi "hanzo.io/thirdparty/stripe/api"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var (

@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/referral"
+	"hanzo.io/models/referral"
 )
 
 var Referral = New("referral", func(c *gin.Context) *referral.Referral {

@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/models/user"
+	"hanzo.io/auth/password"
+	"hanzo.io/models/user"
 )
 
 var UserCustomer = New("user-customer", func(c *gin.Context) *user.User {

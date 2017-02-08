@@ -3,15 +3,15 @@ package coupon
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/rest"
-	"crowdstart.com/util/router"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/coupon"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/rest"
+	"hanzo.io/util/router"
 )
 
 func getCoupon(c *gin.Context) {

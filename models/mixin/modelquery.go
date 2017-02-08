@@ -1,8 +1,8 @@
 package mixin
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/datastore/query"
+	"hanzo.io/datastore"
+	"hanzo.io/datastore/query"
 )
 
 // This is a simple Query helper for individual models. Allows you to query for

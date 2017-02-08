@@ -12,7 +12,7 @@ class OrganizationForm extends Form
   inputConfigs: [
     input('name', '',  'static')
     input('fullName', 'Ex. Crowdstart',  'required')
-    input('website', 'Ex. www.crowdstart.com', '')
+    input('website', 'Ex. hanzo.io', '')
     input('emailWhitelist', 'Ex. your@email.com', 'text')
     input('googleAnalytics', '')
     input('facebookTag', '')

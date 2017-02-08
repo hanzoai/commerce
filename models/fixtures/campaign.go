@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/campaign"
-	"crowdstart.com/util/category"
+	"hanzo.io/models/campaign"
+	"hanzo.io/util/category"
 )
 
 var Campaign = New("campaign", func(c *gin.Context) *campaign.Campaign {

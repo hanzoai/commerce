@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.com/datastore"
-	// "crowdstart.com/models"
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	// "hanzo.io/models"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
+	"hanzo.io/util/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")

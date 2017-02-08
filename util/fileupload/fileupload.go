@@ -11,8 +11,8 @@ import (
 	// "golang.org/x/oauth2/google"
 	// storage "google.golang.org/api/storage/v1"
 
-	"crowdstart.com/models/organization"
-	// "crowdstart.com/util/log"
+	"hanzo.io/models/organization"
+	// "hanzo.io/util/log"
 )
 
 func UploadFile(ctx *appengine.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {

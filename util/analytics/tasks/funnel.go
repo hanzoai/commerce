@@ -4,12 +4,12 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/aggregate"
-	"crowdstart.com/models/analytics"
-	"crowdstart.com/models/funnel"
-	. "crowdstart.com/util/aggregate/tasks"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/aggregate"
+	"hanzo.io/models/analytics"
+	"hanzo.io/models/funnel"
+	. "hanzo.io/util/aggregate/tasks"
+	"hanzo.io/util/log"
 )
 
 var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, namespace, eventId string) {

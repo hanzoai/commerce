@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
 )
 
 var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organization {
