@@ -1,10 +1,10 @@
 package test
 
 import (
-	"crowdstart.com/models/product"
+	"hanzo.io/models/product"
 	"github.com/icrowley/fake"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("product", func() {

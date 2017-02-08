@@ -3,15 +3,15 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/router"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/router"
 )
 
 var orderEndpoint = config.UrlFor("api", "/order/")

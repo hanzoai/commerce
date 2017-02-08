@@ -1,12 +1,12 @@
 package variant
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/types/weight"
-	"crowdstart.com/util/val"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/weight"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type Variant struct {

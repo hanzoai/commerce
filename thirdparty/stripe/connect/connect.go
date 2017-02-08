@@ -9,8 +9,8 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.com/config"
-	"crowdstart.com/util/json"
+	"hanzo.io/config"
+	"hanzo.io/util/json"
 )
 
 type Token struct {

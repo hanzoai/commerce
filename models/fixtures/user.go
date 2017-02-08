@@ -3,9 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/user"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/models/user"
 )
 
 var User = New("user", func(c *gin.Context) *user.User {

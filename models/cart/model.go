@@ -1,11 +1,11 @@
 package cart
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/lineitem"
+	"hanzo.io/datastore"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/lineitem"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var kind = "cart"

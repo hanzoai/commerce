@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("collapse-transactions-by-user",

@@ -3,15 +3,15 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/user"
+	"hanzo.io/datastore"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/product"
+	"hanzo.io/models/user"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {

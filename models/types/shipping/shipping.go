@@ -4,9 +4,9 @@ import (
 	"math"
 	"sort"
 
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/types/weight"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/weight"
 )
 
 type RateType string

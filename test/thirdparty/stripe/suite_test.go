@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/test/ae"
+	"hanzo.io/datastore"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/test/ae"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var (

@@ -6,12 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/middleware"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/auth/password"
+	"hanzo.io/middleware"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 func get(c *gin.Context) {

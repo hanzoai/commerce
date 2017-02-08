@@ -19,10 +19,10 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= crowdstart.com/analytics \
-		  crowdstart.com/api \
-		  crowdstart.com/cdn \
-		  crowdstart.com/platform
+modules	= hanzo.io/analytics \
+		  hanzo.io/api \
+		  hanzo.io/cdn \
+		  hanzo.io/platform
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
@@ -117,7 +117,7 @@ ifeq ($(os), linux)
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.com\//')
+			   				  -printf '%h\n' | sort -u | sed -e 's/.\//hanzo.io\//')
 	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
@@ -126,7 +126,7 @@ else
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.com\//')
+			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip install macfsevents --upgrade
@@ -221,7 +221,7 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.com
+deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io
 	$(gpm) install
 
 .sdk:
@@ -244,10 +244,10 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	$(gpm) install
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
-.sdk/gopath/src/crowdstart.com:
+.sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
-	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.com
+	ln -s $(shell pwd) $(sdk_path)/gopath/src/hanzo.io
 
 # INSTALL
 install: install-deps

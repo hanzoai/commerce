@@ -1,11 +1,11 @@
 package bundle
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

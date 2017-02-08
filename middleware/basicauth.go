@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/auth"
+	"hanzo.io/datastore"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 )
 
 func parseAuthHeader(fieldValue string) (string, string) {

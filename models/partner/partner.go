@@ -1,12 +1,12 @@
 package partner
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/schedule"
-	"crowdstart.com/thirdparty/stripe/connect"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/commission"
+	"hanzo.io/models/types/schedule"
+	"hanzo.io/thirdparty/stripe/connect"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type Partner struct {

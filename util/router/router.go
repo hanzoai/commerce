@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/middleware"
+	"hanzo.io/util/log"
 )
 
 func New(moduleName string) *gin.RouterGroup {
