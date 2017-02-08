@@ -1,8 +1,8 @@
 package submission
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore, userId string) *Submission {

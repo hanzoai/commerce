@@ -5,8 +5,8 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore/iface"
-	"crowdstart.com/datastore/key"
+	"hanzo.io/datastore/iface"
+	"hanzo.io/datastore/key"
 )
 
 type Key iface.Key

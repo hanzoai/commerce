@@ -9,7 +9,7 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 // Gets an entity using datastore.Key or encoded Key

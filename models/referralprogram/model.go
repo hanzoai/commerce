@@ -1,7 +1,7 @@
 package referralprogram
 
 import (
-	"crowdstart.com/datastore"
+	"hanzo.io/datastore"
 )
 
 var kind = "referralprogram"

@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/models"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/form"
-	"crowdstart.com/util/val"
+	"hanzo.io/auth/password"
+	"hanzo.io/models"
+	"hanzo.io/models/user"
+	"hanzo.io/util/form"
+	"hanzo.io/util/val"
 )
 
 type LoginForm struct {

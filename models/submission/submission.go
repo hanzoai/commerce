@@ -3,13 +3,13 @@ package submission
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/client"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"crowdstart.com/util/permission"
+	"hanzo.io/util/permission"
 )
 
 var _ = Describe("models/mixin AccessToken", func() {

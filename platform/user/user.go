@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
-	"crowdstart.com/auth/password"
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/auth"
+	"hanzo.io/auth/password"
+	"hanzo.io/middleware"
+	"hanzo.io/util/json/http"
 )
 
 var ErrorInvalidProfile = errors.New("Invalid Profile Saved")

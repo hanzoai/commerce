@@ -3,12 +3,12 @@ package order
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/models/discount"
-	"crowdstart.com/models/discount/scope"
-	"crowdstart.com/models/discount/target"
-	"crowdstart.com/models/discount/trigger"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/discount"
+	"hanzo.io/models/discount/scope"
+	"hanzo.io/models/discount/target"
+	"hanzo.io/models/discount/trigger"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/log"
 )
 
 // Append discounts which are valid for order creation date

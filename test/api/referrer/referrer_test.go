@@ -4,12 +4,12 @@ import (
 	"math/rand"
 	"time"
 
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/user"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/user"
 	"github.com/icrowley/fake"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("referrer", func() {

@@ -1,17 +1,17 @@
 package paypal_test
 
 import (
-	"crowdstart.com/api/checkout"
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
-	"crowdstart.com/util/log"
+	"hanzo.io/api/checkout"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/product"
+	"hanzo.io/models/store"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func CancelPaypal(stor *store.Store) {

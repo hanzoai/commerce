@@ -1,15 +1,15 @@
 package test
 
 import (
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/product"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("referral", func() {

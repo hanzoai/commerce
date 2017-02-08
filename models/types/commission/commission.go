@@ -1,7 +1,7 @@
 package commission
 
 import (
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/types/currency"
 )
 
 type Commission struct {

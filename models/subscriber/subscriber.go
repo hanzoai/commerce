@@ -9,13 +9,13 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/util/json"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/client"
+	"hanzo.io/util/json"
 
-	. "crowdstart.com/models"
-	. "crowdstart.com/util/strings"
+	. "hanzo.io/models"
+	. "hanzo.io/util/strings"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

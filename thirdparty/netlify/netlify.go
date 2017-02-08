@@ -3,7 +3,7 @@ package netlify
 import (
 	"appengine"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 
 	"github.com/netlify/netlify-go"
 )

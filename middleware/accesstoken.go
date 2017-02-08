@@ -9,13 +9,13 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/bit"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/session"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/bit"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/session"
 )
 
 func splitAuthorization(fieldValue string) (string, string) {

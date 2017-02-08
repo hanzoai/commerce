@@ -5,14 +5,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/cron/payout"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/fee"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/partner"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/cron/payout"
+	"hanzo.io/datastore"
+	"hanzo.io/models/fee"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/partner"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/log"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue

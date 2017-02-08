@@ -8,11 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
-	"crowdstart.com/config"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/util/log"
 
-	"crowdstart.com/datastore/query"
-	"crowdstart.com/datastore/utils"
+	"hanzo.io/datastore/query"
+	"hanzo.io/datastore/utils"
 )
 
 var (

@@ -6,10 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/counter"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/middleware"
+	"hanzo.io/util/counter"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 func dashboard(c *gin.Context) {

@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/funnel"
+	"hanzo.io/models/funnel"
 )
 
 var Funnel = New("espy-test-funnel", func(c *gin.Context) *funnel.Funnel {

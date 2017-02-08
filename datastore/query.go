@@ -1,5 +1,5 @@
 package datastore
 
-import "crowdstart.com/datastore/iface"
+import "hanzo.io/datastore/iface"
 
 type Query iface.Query

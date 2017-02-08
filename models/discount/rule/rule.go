@@ -1,9 +1,9 @@
 package rule
 
 import (
-	"crowdstart.com/models/discount/action"
-	"crowdstart.com/models/discount/trigger"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/discount/action"
+	"hanzo.io/models/discount/trigger"
+	"hanzo.io/models/types/currency"
 )
 
 // Quantity-based trigger

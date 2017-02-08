@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	"crowdstart.com/config"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/thirdparty/paypal/responses"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/thirdparty/paypal/responses"
+	"hanzo.io/util/log"
 
 	"appengine"
 	"appengine/urlfetch"

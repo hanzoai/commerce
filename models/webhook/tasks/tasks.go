@@ -10,10 +10,10 @@ import (
 	"appengine/delay"
 	"appengine/urlfetch"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/webhook"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/webhook"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 type Client struct {
