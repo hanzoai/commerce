@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	bs "crowdstart.com/util/bitstring"
+	bs "hanzo.io/util/bitstring"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

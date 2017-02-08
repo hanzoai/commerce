@@ -1,9 +1,9 @@
 package fee
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/commission"
+	"hanzo.io/models/types/currency"
 )
 
 type Type string

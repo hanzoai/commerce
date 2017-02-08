@@ -15,22 +15,22 @@ func Production() *Config {
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
-	config.Hosts["analytics"] = "analytics.crowdstart.com"
-	config.Hosts["api"] = "api.crowdstart.com"
-	config.Hosts["cdn"] = "cdn.crowdstart.com"
-	config.Hosts["checkout"] = "secure.crowdstart.com"
-	config.Hosts["default"] = "static.crowdstart.com"
+	config.Hosts["analytics"] = "analytics.hanzo.io"
+	config.Hosts["api"] = "api.hanzo.io"
+	config.Hosts["cdn"] = "cdn.hanzo.io"
+	config.Hosts["checkout"] = "secure.hanzo.io"
+	config.Hosts["default"] = "static.hanzo.io"
 	config.Hosts["platform"] = "dash.hanzo.io"
-	config.Hosts["preorder"] = "preorder.crowdstart.com"
-	config.Hosts["store"] = "store.crowdstart.com"
+	config.Hosts["preorder"] = "preorder.hanzo.io"
+	config.Hosts["store"] = "store.hanzo.io"
 
-	config.StaticUrl = "//static.crowdstart.com"
+	config.StaticUrl = "//static.hanzo.io"
 
 	config.DemoMode = false
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.paypal.com"
-	config.Paypal.IpnUrl = "https://api.crowdstart.com/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api.hanzo.io/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.ProductionClientId

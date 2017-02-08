@@ -1,8 +1,8 @@
 package referrer
 
 import (
-	"crowdstart.com/datastore"
-	. "crowdstart.com/models"
+	"hanzo.io/datastore"
+	. "hanzo.io/models"
 )
 
 var kind = "referrer"

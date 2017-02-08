@@ -1,6 +1,6 @@
 package variant
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "variant"
 

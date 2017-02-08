@@ -5,18 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/util/counter"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/types/client"
+	"hanzo.io/util/counter"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 
-	mailchimp "crowdstart.com/thirdparty/mailchimp/tasks"
+	mailchimp "hanzo.io/thirdparty/mailchimp/tasks"
 )
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/store"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/log"
 )
 
 // Calculates order totals

@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/site"
-	"crowdstart.com/thirdparty/netlify"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/site"
+	"hanzo.io/thirdparty/netlify"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
 )
 
 func createDeploy(c *gin.Context) {

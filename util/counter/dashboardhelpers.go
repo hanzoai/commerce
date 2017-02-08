@@ -8,9 +8,9 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/log"
 )
 
 type currencyValue map[currency.Type]int

@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"time"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/discount/scope"
-	"crowdstart.com/models/discount/target"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	"hanzo.io/models/discount/scope"
+	"hanzo.io/models/discount/target"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Discount {

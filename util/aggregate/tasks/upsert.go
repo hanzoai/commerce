@@ -6,9 +6,9 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/aggregate"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/aggregate"
+	"hanzo.io/util/log"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {

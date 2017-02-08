@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 // Returns short, url-friendly Id

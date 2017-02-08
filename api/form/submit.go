@@ -3,13 +3,13 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/submission"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/submission"
+	"hanzo.io/models/types/client"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
 )
 
 func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organization, ml *mailinglist.MailingList) {
