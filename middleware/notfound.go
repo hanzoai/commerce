@@ -3,8 +3,8 @@ package middleware
 import (
 	"net/http"
 
-	"crowdstart.com/util/template"
 	"github.com/gin-gonic/gin"
+	"hanzo.io/util/template"
 
 	"appengine"
 )
