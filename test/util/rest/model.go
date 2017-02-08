@@ -1,8 +1,8 @@
 package test
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
 )
 
 type Model struct {

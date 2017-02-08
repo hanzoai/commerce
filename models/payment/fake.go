@@ -1,11 +1,11 @@
 package payment
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/fake"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 func Fake(db *datastore.Datastore) *Payment {

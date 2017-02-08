@@ -3,15 +3,15 @@ package payment
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/fee"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/fee"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/client"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

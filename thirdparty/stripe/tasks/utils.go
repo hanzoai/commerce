@@ -4,14 +4,14 @@ import (
 	"appengine"
 	"appengine/memcache"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/fee"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/transfer"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/fee"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/transfer"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 // Get namespaced appengine context for given namespace

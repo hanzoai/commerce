@@ -3,13 +3,13 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/thirdparty/stripe/tasks"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"hanzo.io/config"
+	"hanzo.io/middleware"
+	"hanzo.io/thirdparty/stripe/connect"
+	"hanzo.io/thirdparty/stripe/tasks"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/template"
 )
 
 func StripeSync(c *gin.Context) {

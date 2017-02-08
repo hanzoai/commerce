@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	ds "crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
+	ds "hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
 )
 
 var _ = New("add-search-documents",

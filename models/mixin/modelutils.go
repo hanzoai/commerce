@@ -1,9 +1,9 @@
 package mixin
 
 import (
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/reflect"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
+	"hanzo.io/util/reflect"
 )
 
 // Create a new zero'd entity of this type

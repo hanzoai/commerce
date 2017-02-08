@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/country"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/country"
 )
 
 type Document struct {

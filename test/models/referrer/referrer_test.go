@@ -3,16 +3,16 @@ package test
 import (
 	"testing"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referralprogram"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/test/ae"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referralprogram"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/util/test/ae"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

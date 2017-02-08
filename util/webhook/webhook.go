@@ -5,8 +5,8 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/webhook/tasks"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/webhook/tasks"
 )
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {

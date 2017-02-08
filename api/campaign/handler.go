@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/campaign"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/rest"
-	"crowdstart.com/util/router"
+	"hanzo.io/models/campaign"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/rest"
+	"hanzo.io/util/router"
 )
 
 type ProgressRes struct {

@@ -6,15 +6,15 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/types/form"
-	"crowdstart.com/models/types/thankyou"
-	"crowdstart.com/util/fs"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/types/form"
+	"hanzo.io/models/types/thankyou"
+	"hanzo.io/util/fs"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 )
 
 var jsTemplate = ""

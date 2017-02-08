@@ -3,15 +3,15 @@ package stripe
 import (
 	"errors"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/emails"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/emails"
+	"hanzo.io/util/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")

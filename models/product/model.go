@@ -1,8 +1,8 @@
 package product
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/variant"
+	"hanzo.io/datastore"
+	"hanzo.io/models/variant"
 )
 
 var kind = "product"

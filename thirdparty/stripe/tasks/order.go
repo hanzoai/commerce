@@ -6,10 +6,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/log"
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {

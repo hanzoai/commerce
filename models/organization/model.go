@@ -1,8 +1,8 @@
 package organization
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/pricing"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/pricing"
 )
 
 var kind = "organization"

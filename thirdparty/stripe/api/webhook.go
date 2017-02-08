@@ -9,15 +9,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/thirdparty/stripe/tasks"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/thirdparty/stripe/tasks"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 // Decode Stripe payload

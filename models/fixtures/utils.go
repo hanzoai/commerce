@@ -4,8 +4,8 @@ package fixtures
 import (
 	"github.com/vanng822/go-premailer/premailer"
 
-	"crowdstart.com/config"
-	"crowdstart.com/util/fs"
+	"hanzo.io/config"
+	"hanzo.io/util/fs"
 )
 
 func readEmailTemplate(path string) string {

@@ -3,10 +3,10 @@ package auth
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/session"
+	"hanzo.io/datastore"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
+	"hanzo.io/util/session"
 )
 
 const loginKey = "loggedIn"

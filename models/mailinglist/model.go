@@ -1,8 +1,8 @@
 package mailinglist
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/thankyou"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/thankyou"
 )
 
 var kind = "mailinglist"

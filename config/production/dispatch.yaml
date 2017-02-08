@@ -1,22 +1,22 @@
 application: crowdstart-us
 
 dispatch:
-  - url: "default.crowdstart.com/*"
+  - url: "default.hanzo.io/*"
     module: default
 
-  - url: "js.crowdstart.com/*"
+  - url: "js.hanzo.io/*"
     module: default
 
-  - url: "cdn.crowdstart.com/*"
+  - url: "cdn.hanzo.io/*"
     module: cdn
 
-  - url: "static.crowdstart.com/*"
+  - url: "static.hanzo.io/*"
     module: default
 
-  - url: "api.crowdstart.com/*"
+  - url: "api.hanzo.io/*"
     module: api
 
-  - url: "www.crowdstart.com/*"
+  - url: "hanzo.io/*"
     module: platform
 
   - url: "dash.hanzo.io/*"

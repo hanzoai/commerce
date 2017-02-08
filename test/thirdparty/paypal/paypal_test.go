@@ -5,17 +5,17 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/paypal"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/paypal"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/models/lineitem"
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/models/lineitem"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
@@ -43,8 +43,8 @@ var _ = BeforeSuite(func() {
 	// usr.PaypalEmail = "dev@hanzo.ai"
 
 	org = organization.New(db)
-	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
-	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+	org.Paypal.ConfirmUrl = "http://hanzo.io"
+	org.Paypal.CancelUrl = "http://hanzo.io"
 
 	org.Paypal.Test.Email = "dev@hanzo.ai"
 	org.Paypal.Test.SecurityUserId = "dev@hanzo.ai"

@@ -3,7 +3,7 @@ package user
 import (
 	"strings"
 
-	"crowdstart.com/util/webhook"
+	"hanzo.io/util/webhook"
 )
 
 // Hooks

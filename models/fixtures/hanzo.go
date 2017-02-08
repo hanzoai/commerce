@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 )
 
 var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
@@ -29,7 +29,7 @@ var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "hanzo"
 	org.AddOwner(u.Id())
-	org.Website = "http://www.hanzo.io"
+	org.Website = "http://hanzo.io"
 	org.SecretKey = []byte("95j23am4EvU2LHiFHE2gNfC31cwoP0z5")
 	org.AddDefaultTokens()
 

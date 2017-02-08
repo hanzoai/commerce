@@ -1,10 +1,10 @@
 package cart
 
 import (
-	"crowdstart.com/datastore"
-	. "crowdstart.com/models"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	. "hanzo.io/models"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore, userId string) *Cart {

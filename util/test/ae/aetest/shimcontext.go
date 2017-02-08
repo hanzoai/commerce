@@ -3,7 +3,7 @@ package aetest
 import (
 	"appengine/aetest"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 // Context which hase a Close() method returning an error for compatibility

@@ -4,11 +4,11 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/log"
 )
 
 var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {

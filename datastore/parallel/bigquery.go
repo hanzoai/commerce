@@ -7,10 +7,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/thirdparty/bigquery"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/thirdparty/bigquery"
+	"hanzo.io/util/log"
 )
 
 func NewBigQuery(name string, fn interface{}) *ParallelFn {

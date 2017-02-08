@@ -8,9 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	// "crowdstart.com/models"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
+	// "hanzo.io/models"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
 
 	"appengine"
 	"appengine/urlfetch"

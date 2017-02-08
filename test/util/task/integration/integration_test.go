@@ -6,10 +6,10 @@ import (
 
 	"appengine/memcache"
 
-	"crowdstart.com/util/test/ae"
-	"crowdstart.com/util/test/httpclient"
+	"hanzo.io/util/test/ae"
+	"hanzo.io/util/test/httpclient"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

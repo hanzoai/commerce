@@ -9,20 +9,20 @@ import (
 
 	"github.com/zeekay/gochimp3"
 
-	"crowdstart.com/models/cart"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/cart"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/order"
+	"hanzo.io/models/product"
+	"hanzo.io/models/store"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/types/client"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 func centsToFloat(cents currency.Cents, typ currency.Type) float64 {

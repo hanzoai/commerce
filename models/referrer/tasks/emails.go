@@ -1,15 +1,15 @@
 package tasks
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/log"
 
 	"appengine"
 
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
+	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 // Fire webhooks

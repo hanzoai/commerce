@@ -3,13 +3,13 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 var Cove = New("cove", func(c *gin.Context) *organization.Organization {

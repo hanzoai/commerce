@@ -3,11 +3,11 @@ package test
 import (
 	"strings"
 
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/user"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/user"
 	"github.com/icrowley/fake"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("subscriber", func() {

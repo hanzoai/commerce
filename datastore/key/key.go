@@ -9,9 +9,9 @@ import (
 
 	"github.com/qedus/nds"
 
-	"crowdstart.com/datastore/iface"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore/iface"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
 )
 
 type Key iface.Key

@@ -3,7 +3,7 @@ package token
 import (
 	"time"
 
-	"crowdstart.com/models/mixin"
+	"hanzo.io/models/mixin"
 )
 
 type Token struct {

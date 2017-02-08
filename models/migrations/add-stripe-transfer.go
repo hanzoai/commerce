@@ -3,13 +3,13 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("add-stripe-transfer",

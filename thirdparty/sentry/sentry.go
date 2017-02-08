@@ -18,7 +18,7 @@ import (
 
 	"github.com/getsentry/raven-go"
 
-	"crowdstart.com/config"
+	"hanzo.io/config"
 )
 
 const userAgent = "appengine-go-raven/1.0"

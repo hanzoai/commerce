@@ -1,12 +1,12 @@
 package order
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/payment"
+	"hanzo.io/datastore"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/payment"
 
-	. "crowdstart.com/models"
-	"crowdstart.com/models/lineitem"
+	. "hanzo.io/models"
+	"hanzo.io/models/lineitem"
 )
 
 var kind = "order"

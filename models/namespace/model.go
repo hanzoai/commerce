@@ -1,8 +1,8 @@
 package namespace
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace/consts"
+	"hanzo.io/datastore"
+	"hanzo.io/models/namespace/consts"
 )
 
 var kind = "namespace"

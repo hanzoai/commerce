@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
+	"hanzo.io/config"
 )
 
 func Static(urlRoot string) gin.HandlerFunc {

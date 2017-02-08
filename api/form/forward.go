@@ -5,15 +5,15 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/submission"
-	"crowdstart.com/models/subscriber"
+	"hanzo.io/config"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/submission"
+	"hanzo.io/models/subscriber"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
+	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 // Add subscriber to mailing list
@@ -37,7 +37,7 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	// Forward form submission
 	toEmail := ml.Forward.Email
 	toName := ml.Forward.Name
-	fromEmail := "noreply@crowdstart.com"
+	fromEmail := "noreply@hanzo.io"
 	fromName := "Crowdstart"
 	subject := "New submission for form " + ml.Name
 

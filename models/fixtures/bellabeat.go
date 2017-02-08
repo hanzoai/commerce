@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
 )
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
@@ -15,7 +15,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.GetOrCreate("Name=", org.Name)
 
 	// u := user.New(db)
-	// u.Email = "bellabeat-shipstation@crowdstart.com"
+	// u.Email = "bellabeat-shipstation@hanzo.io"
 	// u.GetOrCreate("Email=", u.Email)
 	// u.FirstName = "Shipstation"
 	// u.LastName = "API"

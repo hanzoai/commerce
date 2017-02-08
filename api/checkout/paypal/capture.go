@@ -3,9 +3,9 @@ package paypal
 import (
 	"errors"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

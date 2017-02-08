@@ -7,13 +7,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/stripe/connect"
+	"hanzo.io/util/log"
 )
 
 // Handle stripe Connect callbacks

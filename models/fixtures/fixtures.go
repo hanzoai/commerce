@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/task"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/log"
+	"hanzo.io/util/task"
 )
 
 type Fixture struct {

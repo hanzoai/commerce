@@ -5,16 +5,16 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/models/fee"
-	"crowdstart.com/models/multi"
-	"crowdstart.com/models/partner"
-	"crowdstart.com/models/transfer"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/models/fee"
+	"hanzo.io/models/multi"
+	"hanzo.io/models/partner"
+	"hanzo.io/models/transfer"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/log"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {

@@ -13,9 +13,9 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.com/config"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 const root = "http://mandrillapp.com/api/1.0"

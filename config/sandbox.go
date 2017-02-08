@@ -9,9 +9,9 @@ func Sandbox() *Config {
 	config.IsSandbox = true
 
 	// Only modules active in sandbox
-	config.Hosts["default"] = "sandbox.crowdstart.com"
-	config.Hosts["analytics"] = "analytics.sandbox.crowdstart.com"
-	config.Hosts["api"] = "api.sandbox.crowdstart.com"
+	config.Hosts["default"] = "sandbox.hanzo.io"
+	config.Hosts["analytics"] = "analytics.sandbox.hanzo.io"
+	config.Hosts["api"] = "api.sandbox.hanzo.io"
 
 	// Disabled but configured nonetheless
 	config.Hosts["checkout"] = "checkout-dot-crowdstart-sandbox.appspot.com"

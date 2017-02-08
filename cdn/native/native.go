@@ -8,11 +8,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/fs"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/fs"
+	"hanzo.io/util/json/http"
 )
 
 var jsTemplate string

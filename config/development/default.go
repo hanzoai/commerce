@@ -1,6 +1,6 @@
 package crowdstart
 
-import "crowdstart.com/_default"
+import "hanzo.io/_default"
 
 func init() {
 	_default.Init()

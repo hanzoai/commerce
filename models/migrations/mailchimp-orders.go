@@ -3,13 +3,13 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/cart"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/cart"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("mailchimp-orders",

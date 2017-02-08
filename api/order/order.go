@@ -5,16 +5,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	checkoutApi "crowdstart.com/api/checkout"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/rest"
-	"crowdstart.com/util/router"
+	checkoutApi "hanzo.io/api/checkout"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/rest"
+	"hanzo.io/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

@@ -3,8 +3,8 @@ package coupon
 import (
 	"time"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/util/log"
 )
 
 type Redemption struct {

@@ -1,9 +1,9 @@
 package namespace
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/log"
 )
 
 type Namespace struct {

@@ -1,8 +1,8 @@
 package referral
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/currency"
 )
 
 func Fake(db *datastore.Datastore, userId, orderId string) *Referral {

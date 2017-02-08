@@ -7,7 +7,7 @@ import (
 
 	"github.com/speps/go-hashids"
 
-	"crowdstart.com/config"
+	"hanzo.io/config"
 )
 
 var hd = hashids.NewData()

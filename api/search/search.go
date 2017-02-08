@@ -9,12 +9,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/json/http"
 )
 
 func searchUser(c *gin.Context) {

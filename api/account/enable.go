@@ -7,14 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/token"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/emails"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/token"
+	"hanzo.io/models/user"
+	"hanzo.io/util/emails"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 type twoStageEnableReq struct {

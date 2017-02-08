@@ -1,6 +1,6 @@
 package test
 
-import . "crowdstart.com/util/test/ginkgo"
+import . "hanzo.io/util/test/ginkgo"
 
 var _ = Describe("models/mixin Model", func() {
 	Context("Model.SetKey", func() {

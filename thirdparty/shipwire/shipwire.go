@@ -3,11 +3,11 @@ package shipwire
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/shipwire/webhook"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/router"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/shipwire/webhook"
+	"hanzo.io/util/log"
+	"hanzo.io/util/router"
 )
 
 func setOrg(c *gin.Context) {

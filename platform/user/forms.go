@@ -3,10 +3,10 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/form"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
+	"hanzo.io/models/user"
+	"hanzo.io/util/form"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 )
 
 // User profile form (contact)

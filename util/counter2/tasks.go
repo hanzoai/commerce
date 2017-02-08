@@ -11,7 +11,7 @@ import (
 	"appengine/memcache"
 	"appengine/taskqueue"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 var IncrementByTask *delay.Function

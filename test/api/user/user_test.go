@@ -5,9 +5,9 @@ import (
 
 	"github.com/icrowley/fake"
 
-	"crowdstart.com/models/user"
+	"hanzo.io/models/user"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("user", func() {

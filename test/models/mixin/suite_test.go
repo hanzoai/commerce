@@ -3,13 +3,13 @@ package test
 import (
 	"testing"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/fixtures"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/test/ae"
+	"hanzo.io/datastore"
+	"hanzo.io/models/fixtures"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/test/ae"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

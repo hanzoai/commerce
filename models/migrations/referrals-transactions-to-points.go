@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/types/currency"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("referrals-transactions-to-points",

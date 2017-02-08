@@ -7,10 +7,10 @@ import (
 
 	"github.com/icrowley/fake"
 
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/coupon"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("coupon", func() {
