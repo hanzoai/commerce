@@ -6,9 +6,9 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/log"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/log"
 )
 
 var FeeSync = delay.Func("stripe-fee-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {

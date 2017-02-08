@@ -3,7 +3,7 @@ package mixin
 import (
 	"time"
 
-	counter "crowdstart.com/util/counter2"
+	counter "hanzo.io/util/counter2"
 )
 
 type Countable interface {

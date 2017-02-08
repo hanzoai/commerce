@@ -1,6 +1,6 @@
 package fee
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "fee"
 

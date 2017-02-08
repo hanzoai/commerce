@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/json"
+	"hanzo.io/config"
+	"hanzo.io/middleware"
+	"hanzo.io/util/json"
 
 	"github.com/gin-gonic/gin"
 

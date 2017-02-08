@@ -9,11 +9,11 @@ import (
 
 	"github.com/qedus/nds"
 
-	"crowdstart.com/datastore/utils"
-	"crowdstart.com/models/namespace/consts"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore/utils"
+	"hanzo.io/models/namespace/consts"
+	"hanzo.io/util/log"
 
-	"crowdstart.com/datastore/iface"
+	"hanzo.io/datastore/iface"
 )
 
 var (

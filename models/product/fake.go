@@ -1,10 +1,10 @@
 package product
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/fake"
-	"crowdstart.com/util/slug"
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/fake"
+	"hanzo.io/util/slug"
 )
 
 func Fake(db *datastore.Datastore) *Product {

@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mailinglist"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
 )
 
 var _ = New("kanoa-forms", func(c *gin.Context) *mailinglist.MailingList {

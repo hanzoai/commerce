@@ -6,12 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 	sg "github.com/stripe/stripe-go"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/task"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/log"
+	"hanzo.io/util/task"
 )
 
 // May be called one of two ways:

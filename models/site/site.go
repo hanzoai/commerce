@@ -1,8 +1,8 @@
 package site
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/thirdparty/netlify"
+	"hanzo.io/models/mixin"
+	"hanzo.io/thirdparty/netlify"
 )
 
 type Site struct {

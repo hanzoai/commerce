@@ -1,8 +1,8 @@
 package commission
 
 import (
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/fake"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/fake"
 )
 
 func Fake() Commission {

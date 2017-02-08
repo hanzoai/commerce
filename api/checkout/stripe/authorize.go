@@ -1,12 +1,12 @@
 package stripe
 
 import (
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/log"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {

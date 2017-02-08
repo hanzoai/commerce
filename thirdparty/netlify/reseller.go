@@ -9,9 +9,9 @@ import (
 	"appengine/memcache"
 	"appengine/urlfetch"
 
-	"crowdstart.com/config"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 // This is really a token response, but for our purposes acts as a copy of
@@ -81,7 +81,7 @@ func getAccessToken(ctx appengine.Context, orgName string) string {
 // Create new access token
 func createAccessToken(ctx appengine.Context, orgName string) string {
 	client := New(ctx, config.Netlify.AccessToken)
-	user, err := client.AccessToken(orgName, orgName+"@crowdstart.com")
+	user, err := client.AccessToken(orgName, orgName+"@hanzo.io")
 
 	if err != nil {
 		log.Error("Unable to get Netlify Access Token: %v", err, ctx)

@@ -3,9 +3,9 @@ package funnel
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/json"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/json"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

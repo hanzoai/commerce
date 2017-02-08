@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/form"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/types/form"
+	"hanzo.io/util/json/http"
 )
 
 // handle form submissions

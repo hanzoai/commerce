@@ -1,9 +1,9 @@
 package user
 
 import (
-	"crowdstart.com/datastore"
-	. "crowdstart.com/models"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	. "hanzo.io/models"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *User {

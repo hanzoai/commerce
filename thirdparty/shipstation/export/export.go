@@ -12,16 +12,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
