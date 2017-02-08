@@ -1,7 +1,9 @@
 package custommodule
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
@@ -16,6 +18,12 @@ import (
 func Serve(c *gin.Context) {
 	query := c.Request.URL.Query()
 	email := query.Get("email")
+
+	if email == "" {
+		log.Warn("No email provided", c)
+		http.Fail(c, 400, "No email provided", errors.New("No email provided"))
+		return
+	}
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
