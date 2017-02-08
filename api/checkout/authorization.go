@@ -3,11 +3,11 @@ package checkout
 import (
 	"strings"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
-	stringutil "crowdstart.com/util/strings"
+	"hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/user"
+	stringutil "hanzo.io/util/strings"
 )
 
 type Authorization struct {

@@ -8,13 +8,13 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/transfer"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/stripe/errors"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/transfer"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/stripe/errors"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 )
 
 type Client struct {

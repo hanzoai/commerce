@@ -1,9 +1,9 @@
 package collection
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/fake"
-	"crowdstart.com/util/slug"
+	"hanzo.io/datastore"
+	"hanzo.io/util/fake"
+	"hanzo.io/util/slug"
 )
 
 func Fake(db *datastore.Datastore, itemIdType string, itemIds ...string) *Collection {

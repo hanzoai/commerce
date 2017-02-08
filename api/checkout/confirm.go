@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/checkout/paypal"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
+	"hanzo.io/api/checkout/paypal"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
 )
 
 func confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {

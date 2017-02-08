@@ -3,8 +3,8 @@ package stripe
 import (
 	"time"
 
-	"crowdstart.com/models/transfer"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/transfer"
+	"hanzo.io/models/types/currency"
 )
 
 // Update transfer from Stripe

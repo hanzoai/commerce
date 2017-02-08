@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	ds "crowdstart.com/datastore"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/util/log"
+	ds "hanzo.io/datastore"
+	"hanzo.io/models/payment"
+	"hanzo.io/util/log"
 )
 
 var _ = New("mark-nil-payments-for-deletion",

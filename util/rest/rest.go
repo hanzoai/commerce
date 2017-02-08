@@ -11,15 +11,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/reflect"
-	"crowdstart.com/util/router"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/reflect"
+	"hanzo.io/util/router"
 )
 
 var restApis = make([]*Rest, 0)

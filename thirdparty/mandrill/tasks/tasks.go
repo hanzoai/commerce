@@ -4,10 +4,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/config"
-	"crowdstart.com/thirdparty/mandrill"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"hanzo.io/config"
+	"hanzo.io/thirdparty/mandrill"
+	"hanzo.io/util/log"
+	"hanzo.io/util/template"
 )
 
 // Helper that will render a template and uses it for complete email

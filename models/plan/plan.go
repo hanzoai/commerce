@@ -1,6 +1,6 @@
 package plan
 
-import "crowdstart.com/models/mixin"
+import "hanzo.io/models/mixin"
 
 type Interval string
 

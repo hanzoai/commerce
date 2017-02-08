@@ -16,11 +16,11 @@ import (
 	"appengine/memcache"
 	"appengine/urlfetch"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	// "crowdstart.com/models"
+	"hanzo.io/config"
+	"hanzo.io/middleware"
+	// "hanzo.io/models"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 var appId = config.Facebook.AppId

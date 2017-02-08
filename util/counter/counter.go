@@ -10,9 +10,9 @@ import (
 	"appengine/memcache"
 	"appengine/taskqueue"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
 	aeds "appengine/datastore"
 )

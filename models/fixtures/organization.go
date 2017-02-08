@@ -3,13 +3,13 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/models/types/analytics"
+	. "hanzo.io/models/types/analytics"
 )
 
 var Organization = New("organization", func(c *gin.Context) *organization.Organization {
@@ -45,8 +45,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
-	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
-	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+	org.Paypal.ConfirmUrl = "http://hanzo.io"
+	org.Paypal.CancelUrl = "http://hanzo.io"
 
 	org.Paypal.Live.Email = "dev@hanzo.ai"
 	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"

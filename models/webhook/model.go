@@ -1,6 +1,6 @@
 package webhook
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "webhook"
 

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"crowdstart.com/util/router"
+	"hanzo.io/util/router"
 	"github.com/gin-gonic/gin"
 )
 

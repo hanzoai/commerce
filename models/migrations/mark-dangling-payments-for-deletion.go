@@ -5,10 +5,10 @@ import (
 
 	"appengine/datastore"
 
-	ds "crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/util/log"
+	ds "hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/util/log"
 )
 
 var _ = New("mark-dangling-payments-for-deletion",

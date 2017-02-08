@@ -3,9 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/referralprogram"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/referralprogram"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/types/currency"
 )
 
 var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {

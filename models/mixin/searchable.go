@@ -3,7 +3,7 @@ package mixin
 import (
 	"appengine/search"
 
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 )
 
 type Document interface {

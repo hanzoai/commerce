@@ -1,9 +1,9 @@
 package shipwire
 
 import (
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/json"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/util/json"
 )
 
 func Import(db *datastore.Datastore, filename string) {

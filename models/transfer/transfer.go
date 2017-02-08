@@ -3,10 +3,10 @@ package transfer
 import (
 	"time"
 
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type Type string

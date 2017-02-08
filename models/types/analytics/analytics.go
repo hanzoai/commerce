@@ -1,8 +1,8 @@
 package analytics
 
 import (
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
 )
 
 var t bool

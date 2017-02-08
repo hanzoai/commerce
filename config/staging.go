@@ -1,6 +1,6 @@
 package config
 
-import "crowdstart.com/util/log"
+import "hanzo.io/util/log"
 
 // Staging Settings
 func Staging() *Config {
@@ -18,20 +18,20 @@ func Staging() *Config {
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
-	config.Hosts["analytics"] = "analytics.staging.crowdstart.com"
-	config.Hosts["api"] = "api.staging.crowdstart.com"
-	config.Hosts["cdn"] = "cdn.staging.crowdstart.com"
-	config.Hosts["checkout"] = "checkout.staging.crowdstart.com"
-	config.Hosts["default"] = "default.staging.crowdstart.com"
-	config.Hosts["platform"] = "platform.staging.crowdstart.com"
-	config.Hosts["preorder"] = "preorder.staging.crowdstart.com"
-	config.Hosts["store"] = "store.staging.crowdstart.com"
+	config.Hosts["analytics"] = "analytics.staging.hanzo.io"
+	config.Hosts["api"] = "api.staging.hanzo.io"
+	config.Hosts["cdn"] = "cdn.staging.hanzo.io"
+	config.Hosts["checkout"] = "checkout.staging.hanzo.io"
+	config.Hosts["default"] = "default.staging.hanzo.io"
+	config.Hosts["platform"] = "platform.staging.hanzo.io"
+	config.Hosts["preorder"] = "preorder.staging.hanzo.io"
+	config.Hosts["store"] = "store.staging.hanzo.io"
 
-	config.StaticUrl = "//static.staging.crowdstart.com"
+	config.StaticUrl = "//static.staging.hanzo.io"
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId

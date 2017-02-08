@@ -1,6 +1,6 @@
 package plan
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "plan"
 

@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/payment"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/payment"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("dedupe-payments-2",

@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 )
 
 var Verus = New("verus", func(c *gin.Context) *organization.Organization {

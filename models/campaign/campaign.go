@@ -1,8 +1,8 @@
 package campaign
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/category"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/category"
 )
 
 type Campaign struct {

@@ -5,11 +5,11 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.com/config"
-	"crowdstart.com/thirdparty/mandrill"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/thirdparty/mandrill"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

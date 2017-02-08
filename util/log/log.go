@@ -7,8 +7,8 @@ import (
 
 	"github.com/op/go-logging"
 
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/spew"
+	"hanzo.io/util/json"
+	"hanzo.io/util/spew"
 )
 
 // Create a new App Engine-aware logger

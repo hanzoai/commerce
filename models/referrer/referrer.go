@@ -8,20 +8,20 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referralprogram"
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/timeutil"
+	"hanzo.io/datastore"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referralprogram"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/types/client"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
+	"hanzo.io/util/timeutil"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

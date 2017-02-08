@@ -6,9 +6,9 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/fs"
+	"hanzo.io/config"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/fs"
 )
 
 var js = ""

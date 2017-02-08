@@ -5,12 +5,12 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/session"
-	"crowdstart.com/util/token"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/log"
+	"hanzo.io/util/session"
+	"hanzo.io/util/token"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {

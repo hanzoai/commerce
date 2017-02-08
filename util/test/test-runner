@@ -2,7 +2,7 @@
 
 files=()
 for file in $(find ./test -name "*_test.go"); do
-    file=.sdk/gopath/src/crowdstart.com/$(echo $(dirname $file) | cut -c 3-)
+    file=.sdk/gopath/src/hanzo.io/$(echo $(dirname $file) | cut -c 3-)
     files+=" $file"
 done
 

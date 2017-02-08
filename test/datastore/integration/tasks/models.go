@@ -1,9 +1,9 @@
 package tasks
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/val"
 )
 
 // Model 1

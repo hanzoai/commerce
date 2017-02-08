@@ -6,26 +6,26 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
 
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/util/rest"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/util/rest"
 )
 
 const (
 	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&stripe_landing=login&redirect_uri=%s&state=%s"
 )
 
-//<a href="api.crowdstart.com/affiliate/:id/connect"></a>
+//<a href="api.hanzo.io/affiliate/:id/connect"></a>
 
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")

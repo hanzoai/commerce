@@ -7,15 +7,15 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/session"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/session"
 )
 
 func getAccessToken(c *gin.Context, id, email, pass string, test bool) {

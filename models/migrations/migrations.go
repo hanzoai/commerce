@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore/parallel"
-	"crowdstart.com/util/task"
+	"hanzo.io/datastore/parallel"
+	"hanzo.io/util/task"
 )
 
 type Row parallel.BigQueryRow

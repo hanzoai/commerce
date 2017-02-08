@@ -7,11 +7,11 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/delay"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/delay"
+	"hanzo.io/util/log"
 )
 
 // Update payment from charge

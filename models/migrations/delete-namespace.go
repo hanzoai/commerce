@@ -3,21 +3,21 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/bundle"
-	"crowdstart.com/models/collection"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/plan"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/token"
-	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
+	"hanzo.io/models/bundle"
+	"hanzo.io/models/collection"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/plan"
+	"hanzo.io/models/product"
+	"hanzo.io/models/store"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/token"
+	"hanzo.io/models/user"
+	"hanzo.io/models/variant"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 func setupNamespaceDelete(c *gin.Context) []interface{} {

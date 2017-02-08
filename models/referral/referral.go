@@ -1,9 +1,9 @@
 package referral
 
 import (
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/client"
+	"hanzo.io/models/types/currency"
 )
 
 type Event string

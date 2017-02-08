@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/fs"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/fs"
 )
 
 var js = ""

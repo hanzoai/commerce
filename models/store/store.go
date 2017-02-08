@@ -3,17 +3,17 @@ package store
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/types/shipping"
-	"crowdstart.com/models/types/weight"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/reflect"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/shipping"
+	"hanzo.io/models/types/weight"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
+	"hanzo.io/util/reflect"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -66,10 +66,10 @@ type Store struct {
 	// Full name of store
 	Name string `json:"name"`
 
-	// Unique human readable id for url <slug>.crowdstart.come
+	// Unique human readable id for url <slug>.hanzo.ioe
 	Slug string `json:"slug"`
 
-	// Where this is hosted if not on crowdstart.com
+	// Where this is hosted if not on hanzo.io
 	Domain string `json:"domain"`
 	Prefix string `json:"prefix"`
 

@@ -3,7 +3,7 @@ package crowdstart
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/_default"
+	"hanzo.io/_default"
 )
 
 func init() {
@@ -12,7 +12,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://www.crowdstart.com/docs")
+		c.Redirect(301, "http://hanzo.io/docs")
 
 	})
 }

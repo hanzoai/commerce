@@ -1,6 +1,6 @@
 package coupon
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "coupon"
 

@@ -5,10 +5,10 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/reflect"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/reflect"
 
-	"crowdstart.com/datastore/key"
+	"hanzo.io/datastore/key"
 )
 
 var newKeyFromInt = key.NewFromInt

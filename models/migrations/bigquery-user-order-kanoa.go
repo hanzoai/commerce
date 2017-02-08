@@ -6,15 +6,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore/parallel"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/bigquery"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/datastore/parallel"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/bigquery"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var UserFields = bigquery.Fields{

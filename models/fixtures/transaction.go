@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/types/currency"
 )
 
 var Transaction = New("transaction", func(c *gin.Context) *transaction.Transaction {

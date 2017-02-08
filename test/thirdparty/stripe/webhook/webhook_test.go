@@ -3,16 +3,16 @@ package test
 import (
 	"github.com/stripe/stripe-go"
 
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/variant"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/variant"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 // Create a mock stripe charge

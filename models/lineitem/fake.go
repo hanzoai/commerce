@@ -3,8 +3,8 @@ package lineitem
 import (
 	"math/rand"
 
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/variant"
+	"hanzo.io/models/product"
+	"hanzo.io/models/variant"
 )
 
 func Fake(item interface{}) LineItem {

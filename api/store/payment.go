@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/store"
-	"crowdstart.com/util/json/http"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/store"
+	"hanzo.io/util/json/http"
 
-	checkoutApi "crowdstart.com/api/checkout"
+	checkoutApi "hanzo.io/api/checkout"
 )
 
 func setStore(c *gin.Context) error {

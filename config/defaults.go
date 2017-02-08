@@ -21,7 +21,7 @@ func Defaults() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.BankAccount = "ba_14trEsCSRlllXCwPzT8vGYiK"
@@ -34,7 +34,7 @@ func Defaults() *Config {
 	config.Stripe.LivePublishablKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 
 	config.Mandrill.FromName = "Crowdstart"
-	config.Mandrill.FromEmail = "noreply@crowdstart.com"
+	config.Mandrill.FromEmail = "noreply@hanzo.io"
 
 	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
 	config.Redis.Password = ""
@@ -45,7 +45,7 @@ func Defaults() *Config {
 
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""
-	config.Cloudflare.Zone = "crowdstart.com"
+	config.Cloudflare.Zone = "hanzo.io"
 
 	return config
 }

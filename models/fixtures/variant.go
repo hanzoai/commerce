@@ -3,9 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/variant"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/variant"
 )
 
 var Variant = New("variant", func(c *gin.Context) *variant.Variant {

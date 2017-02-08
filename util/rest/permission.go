@@ -1,8 +1,8 @@
 package rest
 
 import (
-	"crowdstart.com/util/bit"
-	. "crowdstart.com/util/permission"
+	"hanzo.io/util/bit"
+	. "hanzo.io/util/permission"
 )
 
 type Permissions map[string][]bit.Mask

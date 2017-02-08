@@ -1,9 +1,9 @@
 package site
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/thirdparty/netlify"
-	"crowdstart.com/util/fake"
+	"hanzo.io/datastore"
+	"hanzo.io/thirdparty/netlify"
+	"hanzo.io/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Site {

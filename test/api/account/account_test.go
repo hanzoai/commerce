@@ -4,20 +4,20 @@ import (
 	"net/http"
 	"testing"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/fixtures"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/test/ae"
-	"crowdstart.com/util/test/ginclient"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/fixtures"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/test/ae"
+	"hanzo.io/util/test/ginclient"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 
-	accountApi "crowdstart.com/api/account"
+	accountApi "hanzo.io/api/account"
 )
 
 func Test(t *testing.T) {

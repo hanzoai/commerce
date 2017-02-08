@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/datastore"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
 )
 
 var _ = New("kanoa-bf", func(c *gin.Context) *organization.Organization {

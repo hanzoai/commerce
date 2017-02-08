@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/token"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/token"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("update-unused-tokens",

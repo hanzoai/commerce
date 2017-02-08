@@ -3,9 +3,9 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
-	"crowdstart.com/config"
-	"crowdstart.com/util/log"
+	"hanzo.io/auth"
+	"hanzo.io/config"
+	"hanzo.io/util/log"
 )
 
 // Updates session with login information, does not require it
