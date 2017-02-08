@@ -1,29 +1,33 @@
 application: crowdstart-us
 
 dispatch:
+  # hanzo.io
   - url: "default.hanzo.io/*"
     module: default
-
   - url: "js.hanzo.io/*"
+    module: default
+  - url: "static.hanzo.io/*"
     module: default
 
   - url: "cdn.hanzo.io/*"
     module: cdn
 
-  - url: "static.hanzo.io/*"
-    module: default
-
   - url: "api.hanzo.io/*"
     module: api
-
-  - url: "hanzo.io/*"
-    module: platform
 
   - url: "dash.hanzo.io/*"
     module: platform
 
-  - url: "a.vifijo.com/*"
-    module: api
+  # crowdstart.com (deprecated)
+  - url: "default.crowdstart.com/*"
+    module: default
+  - url: "js.crowdstart.com/*"
+    module: default
+  - url: "static.crowdstart.com/*"
+    module: default
 
-  - url: "c.vifijo.com/*"
+  - url: "cdn.crowdstart.com/*"
     module: cdn
+
+  - url: "api.crowdstart.com/*"
+    module: api
