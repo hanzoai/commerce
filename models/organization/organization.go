@@ -155,9 +155,34 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
-	// TODO: Delete?
-	GoogleAnalytics string `json:"googleAnalytics"`
-	FacebookTag     string `json:"facebookTag"`
+	// Affiliate configuration
+	Affiliate struct {
+		SuccessUrl string
+		ErrorUrl   string
+	} `json:"-" datastore:",noindex"`
+
+	Reamaze struct {
+		Secret string
+	} `json:"-" datastore:"`
+
+	// Signup options
+	SignUpOptions struct {
+		// Controls the enabled status of account after creation
+		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
+
+		// Turns off required backend checks
+		NoNameRequired     bool `json:"noNameRequired"`
+		NoPasswordRequired bool `json:"noPasswordRequired"`
+
+		// Requires password set on create confirmation
+		TwoStageEnabled bool `json:"twoStageEnabled"`
+		ImmediateLogin  bool `json:"immediateLogin"`
+	} `json:"signUpOptions" datastore:",noindex"`
+
+	Recaptcha struct {
+		Enabled   bool
+		SecretKey string
+	} `json:"-" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`

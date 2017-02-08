@@ -36,6 +36,7 @@ import (
 	subscriptionApi "hanzo.io/api/subscription"
 	userApi "hanzo.io/api/user"
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
+	reamazeApi "hanzo.io/thirdparty/reamaze"
 	shipstationApi "hanzo.io/thirdparty/shipstation"
 	stripeApi "hanzo.io/thirdparty/stripe/webhook"
 )
@@ -134,6 +135,9 @@ func init() {
 
 	// Auth Api
 	authApi.Route(api)
+
+	// Reamaze custom store API endpoints
+	reamazeApi.Route(api)
 
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
