@@ -3,12 +3,12 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/util/rest"
-	"crowdstart.com/util/router"
+	"hanzo.io/middleware"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/util/rest"
+	"hanzo.io/util/router"
 
-	ml "crowdstart.com/cdn/mailinglist"
+	ml "hanzo.io/cdn/mailinglist"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

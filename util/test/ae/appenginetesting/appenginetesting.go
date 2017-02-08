@@ -7,8 +7,8 @@ import (
 	"github.com/davidtai/appenginetesting"
 	. "github.com/onsi/ginkgo"
 
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/test/ae/options"
+	"hanzo.io/util/log"
+	"hanzo.io/util/test/ae/options"
 )
 
 var projectDir string

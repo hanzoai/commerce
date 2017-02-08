@@ -10,9 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
+	"hanzo.io/util/template"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)
@@ -24,7 +24,7 @@ func ErrorJSON(c *gin.Context, stack string, err error) {
 	jsonErr := gin.H{
 		"error": gin.H{
 			"type":    "api-error",
-			"message": "Unable to process request. Please try again later. If this continues, please message support@crowdstart.com",
+			"message": "Unable to process request. Please try again later. If this continues, please message support@hanzo.io",
 		},
 	}
 	c.Writer.Write(json.EncodeBytes(jsonErr))

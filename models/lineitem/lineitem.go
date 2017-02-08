@@ -3,14 +3,14 @@ package lineitem
 import (
 	"fmt"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/types/weight"
-	"crowdstart.com/models/variant"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/weight"
+	"hanzo.io/models/variant"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type LineItem struct {

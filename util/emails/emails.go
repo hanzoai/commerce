@@ -6,17 +6,17 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/token"
-	"crowdstart.com/models/types/country"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/token"
+	"hanzo.io/models/types/country"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
 	"appengine"
 
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
+	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 func init() {

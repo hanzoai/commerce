@@ -1,6 +1,6 @@
 package transfer
 
-import "crowdstart.com/datastore"
+import "hanzo.io/datastore"
 
 var kind = "transfer"
 

@@ -3,11 +3,11 @@ package balance
 import (
 	"errors"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/transaction"
+	"hanzo.io/util/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

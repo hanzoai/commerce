@@ -1,10 +1,10 @@
 package test
 
 import (
-	"crowdstart.com/models/payment"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/thirdparty/stripe/tasks"
-	. "crowdstart.com/util/test/ginkgo"
+	"hanzo.io/models/payment"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/thirdparty/stripe/tasks"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {

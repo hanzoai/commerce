@@ -3,10 +3,10 @@ package transaction
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/val"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

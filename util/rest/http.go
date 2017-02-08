@@ -9,14 +9,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/template"
 )
 
 // Wrapped model, with a few display helpers

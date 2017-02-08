@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"crowdstart.com/config"
+	"hanzo.io/config"
 	"log"
 	"os"
 	"os/exec"
