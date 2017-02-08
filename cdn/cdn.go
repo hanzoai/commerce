@@ -3,12 +3,12 @@ package cdn
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/router"
+	"hanzo.io/middleware"
+	"hanzo.io/util/router"
 
-	"crowdstart.com/cdn/analytics"
-	"crowdstart.com/cdn/mailinglist"
-	"crowdstart.com/cdn/native"
+	"hanzo.io/cdn/analytics"
+	"hanzo.io/cdn/mailinglist"
+	"hanzo.io/cdn/native"
 )
 
 func init() {

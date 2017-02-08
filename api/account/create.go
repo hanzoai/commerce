@@ -13,18 +13,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/counter"
-	"crowdstart.com/util/emails"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/counter"
+	"hanzo.io/util/emails"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")

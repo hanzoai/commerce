@@ -1,9 +1,9 @@
 package payment
 
 import (
-	"crowdstart.com/datastore"
+	"hanzo.io/datastore"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var kind = "payment"

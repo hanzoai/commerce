@@ -3,11 +3,11 @@ package store
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/store"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/rest"
-	"crowdstart.com/util/router"
+	"hanzo.io/middleware"
+	"hanzo.io/models/store"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/rest"
+	"hanzo.io/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

@@ -3,11 +3,11 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
-	"crowdstart.com/config"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/session"
+	"hanzo.io/auth"
+	"hanzo.io/config"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
+	"hanzo.io/util/session"
 )
 
 func AcquireUser(moduleName string) gin.HandlerFunc {

@@ -3,9 +3,9 @@ package mixin
 import (
 	"errors"
 
-	"crowdstart.com/util/bit"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/token"
+	"hanzo.io/util/bit"
+	"hanzo.io/util/log"
+	"hanzo.io/util/token"
 )
 
 // Error for expired jti's

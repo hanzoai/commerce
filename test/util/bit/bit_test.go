@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	"crowdstart.com/util/bit"
+	"hanzo.io/util/bit"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -3,11 +3,11 @@ package tasks
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/cron/payout/affiliate"
-	"crowdstart.com/cron/payout/partner"
-	"crowdstart.com/cron/payout/platform"
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/task"
+	"hanzo.io/cron/payout/affiliate"
+	"hanzo.io/cron/payout/partner"
+	"hanzo.io/cron/payout/platform"
+	"hanzo.io/middleware"
+	"hanzo.io/util/task"
 )
 
 // Register tasks

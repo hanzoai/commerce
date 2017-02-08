@@ -10,15 +10,15 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
-	"crowdstart.com/models/lineitem"
+	. "hanzo.io/models"
+	"hanzo.io/models/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

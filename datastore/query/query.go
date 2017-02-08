@@ -11,11 +11,11 @@ import (
 
 	"github.com/qedus/nds"
 
-	"crowdstart.com/datastore/iface"
-	"crowdstart.com/datastore/key"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore/iface"
+	"hanzo.io/datastore/key"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/datastore/utils"
+	. "hanzo.io/datastore/utils"
 )
 
 type Id struct {

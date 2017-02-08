@@ -8,13 +8,13 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/cache"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/rand"
-	"crowdstart.com/util/reflect"
-	"crowdstart.com/util/timeutil"
+	"hanzo.io/datastore"
+	"hanzo.io/util/cache"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
+	"hanzo.io/util/rand"
+	"hanzo.io/util/reflect"
+	"hanzo.io/util/timeutil"
 )
 
 // A datastore kind that is compatible with the Model mixin

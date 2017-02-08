@@ -6,8 +6,8 @@ import (
 	"appengine"
 	"appengine/memcache"
 
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/task"
+	"hanzo.io/util/log"
+	"hanzo.io/util/task"
 )
 
 // SOON!

@@ -5,14 +5,14 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.com/models/fixtures"
-	"crowdstart.com/models/mailinglist"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/fixtures"
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/util/gincontext"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

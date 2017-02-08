@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/order"
+	"hanzo.io/models/types/currency"
 
-	. "crowdstart.com/models/lineitem"
+	. "hanzo.io/models/lineitem"
 )
 
 var Order = New("order", func(c *gin.Context) *order.Order {

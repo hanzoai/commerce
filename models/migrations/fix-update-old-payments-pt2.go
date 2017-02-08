@@ -9,13 +9,13 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/thirdparty/stripe"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 // var accessToken = ""

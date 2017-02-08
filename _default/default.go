@@ -5,31 +5,31 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	"crowdstart.com/util/exec"
-	hashid "crowdstart.com/util/hashid/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/router"
-	"crowdstart.com/util/task"
-	"crowdstart.com/util/template"
+	"hanzo.io/config"
+	"hanzo.io/middleware"
+	"hanzo.io/util/exec"
+	hashid "hanzo.io/util/hashid/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/router"
+	"hanzo.io/util/task"
+	"hanzo.io/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
 	_ "appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
-	_ "crowdstart.com/api/checkout/tasks"
-	_ "crowdstart.com/cron/tasks"
-	_ "crowdstart.com/models/fixtures"
-	_ "crowdstart.com/models/migrations"
-	_ "crowdstart.com/models/referrer/tasks"
-	_ "crowdstart.com/models/webhook/tasks"
-	_ "crowdstart.com/thirdparty/mailchimp/tasks"
-	_ "crowdstart.com/thirdparty/mandrill/tasks"
-	_ "crowdstart.com/util/aggregate/tasks"
-	_ "crowdstart.com/util/analytics/tasks"
-	// _ "crowdstart.com/thirdparty/salesforce/tasks"
-	_ "crowdstart.com/thirdparty/stripe/tasks"
+	_ "hanzo.io/api/checkout/tasks"
+	_ "hanzo.io/cron/tasks"
+	_ "hanzo.io/models/fixtures"
+	_ "hanzo.io/models/migrations"
+	_ "hanzo.io/models/referrer/tasks"
+	_ "hanzo.io/models/webhook/tasks"
+	_ "hanzo.io/thirdparty/mailchimp/tasks"
+	_ "hanzo.io/thirdparty/mandrill/tasks"
+	_ "hanzo.io/util/aggregate/tasks"
+	_ "hanzo.io/util/analytics/tasks"
+	// _ "hanzo.io/thirdparty/salesforce/tasks"
+	_ "hanzo.io/thirdparty/stripe/tasks"
 )
 
 func Init() {

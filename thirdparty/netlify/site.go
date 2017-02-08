@@ -1,7 +1,7 @@
 package netlify
 
 import (
-	"crowdstart.com/util/log"
+	"hanzo.io/util/log"
 
 	"github.com/netlify/netlify-go"
 )

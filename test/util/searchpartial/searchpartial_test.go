@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	partial "crowdstart.com/util/searchpartial"
+	partial "hanzo.io/util/searchpartial"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"crowdstart.com/util/task"
-	. "crowdstart.com/util/test/ginkgo"
+	"hanzo.io/util/task"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

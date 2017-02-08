@@ -1,10 +1,10 @@
 package test
 
 import (
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/types/currency"
-	. "crowdstart.com/models/types/shipping"
-	. "crowdstart.com/models/types/weight"
+	"hanzo.io/models/product"
+	"hanzo.io/models/types/currency"
+	. "hanzo.io/models/types/shipping"
+	. "hanzo.io/models/types/weight"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

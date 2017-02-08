@@ -3,11 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/store"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/store"
+	"hanzo.io/util/log"
 
-	ds "crowdstart.com/datastore"
+	ds "hanzo.io/datastore"
 )
 
 var _ = New("recalculate-coupon-items",

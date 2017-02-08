@@ -6,13 +6,13 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
+	"hanzo.io/config"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/log"
 )
 
 var (
