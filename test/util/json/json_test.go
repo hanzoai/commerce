@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"crowdstart.com/util/json"
+	"hanzo.io/util/json"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

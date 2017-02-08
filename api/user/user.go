@@ -3,18 +3,18 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/affiliate"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/transfer"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/rand"
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/affiliate"
+	"hanzo.io/models/order"
+	"hanzo.io/models/referral"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/transfer"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/rand"
 )
 
 type Password struct {

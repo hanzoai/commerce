@@ -39,6 +39,6 @@ topics = [
 
 if __name__ == '__main__':
     sw = shipwire.Shipwire()
-    url = 'https://api.crowdstart.com/shipwire/stoned'
+    url = 'https://api.hanzo.io/shipwire/stoned'
     for topic in topics:
         sw.create_webhook({'topic': topic, 'url': url})

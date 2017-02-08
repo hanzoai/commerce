@@ -1,7 +1,7 @@
 package site
 
 import (
-	"crowdstart.com/models/mixin"
+	"hanzo.io/models/mixin"
 )
 
 type Document struct {

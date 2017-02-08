@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/fs"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/util/fs"
 )
 
 var (

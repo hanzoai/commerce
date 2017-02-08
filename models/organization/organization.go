@@ -9,15 +9,15 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/analytics"
-	"crowdstart.com/models/types/pricing"
-	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/val"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/analytics"
+	"hanzo.io/models/types/pricing"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/stripe/connect"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type Email struct {

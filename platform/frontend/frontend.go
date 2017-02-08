@@ -3,8 +3,8 @@ package frontend
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
-	"crowdstart.com/util/template"
+	"hanzo.io/auth"
+	"hanzo.io/util/template"
 )
 
 func Render(c *gin.Context, tmpl string) {

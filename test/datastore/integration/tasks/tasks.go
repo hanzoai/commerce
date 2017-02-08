@@ -1,9 +1,9 @@
 package tasks
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/datastore/parallel"
-	"crowdstart.com/util/log"
+	"hanzo.io/datastore"
+	"hanzo.io/datastore/parallel"
+	"hanzo.io/util/log"
 )
 
 // Define a new worker with parallel.Task

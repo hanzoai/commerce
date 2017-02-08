@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"crowdstart.com/models/types/currency"
+	"hanzo.io/models/types/currency"
 )
 
 type IpnMessage struct {

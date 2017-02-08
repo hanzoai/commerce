@@ -1,12 +1,12 @@
 package indiegogo
 
 import (
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/util/csv"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/util/csv"
 
-	. "crowdstart.com/models"
-	"crowdstart.com/models/user"
+	. "hanzo.io/models"
+	"hanzo.io/models/user"
 )
 
 func Import(db *datastore.Datastore, filename string) {

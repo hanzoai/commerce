@@ -1,6 +1,6 @@
 package models
 
-import "crowdstart.com/models/types/currency"
+import "hanzo.io/models/types/currency"
 
 type Adjustment struct {
 	// Possible values: flat.

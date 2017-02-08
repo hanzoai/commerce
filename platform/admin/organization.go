@@ -6,17 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/session"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+	"hanzo.io/util/session"
 )
 
-var verusEmailRe = regexp.MustCompile("@verus.io$|@crowdstart.com$")
+var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.io$")
 
 // Check if user is allowed to switch to organization
 func validOrganization(u *user.User, orgId string) bool {

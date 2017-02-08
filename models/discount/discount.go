@@ -3,12 +3,12 @@ package discount
 import (
 	"time"
 
-	"crowdstart.com/models/discount/rule"
-	"crowdstart.com/models/discount/scope"
-	"crowdstart.com/models/discount/target"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/timeutil"
+	"hanzo.io/models/discount/rule"
+	"hanzo.io/models/discount/scope"
+	"hanzo.io/models/discount/target"
+	"hanzo.io/models/mixin"
+	"hanzo.io/util/log"
+	"hanzo.io/util/timeutil"
 )
 
 type Type string

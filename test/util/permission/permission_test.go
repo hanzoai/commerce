@@ -3,10 +3,10 @@ package test
 import (
 	"testing"
 
-	"crowdstart.com/util/bit"
-	"crowdstart.com/util/permission"
+	"hanzo.io/util/bit"
+	"hanzo.io/util/permission"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

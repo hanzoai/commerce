@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"strings"
 
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
-	"crowdstart.com/test/api/checkout/integration/requests"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/coupon"
+	"hanzo.io/models/lineitem"
+	"hanzo.io/models/order"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/store"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/test/api/checkout/integration/requests"
+	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 type testHelperReturn struct {
