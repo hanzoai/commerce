@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"strings"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
@@ -24,6 +25,8 @@ func Serve(c *gin.Context) {
 		http.Fail(c, 400, "No email provided", errors.New("No email provided"))
 		return
 	}
+
+	email = strings.ToLower(email)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
