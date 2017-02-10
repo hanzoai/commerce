@@ -1,25 +1,48 @@
 package shipwire
 
+import (
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"strconv"
+)
+
+type ServiceLevelCode string
+
+const (
+	DomesticGround        ServiceLevelCode = "GD"
+	Domestic2Day          ServiceLevelCode = "2D"
+	Domestic1Day          ServiceLevelCode = "1D"
+	InternationalEconomy  ServiceLevelCode = "E-INTL"
+	InternationalStandard ServiceLevelCode = "INTL"
+	InternationalPlus     ServiceLevelCode = "PL-INTL"
+	InternationalPremium  ServiceLevelCode = "PM-INTL"
+)
+
+type Item struct {
+	SKU      string `json:"sku"`
+	Quantity int    `json:"quantity"`
+}
+
 type OrderRequest struct {
-	Items []struct {
-		Sku      string `json:"sku"`
-		Quantity int    `json:"quantity"`
-	} `json:"items"`
-	OrderNo string `json:"orderNo"`
-	ShipTo  struct {
-		City       string `json:"city"`
-		State      string `json:"state"`
+	ExternalID string `json:"externalId"`
+	OrderNo    string `json:"orderNo"`
+
+	Options struct {
+		ServiceLevelCode ServiceLevelCode `json:"serviceLevelCode"`
+	} `json:"options"`
+
+	ShipTo struct {
 		Name       string `json:"name"`
-		Country    string `json:"country"`
-		PostalCode string `json:"postalCode"`
+		Email      string `json:"email"`
 		Address1   string `json:"address1"`
 		Address2   string `json:"address2"`
-		Email      string `json:"email"`
+		City       string `json:"city"`
+		State      string `json:"state"`
+		PostalCode string `json:"postalCode"`
+		Country    string `json:"country"`
 	} `json:"shipTo"`
-	ExternalID string `json:"externalId"`
-	Options    struct {
-		ServiceLevelCode string `json:"serviceLevelCode"`
-	} `json:"options"`
+
+	Items []Item `json:"items"`
 }
 
 type OrderResponse struct {
@@ -189,78 +212,27 @@ type OrderResponse struct {
 	} `json:"resource"`
 }
 
-type ReturnRequest struct {
-	ExternalID    string `json:"externalId"`
-	OriginalOrder struct {
-		ID int `json:"id"`
-	} `json:"originalOrder"`
-	Items []struct {
-		Sku      string `json:"sku"`
-		Quantity int    `json:"quantity"`
-	} `json:"items"`
-	Options struct {
-		GeneratePrepaidLabel int    `json:"generatePrepaidLabel"`
-		EmailCustomer        int    `json:"emailCustomer"`
-		WarehouseID          int    `json:"warehouseId"`
-		WarehouseExternalID  int    `json:"warehouseExternalId"`
-		WarehouseRegion      string `json:"warehouseRegion"`
-	} `json:"options"`
-}
+func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) {
+	req := OrderRequest{}
+	req.OrderNo = strconv.Itoa(ord.Number)
+	req.ExternalID = ord.Id()
+	req.Options.ServiceLevelCode = serviceLevelCode
+	req.ShipTo.Name = ord.ShippingAddress.Name
+	req.ShipTo.Email = usr.Email
+	req.ShipTo.Address1 = ord.ShippingAddress.Line1
+	req.ShipTo.Address2 = ord.ShippingAddress.Line2
+	req.ShipTo.City = ord.ShippingAddress.City
+	req.ShipTo.State = ord.ShippingAddress.State
+	req.ShipTo.Country = ord.ShippingAddress.Country
+	req.ShipTo.PostalCode = ord.ShippingAddress.PostalCode
+	req.Items = make([]Item, len(ord.Items))
 
-type ReturnResponse struct {
-	Status           int    `json:"status"`
-	Message          string `json:"message"`
-	ResourceLocation string `json:"resourceLocation"`
-	Resource         struct {
-		ID              int         `json:"id"`
-		ExternalID      interface{} `json:"externalId"`
-		TransactionID   string      `json:"transactionId"`
-		ExpectedDate    string      `json:"expectedDate"`
-		CommerceName    string      `json:"commerceName"`
-		LastUpdatedDate string      `json:"lastUpdatedDate"`
-		Status          string      `json:"status"`
-		Holds           struct {
-			ResourceLocation string `json:"resourceLocation"`
-		} `json:"holds"`
-		Items struct {
-			ResourceLocation string `json:"resourceLocation"`
-		} `json:"items"`
-		Trackings struct {
-			ResourceLocation string `json:"resourceLocation"`
-		} `json:"trackings"`
-		Labels struct {
-			ResourceLocation string `json:"resourceLocation"`
-		} `json:"labels"`
-		OriginalOrder struct {
-			ResourceLocation string `json:"resourceLocation"`
-		} `json:"originalOrder"`
-		Events struct {
-			Resource struct {
-				CancelledDate        interface{} `json:"cancelledDate"`
-				CompletedDate        interface{} `json:"completedDate"`
-				CreatedDate          string      `json:"createdDate"`
-				DeliveredDate        interface{} `json:"deliveredDate"`
-				ExpectedDate         string      `json:"expectedDate"`
-				LastManualUpdateDate interface{} `json:"lastManualUpdateDate"`
-				PickedUpDate         interface{} `json:"pickedUpDate"`
-				ProcessedDate        string      `json:"processedDate"`
-				ReturnedDate         interface{} `json:"returnedDate"`
-				SubmittedDate        interface{} `json:"submittedDate"`
-			} `json:"resource"`
-			ResourceLocation interface{} `json:"resourceLocation"`
-		} `json:"events"`
-		Routing struct {
-			Resource struct {
-				OriginLatitude      string      `json:"originLatitude"`
-				OriginLongitude     string      `json:"originLongitude"`
-				WarehouseExternalID interface{} `json:"warehouseExternalId"`
-				WarehouseID         int         `json:"warehouseId"`
-				WarehouseName       string      `json:"warehouseName"`
-			} `json:"resource"`
-			ResourceLocation interface{} `json:"resourceLocation"`
-		} `json:"routing"`
-		Options struct {
-			ResourceLocation interface{} `json:"resourceLocation"`
-		} `json:"options"`
-	} `json:"resource"`
+	for i, item := range ord.Items {
+		req.Items[i] = Item{
+			SKU:      item.SKU(),
+			Quantity: item.Quantity,
+		}
+	}
+
+	c.Request("POST", "/orders", req)
 }
