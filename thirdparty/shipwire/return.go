@@ -1,6 +1,8 @@
 package shipwire
 
 import (
+	"strconv"
+
 	"hanzo.io/models/order"
 )
 
@@ -80,13 +82,18 @@ type ReturnResponse struct {
 	} `json:"resource"`
 }
 
-func (c *Client) CreateReturn(ord *order.Order) {
+func (c *Client) CreateReturn(ord *order.Order) error {
 	req := ReturnRequest{}
 	req.ExternalID = ord.Id()
 
-	// req.OriginalOrder.ID =
-	// req.Options.EmailCustomer =
-	// req.Options.GeneratePrepaidLabel =
+	id, err := strconv.Atoi(ord.Fulfillment.ExternalId)
+	if err != nil {
+		return err
+	}
+
+	req.OriginalOrder.ID = id
+	req.Options.EmailCustomer = 1
+	req.Options.GeneratePrepaidLabel = 1
 
 	for i, item := range ord.Items {
 		req.Items[i] = Item{
@@ -96,4 +103,6 @@ func (c *Client) CreateReturn(ord *order.Order) {
 	}
 
 	c.Request("POST", "/returns", req)
+
+	return nil
 }
