@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"hanzo.io/middleware"
-	"hanzo.io/models/order"
 	"hanzo.io/util/json"
 
 	"github.com/gin-gonic/gin"
@@ -54,12 +53,4 @@ func (c *Client) Request(method, url string, data interface{}) (*http.Response, 
 	req.Header.Add("Content-Type", "application/json")
 
 	return c.client.Do(req)
-}
-
-func (c *Client) CreateOrder(ord *order.Order) {
-	// req := OrderRequest{}
-}
-
-func (c *Client) CreateReturn(ord *order.Order) {
-	// req := ReturnRequest{}
 }
