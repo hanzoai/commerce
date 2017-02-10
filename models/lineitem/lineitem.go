@@ -22,6 +22,7 @@ type LineItem struct {
 	ProductId   string           `json:"productId,omitempty"`
 	ProductName string           `json:"productName,omitempty"`
 	ProductSlug string           `json:"productSlug,omitempty"`
+	ProductSKU  string           `json:"productSKU,omitempty"`
 
 	Variant     *variant.Variant `json:"-" datastore:"-"`
 	VariantId   string           `json:"variantId,omitempty"`
@@ -46,6 +47,20 @@ type LineItem struct {
 
 	// Non-user party which added this lineitem (coupon or otherwise).
 	AddedBy string `json:"addedBy,omitempty"`
+}
+
+func (li LineItem) Id() string {
+	if li.VariantId != "" {
+		return li.VariantId
+	}
+	return li.ProductId
+}
+
+func (li LineItem) SKU() string {
+	if li.VariantSKU != "" {
+		return li.VariantSKU
+	}
+	return li.ProductSKU
 }
 
 func (li LineItem) ToMap() map[string]interface{} {
@@ -73,13 +88,6 @@ func (li LineItem) DisplayPrice(t currency.Type) string {
 
 func (li LineItem) DisplayTotalPrice(t currency.Type) string {
 	return DisplayPrice(t, li.TotalPrice())
-}
-
-func (li LineItem) Id() string {
-	if li.VariantId != "" {
-		return li.VariantId
-	}
-	return li.ProductId
 }
 
 // Check if id is valid identifier for this line item
