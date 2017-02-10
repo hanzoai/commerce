@@ -15,7 +15,9 @@ type Variant struct {
 
 	ProductId string `json:"productId"`
 
-	SKU  string `json:"sku"`
+	SKU string `json:"sku"`
+	UPC string `json:"upc,omitempty"`
+
 	Name string `json:"name"`
 
 	// 3-letter ISO currency code (lowercase).
