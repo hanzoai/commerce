@@ -31,6 +31,8 @@ type Product struct {
 
 	// Unique human readable id
 	Slug string `json:"slug"`
+	SKU  string `json:"sku,omitempty"`
+	UPC  string `json:"upc,omitempty"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency  currency.Type  `json:"currency"`
