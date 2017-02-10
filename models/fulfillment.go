@@ -18,6 +18,7 @@ const (
 )
 
 type Fulfillment struct {
+	ExternalId     string         `json:"externalId,omitempty"`
 	Carrier        string         `json:"carrier,omitempty"`
 	Summary        string         `json:"summary,omitempty"`
 	Service        string         `json:"service,omitempty"`

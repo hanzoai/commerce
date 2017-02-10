@@ -236,3 +236,6 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 
 	c.Request("POST", "/orders", req)
 }
+
+func (c *Client) GetOrder(ord *order.Order) {
+}
