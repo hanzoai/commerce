@@ -29,7 +29,7 @@ class ApiKeysForm extends Form
   generateModal: (event)->
     bootbox.dialog
       title: 'Warning: This will reset all your keys!'
-      message: 'Any software integrated with Crowdstart will need to be updated to use the new keys.'
+      message: 'Any software integrated with Hanzo will need to be updated to use the new keys.'
 
       buttons:
         Reset:
