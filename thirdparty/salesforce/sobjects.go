@@ -30,7 +30,7 @@ func FromCurrency(dollars Currency) int64 {
 	return int64(dollars * 10000.0)
 }
 
-// For crowdstart models/mixins to be salesforce compatible in future
+// For hanzo models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
 	SetSalesforceId(string)
 	SalesforceId() string
@@ -48,14 +48,14 @@ type SObject interface {
 	// Get Model from salesforce
 	PullId(SalesforceClient, string) error
 
-	// Get Model using CrowdstartId from salesforce
+	// Get Model using HanzoId from salesforce
 	PullExternalId(SalesforceClient, string) error
 }
 
 type SObjectIDable interface {
-	// Set CrowdstartId
+	// Set HanzoId
 	SetExternalId(string)
-	// Get CrowdstartId
+	// Get HanzoId
 	ExternalId() string
 }
 
@@ -149,10 +149,10 @@ func (s *ModelSecondaryReference) LastSync() time.Time {
 	return time.Now()
 }
 
-// SObject foreign key reference so we can use Crowdstart Id instead of Salesforce ID to reference an object
+// SObject foreign key reference so we can use Hanzo Id instead of Salesforce ID to reference an object
 type ForeignKey struct {
-	Attributes    *Attribute `json:"attributes,omitempty"`
-	CrowdstartIdC string     `json:"CrowdstartId__c,omitempty"`
+	Attributes *Attribute `json:"attributes,omitempty"`
+	HanzoIdC   string     `json:"HanzoId__c,omitempty"`
 }
 
 //SObject Definitions
@@ -168,7 +168,7 @@ type Contact struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	Name             string `json:"Name,omitempty"`
@@ -245,7 +245,7 @@ func (c *Contact) Read(so SObjectCompatible) error {
 	// 	return ErrorUserTypeRequired
 	// }
 
-	// c.CrowdstartIdC = u.Id
+	// c.HanzoIdC = u.Id
 	// c.LastName = u.LastName
 	// if c.LastName == "" {
 	// 	c.LastName = "-"
@@ -259,7 +259,7 @@ func (c *Contact) Read(so SObjectCompatible) error {
 	// c.Email = u.Email
 	// c.Phone = u.Phone
 
-	// c.Account.CrowdstartIdC = u.Id
+	// c.Account.HanzoIdC = u.Id
 
 	// return nil
 }
@@ -275,7 +275,7 @@ func (c *Contact) Write(so SObjectCompatible) error {
 
 	// c.SetSalesforceId(c.Id)
 
-	// u.Id = c.CrowdstartIdC
+	// u.Id = c.HanzoIdC
 	// u.Email = c.Email
 
 	// u.LastName = c.LastName
@@ -293,11 +293,11 @@ func (c *Contact) Write(so SObjectCompatible) error {
 }
 
 func (c *Contact) SetExternalId(id string) {
-	c.CrowdstartIdC = id
+	c.HanzoIdC = id
 }
 
 func (c *Contact) ExternalId() string {
-	return c.CrowdstartIdC
+	return c.HanzoIdC
 }
 
 func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
@@ -338,7 +338,7 @@ type Account struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	CreatedById      string `json:"CreatedById,omitempty"`
@@ -426,7 +426,7 @@ func (a *Account) Read(so SObjectCompatible) error {
 		return ErrorUserTypeRequired
 	}
 
-	a.CrowdstartIdC = u.Id()
+	a.HanzoIdC = u.Id()
 
 	// if key, err := aeds.DecodeKey(u.Id); err == nil {
 	// 	a.Name = u.Key()strconv.FormatInt(key.IntID(), 10)
@@ -459,7 +459,7 @@ func (a *Account) Write(so SObjectCompatible) error {
 
 	// a.SetSalesforceId(a.Id)
 
-	// u.Id = a.CrowdstartIdC
+	// u.Id = a.HanzoIdC
 
 	// lines := strings.Split(a.ShippingStreet, "\n")
 
@@ -491,11 +491,11 @@ func (a *Account) Write(so SObjectCompatible) error {
 }
 
 func (a *Account) SetExternalId(id string) {
-	a.CrowdstartIdC = id
+	a.HanzoIdC = id
 }
 
 func (a *Account) ExternalId() string {
-	return a.CrowdstartIdC
+	return a.HanzoIdC
 }
 
 func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
@@ -553,7 +553,7 @@ type Order struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	CreatedById      string `json:"CreatedById,omitempty"`
@@ -607,7 +607,7 @@ type Order struct {
 	Order                string   `json:"Order,omitempty"`
 	Master               string   `json:"Master,omitempty"`
 
-	// Custom Crowdstart fields
+	// Custom Hanzo fields
 	CancelledC     bool     `json:"Cancelled__c,omitempty"`
 	DisputedC      bool     `json:"Disputed__c,omitempty"`
 	LockedC        bool     `json:"Locked__c,omitempty"`
@@ -681,9 +681,9 @@ func (o *Order) Read(so SObjectCompatible) error {
 	// 	o.orderProducts = make([]*OrderProduct, len(order.Items))
 	// 	for i, _ := range order.Items {
 	// 		item := &order.Items[i]
-	// 		orderProduct := &OrderProduct{CrowdstartIdC: order.Id + fmt.Sprintf("_%d", i)}
+	// 		orderProduct := &OrderProduct{HanzoIdC: order.Id + fmt.Sprintf("_%d", i)}
 	// 		orderProduct.Read(item)
-	// 		orderProduct.Order = &ForeignKey{CrowdstartIdC: order.Id}
+	// 		orderProduct.Order = &ForeignKey{HanzoIdC: order.Id}
 	// 		o.orderProducts[i] = orderProduct
 	// 	}
 	// }
@@ -693,8 +693,8 @@ func (o *Order) Read(so SObjectCompatible) error {
 	// // 	o.Name = strconv.FormatInt(name.IntID(), 10)
 	// // }
 
-	// o.Account = &ForeignKey{CrowdstartIdC: order.UserId}
-	// o.CrowdstartIdC = order.Id
+	// o.Account = &ForeignKey{HanzoIdC: order.UserId}
+	// o.HanzoIdC = order.Id
 	// o.OriginalEmailC = order.Email
 
 	return nil
@@ -771,17 +771,17 @@ func (o *Order) Write(so SObjectCompatible) error {
 	// // We shouldn't update a read only value like this
 	// // o.OriginalEmailC = order.Email
 
-	// order.Id = o.CrowdstartIdC
+	// order.Id = o.HanzoIdC
 
 	return nil
 }
 
 func (o *Order) SetExternalId(id string) {
-	o.CrowdstartIdC = id
+	o.HanzoIdC = id
 }
 
 func (o *Order) ExternalId() string {
-	return o.CrowdstartIdC
+	return o.HanzoIdC
 }
 
 func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
@@ -896,7 +896,7 @@ type OrderProduct struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	CreatedById        string   `json:"CreatedById,omitempty"`
@@ -933,7 +933,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 	}
 
 	o.Quantity = float64(li.Quantity)
-	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.Variant.Id()}
+	o.PricebookEntry = &ForeignKey{HanzoIdC: li.Variant.Id()}
 	o.UnitPrice = ToCurrency(int64(li.Variant.Price))
 
 	return nil
@@ -956,11 +956,11 @@ func (o *OrderProduct) Write(so SObjectCompatible) error {
 }
 
 func (o *OrderProduct) SetExternalId(id string) {
-	o.CrowdstartIdC = id
+	o.HanzoIdC = id
 }
 
 func (o *OrderProduct) ExternalId() string {
-	return o.CrowdstartIdC
+	return o.HanzoIdC
 }
 
 func (o *OrderProduct) Push(api SalesforceClient) error {
@@ -988,7 +988,7 @@ type Product struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	CreatedById      string `json:"CreatedById,omitempty"`
@@ -1011,7 +1011,7 @@ func (p *Product) Read(so SObjectCompatible) error {
 		return ErrorUserTypeRequired
 	}
 
-	p.CrowdstartIdC = v.Id()
+	p.HanzoIdC = v.Id()
 	p.Name = v.SKU
 	p.ProductCode = v.SKU
 	p.IsActive = true
@@ -1029,18 +1029,18 @@ func (p *Product) Write(so SObjectCompatible) error {
 
 	p.SetSalesforceId(p.Id)
 
-	// v.Id = p.CrowdstartIdC
+	// v.Id = p.HanzoIdC
 	v.SKU = p.ProductCode
 
 	return nil
 }
 
 func (p *Product) SetExternalId(id string) {
-	p.CrowdstartIdC = id
+	p.HanzoIdC = id
 }
 
 func (p *Product) ExternalId() string {
-	return p.CrowdstartIdC
+	return p.HanzoIdC
 }
 
 func (p *Product) Push(api SalesforceClient) error {
@@ -1067,7 +1067,7 @@ type PricebookEntry struct {
 	MasterRecordId string     `json:"MasterRecordId,omitempty"`
 
 	// Unique External Id, currently using Id (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__c,omitempty"`
+	HanzoIdC string `json:"HanzoId__c,omitempty"`
 
 	// Read Only
 	CreatedById      string `json:"CreatedById,omitempty"`
@@ -1093,8 +1093,8 @@ func (p *PricebookEntry) Read(so SObjectCompatible) error {
 		return ErrorUserTypeRequired
 	}
 
-	p.CrowdstartIdC = v.Id()
-	p.Product = &ForeignKey{CrowdstartIdC: v.Id()}
+	p.HanzoIdC = v.Id()
+	p.Product = &ForeignKey{HanzoIdC: v.Id()}
 	p.UseStandardPrice = false
 	p.UnitPrice = ToCurrency(int64(v.Price))
 	p.IsActive = true
@@ -1112,18 +1112,18 @@ func (p *PricebookEntry) Write(so SObjectCompatible) error {
 
 	p.SetSalesforceId(p.Id)
 
-	// v.Id = p.CrowdstartIdC
+	// v.Id = p.HanzoIdC
 	//v.UnitPrice =
 
 	return nil
 }
 
 func (p *PricebookEntry) SetExternalId(id string) {
-	p.CrowdstartIdC = id
+	p.HanzoIdC = id
 }
 
 func (p *PricebookEntry) ExternalId() string {
-	return p.CrowdstartIdC
+	return p.HanzoIdC
 }
 
 func (p *PricebookEntry) Push(api SalesforceClient) error {
