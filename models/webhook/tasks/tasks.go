@@ -27,7 +27,7 @@ func (c *Client) Post(url string, data interface{}) error {
 		return err
 	}
 
-	req.Header.Set("User-Agent", "Crowdstart/1.0")
+	req.Header.Set("User-Agent", "Hanzo/1.0")
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := c.client.Do(req)
