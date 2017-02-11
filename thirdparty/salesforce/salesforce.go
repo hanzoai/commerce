@@ -494,7 +494,7 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 		}
 
 		// We key based on accountId because it is common to both contacts and accounts
-		// Use the CrowdstartId/Db Key to Index
+		// Use the HanzoId/Db Key to Index
 		usId := us.ExternalId()
 		log.Debug("Looking Up Is '%v'", usId)
 		// if Db Key is not in objects
