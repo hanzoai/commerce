@@ -67,7 +67,7 @@ func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 		</style>
 	</head>
 	<body>
-		<h4>500 Internal Server Error (crowdstart/1.0.0)</h4>
+		<h4>500 Internal Server Error (hanzo/1.0)</h4>
 
 		<pre>` + stack + "</pre></body></html>"))
 	log.Error(stack)
