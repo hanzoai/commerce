@@ -7,6 +7,7 @@ import (
 )
 
 type FulfillmentStatus string
+type Integration string
 
 const (
 	FulfillmentUnfulfilled FulfillmentStatus = "unfulfilled"
@@ -17,7 +18,12 @@ const (
 	FulFillmentCancelled   FulfillmentStatus = "cancelled"
 )
 
+const (
+	Shipwire Integration = "shipwire"
+)
+
 type Fulfillment struct {
+	Integration    Integration    `json:"type,omitempty"`
 	ExternalId     string         `json:"externalId,omitempty"`
 	Carrier        string         `json:"carrier,omitempty"`
 	Summary        string         `json:"summary,omitempty"`
