@@ -87,10 +87,11 @@ class Order(Export):
 
         # Hydrate order with user data
         if self.users:
-            user             = self.users[order.user_id]
-            order.email      = user.email
-            order.first_name = user.first_name
-            order.last_name  = user.last_name
+            user = self.users.get(order.user_id, None)
+            if user:
+                order.email      = user.email
+                order.first_name = user.first_name
+                order.last_name  = user.last_name
 
         # Hydrate order with Shipwire data
         if self.s_orders:
@@ -111,7 +112,7 @@ class Order(Export):
         return order
 
 
-def get_orders(filter):
+def get_orders(filter=None):
     """Return orders matching some predicate(s)."""
 
     # Load Reamaze contacts
@@ -131,7 +132,10 @@ def get_orders(filter):
     disputed_orders  = sum(1 for x in orders if disputed(x))
 
     # Filter orders
-    selected_orders  = [x for x in orders if filter(x)]
+    if filter:
+        selected_orders = [x for x in orders if filter(x)]
+    else:
+        selected_orders = orders
 
     # Print stats
     print 'Order statistics'
@@ -161,22 +165,25 @@ if __name__ == '__main__':
         print 'Fetching latest contacts from Reamaze...'
         reamaze.write_cache()
 
+    # Get all orders
+    orders = get_orders()
+
     # Get specific order
     # orders = get_orders(lambda order: order.number == '8460055')
 
-    # Filter orders
-    orders = get_orders(lambda order: all((
-        open(order),
-        not cancelled(order),
-        not disputed(order),
-        not locked(order),
-        not processed(order),
-        # domestic(order),
-        # batch1(order),
-        # partial_refund(order),
-        # contacted_us(order),
-        # from2016(order),
-    )))
+    # Get subset of orders
+    # orders = get_orders(lambda order: all((
+    #     open(order),
+    #     not cancelled(order),
+    #     not disputed(order),
+    #     not locked(order),
+    #     # not processed(order),
+    #     # domestic(order),
+    #     # batch1(order),
+    #     # partial_refund(order),
+    #     # contacted_us(order),
+    #     # from2016(order),
+    # )))
 
     # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
