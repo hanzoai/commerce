@@ -7,7 +7,7 @@ import (
 // There are three types of users that permissions commonly accomodate:
 //		1. Anonymous users (via published keys)
 //		2. Clients using API on their server (via secret keys)
-//		3. Crowdstart (Complete access)
+//		3. Hanzo (Complete access)
 
 const (
 	All  bit.Mask = ^0

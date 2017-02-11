@@ -108,7 +108,7 @@ func Route(api router.Router) {
 	storeApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
 
-	// Crowdstart APIs, using default namespace (internal use only)
+	// Hanzo APIs, using default namespace (internal use only)
 	organizationApi.Route(api, tokenRequired)
 
 	token := rest.New(token.Token{})
