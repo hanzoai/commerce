@@ -23,7 +23,7 @@ func New(ctx appengine.Context, accessToken string) *Client {
 		client: netlify.NewClient(&netlify.Config{
 			AccessToken: accessToken,
 			HttpClient:  client,
-			UserAgent:   "Crowdstart/1.0",
+			UserAgent:   "Hanzo/1.0",
 		}),
 	}
 }
