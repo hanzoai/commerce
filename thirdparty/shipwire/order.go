@@ -1,6 +1,8 @@
 package shipwire
 
 import (
+	"net/http"
+
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"strconv"
@@ -212,7 +214,7 @@ type OrderResponse struct {
 	} `json:"resource"`
 }
 
-func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) {
+func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*http.Response, error) {
 	req := OrderRequest{}
 	req.OrderNo = strconv.Itoa(ord.Number)
 	req.ExternalID = ord.Id()
@@ -234,7 +236,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		}
 	}
 
-	c.Request("POST", "/orders", req)
+	return c.Request("POST", "/orders", req)
 }
 
 func (c *Client) GetOrder(ord *order.Order) {
