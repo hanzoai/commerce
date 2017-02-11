@@ -201,7 +201,7 @@ func Keys(c *gin.Context) {
 
 	// We use the master key for the dashboard so it is kind of pointless right now
 
-	// We REALLY need a crowdstart domain restricted master key for dashboard
+	// We REALLY need a Hanzo domain restricted master key for dashboard
 }
 
 func NewKeys(c *gin.Context) {
