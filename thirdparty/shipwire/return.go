@@ -1,6 +1,7 @@
 package shipwire
 
 import (
+	"net/http"
 	"strconv"
 
 	"hanzo.io/models/order"
@@ -82,13 +83,13 @@ type ReturnResponse struct {
 	} `json:"resource"`
 }
 
-func (c *Client) CreateReturn(ord *order.Order) error {
+func (c *Client) CreateReturn(ord *order.Order) (*http.Response, error) {
 	req := ReturnRequest{}
 	req.ExternalID = ord.Id()
 
 	id, err := strconv.Atoi(ord.Fulfillment.ExternalId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req.OriginalOrder.ID = id
@@ -102,7 +103,5 @@ func (c *Client) CreateReturn(ord *order.Order) error {
 		}
 	}
 
-	c.Request("POST", "/returns", req)
-
-	return nil
+	return c.Request("POST", "/returns", req)
 }
