@@ -68,6 +68,8 @@ func init() {
 	dash.GET("/sendorderconfirmation/:id", admin.SendOrderConfirmation)
 	dash.GET("/sendrefundconfirmation/:id", admin.SendRefundConfirmation)
 	dash.GET("/sendfulfillmentconfirmation/:id", admin.SendFulfillmentConfirmation)
+	dash.POST("/shipwire/ship/:id", admin.ShipOrderUsingShipwire)
+	dash.POST("/shipwire/return/:id", admin.ReturnOrderUsingShipwire)
 
 	dash.GET("/organization", admin.Organization)
 	dash.POST("/organization", admin.UpdateOrganization)
