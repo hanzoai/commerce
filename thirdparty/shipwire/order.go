@@ -26,8 +26,9 @@ type Item struct {
 }
 
 type OrderRequest struct {
-	ExternalID string `json:"externalId"`
-	OrderNo    string `json:"orderNo"`
+	ExternalID   string `json:"externalId"`
+	OrderNo      string `json:"orderNo"`
+	CommerceName string `json:"commerceName"`
 
 	Options struct {
 		ServiceLevelCode ServiceLevelCode `json:"serviceLevelCode"`
@@ -216,6 +217,7 @@ type OrderResponse struct {
 
 func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*http.Response, error) {
 	req := OrderRequest{}
+	req.CommerceName = "Hanzo"
 	req.OrderNo = strconv.Itoa(ord.Number)
 	req.ExternalID = ord.Id()
 	req.Options.ServiceLevelCode = serviceLevelCode
