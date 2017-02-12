@@ -1,11 +1,14 @@
 package shipwire
 
 import (
-	"net/http"
+	"errors"
+	"strconv"
 
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
-	"strconv"
+	"hanzo.io/util/json"
+
+	. "hanzo.io/models"
 )
 
 type ServiceLevelCode string
@@ -214,7 +217,7 @@ type OrderResponse struct {
 	} `json:"resource"`
 }
 
-func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*http.Response, error) {
+func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) error {
 	req := OrderRequest{}
 	req.OrderNo = strconv.Itoa(ord.Number)
 	req.ExternalID = ord.Id()
@@ -236,7 +239,25 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		}
 	}
 
-	return c.Request("POST", "/orders", req)
+	res, err := c.Request("POST", "/orders", req)
+	if err != nil {
+		return err
+	}
+
+	var ordRes *OrderResponse
+	if err := json.Decode(res.Body, ordRes); err != nil {
+		return err
+	}
+
+	ord.Fulfillment.Integration = Shipwire
+
+	if len(ordRes.Resource.Items) == 0 {
+		return errors.New("No orders returned from Shipwire")
+	}
+
+	ord.Fulfillment.ExternalId = ordRes.Resource.Items[0].Resource.ExternalID
+
+	return ord.Update()
 }
 
 func (c *Client) GetOrder(ord *order.Order) {
