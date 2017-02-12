@@ -3,10 +3,9 @@ package log
 import (
 	"fmt"
 
-	"appengine"
-
 	"github.com/op/go-logging"
 
+	"hanzo.io/config"
 	"hanzo.io/util/json"
 	"hanzo.io/util/spew"
 )
@@ -14,30 +13,21 @@ import (
 // Create a new App Engine-aware logger
 func New() *Logger {
 	log := new(Logger)
-
-	isDevAppServer := appengine.IsDevAppServer()
-
-	// Backend that is appengine-aware
-	backend := new(Backend)
-	backend.isDevAppServer = isDevAppServer
-
-	log.backend = backend
-	log.SetVerbose(isDevAppServer)
+	log.backend = new(Backend)
 
 	// Log formatters, color for dev, plain for production
 	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
 	colorFormatter := MustStringFormatter("%{color}%{level:.5s} %{longfile} %{longfunc} %{color:reset}%{message}")
 
 	// Use plain formatter for production logging, color for dev server
-	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
-	if isDevAppServer {
-		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
-	} else {
-
+	backend := logging.NewBackendFormatter(log.backend, plainFormatter)
+	if config.IsDevelopment {
+		backend = logging.NewBackendFormatter(backend, colorFormatter)
 	}
 
-	multiBackend := logging.SetBackend(defaultBackend)
-	log.SetBackend(multiBackend)
+	log.SetBackend(logging.SetBackend(backend))
+	log.SetVerbose(!config.IsProduction)
+
 	return log
 }
 
