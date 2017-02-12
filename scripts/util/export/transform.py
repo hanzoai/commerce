@@ -13,4 +13,7 @@ def from_bool(b):
 
 def from_json(obj):
     """Deserialize JSON object."""
-    return json.loads(obj)
+    try:
+        return json.loads(obj)
+    except Exception:
+        return {}
