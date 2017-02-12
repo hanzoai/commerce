@@ -10,8 +10,13 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/shipwire"
+	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 )
+
+type ShipRequest struct {
+	Service shipwire.ServiceLevelCode `json:"service"`
+}
 
 func ShipOrderUsingShipwire(c *gin.Context) {
 	org := middleware.GetOrganization(c)
@@ -29,11 +34,14 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	u := user.New(db)
 	u.MustGetById(o.UserId)
 
-	service := c.Params.ByName("service")
+	var shipReq *ShipRequest
+	if err := json.Decode(c.Request.Body, shipReq); err != nil {
+		http.Fail(c, 500, "Failed to decode request body", err)
+		return
+	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
-	_, err := client.CreateOrder(o, u, shipwire.ServiceLevelCode(service))
-	if err != nil {
+	if err := client.CreateOrder(o, u, shipwire.ServiceLevelCode(shipReq.Service)); err != nil {
 		http.Fail(c, 400, "Failed to query Shipwire", err)
 		return
 	}

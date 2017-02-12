@@ -473,6 +473,19 @@ class FulfillmentStatusSelect extends BasicSelectView
 
 FulfillmentStatusSelect.register()
 
+class ShippingServiceSelect extends BasicSelectView
+  tag: 'shipping-service-select'
+  options: ()->
+    'GD':       'Domestic Ground'
+    '2D':       'Domestic 2 Day'
+    '1D':       'Domestic 1 Day'
+    'E-INTL':   'International Economy'
+    'INTL':     'International Standard'
+    'PL-INTL':  'International Plus'
+    'PM-INTL':  'International Premium'
+
+ShippingServiceSelect.register()
+
 # tag registration
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['switch']
