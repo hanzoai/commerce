@@ -3,18 +3,19 @@ package log
 import (
 	"log"
 
+	"appengine"
+
 	"github.com/op/go-logging"
 
-	"appengine"
+	"hanzo.io/config"
 )
 
 // Custom logger backend that knows about AppEngine
 type Backend struct {
-	context        appengine.Context
-	error          error
-	requestURI     string
-	verbose        bool
-	isDevAppServer bool
+	context    appengine.Context
+	error      error
+	requestURI string
+	verbose    bool
 }
 
 func (b Backend) Verbose() bool {
@@ -50,7 +51,7 @@ func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record)
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	if b.isDevAppServer {
+	if config.IsDevelopment {
 		// Logging for local server
 		return b.logToDevServer(level, formatted)
 	} else {
