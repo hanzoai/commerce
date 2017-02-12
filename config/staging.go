@@ -1,7 +1,5 @@
 package config
 
-import "hanzo.io/util/log"
-
 // Staging Settings
 func Staging() *Config {
 	config := Production()
@@ -48,8 +46,6 @@ func Staging() *Config {
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
 	config.Netlify.AccessToken = "cb55596d4400897691b51df746c9007ea0f073139d1ec0af705b0a3c77d70621"
-
-	log.SetVerbose(true) // Set verbose logging in staging
 
 	return config
 }
