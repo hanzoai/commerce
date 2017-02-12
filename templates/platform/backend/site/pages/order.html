@@ -66,6 +66,27 @@
           </div>
         </div>
 
+        <div id="ship-order" class="panel animated fadeIn" if="{ !model.fulfillment.integration }">
+          <div class="panel-heading">
+            Shipping
+          </div>
+          <div class="panel-body">
+            <div class="section col-xs-12" style="padding:0">
+              <div class="section col-lg-6 mb20">
+                <control label="Shipping Service Level" input="{ inputs['shippingService'] }"></control>
+              </div>
+              <div class="form-actions col-lg-6 section mt30">
+                <button class="btn btn-block btn-default" onclick="{ shipModal }">Ship via Shipwire</button>
+              </div>
+            </div>
+
+            <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
+              <span class="error-container help-block animated fadeInUp">{error.message}</span>
+            </div>
+
+          </div>
+        </div>
+
         <div id="order-items" class="panel animated fadeIn">
           <div class="panel-heading">
             Receipt
