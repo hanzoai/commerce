@@ -48,6 +48,8 @@ class OrderForm extends Form
     input('paymentStatus', '', 'payment-status-select'),
     input('fulfillmentStatus', '', 'fulfillment-status-select'),
 
+    input('shippingService', '', 'shipping-service-select'),
+
     input('metadata', '', 'static-pre'),
   ]
 
@@ -76,12 +78,35 @@ class OrderForm extends Form
           className: 'btn btn-primary'
           callback: ()->
 
-  refund: ()->
-    @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)=>
-      console.log(e.stack) if e
-      window.location.hash = @redirectPath
-      riot.update()
+  shippingModal: ()->
 
+    value = $('#refundAmount').val()
+
+    bootbox.dialog
+      title: 'Are You Sure?'
+      message: 'This will ship this order.'
+
+      buttons:
+        Ship:
+          className: 'btn btn-danger'
+          callback: ()=>
+            @ship()
+
+        "Don't Ship":
+          className: 'btn btn-primary'
+          callback: ()->
+
+  refund: ()->
+    @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)->
+      console.log(e.stack) if e
+      window.location.reload()
+
+  ship: ()->
+    api = Api.get 'platform'
+
+    api.post('shipwire/' + @orderId, { service: @model.shippingService }).finally (e)->
+      console.log(e.stack) if e
+      window.location.reload()
 
 OrderForm.register()
 
