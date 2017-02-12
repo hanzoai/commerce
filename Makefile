@@ -19,8 +19,7 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= hanzo.io/analytics \
-		  hanzo.io/api \
+modules	= hanzo.io/api \
 		  hanzo.io/cdn \
 		  hanzo.io/platform
 
@@ -30,21 +29,7 @@ gae_development = config/development/app.yaml \
 				  platform/app.dev.yaml
 
 gae_sandbox = config/sandbox \
-			  analytics/app.sandbox.yaml \
 			  api/app.sandbox.yaml
-
-# CDN is deprecated, analytics not used
-# gae_staging = config/staging \
-# 			  analytics/app.staging.yaml \
-# 			  api/app.staging.yaml \
-# 			  cdn/app.staging.yaml \
-# 			  platform/app.staging.yaml
-
-# gae_production = config/production \
-# 				 analytics \
-# 				 api \
-# 			  	 cdn \
-# 				 platform
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
