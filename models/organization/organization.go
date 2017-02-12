@@ -183,7 +183,12 @@ type Organization struct {
 
 	Reamaze struct {
 		Secret string
-	} `json:"-" datastore:"`
+	} `json:"-"`
+
+	Shipwire struct {
+		Username string
+		Password string
+	} `json:"-"`
 
 	// Signup options
 	SignUpOptions struct {
