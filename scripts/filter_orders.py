@@ -83,7 +83,8 @@ class Order(Export):
                 return 1
 
         # Process batch metadata
-        order.batch = determine_batch(order)
+        if 'batch' in order.metadata_:
+            order.batch = determine_batch(order)
 
         # Hydrate order with user data
         if self.users:
@@ -142,7 +143,13 @@ def get_orders(filter=None):
     totals = (len(orders), open_orders, cancelled_orders, disputed_orders,
               invalid_orders, len(selected_orders))
     print '  Total orders: {}, Open: {}, Cancelled: {}, Disputed: {}, Invalid: {}, selected: {}'.format(*totals)
-    print '  Total units in selection:', sum(x.items_[0]['quantity'] for x in selected_orders)
+
+    def quantity(order):
+        if not order.items_:
+            return 0
+        return order.items_[0].get('quantity', 0)
+
+    print '  Total units in selection:', sum(quantity(x) for x in selected_orders)
 
     # Print any invalid orders
     if invalid_orders:
@@ -166,24 +173,23 @@ if __name__ == '__main__':
         reamaze.write_cache()
 
     # Get all orders
-    orders = get_orders()
+    # orders = get_orders()
 
     # Get specific order
     # orders = get_orders(lambda order: order.number == '8460055')
 
     # Get subset of orders
-    # orders = get_orders(lambda order: all((
-    #     open(order),
-    #     not cancelled(order),
-    #     not disputed(order),
-    #     not locked(order),
-    #     # not processed(order),
-    #     # domestic(order),
-    #     # batch1(order),
-    #     # partial_refund(order),
-    #     # contacted_us(order),
-    #     # from2016(order),
-    # )))
+    orders = get_orders(lambda order: all((
+        # open(order),
+        cancelled(order),
+        not disputed(order),
+        # not processed(order),
+        # domestic(order),
+        # batch1(order),
+        # partial_refund(order),
+        # contacted_us(order),
+        # from2016(order),
+    )))
 
     # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
