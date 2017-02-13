@@ -33,20 +33,21 @@ func updateTracking(c *gin.Context, t Tracking, isReturn bool) {
 	tracking.Number = t.Tracking
 	tracking.ExternalId = strconv.Itoa(t.ID)
 	tracking.Url = t.Url
-	tracking.CreatedAt = t.TrackedDate
 	tracking.Carrier = t.Carrier
 	tracking.Summary = t.Summary
-	tracking.SummaryAt = t.SummaryDate
-	tracking.LabelCreatedAt = t.LabelCreatedDate
 	tracking.FirstScanRegion = t.FirstScanRegion
 	tracking.FirstScanPostalCode = t.FirstScanPostalCode
 	tracking.FirstScanCountry = t.FirstScanCountry
-	tracking.FirstScanAt = t.FirstScanDate
 	tracking.DeliveryCity = t.DeliveryCity
 	tracking.DeliveryRegion = t.DeliveryRegion
 	tracking.DeliveryPostalCode = t.DeliveryPostalCode
 	tracking.DeliveryCountry = t.DeliveryCountry
-	tracking.DeliveredAt = t.DeliveredDate
+
+	tracking.CreatedAt = t.TrackedDate.Time
+	tracking.DeliveredAt = t.DeliveredDate.Time
+	tracking.FirstScanAt = t.FirstScanDate.Time
+	tracking.LabelCreatedAt = t.LabelCreatedDate.Time
+	tracking.SummaryAt = t.SummaryDate.Time
 
 	if isReturn {
 		ord.Fulfillment.Return.Tracking = tracking
