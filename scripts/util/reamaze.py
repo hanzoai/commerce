@@ -38,12 +38,12 @@ def write_cache():
     for page in range(2, pages+1):
         contacts += get_contacts(page=page)['contacts']
 
-    with open('reamaze.json', 'w') as f:
+    with open('_export/reamaze.json', 'w') as f:
         for contact in contacts:
             f.write(json.dumps(contact) + '\n')
 
 
 def read_cache():
-    with open('reamaze.json') as f:
+    with open('_export/reamaze.json') as f:
         for line in f:
             yield json.loads(line)
