@@ -49,7 +49,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	ord.Fulfillment.Status = fulfillment.Pending
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
-	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate
+	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate.Time
 
 	return res, ord.Update()
 }
