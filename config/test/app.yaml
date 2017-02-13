@@ -11,9 +11,6 @@ automatic_scaling:
   max_concurrent_requests: 100
   min_idle_instances: 0
 
-inbound_services:
-- warmup
-
 handlers:
 - url: /_ah/queue/go/delay
   script: _go_app

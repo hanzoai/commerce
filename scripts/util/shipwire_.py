@@ -85,12 +85,12 @@ def write_cache():
     sw = connect()
     r  = sw.orders.list()
 
-    with open('shipwire.json', 'w') as f:
+    with open('_export/shipwire.json', 'w') as f:
         for order in r.all_serial():
             f.write(json.dumps(order['resource']) + '\n')
 
 
 def read_cache():
-    with open('shipwire.json') as f:
+    with open('_export/shipwire.json') as f:
         for line in f:
             yield json.loads(line)
