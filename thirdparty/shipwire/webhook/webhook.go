@@ -41,6 +41,17 @@ func Process(c *gin.Context) {
 			http.Fail(c, 400, msg, err)
 		}
 		updateTracking(c, t)
+	case "return.created", "return.updated", "return.canceled", "return.completed":
+		var r Return
+		if err := json.Unmarshal(req.Body.Resource, &r); err != nil {
+			msg := fmt.Sprintf("Failed decode resource: %v\n%v", err, req.Body.Resource)
+			http.Fail(c, 400, msg, err)
+		}
+		updateReturn(c, r)
+	case "return.hold.added", "return.hold.cleared":
+		c.String(200, "ok\n")
+	case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
+		c.String(200, "ok\n")
 	default:
 		c.String(200, "ok\n")
 	}
