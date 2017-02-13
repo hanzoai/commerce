@@ -28,6 +28,7 @@ import (
 	affiliateApi "hanzo.io/api/affiliate"
 	campaignApi "hanzo.io/api/campaign"
 	cartApi "hanzo.io/api/cart"
+	cdnApi "hanzo.io/api/cdn"
 	checkoutApi "hanzo.io/api/checkout"
 	couponApi "hanzo.io/api/coupon"
 	dataApi "hanzo.io/api/data"
@@ -149,6 +150,9 @@ func Route(api router.Router) {
 
 	// XDomain proxy.html
 	xdApi.Route(api)
+
+	// Routes from deprecated cdn module
+	cdnApi.Route(api)
 }
 
 func init() {
