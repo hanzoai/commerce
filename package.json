@@ -1,6 +1,6 @@
 {
-  "name": "crowdstart",
-  "version": "1.0.1",
+  "name": "hanzo",
+  "version": "2.0.0-beta",
   "private": true,
   "dependencies": {
     "address-validator": "0.1.3",
