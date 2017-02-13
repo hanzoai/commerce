@@ -81,10 +81,11 @@ type Fulfillment struct {
 	Status     Status `json:"status"`
 	ExternalId string `json:"externalId,omitempty"`
 
-	Service string         `json:"service"`
-	Carrier string         `json:"carrier"`
-	SameDay string         `json:"sameDay,omitempty"`
-	Cost    currency.Cents `json:"cost,omitempty"`
+	Service         string         `json:"service"`
+	Carrier         string         `json:"carrier"`
+	SameDay         string         `json:"sameDay,omitempty"`
+	Pricing         currency.Cents `json:"pricing,omitempty"`
+	PricingEstimate currency.Cents `json:"pricingEstimate,omitempty"`
 
 	// When was the order created
 	CreatedAt time.Time `json:"createdAt,omitempty"`
