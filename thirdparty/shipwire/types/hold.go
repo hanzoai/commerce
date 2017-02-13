@@ -1,7 +1,5 @@
 package types
 
-import "time"
-
 type Hold struct {
 	// Hold ID
 	ID int `json:"id"`
@@ -17,8 +15,8 @@ type Hold struct {
 	Description string `json:"description"`
 
 	// Since when is this hold applied
-	AppliedDate time.Time `json:"appliedDate"`
+	AppliedDate Date `json:"appliedDate"`
 
 	// When was this order cleared, or null if it's still active.
-	ClearedDate time.Time `json:"clearedDate"`
+	ClearedDate Date `json:"clearedDate"`
 }
