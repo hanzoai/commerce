@@ -15,7 +15,7 @@ import (
 )
 
 func updateOrder(c *gin.Context, o Order) {
-	log.Warn("Tracking Information:\n%v", o, c)
+	log.Info("Update order information:\n%v", o, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
