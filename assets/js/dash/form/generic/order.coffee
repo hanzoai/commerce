@@ -113,7 +113,7 @@ class OrderForm extends Form
       window.location.reload()
 
   ship: ()->
-    api = Api.get 'platform'
+    api = Api.get 'dash'
 
     api.post('shipwire/ship/' + @model.id, { service: @model.shippingService }).finally (e)->
       console.log(e.stack) if e
@@ -179,21 +179,21 @@ class OrderUserStaticForm extends BasicFormView
         riot.update()
 
   resendOrderConfirmation: (event)->
-    api = Api.get 'platform'
+    api = Api.get 'dash'
 
     api.get('sendorderconfirmation/' + @orderId)
     $(event.target).html 'Sent!'
     @sending = true
 
   resendShippingConfirmation: (event)->
-    api = Api.get 'platform'
+    api = Api.get 'dash'
 
     api.get('sendfulfillmentconfirmation/' + @orderId)
     $(event.target).html 'Sent!'
     @sending = true
 
   resendRefundConfirmation: (event)->
-    api = Api.get 'platform'
+    api = Api.get 'dash'
 
     api.get('sendrefundconfirmation/' + @orderId)
     $(event.target).html 'Sent!'

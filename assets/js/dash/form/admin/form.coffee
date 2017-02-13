@@ -27,7 +27,7 @@ class AdminForm extends FormView
   js: (opts)->
     super
 
-    @api = api = Api.get 'platform'
+    @api = api = Api.get 'dash'
 
     if @prefill
       api.get(@path).then((res)=>
