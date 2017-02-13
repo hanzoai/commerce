@@ -19,6 +19,6 @@ var _ = New("save-order-skus",
 				ord.Items[i].ProductSKU = "686696998137"
 			}
 		}
-		db.Put(ord.Key(), ord)
+		ord.MustUpdate()
 	},
 )
