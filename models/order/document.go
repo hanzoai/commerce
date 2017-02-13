@@ -108,6 +108,6 @@ func (o Order) Document() mixin.Document {
 		string(o.Fulfillment.Status),
 		string(preorder),
 		string(confirmed),
-		string(o.Fulfillment.TrackingNumber),
+		string(o.Fulfillment.Tracking.Number),
 	}
 }

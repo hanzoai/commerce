@@ -45,9 +45,10 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		return res, errors.New("Failed to create order")
 	}
 
+	ord.FulfillmentStatus = fulfillment.Pending
+	ord.Fulfillment.Status = fulfillment.Pending
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
-	ord.Fulfillment.Status = fulfillment.Pending
 	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate
 
 	return res, ord.Update()

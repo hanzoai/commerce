@@ -21,13 +21,13 @@ type ReturnRequest struct {
 }
 
 type Return struct {
-	ID              int         `json:"id"`
-	ExternalID      interface{} `json:"externalId"`
-	TransactionID   string      `json:"transactionId"`
-	ExpectedDate    time.Time   `json:"expectedDate"`
-	CommerceName    string      `json:"commerceName"`
-	LastUpdatedDate time.Time   `json:"lastUpdatedDate"`
-	Status          string      `json:"status"`
+	ID              int       `json:"id"`
+	ExternalID      string    `json:"externalId"`
+	TransactionID   string    `json:"transactionId"`
+	ExpectedDate    time.Time `json:"expectedDate"`
+	CommerceName    string    `json:"commerceName"`
+	LastUpdatedDate time.Time `json:"lastUpdatedDate"`
+	Status          string    `json:"status"`
 	Holds           struct {
 		ResourceLocation string `json:"resourceLocation"`
 	} `json:"holds"`
