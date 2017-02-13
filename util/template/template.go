@@ -121,5 +121,9 @@ func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 
 func RenderStringFromString(template string, pairs ...interface{}) string {
 	ctx := createContext(nil, pairs...)
-	return pongo2.RenderTemplateString(template, ctx)
+	str, err := pongo2.RenderTemplateString(template, ctx)
+	if err != nil {
+		panic(err)
+	}
+	return str
 }
