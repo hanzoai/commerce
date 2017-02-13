@@ -2,6 +2,7 @@ package shipwire
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"hanzo.io/models/order"
@@ -45,11 +46,18 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		return res, errors.New("Failed to create order")
 	}
 
+	if len(res.Errors) > 0 {
+		return res, fmt.Errorf(res.Errors[0].Message)
+	}
+
 	ord.FulfillmentStatus = fulfillment.Pending
 	ord.Fulfillment.Status = fulfillment.Pending
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
 	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate.Time
+	ord.Fulfillment.Service = o.Options.Resource.ServiceLevelCode
+	ord.Fulfillment.Carrier = o.Options.Resource.CarrierCode
+	ord.Fulfillment.SameDay = o.Options.Resource.SameDay
 
 	return res, ord.Update()
 }
