@@ -134,7 +134,7 @@ func ShipNotify(c *gin.Context) {
 		ord.Fulfillment.Tracking.LabelCreatedAt = parseTime(req.LabelCreateDate)
 		ord.Fulfillment.Service = req.Service
 		ord.Fulfillment.Carrier = req.Carrier
-		ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
+		ord.Fulfillment.Pricing = currency.CentsFromString(req.ShippingCost)
 
 		usr := user.New(db)
 		usr.MustGetById(ord.UserId)
