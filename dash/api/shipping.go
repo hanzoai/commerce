@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
@@ -28,10 +30,10 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 
 	// Shipwire will prevent duplicate order creation for identical external
 	// IDs, so this is unnecessary in theory...
-	// if o.Fulfillment.Type != "" {
-	// 	http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
-	// 	return
-	// }
+	if ord.Fulfillment.Type != "" {
+		http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
+		return
+	}
 
 	usr := user.New(db)
 	usr.MustGetById(ord.UserId)
