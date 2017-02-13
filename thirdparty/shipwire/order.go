@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -34,12 +35,14 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		}
 	}
 
+	log.Error("Shipwire Req:\n%v", req, ord.Context())
 	res, err := c.Request("POST", "/orders", req)
 	if err != nil {
 		return err
 	}
 
 	o := Order{}
+	log.Error("Shipwire JSON:\n%s", res.Body, ord.Context())
 	if err := json.Decode(res.Body, &o); err != nil {
 		return err
 	}

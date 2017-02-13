@@ -34,6 +34,7 @@ func New(c *gin.Context, username, password string) *Client {
 		Username: username,
 		Password: password,
 		Endpoint: "https://api.shipwire.com/api/v3/",
+		client:   client,
 	}
 }
 
