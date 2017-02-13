@@ -14,13 +14,15 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateTracking(c *gin.Context, t Tracking, isReturn bool) {
-	log.Warn("Tracking Information:\n%v", t, c)
+func updateTrackings(c *gin.Context, trackings []Tracking, isReturn bool) {
+	log.Warn("Trackings:\n%v", trackings, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
+
+	t := trackings[0]
 	id := t.OrderExternalID
 	err := ord.GetById(id)
 	if err != nil {
