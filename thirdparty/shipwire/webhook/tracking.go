@@ -21,7 +21,7 @@ func updateTracking(c *gin.Context, t Tracking, isReturn bool) {
 	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
-	id := t.OrderExternalID[1:]
+	id := t.OrderExternalID
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
