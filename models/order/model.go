@@ -4,6 +4,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/fulfillment"
 
 	. "hanzo.io/models"
 	"hanzo.io/models/lineitem"
@@ -22,7 +23,7 @@ func (o *Order) Init(db *datastore.Datastore) {
 func (o *Order) Defaults() {
 	o.Status = Open
 	o.PaymentStatus = payment.Unpaid
-	o.FulfillmentStatus = FulfillmentUnfulfilled
+	o.Fulfillment.Status = fulfillment.Pending
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]lineitem.LineItem, 0)

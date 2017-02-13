@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/log"
@@ -128,7 +129,7 @@ func ShipNotify(c *gin.Context) {
 	}
 
 	if ord.Fulfillment.TrackingNumber != req.TrackingNumber {
-		ord.FulfillmentStatus = "shipped"
+		ord.Fulfillment.Status = fulfillment.Tracked
 		ord.Fulfillment.TrackingNumber = req.TrackingNumber
 		ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
 		ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
