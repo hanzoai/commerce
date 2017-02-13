@@ -4,6 +4,10 @@ import (
 	"hanzo.io/util/json"
 )
 
+type Decoder interface {
+	Decode(json.RawMessage) error
+}
+
 type Response struct {
 	Error            string `json:"error,omitempty"`
 	Status           int    `json:"status"`
