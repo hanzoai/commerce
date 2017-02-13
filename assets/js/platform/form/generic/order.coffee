@@ -49,6 +49,14 @@ class OrderForm extends Form
     input('fulfillmentStatus', '', 'fulfillment-status-select'),
 
     input('shippingService', '', 'shipping-service-select'),
+    input('fulfillment.externalId', '', 'static')
+    input('fulfillment.trackingNumber', '', 'static')
+    input('fulfillment.carrier', '', 'static')
+    input('fulfillment.service', '', 'static')
+    input('fulfillment.cost', '', 'static')
+    input('fulfillment.createdAt', '', 'static-date')
+    input('fulfillment.shippedAt', '', 'static-date')
+    input('fulfillment.deliveredAt', '', 'static-date')
 
     input('metadata', '', 'static-pre'),
   ]
@@ -57,6 +65,7 @@ class OrderForm extends Form
   initFormGroup: ()->
     super
 
+    @model.shippingService = @inputs.shippingService.model.value = 'GD'
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
 
@@ -77,6 +86,7 @@ class OrderForm extends Form
         "Don't Refund":
           className: 'btn btn-primary'
           callback: ()->
+    return false
 
   shippingModal: ()->
 
@@ -95,6 +105,7 @@ class OrderForm extends Form
         "Don't Ship":
           className: 'btn btn-primary'
           callback: ()->
+    return false
 
   refund: ()->
     @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)->
@@ -104,7 +115,7 @@ class OrderForm extends Form
   ship: ()->
     api = Api.get 'platform'
 
-    api.post('shipwire/' + @orderId, { service: @model.shippingService }).finally (e)->
+    api.post('shipwire/ship/' + @model.id, { service: @model.shippingService }).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
