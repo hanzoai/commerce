@@ -39,7 +39,7 @@ func New(c *gin.Context, username, password string) *Client {
 	return &Client{
 		Username: username,
 		Password: password,
-		Endpoint: "https://api.shipwire.com/api/v3/",
+		Endpoint: "https://api.shipwire.com/api/v3",
 		client:   client,
 		ctx:      ctx,
 	}
@@ -62,19 +62,32 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	// req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Add("Content-Type", "application/json")
 
-	log.Warn("Shipwire request:\n%v\n%v", req, c.ctx)
+	dump, _ := httputil.DumpRequest(req, true)
+	log.Warn("Shipwire request:\n%s", dump, c.ctx)
 
 	// Do request
 	r, err := c.client.Do(req)
+
+	// Request failed
 	if err != nil {
 		log.Error("Shipwire request failed: %v", err, c.ctx)
 		return &res, err
 	}
+
 	defer r.Body.Close()
 
-	dump, _ := httputil.DumpResponse(r, true)
+	// Shipwire does not always provide a status
+	res.Status = r.StatusCode
+
+	dump, _ = httputil.DumpResponse(r, true)
 	log.Warn("Shipwire response:\n%s", dump, c.ctx)
 
+	// Something bad happened
+	if res.Status > 399 {
+		return &res, nil
+	}
+
+	// No dst, done
 	if dst == nil {
 		return &res, nil
 	}
@@ -83,7 +96,9 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	err = json.Decode(r.Body, &res)
 	if err == nil {
 		// Try to decode inner resource as dst assuming list of one item
-		err = json.Unmarshal(res.Resource.Items[0].Resource, &dst)
+		if len(res.Resource.Items) > 0 {
+			err = json.Unmarshal(res.Resource.Items[0].Resource, &dst)
+		}
 	}
 
 	if err != nil {
