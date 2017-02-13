@@ -22,7 +22,7 @@ class Search extends View
     @orderObs = {}
     utils.shim.observable @orderObs
 
-    @api = api = Api.get 'platform'
+    @api = api = Api.get 'dash'
 
     q = window.location.search
     q += '&limit=1000' if !window.User.owner
