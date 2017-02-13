@@ -16,7 +16,7 @@ dispatch:
     module: api
 
   - url: "dash.hanzo.io/*"
-    module: platform
+    module: dash
 
   # crowdstart.com (deprecated)
   - url: "default.crowdstart.com/*"

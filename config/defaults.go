@@ -10,7 +10,7 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "Crowdstart"
+	config.SiteTitle = "Hanzo"
 
 	config.Fee = 0.05
 
@@ -33,7 +33,7 @@ func Defaults() *Config {
 	config.Stripe.LiveSecretKey = ""
 	config.Stripe.LivePublishablKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 
-	config.Mandrill.FromName = "Crowdstart"
+	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.io"
 
 	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
