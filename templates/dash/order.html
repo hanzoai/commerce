@@ -161,7 +161,7 @@
     riot.mount('order-form', {id: id})
 
     $('.resend-btn').on('click', function(e){
-      window.location.replace('{{ urlFor("platform", "sendorderconfirmation") }}' + '/' + id)
+      window.location.replace('{{ urlFor("dash", "sendorderconfirmation") }}' + '/' + id)
       e.preventDefault();
     })
 

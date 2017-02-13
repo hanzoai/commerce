@@ -208,7 +208,7 @@
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/coupon", coupon.Id) }}')
+                  window.location.replace('{{ urlFor("dash", "/coupon", coupon.Id) }}')
               }, $form, '{{ coupon.Id }}')
           }
       })
@@ -217,7 +217,7 @@
   })
   $('#delete-btn').on('click', function(e) {
     api.del(function(data) {
-        window.location.replace('{{ urlFor("platform", "/coupons") }}')
+        window.location.replace('{{ urlFor("dash", "/coupons") }}')
     }, '{{ coupon.Id }}')
   })
 </script>
