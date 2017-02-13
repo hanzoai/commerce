@@ -14,9 +14,6 @@ automatic_scaling:
 builtins:
 - remote_api: on
 
-inbound_services:
-- warmup
-
 handlers:
 - url: /_ah/queue/go/delay
   script: _go_app

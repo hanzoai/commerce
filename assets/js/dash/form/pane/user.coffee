@@ -14,7 +14,7 @@ localizeDate = (date)->
 
 class UserFilterPane extends Pane
   tag: 'user-filter-pane'
-  html: require '../../templates/backend/form/pane/user.html'
+  html: require '../../templates/dash/form/pane/user.html'
   path: 'search/user'
 
   inputConfigs: [

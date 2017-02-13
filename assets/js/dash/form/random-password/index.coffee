@@ -10,7 +10,7 @@ m = crowdcontrol.utils.mediator
 
 class ResetPasswordFormView extends FormView
   tag: 'reset-password-form'
-  html: require '../../templates/backend/form/random-password/template.html'
+  html: require '../../templates/dash/form/random-password/template.html'
   model:
     password: ''
 

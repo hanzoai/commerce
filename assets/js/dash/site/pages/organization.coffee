@@ -4,7 +4,7 @@ class Organization extends Page
   tag: 'page-organization'
   icon: 'fa fa-sitemap'
   name: 'Organization'
-  html: require '../../templates/backend/site/pages/organization.html'
+  html: require '../../templates/dash/site/pages/organization.html'
 
   collection: 'organization'
 

@@ -4,7 +4,7 @@ class Coupons extends Page
   tag: 'page-coupons'
   icon: 'glyphicon glyphicon-tag'
   name: 'Coupons'
-  html: require '../../templates/backend/site/pages/coupons.html'
+  html: require '../../templates/dash/site/pages/coupons.html'
 
   collection: 'coupons'
 
