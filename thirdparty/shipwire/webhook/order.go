@@ -35,7 +35,8 @@ func updateOrder(c *gin.Context, o Order) {
 	// Update fulfillment statet
 	ord.FulfillmentStatus = fulfillment.Status(o.Status)
 	ord.Fulfillment.Status = fulfillment.Status(o.Status)
-	ord.Fulfillment.Cost = currency.Cents(o.Pricing.Resource.Total * 100)
+	ord.Fulfillment.Pricing = currency.Cents(o.Pricing.Resource.Total * 100)
+	ord.Fulfillment.PricingEstimate = currency.Cents(o.PricingEstimate.Resource.Total * 100)
 	ord.Fulfillment.SameDay = o.Options.Resource.SameDay
 	ord.Fulfillment.Service = o.Options.Resource.ServiceLevelCode
 	ord.Fulfillment.Carrier = o.Options.Resource.CarrierCode
