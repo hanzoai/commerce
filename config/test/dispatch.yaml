@@ -4,20 +4,8 @@ dispatch:
   - url: "*/api/*"
     module: api
 
-  - url: "*/checkout/*"
-    module: checkout
-
-  - url: "*/admin/*"
-    module: platform
-
-  - url: "*/platform/*"
-    module: platform
-
-  - url: "*/preorder/*"
-    module: preorder
-
-  - url: "*/store/*"
-    module: store
+  - url: "*/dash/*"
+    module: dash
 
   - url: "*/default/*"
     module: default

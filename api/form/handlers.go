@@ -8,7 +8,7 @@ import (
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
-	ml "hanzo.io/cdn/mailinglist"
+	ml "hanzo.io/api/cdn/mailinglist"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

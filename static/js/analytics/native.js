@@ -237,7 +237,7 @@
         return window.Espy = Espy
       }())
     }
-    Espy.url = 'https://analytics.hanzo.io/';
+    Espy.url = 'https://analytics.crowdstart.com/';
     Espy.onflush = function () {
     };
     Espy.flushRate = 200;
@@ -442,7 +442,7 @@
   // source: node_modules/cookies-js/dist/cookies.js
   rqzt.define('cookies-js/dist/cookies', function (module, exports, __dirname, __filename, process) {
     /*
- * Cookies.js - 1.2.2
+ * Cookies.js - 1.2.3
  * https://github.com/ScottHamper/Cookies
  *
  * This is free and unencumbered software released into the public domain.
@@ -561,7 +561,7 @@
         Cookies.enabled = Cookies._areEnabled();
         return Cookies
       };
-      var cookiesExport = typeof global.document === 'object' ? factory(global) : factory;
+      var cookiesExport = global && typeof global.document === 'object' ? factory(global) : factory;
       // AMD support
       if (typeof define === 'function' && define.amd) {
         define(function () {
@@ -582,11 +582,11 @@
   // source: node_modules/ua-parser-js/src/ua-parser.js
   rqzt.define('ua-parser-js/src/ua-parser', function (module, exports, __dirname, __filename, process) {
     /**
- * UAParser.js v0.7.10
+ * UAParser.js v0.7.12
  * Lightweight JavaScript-based User-Agent string parser
  * https://github.com/faisalman/ua-parser-js
  *
- * Copyright © 2012-2015 Faisal Salman <fyzlman@gmail.com>
+ * Copyright © 2012-2016 Faisal Salman <fyzlman@gmail.com>
  * Dual licensed under GPLv2 & MIT
  */
     (function (window, undefined) {
@@ -594,7 +594,7 @@
       //////////////
       // Constants
       /////////////
-      var LIBVERSION = '0.7.10', EMPTY = '', UNKNOWN = '?', FUNC_TYPE = 'function', UNDEF_TYPE = 'undefined', OBJ_TYPE = 'object', STR_TYPE = 'string', MAJOR = 'major',
+      var LIBVERSION = '0.7.12', EMPTY = '', UNKNOWN = '?', FUNC_TYPE = 'function', UNDEF_TYPE = 'undefined', OBJ_TYPE = 'object', STR_TYPE = 'string', MAJOR = 'major',
         // deprecated
         MODEL = 'model', NAME = 'name', TYPE = 'type', VENDOR = 'vendor', VERSION = 'version', ARCHITECTURE = 'architecture', CONSOLE = 'console', MOBILE = 'mobile', TABLET = 'tablet', SMARTTV = 'smarttv', WEARABLE = 'wearable', EMBEDDED = 'embedded';
       ///////////
@@ -602,12 +602,15 @@
       //////////
       var util = {
         extend: function (regexes, extensions) {
-          for (var i in extensions) {
-            if ('browser cpu device engine os'.indexOf(i) !== -1 && extensions[i].length % 2 === 0) {
-              regexes[i] = extensions[i].concat(regexes[i])
+          var margedRegexes = {};
+          for (var i in regexes) {
+            if (extensions[i] && extensions[i].length % 2 === 0) {
+              margedRegexes[i] = extensions[i].concat(regexes[i])
+            } else {
+              margedRegexes[i] = regexes[i]
             }
           }
-          return regexes
+          return margedRegexes
         },
         has: function (str1, str2) {
           if (typeof str1 === 'string') {
@@ -620,7 +623,10 @@
           return str.toLowerCase()
         },
         major: function (version) {
-          return typeof version === STR_TYPE ? version.split('.')[0] : undefined
+          return typeof version === STR_TYPE ? version.replace(/[^\d\.]/g, '').split('.')[0] : undefined
+        },
+        trim: function (str) {
+          return str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, '')
         }
       };
       ///////////////
@@ -783,6 +789,15 @@
             NAME,
             VERSION
           ],
+          [/(opios)[\/\s]+([\w\.]+)/i  // Opera mini on iphone >= 8.0
+],
+          [
+            [
+              NAME,
+              'Opera Mini'
+            ],
+            VERSION
+          ],
           [/\s(opr)\/([\w\.]+)/i  // Opera Webkit
 ],
           [
@@ -846,6 +861,45 @@
             ],
             VERSION
           ],
+          [/(micromessenger)\/([\w\.]+)/i  // WeChat
+],
+          [
+            [
+              NAME,
+              'WeChat'
+            ],
+            VERSION
+          ],
+          [/xiaomi\/miuibrowser\/([\w\.]+)/i  // MIUI Browser
+],
+          [
+            VERSION,
+            [
+              NAME,
+              'MIUI Browser'
+            ]
+          ],
+          [/\swv\).+(chrome)\/([\w\.]+)/i  // Chrome WebView
+],
+          [
+            [
+              NAME,
+              /(.+)/,
+              '$1 WebView'
+            ],
+            VERSION
+          ],
+          [
+            /android.+samsungbrowser\/([\w\.]+)/i,
+            /android.+version\/([\w\.]+)\s+(?:mobile\s?safari|safari)*/i  // Android Browser
+          ],
+          [
+            VERSION,
+            [
+              NAME,
+              'Android Browser'
+            ]
+          ],
           [
             /(chrome|omniweb|arora|[tizenoka]{5}\s?browser)\/v?([\w\.]+)/i,
             // Chrome/OmniWeb/Arora/Tizen/Nokia
@@ -858,7 +912,7 @@
           [
             /(uc\s?browser)[\/\s]?([\w\.]+)/i,
             /ucweb.+(ucbrowser)[\/\s]?([\w\.]+)/i,
-            /JUC.+(ucweb)[\/\s]?([\w\.]+)/i  // UCBrowser
+            /juc.+(ucweb)[\/\s]?([\w\.]+)/i  // UCBrowser
           ],
           [
             [
@@ -885,25 +939,7 @@
             ],
             VERSION
           ],
-          [/XiaoMi\/MiuiBrowser\/([\w\.]+)/i  // MIUI Browser
-],
-          [
-            VERSION,
-            [
-              NAME,
-              'MIUI Browser'
-            ]
-          ],
-          [/android.+version\/([\w\.]+)\s+(?:mobile\s?safari|safari)/i  // Android Browser
-],
-          [
-            VERSION,
-            [
-              NAME,
-              'Android Browser'
-            ]
-          ],
-          [/FBAV\/([\w\.]+);/i  // Facebook App for iOS
+          [/;fbav\/([\w\.]+);/i  // Facebook App for iOS
 ],
           [
             VERSION,
@@ -1185,6 +1221,8 @@
             // Archos
             /(hp).+(touchpad)/i,
             // HP TouchPad
+            /(hp).+(tablet)/i,
+            // HP Tablet
             /(kindle)\/([\w\.]+)/i,
             // Kindle
             /\s(nook)[\w\s]+build\/(\w+)/i,
@@ -1283,7 +1321,7 @@
             ]
           ],
           [// Asus Tablets
-            /android.+(transfo[prime\s]{4,10}\s\w+|eeepc|slider\s\w+|nexus 7)/i],
+            /android.+(transfo[prime\s]{4,10}\s\w+|eeepc|slider\s\w+|nexus 7|padfone)/i],
           [
             MODEL,
             [
@@ -1428,6 +1466,29 @@
               TABLET
             ]
           ],
+          [/(nexus\s6p)/i  // Huawei Nexus 6P
+],
+          [
+            MODEL,
+            [
+              VENDOR,
+              'Huawei'
+            ],
+            [
+              TYPE,
+              MOBILE
+            ]
+          ],
+          [/(microsoft);\s(lumia[\s\w]+)/i  // Microsoft Lumia
+],
+          [
+            VENDOR,
+            MODEL,
+            [
+              TYPE,
+              MOBILE
+            ]
+          ],
           [/[\s\(;](xbox(?:\sone)?)[\s\);]/i  // Microsoft Xbox
 ],
           [
@@ -1463,7 +1524,7 @@
             /\s(milestone|droid(?:[2-4x]|\s(?:bionic|x2|pro|razr))?(:?\s4g)?)[\w\s]+build\//i,
             /mot[\s-]?(\w+)*/i,
             /(XT\d{3,4}) build\//i,
-            /(nexus\s[6])/i
+            /(nexus\s6)/i
           ],
           [
             MODEL,
@@ -1488,42 +1549,33 @@
               TABLET
             ]
           ],
+          [/hbbtv\/\d+\.\d+\.\d+\s+\([\w\s]*;\s*(\w[^;]*);([^;]*)/i  // HbbTV devices
+],
           [
-            /android.+((sch-i[89]0\d|shw-m380s|gt-p\d{4}|gt-n8000|sgh-t8[56]9|nexus 10))/i,
-            /((SM-T\w+))/i
+            [
+              VENDOR,
+              util.trim
+            ],
+            [
+              MODEL,
+              util.trim
+            ],
+            [
+              TYPE,
+              SMARTTV
+            ]
           ],
+          [/hbbtv.+maple;(\d+)/i],
           [
+            [
+              MODEL,
+              /^/,
+              'SmartTV'
+            ],
             [
               VENDOR,
               'Samsung'
             ],
-            MODEL,
-            [
-              TYPE,
-              TABLET
-            ]
-          ],
-          [
-            // Samsung
-            /((s[cgp]h-\w+|gt-\w+|galaxy\snexus|sm-n900))/i,
-            /(sam[sung]*)[\s-]*(\w+-?[\w-]*)*/i,
-            /sec-((sgh\w+))/i
-          ],
-          [
-            [
-              VENDOR,
-              'Samsung'
-            ],
-            MODEL,
-            [
-              TYPE,
-              MOBILE
-            ]
-          ],
-          [/(samsung);smarttv/i],
-          [
-            VENDOR,
-            MODEL,
             [
               TYPE,
               SMARTTV
@@ -1540,6 +1592,47 @@
             [
               TYPE,
               SMARTTV
+            ]
+          ],
+          [
+            /android.+((sch-i[89]0\d|shw-m380s|gt-p\d{4}|gt-n\d+|sgh-t8[56]9|nexus 10))/i,
+            /((SM-T\w+))/i
+          ],
+          [
+            [
+              VENDOR,
+              'Samsung'
+            ],
+            MODEL,
+            [
+              TYPE,
+              TABLET
+            ]
+          ],
+          [// Samsung
+            /smart-tv.+(samsung)/i],
+          [
+            VENDOR,
+            [
+              TYPE,
+              SMARTTV
+            ],
+            MODEL
+          ],
+          [
+            /((s[cgp]h-\w+|gt-\w+|galaxy\snexus|sm-\w[\w\d]+))/i,
+            /(sam[sung]*)[\s-]*(\w+-?[\w-]*)*/i,
+            /sec-((sgh\w+))/i
+          ],
+          [
+            [
+              VENDOR,
+              'Samsung'
+            ],
+            MODEL,
+            [
+              TYPE,
+              MOBILE
             ]
           ],
           [/sie-(\w+)*/i  // Siemens
@@ -1674,7 +1767,7 @@
             // Xiaomi Hongmi 'numeric' models
             /android.+(hm[\s\-_]*note?[\s_]*(?:\d\w)?)\s+build/i,
             // Xiaomi Hongmi
-            /android.+(mi[\s\-_]*(?:one|one[\s_]plus)?[\s_]*(?:\d\w)?)\s+build/i  // Xiaomi Mi
+            /android.+(mi[\s\-_]*(?:one|one[\s_]plus|note lte)?[\s_]*(?:\d\w)?)\s+build/i  // Xiaomi Mi
           ],
           [
             [
@@ -1691,10 +1784,23 @@
               MOBILE
             ]
           ],
+          [/android.+a000(1)\s+build/i  // OnePlus
+],
           [
-            /\s(tablet)[;\/\s]/i,
+            MODEL,
+            [
+              VENDOR,
+              'OnePlus'
+            ],
+            [
+              TYPE,
+              MOBILE
+            ]
+          ],
+          [
+            /\s(tablet)[;\/]/i,
             // Unidentifiable Tablet
-            /\s(mobile)[;\/\s]/i  // Unidentifiable Mobile
+            /\s(mobile)(?:[;\/]|\ssafari)/i  // Unidentifiable Mobile
           ],
           [
             [
@@ -1756,7 +1862,7 @@
             ], [VENDOR, MODEL, [TYPE, MOBILE]], [
             /(i-STYLE2.1)/i                                                     // i-mobile i-STYLE 2.1
             ], [[MODEL, 'i-STYLE 2.1'], [VENDOR, 'i-mobile'], [TYPE, MOBILE]], [
-            
+
             /(mobiistar touch LAI 512)/i                                        // mobiistar touch LAI 512
             ], [[MODEL, 'Touch LAI 512'], [VENDOR, 'mobiistar'], [TYPE, MOBILE]], [
 
@@ -1805,7 +1911,9 @@
           [
             /(windows)\snt\s6\.2;\s(arm)/i,
             // Windows RT
-            /(windows\sphone(?:\sos)*|windows\smobile|windows)[\s\/]?([ntce\d\.\s]+\w)/i
+            /(windows\sphone(?:\sos)*)[\s\/]?([\d\.\s]+\w)*/i,
+            // Windows Phone
+            /(windows\smobile|windows)[\s\/]?([ntce\d\.\s]+\w)/i
           ],
           [
             NAME,
@@ -1880,7 +1988,7 @@
             // Mint
             /(mageia|vectorlinux)[;\s]/i,
             // Mageia/VectorLinux
-            /(joli|[kxln]?ubuntu|debian|[open]*suse|gentoo|(?=\s)arch|slackware|fedora|mandriva|centos|pclinuxos|redhat|zenwalk|linpus)[\/\s-]?([\w\.-]+)*/i,
+            /(joli|[kxln]?ubuntu|debian|[open]*suse|gentoo|(?=\s)arch|slackware|fedora|mandriva|centos|pclinuxos|redhat|zenwalk|linpus)[\/\s-]?(?!chrom)([\w\.-]+)*/i,
             // Joli/Ubuntu/Debian/SUSE/Gentoo/Arch/Slackware
             // Fedora/Mandriva/CentOS/PCLinuxOS/RedHat/Zenwalk/Linpus
             /(hurd|linux)\s?([\w\.]+)*/i,
@@ -1912,6 +2020,12 @@
           ],
           [// BSD based
             /\s([frentopc-]{0,4}bsd|dragonfly)\s?([\w\.]+)*/i  // FreeBSD/NetBSD/OpenBSD/PC-BSD/DragonFly
+],
+          [
+            NAME,
+            VERSION
+          ],
+          [/(haiku)\s(\w+)/i  // Haiku
 ],
           [
             NAME,
@@ -1949,8 +2063,6 @@
             // Other
             /((?:open)?solaris)[\/\s-]?([\w\.]+)*/i,
             // Solaris
-            /(haiku)\s(\w+)/i,
-            // Haiku
             /(aix)\s((\d)(?=\.|\)|\s)[\w\.]*)*/i,
             // AIX
             /(plan\s9|minix|beos|os\/2|amigaos|morphos|risc\sos|openvms)/i,
@@ -2006,7 +2118,6 @@
           ua = uastring;
           return this
         };
-        this.setUA(ua);
         return this
       };
       UAParser.VERSION = LIBVERSION;
@@ -4524,6 +4635,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     /*<replacement>*/
     var isArray = rqzt('isarray');
     /*</replacement>*/
+    /*<replacement>*/
+    var Duplex;
+    /*</replacement>*/
     Readable.ReadableState = ReadableState;
     /*<replacement>*/
     var EE = rqzt('events/events').EventEmitter;
@@ -4565,6 +4679,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     var StringDecoder;
     util.inherits(Readable, Stream);
     function prependListener(emitter, event, fn) {
+      // Sadly this is not cacheable as some libraries bundle their own
+      // event emitter implementation with them.
       if (typeof emitter.prependListener === 'function') {
         return emitter.prependListener(event, fn)
       } else {
@@ -4583,7 +4699,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
           ]
       }
     }
-    var Duplex;
     function ReadableState(options, stream) {
       Duplex = Duplex || rqzt('readable-stream/lib/_stream_duplex');
       options = options || {};
@@ -4641,7 +4756,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         this.encoding = options.encoding
       }
     }
-    var Duplex;
     function Readable(options) {
       Duplex = Duplex || rqzt('readable-stream/lib/_stream_duplex');
       if (!(this instanceof Readable))
@@ -4955,7 +5069,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     // for virtual (non-string, non-buffer) streams, "length" is somewhat
     // arbitrary, and perhaps not very meaningful.
     Readable.prototype._read = function (n) {
-      this.emit('error', new Error('not implemented'))
+      this.emit('error', new Error('_read() is not implemented'))
     };
     Readable.prototype.pipe = function (dest, pipeOpts) {
       var src = this;
@@ -5119,16 +5233,16 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         state.pipes = null;
         state.pipesCount = 0;
         state.flowing = false;
-        for (var _i = 0; _i < len; _i++) {
-          dests[_i].emit('unpipe', this)
+        for (var i = 0; i < len; i++) {
+          dests[i].emit('unpipe', this)
         }
         return this
       }
       // try to find the right one.
-      var i = indexOf(state.pipes, dest);
-      if (i === -1)
+      var index = indexOf(state.pipes, dest);
+      if (index === -1)
         return this;
-      state.pipes.splice(i, 1);
+      state.pipes.splice(index, 1);
       state.pipesCount -= 1;
       if (state.pipesCount === 1)
         state.pipes = state.pipes[0];
@@ -8161,6 +8275,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       'v0.9.'
     ].indexOf(process.version.slice(0, 5)) > -1 ? setImmediate : processNextTick;
     /*</replacement>*/
+    /*<replacement>*/
+    var Duplex;
+    /*</replacement>*/
     Writable.WritableState = WritableState;
     /*<replacement>*/
     var util = rqzt('core-util-is/lib/util');
@@ -8194,7 +8311,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       this.callback = cb;
       this.next = null
     }
-    var Duplex;
     function WritableState(options, stream) {
       Duplex = Duplex || rqzt('readable-stream/lib/_stream_duplex');
       options = options || {};
@@ -8211,6 +8327,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       this.highWaterMark = hwm || hwm === 0 ? hwm : defaultHwm;
       // cast to ints.
       this.highWaterMark = ~~this.highWaterMark;
+      // drain event flag.
       this.needDrain = false;
       // at the start of calling end()
       this.ending = false;
@@ -8268,7 +8385,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       // one allocated and free to use, and we maintain at most two
       this.corkedRequestsFree = new CorkedRequest(this)
     }
-    WritableState.prototype.getBuffer = function writableStateGetBuffer() {
+    WritableState.prototype.getBuffer = function getBuffer() {
       var current = this.bufferedRequest;
       var out = [];
       while (current) {
@@ -8287,13 +8404,34 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       } catch (_) {
       }
     }());
-    var Duplex;
+    // Test _writableState for inheritance to account for Duplex streams,
+    // whose prototype chain only points to Readable.
+    var realHasInstance;
+    if (typeof Symbol === 'function' && Symbol.hasInstance && typeof Function.prototype[Symbol.hasInstance] === 'function') {
+      realHasInstance = Function.prototype[Symbol.hasInstance];
+      Object.defineProperty(Writable, Symbol.hasInstance, {
+        value: function (object) {
+          if (realHasInstance.call(this, object))
+            return true;
+          return object && object._writableState instanceof WritableState
+        }
+      })
+    } else {
+      realHasInstance = function (object) {
+        return object instanceof this
+      }
+    }
     function Writable(options) {
       Duplex = Duplex || rqzt('readable-stream/lib/_stream_duplex');
-      // Writable ctor is applied to Duplexes, though they're not
-      // instanceof Writable, they're instanceof Readable.
-      if (!(this instanceof Writable) && !(this instanceof Duplex))
-        return new Writable(options);
+      // Writable ctor is applied to Duplexes, too.
+      // `realHasInstance` is necessary because using plain `instanceof`
+      // would return false, as no `_writableState` property is attached.
+      // Trying to use the custom `instanceof` for Writable here will also break the
+      // Node.js LazyTransform implementation, which has a non-trivial getter for
+      // `_writableState` that would lead to infinite recursion.
+      if (!realHasInstance.call(Writable, this) && !(this instanceof Duplex)) {
+        return new Writable(options)
+      }
       this._writableState = new WritableState(options, this);
       // legacy.
       this.writable = true;
@@ -8540,7 +8678,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       state.bufferProcessing = false
     }
     Writable.prototype._write = function (chunk, encoding, cb) {
-      cb(new Error('not implemented'))
+      cb(new Error('_write() is not implemented'))
     };
     Writable.prototype._writev = null;
     Writable.prototype.end = function (chunk, encoding, cb) {
@@ -8970,7 +9108,6 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         return new Transform(options);
       Duplex.call(this, options);
       this._transformState = new TransformState(this);
-      // when the writable side finishes, then flush out anything remaining.
       var stream = this;
       // start out asking for a readable event once data is transformed.
       this._readableState.needReadable = true;
@@ -8984,10 +9121,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         if (typeof options.flush === 'function')
           this._flush = options.flush
       }
+      // When the writable side finishes, then flush out anything remaining.
       this.once('prefinish', function () {
         if (typeof this._flush === 'function')
-          this._flush(function (er) {
-            done(stream, er)
+          this._flush(function (er, data) {
+            done(stream, er, data)
           });
         else
           done(stream)
@@ -9008,7 +9146,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     // an error, then that'll put the hurt on the whole operation.  If you
     // never call cb(), then you'll never get another chunk.
     Transform.prototype._transform = function (chunk, encoding, cb) {
-      throw new Error('Not implemented')
+      throw new Error('_transform() is not implemented')
     };
     Transform.prototype._write = function (chunk, encoding, cb) {
       var ts = this._transformState;
@@ -9035,9 +9173,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         ts.needTransform = true
       }
     };
-    function done(stream, er) {
+    function done(stream, er, data) {
       if (er)
         return stream.emit('error', er);
+      if (data !== null && data !== undefined)
+        stream.push(data);
       // if there's nothing in the write buffer, then that means
       // that nothing more will ever be provided
       var ws = stream._writableState;
@@ -15001,19 +15141,19 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     Rand.prototype.generate = function generate(len) {
       return this._rand(len)
     };
-    if (typeof window === 'object') {
-      if (window.crypto && window.crypto.getRandomValues) {
+    if (typeof self === 'object') {
+      if (self.crypto && self.crypto.getRandomValues) {
         // Modern browsers
         Rand.prototype._rand = function _rand(n) {
           var arr = new Uint8Array(n);
-          window.crypto.getRandomValues(arr);
+          self.crypto.getRandomValues(arr);
           return arr
         }
-      } else if (window.msCrypto && window.msCrypto.getRandomValues) {
+      } else if (self.msCrypto && self.msCrypto.getRandomValues) {
         // IE
         Rand.prototype._rand = function _rand(n) {
           var arr = new Uint8Array(n);
-          window.msCrypto.getRandomValues(arr);
+          self.msCrypto.getRandomValues(arr);
           return arr
         }
       } else {
@@ -15023,7 +15163,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         }
       }
     } else {
-      // Node.js or Web worker
+      // Node.js or Web worker with no crypto support
       try {
         var crypto = rqzt('crypto-browserify');
         Rand.prototype._rand = function _rand(n) {
@@ -15561,38 +15701,30 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   rqzt.define('elliptic/package', function (module, exports, __dirname, __filename, process) {
     module.exports = {
       '_args': [[
-          {
-            'raw': 'elliptic@^6.0.0',
-            'scope': null,
-            'escapedName': 'elliptic',
-            'name': 'elliptic',
-            'rawSpec': '^6.0.0',
-            'spec': '>=6.0.0 <7.0.0',
-            'type': 'range'
-          },
+          'elliptic@^6.0.0',
           '/Users/zk/work/verus/crowdstart/node_modules/browserify-sign'
         ]],
       '_from': 'elliptic@>=6.0.0 <7.0.0',
-      '_id': 'elliptic@6.3.2',
+      '_id': 'elliptic@6.3.3',
       '_inCache': true,
+      '_installable': true,
       '_location': '/elliptic',
-      '_nodeVersion': '6.3.0',
+      '_nodeVersion': '7.0.0',
       '_npmOperationalInternal': {
-        'host': 'packages-16-east.internal.npmjs.com',
-        'tmp': 'tmp/elliptic-6.3.2.tgz_1473938837205_0.3108903462998569'
+        'host': 'packages-18-east.internal.npmjs.com',
+        'tmp': 'tmp/elliptic-6.3.3.tgz_1486422837740_0.10658654430881143'
       },
       '_npmUser': {
-        'name': 'indutny',
-        'email': 'fedor@indutny.com'
+        'email': 'fedor@indutny.com',
+        'name': 'indutny'
       },
-      '_npmVersion': '3.10.3',
+      '_npmVersion': '3.10.8',
       '_phantomChildren': {},
       '_requested': {
-        'raw': 'elliptic@^6.0.0',
-        'scope': null,
-        'escapedName': 'elliptic',
         'name': 'elliptic',
+        'raw': 'elliptic@^6.0.0',
         'rawSpec': '^6.0.0',
+        'scope': null,
         'spec': '>=6.0.0 <7.0.0',
         'type': 'range'
       },
@@ -15600,14 +15732,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         '/browserify-sign',
         '/create-ecdh'
       ],
-      '_resolved': 'https://registry.npmjs.org/elliptic/-/elliptic-6.3.2.tgz',
-      '_shasum': 'e4c81e0829cf0a65ab70e998b8232723b5c1bc48',
+      '_resolved': 'https://registry.npmjs.org/elliptic/-/elliptic-6.3.3.tgz',
+      '_shasum': '5482d9646d54bcb89fd7d994fc9e2e9568876e3f',
       '_shrinkwrap': null,
       '_spec': 'elliptic@^6.0.0',
       '_where': '/Users/zk/work/verus/crowdstart/node_modules/browserify-sign',
       'author': {
-        'name': 'Fedor Indutny',
-        'email': 'fedor@indutny.com'
+        'email': 'fedor@indutny.com',
+        'name': 'Fedor Indutny'
       },
       'bugs': { 'url': 'https://github.com/indutny/elliptic/issues' },
       'dependencies': {
@@ -15622,6 +15754,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         'coveralls': '^2.11.3',
         'grunt': '^0.4.5',
         'grunt-browserify': '^5.0.0',
+        'grunt-cli': '^1.2.0',
         'grunt-contrib-connect': '^1.0.0',
         'grunt-contrib-copy': '^1.0.0',
         'grunt-contrib-uglify': '^1.0.1',
@@ -15634,11 +15767,11 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       },
       'directories': {},
       'dist': {
-        'shasum': 'e4c81e0829cf0a65ab70e998b8232723b5c1bc48',
-        'tarball': 'https://registry.npmjs.org/elliptic/-/elliptic-6.3.2.tgz'
+        'shasum': '5482d9646d54bcb89fd7d994fc9e2e9568876e3f',
+        'tarball': 'https://registry.npmjs.org/elliptic/-/elliptic-6.3.3.tgz'
       },
       'files': ['lib'],
-      'gitHead': 'cbace4683a4a548dc0306ef36756151a20299cd5',
+      'gitHead': '63aee8d697e9b7fac37ece24222029117a890a7e',
       'homepage': 'https://github.com/indutny/elliptic',
       'keywords': [
         'EC',
@@ -15649,8 +15782,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       'license': 'MIT',
       'main': 'lib/elliptic.js',
       'maintainers': [{
-          'name': 'indutny',
-          'email': 'fedor@indutny.com'
+          'email': 'fedor@indutny.com',
+          'name': 'indutny'
         }],
       'name': 'elliptic',
       'optionalDependencies': {},
@@ -15667,7 +15800,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         'unit': 'istanbul test _mocha --reporter=spec test/index.js',
         'version': 'grunt dist && git add dist/'
       },
-      'version': '6.3.2'
+      'version': '6.3.3'
     }
   });
   // source: node_modules/elliptic/lib/elliptic/utils.js
@@ -19224,7 +19357,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       prime: 'p25519',
       p: '7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed',
       a: '76d06',
-      b: '0',
+      b: '1',
       n: '1000000000000000 0000000000000000 14def9dea2f79cd6 5812631a5cf5d3ed',
       hash: hash.sha256,
       gRed: false,
@@ -20264,6 +20397,9 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
   rqzt.define('elliptic/lib/elliptic/ec/key', function (module, exports, __dirname, __filename, process) {
     'use strict';
     var BN = rqzt('bn.js/lib/bn');
+    var elliptic = rqzt('elliptic/lib/elliptic');
+    var utils = elliptic.utils;
+    var assert = utils.assert;
     function KeyPair(ec, options) {
       this.ec = ec;
       this.priv = null;
@@ -20339,6 +20475,14 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
     };
     KeyPair.prototype._importPublic = function _importPublic(key, enc) {
       if (key.x || key.y) {
+        // Montgomery points only have an `x` coordinate.
+        // Weierstrass/Edwards points on the other hand have both `x` and
+        // `y` coordinates.
+        if (this.ec.curve.type === 'mont') {
+          assert(key.x, 'Need x coordinate')
+        } else if (this.ec.curve.type === 'short' || this.ec.curve.type === 'edwards') {
+          assert(key.x && key.y, 'Need both x and y coordinate')
+        }
         this.pub = this.ec.curve.point(key.x, key.y);
         return
       }
@@ -21330,6 +21474,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       'null_',
       'enum',
       'int',
+      'objDesc',
       'bitstr',
       'bmpstr',
       'charstr',
@@ -21512,6 +21657,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       }
     });
     Node.prototype.use = function use(item) {
+      assert(item);
       var state = this._baseState;
       assert(state.use === null);
       state.use = item;
@@ -21696,6 +21842,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         return this._decodeNull(input, options);
       else if (tag === 'bool')
         return this._decodeBool(input, options);
+      else if (tag === 'objDesc')
+        return this._decodeStr(input, tag, options);
       else if (tag === 'int' || tag === 'enum')
         return this._decodeInt(input, state.args && state.args[0], options);
       if (state.use !== null) {
@@ -21863,6 +22011,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         return this._encodeInt(data, state.args && state.reverseArgs[0]);
       else if (tag === 'bool')
         return this._encodeBool(data);
+      else if (tag === 'objDesc')
+        return this._encodeStr(data, tag);
       else
         throw new Error('Unsupported tag: ' + tag)
     };
@@ -22058,6 +22208,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         return numstr
       } else if (tag === 'octstr') {
         return buffer.raw()
+      } else if (tag === 'objDesc') {
+        return buffer.raw()
       } else if (tag === 'printstr') {
         var printstr = buffer.raw().toString('ascii');
         if (!this._isPrintstr(printstr)) {
@@ -22194,7 +22346,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
       }
       // Long form
       var num = len & 127;
-      if (num >= 4)
+      if (num > 4)
         return buf.error('length octect is too long');
       len = 0;
       for (var i = 0; i < num; i++) {
@@ -22333,6 +22485,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
         }
         return this._createEncoderBuffer(str)
       } else if (/str$/.test(tag)) {
+        return this._createEncoderBuffer(str)
+      } else if (tag === 'objDesc') {
         return this._createEncoderBuffer(str)
       } else {
         return this.reporter.error('Encoding of string type: ' + tag + ' unsupported')

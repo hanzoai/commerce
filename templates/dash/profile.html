@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block name %}Profile{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Contact information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Contact information Form Title -->
+        <div class="block-title">
+            <h2>Contact Information</h2>
+        </div>
+        <!-- END Contact information Form Title -->
+
+        <!-- Contact information Form Content -->
+        <form id="form-profile" action="{{ urlFor("dash", "/profile/contact") }}" method="POST" class="form-horizontal">
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Contact information Form Content -->
+    </div>
+    <!-- END Contact information Form Block -->
+
+    <!-- Reset Password Form Block -->
+    <div class="block">
+        <!-- Reset Password Form Title -->
+        <div class="block-title">
+            <h2>Change Password</h2>
+        </div>
+        <!-- END Reset Password Form Title -->
+
+        <!-- Reset Password Form Content -->
+        <form id="form-password" action="{{ urlFor("dash", "/profile/password") }}" method="post" class="form-horizontal">
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Reset Password Form Content -->
+    </div>
+    <!-- END Reset Password Form Block -->
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script>
+    $(function(){
+        BuildForm($("#form-profile"), [
+            {
+                id: "firstName",
+                name: "User.FirstName",
+                label: "First Name",
+                type: "text",
+                value: "{{ ctx.user.FirstName }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your first name"
+                    }
+                ]
+            },
+            {
+                id: "lastName",
+                name: "User.LastName",
+                label: "Last Name",
+                type: "text",
+                value: "{{ ctx.user.LastName }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your last name"
+                    }
+                ]
+            },
+            {
+                id: "email",
+                name: "User.Email",
+                label: "Email",
+                type: "email",
+                value: "{{ ctx.user.Email }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your email"
+                    },
+                    {
+                        rule: "email",
+                        value: true,
+                        message: "Enter a valid email"
+                    }
+                ]
+            },
+            {
+                id: "Phone",
+                name: "User.Phone",
+                label: "Phone",
+                type: "tel",
+                value: "{{ ctx.user.Phone }}",
+            }
+        ]);
+    });
+</script>
+<script>
+    $(function(){
+        BuildForm($("#form-password"), [
+            {
+                id: "oldpassword",
+                name: "OldPassword",
+                label: "Current Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Password must be at least 6 characters long"
+                    }
+                ]
+            },
+            {
+                id: "password",
+                name: "Password",
+                label: "New Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Password must be at least 6 characters long"
+                    }
+                ]
+            },
+            {
+                id: "confirmpassword",
+                name: "ConfirmPassword",
+                label: "Confirm New Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Password must be at least 6 characters long"
+                    },
+                    {
+                        rule: "equalTo",
+                        value: "#password",
+                        message: 'Entered passwords do not match'
+                    }
+                ]
+            },
+        ]);
+    });
+</script>
+{% endblock %}
+{% block menulink %}menu-profile{% endblock %}
