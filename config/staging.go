@@ -11,13 +11,13 @@ func Staging() *Config {
 	config.Prefixes["api"] = "/"
 	config.Prefixes["cdn"] = "/"
 	config.Prefixes["default"] = "/"
-	config.Prefixes["platform"] = "/"
+	config.Prefixes["dash"] = "/"
 
 	config.Hosts["analytics"] = "analytics-staging.hanzo.io"
 	config.Hosts["api"] = "api-staging.hanzo.io"
 	config.Hosts["cdn"] = "cdn-staging.hanzo.io"
 	config.Hosts["default"] = "default-staging.hanzo.io"
-	config.Hosts["platform"] = "platform-staging.hanzo.io"
+	config.Hosts["dash"] = "dash-staging.hanzo.io"
 
 	config.StaticUrl = "//static-staging.hanzo.io"
 
@@ -43,7 +43,7 @@ func Staging() *Config {
 
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Salesforce.CallbackURL = "https:" + config.UrlFor("dash", "/salesforce/callback")
 
 	config.Netlify.AccessToken = "cb55596d4400897691b51df746c9007ea0f073139d1ec0af705b0a3c77d70621"
 

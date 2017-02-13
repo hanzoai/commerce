@@ -1,5 +1,5 @@
 application: crowdstart-us
-module: platform
+module: dash
 
 runtime: go
 api_version: go1

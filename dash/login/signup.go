@@ -45,7 +45,7 @@ func SignupSubmit(c *gin.Context) {
 	auth.Login(c, user)
 
 	// Redirect to dashboard
-	c.Redirect(302, config.UrlFor("platform"))
+	c.Redirect(302, config.UrlFor("dash"))
 
 	// Validation
 	// user := form.User

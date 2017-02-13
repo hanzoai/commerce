@@ -26,7 +26,7 @@ func Callback(c *gin.Context) {
 		affiliateCallback(c)
 	} else {
 		// Redirect to platform
-		c.Redirect(302, config.UrlFor("platform", "/stripe/callback")+"?"+url.RawQuery)
+		c.Redirect(302, config.UrlFor("dash", "/stripe/callback")+"?"+url.RawQuery)
 	}
 }
 

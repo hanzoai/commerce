@@ -47,7 +47,7 @@ func Login(c *gin.Context) {
 func LoginSubmit(c *gin.Context) {
 	if _, err := loginUser(c); err == nil {
 		log.Debug("Success")
-		c.Redirect(302, config.UrlFor("platform"))
+		c.Redirect(302, config.UrlFor("dash"))
 	} else {
 		log.Debug("Failure")
 		log.Debug("%#v", err)
@@ -61,5 +61,5 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		log.Panic("Error while logging out \n%v", err)
 	}
-	c.Redirect(302, config.UrlFor("platform"))
+	c.Redirect(302, config.UrlFor("dash"))
 }
