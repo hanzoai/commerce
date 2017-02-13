@@ -16,7 +16,6 @@ const (
 	Completed Status = "completed"
 	Delivered Status = "delivered"
 	Returned  Status = "returned"
-	Returning Status = "returning"
 	Submitted Status = "submitted"
 	Held      Status = "held"
 	Tracked   Status = "tracked"
