@@ -259,10 +259,10 @@ serve-no-reload: assets
 
 # GOLANG TOOLS
 tools:
-	# If you have issues building:
-	# rm .sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go
-	# rm .sdk/gopath/src/gopkg.in/alecthomas/kingpin.v2/guesswidth_unix.go
-	# rm .sdk/gopath/src/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go
+	@echo If you have issues building:
+	@echo "  rm .sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
+	@echo "  rm .sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
+	@echo
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
 	$(gopath)/bin/gocode set propose-builtins true
