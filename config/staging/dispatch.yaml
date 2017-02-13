@@ -11,7 +11,7 @@ dispatch:
     module: api
 
   - url: "cdn-staging.hanzo.io/*"
-    module: cdn
+    module: api
 
-  - url: "platform-staging.hanzo.io/*"
-    module: platform
+  - url: "dash-staging.hanzo.io/*"
+    module: dash

@@ -6,6 +6,14 @@ requisite = 'node_modules/.bin/requisite -g'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
+  dash:
+    js:
+      in:  'assets/js/dash/dash.coffee'
+      out: 'static/js/dash.js'
+    css:
+      in:  'assets/css/dash/dash.styl'
+      out: 'static/css'
+
   api:
     js:
       in:  'assets/js/api/api.coffee'
@@ -21,42 +29,7 @@ files =
       in:  'assets/js/api/mailinglist.coffee'
       out: 'static/js'
 
-  checkout:
-    js:
-      in:  'assets/js/checkout/checkout.coffee'
-      out: 'static/js/checkout.js'
-    css:
-      in:  'assets/css/checkout/checkout.styl'
-      out: 'static/css'
-
-  platform:
-    js:
-      in:  'assets/js/platform/platform.coffee'
-      out: 'static/js/platform.js'
-    css:
-      in:  'assets/css/platform/platform.styl'
-      out: 'static/css'
-
-  preorder:
-    js:
-      in:  'assets/js/preorder/preorder.coffee'
-      out: 'static/js/preorder.js'
-    css:
-      in:  'assets/css/preorder/preorder.styl'
-      out: 'static/css'
-
-  store:
-    js:
-      in:  'assets/js/store/store.coffee'
-      out: 'static/js/store.js'
-    css:
-      in:  'assets/css/store/store.styl'
-      out: 'static/css'
-
   theme:
-    # js:
-    #   in:  'assets/js/theme/theme.coffee'
-    #   out: 'static/js/theme.js'
     css:
       in:  'assets/css/theme/theme.styl'
       out: 'static/css'
@@ -74,34 +47,21 @@ module.exports =
     /config\/production\/static/
     /config\/sandbox\/assets/
     /config\/sandbox\/static/
-    /config\/skully\/assets/
-    /config\/skully\/static/
     /config\/staging\/assets/
     /config\/staging\/static/
-    /platform\/static/
-    /platform\/templates/
+    /dash\/static/
+    /dash\/templates/
     /static\/vendor\/plugins/
-    /store\/static/
     /\.go$/
     /\.test$/
     /\.yaml$/
   ]
 
   compilers:
-    jade: (src) ->
-      if /^templates\/platform\/docs\/blueprint/.test src
-        return 'node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html'
-
     coffee: (src) ->
       # try to just optimize module changed
-      if /^assets\/js\/checkout/.test src
-        return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out}"
-      if /^assets\/js\/preorder/.test src
-        return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out}"
-      if /^assets\/js\/store/.test src
-        return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
-      if /^assets\/js\/platform/.test src
-        return "#{requisite} #{files.platform.js.in} -o #{files.platform.js.out}"
+      if /^assets\/js\/dash/.test src
+        return "#{requisite} #{files.dash.js.in} -o #{files.dash.js.out}"
       if /^assets\/js\/analytics\/native/.test src
         return "#{requisite} #{files.analyticsNative.js.in} -o #{files.analyticsNative.js.out}"
       if /^assets\/js\/api/.test src
@@ -121,14 +81,8 @@ module.exports =
 
     styl: (src) ->
       # try to just optimize module changed
-      if /^assets\/css\/checkout/.test src
-        return "#{stylus} #{files.checkout.css.in} -o #{files.checkout.css.out}"
-      if /^assets\/css\/preorder/.test src
-        return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
-      if /^assets\/css\/store/.test src
-        return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
-      if /^assets\/css\/platform/.test src
-        return "#{stylus} #{files.platform.css.in} -o #{files.platform.css.out}"
+      if /^assets\/css\/dash/.test src
+        return "#{stylus} #{files.dash.css.in} -o #{files.dash.css.out}"
       if /^assets\/css\/theme/.test src
         return "#{stylus} #{files.theme.css.in} -o #{files.theme.css.out}"
 
