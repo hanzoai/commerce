@@ -22,7 +22,7 @@
   <!-- Admin Forms CSS -->
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/admin-tools/admin-forms/css/admin-forms.min.css">
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css">
-  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/platform.css">
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/dash.css">
 
   <!-- Favicon -->
   <link rel="shortcut icon" href="{{ staticUrl }}/backend/img/favicon.ico">
@@ -79,7 +79,7 @@
         </a>
         <span id="toggle_sidemenu_l" class="ad ad-lines"></span>
       </div>
-      <form action="{{ urlFor("platform", "/search") }}" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
+      <form action="{{ urlFor("dash", "/search") }}" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
         <div class="form-group">
           <input type="text" id="q" name="q" class="form-control" placeholder="Search...">
         </div>
@@ -95,13 +95,13 @@
           </a>
           <ul class="dropdown-menu list-group dropdown-persist w250" role="menu">
             <li class="list-group-item">
-              <a id="menu-profile" class="animated animated-short fadeInUp" href="{{ urlFor("platform", "/profile") }}">
+              <a id="menu-profile" class="animated animated-short fadeInUp" href="{{ urlFor("dash", "/profile") }}">
                 <span class="glyphicon glyphicon-user sidebar-nav-icon"></span>
                 <span class="sidebar-title">{{ ctx.user.Name() }}</span>
               </a>
             </li>
             <li class="dropdown-footer">
-              <a href="{{ urlFor("platform", "/logout")}}">
+              <a href="{{ urlFor("dash", "/logout")}}">
                 <span class="fa fa-power-off pr5"></span> Logout
               </a>
             </li>
@@ -136,50 +136,50 @@
         <ul class="nav sidebar-menu">
           <li class="sidebar-label pt20">Menu</li>
           <li>
-            <a id="menu-dashboard" href="{{ urlFor("platform") }}">
+            <a id="menu-dashboard" href="{{ urlFor("dash") }}">
               <span class="glyphicon glyphicon-home"></span>
               <span class="sidebar-title">Dashboard</span>
             </a>
           </li>
           <li>
-            <a id="menu-users" href="{{ urlFor("platform", "/users") }}">
+            <a id="menu-users" href="{{ urlFor("dash", "/users") }}">
               <span class="fa fa-group"></span>
               <span class="sidebar-title">Users</span>
             </a>
           </li>
           <li>
-            <a id="menu-orders" href="{{ urlFor("platform", "/orders") }}">
+            <a id="menu-orders" href="{{ urlFor("dash", "/orders") }}">
               <span class="glyphicon glyphicon-credit-card"></span>
               <span class="sidebar-title">Orders</span>
             </a>
           </li>
           <li>
-            <a id="menu-products" href="{{ urlFor("platform", "/products") }}">
+            <a id="menu-products" href="{{ urlFor("dash", "/products") }}">
               <span class="glyphicon glyphicon-book"></span>
               <span class="sidebar-title">Products</span>
             </a>
           </li>
           <li>
-            <a id="menu-coupons" href="{{ urlFor("platform", "/coupons") }}">
+            <a id="menu-coupons" href="{{ urlFor("dash", "/coupons") }}">
               <span class="glyphicon glyphicon-tag"></span>
               <span class="sidebar-title">Coupons</span>
             </a>
           </li>
           <li>
-            <a id="menu-stores" href="{{ urlFor("platform", "/stores") }}">
+            <a id="menu-stores" href="{{ urlFor("dash", "/stores") }}">
               <span class="glyphicon glyphicon-shopping-cart"></span>
               <span class="sidebar-title">Stores</span>
             </a>
           </li>
           <li>
-            <a id="menu-mailinglists" href="{{ urlFor("platform", "/mailinglists") }}">
+            <a id="menu-mailinglists" href="{{ urlFor("dash", "/mailinglists") }}">
               <span class="fa fa-envelope"></span>
               <span class="sidebar-title">Mailing Lists</span>
             </a>
           </li>
           <li class="sidebar-label pt15">System</li>
           <li>
-            <a id="menu-profile" href="{{ urlFor("platform", "/profile") }}">
+            <a id="menu-profile" href="{{ urlFor("dash", "/profile") }}">
               <span class="glyphicon glyphicon-user sidebar-nav-icon"></span>
               <span class="sidebar-title">Profile</span>
             </a>
@@ -192,19 +192,19 @@
             </a>
             <ul class="nav sub-nav">
               <li>
-                <a id="menu-keys" href="{{ urlFor("platform", "/keys") }}">
+                <a id="menu-keys" href="{{ urlFor("dash", "/keys") }}">
                   <span class="fa fa-key"></span>
                   <span>API</span>
                 </a>
               </li>
               <li>
-                <a id="menu-organization" href="{{ urlFor("platform", "/organization") }}">
+                <a id="menu-organization" href="{{ urlFor("dash", "/organization") }}">
                   <span class="fa fa-sitemap"></span>
                   <span>Organization</span>
                 </a>
               </li>
               <li>
-                <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}">
+                <a id="menu-stripe-connect" href="{{ urlFor("dash", "/stripe/connect") }}">
                   <span class="fa fa-credit-card"></span>
                   <span>Stripe</span>
                 </a>
@@ -402,7 +402,7 @@
     Core.init();
   });
   </script>
-  <script src="{{ staticUrl }}/js/platform.js"></script>
+  <script src="{{ staticUrl }}/js/dash.js"></script>
   {% block js %}
   {% endblock %}
   <script src="{{urlFor("analytics", crowdstartId, "/native/js")}}"></script>

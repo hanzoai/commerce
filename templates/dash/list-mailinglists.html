@@ -128,7 +128,7 @@ $(function(){
             render: 'ago',
           }
         ],
-        itemUrl: '{{ urlFor("platform", "/mailinglist") }}',
+        itemUrl: '{{ urlFor("dash", "/mailinglist") }}',
         apiUrl: '{{ urlFor("api", "/mailinglist") }}',
         apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
         startPage: 1,
@@ -162,7 +162,7 @@ $('#form-mailinglist').on('submit', function(e){
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
             api.post(function(data) {
-                window.location.replace('{{ urlFor("platform", "/mailinglists") }}')
+                window.location.replace('{{ urlFor("dash", "/mailinglists") }}')
             }, $form)
         }
     })

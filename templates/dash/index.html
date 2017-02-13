@@ -30,7 +30,7 @@
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/admin-tools/admin-forms/css/admin-forms.min.css">
   <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css">
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/jqpagination.css">
-  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/platform.css">
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/dash.css">
 
   <!-- Icons -->
   <!-- The following icons can be replaced with your own, they are used by desktop and mobile browsers -->
@@ -64,7 +64,7 @@
         <span id="toggle_sidemenu">
           <img src="{{ staticUrl }}/backend/img/logo.svg">
         </span>
-        <a href="{{ urlFor("platform") }}" class="navbar-brand">
+        <a href="{{ urlFor("dash") }}" class="navbar-brand">
           hanzo
         </a>
       </div>
@@ -97,7 +97,7 @@
             {% endfor %}
             {% endif %}
             <li class="dropdown-footer">
-              <a href="{{ urlFor("platform", "/logout")}}">
+              <a href="{{ urlFor("dash", "/logout")}}">
                 <span class="fa fa-power-off pr5"></span> Logout
               </a>
             </li>
@@ -209,7 +209,7 @@
 
   window.staticUrl = '{{ staticUrl }}/backend'
   </script>
-  <script src="{{ staticUrl }}/js/platform.js"></script>
+  <script src="{{ staticUrl }}/js/dash.js"></script>
   <script type="text/javascript">
   $(function(){
     requestAnimationFrame(function(){
@@ -221,7 +221,7 @@
   })
 
   new crowdcontrol.data.Api(
-    '{{ urlFor("platform") }}',
+    '{{ urlFor("dash") }}',
     window.Keys['live-secret-key']
   ).register('platform')
 
@@ -233,7 +233,7 @@
     $('#switch-to-{{ org.Id_ }}').on('click', function() {
       $.ajax({
         method: 'GET',
-        url: '{{ urlFor("platform", "/organization", org.Id_, "set-active") }}'
+        url: '{{ urlFor("dash", "/organization", org.Id_, "set-active") }}'
       }).always(function(){
         window.location.reload()
       })

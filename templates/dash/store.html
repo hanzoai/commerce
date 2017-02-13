@@ -288,7 +288,7 @@ $('#form-store').on('submit', function(e){
                 $el.parent().parent().find('.listing-slug').attr('name', 'listings[' + $el.val() + '][slug]')
             });
             api.put(function(data) {
-                window.location.replace('{{ urlFor("platform", "/store", store.Id ) }}')
+                window.location.replace('{{ urlFor("dash", "/store", store.Id ) }}')
             }, $form, '{{ store.Id }}')
         }
     })
@@ -297,7 +297,7 @@ $('#form-store').on('submit', function(e){
 })
 $('#delete-btn').on('click', function(e) {
     api.del(function(data) {
-        window.location.replace('{{ urlFor("platform", "/stores") }}')
+        window.location.replace('{{ urlFor("dash", "/stores") }}')
     }, '{{ store.Id }}')
 })
 </script>
