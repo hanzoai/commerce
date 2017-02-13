@@ -12,6 +12,7 @@ import (
 	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -31,6 +32,7 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	// Shipwire will prevent duplicate order creation for identical external
 	// IDs, so this is unnecessary in theory...
 	if ord.Fulfillment.Type != "" {
+		log.Error("Order already shipped", c)
 		http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
 		return
 	}
@@ -40,12 +42,14 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 
 	req := ShipRequest{}
 	if err := json.Decode(c.Request.Body, &req); err != nil {
+		log.Error("Failed to decode request body", err, c)
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	if res, err := client.CreateOrder(ord, usr, ServiceLevelCode(req.Service)); err != nil {
+		log.Error("Message: %s\nError: %v", res.Message+res.Error, err, c)
 		http.Fail(c, res.Status, res.Message+res.Error, err)
 	} else {
 		http.Render(c, res.Status, ord)
@@ -63,6 +67,7 @@ func ReturnOrderUsingShipwire(c *gin.Context) {
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	res, err := client.CreateReturn(ord)
 	if err != nil {
+		log.Error("Message: %s\nError: %v", res.Message+res.Error, err, c)
 		http.Fail(c, res.Status, res.Message+res.Error, err)
 		return
 	}
