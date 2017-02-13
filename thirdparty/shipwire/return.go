@@ -31,7 +31,6 @@ func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 	}
 
 	rtn := Return{}
-
 	res, err := c.Request("POST", "/returns", req, &rtn)
 	if err != nil {
 		return res, err
