@@ -1,7 +1,5 @@
 package types
 
-import "time"
-
 type Tracking struct {
 	ID              int    `json:"id"`
 	OrderID         int    `json:"orderId"`
@@ -9,22 +7,22 @@ type Tracking struct {
 	Carrier         string `json:"carrier"`
 	Url             string `json:"url"`
 
-	Summary     string    `json:"summary"`
-	SummaryDate time.Time `json:"summaryDate"`
+	Summary     string `json:"summary"`
+	SummaryDate Date   `json:"summaryDate"`
 
-	LabelCreatedDate time.Time `json:"labelCreatedDate"`
+	LabelCreatedDate Date `json:"labelCreatedDate"`
 
-	Tracking    string    `json:"tracking"`
-	TrackedDate time.Time `json:"trackedDate"`
+	Tracking    string `json:"tracking"`
+	TrackedDate Date   `json:"trackedDate"`
 
-	FirstScanRegion     string    `json:"firstScanRegion"`
-	FirstScanPostalCode string    `json:"firstScanPostalCode"`
-	FirstScanCountry    string    `json:"firstScanCountry"`
-	FirstScanDate       time.Time `json:"firstScanDate"`
+	FirstScanRegion     string `json:"firstScanRegion"`
+	FirstScanPostalCode string `json:"firstScanPostalCode"`
+	FirstScanCountry    string `json:"firstScanCountry"`
+	FirstScanDate       Date   `json:"firstScanDate"`
 
-	DeliveryCity       string    `json:"deliveryCity"`
-	DeliveryRegion     string    `json:"deliveryRegion"`
-	DeliveryPostalCode string    `json:"DeliveryPostalCode"`
-	DeliveryCountry    string    `json:"DeliveryCountry"`
-	DeliveredDate      time.Time `json:"deliveredDate"`
+	DeliveryCity       string `json:"deliveryCity"`
+	DeliveryRegion     string `json:"deliveryRegion"`
+	DeliveryPostalCode string `json:"DeliveryPostalCode"`
+	DeliveryCountry    string `json:"DeliveryCountry"`
+	DeliveredDate      Date   `json:"deliveredDate"`
 }
