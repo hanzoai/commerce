@@ -1,5 +1,5 @@
-pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
+pwd				= $(shell pwd)
 platform		= $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.48
 sdk_path		= $(pwd)/.sdk
@@ -20,26 +20,23 @@ gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/api \
-		  hanzo.io/cdn \
-		  hanzo.io/platform
+		  hanzo.io/dash
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
 				  api/app.dev.yaml \
-				  platform/app.dev.yaml
+				  dash/app.dev.yaml
 
 gae_sandbox = config/sandbox \
 			  api/app.sandbox.yaml
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
-			  cdn/app.staging.yaml \
-			  platform/app.staging.yaml
+			  dash/app.staging.yaml
 
 gae_production = config/production \
 				 api \
-				 cdn \
-				 platform
+				 dash
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
@@ -63,28 +60,22 @@ coffee	 = node_modules/.bin/coffee
 uglifyjs = node_modules/.bin/uglifyjs
 
 requisite	   = node_modules/.bin/requisite -g
-requisite_opts = assets/js/store/store.coffee \
-				 assets/js/api/api.coffee \
+requisite_opts = assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
-				 node_modules/crowdstart.js/src/index.coffee \
-				 -o static/js/store.js \
 				 -o static/js/api.js \
-				 -o static/js/platform.js \
-				 -o static/v1.js
+				 -o static/js/platform.js
 
 # requisite_opts_min = --strip-debug --minifier uglify
 requisite_opts_min = --strip-debug
 
 stylus		= node_modules/.bin/stylus
-stylus_opts = assets/css/store/store.styl \
-			  assets/css/theme/theme.styl \
+stylus_opts = assets/css/theme/theme.styl \
 			  assets/css/platform/platform.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer-cli
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
-					static/css/store.css \
 					static/css/theme.css \
 					static/css/platform.css
 
@@ -178,15 +169,11 @@ compile-js-min: compile-js
 	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
 	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
 	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
-	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
-	$(uglifyjs) static/v1.js -o static/v1.min.js -c
 	@mv static/js/api.min.js static/js/api.js
 	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
 	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
 	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
 	@mv static/js/platform.min.js static/js/platform.js
-	@mv static/js/store.min.js static/js/store.js
-	@mv static/v1.min.js static/v1.js
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
@@ -361,35 +348,6 @@ datastore-config:
 datastore-replicate:
 	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
-
-# Generate API docs from wiki.
-docs:
-	pandoc --no-highlight --toc ../crowdstart.wiki/Getting-Started.md > templates/platform/docs/_generated/getting-started.html
-	$(sed) 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/getting-started.html
-	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
-	@rm -rf templates/platform/docs/_generated/getting-started.html.bak
-
-	node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html
-	$(sed) 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
-	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
-	@rm -rf templates/platform/docs/_generated/api.html.bak
-
-	pandoc --no-highlight --toc ../crowdstart.wiki/Checkout.md > templates/platform/docs/_generated/checkout.html
-	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/checkout.html
-	$(sed) 's/class="html/class="lang-markup/' templates/platform/docs/_generated/checkout.html
-	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/checkout.html
-	@rm -rf templates/platform/docs/_generated/checkout.html.bak
-
-	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/_generated/crowdstart.js.html
-	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/crowdstart.js.html
-	$(sed) 's/class="html/class="lang-markup/' templates/platform/docs/_generated/crowdstart.js.html
-	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/crowdstart.js.html
-	@rm -rf templates/platform/docs/_generated/crowdstart.js.html.bak
-
-	pandoc --no-highlight --toc ../crowdstart.wiki/Salesforce-Integration.md > templates/platform/docs/_generated/salesforce.html
-	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/salesforce.html
-	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
-	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
 .PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
