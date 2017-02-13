@@ -66,7 +66,8 @@ type Return struct {
 	ReturnedAt  time.Time `json:"returnedAt"`
 	SubmittedAt time.Time `json:"submittedAt"`
 
-	Tracking Tracking `json:"tracking,omitempty"`
+	Trackings []Tracking `json:"trackings,omitempty"`
+	Holds     []Hold     `json:"holds,omitempty"`
 }
 
 type Hold struct {
@@ -108,10 +109,9 @@ type Fulfillment struct {
 	ExpectedCompletedAt time.Time `json:"expectedCompletedAt"`
 	LastManualUpdateAt  time.Time `json:"lastManualUpdateAt"`
 
-	Return   Return   `json:"return,omitempty"`
-	Tracking Tracking `json:"tracking,omitempty"`
-
-	Holds []Hold `json:"holds,omitempty"`
+	Holds     []Hold     `json:"holds,omitempty"`
+	Trackings []Tracking `json:"trackings,omitempty"`
+	Returns   []Return   `json:"returns,omitempty"`
 
 	WarehouseId     string `json:"warehouseId,omitempty"`
 	WarehouseRegion string `json:"warehouseRegion,omitempty"`
