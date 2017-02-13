@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
@@ -66,9 +67,8 @@ type Order struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Status
-	Status            Status            `json:"status"`
-	PaymentStatus     payment.Status    `json:"paymentStatus"`
-	FulfillmentStatus FulfillmentStatus `json:"fulfillmentStatus"`
+	Status        Status         `json:"status"`
+	PaymentStatus payment.Status `json:"paymentStatus"`
 
 	// Whether this was a preorder or not
 	Preorder bool `json:"preorder"`
@@ -139,7 +139,7 @@ type Order struct {
 	CancelledAt time.Time `json:"cancelledAt,omitempty"`
 
 	// Fulfillment information
-	Fulfillment Fulfillment `json:"fulfillment"`
+	Fulfillment fulfillment.Fulfillment `json:"fulfillment"`
 
 	// gift options
 	Gift        bool   `json:"gift"`                                       // Is this a gift?

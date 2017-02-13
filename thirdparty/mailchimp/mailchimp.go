@@ -432,7 +432,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 			TaxTotal:          centsToFloat(ord.Tax, ord.Currency),
 			ShippingTotal:     centsToFloat(ord.Shipping, ord.Currency),
 			FinancialStatus:   string(ord.PaymentStatus),
-			FulfillmentStatus: string(ord.FulfillmentStatus),
+			FulfillmentStatus: string(ord.Fulfillment.Status),
 			CampaignID:        ord.Mailchimp.CampaignId,
 			TrackingCode:      ord.Mailchimp.TrackingCode,
 			BillingAddress: &gochimp3.Address{
@@ -523,7 +523,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) *Error {
 			TaxTotal:          centsToFloat(ord.Tax, ord.Currency),
 			ShippingTotal:     centsToFloat(ord.Shipping, ord.Currency),
 			FinancialStatus:   string(ord.PaymentStatus),
-			FulfillmentStatus: string(ord.FulfillmentStatus),
+			FulfillmentStatus: string(ord.Fulfillment.Status),
 			CampaignID:        ord.Mailchimp.CampaignId,
 			TrackingCode:      ord.Mailchimp.TrackingCode,
 			BillingAddress: &gochimp3.Address{
