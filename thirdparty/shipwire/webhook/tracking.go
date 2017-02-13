@@ -8,6 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
@@ -28,42 +29,29 @@ func updateTracking(c *gin.Context, t Tracking, isReturn bool) {
 		return
 	}
 
-	if !isReturn {
-		ord.Fulfillment.Tracking.Number = t.Tracking
-		ord.Fulfillment.Tracking.ExternalId = strconv.Itoa(t.ID)
-		ord.Fulfillment.Tracking.Url = t.Url
-		ord.Fulfillment.Tracking.CreatedAt = t.TrackedDate
-		ord.Fulfillment.Tracking.Carrier = t.Carrier
-		ord.Fulfillment.Tracking.Summary = t.Summary
-		ord.Fulfillment.Tracking.SummaryAt = t.SummaryDate
-		ord.Fulfillment.Tracking.LabelCreatedAt = t.LabelCreatedDate
-		ord.Fulfillment.Tracking.FirstScanRegion = t.FirstScanRegion
-		ord.Fulfillment.Tracking.FirstScanPostalCode = t.FirstScanPostalCode
-		ord.Fulfillment.Tracking.FirstScanCountry = t.FirstScanCountry
-		ord.Fulfillment.Tracking.FirstScanAt = t.FirstScanDate
-		ord.Fulfillment.Tracking.DeliveryCity = t.DeliveryCity
-		ord.Fulfillment.Tracking.DeliveryRegion = t.DeliveryRegion
-		ord.Fulfillment.Tracking.DeliveryPostalCode = t.DeliveryPostalCode
-		ord.Fulfillment.Tracking.DeliveryCountry = t.DeliveryCountry
-		ord.Fulfillment.Tracking.DeliveredAt = t.DeliveredDate
+	tracking := fulfillment.Tracking{}
+	tracking.Number = t.Tracking
+	tracking.ExternalId = strconv.Itoa(t.ID)
+	tracking.Url = t.Url
+	tracking.CreatedAt = t.TrackedDate
+	tracking.Carrier = t.Carrier
+	tracking.Summary = t.Summary
+	tracking.SummaryAt = t.SummaryDate
+	tracking.LabelCreatedAt = t.LabelCreatedDate
+	tracking.FirstScanRegion = t.FirstScanRegion
+	tracking.FirstScanPostalCode = t.FirstScanPostalCode
+	tracking.FirstScanCountry = t.FirstScanCountry
+	tracking.FirstScanAt = t.FirstScanDate
+	tracking.DeliveryCity = t.DeliveryCity
+	tracking.DeliveryRegion = t.DeliveryRegion
+	tracking.DeliveryPostalCode = t.DeliveryPostalCode
+	tracking.DeliveryCountry = t.DeliveryCountry
+	tracking.DeliveredAt = t.DeliveredDate
+
+	if isReturn {
+		ord.Fulfillment.Return.Tracking = tracking
 	} else {
-		ord.Fulfillment.Return.Tracking.Number = t.Tracking
-		ord.Fulfillment.Return.Tracking.ExternalId = strconv.Itoa(t.ID)
-		ord.Fulfillment.Return.Tracking.Url = t.Url
-		ord.Fulfillment.Return.Tracking.CreatedAt = t.TrackedDate
-		ord.Fulfillment.Return.Tracking.Carrier = t.Carrier
-		ord.Fulfillment.Return.Tracking.Summary = t.Summary
-		ord.Fulfillment.Return.Tracking.SummaryAt = t.SummaryDate
-		ord.Fulfillment.Return.Tracking.LabelCreatedAt = t.LabelCreatedDate
-		ord.Fulfillment.Return.Tracking.FirstScanRegion = t.FirstScanRegion
-		ord.Fulfillment.Return.Tracking.FirstScanPostalCode = t.FirstScanPostalCode
-		ord.Fulfillment.Return.Tracking.FirstScanCountry = t.FirstScanCountry
-		ord.Fulfillment.Return.Tracking.FirstScanAt = t.FirstScanDate
-		ord.Fulfillment.Return.Tracking.DeliveryCity = t.DeliveryCity
-		ord.Fulfillment.Return.Tracking.DeliveryRegion = t.DeliveryRegion
-		ord.Fulfillment.Return.Tracking.DeliveryPostalCode = t.DeliveryPostalCode
-		ord.Fulfillment.Return.Tracking.DeliveryCountry = t.DeliveryCountry
-		ord.Fulfillment.Return.Tracking.DeliveredAt = t.DeliveredDate
+		ord.Fulfillment.Tracking = tracking
 	}
 
 	ord.MustPut()
