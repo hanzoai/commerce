@@ -18,7 +18,7 @@ func Process(c *gin.Context) {
 	log.Info("Webhook request:\n%s", dump, c)
 
 	var req Message
-	if err := json.Decode(c.Request.Body, req); err != nil {
+	if err := json.Decode(c.Request.Body, &req); err != nil {
 		log.Error("Failed to decode request body: %v", err, c)
 		c.String(200, "ok\n")
 		return
