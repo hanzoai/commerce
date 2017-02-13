@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import requests
+import os
 
 from util.export import Export, json
 from util import shipwire
