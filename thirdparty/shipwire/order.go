@@ -1,6 +1,7 @@
 package shipwire
 
 import (
+	"errors"
 	"strconv"
 
 	"hanzo.io/models/order"
@@ -38,6 +39,10 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	res, err := c.Request("POST", "/orders", req, &o)
 	if err != nil {
 		return res, err
+	}
+
+	if res.Status > 299 {
+		return res, errors.New("Failed to create order")
 	}
 
 	ord.Fulfillment.Type = fulfillment.Shipwire
