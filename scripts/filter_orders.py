@@ -163,12 +163,12 @@ def get_orders(filter=None):
 
 if __name__ == '__main__':
     # Fetch Shipwire db if needed
-    if not os.path.exists('shipwire.json'):
+    if not os.path.exists('_export/shipwire.json'):
         print 'Fetching latest orders from Shipwire...'
         shipwire.write_cache()
 
     # Fetch Reamaze db if needed
-    if not os.path.exists('reamaze.json'):
+    if not os.path.exists('_export/reamaze.json'):
         print 'Fetching latest contacts from Reamaze...'
         reamaze.write_cache()
 
@@ -176,20 +176,20 @@ if __name__ == '__main__':
     # orders = get_orders()
 
     # Get specific order
-    # orders = get_orders(lambda order: order.number == '8460055')
+    orders = get_orders(lambda order: order.number == '70141')
 
     # Get subset of orders
-    orders = get_orders(lambda order: all((
-        open(order),
-        not cancelled(order),
-        not disputed(order),
-        not processed(order),
-        # domestic(order),
-        # batch1(order),
-        # partial_refund(order),
-        # contacted_us(order),
-        # from2016(order),
-    )))
+    # orders = get_orders(lambda order: all((
+    #     open(order),
+    #     not cancelled(order),
+    #     not disputed(order),
+    #     not processed(order),
+    #     # domestic(order),
+    #     # batch1(order),
+    #     # partial_refund(order),
+    #     # contacted_us(order),
+    #     # from2016(order),
+    # )))
 
     # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
