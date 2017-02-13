@@ -3,6 +3,7 @@ package shipwire
 import (
 	"bytes"
 	"net/http"
+	"net/http/httputil"
 	"time"
 
 	"appengine"
@@ -61,7 +62,7 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	// req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Add("Content-Type", "application/json")
 
-	log.Warn("Shipwire Req:\n%v\n%v", req, c.ctx)
+	log.Warn("Shipwire request:\n%v\n%v", req, c.ctx)
 
 	// Do request
 	r, err := c.client.Do(req)
@@ -69,8 +70,10 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 		log.Error("Shipwire request failed: %v", err, c.ctx)
 		return &res, err
 	}
+	defer r.Body.Close()
 
-	log.Warn("Shipwire response:\n%v", res, c.ctx)
+	dump, _ := httputil.DumpResponse(r, true)
+	log.Warn("Shipwire response:\n%s", dump, c.ctx)
 
 	if dst == nil {
 		return &res, nil
