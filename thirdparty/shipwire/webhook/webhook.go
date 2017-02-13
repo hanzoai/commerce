@@ -32,11 +32,21 @@ func Process(c *gin.Context) {
 			updateOrder(c, o)
 		}
 	case "order.hold.added", "order.hold.cleared":
-		var h Hold
-		if err := json.Unmarshal(req.Body.Resource, &h); err != nil {
+		var rsrc Resource
+		if err := json.Unmarshal(req.Body.Resource, &rsrc); err != nil {
 			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
-			updateHold(c, h)
+			holds := make([]Hold, 0)
+			for i := range rsrc.Items {
+				var h Hold
+				if err := json.Unmarshal(rsrc.Items[i].Resource, &h); err != nil {
+					log.Error("Failed decode hold: %v\n%s", err, rsrc.Items[i].Resource, c)
+				} else {
+					holds = append(holds, h)
+				}
+			}
+
+			updateHolds(c, holds)
 		}
 	case "tracking.created", "tracking.updated", "tracking.delivered":
 		var t Tracking
