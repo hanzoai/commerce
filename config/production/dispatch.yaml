@@ -10,7 +10,7 @@ dispatch:
     module: default
 
   - url: "cdn.hanzo.io/*"
-    module: cdn
+    module: api
 
   - url: "api.hanzo.io/*"
     module: api
@@ -27,7 +27,7 @@ dispatch:
     module: default
 
   - url: "cdn.crowdstart.com/*"
-    module: cdn
+    module: api
 
   - url: "api.crowdstart.com/*"
     module: api
