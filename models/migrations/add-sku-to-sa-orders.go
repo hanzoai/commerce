@@ -8,7 +8,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-var _ = New("save-order-skus",
+var _ = New("add-sku-to-sa-orders",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "stoned")
 		return NoArgs
@@ -19,6 +19,6 @@ var _ = New("save-order-skus",
 				ord.Items[i].ProductSKU = "686696998137"
 			}
 		}
-		ord.MustUpdate()
+		db.Put(ord.Key(), ord)
 	},
 )
