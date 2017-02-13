@@ -43,7 +43,7 @@ Events.Table =
 
 class BasicTableView extends View
   tag: 'basic-table'
-  html: require '../templates/backend/table/template.html'
+  html: require '../templates/dash/table/template.html'
   searching: false
   events:
     "#{Events.Table.NewData}": (model)->

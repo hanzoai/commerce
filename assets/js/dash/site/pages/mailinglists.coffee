@@ -4,7 +4,7 @@ class MailingLists extends Page
   tag: 'page-mailinglists'
   icon: 'fa fa-envelope'
   name: 'Mailing Lists'
-  html: require '../../templates/backend/site/pages/mailinglists.html'
+  html: require '../../templates/dash/site/pages/mailinglists.html'
 
   collection: 'mailinglists'
 

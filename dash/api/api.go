@@ -65,7 +65,7 @@ func Dashboard(c *gin.Context) {
 	// Sort organizations by name
 	sort.Sort(organization.ByName(orgNames))
 
-	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
+	Render(c, "index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
 }
 
 type SearchResults struct {

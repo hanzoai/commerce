@@ -11,7 +11,7 @@ Api = crowdcontrol.data.Api
 
 class Search extends View
   tag: 'search-widget'
-  html: require '../../templates/backend/widget/search/template.html'
+  html: require '../../templates/dash/widget/search/template.html'
 
   js: (opts)->
     super
