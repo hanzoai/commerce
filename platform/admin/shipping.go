@@ -12,10 +12,12 @@ import (
 	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+
+	. "hanzo.io/thirdparty/shipwire/types"
 )
 
 type ShipRequest struct {
-	Service shipwire.ServiceLevelCode `json:"service"`
+	Service ServiceLevelCode `json:"service"`
 }
 
 func ShipOrderUsingShipwire(c *gin.Context) {
@@ -26,7 +28,7 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	id := c.Params.ByName("id")
 	o.MustGetById(id)
 
-	if o.Fulfillment.Integration != "" {
+	if o.Fulfillment.Type != "" {
 		http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
 		return
 	}
@@ -41,7 +43,7 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
-	if err := client.CreateOrder(o, u, shipwire.ServiceLevelCode(shipReq.Service)); err != nil {
+	if err := client.CreateOrder(o, u, ServiceLevelCode(shipReq.Service)); err != nil {
 		http.Fail(c, 400, "Failed to query Shipwire", err)
 		return
 	}

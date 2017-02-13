@@ -105,7 +105,7 @@ func (o Order) Document() mixin.Document {
 
 		string(o.Status),
 		string(o.PaymentStatus),
-		string(o.FulfillmentStatus),
+		string(o.Fulfillment.Status),
 		string(preorder),
 		string(confirmed),
 		string(o.Fulfillment.TrackingNumber),
