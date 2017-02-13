@@ -13,7 +13,7 @@ automatic_scaling:
   min_idle_instances: 0
 
 handlers:
-- url: /
+- url: /.*
   script: _go_app
 
 - url: /humans.txt
