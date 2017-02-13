@@ -43,7 +43,7 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.SameDay = o.Options.Resource.SameDay
 	ord.Fulfillment.Service = o.Options.Resource.ServiceLevelCode
 	ord.Fulfillment.Carrier = o.Options.Resource.CarrierCode
-	ord.Fulfillment.WarehouseId = o.Options.Resource.WarehouseID
+	ord.Fulfillment.WarehouseId = strconv.Itoa(o.Options.Resource.WarehouseID)
 	ord.Fulfillment.WarehouseRegion = o.Options.Resource.WarehouseRegion
 
 	// Update dates
