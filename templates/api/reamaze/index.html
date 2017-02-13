@@ -47,7 +47,7 @@
   <body>
     <strong>User</strong>
     <br>
-    <a href="{{ urlFor("platform") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
+    <a href="{{ urlFor("dash") }}#user/{{ usr.Id() }}" target="_blank">{{ usr.Email }}</a> |
     <a class="user-click" href="#">View JSON</a>
     <div id="user" style="display:none">
       <hr>
@@ -63,7 +63,7 @@
     <strong>Orders</strong>
     {% for ord in ords %}
       <br>
-      <a href="{{ urlFor("platform") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
+      <a href="{{ urlFor("dash") }}#order/{{ ord.Id() }}" target="_blank">{{ ord.Number }}</a> |
       <a class="order-click" data-number="{{ ord.Number }}" href="#">View JSON</a> |
       {% if ord.Payments %}
       <a href="//dashboard.stripe.com/payments/{{ ord.Payments.0.Account.ChargeId }}" target="_blank">View Stripe</a> |

@@ -162,7 +162,7 @@
           render: 'ago',
         }
       ],
-      itemUrl: '{{ urlFor("platform", "/product") }}',
+      itemUrl: '{{ urlFor("dash", "/product") }}',
       apiUrl: '{{ urlFor("api", "/product") }}',
       apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
@@ -205,7 +205,7 @@ $('#form-product').on('submit', function(e){
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
             api.post(function(data) {
-                window.location.replace('{{ urlFor("platform", "/products") }}')
+                window.location.replace('{{ urlFor("dash", "/products") }}')
             }, $form)
         }
     })

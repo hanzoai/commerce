@@ -155,7 +155,7 @@
           render: 'ago',
         }
       ],
-      itemUrl: '{{ urlFor("platform", "/coupon") }}',
+      itemUrl: '{{ urlFor("dash", "/coupon") }}',
       apiUrl: '{{ urlFor("api", "/coupon") }}',
       apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
@@ -303,7 +303,7 @@ $('#form-new-coupon').on('submit', function(e){
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
             api.post(function(data) {
-                window.location.replace('{{ urlFor("platform", "/coupons") }}')
+                window.location.replace('{{ urlFor("dash", "/coupons") }}')
             }, $form)
         }
     })
