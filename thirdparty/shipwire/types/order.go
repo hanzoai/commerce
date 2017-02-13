@@ -141,17 +141,17 @@ type Order struct {
 	Events struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 		Resource         struct {
-			ExpectedDate          time.Time `json:"expectedDate"`
 			CancelledDate         time.Time `json:"cancelledDate"`
-			ExpectedSubmittedDate time.Time `json:"expectedSubmittedDate"`
+			CompletedDate         time.Time `json:"completedDate"`
 			CreatedDate           time.Time `json:"createdDate"`
-			ReturnedDate          time.Time `json:"returnedDate"`
-			SubmittedDate         time.Time `json:"submittedDate"`
 			ExpectedCompletedDate time.Time `json:"expectedCompletedDate"`
+			ExpectedDate          time.Time `json:"expectedDate"`
+			ExpectedSubmittedDate time.Time `json:"expectedSubmittedDate"`
 			LastManualUpdateDate  time.Time `json:"lastManualUpdateDate"`
 			PickedUpDate          time.Time `json:"pickedUpDate"`
-			CompletedDate         time.Time `json:"completedDate"`
 			ProcessedDate         time.Time `json:"processedDate"`
+			ReturnedDate          time.Time `json:"returnedDate"`
+			SubmittedDate         time.Time `json:"submittedDate"`
 		} `json:"resource"`
 	} `json:"events"`
 
@@ -169,9 +169,9 @@ type Order struct {
 	Options struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 		Resource         struct {
-			WarehouseID                    interface{} `json:"warehouseId"`
+			WarehouseID                    string      `json:"warehouseId"`
 			BillingType                    interface{} `json:"billingType"`
-			WarehouseRegion                interface{} `json:"warehouseRegion"`
+			WarehouseRegion                string      `json:"warehouseRegion"`
 			Referrer                       string      `json:"referrer"`
 			ForceAddress                   int         `json:"forceAddress"`
 			WarehouseExternalID            interface{} `json:"warehouseExternalId"`

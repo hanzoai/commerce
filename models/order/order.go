@@ -67,8 +67,9 @@ type Order struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Status
-	Status        Status         `json:"status"`
-	PaymentStatus payment.Status `json:"paymentStatus"`
+	Status            Status             `json:"status"`
+	PaymentStatus     payment.Status     `json:"paymentStatus"`
+	FulfillmentStatus fulfillment.Status `json:"fulfillmentStatus"`
 
 	// Whether this was a preorder or not
 	Preorder bool `json:"preorder"`

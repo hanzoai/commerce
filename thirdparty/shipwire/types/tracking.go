@@ -3,9 +3,9 @@ package types
 import "time"
 
 type Tracking struct {
-	Id              int    `json:"id"`
-	OrderId         int    `json:"orderId"`
-	OrderExternalId string `json:"orderExternalId"`
+	ID              int    `json:"id"`
+	OrderID         int    `json:"orderId"`
+	OrderExternalID string `json:"orderExternalId"`
 	Carrier         string `json:"carrier"`
 	Url             string `json:"url"`
 
