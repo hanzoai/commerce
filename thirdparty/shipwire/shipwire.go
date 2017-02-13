@@ -20,10 +20,10 @@ func setOrg(c *gin.Context) {
 	c.Set("organization", org)
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := router.Group("shipwire")
+func Route(r router.Router, args ...gin.HandlerFunc) {
+	api := r.Group("shipwire")
 
-	api.HEAD("/:organization", setOrg, webhook.Send200)
+	api.HEAD("/:organization", setOrg, router.Ok)
 	api.GET("/:organization", setOrg, webhook.Process)
 	api.POST("/:organization", setOrg, webhook.Process)
 }

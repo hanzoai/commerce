@@ -1,4 +1,4 @@
-package models
+package fulfillment
 
 import (
 	"time"
@@ -6,24 +6,30 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-type FulfillmentStatus string
-type Integration string
+type Status string
+type Type string
 
 const (
-	FulfillmentUnfulfilled FulfillmentStatus = "unfulfilled"
-	FulfillmentLabelled    FulfillmentStatus = "labelled"
-	FulfillmentProcessing  FulfillmentStatus = "processing"
-	FulfillmentShipped     FulfillmentStatus = "shipped"
-	FulfillmentDelivered   FulfillmentStatus = "delivered"
-	FulFillmentCancelled   FulfillmentStatus = "cancelled"
+	Pending   Status = "pending"
+	Processed Status = "processed"
+	Canceled  Status = "canceled"
+	Completed Status = "completed"
+	Delivered Status = "delivered"
+	Returned  Status = "returned"
+	Submitted Status = "submitted"
+	Held      Status = "held"
+	Tracked   Status = "tracked"
 )
 
 const (
-	Shipwire Integration = "shipwire"
+	Shipwire    Type = "shipwire"
+	ShipStation Type = "shipstation"
+	Manual      Type = "manual"
 )
 
 type Fulfillment struct {
-	Integration    Integration    `json:"type,omitempty"`
+	Type           Type           `json:"type"`
+	Status         Status         `json:"status"`
 	ExternalId     string         `json:"externalId,omitempty"`
 	Carrier        string         `json:"carrier,omitempty"`
 	Summary        string         `json:"summary,omitempty"`
