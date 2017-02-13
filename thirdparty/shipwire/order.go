@@ -43,7 +43,8 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		return res, err
 	}
 
-	log.Error("Shipwire Res:\n%v", res, ctx)
+	log.Error("Shipwire Res:\n%v\n%v", res, ctx)
+	log.Error("Shipwire Order:\n%v\n%v", o, ctx)
 
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
