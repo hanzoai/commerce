@@ -104,17 +104,6 @@ type Order struct {
 		} `json:"resource"`
 	} `json:"shipTo"`
 
-	PricingEstimate struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
-		Resource         struct {
-			Packaging int `json:"packaging"`
-			Total     int `json:"total"`
-			Insurance int `json:"insurance"`
-			Shipping  int `json:"shipping"`
-			Handling  int `json:"handling"`
-		} `json:"resource"`
-	} `json:"pricingEstimate"`
-
 	FreightSummary struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 		Resource         struct {
@@ -185,14 +174,25 @@ type Order struct {
 		} `json:"resource"`
 	} `json:"options"`
 
+	PricingEstimate struct {
+		ResourceLocation interface{} `json:"resourceLocation"`
+		Resource         struct {
+			Packaging float64 `json:"packaging"`
+			Total     float64 `json:"total"`
+			Insurance float64 `json:"insurance"`
+			Shipping  float64 `json:"shipping"`
+			Handling  float64 `json:"handling"`
+		} `json:"resource"`
+	} `json:"pricingEstimate"`
+
 	Pricing struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 		Resource         struct {
-			Packaging int `json:"packaging"`
-			Total     int `json:"total"`
-			Handling  int `json:"handling"`
-			Insurance int `json:"insurance"`
-			Shipping  int `json:"shipping"`
+			Packaging float64 `json:"packaging"`
+			Total     float64 `json:"total"`
+			Handling  float64 `json:"handling"`
+			Insurance float64 `json:"insurance"`
+			Shipping  float64 `json:"shipping"`
 		} `json:"resource"`
 	} `json:"pricing"`
 }
