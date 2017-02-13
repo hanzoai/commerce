@@ -87,8 +87,8 @@ func (c *Client) Request(method, url string, body interface{}, dst Decoder) (*Re
 
 	// Decode response wrapper
 	if err := json.Decode(r.Body, &res); err != nil {
-		log.Warn("Failed to decode Shipwire response:\n%v", err, c.ctx)
-		return &res, err
+		log.Warn("Failed to decode response:%v", err, c.ctx)
+		return nil, err
 	}
 
 	// Try to automatically decode inner response that we care about
