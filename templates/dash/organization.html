@@ -121,7 +121,7 @@
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/organization") }}')
+                  window.location.replace('{{ urlFor("dash", "/organization") }}')
               }, $form, '{{ ctx.organization.Id() }}')
           }
       })

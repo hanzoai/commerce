@@ -76,7 +76,7 @@ $('#form-mailinglist').on('submit', function(e){
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
             api.put(function(data) {
-                window.location.replace('{{ urlFor("platform", "/mailinglist", mailingList.Id) }}')
+                window.location.replace('{{ urlFor("dash", "/mailinglist", mailingList.Id) }}')
             }, $form, '{{ mailingList.Id }}')
         }
     })
@@ -85,7 +85,7 @@ $('#form-mailinglist').on('submit', function(e){
 })
 $('#delete-btn').on('click', function(e) {
   api.del(function(data) {
-      window.location.replace('{{ urlFor("platform", "/mailinglists") }}')
+      window.location.replace('{{ urlFor("dash", "/mailinglists") }}')
   }, '{{ mailingList.Id }}')
 })
 </script>

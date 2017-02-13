@@ -159,7 +159,7 @@ $(function(){
           render: 'ago',
         }
       ],
-      itemUrl: '{{ urlFor("platform", "/store") }}',
+      itemUrl: '{{ urlFor("dash", "/store") }}',
       apiUrl: '{{ urlFor("api", "/store") }}',
       apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
@@ -339,7 +339,7 @@ $('#form-new-store').on('submit', function(e){
                 $el.parent().parent().find('.listing-slug').attr('name', 'listings[' + $el.val() + '][slug]')
             });
             api.post(function(data) {
-                window.location.replace('{{ urlFor("platform", "/stores") }}')
+                window.location.replace('{{ urlFor("dash", "/stores") }}')
             }, $form)
         }
     })
