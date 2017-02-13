@@ -24,7 +24,7 @@ import (
 
 // Index
 func Index(c *gin.Context) {
-	url := config.UrlFor("platform")
+	url := config.UrlFor("dash")
 	log.Debug("Redirecting to %s", url)
 	c.Redirect(302, url)
 }
