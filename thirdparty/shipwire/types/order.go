@@ -150,7 +150,8 @@ type Order struct {
 	} `json:"shipFrom"`
 
 	Trackings struct {
-		ResourceLocation string `json:"resourceLocation"`
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
 	} `json:"trackings"`
 
 	Options struct {

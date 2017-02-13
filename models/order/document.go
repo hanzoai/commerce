@@ -69,6 +69,10 @@ func (o Order) Document() mixin.Document {
 		productIds = append(productIds, item.ProductId)
 		productIds = append(productIds, item.ProductSlug)
 	}
+	trackings := make([]string, 0)
+	for _, tracking := range o.Fulfillment.Trackings {
+		trackings = append(trackings, tracking.Number)
+	}
 
 	return &Document{
 		o.Id(),
@@ -108,6 +112,6 @@ func (o Order) Document() mixin.Document {
 		string(o.Fulfillment.Status),
 		string(preorder),
 		string(confirmed),
-		string(o.Fulfillment.Tracking.Number),
+		strings.Join(trackings, " "),
 	}
 }

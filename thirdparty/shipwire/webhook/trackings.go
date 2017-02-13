@@ -14,7 +14,30 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateTrackings(c *gin.Context, trackings []Tracking, isReturn bool) {
+func convertTracking(t Tracking) fulfillment.Tracking {
+	trk := fulfillment.Tracking{}
+	trk.Number = t.Tracking
+	trk.ExternalId = strconv.Itoa(t.ID)
+	trk.Url = t.Url
+	trk.Carrier = t.Carrier
+	trk.Summary = t.Summary
+	trk.FirstScanRegion = t.FirstScanRegion
+	trk.FirstScanPostalCode = t.FirstScanPostalCode
+	trk.FirstScanCountry = t.FirstScanCountry
+	trk.DeliveryCity = t.DeliveryCity
+	trk.DeliveryRegion = t.DeliveryRegion
+	trk.DeliveryPostalCode = t.DeliveryPostalCode
+	trk.DeliveryCountry = t.DeliveryCountry
+
+	trk.CreatedAt = t.TrackedDate.Time
+	trk.DeliveredAt = t.DeliveredDate.Time
+	trk.FirstScanAt = t.FirstScanDate.Time
+	trk.LabelCreatedAt = t.LabelCreatedDate.Time
+	trk.SummaryAt = t.SummaryDate.Time
+	return trk
+}
+
+func updateTrackings(c *gin.Context, trackings []Tracking) {
 	log.Warn("Trackings:\n%v", trackings, c)
 
 	org := middleware.GetOrganization(c)
@@ -31,30 +54,9 @@ func updateTrackings(c *gin.Context, trackings []Tracking, isReturn bool) {
 		return
 	}
 
-	tracking := fulfillment.Tracking{}
-	tracking.Number = t.Tracking
-	tracking.ExternalId = strconv.Itoa(t.ID)
-	tracking.Url = t.Url
-	tracking.Carrier = t.Carrier
-	tracking.Summary = t.Summary
-	tracking.FirstScanRegion = t.FirstScanRegion
-	tracking.FirstScanPostalCode = t.FirstScanPostalCode
-	tracking.FirstScanCountry = t.FirstScanCountry
-	tracking.DeliveryCity = t.DeliveryCity
-	tracking.DeliveryRegion = t.DeliveryRegion
-	tracking.DeliveryPostalCode = t.DeliveryPostalCode
-	tracking.DeliveryCountry = t.DeliveryCountry
-
-	tracking.CreatedAt = t.TrackedDate.Time
-	tracking.DeliveredAt = t.DeliveredDate.Time
-	tracking.FirstScanAt = t.FirstScanDate.Time
-	tracking.LabelCreatedAt = t.LabelCreatedDate.Time
-	tracking.SummaryAt = t.SummaryDate.Time
-
-	if isReturn {
-		ord.Fulfillment.Return.Tracking = tracking
-	} else {
-		ord.Fulfillment.Tracking = tracking
+	ord.Fulfillment.Trackings = make([]fulfillment.Tracking, 0)
+	for _, t := range trackings {
+		ord.Fulfillment.Trackings = append(ord.Fulfillment.Trackings, convertTracking(t))
 	}
 
 	ord.MustPut()
