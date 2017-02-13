@@ -76,11 +76,11 @@ type Order struct {
 		Resource         struct {
 			DestinationLatitude  interface{} `json:"destinationLatitude"`
 			DestinationLongitude interface{} `json:"destinationLongitude"`
-			OriginLatitude       interface{} `json:"originLatitude"`
-			OriginLongitude      interface{} `json:"originLongitude"`
+			OriginLatitude       float64     `json:"originLatitude"`
+			OriginLongitude      float64     `json:"originLongitude"`
 			PhysicalWarehouseID  interface{} `json:"physicalWarehouseId"`
 			WarehouseExternalID  interface{} `json:"warehouseExternalId"`
-			WarehouseID          interface{} `json:"warehouseId"`
+			WarehouseID          int         `json:"warehouseId"`
 			WarehouseName        interface{} `json:"warehouseName"`
 		} `json:"resource"`
 	} `json:"routing"`
@@ -88,24 +88,24 @@ type Order struct {
 	ShipTo struct {
 		ResourceLocation string `json:"resourceLocation,omitempty"`
 		Resource         struct {
-			City         string      `json:"city"`
-			Name         string      `json:"name"`
-			IsPoBox      int         `json:"isPoBox"`
-			Address1     string      `json:"address1"`
-			Company      interface{} `json:"company"`
-			Address3     interface{} `json:"address3"`
-			IsCommercial int         `json:"isCommercial"`
-			Email        string      `json:"email"`
-			Phone        string      `json:"phone"`
-			State        string      `json:"state"`
-			Country      string      `json:"country"`
-			PostalCode   string      `json:"postalCode"`
-			Address2     string      `json:"address2"`
+			City         string `json:"city"`
+			Name         string `json:"name"`
+			IsPoBox      int    `json:"isPoBox"`
+			Address1     string `json:"address1"`
+			Company      string `json:"company"`
+			Address3     string `json:"address3"`
+			IsCommercial int    `json:"isCommercial"`
+			Email        string `json:"email"`
+			Phone        string `json:"phone"`
+			State        string `json:"state"`
+			Country      string `json:"country"`
+			PostalCode   string `json:"postalCode"`
+			Address2     string `json:"address2"`
 		} `json:"resource"`
 	} `json:"shipTo"`
 
 	FreightSummary struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
 			WeightUnit      interface{} `json:"weightUnit"`
 			MeasurementType interface{} `json:"measurementType"`
@@ -126,7 +126,7 @@ type Order struct {
 	} `json:"splitOrders"`
 
 	Events struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
 			CancelledDate         Date `json:"cancelledDate"`
 			CompletedDate         Date `json:"completedDate"`
@@ -143,7 +143,7 @@ type Order struct {
 	} `json:"events"`
 
 	ShipFrom struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
 			Company string `json:"company"`
 		} `json:"resource"`
@@ -154,9 +154,9 @@ type Order struct {
 	} `json:"trackings"`
 
 	Options struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
-			WarehouseID                    string      `json:"warehouseId"`
+			WarehouseID                    int         `json:"warehouseId"`
 			BillingType                    interface{} `json:"billingType"`
 			WarehouseRegion                string      `json:"warehouseRegion"`
 			Referrer                       string      `json:"referrer"`
@@ -175,7 +175,7 @@ type Order struct {
 	} `json:"options"`
 
 	PricingEstimate struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
 			Packaging float64 `json:"packaging"`
 			Total     float64 `json:"total"`
@@ -186,7 +186,7 @@ type Order struct {
 	} `json:"pricingEstimate"`
 
 	Pricing struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
+		ResourceLocation string `json:"resourceLocation"`
 		Resource         struct {
 			Packaging float64 `json:"packaging"`
 			Total     float64 `json:"total"`
