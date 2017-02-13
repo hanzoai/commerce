@@ -33,15 +33,15 @@ func New(c *gin.Context, username, password string) *Client {
 	return &Client{
 		Username: username,
 		Password: password,
-		Endpoint: "https://api.shipwire.com/api/3/",
+		Endpoint: "https://api.shipwire.com/api/v3/",
 	}
 }
 
 func (c *Client) Request(method, url string, data interface{}) (*http.Response, error) {
-	var payload *bytes.Reader
+	var payload *bytes.Buffer
 
 	if data != nil {
-		payload = bytes.NewReader(json.EncodeBytes(data))
+		payload = bytes.NewBuffer(json.EncodeBytes(data))
 	}
 
 	req, err := http.NewRequest(method, c.Endpoint+url, payload)
@@ -49,7 +49,7 @@ func (c *Client) Request(method, url string, data interface{}) (*http.Response, 
 		return nil, err
 	}
 
-	req.SetBasicAuth(c.Username, c.Password)
+	// req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Add("Content-Type", "application/json")
 
 	return c.client.Do(req)
