@@ -69,7 +69,7 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	r, err := c.client.Do(req)
 
 	dump, _ := httputil.DumpRequest(req, true)
-	log.Warn("Shipwire request:\n%s", dump, c.ctx)
+	log.Error("Shipwire request:\n%s", dump, c.ctx)
 
 	// Shipwire does not always provide a status
 	res.Status = r.StatusCode
@@ -83,7 +83,7 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	defer r.Body.Close()
 
 	dump, _ = httputil.DumpResponse(r, true)
-	log.Warn("Shipwire response:\n%s", dump, c.ctx)
+	log.Error("Shipwire response:\n%s", dump, c.ctx)
 
 	// Automatically decode response
 	err = json.Decode(r.Body, &res)
