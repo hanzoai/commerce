@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"hanzo.io/util/json"
+)
 
 type ReturnRequest struct {
 	ExternalID    string `json:"externalId"`
@@ -71,4 +75,8 @@ type Return struct {
 	Options struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 	} `json:"options"`
+}
+
+func (r *Return) Decode(data json.RawMessage) error {
+	return json.Unmarshal(data, r)
 }
