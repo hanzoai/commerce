@@ -1,15 +1,18 @@
 package shipwire
 
 import (
+	"errors"
 	"strconv"
 
 	"hanzo.io/models/order"
+	"hanzo.io/models/types/fulfillment"
+
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
 func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 	req := ReturnRequest{}
-	req.ExternalID = ord.Id()
+	req.ExternalID = "e" + ord.Id()
 
 	id, err := strconv.Atoi(ord.Fulfillment.ExternalId)
 	if err != nil {
@@ -27,5 +30,22 @@ func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 		}
 	}
 
-	return c.Request("POST", "/returns", req, nil)
+	rtn := Return{}
+
+	res, err := c.Request("POST", "/returns", req, &rtn)
+	if err != nil {
+		return res, err
+	}
+
+	if res.Status > 299 {
+		return res, errors.New("Failed to create return")
+	}
+
+	ord.Fulfillment.Status = fulfillment.Returned
+	ord.Fulfillment.Return.Status = rtn.Status
+	ord.Fulfillment.Return.ExternalId = strconv.Itoa(rtn.ID)
+	ord.Fulfillment.Return.ExpectedAt = rtn.ExpectedDate
+	ord.Fulfillment.Return.UpdatedAt = rtn.LastUpdatedDate
+
+	return res, ord.Update()
 }
