@@ -36,8 +36,8 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	u := user.New(db)
 	u.MustGetById(o.UserId)
 
-	var shipReq *ShipRequest
-	if err := json.Decode(c.Request.Body, shipReq); err != nil {
+	shipReq := ShipRequest{}
+	if err := json.Decode(c.Request.Body, &shipReq); err != nil {
 		http.Fail(c, 500, "Failed to decode request body", err)
 		return
 	}
