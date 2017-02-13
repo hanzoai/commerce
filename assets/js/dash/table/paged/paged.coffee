@@ -23,7 +23,7 @@ getSortField = (sortField)->
 
 class BasicPagedTable extends BasicTableView
   tag: 'basic-paged-table'
-  html: require '../../templates/backend/table/paged/template.html'
+  html: require '../../templates/dash/table/paged/template.html'
   page: 1
   maxPage: 2
   display: 10

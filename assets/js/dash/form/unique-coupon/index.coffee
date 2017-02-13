@@ -10,7 +10,7 @@ m = crowdcontrol.utils.mediator
 
 class UniqueCouponFormView extends FormView
   tag: 'unique-coupon-form'
-  html: require '../../templates/backend/form/unique-coupon/template.html'
+  html: require '../../templates/dash/form/unique-coupon/template.html'
   model:
     couponCode: ''
     code: ''

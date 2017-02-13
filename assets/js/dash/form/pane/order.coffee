@@ -14,7 +14,7 @@ localizeDate = (date)->
 
 class OrderFilterPane extends Pane
   tag: 'order-filter-pane'
-  html: require '../../templates/backend/form/pane/order.html'
+  html: require '../../templates/dash/form/pane/order.html'
   path: 'search/order'
 
   inputConfigs: [

@@ -110,7 +110,7 @@ class Integration extends FormView
 
 class IntegrationHeader extends View
   tag: 'integration-header'
-  html: require '../../templates/backend/widget/integrations/header.html'
+  html: require '../../templates/dash/widget/integrations/header.html'
 
 IntegrationHeader.register()
 

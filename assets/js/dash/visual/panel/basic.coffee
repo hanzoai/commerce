@@ -9,7 +9,7 @@ class BasicPanelView extends View
   tag: 'basic-panel'
   label: ''
   description: 'Description'
-  html: require '../../templates/backend/visual/panel/template.html'
+  html: require '../../templates/dash/visual/panel/template.html'
   events:
     "#{ Events.Visual.NewData }": ()->
       @loadData.apply @, arguments

@@ -5,7 +5,7 @@ input = require '../../../form/input'
 class FacebookConversions extends Integration
   tag: 'fb-conversions-integration'
   type: 'facebook-conversions'
-  html: require '../../../templates/backend/widget/integrations/analytics/fbconversions.html'
+  html: require '../../../templates/dash/widget/integrations/analytics/fbconversions.html'
   img: '/img/integrations/fb.png'
   text: 'Facebook Conversions'
   alt: 'Facebook Analytics'

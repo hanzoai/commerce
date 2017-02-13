@@ -25,7 +25,7 @@ class Dashboard extends Page
   tag: 'page-dashboard'
   icon: 'glyphicon glyphicon-home'
   name: 'Dashboard'
-  html: require '../../templates/backend/site/pages/dashboard.html'
+  html: require '../../templates/dash/site/pages/dashboard.html'
 
   collection: ''
   percent: 0

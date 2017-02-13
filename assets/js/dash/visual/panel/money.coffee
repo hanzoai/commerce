@@ -5,7 +5,7 @@ util = require '../../util'
 
 class MoneyPanel extends BasicPanelView
   tag: 'money-panel'
-  html: require '../../templates/backend/visual/panel/money.html'
+  html: require '../../templates/dash/visual/panel/money.html'
 
   decimals: 0
 
