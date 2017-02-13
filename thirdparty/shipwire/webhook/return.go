@@ -6,10 +6,25 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
+
+func convertReturn(rtn Return) fulfillment.Return {
+	var r fulfillment.Return
+	r.CancelledAt = rtn.Events.Resource.CancelledDate.Time
+	r.CompletedAt = rtn.Events.Resource.CompletedDate.Time
+	r.UpdatedAt = rtn.LastUpdatedDate.Time
+	r.ExpectedAt = rtn.ExpectedDate.Time
+	r.DeliveredAt = rtn.Events.Resource.DeliveredDate.Time
+	r.PickedUpAt = rtn.Events.Resource.PickedUpDate.Time
+	r.ProcessedAt = rtn.Events.Resource.ProcessedDate.Time
+	r.ReturnedAt = rtn.Events.Resource.ReturnedDate.Time
+	r.SubmittedAt = rtn.Events.Resource.SubmittedDate.Time
+	return r
+}
 
 func updateReturn(c *gin.Context, rtn Return) {
 	log.Warn("Return Information:\n%v", rtn, c)
@@ -26,15 +41,7 @@ func updateReturn(c *gin.Context, rtn Return) {
 		return
 	}
 
-	ord.Fulfillment.Return.CancelledAt = rtn.Events.Resource.CancelledDate.Time
-	ord.Fulfillment.Return.CompletedAt = rtn.Events.Resource.CompletedDate.Time
-	ord.Fulfillment.Return.UpdatedAt = rtn.LastUpdatedDate.Time
-	ord.Fulfillment.Return.ExpectedAt = rtn.ExpectedDate.Time
-	ord.Fulfillment.Return.DeliveredAt = rtn.Events.Resource.DeliveredDate.Time
-	ord.Fulfillment.Return.PickedUpAt = rtn.Events.Resource.PickedUpDate.Time
-	ord.Fulfillment.Return.ProcessedAt = rtn.Events.Resource.ProcessedDate.Time
-	ord.Fulfillment.Return.ReturnedAt = rtn.Events.Resource.ReturnedDate.Time
-	ord.Fulfillment.Return.SubmittedAt = rtn.Events.Resource.SubmittedDate.Time
+	ord.Fulfillment.Returns = []fulfillment.Return{convertReturn(rtn)}
 
 	ord.MustPut()
 

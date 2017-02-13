@@ -13,6 +13,15 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
+func convertHold(h Hold) fulfillment.Hold {
+	return fulfillment.Hold{
+		Type:        h.Type + ":" + h.SubType,
+		Description: h.Description,
+		ExternalId:  h.ExternalOrderID,
+		AppliedAt:   h.AppliedDate.Time,
+	}
+}
+
 func updateHolds(c *gin.Context, holds []Hold) {
 	log.Info("Holds:\n%v", holds, c)
 
@@ -43,35 +52,12 @@ func updateHolds(c *gin.Context, holds []Hold) {
 	}
 
 	ord.Fulfillment.Status = fulfillment.Held
-
 	ord.Fulfillment.Holds = make([]fulfillment.Hold, len(holds))
 	for i := range holds {
-		ord.Fulfillment.Holds[i] = fulfillment.Hold{
-			Type:        holds[i].Type + ":" + holds[i].SubType,
-			Description: holds[i].Description,
-			ExternalId:  holds[i].ExternalOrderID,
-			AppliedAt:   holds[i].AppliedDate.Time,
-		}
+		ord.Fulfillment.Holds[i] = convertHold(holds[i])
 	}
 
-	// ord.Fulfillment.TrackingNumber = t.Tracking
-	// ord.Fulfillment.CreatedAt = t.LabelCreatedDate
-	// ord.Fulfillment.ShippedAt = t.FirstScanDate
-	// ord.Fulfillment.DeliveredAt = t.DeliveredDate
-	// // ord.Fulfillment.Service = req.Service
-	// ord.Fulfillment.Carrier = t.Carrier
-	// ord.Fulfillment.Carrier = t.Summary
-
-	// usr := user.New(db)
-	// usr.MustGetById(ord.UserId)
-
-	// pay := payment.New(db)
-	// pay.MustGetById(ord.PaymentIds[0])
-
-	// emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
 	ord.MustPut()
-
-	// emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
 
 	c.String(200, "ok\n")
 }
