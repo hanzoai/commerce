@@ -6,7 +6,6 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -34,17 +33,12 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		}
 	}
 
-	ctx := ord.Context()
 	o := Order{}
 
-	log.Error("Shipwire Req:\n%v", req, ctx)
 	res, err := c.Request("POST", "/orders", req, &o)
 	if err != nil {
 		return res, err
 	}
-
-	log.Error("Shipwire Res:\n%v\n%v", res, ctx)
-	log.Error("Shipwire Order:\n%v\n%v", o, ctx)
 
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
