@@ -10,9 +10,7 @@ if __name__ == '__main__':
         print 'Fetching latest orders from Shipwire...'
         shipwire.write_cache()
 
-    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
-
-    for order in s_orders:
+    for order in shipwire.read_cache():
         if order['status'] == "cancelled":
             continue
 
@@ -29,4 +27,4 @@ if __name__ == '__main__':
             "uniqueEventID": "424242424242",
             "webhookSubscriptionID": 42,
         }
-        requests.post("https://api.hanz.io/shipwire/stoned", json=req)
+        requests.post("https://api.hanzo.io/shipwire/stoned", json=req)
