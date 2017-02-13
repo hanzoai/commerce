@@ -83,7 +83,7 @@ class Shipwire(object):
 
 def write_cache():
     sw = connect()
-    r  = sw.orders.list()
+    r  = sw.orders.list(expand="trackings")
 
     with open('_export/shipwire.json', 'w') as f:
         for order in r.all_serial():
