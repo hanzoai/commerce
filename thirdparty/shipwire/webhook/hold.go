@@ -14,7 +14,7 @@ import (
 )
 
 func updateHolds(c *gin.Context, holds []Hold) {
-	log.Warn("Holds:\n%v", holds, c)
+	log.Info("Holds:\n%v", holds, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
