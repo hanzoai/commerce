@@ -1,12 +1,8 @@
 package types
 
 import (
-	"hanzo.io/util/json"
+	"encoding/json"
 )
-
-type Decoder interface {
-	Decode(json.RawMessage) error
-}
 
 type Response struct {
 	Error            string `json:"error,omitempty"`

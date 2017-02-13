@@ -45,7 +45,7 @@ func New(c *gin.Context, username, password string) *Client {
 	}
 }
 
-func (c *Client) Request(method, url string, body interface{}, dst Decoder) (*Response, error) {
+func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*Response, error) {
 	var data *bytes.Buffer
 	var res Response
 
@@ -93,7 +93,7 @@ func (c *Client) Request(method, url string, body interface{}, dst Decoder) (*Re
 
 	// Try to automatically decode inner response that we care about
 	if dst != nil && len(res.Resource.Items) > 0 {
-		err = dst.Decode(res.Resource.Items[0].Resource)
+		err = json.Unmarshal(res.Resource.Items[0].Resource, dst)
 	}
 
 	return &res, err
