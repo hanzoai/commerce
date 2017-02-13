@@ -10,7 +10,8 @@ type Hold struct {
 	// Hanzo Order ID
 	ExternalOrderID string `json:"externalOrderId,omitempty"`
 
-	Type string `json:"type"`
+	Type    string `json:"type"`
+	SubType string `json:"subType"`
 
 	Description string `json:"description"`
 

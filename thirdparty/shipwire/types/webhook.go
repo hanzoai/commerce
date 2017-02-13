@@ -22,3 +22,15 @@ type Body struct {
 	Resource         json.RawMessage `json:"resource"`
 	ResourceLocation string          `json:"resourceLocation"`
 }
+
+// Webhook Resource
+type Resource struct {
+	Offset   int    `json:"offset"`
+	Total    int    `json:"total"`
+	Previous string `json:"previous"`
+	Next     string `json:"next"`
+	Items    []struct {
+		ResourceLocation string          `json:"resourceLocation"`
+		Resource         json.RawMessage `json:"resource"`
+	} `json:"items"`
+}
