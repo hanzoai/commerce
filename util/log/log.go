@@ -59,10 +59,6 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.Verbose() {
-		return
-	}
-
 	switch v := formatOrError.(type) {
 	case error:
 		std.Infof(errAndStack(v))
@@ -73,10 +69,6 @@ func Info(formatOrError interface{}, args ...interface{}) {
 
 func Warn(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
-
-	if !std.Verbose() {
-		return
-	}
 
 	switch v := formatOrError.(type) {
 	case error:
