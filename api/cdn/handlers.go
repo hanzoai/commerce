@@ -15,7 +15,7 @@ func group(r router.Router, prefix string) *gin.RouterGroup {
 
 	// Use permissive CORS policy for all API routes.
 	g.Use(middleware.AccessControl("*"))
-	g.OPTIONS("*wildcard", func(c *gin.Context) {
+	g.OPTIONS("*"+prefix+"wildcard", func(c *gin.Context) {
 		c.Next()
 	})
 
