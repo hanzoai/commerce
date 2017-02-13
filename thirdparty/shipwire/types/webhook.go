@@ -7,16 +7,16 @@ import (
 
 // Webhook Responses
 type Message struct {
-	Topic                 string      `json:"topic"`
-	Attempt               string      `json:"attempt"`
-	Timestamp             time.Time   `json:"timestamp"`
-	UniqueEventId         string      `json:"uniqueEventID"`
-	WebhookSubscriptionId int         `json:"webhookSubscriptionID"`
-	Body                  MessageBody `json:"body"`
+	Topic                 string    `json:"topic"`
+	Attempt               int       `json:"attempt"`
+	Timestamp             time.Time `json:"timestamp"`
+	UniqueEventId         string    `json:"uniqueEventID"`
+	WebhookSubscriptionId int       `json:"webhookSubscriptionID"`
+	Body                  Body      `json:"body"`
 }
 
 // Webhook Response Bodies
-type MessageBody struct {
+type Body struct {
 	Status           int             `json:"status"`
 	Message          string          `json:"message"`
 	Resource         json.RawMessage `json:"resource"`
