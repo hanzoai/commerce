@@ -31,6 +31,13 @@ func Process(c *gin.Context) {
 		} else {
 			updateOrder(c, o)
 		}
+	case "return.created", "return.updated", "return.canceled", "return.completed":
+		var r Return
+		if err := json.Unmarshal(req.Body.Resource, &r); err != nil {
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
+		} else {
+			updateReturn(c, r)
+		}
 	case "order.hold.added", "order.hold.cleared":
 		var rsrc Resource
 		if err := json.Unmarshal(req.Body.Resource, &rsrc); err != nil {
@@ -49,25 +56,38 @@ func Process(c *gin.Context) {
 			updateHolds(c, holds)
 		}
 	case "tracking.created", "tracking.updated", "tracking.delivered":
-		var t Tracking
-		if err := json.Unmarshal(req.Body.Resource, &t); err != nil {
+		var rsrc Resource
+		if err := json.Unmarshal(req.Body.Resource, &rsrc); err != nil {
 			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
-			updateTracking(c, t, false)
-		}
-	case "return.created", "return.updated", "return.canceled", "return.completed":
-		var r Return
-		if err := json.Unmarshal(req.Body.Resource, &r); err != nil {
-			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
-		} else {
-			updateReturn(c, r)
+			trackings := make([]Tracking, 0)
+			for i := range rsrc.Items {
+				var t Tracking
+				if err := json.Unmarshal(rsrc.Items[i].Resource, &t); err != nil {
+					log.Error("Failed decode tracking: %v\n%s", err, rsrc.Items[i].Resource, c)
+				} else {
+					trackings = append(trackings, t)
+				}
+			}
+
+			updateTrackings(c, trackings, false)
 		}
 	case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
-		var t Tracking
-		if err := json.Unmarshal(req.Body.Resource, &t); err != nil {
+		var rsrc Resource
+		if err := json.Unmarshal(req.Body.Resource, &rsrc); err != nil {
 			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
-			updateTracking(c, t, true)
+			trackings := make([]Tracking, 0)
+			for i := range rsrc.Items {
+				var t Tracking
+				if err := json.Unmarshal(rsrc.Items[i].Resource, &t); err != nil {
+					log.Error("Failed decode tracking: %v\n%s", err, rsrc.Items[i].Resource, c)
+				} else {
+					trackings = append(trackings, t)
+				}
+			}
+
+			updateTrackings(c, trackings, true)
 		}
 		// case "return.hold.added", "return.hold.cleared":
 	}
