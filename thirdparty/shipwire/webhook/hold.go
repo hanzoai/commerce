@@ -6,20 +6,24 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateHold(c *gin.Context, r Hold) {
-	log.Warn("Hold:\n%v", r, c)
+func updateHolds(c *gin.Context, holds []Hold) {
+	log.Warn("Holds:\n%v", holds, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
+	// Grab first hold
+	h := holds[0]
+
 	ord := order.New(db)
-	id := r.ExternalOrderID //[1:]
+	id := h.ExternalOrderID
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
@@ -27,9 +31,21 @@ func updateHold(c *gin.Context, r Hold) {
 		return
 	}
 
-	if err := ord.GetById(r.ExternalOrderID); err != nil {
+	if err := ord.GetById(id); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
+	}
+
+	ord.Fulfillment.Status = fulfillment.Held
+
+	ord.Fulfillment.Holds = make([]fulfillment.Hold, len(holds))
+	for i := range holds {
+		ord.Fulfillment.Holds[i] = fulfillment.Hold{
+			Type:        holds[i].Type + ":" + holds[i].SubType,
+			Description: holds[i].Description,
+			ExternalId:  holds[i].ExternalOrderID,
+			AppliedAt:   holds[i].AppliedDate.Time,
+		}
 	}
 
 	// ord.Fulfillment.TrackingNumber = t.Tracking
