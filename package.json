@@ -10,7 +10,7 @@
     "autoprefixer-cli": "1.0.0",
     "autoprefixer-stylus": "0.11.0",
     "axis": "0.4.2",
-    "bebop": "1.9.3",
+    "bebop": "1.11.3",
     "bluebird": "2.9.34",
     "blueimp-canvas-to-blob": "2.1.1",
     "card": "1.0.0",
