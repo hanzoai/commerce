@@ -12,6 +12,7 @@ import (
 	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -43,6 +44,7 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
+	log.Error("Using Credentials %s, %s", org.Shipwire.Username, org.Shipwire.Password, c)
 	if err := client.CreateOrder(o, u, ServiceLevelCode(shipReq.Service)); err != nil {
 		http.Fail(c, 400, "Failed to query Shipwire", err)
 		return
