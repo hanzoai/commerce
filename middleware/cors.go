@@ -22,6 +22,7 @@ func AccessControl(allowOrigin string) gin.HandlerFunc {
 		header = c.Writer.Header()
 		header.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		header.Set("Access-Control-Allow-Headers", reqHeaders)
+		header.Set("Access-Control-Max-Age", "86400")
 
 		c.Data(200, "text/plain", make([]byte, 0))
 		c.AbortWithStatus(200)
