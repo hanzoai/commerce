@@ -21,7 +21,7 @@ func updateOrder(c *gin.Context, o Order) {
 	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
-	id := o.ExternalID[1:]
+	id := o.ExternalID
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
