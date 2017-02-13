@@ -7,22 +7,15 @@ _export
 
 config.json
 config/production/bulkloader_helper.pyc
-static/css/checkout.css
-static/css/platform.css
-static/css/preorder.css
-static/css/store.css
+static/css/dash.css
+static/js/dash.js
 static/css/theme.css
 static/js/analytics/analytics.js
 static/js/analytics/bundle.js
 static/js/analytics/native.js
 static/js/analytics/snippet.js
 static/js/api.js
-static/js/checkout.js
 static/js/mailinglist.js
-static/js/platform.js
-static/js/preorder.js
-static/js/store.js
-static/v1.js
 
 *.sql3
 *.csv
@@ -34,7 +27,6 @@ static/v1.js
 *.orig
 *.coverprofile
 *.json
-templates/platform/docs/_generated/*.html
 
 _export
 **/*.coverprofile.*
