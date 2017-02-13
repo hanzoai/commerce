@@ -13,5 +13,5 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	return d.UnmarshalJSON(data)
+	return d.Time.UnmarshalJSON(data)
 }

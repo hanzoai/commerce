@@ -13,7 +13,6 @@ import (
 
 // Process individual webhooks
 func Process(c *gin.Context) {
-
 	dump, _ := httputil.DumpRequest(c.Request, true)
 	log.Info("Webhook request:\n%s", dump, c)
 
