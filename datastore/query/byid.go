@@ -1,6 +1,7 @@
 package query
 
 import (
+	"strconv"
 	"strings"
 
 	aeds "appengine/datastore"
@@ -59,11 +60,16 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 
 // Get order from id
 func (q *Query) orderFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
-	key, ok, err := q.Filter("Number=", id).First(dst)
+	// Coerce into number type
+	n, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, false, err
 	}
 
+	key, ok, err := q.Filter("Number=", n).First(dst)
+	if err != nil {
+		return nil, false, err
+	}
 	if !ok {
 		return nil, false, nil
 	}
