@@ -19,6 +19,12 @@ func updateHolds(c *gin.Context, holds []Hold) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
+	// Handle no holds
+	if len(holds) == 0 {
+		c.String(200, "ok\n")
+		return
+	}
+
 	// Grab first hold
 	h := holds[0]
 
