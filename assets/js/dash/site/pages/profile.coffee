@@ -5,7 +5,7 @@ class Profile extends Page
   icon: 'glyphicon glyphicon-user'
   name: 'Profile'
   html: require '../../templates/backend/site/pages/profile.html'
-  apiName: 'platform'
+  apiName: 'dash'
 
   collection: 'profile'
 
