@@ -9,7 +9,7 @@ Api = crowdcontrol.data.Api
 
 class BasicTableFieldView extends View
   tag: 'basic-table-field'
-  html: require '../../templates/backend/table/fields/basic-field.html'
+  html: require '../../templates/dash/table/fields/basic-field.html'
   js: (opts)->
     @field = opts.field
     @row = row = opts.row
@@ -34,7 +34,7 @@ BasicTableFieldView.register()
 
 class TextareaTableFieldView extends BasicTableFieldView
   tag: 'textarea-table-field'
-  html: require '../../templates/backend/table/fields/textarea-field.html'
+  html: require '../../templates/dash/table/fields/textarea-field.html'
 
 TextareaTableFieldView.register()
 
@@ -51,7 +51,7 @@ SnippetTableFieldView.register()
 
 class IdTableFieldView extends BasicTableFieldView
   tag: 'id-table-field'
-  html: require '../../templates/backend/table/fields/link-field.html'
+  html: require '../../templates/dash/table/fields/link-field.html'
   js: (opts)->
     super
     @displayField = opts.field.hints['id-display']
@@ -62,7 +62,7 @@ IdTableFieldView.register()
 
 class IdListTableFieldView extends BasicTableFieldView
   tag: 'id-list-table-field'
-  html: require '../../templates/backend/table/fields/link-list-field.html'
+  html: require '../../templates/dash/table/fields/link-list-field.html'
   js: (opts)->
     super
     @path = opts.field.hints['id-path']
@@ -71,7 +71,7 @@ IdListTableFieldView.register()
 
 class NumericTableFieldView extends BasicTableFieldView
   tag: 'numeric-table-field'
-  html: require '../../templates/backend/table/fields/numeric-field.html'
+  html: require '../../templates/dash/table/fields/numeric-field.html'
 
 NumericTableFieldView.register()
 
@@ -93,7 +93,7 @@ TotalTableFieldView.register()
 
 class DateTableFieldView extends BasicTableFieldView
   tag: 'date-table-field'
-  html: require '../../templates/backend/table/fields/numeric-field.html'
+  html: require '../../templates/dash/table/fields/numeric-field.html'
   js: ()->
     super
     @value = moment(@value).format 'YYYY-MM-DD HH:mm'

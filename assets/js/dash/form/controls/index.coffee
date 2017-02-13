@@ -16,25 +16,25 @@ helpers.defaultTagName = 'basic-input'
 # views
 class StaticView extends InputView
   tag: 'static'
-  html: require '../../templates/backend/form/controls/static.html'
+  html: require '../../templates/dash/form/controls/static.html'
 
 StaticView.register()
 
 class StaticPreView extends StaticView
   tag: 'static-pre'
-  html: require '../../templates/backend/form/controls/static-pre.html'
+  html: require '../../templates/dash/form/controls/static-pre.html'
 
 StaticPreView.register()
 
 class StaticDateView extends StaticView
   tag: 'static-date'
-  html: require '../../templates/backend/form/controls/static-date.html'
+  html: require '../../templates/dash/form/controls/static-date.html'
 
 StaticDateView.register()
 
 class IdLinkView extends StaticView
   tag: 'id-link'
-  html: require '../../templates/backend/form/controls/id-link.html'
+  html: require '../../templates/dash/form/controls/id-link.html'
   js: (opts)->
     super
     @path = opts.input.model.cfg.hints['id-path']
@@ -43,14 +43,14 @@ IdLinkView.register()
 
 class IdListLinkView extends IdLinkView
   tag: 'id-list-link'
-  html: require '../../templates/backend/form/controls/id-list-link.html'
+  html: require '../../templates/dash/form/controls/id-list-link.html'
 
 IdListLinkView.register()
 
 class BasicInputView extends InputView
   errorHtml: ''
   tag: 'basic-input'
-  html: require '../../templates/backend/form/controls/basic-input.html'
+  html: require '../../templates/dash/form/controls/basic-input.html'
   js:(opts)->
     @model = if opts.input then opts.input.model else @model
 
@@ -58,7 +58,7 @@ BasicInputView.register()
 
 class PasswordInputView extends BasicInputView
   tag: 'basic-password'
-  html: require '../../templates/backend/form/controls/password.html'
+  html: require '../../templates/dash/form/controls/password.html'
 
 PasswordInputView.register()
 
@@ -106,7 +106,7 @@ DatePickerView.register()
 
 class BasicTextareaView extends BasicInputView
   tag: 'basic-textarea'
-  html: require '../../templates/backend/form/controls/basic-textarea.html'
+  html: require '../../templates/dash/form/controls/basic-textarea.html'
 
 BasicTextareaView.register()
 
@@ -146,7 +146,7 @@ CodeMirrorView.register()
 
 class Switch extends BasicInputView
   tag: 'switch'
-  html: require '../../templates/backend/form/controls/switch.html'
+  html: require '../../templates/dash/form/controls/switch.html'
   js: (opts)->
     @uid = '_' + Math.random()*10000
 
@@ -166,7 +166,7 @@ Switch.register()
 
 class DisabledInputView extends BasicInputView
   tag: 'disabled-input'
-  html: require '../../templates/backend/form/controls/disabled-input.html'
+  html: require '../../templates/dash/form/controls/disabled-input.html'
 
 DisabledInputView.register()
 
@@ -213,13 +213,13 @@ MoneyInputView.register()
 
 class StaticMoneyView extends MoneyInputView
   tag: 'static-money'
-  html: require '../../templates/backend/form/controls/static.html'
+  html: require '../../templates/dash/form/controls/static.html'
 
 StaticMoneyView.register()
 
 class PercentInputView extends BasicInputView
   tag: 'percent-input'
-  html: require '../../templates/backend/form/controls/percent-input.html'
+  html: require '../../templates/dash/form/controls/percent-input.html'
 
   change: (event) ->
     value = @getValue(event.target)
@@ -235,7 +235,7 @@ PercentInputView.register()
 
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
-  html: require '../../templates/backend/form/controls/basic-select.html'
+  html: require '../../templates/dash/form/controls/basic-select.html'
 
   any: false
   tags: false
@@ -409,7 +409,7 @@ ProductSelectView.register()
 
 class AnalyticsEventsSelect extends BasicSelectView
   tag: 'analytics-events-select'
-  html: require '../../templates/backend/form/controls/optgroup-select.html'
+  html: require '../../templates/dash/form/controls/optgroup-select.html'
 
   tags: true
   options: ()->
