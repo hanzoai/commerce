@@ -69,6 +69,13 @@ type Return struct {
 	Tracking Tracking `json:"tracking,omitempty"`
 }
 
+type Hold struct {
+	Type        string    `json:"type"`
+	Description string    `json:"description"`
+	ExternalId  string    `json:"externalId"`
+	AppliedAt   time.Time `json:"appliedAt"`
+}
+
 type Fulfillment struct {
 	Type       Type   `json:"type"`
 	Status     Status `json:"status"`
@@ -102,6 +109,8 @@ type Fulfillment struct {
 
 	Return   Return   `json:"return,omitempty"`
 	Tracking Tracking `json:"tracking,omitempty"`
+
+	Holds []Hold `json:"holds,omitempty"`
 
 	WarehouseId     string `json:"warehouseId,omitempty"`
 	WarehouseRegion string `json:"warehouseRegion,omitempty"`
