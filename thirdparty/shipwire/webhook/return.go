@@ -26,15 +26,15 @@ func updateReturn(c *gin.Context, rtn Return) {
 		return
 	}
 
-	ord.Fulfillment.Return.CancelledAt = rtn.Events.Resource.CancelledDate
-	ord.Fulfillment.Return.CompletedAt = rtn.Events.Resource.CompletedDate
-	ord.Fulfillment.Return.UpdatedAt = rtn.LastUpdatedDate
-	ord.Fulfillment.Return.ExpectedAt = rtn.ExpectedDate
-	ord.Fulfillment.Return.DeliveredAt = rtn.Events.Resource.DeliveredDate
-	ord.Fulfillment.Return.PickedUpAt = rtn.Events.Resource.PickedUpDate
-	ord.Fulfillment.Return.ProcessedAt = rtn.Events.Resource.ProcessedDate
-	ord.Fulfillment.Return.ReturnedAt = rtn.Events.Resource.ReturnedDate
-	ord.Fulfillment.Return.SubmittedAt = rtn.Events.Resource.SubmittedDate
+	ord.Fulfillment.Return.CancelledAt = rtn.Events.Resource.CancelledDate.Time
+	ord.Fulfillment.Return.CompletedAt = rtn.Events.Resource.CompletedDate.Time
+	ord.Fulfillment.Return.UpdatedAt = rtn.LastUpdatedDate.Time
+	ord.Fulfillment.Return.ExpectedAt = rtn.ExpectedDate.Time
+	ord.Fulfillment.Return.DeliveredAt = rtn.Events.Resource.DeliveredDate.Time
+	ord.Fulfillment.Return.PickedUpAt = rtn.Events.Resource.PickedUpDate.Time
+	ord.Fulfillment.Return.ProcessedAt = rtn.Events.Resource.ProcessedDate.Time
+	ord.Fulfillment.Return.ReturnedAt = rtn.Events.Resource.ReturnedDate.Time
+	ord.Fulfillment.Return.SubmittedAt = rtn.Events.Resource.SubmittedDate.Time
 
 	ord.MustPut()
 
