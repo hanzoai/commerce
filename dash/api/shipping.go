@@ -38,16 +38,15 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 
 	req := ShipRequest{}
 	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 500, "Failed to decode request body", err)
+		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
-	// log.Error("Using Credentials %s, %s", org.Shipwire.Username, org.Shipwire.Password, c)
 	if res, err := client.CreateOrder(ord, usr, ServiceLevelCode(req.Service)); err != nil {
-		http.Fail(c, res.Status, res.Message, err)
+		http.Fail(c, res.Status, res.Message+res.Error, err)
 	} else {
-		http.Render(c, 200, res)
+		http.Render(c, res.Status, res)
 	}
 }
 

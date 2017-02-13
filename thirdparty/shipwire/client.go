@@ -46,27 +46,33 @@ func New(c *gin.Context, username, password string) *Client {
 }
 
 func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*Response, error) {
-	var payload *bytes.Buffer
+	var data *bytes.Buffer
 	var res Response
 
+	// Encode body
 	if body != nil {
-		payload = bytes.NewBuffer(json.EncodeBytes(body))
+		data = bytes.NewBuffer(json.EncodeBytes(body))
 	}
 
-	req, err := http.NewRequest(method, c.Endpoint+url, payload)
+	// Create request
+	req, err := http.NewRequest(method, c.Endpoint+url, data)
 	if err != nil {
 		log.Error("Failed to create Shipwire request: %v", err, c.ctx)
 		return nil, err
 	}
 
-	// req.SetBasicAuth(c.Username, c.Password)
+	// Set headers
 	req.Header.Add("Content-Type", "application/json")
+	req.SetBasicAuth(c.Username, c.Password)
+
+	// Do request
+	r, err := c.client.Do(req)
 
 	dump, _ := httputil.DumpRequest(req, true)
 	log.Warn("Shipwire request:\n%s", dump, c.ctx)
 
-	// Do request
-	r, err := c.client.Do(req)
+	// Shipwire does not always provide a status
+	res.Status = r.StatusCode
 
 	// Request failed
 	if err != nil {
@@ -76,26 +82,12 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 
 	defer r.Body.Close()
 
-	// Shipwire does not always provide a status
-	res.Status = r.StatusCode
-
 	dump, _ = httputil.DumpResponse(r, true)
 	log.Warn("Shipwire response:\n%s", dump, c.ctx)
 
-	// Something bad happened
-	if res.Status > 399 {
-		return &res, nil
-	}
-
-	// No dst, done
-	if dst == nil {
-		return &res, nil
-	}
-
 	// Automatically decode response
 	err = json.Decode(r.Body, &res)
-	if err == nil {
-		// Try to decode inner resource as dst assuming list of one item
+	if err == nil && dst != nil {
 		if len(res.Resource.Items) > 0 {
 			err = json.Unmarshal(res.Resource.Items[0].Resource, &dst)
 		}
