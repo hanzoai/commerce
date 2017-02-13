@@ -54,16 +54,16 @@ func ReturnOrderUsingShipwire(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
-	o := order.New(db)
+	ord := order.New(db)
 	id := c.Params.ByName("id")
-	o.MustGetById(id)
+	ord.MustGetById(id)
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
-	_, err := client.CreateReturn(o)
+	res, err := client.CreateReturn(ord)
 	if err != nil {
-		http.Fail(c, 400, "Failed to query Shipwire", err)
+		http.Fail(c, res.Status, res.Message+res.Error, err)
 		return
 	}
 
-	http.Render(c, 200, org)
+	http.Render(c, res.Status, ord)
 }
