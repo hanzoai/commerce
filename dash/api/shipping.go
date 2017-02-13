@@ -1,8 +1,6 @@
 package api
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
@@ -24,27 +22,29 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
-	o := order.New(db)
+	ord := order.New(db)
 	id := c.Params.ByName("id")
-	o.MustGetById(id)
+	ord.MustGetById(id)
 
-	if o.Fulfillment.Type != "" {
-		http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
-		return
-	}
+	// Shipwire will prevent duplicate order creation for identical external
+	// IDs, so this is unnecessary in theory...
+	// if o.Fulfillment.Type != "" {
+	// 	http.Fail(c, 500, "Order already shipped", errors.New("Order already shipped."))
+	// 	return
+	// }
 
-	u := user.New(db)
-	u.MustGetById(o.UserId)
+	usr := user.New(db)
+	usr.MustGetById(ord.UserId)
 
-	shipReq := ShipRequest{}
-	if err := json.Decode(c.Request.Body, &shipReq); err != nil {
+	req := ShipRequest{}
+	if err := json.Decode(c.Request.Body, &req); err != nil {
 		http.Fail(c, 500, "Failed to decode request body", err)
 		return
 	}
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	// log.Error("Using Credentials %s, %s", org.Shipwire.Username, org.Shipwire.Password, c)
-	if res, err := client.CreateOrder(o, u, ServiceLevelCode(shipReq.Service)); err != nil {
+	if res, err := client.CreateOrder(ord, usr, ServiceLevelCode(req.Service)); err != nil {
 		http.Fail(c, res.Status, res.Message, err)
 	} else {
 		http.Render(c, 200, res)
