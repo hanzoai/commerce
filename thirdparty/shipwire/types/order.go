@@ -1,9 +1,5 @@
 package types
 
-import (
-	"time"
-)
-
 type OrderRequest struct {
 	ExternalID   string `json:"externalId"`
 	OrderNo      string `json:"orderNo"`
@@ -35,10 +31,10 @@ type Order struct {
 
 	CommerceName string `json:"commerceName"`
 
-	NeedsReview      int       `json:"needsReview"`
-	LastUpdatedDate  time.Time `json:"lastUpdatedDate"`
-	ProcessAfterDate time.Time `json:"processAfterDate"`
-	Status           string    `json:"status"`
+	NeedsReview      int    `json:"needsReview"`
+	LastUpdatedDate  Date   `json:"lastUpdatedDate"`
+	ProcessAfterDate Date   `json:"processAfterDate"`
+	Status           string `json:"status"`
 
 	PurchaseOrderID         string `json:"purchaseOrderId,omitempty"`
 	PurchaseOrderExternalID string `json:"purchaseOrderExternalId,omitempty"`
@@ -143,17 +139,17 @@ type Order struct {
 	Events struct {
 		ResourceLocation interface{} `json:"resourceLocation"`
 		Resource         struct {
-			CancelledDate         time.Time `json:"cancelledDate"`
-			CompletedDate         time.Time `json:"completedDate"`
-			CreatedDate           time.Time `json:"createdDate"`
-			ExpectedCompletedDate time.Time `json:"expectedCompletedDate"`
-			ExpectedDate          time.Time `json:"expectedDate"`
-			ExpectedSubmittedDate time.Time `json:"expectedSubmittedDate"`
-			LastManualUpdateDate  time.Time `json:"lastManualUpdateDate"`
-			PickedUpDate          time.Time `json:"pickedUpDate"`
-			ProcessedDate         time.Time `json:"processedDate"`
-			ReturnedDate          time.Time `json:"returnedDate"`
-			SubmittedDate         time.Time `json:"submittedDate"`
+			CancelledDate         Date `json:"cancelledDate"`
+			CompletedDate         Date `json:"completedDate"`
+			CreatedDate           Date `json:"createdDate"`
+			ExpectedCompletedDate Date `json:"expectedCompletedDate"`
+			ExpectedDate          Date `json:"expectedDate"`
+			ExpectedSubmittedDate Date `json:"expectedSubmittedDate"`
+			LastManualUpdateDate  Date `json:"lastManualUpdateDate"`
+			PickedUpDate          Date `json:"pickedUpDate"`
+			ProcessedDate         Date `json:"processedDate"`
+			ReturnedDate          Date `json:"returnedDate"`
+			SubmittedDate         Date `json:"submittedDate"`
 		} `json:"resource"`
 	} `json:"events"`
 
