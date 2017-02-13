@@ -43,18 +43,18 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.WarehouseRegion = o.Options.Resource.WarehouseRegion
 
 	// Update dates
-	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate
-	ord.Fulfillment.CancelledAt = o.Events.Resource.CancelledDate
-	ord.Fulfillment.CompletedAt = o.Events.Resource.CompletedDate
-	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate
-	ord.Fulfillment.ExpectedCompletedAt = o.Events.Resource.ExpectedCompletedDate
-	ord.Fulfillment.ExpectedAt = o.Events.Resource.ExpectedDate
-	ord.Fulfillment.ExpectedSubmittedAt = o.Events.Resource.ExpectedSubmittedDate
-	ord.Fulfillment.LastManualUpdateAt = o.Events.Resource.LastManualUpdateDate
-	ord.Fulfillment.PickedUpAt = o.Events.Resource.PickedUpDate
-	ord.Fulfillment.ProcessedAt = o.Events.Resource.ProcessedDate
-	ord.Fulfillment.ReturnedAt = o.Events.Resource.ReturnedDate
-	ord.Fulfillment.SubmittedAt = o.Events.Resource.SubmittedDate
+	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate.Time
+	ord.Fulfillment.CancelledAt = o.Events.Resource.CancelledDate.Time
+	ord.Fulfillment.CompletedAt = o.Events.Resource.CompletedDate.Time
+	ord.Fulfillment.CreatedAt = o.Events.Resource.CreatedDate.Time
+	ord.Fulfillment.ExpectedCompletedAt = o.Events.Resource.ExpectedCompletedDate.Time
+	ord.Fulfillment.ExpectedAt = o.Events.Resource.ExpectedDate.Time
+	ord.Fulfillment.ExpectedSubmittedAt = o.Events.Resource.ExpectedSubmittedDate.Time
+	ord.Fulfillment.LastManualUpdateAt = o.Events.Resource.LastManualUpdateDate.Time
+	ord.Fulfillment.PickedUpAt = o.Events.Resource.PickedUpDate.Time
+	ord.Fulfillment.ProcessedAt = o.Events.Resource.ProcessedDate.Time
+	ord.Fulfillment.ReturnedAt = o.Events.Resource.ReturnedDate.Time
+	ord.Fulfillment.SubmittedAt = o.Events.Resource.SubmittedDate.Time
 
 	ord.MustPut()
 
