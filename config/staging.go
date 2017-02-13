@@ -9,15 +9,13 @@ func Staging() *Config {
 
 	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
-	config.Prefixes["cdn"] = "/"
-	config.Prefixes["default"] = "/"
 	config.Prefixes["dash"] = "/"
+	config.Prefixes["default"] = "/"
 
 	config.Hosts["analytics"] = "analytics-staging.hanzo.io"
 	config.Hosts["api"] = "api-staging.hanzo.io"
-	config.Hosts["cdn"] = "cdn-staging.hanzo.io"
-	config.Hosts["default"] = "default-staging.hanzo.io"
 	config.Hosts["dash"] = "dash-staging.hanzo.io"
+	config.Hosts["default"] = "default-staging.hanzo.io"
 
 	config.StaticUrl = "//static-staging.hanzo.io"
 
