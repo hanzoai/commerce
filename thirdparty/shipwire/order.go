@@ -36,7 +36,6 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	}
 
 	o := Order{}
-
 	res, err := c.Request("POST", "/orders", req, &o)
 	if err != nil {
 		log.Error("Shipwire Request Error: %v", err, c.ctx)

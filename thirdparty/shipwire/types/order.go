@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"hanzo.io/util/json"
+)
 
 type OrderRequest struct {
 	ExternalID   string `json:"externalId"`
@@ -197,4 +201,8 @@ type Order struct {
 			Shipping  int `json:"shipping"`
 		} `json:"resource"`
 	} `json:"pricing"`
+}
+
+func (o *Order) Decode(data json.RawMessage) error {
+	return json.Unmarshal(data, o)
 }

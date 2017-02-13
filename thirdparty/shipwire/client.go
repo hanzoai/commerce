@@ -45,7 +45,7 @@ func New(c *gin.Context, username, password string) *Client {
 	}
 }
 
-func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*Response, error) {
+func (c *Client) Request(method, url string, body interface{}, dst Decoder) (*Response, error) {
 	var data *bytes.Buffer
 	var res Response
 
@@ -85,16 +85,15 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	dump, _ = httputil.DumpResponse(r, true)
 	log.Error("Shipwire response:\n%s", dump, c.ctx)
 
-	// Automatically decode response
-	err = json.Decode(r.Body, &res)
-	if err == nil && dst != nil {
-		if len(res.Resource.Items) > 0 {
-			err = json.Unmarshal(res.Resource.Items[0].Resource, dst)
-		}
+	// Decode response wrapper
+	if err := json.Decode(r.Body, &res); err != nil {
+		log.Warn("Failed to decode Shipwire response:\n%v", err, c.ctx)
+		return &res, err
 	}
 
-	if err != nil {
-		log.Warn("Failed to decode Shipwire response:\n%v", err, c.ctx)
+	// Try to automatically decode inner response that we care about
+	if dst != nil && len(res.Resource.Items) > 0 {
+		err = dst.Decode(res.Resource.Items[0].Resource)
 	}
 
 	return &res, err
