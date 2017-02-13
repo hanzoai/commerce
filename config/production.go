@@ -9,20 +9,14 @@ func Production() *Config {
 	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
 	config.Prefixes["cdn"] = "/"
-	config.Prefixes["checkout"] = "/"
+	config.Prefixes["dash"] = "/"
 	config.Prefixes["default"] = "/"
-	config.Prefixes["platform"] = "/"
-	config.Prefixes["preorder"] = "/"
-	config.Prefixes["store"] = "/"
 
 	config.Hosts["analytics"] = "analytics.hanzo.io"
 	config.Hosts["api"] = "api.hanzo.io"
 	config.Hosts["cdn"] = "cdn.hanzo.io"
-	config.Hosts["checkout"] = "secure.hanzo.io"
+	config.Hosts["dash"] = "dash.hanzo.io"
 	config.Hosts["default"] = "static.hanzo.io"
-	config.Hosts["platform"] = "dash.hanzo.io"
-	config.Hosts["preorder"] = "preorder.hanzo.io"
-	config.Hosts["store"] = "store.hanzo.io"
 
 	config.StaticUrl = "//static.hanzo.io"
 
@@ -47,7 +41,7 @@ func Production() *Config {
 
 	config.Salesforce.ConsumerKey = ""
 	config.Salesforce.ConsumerSecret = ""
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Salesforce.CallbackURL = "https:" + config.UrlFor("dash", "/salesforce/callback")
 	config.Netlify.AccessToken = "1739f774d10d95de710c35a3184c7e71d086e5e750cc99c6648274240e9377de"
 
 	return config
