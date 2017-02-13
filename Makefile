@@ -61,23 +61,23 @@ uglifyjs = node_modules/.bin/uglifyjs
 
 requisite	   = node_modules/.bin/requisite -g
 requisite_opts = assets/js/api/api.coffee \
-				 assets/js/platform/platform.coffee \
+				 assets/js/dash/dash.coffee \
 				 -o static/js/api.js \
-				 -o static/js/platform.js
+				 -o static/js/dash.js
 
 # requisite_opts_min = --strip-debug --minifier uglify
 requisite_opts_min = --strip-debug
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/theme/theme.styl \
-			  assets/css/platform/platform.styl \
+			  assets/css/dash/dash.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer-cli
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/theme.css \
-					static/css/platform.css
+					static/css/dash.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --dev_appserver_log_level=error
@@ -168,12 +168,12 @@ compile-js-min: compile-js
 	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c -m
 	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
 	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
-	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
+	$(uglifyjs) static/js/dash.js -o static/js/dash.min.js -c
 	@mv static/js/api.min.js static/js/api.js
 	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
 	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
 	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
-	@mv static/js/platform.min.js static/js/platform.js
+	@mv static/js/dash.min.js static/js/dash.js
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
