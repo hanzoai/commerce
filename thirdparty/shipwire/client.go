@@ -2,6 +2,7 @@ package shipwire
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"time"
@@ -89,6 +90,15 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	if err := json.Decode(r.Body, &res); err != nil {
 		log.Warn("Failed to decode response:%v", err, c.ctx)
 		return nil, err
+	}
+
+	// Handle errors
+	if res.Error != "" {
+		return &res, fmt.Errorf(res.Error)
+	}
+
+	if len(res.Errors) > 0 {
+		return &res, fmt.Errorf(res.Errors[0].Message)
 	}
 
 	// Try to automatically decode inner response that we care about

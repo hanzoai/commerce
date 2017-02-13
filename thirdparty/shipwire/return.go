@@ -1,7 +1,6 @@
 package shipwire
 
 import (
-	"errors"
 	"strconv"
 
 	"hanzo.io/models/order"
@@ -34,10 +33,6 @@ func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 	res, err := c.Request("POST", "/returns", req, &rtn)
 	if err != nil {
 		return res, err
-	}
-
-	if res.Status > 299 {
-		return res, errors.New("Failed to create return")
 	}
 
 	ord.Fulfillment.Status = fulfillment.Returned
