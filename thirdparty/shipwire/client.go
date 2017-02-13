@@ -89,7 +89,7 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	err = json.Decode(r.Body, &res)
 	if err == nil && dst != nil {
 		if len(res.Resource.Items) > 0 {
-			err = json.Unmarshal(res.Resource.Items[0].Resource, &dst)
+			err = json.Unmarshal(res.Resource.Items[0].Resource, dst)
 		}
 	}
 
