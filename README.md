@@ -1,4 +1,4 @@
-# Hanzo [![Circle CI](https://circleci.com/gh/hanzo-io/api.svg?style=svg&circle-token=1ab3428ce6dd7a6903f5d00748708a008a519ce4)](https://circleci.com/gh/hanzo-io/api)
+# Hanzo [![Circle CI](https://circleci.com/gh/hanzo-io/platform.svg?style=svg&circle-token=1ab3428ce6dd7a6903f5d00748708a008a519ce4)](https://circleci.com/gh/hanzo-io/platform)
 Hanzo is a modern crowdfunding and ecommerce platform designed for the future.
 
 ## Development
@@ -37,23 +37,18 @@ functioning of the platform.
 A number of entities (and, therefore, URL paths that get called) are
 aggressively cached via Cloudflare and are only invalidated when the entities
 change.  All publically accessible records which are global to an Organization
-should be cached.  Customer-unique records are not accessed enough to make
-caching valuable.  These entities/paths are:
+should be cached. Customer-unique records are not accessed enough to make
+caching valuable. These entities/paths are:
 
-- Product (api.hanzo.io/product/* )
-- Bundle (api.hanzo.io/bundle/* )
-- Variant (api.hanzo.io/variant/* )
-- Coupon (api.hanzo.io/coupon/* )
+- Product `api.hanzo.io/product`
+- Bundle `api.hanzo.io/bundle`
+- Variant `api.hanzo.io/variant`
+- Coupon `api.hanzo.io/coupon`
+- Store `api.hanzo.io/store`
+- Form JS snippets `api.hanzo.io/form/*/js`
+- Organization JS snippets `api.hanzo.io/organization/*/js`
 
-- Store (api.hanzo.io/store/* )
-- Product/Bundle/Variant sub-headings for Store (api.hanzo.io/store/*/product/*
-  api.hanzo.io/store/*/bundle/* api.hanzo.io/store/*variant/* )
-
-- Form JS snippets (api.hanzo.io/form/*/js )
-- Organization JS snippets (api.hanzo.io/organization/*/a/js
-  api.hanzo.io/organization/*/n/js )
-
-In the future, we should only cache one specific path - cdn.hanzo.io, for
-example - and allow caching to be circumvented by directly hitting api.hanzo.io.
-This is dependent upon us being able to charge users directly for API calls,
-however, so it is still a little bit off in terms of engineering.
+In the future, we should only cache one specific path - `cdn.hanzo.io`, for
+example - and allow caching to be circumvented by directly hitting
+`api.hanzo.io`.  This is dependent upon us being able to charge users directly
+for API calls, however, so it is still a little bit off in terms of engineering.
