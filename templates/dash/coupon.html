@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block name %}Coupon{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Coupon information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Coupon information Form Title -->
+        <div class="block-title">
+          <h2>Coupon Information</h2>
+        </div>
+        <!-- END Coupon information Form Title -->
+
+        <!-- Coupon information Form Content -->
+        <form id="form-coupon" method="post" class="form-horizontal">
+            <h4>Information</h4>
+            <div id="coupon-info" class="block">
+            </div>
+            <h4>Coupon Amount</h4>
+            <div id="coupon-amount" class="block">
+            </div>
+            <h4>Coupon Products</h4>
+            <div id="coupon-product-id" class="block">
+            </div>
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                    <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Coupon information Form Content -->
+    </div>
+    <!-- END Coupon information Form Block -->
+</div>
+<!-- END Coupon information Form Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
+<script>
+  $(function() {
+    BuildForm($('#form-coupon'),[
+        // coupon info
+        {
+          id: 'name',
+          name: 'name',
+          label: 'Name',
+          value: '{{ coupon.Name }}',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a name for your coupon'
+            }
+          ],
+          $parent: $('#coupon-info')
+        },
+        {
+          id: 'code',
+          name: 'code',
+          label: 'Code',
+          value: '{{ coupon.Code }}',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a unique code for your coupon'
+            }
+          ],
+          $parent: $('#coupon-info')
+        },
+        {
+          id: 'type',
+          name: 'type',
+          label: 'Type',
+          type: 'select',
+          asterisk: false,
+          value: [
+            {
+              name: 'Flat (In product\'s currency)',
+              id: 'flat',
+              selected: 'flat' === '{{ coupon.Type }}',
+            },
+            {
+              name: 'Percent',
+              id: 'percent',
+              selected: 'percent' === '{{ coupon.Type }}',
+            },
+            {
+              name: 'Free shipping',
+              id: 'free-shipping',
+              selected: 'free-shipping' === '{{ coupon.Type }}',
+            },
+          ],
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a type for your coupon'
+            }
+          ],
+          $parent: $('#coupon-info')
+        },
+        {
+          id: 'enabled',
+          name: 'enabled',
+          label: 'Enabled',
+          value: '{{ coupon.Enabled }}' === 'True',
+          type: 'switch',
+          asterisk: false,
+          labelCols: 3,
+          valueCols: 9,
+          $parent: $('#coupon-info'),
+        },
+        // coupon amount
+        {
+          id: 'amount',
+          name: 'amount',
+          label: 'Amount',
+          value: (function(){
+              if ('{{ coupon.Type }}' === 'flat') {
+                return Util.renderUICurrencyFromJSON({{ coupon.Amount }});
+              } else {
+                return {{ coupon.Amount }};
+              }
+          })(),
+          type: 'currency',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter an an amount to discount'
+            },
+          ],
+          $parent: $('#coupon-amount')
+        },
+        {
+          id: 'productId',
+          name: 'productId',
+          label: 'Product',
+          value: [
+              {
+                  selected: '' === '{{ coupon.ProductId }}',
+                  name: 'All',
+                  id: ''
+              },
+              {% for product in products %}
+              {
+                  selected: '{{ product.Id_ }}' === '{{ coupon.ProductId }}',
+                  name: '{{ product.Name }} ({{ product.Slug }})',
+                  id: '{{ product.Id_ }}'
+              },
+              {% endfor %}
+          ],
+          type: 'select',
+          $parent: $('#coupon-product-id'),
+        },
+    ]);
+
+  (function() {
+      $('#type').chosen().on('change', function(){
+          if ($(this).val() === 'free-shipping') {
+            $('#amount').prop('disabled', true).val(0);
+          } else {
+            $('#amount').prop('disabled', false);
+          }
+      })
+  })();
+});
+
+  var api = NewRestAPI(
+      '{{ urlFor("api", "/coupon") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+      $('#form-new-coupon'),
+      {
+        amount: function(val) {
+            var type = $('#type').val();
+            if (type === 'flat') {
+                // To cents
+                return Util.renderJSONCurrencyFromUI(val);
+            } else if (type === 'percent') {
+                return parseFloat(val);
+            } else {
+                return 0
+            }
+        },
+      },
+      {
+        enabled: false,
+      }
+    );
+  $('#form-coupon').on('submit', function(e){
+      var $form = $(this);
+      requestAnimationFrame(function() {
+          if ($('.form-group.has-error').length === 0) {
+              api.put(function(data) {
+                  window.location.replace('{{ urlFor("dash", "/coupon", coupon.Id) }}')
+              }, $form, '{{ coupon.Id }}')
+          }
+      })
+      e.preventDefault();
+      return false;
+  })
+  $('#delete-btn').on('click', function(e) {
+    api.del(function(data) {
+        window.location.replace('{{ urlFor("dash", "/coupons") }}')
+    }, '{{ coupon.Id }}')
+  })
+</script>
+{% endblock %}
+
+{% block menulink %}menu-coupons{% endblock %}

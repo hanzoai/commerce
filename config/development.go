@@ -15,20 +15,14 @@ func Development() *Config {
 	config.Prefixes["analytics"] = "/analytics/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["cdn"] = "/cdn/"
-	config.Prefixes["checkout"] = "/checkout/"
+	config.Prefixes["dash"] = "/dash/"
 	config.Prefixes["default"] = "/"
-	config.Prefixes["platform"] = "/platform/"
-	config.Prefixes["preorder"] = "/preorder/"
-	config.Prefixes["store"] = "/store/"
 
 	config.Hosts["analytics"] = ""
 	config.Hosts["api"] = ""
 	config.Hosts["cdn"] = ""
-	config.Hosts["checkout"] = ""
+	config.Hosts["dash"] = ""
 	config.Hosts["default"] = ""
-	config.Hosts["platform"] = ""
-	config.Hosts["preorder"] = ""
-	config.Hosts["store"] = ""
 
 	config.StaticUrl = "/static"
 
@@ -48,7 +42,7 @@ func Development() *Config {
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
-	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("platform", "/salesforce/callback")
+	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("dash", "/salesforce/callback")
 
 	return config
 }
