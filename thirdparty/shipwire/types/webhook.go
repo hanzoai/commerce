@@ -17,7 +17,7 @@ type Message struct {
 
 // Webhook Response Bodies
 type MessageBody struct {
-	Status           string          `json:"status"`
+	Status           int             `json:"status"`
 	Message          string          `json:"message"`
 	Resource         json.RawMessage `json:"resource"`
 	ResourceLocation string          `json:"resourceLocation"`
