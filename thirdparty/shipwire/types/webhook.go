@@ -1,7 +1,7 @@
 package types
 
 import (
-	"hanzo.io/util/json"
+	"encoding/json"
 	"time"
 )
 

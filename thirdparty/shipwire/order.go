@@ -7,7 +7,6 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -36,16 +35,13 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	}
 
 	o := Order{}
+
 	res, err := c.Request("POST", "/orders", req, &o)
 	if err != nil {
-		log.Error("Shipwire Request Error: %v", err, c.ctx)
 		return res, err
 	}
 
-	log.Error("Response: %v", res, c.ctx)
-
 	if res.Status > 299 {
-		log.Error("Failed to create order\nStatus: %v", res.Status, c.ctx)
 		return res, errors.New("Failed to create order")
 	}
 
