@@ -4,7 +4,7 @@ class Payments extends Page
   tag: 'page-payments'
   icon: 'fa fa-money'
   name: 'Payments'
-  html: require '../../templates/backend/site/pages/payments.html'
+  html: require '../../templates/dash/site/pages/payments.html'
 
   collection: 'payments'
 

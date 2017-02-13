@@ -14,7 +14,7 @@ BasicTableView = table.BasicTableView
 
 class ListingWidget extends View
   tag: 'listing-widget'
-  html: require '../../templates/backend/widget/listing/template.html'
+  html: require '../../templates/dash/widget/listing/template.html'
   events:
     "#{Events.Form.Prefill}": (model)->
       @model = model

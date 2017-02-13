@@ -4,7 +4,7 @@ class User extends Page
   tag: 'page-user'
   icon: 'fa fa-users'
   name: 'User'
-  html: require '../../templates/backend/site/pages/user.html'
+  html: require '../../templates/dash/site/pages/user.html'
 
   collection: 'user'
 
