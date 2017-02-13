@@ -17,11 +17,10 @@ import (
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/log"
-
-	. "hanzo.io/models"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -275,7 +274,7 @@ func newOrder(ord *order.Order) *Order {
 		so.OrderStatus = CDATA("paid")
 	}
 
-	if ord.FulfillmentStatus == FulfillmentShipped {
+	if ord.Fulfillment.Status == fulfillment.Tracked {
 		so.OrderStatus = CDATA("shipped")
 	}
 
@@ -293,7 +292,7 @@ Payment Status: %s
 Fullfillment Status: %s
 Order Id: %s
 Payment Ids: %s
-User Id: %s`, ord.Status, ord.PaymentStatus, ord.FulfillmentStatus, ord.Id(), strings.Join(ord.PaymentIds, ", "), ord.UserId))
+User Id: %s`, ord.Status, ord.PaymentStatus, ord.Fulfillment.Status, ord.Id(), strings.Join(ord.PaymentIds, ", "), ord.UserId))
 
 	so.CustomField1 = ord.Id()
 	so.CustomField2 = ord.PaymentIds[0]
