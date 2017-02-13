@@ -1,5 +1,6 @@
-# Hanzo [![Circle CI](https://circleci.com/gh/hanzo-io/platform.svg?style=svg&circle-token=1ab3428ce6dd7a6903f5d00748708a008a519ce4)](https://circleci.com/gh/hanzo-io/platform)
+# Hanzo [![CircleCI](https://circleci.com/gh/hanzo-io/platform.svg?style=svg&circle-token=fbc175690392a3aa50b991100261397e56e8f29d)](https://circleci.com/gh/hanzo-io/platform)
 Hanzo is a modern crowdfunding and ecommerce platform designed for the future.
+
 
 ## Development
 You can use `make` to setup your development enviroment. Running:
