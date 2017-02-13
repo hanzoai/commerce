@@ -46,7 +46,7 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 	if res, err := client.CreateOrder(ord, usr, ServiceLevelCode(req.Service)); err != nil {
 		http.Fail(c, res.Status, res.Message+res.Error, err)
 	} else {
-		http.Render(c, res.Status, res)
+		http.Render(c, res.Status, ord)
 	}
 }
 
