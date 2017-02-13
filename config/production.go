@@ -8,13 +8,11 @@ func Production() *Config {
 
 	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
-	config.Prefixes["cdn"] = "/"
 	config.Prefixes["dash"] = "/"
 	config.Prefixes["default"] = "/"
 
 	config.Hosts["analytics"] = "analytics.hanzo.io"
 	config.Hosts["api"] = "api.hanzo.io"
-	config.Hosts["cdn"] = "cdn.hanzo.io"
 	config.Hosts["dash"] = "dash.hanzo.io"
 	config.Hosts["default"] = "static.hanzo.io"
 
