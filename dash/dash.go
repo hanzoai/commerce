@@ -17,44 +17,21 @@ func init() {
 	acquireUser := middleware.AcquireUser("dash")
 	acquireOrganization := middleware.AcquireOrganization("dash")
 
-	// Frontend
-	// router.GET("/", frontend.Index)
+	// Dashboard
 	router.GET("/", loginRequired, acquireUser, acquireOrganization, api.Dashboard)
-	// router.GET("/about", frontend.About)
-	// router.GET("/contact", frontend.Contact)
-	// router.GET("/faq", frontend.Faq)
-	// router.GET("/features", frontend.Features)
-	// router.GET("/how-it-works", frontend.HowItWorks)
-	// router.GET("/pricing", frontend.Pricing)
-	// router.GET("/privacy", frontend.Privacy)
-	// router.GET("/team", frontend.Team)
-	// router.GET("/terms", frontend.Terms)
-
-	// Docs
-	// router.GET("/docs", docs.GettingStarted)
-	// router.GET("/docs/api", docs.API)
-	// router.GET("/docs/checkout", docs.Checkout)
-	// router.GET("/docs/hanzo.js", docs.HanzoJS)
-	// router.GET("/docs/salesforce", docs.Salesforce)
 
 	// Login
 	router.GET("/login", logoutRequired, login.Login)
 	router.POST("/login", logoutRequired, login.LoginSubmit)
 	router.GET("/logout", login.Logout)
 
-	// Signup
-	router.GET("/signup", frontend.Signup)
-	// router.GET("/signup", login.Signup)
-	// router.POST("/signup", login.SignupSubmit)
-
 	// Password Reset
-	// router.GET("/create-password", user.CreatePassword)
 	router.GET("/password-reset", login.PasswordReset)
 	router.POST("/password-reset", login.PasswordResetSubmit)
 	router.GET("/password-reset/:token", login.PasswordResetConfirm)
 	router.POST("/password-reset/:token", login.PasswordResetConfirmSubmit)
 
-	// api dashboard
+	// Dashboard routes
 	dash := router.Group("")
 	dash.Use(loginRequired, acquireUser, acquireOrganization)
 
