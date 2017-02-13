@@ -6,13 +6,12 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) error {
+func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*Response, error) {
 	req := OrderRequest{}
 	req.CommerceName = "Hanzo"
 	req.OrderNo = strconv.Itoa(ord.Number)
@@ -35,22 +34,21 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		}
 	}
 
-	log.Error("Shipwire Req:\n%v", req, ord.Context())
-	res, err := c.Request("POST", "/orders", req)
+	ctx := ord.Context()
+	o := Order{}
+
+	log.Error("Shipwire Req:\n%v", req, ctx)
+	res, err := c.Request("POST", "/orders", req, &o)
 	if err != nil {
-		return err
+		return res, err
 	}
 
-	o := Order{}
-	log.Error("Shipwire JSON:\n%s", res.Body, ord.Context())
-	if err := json.Decode(res.Body, &o); err != nil {
-		return err
-	}
+	log.Error("Shipwire Res:\n%v", res, ctx)
 
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
 
-	return ord.Update()
+	return res, ord.Update()
 }
 
 func (c *Client) GetOrder(ord *order.Order) {
