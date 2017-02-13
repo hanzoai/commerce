@@ -5,14 +5,6 @@ import (
 	"time"
 )
 
-// Webhook Response Bodies
-type MessageBody struct {
-	Status           string          `json:"status"`
-	Message          string          `json:"message"`
-	Resource         json.RawMessage `json:"resource"`
-	ResourceLocation string          `json:"resourceLocation"`
-}
-
 // Webhook Responses
 type Message struct {
 	Topic                 string      `json:"topic"`
@@ -21,4 +13,12 @@ type Message struct {
 	UniqueEventId         string      `json:"uniqueEventID"`
 	WebhookSubscriptionId int         `json:"webhookSubscriptionID"`
 	Body                  MessageBody `json:"body"`
+}
+
+// Webhook Response Bodies
+type MessageBody struct {
+	Status           string          `json:"status"`
+	Message          string          `json:"message"`
+	Resource         json.RawMessage `json:"resource"`
+	ResourceLocation string          `json:"resourceLocation"`
 }
