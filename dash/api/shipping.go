@@ -44,12 +44,11 @@ func ShipOrderUsingShipwire(c *gin.Context) {
 
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	// log.Error("Using Credentials %s, %s", org.Shipwire.Username, org.Shipwire.Password, c)
-	if err := client.CreateOrder(o, u, ServiceLevelCode(shipReq.Service)); err != nil {
-		http.Fail(c, 400, "Failed to query Shipwire", err)
-		return
+	if res, err := client.CreateOrder(o, u, ServiceLevelCode(shipReq.Service)); err != nil {
+		http.Fail(c, res.Status, res.Message, err)
+	} else {
+		http.Render(c, 200, res)
 	}
-
-	http.Render(c, 200, org)
 }
 
 func ReturnOrderUsingShipwire(c *gin.Context) {
