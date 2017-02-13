@@ -27,35 +27,35 @@ func Process(c *gin.Context) {
 	case "order.created", "order.updated", "order.canceled", "order.completed":
 		var o Order
 		if err := json.Unmarshal(req.Body.Resource, &o); err != nil {
-			log.Error("Failed decode resource: %v\n%v", err, req.Body.Resource, c)
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
 			updateOrder(c, o)
 		}
 	case "order.hold.added", "order.hold.cleared":
 		var h Hold
 		if err := json.Unmarshal(req.Body.Resource, &h); err != nil {
-			log.Error("Failed decode resource: %v\n%v", err, req.Body.Resource, c)
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
 			updateHold(c, h)
 		}
 	case "tracking.created", "tracking.updated", "tracking.delivered":
 		var t Tracking
 		if err := json.Unmarshal(req.Body.Resource, &t); err != nil {
-			log.Error("Failed decode resource: %v\n%v", err, req.Body.Resource, c)
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
 			updateTracking(c, t, false)
 		}
 	case "return.created", "return.updated", "return.canceled", "return.completed":
 		var r Return
 		if err := json.Unmarshal(req.Body.Resource, &r); err != nil {
-			log.Error("Failed decode resource: %v\n%v", err, req.Body.Resource, c)
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
 			updateReturn(c, r)
 		}
 	case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
 		var t Tracking
 		if err := json.Unmarshal(req.Body.Resource, &t); err != nil {
-			log.Error("Failed decode resource: %v\n%v", err, req.Body.Resource, c)
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
 			updateTracking(c, t, true)
 		}
