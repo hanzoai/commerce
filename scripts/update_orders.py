@@ -1,26 +1,24 @@
 #!/usr/bin/env python
+import requests
+
 from util.export import Export, json
 from util import shipwire
 
-
-class Order(Export):
-    fields = {
-        'id_':    str,
-        'items_': json,
-        'number': str,
-        'email':  str,
-
-        'shipping_address_name':        str,
-        'shipping_address_country':     str,
-        'shipping_address_state':       str,
-        'shipping_address_city':        str,
-        'shipping_address_postal_code': str,
-        'shipping_address_line1':       str,
-        'shipping_address_line2':       str,
-    }
-
-
 if __name__ == '__main__':
-    sw = shipwire.Shipwire()
-    for order in Order('orders.csv').read_csv():
-        sw.ship_order(order, level='2D')
+    s_orders = {x['orderNo']: x for x in shipwire.read_cache()}
+    for order in s_order:
+        req = {
+          "attempt": 1,
+          "body": {
+            "status": 200,
+            "message": "Successful",
+            "resourceLocation": ""
+            "resource": order
+            }
+          },
+          "timestamp": "2017-02-13T13:31:29-08:00",
+          "topic": "order.updated",
+          "uniqueEventID": "424242424242",
+          "webhookSubscriptionID": 42
+        }
+        requests.post("https://api.hanz.io/shipwire/stoned", json=req)
