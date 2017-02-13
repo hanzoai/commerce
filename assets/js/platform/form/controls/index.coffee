@@ -464,7 +464,7 @@ PaymentStatusSelect.register()
 class FulfillmentStatusSelect extends BasicSelectView
   tag: 'fulfillment-status-select'
   options: ()->
-    unfulfilled:    'Unfulfilled'
+    pending:        'Pending'
     labelled:       'Labelled'
     processing:     'Processing'
     shipped:        'Shipped'
