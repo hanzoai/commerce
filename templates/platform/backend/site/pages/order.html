@@ -45,6 +45,63 @@
           </div>
         </div>
 
+        <div id="ship-order" class="panel animated fadeIn">
+          <div class="panel-heading">
+            Shipping
+          </div>
+          <div class="panel-body" if="{ model.fulfillment.integration }">
+            <div class="section col-xs-12" style="padding:0">
+              <div class="section col-lg-6 mb20">
+                <control label="External ID" input="{ inputs['fulfillment.externalId'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Tracking Number" input="{ inputs['fulfillment.trackingNumber'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Carrier" input="{ inputs['fulfillment.carrier'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Service" input="{ inputs['fulfillment.service'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Shipping Cost" input="{ inputs['fulfillment.cost'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Created On" input="{ inputs['fulfillment.createdAt'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Shipped On" input="{ inputs['fulfillment.shippedAt'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
+                <control label="Delivered On" input="{ inputs['fulfillment.deliveredAt'] }"></control>
+              </div>
+              <!-- <div class="form-actions col-lg-6 section mt30"> -->
+              <!--   <button class="btn btn-block btn-default" onclick="{ shippingModal }">Ship via Shipwire</button> -->
+              <!-- </div> -->
+            </div>
+
+            <!-- <div class="section col-xs-12 mb10 has-error" if="{ error }" style="padding:0"> -->
+            <!--   <span class="error-container help-block animated fadeInUp">{ error.message }</span> -->
+            <!-- </div> -->
+
+          </div>
+          <div class="panel-body" if="{ !model.fulfillment.integration }">
+            <div class="section col-xs-12" style="padding:0">
+              <div class="section col-lg-6 mb20">
+                <control label="Shipping Service Level" input="{ inputs['shippingService'] }"></control>
+              </div>
+              <div class="form-actions col-lg-6 section mt30">
+                <button class="btn btn-block btn-default" onclick="{ shippingModal }">Ship via Shipwire</button>
+              </div>
+            </div>
+
+            <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
+              <span class="error-container help-block animated fadeInUp">{error.message}</span>
+            </div>
+
+          </div>
+        </div>
+
         <div id="refund-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' }">
           <div class="panel-heading">
             Refund
@@ -56,27 +113,6 @@
               </div>
               <div class="form-actions col-lg-6 section mt30">
                 <button class="btn btn-block btn-default" onclick="{ refundModal }">Refund</button>
-              </div>
-            </div>
-
-            <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
-              <span class="error-container help-block animated fadeInUp">{error.message}</span>
-            </div>
-
-          </div>
-        </div>
-
-        <div id="ship-order" class="panel animated fadeIn" if="{ !model.fulfillment.integration }">
-          <div class="panel-heading">
-            Shipping
-          </div>
-          <div class="panel-body">
-            <div class="section col-xs-12" style="padding:0">
-              <div class="section col-lg-6 mb20">
-                <control label="Shipping Service Level" input="{ inputs['shippingService'] }"></control>
-              </div>
-              <div class="form-actions col-lg-6 section mt30">
-                <button class="btn btn-block btn-default" onclick="{ shipModal }">Ship via Shipwire</button>
               </div>
             </div>
 
@@ -168,7 +204,7 @@
             <payment-list path="{ 'order/'+opts.id+'/payments' }">
               No Payments Found
             </payment-list>
-          </div>
+          </div>i
         </div>
 
       </div>

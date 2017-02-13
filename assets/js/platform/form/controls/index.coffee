@@ -552,6 +552,10 @@ helpers.registerTag (inputCfg)->
 , 'fulfillment-status-select'
 
 helpers.registerTag (inputCfg)->
+  return inputCfg.hints['shipping-service-select']
+, 'shipping-service-select'
+
+helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-money']
 , 'static-money'
 
