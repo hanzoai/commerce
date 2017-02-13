@@ -1,4 +1,4 @@
-package admin
+package platform
 
 import (
 	"sort"
@@ -15,9 +15,12 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
+	"hanzo.io/platform/login"
+	"hanzo.io/platform/user"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
+	"hanzo.io/util/router"
 	"hanzo.io/util/strings"
 	"hanzo.io/util/template"
 )
@@ -228,4 +231,86 @@ func Render(c *gin.Context, name string, args ...interface{}) {
 	log.Warn("Z%s", org.Id())
 
 	template.Render(c, name, args...)
+}
+
+// Defines the routes for the platform
+func init() {
+	router := router.New("dash")
+
+	loginRequired := middleware.LoginRequired("dash")
+	logoutRequired := middleware.LogoutRequired("dash")
+	acquireUser := middleware.AcquireUser("dash")
+	acquireOrganization := middleware.AcquireOrganization("dash")
+
+	// Frontend
+	// router.GET("/", frontend.Index)
+	router.GET("/", loginRequired, acquireUser, acquireOrganization, Dashboard)
+	// router.GET("/about", frontend.About)
+	// router.GET("/contact", frontend.Contact)
+	// router.GET("/faq", frontend.Faq)
+	// router.GET("/features", frontend.Features)
+	// router.GET("/how-it-works", frontend.HowItWorks)
+	// router.GET("/pricing", frontend.Pricing)
+	// router.GET("/privacy", frontend.Privacy)
+	// router.GET("/team", frontend.Team)
+	// router.GET("/terms", frontend.Terms)
+
+	// Docs
+	// router.GET("/docs", docs.GettingStarted)
+	// router.GET("/docs/api", docs.API)
+	// router.GET("/docs/checkout", docs.Checkout)
+	// router.GET("/docs/hanzo.js", docs.HanzoJS)
+	// router.GET("/docs/salesforce", docs.Salesforce)
+
+	// Login
+	router.GET("/login", logoutRequired, login.Login)
+	router.POST("/login", logoutRequired, login.LoginSubmit)
+	router.GET("/logout", login.Logout)
+
+	// Signup
+	router.GET("/signup", frontend.Signup)
+	// router.GET("/signup", login.Signup)
+	// router.POST("/signup", login.SignupSubmit)
+
+	// Password Reset
+	// router.GET("/create-password", user.CreatePassword)
+	router.GET("/password-reset", login.PasswordReset)
+	router.POST("/password-reset", login.PasswordResetSubmit)
+	router.GET("/password-reset/:token", login.PasswordResetConfirm)
+	router.POST("/password-reset/:token", login.PasswordResetConfirmSubmit)
+
+	// Admin dashboard
+	dash := router.Group("")
+	dash.Use(loginRequired, acquireUser, acquireOrganization)
+
+	dash.GET("/profile", user.Profile)
+	dash.POST("/profile", user.ContactSubmit)
+	dash.POST("/profile/password", user.PasswordSubmit)
+	dash.GET("/keys", Keys)
+	dash.POST("/keys", NewKeys)
+
+	dash.GET("/sendorderconfirmation/:id", SendOrderConfirmation)
+	dash.GET("/sendrefundconfirmation/:id", SendRefundConfirmation)
+	dash.GET("/sendfulfillmentconfirmation/:id", SendFulfillmentConfirmation)
+	dash.POST("/shipwire/ship/:id", ShipOrderUsingShipwire)
+	dash.POST("/shipwire/return/:id", ReturnOrderUsingShipwire)
+
+	dash.GET("/organization", Organization)
+	dash.POST("/organization", UpdateOrganization)
+
+	dash.GET("/organization/:organizationid/set-active", SetActiveOrganization)
+
+	dash.GET("/settings", user.Profile)
+
+	dash.GET("/search", Search)
+
+	// Stripe connect
+	dash.GET("/stripe", Stripe)
+	dash.GET("/stripe/callback", StripeCallback)
+	dash.GET("/stripe/sync", StripeSync)
+
+	// Salesfoce connect
+	dash.GET("/salesforce/callback", SalesforceCallback)
+	dash.GET("/salesforce/test", TestSalesforceConnection)
+	router.GET("/salesforce/sync", SalesforcePullLatest)
 }
