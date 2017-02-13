@@ -5,7 +5,7 @@ input = require '../../../form/input'
 class HeapAnalytics extends Integration
   tag: 'heap-integration'
   type: 'heap-analytics'
-  html: require '../../../templates/backend/widget/integrations/analytics/heap.html'
+  html: require '../../../templates/dash/widget/integrations/analytics/heap.html'
   img: '/img/integrations/heap.png'
   alt: 'Heap Analytics'
   text: 'Heap Analytics'

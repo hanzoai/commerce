@@ -47,7 +47,7 @@ activePage = pages.Dashboard
 
 class Menu extends View
   tag: 'menu'
-  html: require '../templates/backend/site/menu.html'
+  html: require '../templates/dash/site/menu.html'
   model: menu
 
   route: (url)->

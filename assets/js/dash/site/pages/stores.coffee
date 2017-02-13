@@ -4,7 +4,7 @@ class Stores extends Page
   tag: 'page-stores'
   icon: 'glyphicon glyphicon-home'
   name: 'Stores'
-  html: require '../../templates/backend/site/pages/stores.html'
+  html: require '../../templates/dash/site/pages/stores.html'
 
   collection: 'stores'
 

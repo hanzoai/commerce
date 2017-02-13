@@ -13,7 +13,7 @@ class ItemList extends BasicList
   tag: 'item-list'
   path: 'item'
   itemsModel: 'items'
-  # html: require '../../templates/backend/table/lists/item.html'
+  # html: require '../../templates/dash/table/lists/item.html'
   headers: [
     field('productId', 'Product Slug', 'id', 'id-display:productSlug id-path:../product')
     field('productName', 'Product ')

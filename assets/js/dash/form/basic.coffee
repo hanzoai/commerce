@@ -16,7 +16,7 @@ class BasicFormView extends FormView
   tag: 'basic-form'
   redirectPath: ''
   path: ''
-  html: require '../templates/backend/form/template.html'
+  html: require '../templates/dash/form/template.html'
   id: null
   error: null
   processButtonText: 'Saving...'

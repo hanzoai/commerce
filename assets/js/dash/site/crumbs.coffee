@@ -11,7 +11,7 @@ _id = ''
 
 class Crumbs extends View
   tag: 'crumbs'
-  html: require '../templates/backend/site/crumbs.html'
+  html: require '../templates/dash/site/crumbs.html'
 
   js: ()->
     super

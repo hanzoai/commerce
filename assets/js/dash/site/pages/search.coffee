@@ -4,7 +4,7 @@ class Search extends Page
   tag: 'page-search'
   icon: 'fa fa-search'
   name: 'Search'
-  html: require '../../templates/backend/site/pages/search.html'
+  html: require '../../templates/dash/site/pages/search.html'
 
   collection: 'search'
 

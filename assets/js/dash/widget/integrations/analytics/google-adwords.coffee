@@ -5,7 +5,7 @@ input = require '../../../form/input'
 class GoogleAdwords extends Integration
   tag: 'gadwords-integration'
   type: 'google-adwords'
-  html: require '../../../templates/backend/widget/integrations/analytics/gadwords.html'
+  html: require '../../../templates/dash/widget/integrations/analytics/gadwords.html'
   img: '/img/integrations/adwrds.png'
   alt: 'Google Adwords'
   text: 'Google Adwords'
