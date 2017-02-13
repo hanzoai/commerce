@@ -34,7 +34,7 @@
                 {% else %}
                 <a class="btn btn-effect-ripple btn-primary" href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ config.Stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ config.Stripe.RedirectURL }}" class="stripe-connect">Connect with Stripe</a>
                 {% endif %}
-                <a class="btn btn-warning" href="{{ config.UrlFor("platform", "/stripe/sync") }}">Sync orders</a>
+                <a class="btn btn-warning" href="{{ config.UrlFor("dash", "/stripe/sync") }}">Sync orders</a>
             </div>
         </div>
         <!-- END Stripe Connect Form Content -->
