@@ -22,6 +22,9 @@ func updateOrder(c *gin.Context, o Order) {
 
 	ord := order.New(db)
 	id := o.ExternalID
+	if id == "" {
+		id = o.OrderNo
+	}
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
