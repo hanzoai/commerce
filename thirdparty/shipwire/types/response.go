@@ -6,8 +6,8 @@ import (
 
 type Response struct {
 	// Randomly returns errors in different places
-	Errors json.RawMessage `json:"errors,omitempty"`
-	Error  string          `json:"error,omitempty"`
+	Error  string  `json:"error,omitempty"`
+	Errors []Error `json:"errors,omitempty"`
 
 	Status           int    `json:"status"`
 	Message          string `json:"message"`
