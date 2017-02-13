@@ -63,8 +63,11 @@
               <div class="section col-lg-6 mb20">
                 <control label="Service" input="{ inputs['fulfillment.service'] }"></control>
               </div>
-              <div class="section col-lg-6 mb20">
-                <control label="Shipping Cost" input="{ inputs['fulfillment.cost'] }"></control>
+              <div class="section col-lg-6 mb20" if="{ model.fulfillment.pricing > 0 }">
+                <control label="Shipping Cost" input="{ inputs['fulfillment.pricing'] }"></control>
+              </div>
+              <div class="section col-lg-6 mb20" if="{ model.fulfillment.pricing <= 0 }">
+                <control label="Shipping Cost Estimate" input="{ inputs['fulfillment.pricingEstimate'] }"></control>
               </div>
               <div class="section col-lg-6 mb20">
                 <control label="Created On" input="{ inputs['fulfillment.createdAt'] }"></control>
