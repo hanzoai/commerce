@@ -5,24 +5,24 @@ from util import shipwire
 
 
 topics = [
-    # # orders
-    # 'v1.order.created',
-    # 'v1.order.updated',
-    # 'v1.order.canceled',
-    # 'v1.order.completed',
-    # 'v1.order.hold.added',
-    # 'v1.order.hold.cleared',
+    # orders
+    'v1.order.created',
+    'v1.order.updated',
+    'v1.order.canceled',
+    'v1.order.completed',
+    'v1.order.hold.added',
+    'v1.order.hold.cleared',
 
-    # # tracking info
-    # 'v1.tracking.created',
-    # 'v1.tracking.updated',
-    # 'v1.tracking.delivered',
+    # tracking info
+    'v1.tracking.created',
+    'v1.tracking.updated',
+    'v1.tracking.delivered',
 
-    # # stock
-    # 'v1.stock.transition',
-    # 'v1.stock.transition.good',
-    # 'v1.alert.low-stock',
-    # 'v1.alert',
+    # stock
+    'v1.stock.transition',
+    'v1.stock.transition.good',
+    'v1.alert.low-stock',
+    'v1.alert',
 
     # returns
     'v1.return.created',
