@@ -19,6 +19,7 @@ class ProductForm extends Form
     input('id', '', 'static'),
     input('name', 'Product Name (Shirt)', 'required')
     input('slug', 'Product Slug (SHIRT-123)', 'required unique unique-api:product')
+    input('sku', 'Product SKU/Barcode (12345678)', 'required')
     input('description', 'Describe this product', 'text')
 
     input('currency', '', 'currency-type-select'),
