@@ -42,6 +42,7 @@ func New(c *gin.Context, username, password string) *Client {
 
 func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*Response, error) {
 	var payload *bytes.Buffer
+	var res Response
 
 	if body != nil {
 		payload = bytes.NewBuffer(json.EncodeBytes(body))
@@ -55,23 +56,21 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	// req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Add("Content-Type", "application/json")
 
-	res := new(Response)
-
 	// Do request
 	r, err := c.client.Do(req)
 	if err != nil {
-		return res, err
+		return &res, err
 	}
 
 	// Automatically decode body
 	if dst != nil {
 		// TODO: Do we need to close this?
-		err = json.Decode(r.Body, res)
+		err = json.Decode(r.Body, &res)
 		if err != nil {
 			// Get first resource
 			err = json.Unmarshal(res.Resource.Items[0].Resource, &dst)
 		}
 	}
 
-	return res, err
+	return &res, err
 }
