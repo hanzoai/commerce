@@ -39,13 +39,6 @@ handlers:
 - url: /_ah/remote_api
   script: _go_app
 
-# DEPRECTATED in production, for consistent local logging.
-# - url: /assets/*
-#   static_dir: ../../assets
-
-# - url: /static/*
-#   static_dir: ../../static
-
 - url: /assets/.*
   script: _go_app
 
