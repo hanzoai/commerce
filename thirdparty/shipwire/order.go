@@ -39,7 +39,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 		return err
 	}
 
-	var o Order
+	o := Order{}
 	if err := json.Decode(res.Body, &o); err != nil {
 		return err
 	}
