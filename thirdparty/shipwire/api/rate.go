@@ -27,7 +27,7 @@ func rate(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	rates, res, err := client.Rate(ord)
-	if err != nil {
+	if err == nil {
 		http.Render(c, 200, rates)
 	} else {
 		http.Fail(c, res.Status, fmt.Errorf("Failed to get rates from Shipwire: %v", err), err)
