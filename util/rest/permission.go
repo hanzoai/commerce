@@ -138,6 +138,15 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Referrer),
 	},
 
+	"return": Permissions{
+		"create": masks(Admin, WriteReturn),
+		"delete": masks(Admin, WriteReturn),
+		"patch":  masks(Admin, ReadReturn|WriteReturn),
+		"update": masks(Admin, ReadReturn|WriteReturn),
+		"get":    masks(Admin, ReadReturn),
+		"list":   masks(Admin, Return),
+	},
+
 	"store": Permissions{
 		"create": masks(Admin, WriteStore),
 		"delete": masks(Admin, WriteStore),

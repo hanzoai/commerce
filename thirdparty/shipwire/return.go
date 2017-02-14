@@ -36,10 +36,10 @@ func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 	}
 
 	ord.Fulfillment.Status = fulfillment.Returned
-	ord.Fulfillment.Returns[0].Status = rtn.Status
-	ord.Fulfillment.Returns[0].ExternalId = strconv.Itoa(rtn.ID)
-	ord.Fulfillment.Returns[0].ExpectedAt = rtn.ExpectedDate.Time
-	ord.Fulfillment.Returns[0].UpdatedAt = rtn.LastUpdatedDate.Time
+	// ord.Fulfillment.Returns[0].Status = rtn.Status
+	// ord.Fulfillment.Returns[0].ExternalId = strconv.Itoa(rtn.ID)
+	// ord.Fulfillment.Returns[0].ExpectedAt = rtn.ExpectedDate.Time
+	// ord.Fulfillment.Returns[0].UpdatedAt = rtn.LastUpdatedDate.Time
 
 	return res, ord.Update()
 }
