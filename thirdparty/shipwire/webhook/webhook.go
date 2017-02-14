@@ -64,16 +64,16 @@ func Process(c *gin.Context) {
 			updateReturn(c, req.Topic, r)
 		}
 
-	case "order.hold.added", "order.hold.cleared":
-		holds := make([]Hold, 0)
-		if err := getList(c, req.Body.Resource, holds); err != nil {
-			updateHolds(c, req.Topic, holds)
-		}
-
 	case "tracking.created", "tracking.updated", "tracking.delivered":
 		trackings := make([]Tracking, 0)
-		if err := getList(c, req.Body.Resource, trackings); err != nil {
+		if err := getList(c, req.Body.Resource, &trackings); err != nil {
 			updateTrackings(c, req.Topic, trackings)
+		}
+
+	case "order.hold.added", "order.hold.cleared":
+		holds := make([]Hold, 0)
+		if err := getList(c, req.Body.Resource, &holds); err != nil {
+			updateHolds(c, req.Topic, holds)
 		}
 
 	// case "return.hold.added", "return.hold.cleared":
