@@ -15,7 +15,7 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateOrder(c *gin.Context, o Order) {
+func updateOrder(c *gin.Context, topic string, o Order) {
 	log.Info("Update order information:\n%v", o, c)
 
 	org := middleware.GetOrganization(c)
