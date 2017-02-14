@@ -36,7 +36,7 @@ func getList(c *gin.Context, data []byte, dst interface{}) error {
 }
 
 // Process individual webhooks
-func Process(c *gin.Context) {
+func webhook(c *gin.Context) {
 	dump, _ := httputil.DumpRequest(c.Request, true)
 	log.Info("Webhook request:\n%s", dump, c)
 
