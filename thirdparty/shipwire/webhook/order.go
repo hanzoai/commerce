@@ -26,6 +26,7 @@ func updateOrder(c *gin.Context, o Order) {
 	if id == "" {
 		id = o.OrderNo
 	}
+
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
@@ -36,7 +37,7 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
 
-	// Update fulfillment statet
+	// Update fulfillment states
 	ord.FulfillmentStatus = fulfillment.Status(o.Status)
 	ord.Fulfillment.Status = fulfillment.Status(o.Status)
 	ord.Fulfillment.Pricing = currency.Cents(o.Pricing.Resource.Total * 100)
