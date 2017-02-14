@@ -4,12 +4,11 @@ import (
 	"time"
 
 	"hanzo.io/models/order"
-	"hanzo.io/models/user"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func (c *Client) Rate(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*Rates, *Response, error) {
+func (c *Client) Rate(ord *order.Order) (*Rates, *Response, error) {
 	req := RateRequest{}
 
 	req.Options.Currency = ord.Currency.Code()
