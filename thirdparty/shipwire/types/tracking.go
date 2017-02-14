@@ -3,6 +3,7 @@ package types
 type Tracking struct {
 	ID              int    `json:"id"`
 	OrderID         int    `json:"orderId"`
+	PieceID         int    `json:"pieceId"`
 	OrderExternalID string `json:"orderExternalId"`
 	Carrier         string `json:"carrier"`
 	Url             string `json:"url"`
@@ -10,10 +11,10 @@ type Tracking struct {
 	Summary     string `json:"summary"`
 	SummaryDate Date   `json:"summaryDate"`
 
-	LabelCreatedDate Date `json:"labelCreatedDate"`
-
 	Tracking    string `json:"tracking"`
 	TrackedDate Date   `json:"trackedDate"`
+
+	LabelCreatedDate Date `json:"labelCreatedDate"`
 
 	FirstScanRegion     string `json:"firstScanRegion"`
 	FirstScanPostalCode string `json:"firstScanPostalCode"`
