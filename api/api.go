@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
+	"hanzo.io/models/return"
 	"hanzo.io/models/site"
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
@@ -90,6 +91,7 @@ func Route(api router.Router) {
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
+	rest.New(return_.Return{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
