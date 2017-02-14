@@ -1,20 +1,26 @@
 package shipwire
 
 import (
+	"fmt"
+	"time"
+
 	"hanzo.io/models/order"
+
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func (c *Client) Rate(ord *order.Order) (*Rates, *Response, error) {
+func (c *Client) Rate(ord *order.Order) ([]Rates, *RateResponse, error) {
 	req := RateRequest{}
 
 	req.Options.Currency = ord.Currency.Code()
 	req.Options.CanSplit = 1
 	req.Options.WarehouseArea = "US"
-	// req.Options.ChannelName = "My Channel"
-	// req.Options.ExpectedShipDate = Date{time.Now().Add(time.Hour * 24)}
 	req.Options.HighAccuracyEstimates = 1
 	req.Options.ReturnAllRates = 1
+	// req.Options.ChannelName = "My Channel"
+
+	year, month, day := time.Now().Add(time.Hour * 24).Date()
+	req.Options.ExpectedShipDate = fmt.Sprintf("%s-%s-%s", year, month, day)
 
 	req.Order.ShipTo.Address1 = ord.ShippingAddress.Line1
 	req.Order.ShipTo.Address2 = ord.ShippingAddress.Line2
@@ -31,13 +37,9 @@ func (c *Client) Rate(ord *order.Order) (*Rates, *Response, error) {
 		}
 	}
 
-	rates := Rates{}
+	res := RateResponse{}
 
 	// Use /api/v3.1/rate
-	res, err := c.Request("POST", ".1/rate", req, &rates)
-	if err != nil {
-		return &rates, res, err
-	}
-
-	return &rates, res, ord.Update()
+	_, err := c.Request("POST", ".1/rate", req, &res)
+	return res.Resource, &res, err
 }
