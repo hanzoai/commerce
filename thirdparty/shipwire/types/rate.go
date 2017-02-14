@@ -62,16 +62,16 @@ type Rates struct {
 
 	Pieces []struct {
 		Length struct {
-			Amount int    `json:"amount"`
-			Units  string `json:"units"`
+			Amount float64 `json:"amount"`
+			Units  string  `json:"units"`
 		} `json:"length"`
 		Width struct {
 			Amount float64 `json:"amount"`
 			Units  string  `json:"units"`
 		} `json:"width"`
 		Height struct {
-			Amount int    `json:"amount"`
-			Units  string `json:"units"`
+			Amount float64 `json:"amount"`
+			Units  string  `json:"units"`
 		} `json:"height"`
 		Weight struct {
 			Amount float64 `json:"amount"`

@@ -80,10 +80,18 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	dump, _ = httputil.DumpResponse(r, true)
 	log.Warn("Shipwire response:\n%s", dump, c.ctx)
 
+	defer r.Body.Close()
+
+	// Decode response wrapper
+	if err := json.Decode(r.Body, dst); err != nil {
+		log.Warn("Failed to decode response:%v", err, c.ctx)
+		return nil, err
+	}
+
 	return r, err
 }
 
-func (c *Client) RequestResource(method, url string, body interface{}, dst interface{}) (*Response, error) {
+func (c *Client) Resource(method, url string, body interface{}, dst interface{}) (*Response, error) {
 	var res Response
 	r, err := c.Request(method, url, body, &res)
 
@@ -94,14 +102,6 @@ func (c *Client) RequestResource(method, url string, body interface{}, dst inter
 	if err != nil {
 		log.Error("Shipwire request failed: %v", err, c.ctx)
 		return &res, err
-	}
-
-	defer r.Body.Close()
-
-	// Decode response wrapper
-	if err := json.Decode(r.Body, &res); err != nil {
-		log.Warn("Failed to decode response:%v", err, c.ctx)
-		return nil, err
 	}
 
 	// Handle errors
