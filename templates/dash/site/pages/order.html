@@ -52,15 +52,14 @@
           <div class="panel-body" if="{ model.fulfillment.type }">
             <div class="section col-xs-12" style="padding:0">
               <div class="section col-lg-6 mb20">
-                <control label="External ID" input="{ inputs['fulfillment.externalId'] }"></control>
-              </div>
-              <div class="section col-lg-6 mb20">
                 <div>
                   <label for="for" class="control-label text-left col-xs-12">
-                    <span>Tracking Number</span>
+                    <span>External ID</span>
                   </label>
-                  <div class="section col-xs-12" each="{ fulfillment.trackings }">
-                    <p class="form-control-static">{ number }&nbsp;</p>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">
+                      <a href="https://merchant.shipwire.com/merchants/ship/confirm/orderId/{fulfillment.externalId}" target="_blank">{ fulfillment.externalId }&nbsp;</a>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -76,25 +75,130 @@
               <div class="section col-lg-6 mb20" if="{ model.fulfillment.pricing <= 0 }">
                 <control label="Shipping Cost Estimate" input="{ inputs['fulfillment.pricingEstimate'] }"></control>
               </div>
-              <div class="section col-lg-6 mb20">
-                <control label="Created On" input="{ inputs['fulfillment.createdAt'] }"></control>
-              </div>
-              <div class="section col-lg-6 mb20">
-                <control label="Shipped On" input="{ inputs['fulfillment.shippedAt'] }"></control>
-              </div>
-              <div class="section col-lg-6 mb20">
-                <control label="Delivered On" input="{ inputs['fulfillment.deliveredAt'] }"></control>
-              </div>
-              <!-- <div class="form-actions col-lg-6 section mt30"> -->
-              <!--   <button class="btn btn-block btn-default" onclick="{ shippingModal }">Ship via Shipwire</button> -->
-              <!-- </div> -->
             </div>
+            <div class="section col-lg-4 mb20" if="{ submittedAt != '0001-01-01T00:00:00Z' }">
+              <div>
+                <label for="for" class="control-label text-left col-xs-12">
+                  <span>Submitted On</span>
+                </label>
+                <div class="section col-xs-12">
+                  <p class="form-control-static">{ moment(submittedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                </div>
+              </div>
+            </div>
+            <div class="section col-lg-4 mb20" if="{ processedAt != '0001-01-01T00:00:00Z' }">
+              <div>
+                <label for="for" class="control-label text-left col-xs-12">
+                  <span>Processed On</span>
+                </label>
+                <div class="section col-xs-12">
+                  <p class="form-control-static">{ moment(processedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                </div>
+              </div>
+            </div>
+            <div class="section col-lg-4 mb20" if="{ expectedAt != '0001-01-01T00:00:00Z' }">
+              <div>
+                <label for="for" class="control-label text-left col-xs-12">
+                  <span>Expected On (Worst Case)</span>
+                </label>
+                <div class="section col-xs-12">
+                  <p class="form-control-static">{ moment(expectedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                </div>
+              </div>
+            </div>
+            <div each="{ model.fulfillment.trackings }">
+              <div class="section col-lg-4 mb20" if="{ number }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Tracking Number</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">
+                      <a href="{ url }" target="_blank">{ number }&nbsp;</a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <!-- <div class="section col-lg-4 mb20"> -->
+              <!--   <div> -->
+              <!--     <label for="for" class="control-label text-left col-xs-12"> -->
+              <!--       <span>Origin</span> -->
+              <!--     </label> -->
+              <!--     <div class="section col-xs-12"> -->
+              <!--       <p class="form-control-static">{ deliveryCity }&nbsp;</p> -->
+              <!--     </div> -->
+              <!--   </div> -->
+              <!-- </div> -->
+              <div class="section col-lg-4 mb20" if="{ createdAt != '0001-01-01T00:00:00Z' }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Created On</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ moment(createdAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+              <div class="section col-lg-4 mb20" if="{ labelCreatedAt != '0001-01-01T00:00:00Z' }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Label Created On</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ moment(labelCreatedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+              <div class="section col-lg-4 mb20" if="{ labelCreatedAt != '0001-01-01T00:00:00Z' }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>First Scanned On</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ moment(firstScanAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+              <div class="section col-lg-4 mb20" if="{ deliveredAt != '0001-01-01T00:00:00Z' }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Delivered On</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ moment(deliveredAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+              <div class="section col-lg-4 mb20" if="{ lastManualUpdateAt != '0001-01-01T00:00:00Z' }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Latest Updated</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ moment(lastManualUpdateAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+              <div class="section col-lg-12 mb20" if="{ summary }">
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Summary</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ summary }&nbsp;</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- <div class="form-actions col-lg-6 section mt30"> -->
+            <!--   <button class="btn btn-block btn-default" onclick="{ shippingModal }">Ship via Shipwire</button> -->
+            <!-- </div> -->
+          </div>
 
             <!-- <div class="section col-xs-12 mb10 has-error" if="{ error }" style="padding:0"> -->
             <!--   <span class="error-container help-block animated fadeInUp">{ error.message }</span> -->
             <!-- </div> -->
 
-          </div>
           <div class="panel-body" if="{ !model.fulfillment.type }">
             <div class="section col-xs-12" style="padding:0">
               <div class="section col-lg-6 mb20">
@@ -108,8 +212,8 @@
             <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
               <span class="error-container help-block animated fadeInUp">{error.message}</span>
             </div>
-
           </div>
+
         </div>
 
         <div id="refund-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' }">
