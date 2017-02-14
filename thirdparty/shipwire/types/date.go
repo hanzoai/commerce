@@ -16,12 +16,12 @@ func (d *Date) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	// Layout v1
-	if d.Time, err = time.Parse("2006-01-02T15:04:05-07:00", str); err == nil {
+	if d.Time, err = time.Parse(`"2006-01-02 15:04:05"`, str); err == nil {
 		return nil
 	}
 
 	// Layout v2
-	if d.Time, err = time.Parse("2006-01-02 15:04:05", str); err == nil {
+	if d.Time, err = time.Parse(`"2006-01-02T15:04:05-07:00"`, str); err == nil {
 		return nil
 	}
 
