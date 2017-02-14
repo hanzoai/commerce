@@ -116,7 +116,7 @@ func Decode(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 		return key, nil
 	}
 
-	log.Info("Failed to decode hashid, assuming base64 encoding: %v", err, ctx)
+	log.Debug("Failed to decode hashid, assuming base64 encoding: %v", err, ctx)
 
 	// Fallback to aedsDecode
 	return aedsDecode(ctx, encoded)
