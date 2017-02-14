@@ -1,4 +1,4 @@
-package _default
+package default_
 
 import (
 	"appengine"
