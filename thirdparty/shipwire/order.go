@@ -34,7 +34,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	}
 
 	o := Order{}
-	res, err := c.Request("POST", "/orders", req, &o)
+	res, err := c.RequestResource("POST", "/orders", req, &o)
 	if err != nil {
 		return res, err
 	}
@@ -53,6 +53,6 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 
 func (c *Client) GetOrder(id int) (*Order, *Response, error) {
 	o := Order{}
-	res, err := c.Request("GET", "/orders/"+strconv.Itoa(id), nil, &o)
+	res, err := c.RequestResource("GET", "/orders/"+strconv.Itoa(id), nil, &o)
 	return &o, res, err
 }
