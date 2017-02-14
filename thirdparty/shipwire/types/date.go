@@ -8,20 +8,25 @@ type Date struct {
 
 // Patch for processing null values
 func (d *Date) UnmarshalJSON(data []byte) error {
-	// Ignore null, like in the main JSON package.
-	if string(data) == "null" {
+	str := string(data)
+
+	// Ignore null dates
+	if str == "null" {
 		return nil
 	}
 
-	if t, err := time.Parse("2006-01-02T15:04:05-07:00", string(data)); err == nil {
+	// Shipwire date style 1
+	if t, err := time.Parse("2006-01-02T15:04:05-07:00", str); err == nil {
 		d.Time = t
 		return nil
 	}
 
-	if t, err := time.Parse("2006-01-02 15:04:05", string(data)); err == nil {
+	// Shipwire date style 2
+	if t, err := time.Parse("2006-01-02 15:04:05", str); err == nil {
 		d.Time = t
 		return nil
 	}
 
+	// Fallback to normal Unmarshal method
 	return d.Time.UnmarshalJSON(data)
 }
