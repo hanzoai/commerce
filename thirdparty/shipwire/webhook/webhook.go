@@ -40,7 +40,7 @@ func Process(c *gin.Context) {
 	dump, _ := httputil.DumpRequest(c.Request, true)
 	log.Info("Webhook request:\n%s", dump, c)
 
-	var req Message
+	var req Request
 	if err := json.Decode(c.Request.Body, &req); err != nil {
 		log.Error("Failed to decode request body: %v", err, c)
 		c.String(200, "ok\n")
