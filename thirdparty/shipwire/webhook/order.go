@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
+	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
@@ -59,6 +60,19 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.ProcessedAt = o.Events.Resource.ProcessedDate.Time
 	ord.Fulfillment.ReturnedAt = o.Events.Resource.ReturnedDate.Time
 	ord.Fulfillment.SubmittedAt = o.Events.Resource.SubmittedDate.Time
+
+	// Update tracking if available
+	trackings := o.Trackings.Resource.Items
+	if len(trackings) > 0 {
+		log.Info("Populating tracking information", c)
+		ord.Fulfillment.Trackings = make([]fulfillment.Tracking, len(trackings))
+		for i, trk := range trackings {
+			var t Tracking
+			if err := json.Unmarshal(trk.Resource, &t); err == nil {
+				ord.Fulfillment.Trackings[i] = convertTracking(t)
+			}
+		}
+	}
 
 	ord.MustPut()
 
