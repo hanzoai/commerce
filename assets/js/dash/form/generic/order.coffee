@@ -54,9 +54,6 @@ class OrderForm extends Form
     input('fulfillment.service', '', 'static')
     input('fulfillment.pricing', '', 'static-money')
     input('fulfillment.pricingEstimate', '', 'static-money')
-    input('fulfillment.createdAt', '', 'static-date')
-    input('fulfillment.shippedAt', '', 'static-date')
-    input('fulfillment.deliveredAt', '', 'static-date')
 
     input('metadata', '', 'static-pre'),
   ]
