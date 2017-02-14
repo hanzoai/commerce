@@ -37,15 +37,14 @@ func convertTracking(t Tracking) fulfillment.Tracking {
 	return trk
 }
 
-func updateTrackings(c *gin.Context, topic string, trackings []Tracking) {
-	log.Warn("Trackings:\n%v", trackings, c)
+func updateTracking(c *gin.Context, topic string, t Tracking) {
+	log.Info("Tracking:\n%v", t, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
 
-	t := trackings[0]
 	id := t.OrderExternalID
 	err := ord.GetById(id)
 	if err != nil {
@@ -54,10 +53,7 @@ func updateTrackings(c *gin.Context, topic string, trackings []Tracking) {
 		return
 	}
 
-	ord.Fulfillment.Trackings = make([]fulfillment.Tracking, 0)
-	for _, t := range trackings {
-		ord.Fulfillment.Trackings = append(ord.Fulfillment.Trackings, convertTracking(t))
-	}
+	ord.Fulfillment.Trackings = []fulfillment.Tracking{convertTracking(t)}
 
 	ord.MustPut()
 
