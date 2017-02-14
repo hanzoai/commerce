@@ -6,7 +6,7 @@ type RateRequest struct {
 		CanSplit              int    `json:"canSplit"`
 		WarehouseArea         string `json:"warehouseArea"`
 		ChannelName           string `json:"channelName"`
-		ExpectedShipDate      Date   `json:"expectedShipDate"`
+		ExpectedShipDate      string `json:"expectedShipDate"`
 		HighAccuracyEstimates int    `json:"highAccuracyEstimates"`
 		ReturnAllRates        int    `json:"returnAllRates"`
 	} `json:"options"`
@@ -25,6 +25,15 @@ type RateRequest struct {
 		} `json:"shipTo"`
 		Items []Item `json:"items"`
 	} `json:"order"`
+}
+
+type RateResponse struct {
+	Status           int      `json:"status"`
+	Message          string   `json:"message"`
+	Warnings         struct{} `json:"warnings"`
+	Errors           struct{} `json:"errors"`
+	ResourceLocation string   `json:"resourceLocation"`
+	Resource         []Rates  `json:"resource"`
 }
 
 type Rates struct {
