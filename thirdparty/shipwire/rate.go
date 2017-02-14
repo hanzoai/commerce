@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"hanzo.io/models/order"
+	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -41,5 +42,6 @@ func (c *Client) Rate(ord *order.Order) ([]Rates, *RateResponse, error) {
 
 	// Use /api/v3.1/rate
 	_, err := c.Request("POST", ".1/rate", req, &res)
+	log.Info("Got res: %v", res, c.ctx)
 	return res.Resource, &res, err
 }
