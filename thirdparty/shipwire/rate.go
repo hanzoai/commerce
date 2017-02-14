@@ -1,10 +1,7 @@
 package shipwire
 
 import (
-	"time"
-
 	"hanzo.io/models/order"
-
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
@@ -15,7 +12,7 @@ func (c *Client) Rate(ord *order.Order) (*Rates, *Response, error) {
 	req.Options.CanSplit = 1
 	req.Options.WarehouseArea = "US"
 	// req.Options.ChannelName = "My Channel"
-	req.Options.ExpectedShipDate = Date{time.Now()}
+	// req.Options.ExpectedShipDate = Date{time.Now().Add(time.Hour * 24)}
 	req.Options.HighAccuracyEstimates = 1
 	req.Options.ReturnAllRates = 1
 
