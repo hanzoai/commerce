@@ -3,6 +3,7 @@ package types
 type Tracking struct {
 	ID              int    `json:"id"`
 	OrderID         int    `json:"orderId"`
+	PieceID         int    `json:"pieceId"`
 	OrderExternalID string `json:"orderExternalId"`
 	Carrier         string `json:"carrier"`
 	Url             string `json:"url"`
