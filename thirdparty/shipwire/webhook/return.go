@@ -6,44 +6,52 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
-	"hanzo.io/models/types/fulfillment"
+	return_ "hanzo.io/models/return"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func convertReturn(rtn Return) fulfillment.Return {
-	var r fulfillment.Return
-	r.CancelledAt = rtn.Events.Resource.CancelledDate.Time
-	r.CompletedAt = rtn.Events.Resource.CompletedDate.Time
-	r.UpdatedAt = rtn.LastUpdatedDate.Time
-	r.ExpectedAt = rtn.ExpectedDate.Time
-	r.DeliveredAt = rtn.Events.Resource.DeliveredDate.Time
-	r.PickedUpAt = rtn.Events.Resource.PickedUpDate.Time
-	r.ProcessedAt = rtn.Events.Resource.ProcessedDate.Time
-	r.ReturnedAt = rtn.Events.Resource.ReturnedDate.Time
-	r.SubmittedAt = rtn.Events.Resource.SubmittedDate.Time
-	return r
-}
-
-func updateReturn(c *gin.Context, rtn Return) {
-	log.Warn("Return Information:\n%v", rtn, c)
+func updateReturn(c *gin.Context, r Return) {
+	log.Info("Update order information:\n%v", r, c)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
+	rtn := return_.New(db)
+	id := r.ExternalID
+	if err := rtn.GetById(id); err != nil {
+		log.Warn("New return detected '%s'", c)
+	}
+
 	ord := order.New(db)
-	id := rtn.ExternalID
-	err := ord.GetById(id)
-	if err != nil {
-		log.Warn("Unable to find order '%s': %v", id, err, c)
+	if ok, err := ord.Query().Filter("Fulfillment.ExternalId=", r.ExternalID).Get(); err != nil {
+		log.Warn("Unable to find order '%s': %v", r.ExternalID, err, c)
+		c.String(200, "ok\n")
+		return
+	} else if !ok {
+		log.Warn("Unable to find order '%s'", r.ExternalID, err, c)
 		c.String(200, "ok\n")
 		return
 	}
 
-	// ord.Fulfillment.Returns = []fulfillment.Return{convertReturn(rtn)}
+	rtn.CancelledAt = r.Events.Resource.CancelledDate.Time
+	rtn.CompletedAt = r.Events.Resource.CompletedDate.Time
+	rtn.UpdatedAt = r.LastUpdatedDate.Time
+	rtn.ExpectedAt = r.ExpectedDate.Time
+	rtn.DeliveredAt = r.Events.Resource.DeliveredDate.Time
+	rtn.PickedUpAt = r.Events.Resource.PickedUpDate.Time
+	rtn.ProcessedAt = r.Events.Resource.ProcessedDate.Time
+	rtn.ReturnedAt = r.Events.Resource.ReturnedDate.Time
+	rtn.SubmittedAt = r.Events.Resource.SubmittedDate.Time
+	rtn.OrderId = ord.Id()
+	rtn.UserId = ord.UserId
+	rtn.StoreId = ord.StoreId
+	rtn.Status = r.Status
 
-	// ord.MustPut()
+	// need to query something like
+	// "items": {"resourceLocation": "http://api.shipwire.com/api/v3/returns/673/items?offset=0&limit=20&expand=all"},
+	rtn.MustPut()
 
 	c.String(200, "ok\n")
 }
