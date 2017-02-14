@@ -26,7 +26,6 @@ static/js/mailinglist.js
 *.bak
 *.orig
 *.coverprofile
-*.json
 
 _export
 **/*.coverprofile.*
