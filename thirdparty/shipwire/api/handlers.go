@@ -23,6 +23,8 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api := r.Group("shipwire")
 
 	api.HEAD("/:organization", setOrg, router.Ok)
-	api.GET("/:organization", setOrg, Process)
-	api.POST("/:organization", setOrg, Process)
+	api.GET("/:organization", setOrg, webhook)
+	api.POST("/:organization", setOrg, webhook)
+
+	api.POST("/:organization/rate", setOrg, rate)
 }
