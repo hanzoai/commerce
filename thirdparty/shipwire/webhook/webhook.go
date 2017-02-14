@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	json_ "encoding/json"
 	"net/http/httputil"
 
 	"github.com/gin-gonic/gin"
@@ -9,25 +8,30 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 
+	. "encoding/json"
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
 func getList(c *gin.Context, data []byte, dst interface{}) error {
+	// Decode resource
 	var rsrc Resource
 	if err := json.Unmarshal(data, &rsrc); err != nil {
 		log.Error("Failed decode resource: %v\n%s", err, data, c)
 		return err
-	} else {
-		resources := make([]json_.RawMessage, 0)
-		for i := range rsrc.Items {
-			resources = append(resources, rsrc.Items[i].Resource)
-		}
-		data := json.EncodeBytes(resources)
-		if err := json.Unmarshal(data, dst); err != nil {
-			log.Error("Failed decode: %v\n%s", err, resources, c)
-			return err
-		}
 	}
+
+	// Get individual items
+	items := make([]RawMessage, len(rsrc.Items))
+	for i := range rsrc.Items {
+		items[i] = rsrc.Items[i].Resource
+	}
+
+	// Decode just items into slice dst
+	if err := json.Unmarshal(json.EncodeBytes(items), dst); err != nil {
+		log.Error("Failed decode: %v\n%s", err, items, c)
+		return err
+	}
+
 	return nil
 }
 
