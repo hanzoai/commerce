@@ -41,9 +41,9 @@ func updateReturn(c *gin.Context, rtn Return) {
 		return
 	}
 
-	ord.Fulfillment.Returns = []fulfillment.Return{convertReturn(rtn)}
+	// ord.Fulfillment.Returns = []fulfillment.Return{convertReturn(rtn)}
 
-	ord.MustPut()
+	// ord.MustPut()
 
 	c.String(200, "ok\n")
 }
