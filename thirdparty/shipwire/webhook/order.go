@@ -15,6 +15,36 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
+func updateFromTrackings(ord *order.Order, rsrc Resource) {
+	if len(rsrc.Items) < 1 {
+		return
+	}
+
+	trackings := make([]fulfillment.Tracking, len(rsrc.Items))
+	for i, item := range rsrc.Items {
+		var t Tracking
+		if err := json.Unmarshal(item.Resource, &t); err == nil {
+			trackings[i] = convertTracking(t)
+		}
+	}
+	ord.Fulfillment.Trackings = trackings
+}
+
+func updateFromHolds(ord *order.Order, rsrc Resource) {
+	if len(rsrc.Items) < 1 {
+		return
+	}
+
+	holds := make([]fulfillment.Hold, len(rsrc.Items))
+	for i, item := range rsrc.Items {
+		var h Hold
+		if err := json.Unmarshal(item.Resource, &h); err == nil {
+			holds[i] = convertHold(h)
+		}
+	}
+	ord.Fulfillment.Holds = holds
+}
+
 func updateOrder(c *gin.Context, topic string, o Order) {
 	log.Info("Update order information:\n%v", o, c)
 
@@ -62,18 +92,8 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 	ord.Fulfillment.ReturnedAt = o.Events.Resource.ReturnedDate.Time
 	ord.Fulfillment.SubmittedAt = o.Events.Resource.SubmittedDate.Time
 
-	// Update tracking if available
-	trackings := o.Trackings.Resource.Items
-	if len(trackings) > 0 {
-		log.Info("Populating tracking information", c)
-		ord.Fulfillment.Trackings = make([]fulfillment.Tracking, len(trackings))
-		for i, trk := range trackings {
-			var t Tracking
-			if err := json.Unmarshal(trk.Resource, &t); err == nil {
-				ord.Fulfillment.Trackings[i] = convertTracking(t)
-			}
-		}
-	}
+	updateFromTrackings(ord, o.Trackings.Resource)
+	updateFromHolds(ord, o.Holds.Resource)
 
 	ord.MustPut()
 
