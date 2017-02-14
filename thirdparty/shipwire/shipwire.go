@@ -46,9 +46,8 @@ func New(c *gin.Context, username, password string) *Client {
 	}
 }
 
-func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*Response, error) {
+func (c *Client) Request(method, url string, body interface{}, dst interface{}) (*http.Response, error) {
 	var data *bytes.Buffer
-	var res Response
 
 	// Encode body
 	if body != nil {
@@ -72,6 +71,22 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	dump, _ := httputil.DumpRequest(req, true)
 	log.Warn("Shipwire request:\n%s", dump, c.ctx)
 
+	// Request failed
+	if err != nil {
+		log.Error("Shipwire request failed: %v", err, c.ctx)
+		return r, err
+	}
+
+	dump, _ = httputil.DumpResponse(r, true)
+	log.Warn("Shipwire response:\n%s", dump, c.ctx)
+
+	return r, err
+}
+
+func (c *Client) RequestResource(method, url string, body interface{}, dst interface{}) (*Response, error) {
+	var res Response
+	r, err := c.Request(method, url, body, &res)
+
 	// Shipwire does not always provide a status
 	res.Status = r.StatusCode
 
@@ -82,9 +97,6 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	}
 
 	defer r.Body.Close()
-
-	dump, _ = httputil.DumpResponse(r, true)
-	log.Warn("Shipwire response:\n%s", dump, c.ctx)
 
 	// Decode response wrapper
 	if err := json.Decode(r.Body, &res); err != nil {
