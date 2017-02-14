@@ -46,8 +46,6 @@ func updateFromHolds(ord *order.Order, rsrc Resource) {
 }
 
 func updateOrder(c *gin.Context, topic string, o Order) {
-	log.Info("Update order information:\n%v", o, c)
-
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
@@ -57,6 +55,7 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 		id = o.OrderNo
 	}
 
+	log.Info("Updating order '%s'", id, c)
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
