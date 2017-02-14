@@ -1,7 +1,7 @@
 package crowdstart
 
 import (
-	"hanzo.io/_default"
+	"hanzo.io/util/default_"
 
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/test/datastore/integration/tasks"
@@ -9,5 +9,5 @@ import (
 )
 
 func init() {
-	_default.Init()
+	default_.Init()
 }
