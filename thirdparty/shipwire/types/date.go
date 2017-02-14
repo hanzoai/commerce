@@ -2,28 +2,26 @@ package types
 
 import "time"
 
+// Custom time type for parsing Shipwire's funky timestamps
 type Date struct {
 	time.Time
 }
 
-// Patch for processing null values
-func (d *Date) UnmarshalJSON(data []byte) error {
+func (d *Date) UnmarshalJSON(data []byte) (err error) {
 	str := string(data)
 
-	// Ignore null dates
+	// Ignore null timestamps
 	if str == "null" {
 		return nil
 	}
 
-	// Shipwire date style 1
-	if t, err := time.Parse("2006-01-02T15:04:05-07:00", str); err == nil {
-		d.Time = t
+	// Layout v1
+	if d.Time, err = time.Parse("2006-01-02T15:04:05-07:00", str); err == nil {
 		return nil
 	}
 
-	// Shipwire date style 2
-	if t, err := time.Parse("2006-01-02 15:04:05", str); err == nil {
-		d.Time = t
+	// Layout v2
+	if d.Time, err = time.Parse("2006-01-02 15:04:05", str); err == nil {
 		return nil
 	}
 
