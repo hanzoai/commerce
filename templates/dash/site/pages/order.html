@@ -51,7 +51,7 @@
           </div>
           <div class="panel-body" if="{ model.fulfillment.type }">
             <div class="section col-xs-12" style="padding:0">
-              <div class="section col-lg-6 mb20">
+              <div class="section col-lg-3 mb20">
                 <div>
                   <label for="for" class="control-label text-left col-xs-12">
                     <span>External ID</span>
@@ -63,16 +63,16 @@
                   </div>
                 </div>
               </div>
-              <div class="section col-lg-6 mb20">
+              <div class="section col-lg-3 mb20">
                 <control label="Carrier" input="{ inputs['fulfillment.carrier'] }"></control>
               </div>
-              <div class="section col-lg-6 mb20">
+              <div class="section col-lg-3 mb20">
                 <control label="Service" input="{ inputs['fulfillment.service'] }"></control>
               </div>
-              <div class="section col-lg-6 mb20" if="{ model.fulfillment.pricing > 0 }">
+              <div class="section col-lg-3 mb20" if="{ model.fulfillment.pricing > 0 }">
                 <control label="Shipping Cost" input="{ inputs['fulfillment.pricing'] }"></control>
               </div>
-              <div class="section col-lg-6 mb20" if="{ model.fulfillment.pricing <= 0 }">
+              <div class="section col-lg-3 mb20" if="{ model.fulfillment.pricing <= 0 }">
                 <control label="Shipping Cost Estimate" input="{ inputs['fulfillment.pricingEstimate'] }"></control>
               </div>
             </div>
