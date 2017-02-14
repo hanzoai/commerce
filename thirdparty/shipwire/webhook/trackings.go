@@ -37,7 +37,7 @@ func convertTracking(t Tracking) fulfillment.Tracking {
 	return trk
 }
 
-func updateTrackings(c *gin.Context, trackings []Tracking) {
+func updateTrackings(c *gin.Context, topic string, trackings []Tracking) {
 	log.Warn("Trackings:\n%v", trackings, c)
 
 	org := middleware.GetOrganization(c)
