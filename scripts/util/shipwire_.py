@@ -19,6 +19,17 @@ class Shipwire(object):
     def create_webhook(self, webhook):
         res = self.sw.webhooks.create(json=webhook)
         self.log(webhook, res)
+        return res
+
+    def delete_webhook(self, id):
+        res = self.sw.webhooks.delete(id=id)
+        self.log(id, res)
+        return res
+
+    def list_webhooks(self):
+        res = self.sw.webhooks.list()
+        self.log(None, res)
+        return res
 
     def cancel_order(self, order):
         external_id = 'E' + order.id_
