@@ -58,11 +58,11 @@ type Return struct {
 	} `json:"events"`
 	Routing struct {
 		Resource struct {
-			OriginLatitude      string      `json:"originLatitude"`
-			OriginLongitude     string      `json:"originLongitude"`
-			WarehouseExternalID interface{} `json:"warehouseExternalId"`
-			WarehouseID         int         `json:"warehouseId"`
-			WarehouseName       string      `json:"warehouseName"`
+			OriginLatitude      string `json:"originLatitude"`
+			OriginLongitude     string `json:"originLongitude"`
+			WarehouseExternalID string `json:"warehouseExternalId"`
+			WarehouseID         int    `json:"warehouseId"`
+			WarehouseName       string `json:"warehouseName"`
 		} `json:"resource"`
 		ResourceLocation interface{} `json:"resourceLocation"`
 	} `json:"routing"`
