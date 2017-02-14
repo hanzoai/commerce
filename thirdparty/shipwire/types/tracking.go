@@ -10,10 +10,10 @@ type Tracking struct {
 	Summary     string `json:"summary"`
 	SummaryDate Date   `json:"summaryDate"`
 
-	LabelCreatedDate Date `json:"labelCreatedDate"`
-
 	Tracking    string `json:"tracking"`
 	TrackedDate Date   `json:"trackedDate"`
+
+	LabelCreatedDate Date `json:"labelCreatedDate"`
 
 	FirstScanRegion     string `json:"firstScanRegion"`
 	FirstScanPostalCode string `json:"firstScanPostalCode"`
