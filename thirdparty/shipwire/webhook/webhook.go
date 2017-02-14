@@ -65,9 +65,11 @@ func Process(c *gin.Context) {
 		}
 
 	case "tracking.created", "tracking.updated", "tracking.delivered":
-		trackings := make([]Tracking, 0)
-		if err := getList(c, req.Body.Resource, &trackings); err != nil {
-			updateTrackings(c, req.Topic, trackings)
+		var t Tracking
+		if err := json.Unmarshal(req.Body.Resource, &t); err != nil {
+			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
+		} else {
+			updateTracking(c, req.Topic, t)
 		}
 
 	case "order.hold.added", "order.hold.cleared":
@@ -81,6 +83,7 @@ func Process(c *gin.Context) {
 	// 	if err := getList(c, req.Body.Resource, holds); err != nil {
 	// 		updateReturnHolds(c, holds)
 	// 	}
+
 	// case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
 	// 	trackings := make([]Tracking, 0)
 	// 	if err := getList(c, req.Body.Resource, trackings); err != nil {
