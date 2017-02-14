@@ -3,11 +3,11 @@ package crowdstart
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/_default"
+	"hanzo.io/util/default_"
 )
 
 func init() {
-	_default.Init()
+	default_.Init()
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
