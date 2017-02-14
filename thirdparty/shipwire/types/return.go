@@ -13,7 +13,7 @@ type ReturnRequest struct {
 		GeneratePrepaidLabel int    `json:"generatePrepaidLabel"`
 		EmailCustomer        int    `json:"emailCustomer"`
 		WarehouseID          int    `json:"warehouseId"`
-		WarehouseExternalID  int    `json:"warehouseExternalId"`
+		WarehouseExternalID  string `json:"warehouseExternalId"`
 		WarehouseRegion      string `json:"warehouseRegion"`
 	} `json:"options"`
 }
