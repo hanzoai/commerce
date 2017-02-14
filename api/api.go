@@ -48,7 +48,7 @@ import (
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
 	reamazeApi "hanzo.io/thirdparty/reamaze"
 	shipstationApi "hanzo.io/thirdparty/shipstation"
-	shipwireApi "hanzo.io/thirdparty/shipwire"
+	shipwireApi "hanzo.io/thirdparty/shipwire/webhook"
 	stripeApi "hanzo.io/thirdparty/stripe/api"
 
 	// Side effect import because of cyclical dependency
