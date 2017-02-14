@@ -20,7 +20,7 @@ func (c *Client) Rate(ord *order.Order) ([]Rates, *RateResponse, error) {
 	// req.Options.ChannelName = "My Channel"
 
 	year, month, day := time.Now().Add(time.Hour * 24).Date()
-	req.Options.ExpectedShipDate = fmt.Sprintf("%s-%s-%s", year, month, day)
+	req.Options.ExpectedShipDate = fmt.Sprintf("%d-%d-%d", year, month, day)
 
 	req.Order.ShipTo.Address1 = ord.ShippingAddress.Line1
 	req.Order.ShipTo.Address2 = ord.ShippingAddress.Line2
