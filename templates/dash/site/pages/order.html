@@ -58,7 +58,7 @@
                   </label>
                   <div class="section col-xs-12">
                     <p class="form-control-static">
-                      <a href="https://merchant.shipwire.com/merchants/ship/confirm/orderId/{fulfillment.externalId}" target="_blank">{ fulfillment.externalId }&nbsp;</a>
+                      <a href="https://merchant.shipwire.com/merchants/ship/confirm/orderId/{model.fulfillment.externalId}" target="_blank">{model.fulfillment.externalId}&nbsp;</a>
                     </p>
                   </div>
                 </div>
@@ -76,37 +76,48 @@
                 <control label="Shipping Cost Estimate" input="{ inputs['fulfillment.pricingEstimate'] }"></control>
               </div>
             </div>
-            <div class="section col-lg-4 mb20" if="{ submittedAt != '0001-01-01T00:00:00Z' }">
+            <div class="section col-lg-3 mb20" if="{ model.fulfillment.submittedAt != '0001-01-01T00:00:00Z' }">
               <div>
                 <label for="for" class="control-label text-left col-xs-12">
                   <span>Submitted On</span>
                 </label>
                 <div class="section col-xs-12">
-                  <p class="form-control-static">{ moment(submittedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  <p class="form-control-static">{ moment(model.fulfillment.submittedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
                 </div>
               </div>
             </div>
-            <div class="section col-lg-4 mb20" if="{ processedAt != '0001-01-01T00:00:00Z' }">
+            <div class="section col-lg-3 mb20" if="{ model.fulfillment.processedAt != '0001-01-01T00:00:00Z' }">
               <div>
                 <label for="for" class="control-label text-left col-xs-12">
                   <span>Processed On</span>
                 </label>
                 <div class="section col-xs-12">
-                  <p class="form-control-static">{ moment(processedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  <p class="form-control-static">{ moment(model.fulfillment.processedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
                 </div>
               </div>
             </div>
-            <div class="section col-lg-4 mb20" if="{ expectedAt != '0001-01-01T00:00:00Z' }">
+            <div class="section col-lg-3 mb20" if="{ model.fulfillment.expectedAt != '0001-01-01T00:00:00Z' }">
               <div>
                 <label for="for" class="control-label text-left col-xs-12">
                   <span>Expected On (Worst Case)</span>
                 </label>
                 <div class="section col-xs-12">
-                  <p class="form-control-static">{ moment(expectedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                  <p class="form-control-static">{ moment(model.fulfillment.expectedAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
                 </div>
               </div>
             </div>
-            <div each="{ model.fulfillment.trackings }">
+            <div class="section col-lg-3 mb20" if="{  model.fulfillment.lastManualUpdateAt != '0001-01-01T00:00:00Z' }">
+              <div>
+                <label for="for" class="control-label text-left col-xs-12">
+                  <span>Latest Updated</span>
+                </label>
+                <div class="section col-xs-12">
+                  <p class="form-control-static">{ moment(model.fulfillment.lastManualUpdateAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
+                </div>
+              </div>
+            </div>
+            <div each="{ model.fulfillment.trackings }" style="display:table;width:100%;">
+              <hr style="margin: 0 20px 20px;">
               <div class="section col-lg-4 mb20" if="{ number }">
                 <div>
                   <label for="for" class="control-label text-left col-xs-12">
@@ -166,16 +177,6 @@
                   </label>
                   <div class="section col-xs-12">
                     <p class="form-control-static">{ moment(deliveredAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
-                  </div>
-                </div>
-              </div>
-              <div class="section col-lg-4 mb20" if="{ lastManualUpdateAt != '0001-01-01T00:00:00Z' }">
-                <div>
-                  <label for="for" class="control-label text-left col-xs-12">
-                    <span>Latest Updated</span>
-                  </label>
-                  <div class="section col-xs-12">
-                    <p class="form-control-static">{ moment(lastManualUpdateAt).format("dddd, DD MMMM YYYY") }&nbsp;</p>
                   </div>
                 </div>
               </div>
