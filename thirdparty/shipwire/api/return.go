@@ -12,7 +12,7 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateReturn(c *gin.Context, r Return) {
+func updateReturn(c *gin.Context, topic string, r Return) {
 	log.Info("Update order information:\n%v", r, c)
 
 	org := middleware.GetOrganization(c)

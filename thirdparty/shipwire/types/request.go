@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// Webhook Responses
-type Message struct {
+// Webhook request
+type Request struct {
 	Topic                 string    `json:"topic"`
 	Attempt               int       `json:"attempt"`
 	Timestamp             time.Time `json:"timestamp"`
@@ -15,7 +15,7 @@ type Message struct {
 	Body                  Body      `json:"body"`
 }
 
-// Webhook Response Bodies
+// Webhook request body
 type Body struct {
 	Status           int             `json:"status"`
 	Message          string          `json:"message"`
@@ -23,7 +23,7 @@ type Body struct {
 	ResourceLocation string          `json:"resourceLocation"`
 }
 
-// Webhook Resource
+// Webhook request resource
 type Resource struct {
 	Offset   int    `json:"offset"`
 	Total    int    `json:"total"`
