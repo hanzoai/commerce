@@ -111,7 +111,6 @@ type Fulfillment struct {
 
 	Holds     []Hold     `json:"holds,omitempty"`
 	Trackings []Tracking `json:"trackings,omitempty"`
-	Returns   []Return   `json:"returns,omitempty"`
 
 	WarehouseId     string `json:"warehouseId,omitempty"`
 	WarehouseRegion string `json:"warehouseRegion,omitempty"`
