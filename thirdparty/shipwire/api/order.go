@@ -15,9 +15,37 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func updateOrder(c *gin.Context, o Order) {
-	log.Info("Update order information:\n%v", o, c)
+func updateFromTrackings(ord *order.Order, rsrc Resource) {
+	if len(rsrc.Items) < 1 {
+		return
+	}
 
+	trackings := make([]fulfillment.Tracking, len(rsrc.Items))
+	for i, item := range rsrc.Items {
+		var t Tracking
+		if err := json.Unmarshal(item.Resource, &t); err == nil {
+			trackings[i] = convertTracking(t)
+		}
+	}
+	ord.Fulfillment.Trackings = trackings
+}
+
+func updateFromHolds(ord *order.Order, rsrc Resource) {
+	if len(rsrc.Items) < 1 {
+		return
+	}
+
+	holds := make([]fulfillment.Hold, len(rsrc.Items))
+	for i, item := range rsrc.Items {
+		var h Hold
+		if err := json.Unmarshal(item.Resource, &h); err == nil {
+			holds[i] = convertHold(h)
+		}
+	}
+	ord.Fulfillment.Holds = holds
+}
+
+func updateOrder(c *gin.Context, topic string, o Order) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
@@ -26,6 +54,8 @@ func updateOrder(c *gin.Context, o Order) {
 	if id == "" {
 		id = o.OrderNo
 	}
+
+	log.Info("Updating order '%s'", id, c)
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
@@ -36,7 +66,7 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
 
-	// Update fulfillment statet
+	// Update fulfillment states
 	ord.FulfillmentStatus = fulfillment.Status(o.Status)
 	ord.Fulfillment.Status = fulfillment.Status(o.Status)
 	ord.Fulfillment.Pricing = currency.Cents(o.Pricing.Resource.Total * 100)
@@ -61,18 +91,8 @@ func updateOrder(c *gin.Context, o Order) {
 	ord.Fulfillment.ReturnedAt = o.Events.Resource.ReturnedDate.Time
 	ord.Fulfillment.SubmittedAt = o.Events.Resource.SubmittedDate.Time
 
-	// Update tracking if available
-	trackings := o.Trackings.Resource.Items
-	if len(trackings) > 0 {
-		log.Info("Populating tracking information", c)
-		ord.Fulfillment.Trackings = make([]fulfillment.Tracking, len(trackings))
-		for i, trk := range trackings {
-			var t Tracking
-			if err := json.Unmarshal(trk.Resource, &t); err == nil {
-				ord.Fulfillment.Trackings[i] = convertTracking(t)
-			}
-		}
-	}
+	updateFromTrackings(ord, o.Trackings.Resource)
+	updateFromHolds(ord, o.Holds.Resource)
 
 	ord.MustPut()
 
