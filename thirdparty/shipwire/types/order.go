@@ -44,46 +44,12 @@ type Order struct {
 	VendorID         string `json:"vendorId,omitempty"`
 	VendorName       string `json:"vendorName,omitempty"`
 
-	CommercialInvoice struct {
+	ShipFrom struct {
 		ResourceLocation string `json:"resourceLocation"`
-	} `json:"commercialInvoice"`
-
-	ShipwireAnywhere struct {
-		ResourceLocation string `json:"resourceLocation,omitempty"`
 		Resource         struct {
-			Status string `json:"status"`
+			Company string `json:"company"`
 		} `json:"resource"`
-	} `json:"shipwireAnywhere"`
-
-	Pieces struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"pieces"`
-
-	ShippingLabel struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"shippingLabel"`
-
-	Holds struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"holds"`
-
-	Returns struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"returns"`
-
-	Routing struct {
-		ResourceLocation string `json:"resourceLocation,omitempty"`
-		Resource         struct {
-			DestinationLatitude  interface{} `json:"destinationLatitude"`
-			DestinationLongitude interface{} `json:"destinationLongitude"`
-			OriginLatitude       float64     `json:"originLatitude"`
-			OriginLongitude      float64     `json:"originLongitude"`
-			PhysicalWarehouseID  interface{} `json:"physicalWarehouseId"`
-			WarehouseExternalID  interface{} `json:"warehouseExternalId"`
-			WarehouseID          int         `json:"warehouseId"`
-			WarehouseName        interface{} `json:"warehouseName"`
-		} `json:"resource"`
-	} `json:"routing"`
+	} `json:"shipFrom"`
 
 	ShipTo struct {
 		ResourceLocation string `json:"resourceLocation,omitempty"`
@@ -103,56 +69,6 @@ type Order struct {
 			Address2     string `json:"address2"`
 		} `json:"resource"`
 	} `json:"shipTo"`
-
-	FreightSummary struct {
-		ResourceLocation string `json:"resourceLocation"`
-		Resource         struct {
-			WeightUnit      interface{} `json:"weightUnit"`
-			MeasurementType interface{} `json:"measurementType"`
-			TotalWeight     string      `json:"totalWeight"`
-		} `json:"resource"`
-	} `json:"freightSummary"`
-
-	PackingList struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"packingList"`
-
-	Items struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"items"`
-
-	SplitOrders struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"splitOrders"`
-
-	Events struct {
-		ResourceLocation string `json:"resourceLocation"`
-		Resource         struct {
-			CancelledDate         Date `json:"cancelledDate"`
-			CompletedDate         Date `json:"completedDate"`
-			CreatedDate           Date `json:"createdDate"`
-			ExpectedCompletedDate Date `json:"expectedCompletedDate"`
-			ExpectedDate          Date `json:"expectedDate"`
-			ExpectedSubmittedDate Date `json:"expectedSubmittedDate"`
-			LastManualUpdateDate  Date `json:"lastManualUpdateDate"`
-			PickedUpDate          Date `json:"pickedUpDate"`
-			ProcessedDate         Date `json:"processedDate"`
-			ReturnedDate          Date `json:"returnedDate"`
-			SubmittedDate         Date `json:"submittedDate"`
-		} `json:"resource"`
-	} `json:"events"`
-
-	ShipFrom struct {
-		ResourceLocation string `json:"resourceLocation"`
-		Resource         struct {
-			Company string `json:"company"`
-		} `json:"resource"`
-	} `json:"shipFrom"`
-
-	Trackings struct {
-		ResourceLocation string   `json:"resourceLocation"`
-		Resource         Resource `json:"resource"`
-	} `json:"trackings"`
 
 	Options struct {
 		ResourceLocation string `json:"resourceLocation"`
@@ -196,4 +112,95 @@ type Order struct {
 			Shipping  float64 `json:"shipping"`
 		} `json:"resource"`
 	} `json:"pricing"`
+
+	FreightSummary struct {
+		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			WeightUnit      interface{} `json:"weightUnit"`
+			MeasurementType interface{} `json:"measurementType"`
+			TotalWeight     string      `json:"totalWeight"`
+		} `json:"resource"`
+	} `json:"freightSummary"`
+
+	Routing struct {
+		ResourceLocation string `json:"resourceLocation,omitempty"`
+		Resource         struct {
+			DestinationLatitude  interface{} `json:"destinationLatitude"`
+			DestinationLongitude interface{} `json:"destinationLongitude"`
+			OriginLatitude       float64     `json:"originLatitude"`
+			OriginLongitude      float64     `json:"originLongitude"`
+			PhysicalWarehouseID  interface{} `json:"physicalWarehouseId"`
+			WarehouseExternalID  interface{} `json:"warehouseExternalId"`
+			WarehouseID          int         `json:"warehouseId"`
+			WarehouseName        interface{} `json:"warehouseName"`
+		} `json:"resource"`
+	} `json:"routing"`
+
+	CommercialInvoice struct {
+		ResourceLocation string `json:"resourceLocation"`
+	} `json:"commercialInvoice"`
+
+	ShipwireAnywhere struct {
+		ResourceLocation string `json:"resourceLocation,omitempty"`
+		Resource         struct {
+			Status string `json:"status"`
+		} `json:"resource"`
+	} `json:"shipwireAnywhere"`
+
+	Events struct {
+		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			CancelledDate         Date `json:"cancelledDate"`
+			CompletedDate         Date `json:"completedDate"`
+			CreatedDate           Date `json:"createdDate"`
+			ExpectedCompletedDate Date `json:"expectedCompletedDate"`
+			ExpectedDate          Date `json:"expectedDate"`
+			ExpectedSubmittedDate Date `json:"expectedSubmittedDate"`
+			LastManualUpdateDate  Date `json:"lastManualUpdateDate"`
+			PickedUpDate          Date `json:"pickedUpDate"`
+			ProcessedDate         Date `json:"processedDate"`
+			ReturnedDate          Date `json:"returnedDate"`
+			SubmittedDate         Date `json:"submittedDate"`
+		} `json:"resource"`
+	} `json:"events"`
+
+	Items struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"items"`
+
+	Pieces struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"pieces"`
+
+	ShippingLabel struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"shippingLabel"`
+
+	Trackings struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"trackings"`
+
+	Holds struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"holds"`
+
+	Returns struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"returns"`
+
+	PackingList struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"packingList"`
+
+	SplitOrders struct {
+		ResourceLocation string   `json:"resourceLocation"`
+		Resource         Resource `json:"resource"`
+	} `json:"splitOrders"`
 }
