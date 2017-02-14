@@ -37,6 +37,19 @@ func convertTracking(t Tracking) fulfillment.Tracking {
 	return trk
 }
 
+func updateOrderTracking(ord *order.Order, t Tracking) {
+	// Check if we know about this tracking object already
+	for i, trk := range ord.Fulfillment.Trackings {
+		if trk.ExternalId == strconv.Itoa(t.ID) {
+			ord.Fulfillment.Trackings[i] = convertTracking(t)
+			return
+		}
+	}
+
+	// New tracking information, append
+	ord.Fulfillment.Trackings = append(ord.Fulfillment.Trackings, convertTracking(t))
+}
+
 func updateTracking(c *gin.Context, topic string, t Tracking) {
 	log.Info("Tracking:\n%v", t, c)
 
@@ -53,8 +66,7 @@ func updateTracking(c *gin.Context, topic string, t Tracking) {
 		return
 	}
 
-	ord.Fulfillment.Trackings = []fulfillment.Tracking{convertTracking(t)}
-
+	updateOrderTracking(ord, t)
 	ord.MustPut()
 
 	c.String(200, "ok\n")
