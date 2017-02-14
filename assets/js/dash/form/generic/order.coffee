@@ -50,7 +50,6 @@ class OrderForm extends Form
 
     input('shippingService', '', 'shipping-service-select'),
     input('fulfillment.externalId', '', 'static')
-    input('fulfillment.trackingNumber', '', 'static')
     input('fulfillment.carrier', '', 'static')
     input('fulfillment.service', '', 'static')
     input('fulfillment.pricing', '', 'static-money')

@@ -55,7 +55,14 @@
                 <control label="External ID" input="{ inputs['fulfillment.externalId'] }"></control>
               </div>
               <div class="section col-lg-6 mb20">
-                <control label="Tracking Number" input="{ inputs['fulfillment.trackingNumber'] }"></control>
+                <div>
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Tracking Number</span>
+                  </label>
+                  <div class="section col-xs-12" each="{ fulfillment.trackings }">
+                    <p class="form-control-static">{ number }&nbsp;</p>
+                  </div>
+                </div>
               </div>
               <div class="section col-lg-6 mb20">
                 <control label="Carrier" input="{ inputs['fulfillment.carrier'] }"></control>
