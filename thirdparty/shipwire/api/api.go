@@ -4,8 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
 	"hanzo.io/util/router"
 )
 
@@ -20,11 +22,11 @@ func setOrg(c *gin.Context) {
 }
 
 func Route(r router.Router, args ...gin.HandlerFunc) {
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+
 	api := r.Group("shipwire")
-
-	api.HEAD("/:organization", setOrg, router.Ok)
-	api.GET("/:organization", setOrg, webhook)
-	api.POST("/:organization", setOrg, webhook)
-
-	api.POST("/:organization/rate", setOrg, rate)
+	api.HEAD("/webhook/:organization", setOrg, router.Ok)
+	api.GET("/webhook/:organization", setOrg, webhook)
+	api.POST("/webhook/:organization", setOrg, webhook)
+	api.POST("/rate", publishedRequired, rate)
 }
