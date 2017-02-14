@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from datetime import datetime
-
 from util import shipwire
 
 
@@ -39,6 +37,9 @@ topics = [
 
 if __name__ == '__main__':
     sw = shipwire.Shipwire()
-    url = 'https://api.hanzo.io/shipwire/stoned'
+    for wh in sw.list_webhooks().all():
+        sw.delete_webhook(wh['resource']['id'])
+
+    url = 'https://api.hanzo.io/shipwire/webhook/stoned'
     for topic in topics:
         sw.create_webhook({'topic': topic, 'url': url})
