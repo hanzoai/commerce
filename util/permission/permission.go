@@ -38,6 +38,7 @@ const (
 	Product
 	Referral
 	Referrer
+	Return
 	Store
 	Subscriber
 	User
@@ -56,6 +57,7 @@ const (
 	ReadProduct
 	ReadReferral
 	ReadReferrer
+	ReadReturn
 	ReadStore
 	ReadSubscriber
 	ReadUser
@@ -74,6 +76,7 @@ const (
 	WriteProduct
 	WriteReferral
 	WriteReferrer
+	WriteReturn
 	WriteStore
 	WriteSubscriber
 	WriteUser
