@@ -48,13 +48,12 @@ func Process(c *gin.Context) {
 	}
 
 	switch req.Topic {
-	// Single item response
 	case "order.created", "order.updated", "order.canceled", "order.completed":
 		var o Order
 		if err := json.Unmarshal(req.Body.Resource, &o); err != nil {
 			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
-			updateOrder(c, o)
+			updateOrder(c, req.Topic, o)
 		}
 
 	case "return.created", "return.updated", "return.canceled", "return.completed":
@@ -62,32 +61,33 @@ func Process(c *gin.Context) {
 		if err := json.Unmarshal(req.Body.Resource, &r); err != nil {
 			log.Error("Failed decode resource: %v\n%s", err, req.Body.Resource, c)
 		} else {
-			updateReturn(c, r)
+			updateReturn(c, req.Topic, r)
 		}
 
-	// List of items in response
 	case "order.hold.added", "order.hold.cleared":
 		holds := make([]Hold, 0)
 		if err := getList(c, req.Body.Resource, holds); err != nil {
-			updateHolds(c, holds)
+			updateHolds(c, req.Topic, holds)
 		}
+
 	case "tracking.created", "tracking.updated", "tracking.delivered":
 		trackings := make([]Tracking, 0)
 		if err := getList(c, req.Body.Resource, trackings); err != nil {
-			updateTrackings(c, trackings)
+			updateTrackings(c, req.Topic, trackings)
 		}
 
-	case "return.hold.added", "return.hold.cleared":
-		// holds := make([]Hold, 0)
-		// if err := getList(c, req.Body.Resource, holds); err != nil {
-		// 	updateReturnHolds(c, holds)
-		// }
-	case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
-		// trackings := make([]Tracking, 0)
-		// if err := getList(c, req.Body.Resource, trackings); err != nil {
-		// 	updateReturnTrackings(c, trackings)
-		// }
-	}
+	// case "return.hold.added", "return.hold.cleared":
+	// 	holds := make([]Hold, 0)
+	// 	if err := getList(c, req.Body.Resource, holds); err != nil {
+	// 		updateReturnHolds(c, holds)
+	// 	}
+	// case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
+	// 	trackings := make([]Tracking, 0)
+	// 	if err := getList(c, req.Body.Resource, trackings); err != nil {
+	// 		updateReturnTrackings(c, trackings)
+	// 	}
 
-	c.String(200, "ok\n")
+	default:
+		c.String(200, "ok\n")
+	}
 }
