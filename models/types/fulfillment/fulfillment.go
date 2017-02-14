@@ -52,24 +52,6 @@ type Tracking struct {
 	DeliveredAt        time.Time `json:"deliveredAt,omitempty"`
 }
 
-type Return struct {
-	Status     string `json:"status"`
-	ExternalId string `json:"externalId,omitempty"`
-
-	CancelledAt time.Time `json:"cancelledAt"`
-	CompletedAt time.Time `json:"completedAt"`
-	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
-	ExpectedAt  time.Time `json:"expectedAt"`
-	DeliveredAt time.Time `json:"deliveredAt"`
-	PickedUpAt  time.Time `json:"pickedUpAt"`
-	ProcessedAt time.Time `json:"processedAt"`
-	ReturnedAt  time.Time `json:"returnedAt"`
-	SubmittedAt time.Time `json:"submittedAt"`
-
-	Trackings []Tracking `json:"trackings,omitempty"`
-	Holds     []Hold     `json:"holds,omitempty"`
-}
-
 type Hold struct {
 	Type        string    `json:"type"`
 	Description string    `json:"description"`

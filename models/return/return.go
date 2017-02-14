@@ -1,6 +1,8 @@
 package return_
 
 import (
+	"time"
+
 	aeds "appengine/datastore"
 
 	"hanzo.io/datastore"
@@ -14,14 +16,6 @@ import (
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
-
-type Status string
-
-const (
-	Active    Status = "active"
-	Discarded Status = "discarded"
-	Ordered   Status = "ordered"
-)
 
 type Return struct {
 	mixin.Model
@@ -45,9 +39,22 @@ type Return struct {
 	// Series of events that have occured relevant to this order
 	History []Event `json:"-,omitempty" datastore:",noindex"`
 
+	// Make a custom string for this when we figure out the states...
+	Status string
+
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
+
+	CancelledAt time.Time `json:"cancelledAt"`
+	CompletedAt time.Time `json:"completedAt"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	ExpectedAt  time.Time `json:"expectedAt"`
+	DeliveredAt time.Time `json:"deliveredAt"`
+	PickedUpAt  time.Time `json:"pickedUpAt"`
+	ProcessedAt time.Time `json:"processedAt"`
+	ReturnedAt  time.Time `json:"returnedAt"`
+	SubmittedAt time.Time `json:"submittedAt"`
 }
 
 func (c *Return) Validator() *val.Validator {
