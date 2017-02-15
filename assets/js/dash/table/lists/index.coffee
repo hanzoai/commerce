@@ -5,3 +5,5 @@ module.export =
   payment: require './payment'
   referral: require './referral'
   referrer: require './referrer'
+  return: require './return'
+
