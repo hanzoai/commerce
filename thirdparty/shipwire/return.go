@@ -21,6 +21,11 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	}
 	req.OriginalOrder.ID = id
 
+	// Hardcode region for now
+	if opts.WarehouseRegion != "" {
+		req.Options.WarehouseRegion = opts.WarehouseRegion
+	}
+
 	// Configure return creation
 	if opts.EmailCustomer {
 		req.Options.EmailCustomer = 1
