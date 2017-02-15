@@ -21,6 +21,11 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	}
 	req.OriginalOrder.ID = id
 
+	// Hardcode region for now
+	if opts.WarehouseRegion != "" {
+		req.Options.WarehouseRegion = opts.WarehouseRegion
+	}
+
 	// Configure return creation
 	if opts.EmailCustomer {
 		req.Options.EmailCustomer = 1
@@ -31,6 +36,7 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	}
 
 	// Add items being returned
+	req.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		req.Items[i] = Item{
 			SKU:      item.SKU(),
@@ -40,5 +46,5 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 
 	r := Return{}
 	res, err := c.Resource("POST", "/returns", req, &r)
-	return &r, res, nil
+	return &r, res, err
 }
