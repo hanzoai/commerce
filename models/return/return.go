@@ -29,6 +29,9 @@ type Return struct {
 	// Associated order ID, if any
 	OrderId string `json:"orderId,omitempty"`
 
+	// External ID
+	ExternalID string `json:"externalId,omitempty"`
+
 	// Individual line items
 	Items  []lineitem.LineItem `json:"items" datastore:"-"`
 	Items_ string              `json:"-" datastore:",noindex"`
@@ -40,7 +43,10 @@ type Return struct {
 	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	// Make a custom string for this when we figure out the states...
-	Status string
+	Status string `json:"status"`
+
+	// Save notes on order
+	Summary string `json:"summary,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Map    `json:"metadata" datastore:"-"`
