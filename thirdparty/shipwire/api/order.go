@@ -1,15 +1,20 @@
-package webhook
+package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"fmt"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
@@ -97,4 +102,41 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 	ord.MustPut()
 
 	c.String(200, "ok\n")
+}
+
+func createOrder(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+
+	// Decode return options
+	opts := OrderOptions{}
+	if err := json.Decode(c.Request.Body, &opts); err != nil {
+		http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
+		return
+	}
+
+	// Fetch order
+	id := c.Params.ByName("orderid")
+	ord := order.New(db)
+	if err := ord.GetById(id); err != nil {
+		http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
+		return
+	}
+
+	// Fetch user
+	usr := user.New(db)
+	if err := usr.GetById(ord.UserId); err != nil {
+		http.Fail(c, 404, fmt.Errorf("Unable to find user '%s'", ord.UserId), err)
+		return
+	}
+
+	// Create order in Shipwire
+	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
+	_, res, err := client.CreateOrder(ord, usr, opts)
+
+	if err != nil {
+		http.Fail(c, res.Status, res.Message, err)
+	}
+
+	http.Render(c, 200, ord)
 }

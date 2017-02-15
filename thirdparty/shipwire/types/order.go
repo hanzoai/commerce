@@ -1,5 +1,9 @@
 package types
 
+type OrderOptions struct {
+	Service ServiceLevelCode `json:"service"`
+}
+
 type OrderRequest struct {
 	ExternalID   string `json:"externalId"`
 	OrderNo      string `json:"orderNo"`

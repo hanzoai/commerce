@@ -44,8 +44,6 @@ func init() {
 	dash.GET("/sendorderconfirmation/:id", api.SendOrderConfirmation)
 	dash.GET("/sendrefundconfirmation/:id", api.SendRefundConfirmation)
 	dash.GET("/sendfulfillmentconfirmation/:id", api.SendFulfillmentConfirmation)
-	dash.POST("/shipwire/ship/:id", api.ShipOrderUsingShipwire)
-	dash.POST("/shipwire/return/:id", api.ReturnOrderUsingShipwire)
 
 	dash.GET("/organization", api.Organization)
 	dash.POST("/organization", api.UpdateOrganization)

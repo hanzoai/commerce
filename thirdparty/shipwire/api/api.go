@@ -1,4 +1,4 @@
-package webhook
+package api
 
 import (
 	"github.com/gin-gonic/gin"
@@ -22,6 +22,7 @@ func setOrg(c *gin.Context) {
 }
 
 func Route(r router.Router, args ...gin.HandlerFunc) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := r.Group("shipwire")
@@ -29,4 +30,5 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.GET("/webhook/:organization", setOrg, webhook)
 	api.POST("/webhook/:organization", setOrg, webhook)
 	api.POST("/rate", publishedRequired, rate)
+	api.POST("/return/:orderid", adminRequired, createReturn)
 }
