@@ -22,11 +22,11 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	req.OriginalOrder.ID = id
 
 	// Configure return creation
-	if opts.Email {
+	if opts.EmailCustomer {
 		req.Options.EmailCustomer = 1
 	}
 
-	if opts.Prepaid {
+	if opts.GeneratePrepaidLabel {
 		req.Options.GeneratePrepaidLabel = 1
 	}
 
