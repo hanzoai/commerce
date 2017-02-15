@@ -10,12 +10,12 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode ServiceLevelCode) (*Response, error) {
+func (c *Client) CreateOrder(ord *order.Order, usr *user.User, opts OrderOptions) (*Order, *Response, error) {
 	req := OrderRequest{}
 	req.CommerceName = "Hanzo"
 	req.OrderNo = strconv.Itoa(ord.Number)
 	req.ExternalID = ord.Id()
-	req.Options.ServiceLevelCode = serviceLevelCode
+	req.Options.ServiceLevelCode = opts.Service
 	req.ShipTo.Name = ord.ShippingAddress.Name
 	req.ShipTo.Email = usr.Email
 	req.ShipTo.Address1 = ord.ShippingAddress.Line1
@@ -36,7 +36,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	o := Order{}
 	res, err := c.Resource("POST", "/orders", req, &o)
 	if err != nil {
-		return res, err
+		return &o, res, err
 	}
 
 	ord.FulfillmentStatus = fulfillment.Pending
@@ -48,7 +48,7 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, serviceLevelCode 
 	ord.Fulfillment.Carrier = o.Options.Resource.CarrierCode
 	ord.Fulfillment.SameDay = o.Options.Resource.SameDay
 
-	return res, ord.Update()
+	return &o, res, ord.Update()
 }
 
 func (c *Client) GetOrder(id int) (*Order, *Response, error) {

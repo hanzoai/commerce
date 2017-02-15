@@ -1,16 +1,78 @@
-package webhook
+package api
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
 	return_ "hanzo.io/models/return"
+	"hanzo.io/thirdparty/shipwire"
+	"hanzo.io/util/json"
+	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
+
+func createReturn(c *gin.Context) {
+	id := c.Params.ByName("orderid")
+
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+
+	// Decode return options
+	opts := ReturnOptions{}
+	if err := json.Decode(c.Request.Body, &opts); err != nil {
+		http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
+		return
+	}
+
+	// Fetch order
+	ord := order.New(db)
+	if err := ord.GetById(id); err != nil {
+		http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
+		return
+	}
+
+	// Create return in Shipwire
+	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
+	r, res, err := client.CreateReturn(ord, opts)
+
+	if err != nil {
+		http.Fail(c, res.Status, res.Message, err)
+	}
+
+	// Save return info
+	rtn := return_.New(ord.Db)
+	rtn.Summary = opts.Summary
+	rtn.CancelledAt = r.Events.Resource.CancelledDate.Time
+	rtn.CompletedAt = r.Events.Resource.CompletedDate.Time
+	rtn.UpdatedAt = r.LastUpdatedDate.Time
+	rtn.ExpectedAt = r.ExpectedDate.Time
+	rtn.DeliveredAt = r.Events.Resource.DeliveredDate.Time
+	rtn.PickedUpAt = r.Events.Resource.PickedUpDate.Time
+	rtn.ProcessedAt = r.Events.Resource.ProcessedDate.Time
+	rtn.ReturnedAt = r.Events.Resource.ReturnedDate.Time
+	rtn.SubmittedAt = r.Events.Resource.SubmittedDate.Time
+	rtn.OrderId = ord.Id()
+	rtn.UserId = ord.UserId
+	rtn.StoreId = ord.StoreId
+	rtn.Status = r.Status
+
+	if err := rtn.Create(); err != nil {
+		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
+	}
+
+	ord.ReturnIds = append(ord.ReturnIds, rtn.Id())
+
+	if err := ord.Put(); err != nil {
+		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
+	}
+
+	http.Render(c, 200, rtn)
+}
 
 func updateReturn(c *gin.Context, topic string, r Return) {
 	log.Info("Update order information:\n%v", r, c)
