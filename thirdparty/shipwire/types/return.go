@@ -1,9 +1,9 @@
 package types
 
 type ReturnOptions struct {
-	Email   bool   `json:"email"`
-	Prepaid bool   `json:"prepaid"`
-	Summary string `json:"summary"`
+	EmailCustomer        bool   `json:"email"`
+	GeneratePrepaidLabel bool   `json:"prepaid"`
+	Summary              string `json:"summary"`
 }
 
 type ReturnRequest struct {
