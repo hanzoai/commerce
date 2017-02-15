@@ -41,5 +41,5 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 
 	r := Return{}
 	res, err := c.Resource("POST", "/returns", req, &r)
-	return &r, res, nil
+	return &r, res, err
 }
