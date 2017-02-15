@@ -10,6 +10,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
+	return_ "hanzo.io/models/return"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/permission"
@@ -43,6 +44,15 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		payments := make([]*payment.Payment, 0)
 		payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
 		http.Render(c, 200, payments)
+	})
+
+	api.GET("/:orderid/returns", adminRequired, namespaced, func(c *gin.Context) {
+		id := c.Params.ByName("orderid")
+		db := datastore.New(c)
+
+		rtns := make([]*return_.Return, 0)
+		return_.Query(db).Filter("OrderId=", id).GetAll(&rtns)
+		http.Render(c, 200, rtns)
 	})
 
 	api.Create = func(c *gin.Context) {
