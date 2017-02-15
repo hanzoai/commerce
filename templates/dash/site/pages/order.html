@@ -224,7 +224,13 @@
           <div class="panel-body">
             <div class="section col-xs-12" style="padding:0">
               <div class="section col-lg-6 mb20">
+                <control label="Send Email?" input="{ inputs.sendReturnEmail }"></control>
+              </div>
+              <div class="section col-lg-6 mb20">
                 <control label="Pay for Return?" input="{ inputs.payForReturn }"></control>
+              </div>
+              <div class="section col-lg-12 mb20">
+                <control label="Return Summary" input="{ inputs.returnSummary }"></control>
               </div>
               <div class="form-actions col-lg-6 section mt30">
                 <button class="btn btn-block btn-default" onclick="{ returnModal }">Return</button>
@@ -235,6 +241,17 @@
               <span class="error-container help-block animated fadeInUp">{error.message}</span>
             </div>
 
+          </div>
+        </div>
+
+        <div id="order-returns" class="panel animated fadeIn" if="{ model.returnIds && model.returnIds.length > 0 }">
+          <div class="panel-heading">
+            Returns
+          </div>
+          <div class="panel-body">
+            <return-list path="{ 'order/'+opts.id+'/returns' }">
+              No Returns Found
+            </return-list>
           </div>
         </div>
 
@@ -319,7 +336,7 @@
             <payment-list path="{ 'order/'+opts.id+'/payments' }">
               No Payments Found
             </payment-list>
-          </div>i
+          </div>
         </div>
 
       </div>

@@ -49,7 +49,9 @@ class OrderForm extends Form
     input('fulfillmentStatus', '', 'fulfillment-status-select'),
 
     input('shippingService', '', 'shipping-service-select'),
+    input('sendReturnEmail', '', 'switch')
     input('payForReturn', '', 'switch')
+    input('returnSummary', '', 'basic-textarea')
     input('fulfillment.externalId', '', 'static')
     input('fulfillment.carrier', '', 'static')
     input('fulfillment.service', '', 'static')
@@ -64,6 +66,8 @@ class OrderForm extends Form
     super
 
     @model.shippingService = @inputs.shippingService.model.value = 'GD'
+    @model.sendReturnEmail = true
+    @model.payForReturn = false
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
 
@@ -119,21 +123,25 @@ class OrderForm extends Form
     return false
 
   refund: ()->
-    @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)->
+    @api.post(@path + '/refund',
+      amount: @model.refundAmount
+    ).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
   ship: ()->
-    api = Api.get 'dash'
-
-    api.post('shipwire/ship/' + @model.id, { service: @model.shippingService }).finally (e)->
+    @api.post('shipwire/order/' + @model.id,
+      service: @model.shippingService
+    ).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
   return: ()->
-    api = Api.get 'dash'
-
-    api.post('shipwire/return/' + @model.id, { service: @model.shippingService }).finally (e)->
+    @api.post('shipwire/return/' + @model.id,
+      email: @model.sendReturnEmail
+      prepaid: @model.payForReturn
+      summary: @model.returnSummary
+    ).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
