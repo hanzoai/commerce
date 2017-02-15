@@ -217,7 +217,7 @@
 
         </div>
 
-        <div id="return-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' && !(model.returnIds || model.returnIds.length > 0)}">
+        <div id="return-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' && !(model.returnIds && model.returnIds.length > 0)}">
           <div class="panel-heading">
             Return
           </div>
