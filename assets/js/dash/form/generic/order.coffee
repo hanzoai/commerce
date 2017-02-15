@@ -49,6 +49,7 @@ class OrderForm extends Form
     input('fulfillmentStatus', '', 'fulfillment-status-select'),
 
     input('shippingService', '', 'shipping-service-select'),
+    input('payForReturn', '', 'switch')
     input('fulfillment.externalId', '', 'static')
     input('fulfillment.carrier', '', 'static')
     input('fulfillment.service', '', 'static')
@@ -86,9 +87,6 @@ class OrderForm extends Form
     return false
 
   shippingModal: ()->
-
-    value = $('#refundAmount').val()
-
     bootbox.dialog
       title: 'Are You Sure?'
       message: 'This will ship this order.'
@@ -104,6 +102,22 @@ class OrderForm extends Form
           callback: ()->
     return false
 
+  returnModal: ()->
+    bootbox.dialog
+      title: 'Are You Sure?'
+      message: 'This will start the return process forthis order.'
+
+      buttons:
+        Return:
+          className: 'btn btn-danger'
+          callback: ()=>
+            @return()
+
+        "Don't Return":
+          className: 'btn btn-primary'
+          callback: ()->
+    return false
+
   refund: ()->
     @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)->
       console.log(e.stack) if e
@@ -113,6 +127,13 @@ class OrderForm extends Form
     api = Api.get 'dash'
 
     api.post('shipwire/ship/' + @model.id, { service: @model.shippingService }).finally (e)->
+      console.log(e.stack) if e
+      window.location.reload()
+
+  return: ()->
+    api = Api.get 'dash'
+
+    api.post('shipwire/return/' + @model.id, { service: @model.shippingService }).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
