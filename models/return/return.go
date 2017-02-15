@@ -54,7 +54,6 @@ type Return struct {
 
 	CancelledAt time.Time `json:"cancelledAt"`
 	CompletedAt time.Time `json:"completedAt"`
-	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 	ExpectedAt  time.Time `json:"expectedAt"`
 	DeliveredAt time.Time `json:"deliveredAt"`
 	PickedUpAt  time.Time `json:"pickedUpAt"`
