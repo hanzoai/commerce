@@ -29,6 +29,8 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.HEAD("/webhook/:organization", setOrg, router.Ok)
 	api.GET("/webhook/:organization", setOrg, webhook)
 	api.POST("/webhook/:organization", setOrg, webhook)
-	api.POST("/rate", publishedRequired, rate)
+
 	api.POST("/return/:orderid", adminRequired, createReturn)
+	api.POST("/order/:orderid", adminRequired, createOrder)
+	api.POST("/rate", publishedRequired, rate)
 }
