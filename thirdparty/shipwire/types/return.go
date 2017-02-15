@@ -11,10 +11,7 @@ type ReturnRequest struct {
 	OriginalOrder struct {
 		ID int `json:"id"`
 	} `json:"originalOrder"`
-	Items []struct {
-		SKU      string `json:"sku"`
-		Quantity int    `json:"quantity"`
-	} `json:"items"`
+	Items   []Item `json:"items"`
 	Options struct {
 		GeneratePrepaidLabel int    `json:"generatePrepaidLabel"`
 		EmailCustomer        int    `json:"emailCustomer"`

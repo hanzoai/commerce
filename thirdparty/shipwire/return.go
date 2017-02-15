@@ -31,6 +31,7 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	}
 
 	// Add items being returned
+	req.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		req.Items[i] = Item{
 			SKU:      item.SKU(),
