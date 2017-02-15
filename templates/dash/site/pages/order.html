@@ -217,6 +217,27 @@
 
         </div>
 
+        <div id="return-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' }">
+          <div class="panel-heading">
+            Return
+          </div>
+          <div class="panel-body">
+            <div class="section col-xs-12" style="padding:0">
+              <div class="section col-lg-6 mb20">
+                <control label="Pay for Return?" input="{ inputs.payForReturn }"></control>
+              </div>
+              <div class="form-actions col-lg-6 section mt30">
+                <button class="btn btn-block btn-default" onclick="{ returnModal }">Return</button>
+              </div>
+            </div>
+
+            <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
+              <span class="error-container help-block animated fadeInUp">{error.message}</span>
+            </div>
+
+          </div>
+        </div>
+
         <div id="refund-order" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' }">
           <div class="panel-heading">
             Refund
@@ -287,27 +308,6 @@
               <control label="Email" input="{ inputs.giftEmail }" if="{ model.giftEmail }"></control>
               <control label="Message" input="{ inputs.giftMessage }"></control>
             </div>
-          </div>
-        </div>
-
-        <div id="affiliate" class="panel animated fadeIn" if="{ model.paymentStatus != 'refunded' }">
-          <div class="panel-heading">
-            Refund
-          </div>
-          <div class="panel-body">
-            <div class="section col-xs-12" style="padding:0">
-              <div class="section col-lg-6 mb20">
-                <control label="Refund Amount" input="{ inputs['refundAmount'] }"></control>
-              </div>
-              <div class="form-actions col-lg-6 section mt30">
-                <button class="btn btn-block btn-default" onclick="{ refundModal }">Refund</button>
-              </div>
-            </div>
-
-            <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
-              <span class="error-container help-block animated fadeInUp">{error.message}</span>
-            </div>
-
           </div>
         </div>
 
