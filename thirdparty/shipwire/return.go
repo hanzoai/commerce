@@ -4,24 +4,33 @@ import (
 	"strconv"
 
 	"hanzo.io/models/order"
-	"hanzo.io/models/types/fulfillment"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
+func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *Response, error) {
 	req := ReturnRequest{}
-	req.ExternalID = "e" + ord.Id()
 
+	// Save reference to our order
+	req.ExternalID = ord.Id()
+
+	// Set Shipwire original order id
 	id, err := strconv.Atoi(ord.Fulfillment.ExternalId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	req.OriginalOrder.ID = id
+
+	// Configure return creation
+	if opts.Email {
+		req.Options.EmailCustomer = 1
 	}
 
-	req.OriginalOrder.ID = id
-	req.Options.EmailCustomer = 1
-	req.Options.GeneratePrepaidLabel = 1
+	if opts.Prepaid {
+		req.Options.GeneratePrepaidLabel = 1
+	}
 
+	// Add items being returned
 	for i, item := range ord.Items {
 		req.Items[i] = Item{
 			SKU:      item.SKU(),
@@ -29,17 +38,7 @@ func (c *Client) CreateReturn(ord *order.Order) (*Response, error) {
 		}
 	}
 
-	rtn := Return{}
-	res, err := c.Resource("POST", "/returns", req, &rtn)
-	if err != nil {
-		return res, err
-	}
-
-	ord.Fulfillment.Status = fulfillment.Returned
-	// ord.Fulfillment.Returns[0].Status = rtn.Status
-	// ord.Fulfillment.Returns[0].ExternalId = strconv.Itoa(rtn.ID)
-	// ord.Fulfillment.Returns[0].ExpectedAt = rtn.ExpectedDate.Time
-	// ord.Fulfillment.Returns[0].UpdatedAt = rtn.LastUpdatedDate.Time
-
-	return res, ord.Update()
+	r := Return{}
+	res, err := c.Resource("POST", "/returns", req, &r)
+	return &r, res, nil
 }

@@ -142,7 +142,10 @@ type Order struct {
 	// Fulfillment information
 	Fulfillment fulfillment.Fulfillment `json:"fulfillment"`
 
-	// gift options
+	// Return ids
+	ReturnIds []string `json:"returnIds" datastore:",noindex"`
+
+	// Gift options
 	Gift        bool   `json:"gift"`                                       // Is this a gift?
 	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
