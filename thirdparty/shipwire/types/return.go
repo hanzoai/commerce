@@ -23,54 +23,123 @@ type ReturnRequest struct {
 }
 
 type Return struct {
-	ID              int    `json:"id"`
-	ExternalID      string `json:"externalId"`
-	TransactionID   string `json:"transactionId"`
+	ExternalID    string `json:"externalId"`
+	OrderNo       string `json:"orderNo"`
+	ID            int    `json:"id"`
+	TransactionID string `json:"transactionId"`
+
+	Options struct {
+		ResourceLocation interface{} `json:"resourceLocation"`
+		Resource         struct {
+			WarehouseID         int    `json:"warehouseId"`
+			WarehouseExternalID string `json:"warehouseExternalId"`
+			WarehouseRegion     string `json:"warehouseRegion"`
+		} `json:"resource"`
+	} `json:"options"`
+
 	ExpectedDate    Date   `json:"expectedDate"`
 	CommerceName    string `json:"commerceName"`
 	LastUpdatedDate Date   `json:"lastUpdatedDate"`
 	Status          string `json:"status"`
-	Holds           struct {
-		ResourceLocation string `json:"resourceLocation"`
-	} `json:"holds"`
+
 	Items struct {
 		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			Offset   int         `json:"offset"`
+			Total    int         `json:"total"`
+			Previous interface{} `json:"previous"`
+			Next     interface{} `json:"next"`
+			Items    []struct {
+				ResourceLocation interface{} `json:"resourceLocation"`
+				Resource         struct {
+					Sku               string `json:"sku"`
+					Quantity          int    `json:"quantity"`
+					ProductID         int    `json:"productId"`
+					ProductExternalID string `json:"productExternalId"`
+					OrderID           int    `json:"orderId"`
+					OrderExternalID   string `json:"orderExternalId"`
+					Expected          int    `json:"expected"`
+					Pending           int    `json:"pending"`
+					Good              int    `json:"good"`
+					InReview          int    `json:"inReview"`
+					Damaged           int    `json:"damaged"`
+				} `json:"resource"`
+			} `json:"items"`
+		} `json:"resource"`
 	} `json:"items"`
+
+	Holds struct {
+		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			Offset   int           `json:"offset"`
+			Total    int           `json:"total"`
+			Previous interface{}   `json:"previous"`
+			Next     interface{}   `json:"next"`
+			Items    []interface{} `json:"items"`
+		} `json:"resource"`
+	} `json:"holds"`
+
 	Trackings struct {
 		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			Offset   int           `json:"offset"`
+			Total    int           `json:"total"`
+			Previous interface{}   `json:"previous"`
+			Next     interface{}   `json:"next"`
+			Items    []interface{} `json:"items"`
+		} `json:"resource"`
 	} `json:"trackings"`
+
 	Labels struct {
 		ResourceLocation string `json:"resourceLocation"`
+		Resource         struct {
+			Offset   int         `json:"offset"`
+			Total    int         `json:"total"`
+			Previous interface{} `json:"previous"`
+			Next     interface{} `json:"next"`
+			Items    []struct {
+				ResourceLocation string `json:"resourceLocation"`
+				Resource         struct {
+					ID              int    `json:"id"`
+					OrderID         int    `json:"orderId"`
+					OrderExternalID string `json:"orderExternalId"`
+				} `json:"resource"`
+			} `json:"items"`
+		} `json:"resource"`
 	} `json:"labels"`
+
+	Routing struct {
+		ResourceLocation interface{} `json:"resourceLocation"`
+		Resource         struct {
+			WarehouseID         int     `json:"warehouseId"`
+			WarehouseExternalID string  `json:"warehouseExternalId"`
+			WarehouseName       string  `json:"warehouseName"`
+			OriginLongitude     float64 `json:"originLongitude"`
+			OriginLatitude      float64 `json:"originLatitude"`
+			WarehouseRegion     string  `json:"warehouseRegion"`
+		} `json:"resource"`
+	} `json:"routing"`
+
+	Events struct {
+		ResourceLocation interface{} `json:"resourceLocation"`
+		Resource         struct {
+			CreatedDate          Date `json:"createdDate"`
+			PickedUpDate         Date `json:"pickedUpDate"`
+			SubmittedDate        Date `json:"submittedDate"`
+			ProcessedDate        Date `json:"processedDate"`
+			CompletedDate        Date `json:"completedDate"`
+			ExpectedDate         Date `json:"expectedDate"`
+			DeliveredDate        Date `json:"deliveredDate"`
+			CancelledDate        Date `json:"cancelledDate"`
+			ReturnedDate         Date `json:"returnedDate"`
+			LastManualUpdateDate Date `json:"lastManualUpdateDate"`
+		} `json:"resource"`
+	} `json:"events"`
+
+	Documents interface{} `json:"documents"`
+
 	OriginalOrder struct {
 		ResourceLocation string `json:"resourceLocation"`
+		Resource         Order  `json:"resource"`
 	} `json:"originalOrder"`
-	Events struct {
-		Resource struct {
-			CancelledDate        Date `json:"cancelledDate"`
-			CompletedDate        Date `json:"completedDate"`
-			CreatedDate          Date `json:"createdDate"`
-			DeliveredDate        Date `json:"deliveredDate"`
-			ExpectedDate         Date `json:"expectedDate"`
-			LastManualUpdateDate Date `json:"lastManualUpdateDate"`
-			PickedUpDate         Date `json:"pickedUpDate"`
-			ProcessedDate        Date `json:"processedDate"`
-			ReturnedDate         Date `json:"returnedDate"`
-			SubmittedDate        Date `json:"submittedDate"`
-		} `json:"resource"`
-		ResourceLocation interface{} `json:"resourceLocation"`
-	} `json:"events"`
-	Routing struct {
-		Resource struct {
-			OriginLatitude      string `json:"originLatitude"`
-			OriginLongitude     string `json:"originLongitude"`
-			WarehouseExternalID string `json:"warehouseExternalId"`
-			WarehouseID         int    `json:"warehouseId"`
-			WarehouseName       string `json:"warehouseName"`
-		} `json:"resource"`
-		ResourceLocation interface{} `json:"resourceLocation"`
-	} `json:"routing"`
-	Options struct {
-		ResourceLocation interface{} `json:"resourceLocation"`
-	} `json:"options"`
 }
