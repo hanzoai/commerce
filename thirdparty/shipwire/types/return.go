@@ -4,6 +4,7 @@ type ReturnOptions struct {
 	EmailCustomer        bool   `json:"email"`
 	GeneratePrepaidLabel bool   `json:"prepaid"`
 	Summary              string `json:"summary"`
+	WarehouseRegion      string `json:"warehouseRegion"`
 }
 
 type ReturnRequest struct {
@@ -15,9 +16,9 @@ type ReturnRequest struct {
 	Options struct {
 		GeneratePrepaidLabel int    `json:"generatePrepaidLabel"`
 		EmailCustomer        int    `json:"emailCustomer"`
-		WarehouseID          int    `json:"warehouseId"`
-		WarehouseExternalID  string `json:"warehouseExternalId"`
-		WarehouseRegion      string `json:"warehouseRegion"`
+		WarehouseID          int    `json:"warehouseId,omitempty"`
+		WarehouseExternalID  string `json:"warehouseExternalId,omitempty"`
+		WarehouseRegion      string `json:"warehouseRegion,omitempty"`
 	} `json:"options"`
 }
 
