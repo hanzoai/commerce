@@ -1,5 +1,11 @@
 package types
 
+type ReturnOptions struct {
+	Email   bool
+	Prepaid bool
+	Summary string
+}
+
 type ReturnRequest struct {
 	ExternalID    string `json:"externalId"`
 	OriginalOrder struct {
