@@ -63,11 +63,12 @@ class OrderForm extends Form
 
   # hack for couponCodes because crowdcontrol doenst treat arrays as leaves
   initFormGroup: ()->
-    super
-
     @model.shippingService = @inputs.shippingService.model.value = 'GD'
     @model.sendReturnEmail = true
     @model.payForReturn = false
+
+    super
+
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
 
