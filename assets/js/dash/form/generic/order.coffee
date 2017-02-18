@@ -73,11 +73,11 @@ class OrderForm extends Form
     @model.shippingService = @inputs.shippingService.model.value = 'GD'
     @model.sendReturnEmail = true
     @model.payForReturn = false
-    @model.returns0 = 1
-    @model.returns1 = 1
-    @model.returns2 = 1
-    @model.returns3 = 1
-    @model.returns4 = 1
+    @model.returns0 = 0
+    @model.returns1 = 0
+    @model.returns2 = 0
+    @model.returns3 = 0
+    @model.returns4 = 0
 
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
@@ -148,11 +148,19 @@ class OrderForm extends Form
       window.location.reload()
 
   return: ()->
-    @api.post('shipwire/return/' + @model.id,
+    rtn =
       email: @model.sendReturnEmail
       prepaid: @model.payForReturn
       summary: @model.returnSummary
-    ).finally (e)->
+      items: []
+
+    for i in [0..5]
+      if @model['returnProductId'+i]?
+        rtn.items.push
+          quantity: @model['returns'+i]
+          productId: @model['returnProductId'+i]
+
+    @api.post('shipwire/return/' + @model.id, rtn).finally (e)->
       console.log(e.stack) if e
       window.location.reload()
 
