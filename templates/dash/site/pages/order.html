@@ -232,6 +232,20 @@
               <div class="section col-lg-12 mb20">
                 <control label="Return Summary" input="{ inputs.returnSummary }"></control>
               </div>
+              <div  each="{ item, i in model.items }" if="{ i < 5}">
+                <div class="section col-lg-8 mb20">
+                  <label for="for" class="control-label text-left col-xs-12">
+                    <span>Item</span>
+                  </label>
+                  <div class="section col-xs-12">
+                    <p class="form-control-static">{ item.productName }&nbsp;x&nbsp;</p>
+                  </div>
+                  { model['returnProduct'+i] = item.productId ? '' : '' }
+                </div>
+                <div class="section col-lg-4 mb20">
+                  <control label="Quantity" input="{ inputs.['returns'+i] }"></control>
+                </div>
+              </div>
               <div class="form-actions col-lg-6 section mt30">
                 <button class="btn btn-block btn-default" onclick="{ returnModal }">Return</button>
               </div>
