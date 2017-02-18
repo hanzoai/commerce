@@ -66,19 +66,23 @@ class OrderForm extends Form
     input('metadata', '', 'static-pre'),
   ]
 
+  events:
+    "#{Events.Form.Prefill}": (orderModel)->
+      orderModel.shippingService = @inputs.shippingService.model.value = 'GD'
+      orderModel.sendReturnEmail = true
+      orderModel.payForReturn = false
+      for i in [0..5]
+        if orderModel.items[i]?
+          orderModel['returns' + i] = orderModel.items[i].quantity
+          @inputs['returns' + i].model.value = orderModel.items[i].quantity
+      riot.update()
+
   # hack for couponCodes because crowdcontrol doenst treat arrays as leaves
   initFormGroup: ()->
     super
 
-    @model.shippingService = @inputs.shippingService.model.value = 'GD'
-    @model.sendReturnEmail = true
-    @model.payForReturn = false
-    @model.returns0 = 0
-    @model.returns1 = 0
-    @model.returns2 = 0
-    @model.returns3 = 0
-    @model.returns4 = 0
-
+    @inputs.sendReturnEmail.model.value = true
+    @inputs.payForReturn.model.value = false
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
 
