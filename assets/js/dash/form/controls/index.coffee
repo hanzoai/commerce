@@ -150,6 +150,9 @@ class Switch extends BasicInputView
   js: (opts)->
     @uid = '_' + Math.random()*10000
 
+    @on 'update', ()=>
+      $(@root)
+
     super
   change: (event) ->
     value = event.target.checked
