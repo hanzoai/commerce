@@ -23,6 +23,8 @@ type LineItem struct {
 	ProductName string           `json:"productName,omitempty"`
 	ProductSlug string           `json:"productSlug,omitempty"`
 	ProductSKU  string           `json:"productSKU,omitempty"`
+	// shipwire
+	ExternalSKU string `json:"sku,omitempty"`
 
 	Variant     *variant.Variant `json:"-" datastore:"-"`
 	VariantId   string           `json:"variantId,omitempty"`
@@ -205,6 +207,7 @@ func (li *LineItem) Update() {
 		li.ProductId = li.Product.Id()
 		li.ProductName = li.Product.Name
 		li.ProductSlug = li.Product.Slug
+		li.ProductSKU = li.Product.SKU
 		li.Taxable = li.Product.Taxable
 		li.Weight = li.Product.Weight
 		li.WeightUnit = li.Product.WeightUnit
