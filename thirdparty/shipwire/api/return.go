@@ -9,6 +9,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
+	"hanzo.io/models/product"
 	return_ "hanzo.io/models/return"
 	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
@@ -63,6 +64,15 @@ func createReturn(c *gin.Context) {
 	rtn.UserId = ord.UserId
 	rtn.StoreId = ord.StoreId
 	rtn.Status = r.Status
+
+	for i, item := range rtn.Items {
+		prod := product.New(db)
+		if err := prod.GetById(item.ProductId); err != nil {
+			http.Fail(c, 500, fmt.Errorf("Unable to find product '%s'", item.ProductId), err)
+			return
+		}
+		rtn.Items[i].ExternalSKU = prod.SKU
+	}
 
 	if err := rtn.Create(); err != nil {
 		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
