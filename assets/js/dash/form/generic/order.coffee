@@ -51,6 +51,11 @@ class OrderForm extends Form
     input('shippingService', '', 'shipping-service-select'),
     input('sendReturnEmail', '', 'switch')
     input('payForReturn', '', 'switch')
+    input('returns0', '', 'numeric-input')
+    input('returns1', '', 'numeric-input')
+    input('returns2', '', 'numeric-input')
+    input('returns3', '', 'numeric-input')
+    input('returns4', '', 'numeric-input')
     input('returnSummary', '', 'basic-textarea')
     input('fulfillment.externalId', '', 'static')
     input('fulfillment.carrier', '', 'static')
@@ -63,11 +68,16 @@ class OrderForm extends Form
 
   # hack for couponCodes because crowdcontrol doenst treat arrays as leaves
   initFormGroup: ()->
+    super
+
     @model.shippingService = @inputs.shippingService.model.value = 'GD'
     @model.sendReturnEmail = true
     @model.payForReturn = false
-
-    super
+    @model.returns0 = 1
+    @model.returns1 = 1
+    @model.returns2 = 1
+    @model.returns3 = 1
+    @model.returns4 = 1
 
     @inputs.couponCodes.model.value = @model.couponCodes
     @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
