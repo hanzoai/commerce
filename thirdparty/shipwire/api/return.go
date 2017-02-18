@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
@@ -46,6 +48,7 @@ func createReturn(c *gin.Context) {
 
 	// Save return info
 	rtn := return_.New(ord.Db)
+	rtn.ExternalID = strconv.Itoa(r.ID)
 	rtn.Summary = opts.Summary
 	rtn.CancelledAt = r.Events.Resource.CancelledDate.Time
 	rtn.CompletedAt = r.Events.Resource.CompletedDate.Time
@@ -97,6 +100,7 @@ func updateReturn(c *gin.Context, topic string, r Return) {
 		return
 	}
 
+	rtn.ExternalID = strconv.Itoa(r.ID)
 	rtn.CancelledAt = r.Events.Resource.CancelledDate.Time
 	rtn.CompletedAt = r.Events.Resource.CompletedDate.Time
 	rtn.UpdatedAt = r.LastUpdatedDate.Time
