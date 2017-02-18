@@ -240,10 +240,10 @@
                   <div class="section col-xs-12">
                     <p class="form-control-static">{ item.productName }&nbsp;x&nbsp;</p>
                   </div>
-                  { model['returnProduct'+i] = item.productId ? '' : '' }
+                  { model['returnProductSku'+i] = item.productSku ? '' : '' }
                 </div>
                 <div class="section col-lg-4 mb20">
-                  <control label="Quantity" input="{ inputs.['returns'+i] }"></control>
+                  <control label="Quantity" input="{ inputs['returns'+i] }"></control>
                 </div>
               </div>
               <div class="form-actions col-lg-6 section mt30">
