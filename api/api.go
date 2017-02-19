@@ -51,6 +51,8 @@ import (
 	shipwireApi "hanzo.io/thirdparty/shipwire/api"
 	stripeApi "hanzo.io/thirdparty/stripe/api"
 
+	dashv2Api "hanzo.io/api/dashv2"
+
 	// Side effect import because of cyclical dependency
 	_ "hanzo.io/models/referrer/tasks"
 )
@@ -155,6 +157,9 @@ func Route(api router.Router) {
 
 	// Routes from deprecated cdn module
 	cdnApi.Route(api)
+
+	// dashv2
+	dashv2Api.Route(api)
 }
 
 func init() {
