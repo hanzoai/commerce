@@ -48,7 +48,7 @@ class Dashboard extends Page
         label: 'Sales',
         data: []
         pointBorderColor: '#1BE7FF'
-        pointBackgroundColor: 'C0F8FF'
+        pointBackgroundColor: '#C0F8FF'
         borderColor: '#1BE7FF'
         yAxisID: 'Currency',
       ,
