@@ -14,5 +14,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := router.Group("dashv2")
 	api.Use(origin)
-	api.PUT("/login", login)
+	api.POST("/login", login)
 }
