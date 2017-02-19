@@ -2,6 +2,7 @@ package dashv2
 
 import (
 	"errors"
+	"regexp"
 	"sort"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,8 @@ import (
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 )
+
+var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.io$")
 
 type loginReq struct {
 	Email    string `json:"email"`
@@ -62,15 +65,21 @@ func login(c *gin.Context) {
 
 	var orgs []*organization.Organization
 
-	orgIds := usr.Organizations
-	for _, orgId := range orgIds {
-		org := organization.New(db)
-		err := org.GetById(orgId)
-		if err != nil {
-			log.Error("Could not get Organization with Error %v", err, c)
-			continue
+	if verusEmailRe.MatchString(usr.Email) {
+		if _, err := organization.Query(db).Filter("Enabled=", true).GetAll(&orgs); err != nil {
+			log.Warn("Unable to fetch organizations for switcher.", c)
 		}
-		orgs = append(orgs, org)
+	} else {
+		orgIds := usr.Organizations
+		for _, orgId := range orgIds {
+			org := organization.New(db)
+			err := org.GetById(orgId)
+			if err != nil {
+				log.Error("Could not get Organization with Error %v", err, c)
+				continue
+			}
+			orgs = append(orgs, org)
+		}
 	}
 
 	// Sort organizations by name
