@@ -17,7 +17,7 @@ import (
 var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
-func incrementByTask(c appengine.Context, name string, amount int) {
+func incrementByTask(c appengine.Context, name, tag string, amount int) {
 	log.Warn("INCREMENT BY", c)
 	// Get counter config.
 	var cfg counterConfig
@@ -39,11 +39,16 @@ func incrementByTask(c appengine.Context, name string, amount int) {
 		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
 		err := datastore.Get(c, key, &s)
 		// A missing entity and a present entity will both work.
-		if err != nil && err != datastore.ErrNoSuchEntity {
-			panic(err)
+		if err == datastore.ErrNoSuchEntity {
+			s.CreatedAt = time.Now()
+		} else if err != nil {
+			return err
 		}
 		s.Name = name
+		s.Tag = tag
 		s.Count += amount
+		s.CreatedAt = time.Now()
+		s.UpdatedAt = s.CreatedAt
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
@@ -67,7 +72,7 @@ func incrementByTask(c appengine.Context, name string, amount int) {
 	memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
 }
 
-func addMemberTask(c appengine.Context, name, value string) {
+func addMemberTask(c appengine.Context, name, tag, value string) {
 	log.Warn("ADD MEMBER", c)
 
 	// Get counter config.
@@ -92,11 +97,15 @@ func addMemberTask(c appengine.Context, name, value string) {
 		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
 		err := datastore.Get(c, key, &s)
 		// A missing entity and a present entity will both work.
-		if err != nil && err != datastore.ErrNoSuchEntity {
+		if err == datastore.ErrNoSuchEntity {
+			s.CreatedAt = time.Now()
+		} else if err != nil {
 			return err
 		}
 		s.Name = name
+		s.Tag = tag
 		s.Members = append(s.Members, value)
+		s.UpdatedAt = s.CreatedAt
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
