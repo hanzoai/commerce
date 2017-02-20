@@ -33,7 +33,7 @@ const (
 	Yearly  Period = "yearly"
 )
 
-type shard struct {
+type Shard struct {
 	Name string `json:"name"`
 	Tag  string `json:"tag"`
 	// Counter
@@ -48,7 +48,7 @@ type shard struct {
 	Time time.Time `json:"time"`
 }
 
-func (s *shard) Load(c <-chan aeds.Property) (err error) {
+func (s *Shard) Load(c <-chan aeds.Property) (err error) {
 	// Load supported properties
 	if err = datastore.IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
 		return err
@@ -62,7 +62,7 @@ func (s *shard) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *shard) Save(c chan<- aeds.Property) (err error) {
+func (s *Shard) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	s.Set_ = string(json.EncodeBytes(&s.Set))
 
@@ -71,13 +71,13 @@ func (s *shard) Save(c chan<- aeds.Property) (err error) {
 }
 
 const (
-	defaultShards = 3
-	configKind    = "GeneralCounterShardConfig"
-	shardKind     = "GeneralCounterShard"
+	DefaultShards = 3
+	ConfigKind    = "GeneralCounterShardConfig"
+	ShardKind     = "GeneralCounterShard"
 )
 
 func memcacheKey(name string) string {
-	return shardKind + ":" + name
+	return ShardKind + ":" + name
 }
 
 func MemberExists(c appengine.Context, name string, value string) bool {
@@ -101,9 +101,9 @@ func Members(c appengine.Context, name string) ([]string, error) {
 	if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
 		return members, nil
 	}
-	q := aeds.NewQuery(shardKind).Filter("Name =", name)
+	q := aeds.NewQuery(ShardKind).Filter("Name =", name)
 	for t := q.Run(c); ; {
-		var s shard
+		var s Shard
 		_, err := t.Next(&s)
 		if err == aeds.Done {
 			break
@@ -140,9 +140,9 @@ func Count(c appengine.Context, name string) (int, error) {
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
 		return total, nil
 	}
-	q := aeds.NewQuery(shardKind).Filter("Name =", name)
+	q := aeds.NewQuery(ShardKind).Filter("Name =", name)
 	for t := q.Run(c); ; {
-		var s shard
+		var s Shard
 		_, err := t.Next(&s)
 		if err == aeds.Done {
 			break
@@ -160,22 +160,22 @@ func Count(c appengine.Context, name string) (int, error) {
 	return total, nil
 }
 
-func CountByTag(c appengine.Context, tag, storeId string, p Period, start, end time.Time) (int, error) {
-	total := 0
-	q := aeds.NewQuery(shardKind).Filter("Tag =", tag).Filter("CreatedAt>=", start).Filter("CreatedAt<=", end)
-	for t := q.Run(c); ; {
-		var s shard
-		_, err := t.Next(&s)
-		if err == aeds.Done {
-			break
-		}
-		if err != nil {
-			return total, err
-		}
-		total += s.Count
-	}
-	return total, nil
-}
+// func CountByTag(c appengine.Context, tag, storeId string, p Period, start, end time.Time) (int, error) {
+// 	total := 0
+// 	q := aeds.NewQuery(ShardKind).Filter("Tag =", tag).Filter("CreatedAt>=", start).Filter("CreatedAt<=", end)
+// 	for t := q.Run(c); ; {
+// 		var s Shard
+// 		_, err := t.Next(&s)
+// 		if err == aeds.Done {
+// 			break
+// 		}
+// 		if err != nil {
+// 			return total, err
+// 		}
+// 		total += s.Count
+// 	}
+// 	return total, nil
+// }
 
 // Adds a member to the array if it does not exist
 func AddSetMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
@@ -185,7 +185,7 @@ func AddSetMember(c appengine.Context, name, tag, storeId string, p Period, valu
 	return AddMember(c, name, tag, storeId, p, value, t)
 }
 
-// Adds a member to the array on the shard
+// Adds a member to the array on the Shard
 func AddMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
 	AddMemberTask.Call(c, name, tag, storeId, p, value, t)
 	return nil
@@ -202,16 +202,16 @@ func IncrementBy(c appengine.Context, name, tag, storeId string, p Period, amoun
 	return nil
 }
 
-// IncreaseShards increases the number of shards for the named counter to n.
-// It will never decrease the number of shards.
+// IncreaseShards increases the number of Shards for the named counter to n.
+// It will never decrease the number of Shards.
 func IncreaseShards(c appengine.Context, name string, n int) error {
-	ckey := aeds.NewKey(c, configKind, name, 0, nil)
+	ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
 	return aeds.RunInTransaction(c, func(c appengine.Context) error {
 		var cfg counterConfig
 		mod := false
 		err := aeds.Get(c, ckey, &cfg)
 		if err == aeds.ErrNoSuchEntity {
-			cfg.Shards = defaultShards
+			cfg.Shards = DefaultShards
 			mod = true
 		} else if err != nil {
 			return err
@@ -235,11 +235,11 @@ func init() {
 		log.Debug("INCREMENT %s BY %d", name, amount, c)
 		// Get counter config.
 		var cfg counterConfig
-		ckey := aeds.NewKey(c, configKind, name, 0, nil)
+		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
 		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
-				cfg.Shards = defaultShards
+				cfg.Shards = DefaultShards
 				_, err = aeds.Put(c, ckey, &cfg)
 			}
 			return err
@@ -248,10 +248,10 @@ func init() {
 		if err != nil {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
-		var s shard
+		var s Shard
 		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
-			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-			key := aeds.NewKey(c, shardKind, shardName, 0, nil)
+			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
+			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)
 			// A missing entity and a present entity will both work.
 			err = datastore.IgnoreFieldMismatch(err)
@@ -292,11 +292,11 @@ func init() {
 		log.Debug("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
-		ckey := aeds.NewKey(c, configKind, name, 0, nil)
+		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
 		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
-				cfg.Shards = defaultShards
+				cfg.Shards = DefaultShards
 				_, err = aeds.Put(c, ckey, &cfg)
 			}
 			return err
@@ -305,10 +305,10 @@ func init() {
 		if err != nil {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
-		var s shard
+		var s Shard
 		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
-			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-			key := aeds.NewKey(c, shardKind, shardName, 0, nil)
+			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
+			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)
 			// A missing entity and a present entity will both work.
 			err = datastore.IgnoreFieldMismatch(err)
