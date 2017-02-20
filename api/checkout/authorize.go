@@ -132,7 +132,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		entities = append(entities, fe)
 	}
 
-	if usr.CreatedAt.IsZero() {
+	if usr.CreatedAt.IsZero() && !ord.Test {
 		if err := counter.IncrUser(usr.Context(), time.Now()); err != nil {
 			log.Error("IncrUser Error %v", err, c)
 		}
