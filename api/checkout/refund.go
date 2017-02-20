@@ -31,8 +31,10 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		return err
 	}
 
-	if err := counter.IncrOrderRefund(ord.Context(), ord, int(req.Amount), time.Now()); err != nil {
-		log.Error("IncrOrderRefund Error %v", err, c)
+	if !ord.Test {
+		if err := counter.IncrOrderRefund(ord.Context(), ord, int(req.Amount), time.Now()); err != nil {
+			log.Error("IncrOrderRefund Error %v", err, c)
+		}
 	}
 
 	return nil
