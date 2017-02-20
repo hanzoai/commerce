@@ -223,6 +223,7 @@ func create(c *gin.Context) {
 		tokStr = loginTok.String()
 	}
 
+	counter.IncrUser(usr.Context(), usr.CreatedAt)
 	// Render user
 	http.Render(c, 201, createRes{User: usr, Token: tokStr})
 

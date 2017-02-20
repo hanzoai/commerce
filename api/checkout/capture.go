@@ -179,6 +179,10 @@ func updateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 			log.Warn("Counter Error %s", err, ctx)
 		}
 
+		if err := counter.IncrOrder(ctx, ord); err != nil {
+			log.Error("IncrOrder Error %v", err, ctx)
+		}
+
 		if ord.StoreId != "" {
 			if err := counter.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
 				log.Warn("Counter Error %s", err, ctx)
