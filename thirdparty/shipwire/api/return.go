@@ -84,8 +84,10 @@ func createReturn(c *gin.Context) {
 		items = ord.Items
 	}
 
-	if err := counter.IncrOrderReturn(db.Context, items, rtn); err != nil {
-		log.Error("IncrOrderReturn Error %v", err, c)
+	if !ord.Test {
+		if err := counter.IncrOrderReturn(db.Context, items, rtn); err != nil {
+			log.Error("IncrOrderReturn Error %v", err, c)
+		}
 	}
 
 	ord.ReturnIds = append(ord.ReturnIds, rtn.Id())

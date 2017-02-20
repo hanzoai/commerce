@@ -56,6 +56,10 @@ func IncrUser(ctx appengine.Context, t time.Time) error {
 	return IncrementByAll(ctx, "user-count", "", 1, t)
 }
 
+func IncrSubscriber(ctx appengine.Context, t time.Time) error {
+	return IncrementByAll(ctx, "subscriber-count", "", 1, t)
+}
+
 func IncrOrder(ctx appengine.Context, ord *order.Order) error {
 	if ord.StoreId != "" {
 		if err := IncrementByAll(ctx, "order-count", ord.StoreId, 1, ord.CreatedAt); err != nil {
@@ -119,6 +123,9 @@ func IncrProduct(ctx appengine.Context, prod *product.Product, ord *order.Order)
 }
 
 func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time.Time) error {
+	if ord.Refunded == 0 {
+		return nil
+	}
 	if ord.StoreId != "" {
 		if err := IncrementByAll(ctx, "order-refunds", ord.StoreId, refund, t); err != nil {
 			return err
