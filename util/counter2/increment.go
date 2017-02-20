@@ -26,30 +26,48 @@ func month(t time.Time) string {
 }
 
 // Increment increments the named counter by 1
-func Increment(c appengine.Context, name string) error {
-	return IncrementBy(c, name, 1)
+func Increment(c appengine.Context, name, tag string) error {
+	return IncrementBy(c, name, tag, 1)
+}
+
+// Increment hour suffixed name
+func IncrementHourly(ctx appengine.Context, name, tag string, t time.Time) error {
+	name += sep + hour(t)
+	return Increment(ctx, name, tag)
+}
+
+// Increment day suffixed name
+func IncrementDaily(ctx appengine.Context, name, tag string, t time.Time) error {
+	name += sep + day(t)
+	return Increment(ctx, name, tag)
+}
+
+// Increment month suffixed name
+func IncrementMonthly(ctx appengine.Context, name, tag string, t time.Time) error {
+	name += sep + month(t)
+	return Increment(ctx, name, tag)
 }
 
 // Increment increments the named counter by amount
-func IncrementBy(c appengine.Context, name string, amount int) error {
-	IncrementByTask.Call(c, name, amount)
+func IncrementBy(c appengine.Context, name, tag string, amount int) error {
+	IncrementByTask.Call(c, name, tag, amount)
 	return nil
 }
 
-// Increment hour suffixed key
-func IncrementHour(ctx appengine.Context, key string, t time.Time) error {
-	key += sep + hour(t)
-	return Increment(ctx, key)
+// Increment hour suffixed name
+func IncrementByHourly(ctx appengine.Context, name, tag string, amount int, t time.Time) error {
+	name += sep + hour(t)
+	return IncrementBy(ctx, name, tag, amount)
 }
 
-// Increment day suffixed key
-func IncrementDay(ctx appengine.Context, key string, t time.Time) error {
-	key += sep + day(t)
-	return Increment(ctx, key)
+// Increment day suffixed name
+func IncrementByDaily(ctx appengine.Context, name, tag string, amount int, t time.Time) error {
+	name += sep + day(t)
+	return IncrementBy(ctx, name, tag, amount)
 }
 
-// Increment month suffixed key
-func IncrementMonth(ctx appengine.Context, key string, t time.Time) error {
-	key += sep + month(t)
-	return Increment(ctx, key)
+// Increment month suffixed name
+func IncrementByMonthly(ctx appengine.Context, name, tag string, amount int, t time.Time) error {
+	name += sep + month(t)
+	return IncrementBy(ctx, name, tag, amount)
 }
