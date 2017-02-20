@@ -1,6 +1,8 @@
 package order
 
-import "strings"
+import (
+	"strings"
+)
 
 // Hooks
 func (o *Order) BeforeCreate() error {

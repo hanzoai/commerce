@@ -35,9 +35,10 @@ type Product struct {
 	UPC  string `json:"upc,omitempty"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency  currency.Type  `json:"currency"`
-	Price     currency.Cents `json:"price"`
-	ListPrice currency.Cents `json:"listPrice,omitempty"`
+	Currency      currency.Type  `json:"currency"`
+	Price         currency.Cents `json:"price"`
+	ListPrice     currency.Cents `json:"listPrice,omitempty"`
+	InventoryCost currency.Cents `json:"-"`
 
 	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`

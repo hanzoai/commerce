@@ -30,14 +30,6 @@ type DashboardData struct {
 	// DailyStoreSales  [](map[currency.Type]int64)
 	// DailyStoreOrders [](map[currency.Type]int64)
 }
-type Period string
-
-const (
-	Yearly  Period = "yearly"
-	Monthly        = "monthly"
-	Weekly         = "weekly"
-	Daily          = "daily"
-)
 
 func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
 	ctx = org.Namespaced(ctx)
