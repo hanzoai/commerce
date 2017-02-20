@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/product"
 	return_ "hanzo.io/models/return"
 	"hanzo.io/thirdparty/shipwire"
+	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -76,6 +77,15 @@ func createReturn(c *gin.Context) {
 
 	if err := rtn.Create(); err != nil {
 		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
+	}
+
+	items := rtn.Items
+	if len(items) == 0 {
+		items = ord.Items
+	}
+
+	if err := counter.IncrOrderReturn(db.Context, items, rtn); err != nil {
+		log.Error("IncrOrderReturn Error %v", err, c)
 	}
 
 	ord.ReturnIds = append(ord.ReturnIds, rtn.Id())

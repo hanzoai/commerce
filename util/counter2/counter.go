@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/memcache"
+	"time"
 )
 
 const (
@@ -17,11 +18,17 @@ type counterConfig struct {
 }
 
 type shard struct {
-	Name string
+	// Shard name
+	Name string `json:"name"`
+	// Tag for filtering
+	Tag string `json:"tag"`
 	// Counter
-	Count int
+	Count int `json:"count"`
 	// Array
-	Members []string
+	Members []string `json:"members"`
+	// Time
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func memcacheKey(name string) string {
@@ -29,13 +36,39 @@ func memcacheKey(name string) string {
 }
 
 // Count retrieves the value of the named counter.
-func Count(c appengine.Context, name string) (int, error) {
+func CountByName(c appengine.Context, name string) (int, error) {
 	total := 0
 	mkey := memcacheKey(name)
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
 		return total, nil
 	}
 	q := datastore.NewQuery(shardKind).Filter("Name =", name)
+	for t := q.Run(c); ; {
+		var s shard
+		_, err := t.Next(&s)
+		if err == datastore.Done {
+			break
+		}
+		if err != nil {
+			return total, err
+		}
+		total += s.Count
+	}
+	memcache.JSON.Set(c, &memcache.Item{
+		Key:        mkey,
+		Object:     &total,
+		Expiration: 60,
+	})
+	return total, nil
+}
+
+func CountByTag(c appengine.Context, tag string) (int, error) {
+	total := 0
+	mkey := memcacheKey(tag)
+	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
+		return total, nil
+	}
+	q := datastore.NewQuery(shardKind).Filter("Tag =", tag)
 	for t := q.Run(c); ; {
 		var s shard
 		_, err := t.Next(&s)
