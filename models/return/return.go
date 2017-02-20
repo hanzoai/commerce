@@ -19,7 +19,6 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Return struct {
 	mixin.Model
-	mixin.Counter
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
