@@ -30,7 +30,6 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type User struct {
 	mixin.Model
-	mixin.Counter
 	mixin.Salesforce
 
 	// Crowdstart Id, found in default namespace

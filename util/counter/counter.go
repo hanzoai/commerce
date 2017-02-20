@@ -21,13 +21,31 @@ type counterConfig struct {
 	Shards int
 }
 
+type Period string
+
+const (
+	None    Period = "none"
+	Total   Period = "total"
+	Hourly  Period = "hourly"
+	Daily   Period = "daily"
+	Weekly  Period = "weekly"
+	Monthly Period = "monthy"
+	Yearly  Period = "yearly"
+)
+
 type shard struct {
-	Name string
+	Name string `json:"name"`
+	Tag  string `json:"tag"`
 	// Counter
-	Count int
+	Count   int    `json:"count"`
+	StoreId string `json:"storeId"`
 	// Array
 	Set  map[string]bool `datastore:"-"`
-	Set_ string          `datastore:",noindex"`
+	Set_ string          `datastore:",noindex" json:"set"`
+
+	Period Period `json:"period"`
+
+	Time time.Time `json:"time"`
 }
 
 func (s *shard) Load(c <-chan aeds.Property) (err error) {
@@ -62,7 +80,7 @@ func memcacheKey(name string) string {
 	return shardKind + ":" + name
 }
 
-func MemberExists(c appengine.Context, name, value string) bool {
+func MemberExists(c appengine.Context, name string, value string) bool {
 	members, err := Members(c, name)
 	if err != nil {
 		return false
@@ -142,28 +160,45 @@ func Count(c appengine.Context, name string) (int, error) {
 	return total, nil
 }
 
+func CountByTag(c appengine.Context, tag, storeId string, p Period, start, end time.Time) (int, error) {
+	total := 0
+	q := aeds.NewQuery(shardKind).Filter("Tag =", tag).Filter("CreatedAt>=", start).Filter("CreatedAt<=", end)
+	for t := q.Run(c); ; {
+		var s shard
+		_, err := t.Next(&s)
+		if err == aeds.Done {
+			break
+		}
+		if err != nil {
+			return total, err
+		}
+		total += s.Count
+	}
+	return total, nil
+}
+
 // Adds a member to the array if it does not exist
-func AddSetMember(c appengine.Context, name, value string) error {
+func AddSetMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
 	if MemberExists(c, name, value) {
 		return nil
 	}
-	return AddMember(c, name, value)
+	return AddMember(c, name, tag, storeId, p, value, t)
 }
 
 // Adds a member to the array on the shard
-func AddMember(c appengine.Context, name, value string) error {
-	AddMemberTask.Call(c, name, value)
+func AddMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
+	AddMemberTask.Call(c, name, tag, storeId, p, value, t)
 	return nil
 }
 
 // Increment increments the named counter by 1
-func Increment(c appengine.Context, name string) error {
-	return IncrementBy(c, name, 1)
+func Increment(c appengine.Context, name, tag, storeId string, p Period, t time.Time) error {
+	return IncrementBy(c, name, tag, storeId, p, 1, t)
 }
 
 // Increment increments the named counter by amount
-func IncrementBy(c appengine.Context, name string, amount int) error {
-	IncrementByTask.Call(c, name, amount)
+func IncrementBy(c appengine.Context, name, tag, storeId string, p Period, amount int, t time.Time) error {
+	IncrementByTask.Call(c, name, tag, storeId, p, amount, t)
 	return nil
 }
 
@@ -196,7 +231,7 @@ var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
 func init() {
-	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name string, amount int) {
+	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name, tag, storeId string, p Period, amount int, t time.Time) {
 		log.Debug("INCREMENT %s BY %d", name, amount, c)
 		// Get counter config.
 		var cfg counterConfig
@@ -224,7 +259,11 @@ func init() {
 				panic(err)
 			}
 			s.Name = name
+			s.Tag = tag
+			s.StoreId = storeId
+			s.Period = p
 			s.Count += amount
+			s.Time = t
 			_, err = aeds.Put(c, key, &s)
 			return err
 		}, nil)
@@ -249,7 +288,7 @@ func init() {
 		memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
 	})
 
-	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, value string) {
+	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) {
 		log.Debug("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
@@ -281,6 +320,9 @@ func init() {
 				s.Set = make(map[string]bool)
 			}
 			s.Set[value] = true
+			s.StoreId = storeId
+			s.Period = p
+			s.Time = t
 			_, err = aeds.Put(c, key, &s)
 			return err
 		}, nil)
