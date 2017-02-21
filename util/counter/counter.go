@@ -269,7 +269,7 @@ func init() {
 		}, nil)
 		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			t, err := IncrementByTask.Task(c, name, tag, storeId, p, amount, t)
+			t, err := IncrementByTask.Task(name, tag, storeId, p, amount, t)
 			if err != nil {
 				log.Panic("IncrementByTask Error %v", err, c)
 			}
@@ -328,7 +328,7 @@ func init() {
 		}, nil)
 		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			t, err := AddMemberTask.Task(c, name, tag, storeId, p, value)
+			t, err := AddMemberTask.Task(name, tag, storeId, p, value)
 			if err != nil {
 				log.Panic("AddMemberTask Error %v", err, c)
 			}
