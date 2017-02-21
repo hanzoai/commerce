@@ -31,6 +31,7 @@ import (
 	cartApi "hanzo.io/api/cart"
 	cdnApi "hanzo.io/api/cdn"
 	checkoutApi "hanzo.io/api/checkout"
+	counterApi "hanzo.io/api/counter"
 	couponApi "hanzo.io/api/coupon"
 	dataApi "hanzo.io/api/data"
 	deployApi "hanzo.io/api/deploy"
@@ -104,6 +105,7 @@ func Route(api router.Router) {
 	affiliateApi.Route(api, tokenRequired)
 	campaignApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
+	counterApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
