@@ -136,8 +136,10 @@ func saveReferral(org *organization.Organization, ord *order.Order) {
 		return
 	}
 
-	if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
-		log.Warn("Counter Error %s", err, ctx)
+	if !ord.Test {
+		if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
+		}
 	}
 
 	// Update statistics
@@ -177,6 +179,10 @@ func updateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 		}
 		if err := counter.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
 			log.Warn("Counter Error %s", err, ctx)
+		}
+
+		if err := counter.IncrOrder(ctx, ord); err != nil {
+			log.Error("IncrOrder Error %v", err, ctx)
 		}
 
 		if ord.StoreId != "" {
