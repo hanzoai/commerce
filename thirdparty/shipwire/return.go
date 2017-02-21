@@ -48,3 +48,7 @@ func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *R
 	res, err := c.Resource("POST", "/returns", req, &r)
 	return &r, res, err
 }
+
+func (c *Client) CancelReturn(id string) (*Response, error) {
+	return c.Resource("POST", "/returns/"+id+"/cancel", nil, nil)
+}
