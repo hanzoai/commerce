@@ -72,8 +72,8 @@ func (s *Shard) Save(c chan<- aeds.Property) (err error) {
 
 const (
 	DefaultShards = 3
-	ConfigKind    = "GeneralCounterShardConfig"
-	ShardKind     = "GeneralCounterShard"
+	ConfigKind    = "_counterconfig"
+	ShardKind     = "_countershard"
 )
 
 func memcacheKey(name string) string {
