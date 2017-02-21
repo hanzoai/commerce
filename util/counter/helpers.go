@@ -22,7 +22,6 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 		key += storeId + incrementSep
 	}
 	key += string(Hourly) + incrementSep + strconv.FormatInt(t2.Unix(), 10)
-	key = addEnvironment(key)
 	log.Debug("%v incremented by %v", key, 1, ctx)
 	if err := Increment(ctx, key, tag, storeId, Hourly, t); err != nil {
 		return err
@@ -34,9 +33,8 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 		key += storeId + incrementSep
 	}
 	key += string(Monthly) + incrementSep + strconv.FormatInt(t2.Unix(), 10)
-	key = addEnvironment(key)
 	log.Debug("%v incremented by %v", key, 1, ctx)
-	if err := Increment(ctx, key, key, storeId, Monthly, t); err != nil {
+	if err := Increment(ctx, key, tag, storeId, Monthly, t); err != nil {
 		return err
 	}
 
@@ -45,9 +43,8 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 		key += storeId + incrementSep
 	}
 	key += string(Total)
-	key = addEnvironment(key)
 	log.Debug("%v incremented by %v", key, 1, ctx)
-	if err := Increment(ctx, key, key, storeId, Total, t); err != nil {
+	if err := Increment(ctx, key, tag, storeId, Total, t); err != nil {
 		return err
 	}
 

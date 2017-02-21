@@ -15,7 +15,7 @@ import (
 
 var _ = New("reset-main-counters",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+		c.Set("namespace", "stoned")
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
