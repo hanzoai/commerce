@@ -26,6 +26,7 @@ type loginReq struct {
 type organizationRes struct {
 	Id               string `json:"id"`
 	Name             string `json:"name"`
+	Currency         string `json:"currency"`
 	FullName         string `json:"fullName"`
 	LiveSecretKey    string `json:"live-secret-key"`
 	LivePublishKey   string `json:"live-published-key"`
@@ -94,6 +95,7 @@ func login(c *gin.Context) {
 		res.Organizations[i] = organizationRes{
 			Id:               org.Id(),
 			Name:             org.Name,
+			Currency:         "USD",
 			FullName:         org.FullName,
 			LiveSecretKey:    org.MustGetTokenByName("live-secret-key").String(),
 			LivePublishKey:   org.MustGetTokenByName("live-published-key").String(),

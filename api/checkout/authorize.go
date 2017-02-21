@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,6 +18,7 @@ import (
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/reflect"
@@ -128,6 +130,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		fe.PaymentId = pay.Id()
 		pay.FeeIds = append(pay.FeeIds, fe.Id())
 		entities = append(entities, fe)
+	}
+
+	if usr.CreatedAt.IsZero() && !ord.Test {
+		if err := counter.IncrUser(usr.Context(), time.Now()); err != nil {
+			log.Error("IncrUser Error %v", err, c)
+		}
 	}
 
 	multi.MustCreate(entities)
