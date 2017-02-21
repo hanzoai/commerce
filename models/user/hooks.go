@@ -22,11 +22,6 @@ func (u *User) BeforeUpdate(prev *User) error {
 func (u *User) AfterCreate() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
 
-	u.Increment()
-	u.IncrementDay()
-	u.IncrementHour()
-	u.IncrementMonth()
-
 	return nil
 }
 
@@ -37,5 +32,6 @@ func (u *User) AfterUpdate(prev *User) error {
 
 func (u *User) AfterDelete() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.deleted", u)
+
 	return nil
 }

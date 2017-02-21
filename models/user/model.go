@@ -13,7 +13,6 @@ func (u User) Kind() string {
 }
 
 func (u *User) Init(db *datastore.Datastore) {
-	u.Counter.Init(u)
 	u.Model.Init(db, u)
 }
 
