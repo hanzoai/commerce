@@ -138,13 +138,13 @@ func post(r *rest.Rest) func(c *gin.Context) {
 
 		rev := req.Review
 
-		if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-			http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
+		if err := json.Decode(c.Request.Body, &rev); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		if err := json.Decode(c.Request.Body, &rev); err != nil {
-			r.Fail(c, 400, "Failed decode request body", err)
+		if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+			http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 			return
 		}
 
