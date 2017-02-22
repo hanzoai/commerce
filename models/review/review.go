@@ -21,6 +21,7 @@ type Review struct {
 	VariantId string `json:"variantId"`
 
 	Name    string `json:"name"`
+	Device  string `json:"device"`
 	Comment string `json:"comment"`
 	Rating  int    `json:"rating"`
 
