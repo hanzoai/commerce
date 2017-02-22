@@ -16,7 +16,7 @@ type RecaptchaResponse struct {
 	Success     bool      `json:"success"`
 	ChallengeTS time.Time `json:"challenge_ts"`
 	Hostname    string    `json:"hostname"`
-	ErrorCodes  []int     `json:"error-codes"`
+	ErrorCodes  []string  `json:"error-codes"`
 }
 
 func Challenge(ctx appengine.Context, privateKey, response string) bool {
