@@ -1,6 +1,7 @@
 package review
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +9,8 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/review"
+	"hanzo.io/thirdparty/recaptcha"
+	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
@@ -43,7 +46,7 @@ func get(r *rest.Rest) func(c *gin.Context) {
 	}
 }
 
-func List(r *rest.Rest) func(c *gin.Context) {
+func list(r *rest.Rest) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "list") {
 			return
@@ -116,13 +119,52 @@ func List(r *rest.Rest) func(c *gin.Context) {
 	}
 }
 
+type createReq struct {
+	*review.Review
+	Captcha string `json:"g-recaptcha-response"`
+}
+
+func post(r *rest.Rest) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		if !r.CheckPermissions(c, "create") {
+			return
+		}
+
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
+
+		req := &createReq{}
+		req.Review = review.New(db)
+
+		rev := req.Review
+
+		if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+			http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
+			return
+		}
+
+		if err := json.Decode(c.Request.Body, &rev); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
+
+		if err := rev.Create(); err != nil {
+			r.Fail(c, 500, "Failed to create "+r.Kind, err)
+		} else {
+			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+rev.Id())
+			r.Render(c, 201, rev)
+		}
+	}
+}
+
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(review.Review{})
 
 	api.Update = forced404
 	api.Patch = forced404
 	api.Get = get(api)
-	api.List = List(api)
+	api.List = list(api)
+	api.Create = post(api)
 
 	api.Route(router, args...)
 }
