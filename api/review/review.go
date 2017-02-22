@@ -138,7 +138,7 @@ func post(r *rest.Rest) func(c *gin.Context) {
 
 		rev := req.Review
 
-		if err := json.Decode(c.Request.Body, &rev); err != nil {
+		if err := json.Decode(c.Request.Body, &req); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
