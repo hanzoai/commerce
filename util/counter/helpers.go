@@ -136,6 +136,14 @@ func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time
 	if ord.Refunded != ord.Total {
 		return nil
 	}
+	if ord.StoreId != "" {
+		if err := IncrementByAll(ctx, "order.refund.count", ord.StoreId, refund, t); err != nil {
+			return err
+		}
+	}
+	if err := IncrementByAll(ctx, "order.refund.count", "", refund, t); err != nil {
+		return err
+	}
 	for _, item := range ord.Items {
 		prod := product.New(ord.Db)
 		if err := prod.GetById(item.ProductId); err != nil {
