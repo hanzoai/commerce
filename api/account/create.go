@@ -2,14 +2,9 @@ package account
 
 import (
 	"errors"
-	"io/ioutil"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
-
-	"appengine"
-	"appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,6 +15,7 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/thirdparty/recaptcha"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
@@ -41,43 +37,6 @@ type createRes struct {
 	Token string `json:"token,omitempty"`
 }
 
-type RecaptchaResponse struct {
-	Success     bool      `json:"success"`
-	ChallengeTS time.Time `json:"challenge_ts"`
-	Hostname    string    `json:"hostname"`
-	ErrorCodes  []int     `json:"error-codes"`
-}
-
-func recaptcha(ctx appengine.Context, privateKey, response string) bool {
-	// log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
-	client := urlfetch.Client(ctx)
-	r := RecaptchaResponse{}
-	resp, err := client.PostForm("https://www.google.com/recaptcha/api/siteverify",
-		url.Values{
-			"secret":   {privateKey},
-			"response": {response},
-			// "remoteip": {remoteIp},
-		})
-	if err != nil {
-		log.Error("Captcha post error: %s", err, ctx)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	log.Debug("Captcha %s", body, ctx)
-	if err != nil {
-		log.Error("Read error: could not read body: %s", err, ctx)
-		return false
-	}
-	err = json.Unmarshal(body, &r)
-	log.Debug("Captcha %v", r, ctx)
-	if err != nil {
-		log.Error("Read error: got invalid JSON: %s", err, ctx)
-		return false
-	}
-
-	return r.Success
-}
-
 func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -96,7 +55,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	if org.Recaptcha.Enabled && !recaptcha(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
 		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 		return
 	}
