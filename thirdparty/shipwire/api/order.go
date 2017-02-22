@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,6 +14,7 @@ import (
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/shipwire"
+	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -67,6 +69,8 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 		return
 	}
 
+	oldPricing := ord.Fulfillment.Pricing
+
 	// Save Shipwire data
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
@@ -100,6 +104,10 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 	updateFromHolds(ord, o.Holds.Resource)
 
 	ord.MustPut()
+
+	if oldPricing != ord.Fulfillment.Pricing && ord.Fulfillment.Pricing != 0 {
+		counter.IncrOrderShip(db.Context, ord, time.Now())
+	}
 
 	c.String(200, "ok\n")
 }
