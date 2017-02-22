@@ -12,14 +12,23 @@ import (
 	"hanzo.io/util/counter"
 	"hanzo.io/util/log"
 
+	aeds "appengine/datastore"
 	ds "hanzo.io/datastore"
 )
 
 func MustNukeCounter(db *ds.Datastore, tag string) {
-	if ks, err := db.Query(counter.ShardKind).Filter("Tag=", tag).KeysOnly().GetAll(nil); err != nil {
+	var ks []*aeds.Key
+	var err error
+	ks, err = db.Query(counter.ShardKind).Filter("Tag=", tag).Limit(500).KeysOnly().GetAll(nil)
+	if err != nil {
 		log.Panic("Cannot delete %s, %v", tag, err, db.Context)
-	} else {
+	}
+	for len(ks) != 0 {
 		db.MustDeleteMulti(ks)
+		ks, err = db.Query(counter.ShardKind).Filter("Tag=", tag).Limit(500).KeysOnly().GetAll(nil)
+		if err != nil {
+			log.Panic("Cannot delete %s, %v", tag, err, db.Context)
+		}
 	}
 }
 
