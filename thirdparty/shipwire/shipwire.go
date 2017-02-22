@@ -53,7 +53,7 @@ func (c *Client) Request(method, url string, body interface{}, dst interface{}) 
 	if body != nil {
 		data = bytes.NewBuffer(json.EncodeBytes(body))
 	} else {
-		data = nil
+		data = bytes.NewBufferString("")
 	}
 
 	// Create request
