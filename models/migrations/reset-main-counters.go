@@ -13,7 +13,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-var _ = New("reset-main-counters",
+var _ = New("reset-refund-counters",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "stoned")
 		return NoArgs
