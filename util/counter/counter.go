@@ -39,6 +39,7 @@ type Shard struct {
 	// Counter
 	Count   int    `json:"count"`
 	StoreId string `json:"storeId"`
+	Geo     string `json:"geo"`
 	// Array
 	Set  map[string]bool `datastore:"-"`
 	Set_ string          `datastore:",noindex" json:"set"`
@@ -262,6 +263,7 @@ func init() {
 			s.Tag = tag
 			s.StoreId = storeId
 			s.Period = p
+			s.Geo = geo
 			s.Count += amount
 			s.Time = t
 			_, err = aeds.Put(c, key, &s)
@@ -322,6 +324,7 @@ func init() {
 			s.Set[value] = true
 			s.StoreId = storeId
 			s.Period = p
+			s.Geo = geo
 			s.Time = t
 			_, err = aeds.Put(c, key, &s)
 			return err
