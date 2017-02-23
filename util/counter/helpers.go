@@ -15,15 +15,18 @@ import (
 
 var incrementSep = "."
 
-func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t time.Time) error {
+func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, t time.Time) error {
 	t2 := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 	key := tag + incrementSep
 	if storeId != "" {
 		key += storeId + incrementSep
 	}
+	if geo != "" {
+		key += geo + incrementSep
+	}
 	key += string(Hourly) + incrementSep + strconv.FormatInt(t2.Unix(), 10)
 	log.Debug("%v incremented by %v", key, 1, ctx)
-	if err := Increment(ctx, key, tag, storeId, Hourly, t); err != nil {
+	if err := Increment(ctx, key, tag, storeId, geo, Hourly, t); err != nil {
 		return err
 	}
 
@@ -32,9 +35,12 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 	if storeId != "" {
 		key += storeId + incrementSep
 	}
+	if geo != "" {
+		key += geo + incrementSep
+	}
 	key += string(Monthly) + incrementSep + strconv.FormatInt(t2.Unix(), 10)
 	log.Debug("%v incremented by %v", key, 1, ctx)
-	if err := Increment(ctx, key, tag, storeId, Monthly, t); err != nil {
+	if err := Increment(ctx, key, tag, storeId, geo, Monthly, t); err != nil {
 		return err
 	}
 
@@ -42,9 +48,12 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 	if storeId != "" {
 		key += storeId + incrementSep
 	}
+	if geo != "" {
+		key += geo + incrementSep
+	}
 	key += string(Total)
 	log.Debug("%v incremented by %v", key, 1, ctx)
-	if err := Increment(ctx, key, tag, storeId, Total, t); err != nil {
+	if err := Increment(ctx, key, tag, storeId, geo, Total, t); err != nil {
 		return err
 	}
 
@@ -52,26 +61,26 @@ func IncrementByAll(ctx appengine.Context, tag, storeId string, value int, t tim
 }
 
 func IncrUser(ctx appengine.Context, t time.Time) error {
-	return IncrementByAll(ctx, "user.count", "", 1, t)
+	return IncrementByAll(ctx, "user.count", "", "", 1, t)
 }
 
 func IncrSubscriber(ctx appengine.Context, t time.Time) error {
-	return IncrementByAll(ctx, "subscriber.count", "", 1, t)
+	return IncrementByAll(ctx, "subscriber.count", "", "", 1, t)
 }
 
 func IncrOrder(ctx appengine.Context, ord *order.Order) error {
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "order.count", ord.StoreId, 1, ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "order.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 			return err
 		}
-		if err := IncrementByAll(ctx, "order.revenue", ord.StoreId, int(ord.Total), ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "order.revenue", ord.StoreId, ord.ShippingAddress.Country, int(ord.Total), ord.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "order.count", "", 1, ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "order.count", "", ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
-	if err := IncrementByAll(ctx, "order.revenue", "", int(ord.Total), ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "order.revenue", "", ord.ShippingAddress.Country, int(ord.Total), ord.CreatedAt); err != nil {
 		return err
 	}
 	for _, item := range ord.Items {
@@ -92,17 +101,17 @@ func IncrOrder(ctx appengine.Context, ord *order.Order) error {
 
 func IncrProduct(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".sold", ord.StoreId, 1, ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".sold", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 			return err
 		}
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".revenue", ord.StoreId, int(prod.Price), ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".sold", "", 1, ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".sold", "", ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".revenue", "", int(prod.Price), ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".revenue", "", ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
 		return err
 	}
 
@@ -111,11 +120,11 @@ func IncrProduct(ctx appengine.Context, prod *product.Product, ord *order.Order)
 	}
 
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".inventory.cost", ord.StoreId, int(prod.InventoryCost), ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".inventory.cost", ord.StoreId, ord.ShippingAddress.Country, int(prod.InventoryCost), ord.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".inventory.cost", "", int(prod.InventoryCost), ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".inventory.cost", "", ord.ShippingAddress.Country, int(prod.InventoryCost), ord.CreatedAt); err != nil {
 		return err
 	}
 	return nil
@@ -126,22 +135,22 @@ func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time
 		return nil
 	}
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "order.refunded", ord.StoreId, refund, t); err != nil {
+		if err := IncrementByAll(ctx, "order.refunded", ord.StoreId, ord.ShippingAddress.Country, refund, t); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "order.refunded", "", refund, t); err != nil {
+	if err := IncrementByAll(ctx, "order.refunded", "", ord.ShippingAddress.Country, refund, t); err != nil {
 		return err
 	}
 	if ord.Refunded != ord.Total {
 		return nil
 	}
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "order.refunded.count", ord.StoreId, 1, t); err != nil {
+		if err := IncrementByAll(ctx, "order.refunded.count", ord.StoreId, ord.ShippingAddress.Country, 1, t); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "order.refunded.count", "", 1, t); err != nil {
+	if err := IncrementByAll(ctx, "order.refunded.count", "", ord.ShippingAddress.Country, 1, t); err != nil {
 		return err
 	}
 	for _, item := range ord.Items {
@@ -165,17 +174,17 @@ func IncrOrderShip(ctx appengine.Context, ord *order.Order, t time.Time) error {
 		return nil
 	}
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "order.shipped.count", ord.StoreId, 1, t); err != nil {
+		if err := IncrementByAll(ctx, "order.shipped.count", ord.StoreId, ord.ShippingAddress.Country, 1, t); err != nil {
 			return err
 		}
-		if err := IncrementByAll(ctx, "order.shipped", ord.StoreId, int(ord.Fulfillment.Pricing), t); err != nil {
+		if err := IncrementByAll(ctx, "order.shipped", ord.StoreId, ord.ShippingAddress.Country, int(ord.Fulfillment.Pricing), t); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "order.shipped.count", "", 1, t); err != nil {
+	if err := IncrementByAll(ctx, "order.shipped.count", "", ord.ShippingAddress.Country, 1, t); err != nil {
 		return err
 	}
-	if err := IncrementByAll(ctx, "order.shipped", "", int(ord.Fulfillment.Pricing), t); err != nil {
+	if err := IncrementByAll(ctx, "order.shipped", "", ord.ShippingAddress.Country, int(ord.Fulfillment.Pricing), t); err != nil {
 		return err
 	}
 	for _, item := range ord.Items {
@@ -196,11 +205,11 @@ func IncrOrderShip(ctx appengine.Context, ord *order.Order, t time.Time) error {
 
 func IncrProductShip(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".shipped.count", ord.StoreId, 1, ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".shipped.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".shipped.count", "", 1, ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".shipped.count", "", ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
 
@@ -209,11 +218,11 @@ func IncrProductShip(ctx appengine.Context, prod *product.Product, ord *order.Or
 
 func IncrProductRefund(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
 	if ord.StoreId != "" {
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", ord.StoreId, 1, ord.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", "", 1, ord.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", "", ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
 
@@ -221,12 +230,16 @@ func IncrProductRefund(ctx appengine.Context, prod *product.Product, ord *order.
 }
 
 func IncrOrderReturn(ctx appengine.Context, items []lineitem.LineItem, rtn *return_.Return) error {
+	ord := order.New(rtn.Db)
+	if err := ord.GetById(rtn.OrderId); err != nil {
+		return err
+	}
 	if rtn.StoreId != "" {
-		if err := IncrementByAll(ctx, "order.returned.count", rtn.StoreId, 1, rtn.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "order.returned.count", rtn.StoreId, ord.ShippingAddress.Country, 1, rtn.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "order.returned.count", "", 1, rtn.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "order.returned.count", "", ord.ShippingAddress.Country, 1, rtn.CreatedAt); err != nil {
 		return err
 	}
 	for _, item := range items {
@@ -235,7 +248,7 @@ func IncrOrderReturn(ctx appengine.Context, items []lineitem.LineItem, rtn *retu
 			return err
 		}
 		for i := 0; i < item.Quantity; i++ {
-			if err := IncrProductReturn(ctx, prod, rtn); err != nil {
+			if err := IncrProductReturn(ctx, prod, ord, rtn); err != nil {
 				log.Error("IncrProduct Error %v", err, ctx)
 				return err
 			}
@@ -245,13 +258,13 @@ func IncrOrderReturn(ctx appengine.Context, items []lineitem.LineItem, rtn *retu
 	return nil
 }
 
-func IncrProductReturn(ctx appengine.Context, prod *product.Product, rtn *return_.Return) error {
+func IncrProductReturn(ctx appengine.Context, prod *product.Product, ord *order.Order, rtn *return_.Return) error {
 	if rtn.StoreId != "" {
-		if err := IncrementByAll(ctx, "product."+prod.Id()+".returned", rtn.StoreId, 1, rtn.CreatedAt); err != nil {
+		if err := IncrementByAll(ctx, "product."+prod.Id()+".returned.count", rtn.StoreId, ord.ShippingAddress.Country, 1, rtn.CreatedAt); err != nil {
 			return err
 		}
 	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".returned", "", 1, rtn.CreatedAt); err != nil {
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".returned.count", "", ord.ShippingAddress.Country, 1, rtn.CreatedAt); err != nil {
 		return err
 	}
 
