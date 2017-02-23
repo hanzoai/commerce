@@ -51,10 +51,10 @@ var _ = New("reset-main-counters",
 		MustNukeCounter(nsDb, "order.refunded")
 
 		MustNukeCounter(nsDb, "order.revenue")
-		MustNukeCounter(nsDb, "order.refunded")
+		MustNukeCounter(nsDb, "order.refunded.amount")
 		MustNukeCounter(nsDb, "order.refunded.count")
 		MustNukeCounter(nsDb, "order.returned.count")
-		MustNukeCounter(nsDb, "order.shipped")
+		MustNukeCounter(nsDb, "order.shipped.cost")
 		MustNukeCounter(nsDb, "order.shipped.count")
 
 		prods := make([]*product.Product, 0)
