@@ -20,11 +20,11 @@ var _ = New("reset-refund-counters",
 			return
 		}
 		if ord.StoreId != "" {
-			if err := counter.IncrementByAll(ctx, "order.refund.count", ord.StoreId, 1, ord.UpdatedAt); err != nil {
+			if err := counter.IncrementByAll(ctx, "order.refund.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.UpdatedAt); err != nil {
 				return
 			}
 		}
-		if err := counter.IncrementByAll(ctx, "order.refund.count", "", 1, ord.UpdatedAt); err != nil {
+		if err := counter.IncrementByAll(ctx, "order.refund.count", "", ord.ShippingAddress.Country, 1, ord.UpdatedAt); err != nil {
 			return
 		}
 	},
