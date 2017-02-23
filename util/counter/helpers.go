@@ -157,7 +157,7 @@ func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time
 	if ord.Refunded == 0 {
 		return nil
 	}
-	if err := IncrementByAll(ctx, "order.refunded", ord.StoreId, ord.ShippingAddress.Country, refund, t); err != nil {
+	if err := IncrementByAll(ctx, "order.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, refund, t); err != nil {
 		return err
 	}
 	if ord.Refunded != ord.Total {
@@ -192,7 +192,7 @@ func IncrOrderShip(ctx appengine.Context, ord *order.Order, t time.Time) error {
 	if err := IncrementByAll(ctx, "order.shipped.count", ord.StoreId, ord.ShippingAddress.Country, 1, t); err != nil {
 		return err
 	}
-	if err := IncrementByAll(ctx, "order.shipped", ord.StoreId, ord.ShippingAddress.Country, int(ord.Fulfillment.Pricing), t); err != nil {
+	if err := IncrementByAll(ctx, "order.shipped.cost", ord.StoreId, ord.ShippingAddress.Country, int(ord.Fulfillment.Pricing), t); err != nil {
 		return err
 	}
 	for _, item := range ord.Items {
