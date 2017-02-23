@@ -157,7 +157,7 @@ func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays 
 	keyId := salesKeyId(currency)
 	key := totalKey(org, keyId, hourly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	err := IncrementBy(ctx, key, key, "", Hourly, int(total), t)
+	err := IncrementBy(ctx, key, key, "", "", Hourly, int(total), t)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays 
 	keyId = salesKeyId(currency)
 	key = totalKey(org, keyId, daily(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	err = IncrementBy(ctx, key, key, "", Daily, int(total), t)
+	err = IncrementBy(ctx, key, key, "", "", Daily, int(total), t)
 	if err != nil {
 		return err
 	}
@@ -173,20 +173,20 @@ func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays 
 	keyId = salesKeyId(currency)
 	key = totalKey(org, keyId, monthly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	err = IncrementBy(ctx, key, key, "", Monthly, int(total), t)
+	err = IncrementBy(ctx, key, key, "", "", Monthly, int(total), t)
 	if err != nil {
 		return err
 	}
 
 	currencySet := setName(org, currencySetKey)
-	err = AddSetMember(ctx, currencySet, currencySet, "", None, string(currency), t)
+	err = AddSetMember(ctx, currencySet, currencySet, "", "", None, string(currency), t)
 	if err != nil {
 		return err
 	}
 
 	key = totalKey(org, keyId, allTime)
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	return IncrementBy(ctx, key, key, "", Total, int(total), time.Now())
+	return IncrementBy(ctx, key, key, "", "", Total, int(total), time.Now())
 }
 
 func IncrStoreSales(ctx appengine.Context, org *organization.Organization, storeId string, pays []*payment.Payment, t time.Time) error {
@@ -217,32 +217,32 @@ func IncrStoreSales(ctx appengine.Context, org *organization.Organization, store
 	keyId := salesKeyId(cur)
 	key := storeKey(org, storeId, keyId, hourly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	if err := IncrementBy(ctx, key, key, storeId, Hourly, int(total), t); err != nil {
+	if err := IncrementBy(ctx, key, key, storeId, "", Hourly, int(total), t); err != nil {
 		return err
 	}
 
 	keyId = salesKeyId(cur)
 	key = storeKey(org, storeId, keyId, daily(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	if err := IncrementBy(ctx, key, key, storeId, Daily, int(total), t); err != nil {
+	if err := IncrementBy(ctx, key, key, storeId, "", Daily, int(total), t); err != nil {
 		return err
 	}
 
 	keyId = salesKeyId(cur)
 	key = storeKey(org, storeId, keyId, monthly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	if err := IncrementBy(ctx, key, key, storeId, Monthly, int(total), t); err != nil {
+	if err := IncrementBy(ctx, key, key, storeId, "", Monthly, int(total), t); err != nil {
 		return err
 	}
 
 	key = storeKey(org, storeId, keyId, allTime)
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
-	return IncrementBy(ctx, key, key, storeId, Total, int(total), t)
+	return IncrementBy(ctx, key, key, storeId, "", Total, int(total), t)
 }
 
 func AddCurrency(ctx appengine.Context, org *organization.Organization, cur currency.Type) error {
 	currencySet := setName(org, currencySetKey)
-	return AddSetMember(ctx, currencySet, currencySet, "", Total, string(cur), time.Now())
+	return AddSetMember(ctx, currencySet, currencySet, "", "", Total, string(cur), time.Now())
 }
 
 func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t time.Time) error {
@@ -251,25 +251,25 @@ func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t ti
 	key := totalKey(org, ordersKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
-	if err := Increment(ctx, key, key, "", Hourly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
 		return err
 	}
 
 	key = totalKey(org, ordersKey, daily(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Daily, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
 		return err
 	}
 
 	key = totalKey(org, ordersKey, monthly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Monthly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
 		return err
 	}
 
 	key = totalKey(org, ordersKey, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, "", Total, t)
+	return Increment(ctx, key, key, "", "", Total, t)
 }
 
 func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, storeId string, t time.Time) error {
@@ -277,25 +277,25 @@ func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, stor
 
 	key := storeKey(org, storeId, ordersKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, storeId, Hourly, t); err != nil {
+	if err := Increment(ctx, key, key, storeId, "", Hourly, t); err != nil {
 		return err
 	}
 
 	key = storeKey(org, storeId, ordersKey, daily(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, storeId, Daily, t); err != nil {
+	if err := Increment(ctx, key, key, storeId, "", Daily, t); err != nil {
 		return err
 	}
 
 	key = storeKey(org, storeId, ordersKey, monthly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, storeId, Monthly, t); err != nil {
+	if err := Increment(ctx, key, key, storeId, "", Monthly, t); err != nil {
 		return err
 	}
 
 	key = storeKey(org, storeId, ordersKey, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, storeId, Total, t)
+	return Increment(ctx, key, key, storeId, "", Total, t)
 }
 
 func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mailinglistId string, t time.Time) error {
@@ -303,47 +303,47 @@ func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mail
 
 	key := subKey(org, mailinglistId, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Hourly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistId, daily(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Daily, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistId, monthly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Monthly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistId, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, "", Total, t)
+	return Increment(ctx, key, key, "", "", Total, t)
 
 	key = subKey(org, mailinglistAllKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Hourly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistAllKey, daily(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Daily, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistAllKey, monthly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Monthly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
 		return err
 	}
 
 	key = subKey(org, mailinglistAllKey, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, "", Total, t)
+	return Increment(ctx, key, key, "", "", Total, t)
 }
 
 func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Time) error {
@@ -351,25 +351,25 @@ func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Tim
 
 	key := userKey(org, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Hourly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
 		return err
 	}
 
 	key = userKey(org, daily(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Daily, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
 		return err
 	}
 
 	key = userKey(org, monthly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	if err := Increment(ctx, key, key, "", Monthly, t); err != nil {
+	if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
 		return err
 	}
 
 	key = userKey(org, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, "", Total, t)
+	return Increment(ctx, key, key, "", "", Total, t)
 }
 
 func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organization, ord *order.Order, t time.Time) error {
@@ -381,25 +381,25 @@ func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organizatio
 		key := totalKey(org, productsKey, hourly(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
-		if err := Increment(ctx, key, key, "", Hourly, t); err != nil {
+		if err := Increment(ctx, key, key, "", "", Hourly, t); err != nil {
 			return err
 		}
 
 		key = totalKey(org, productsKey, daily(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, "", Daily, t); err != nil {
+		if err := Increment(ctx, key, key, "", "", Daily, t); err != nil {
 			return err
 		}
 
 		key = totalKey(org, productsKey, monthly(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, "", Monthly, t); err != nil {
+		if err := Increment(ctx, key, key, "", "", Monthly, t); err != nil {
 			return err
 		}
 
 		key = totalKey(org, productsKey, allTime)
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, "", Total, t); err != nil {
+		if err := Increment(ctx, key, key, "", "", Total, t); err != nil {
 			return err
 		}
 	}
@@ -414,25 +414,25 @@ func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organizatio
 
 		key := storeKey(org, storeId, productsKey, hourly(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, storeId, Hourly, t); err != nil {
+		if err := Increment(ctx, key, key, storeId, "", Hourly, t); err != nil {
 			return err
 		}
 
 		key = storeKey(org, storeId, productsKey, daily(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, storeId, Daily, t); err != nil {
+		if err := Increment(ctx, key, key, storeId, "", Daily, t); err != nil {
 			return err
 		}
 
 		key = storeKey(org, storeId, productsKey, monthly(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, storeId, Monthly, t); err != nil {
+		if err := Increment(ctx, key, key, storeId, "", Monthly, t); err != nil {
 			return err
 		}
 
 		key = storeKey(org, storeId, productsKey, allTime)
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-		if err := Increment(ctx, key, key, storeId, Total, t); err != nil {
+		if err := Increment(ctx, key, key, storeId, "", Total, t); err != nil {
 			return err
 		}
 	}
@@ -448,7 +448,7 @@ func IncrAffiliateFees(ctx appengine.Context, org *organization.Organization, af
 	keyId := feesKeyId(fee.Currency)
 	key := affiliateKey(org, affId, keyId, allTime)
 	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
-	return IncrementBy(ctx, key, key, "", Total, int(fee.Amount), time.Now())
+	return IncrementBy(ctx, key, key, "", "", Total, int(fee.Amount), time.Now())
 }
 
 func IncrReferrerFees(ctx appengine.Context, org *organization.Organization, refId string, rfl *referral.Referral) error {
@@ -459,5 +459,5 @@ func IncrReferrerFees(ctx appengine.Context, org *organization.Organization, ref
 	keyId := feesKeyId(fee.Currency)
 	key := referrerKey(org, refId, keyId, allTime)
 	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
-	return IncrementBy(ctx, key, key, "", Total, int(fee.Amount), time.Now())
+	return IncrementBy(ctx, key, key, "", "", Total, int(fee.Amount), time.Now())
 }
