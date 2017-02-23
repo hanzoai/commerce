@@ -178,27 +178,27 @@ func Count(c appengine.Context, name string) (int, error) {
 // }
 
 // Adds a member to the array if it does not exist
-func AddSetMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
+func AddSetMember(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
 	if MemberExists(c, name, value) {
 		return nil
 	}
-	return AddMember(c, name, tag, storeId, p, value, t)
+	return AddMember(c, name, tag, storeId, geo, p, value, t)
 }
 
 // Adds a member to the array on the Shard
-func AddMember(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) error {
-	AddMemberTask.Call(c, name, tag, storeId, p, value, t)
+func AddMember(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
+	AddMemberTask.Call(c, name, tag, storeId, geo, p, value, t)
 	return nil
 }
 
 // Increment increments the named counter by 1
-func Increment(c appengine.Context, name, tag, storeId string, p Period, t time.Time) error {
-	return IncrementBy(c, name, tag, storeId, p, 1, t)
+func Increment(c appengine.Context, name, tag, storeId, geo string, p Period, t time.Time) error {
+	return IncrementBy(c, name, tag, storeId, geo, p, 1, t)
 }
 
 // Increment increments the named counter by amount
-func IncrementBy(c appengine.Context, name, tag, storeId string, p Period, amount int, t time.Time) error {
-	IncrementByTask.Call(c, name, tag, storeId, p, amount, t)
+func IncrementBy(c appengine.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) error {
+	IncrementByTask.Call(c, name, tag, storeId, geo, p, amount, t)
 	return nil
 }
 
@@ -231,7 +231,7 @@ var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
 func init() {
-	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name, tag, storeId string, p Period, amount int, t time.Time) {
+	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) {
 		log.Debug("INCREMENT %s BY %d", name, amount, c)
 		// Get counter config.
 		var cfg counterConfig
@@ -269,7 +269,7 @@ func init() {
 		}, nil)
 		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			t, err := IncrementByTask.Task(name, tag, storeId, p, amount, t)
+			t, err := IncrementByTask.Task(name, tag, storeId, geo, p, amount, t)
 			if err != nil {
 				log.Panic("IncrementByTask Error %v", err, c)
 			}
@@ -288,7 +288,7 @@ func init() {
 		memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
 	})
 
-	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, tag, storeId string, p Period, value string, t time.Time) {
+	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) {
 		log.Debug("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
@@ -328,7 +328,7 @@ func init() {
 		}, nil)
 		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			t, err := AddMemberTask.Task(name, tag, storeId, p, value)
+			t, err := AddMemberTask.Task(name, tag, storeId, geo, p, value)
 			if err != nil {
 				log.Panic("AddMemberTask Error %v", err, c)
 			}
