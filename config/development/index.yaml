@@ -7,6 +7,14 @@ indexes:
   - name: CreatedAt
     direction: desc
 
+- kind: _countershard
+  ancestor: no
+  properties:
+  - name: Tag
+  - name: StoreId
+  - name: Period
+  - name: Time
+
 - kind: event
   ancestor: no
   properties:
