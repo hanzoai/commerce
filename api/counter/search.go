@@ -43,12 +43,13 @@ func search(c *gin.Context) {
 		req.Period = string(counter.None)
 	}
 
+	// Index Order Is Tag, StoreId, Period, Time, always query in this order
 	q = q.Filter("Tag=", req.Tag).Filter("StoreId=", req.StoreId)
 
 	if req.Period == string(counter.Total) {
 		q = q.Filter("Period=", req.Period)
 	} else {
-		q = q.Filter("Time>", req.After).Filter("Time<=", req.Before).Filter("Period=", req.Period)
+		q = q.Filter("Period=", req.Period).Filter("Time>", req.After).Filter("Time<=", req.Before)
 	}
 
 	shards := []counter.Shard{}
