@@ -12,6 +12,7 @@ indexes:
   properties:
   - name: Tag
   - name: StoreId
+  - name: Geo
   - name: Period
   - name: Time
 
