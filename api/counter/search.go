@@ -16,8 +16,9 @@ import (
 
 type searchReq struct {
 	Tag     string    `json:"tag"`
-	Period  string    `json:"period"`
 	StoreId string    `json:"storeId"`
+	Geo     string    `json:geo`
+	Period  string    `json:"period"`
 	After   time.Time `json:"after"`
 	Before  time.Time `json:"before"`
 }
@@ -44,7 +45,7 @@ func search(c *gin.Context) {
 	}
 
 	// Index Order Is Tag, StoreId, Period, Time, always query in this order
-	q = q.Filter("Tag=", req.Tag).Filter("StoreId=", req.StoreId)
+	q = q.Filter("Tag=", req.Tag).Filter("StoreId=", req.StoreId).Filter("Geo=", req.Geo)
 
 	if req.Period == string(counter.Total) {
 		q = q.Filter("Period=", req.Period)
