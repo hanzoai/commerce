@@ -4,6 +4,7 @@ import (
 	"errors"
 	"regexp"
 	"sort"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -24,14 +25,15 @@ type loginReq struct {
 }
 
 type organizationRes struct {
-	Id               string `json:"id"`
-	Name             string `json:"name"`
-	Currency         string `json:"currency"`
-	FullName         string `json:"fullName"`
-	LiveSecretKey    string `json:"live-secret-key"`
-	LivePublishKey   string `json:"live-published-key"`
-	TestSecretKey    string `json:"test-secret-key"`
-	TestPublishedKey string `json:"test-published-key"`
+	Id               string    `json:"id"`
+	Name             string    `json:"name"`
+	Currency         string    `json:"currency"`
+	FullName         string    `json:"fullName"`
+	CreatedAt        time.Time `json:"createdAt"`
+	LiveSecretKey    string    `json:"live-secret-key"`
+	LivePublishKey   string    `json:"live-published-key"`
+	TestSecretKey    string    `json:"test-secret-key"`
+	TestPublishedKey string    `json:"test-published-key"`
 }
 
 type loginRes struct {
@@ -97,6 +99,7 @@ func login(c *gin.Context) {
 			Name:             org.Name,
 			Currency:         "USD",
 			FullName:         org.FullName,
+			CreatedAt:        org.CreatedAt,
 			LiveSecretKey:    org.MustGetTokenByName("live-secret-key").String(),
 			LivePublishKey:   org.MustGetTokenByName("live-published-key").String(),
 			TestSecretKey:    org.MustGetTokenByName("test-secret-key").String(),
