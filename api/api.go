@@ -8,6 +8,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/discount"
+	"hanzo.io/models/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
@@ -21,6 +22,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/models/webhook"
+	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
@@ -60,6 +62,7 @@ import (
 
 func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
+	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -86,6 +89,7 @@ func Route(api router.Router) {
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
+	rest.New(log.Log{}).Route(api, adminRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(site.Site{}).Route(api, tokenRequired)
