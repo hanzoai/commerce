@@ -16,6 +16,12 @@ indexes:
   - name: Period
   - name: Time
 
+- kind: log
+  ancestor: no
+  properties:
+  - name: Enabled
+  - name: Time
+
 - kind: event
   ancestor: no
   properties:
