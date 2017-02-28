@@ -14,7 +14,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := rest.New(log.Log{})
-	api.GET("/search", search)
+	api.POST("/search", search)
 
 	args = append(args, adminRequired)
 
