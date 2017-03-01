@@ -1,4 +1,4 @@
-package log_
+package note
 
 import (
 	"time"
@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
-	"hanzo.io/models/log"
+	"hanzo.io/models/note"
 	"hanzo.io/util/json/http"
 )
 
@@ -21,13 +21,13 @@ func search(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	req := &searchReq{}
-	var lgs []*log_.Log
+	var nts []*note.Note
 
-	q := log_.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
-	if _, err := q.GetAll(&lgs); err != nil {
+	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
+	if _, err := q.GetAll(&nts); err != nil {
 		http.Fail(c, 500, "Failed to get logs", err)
 		return
 	}
 
-	http.Render(c, 200, lgs)
+	http.Render(c, 200, nts)
 }
