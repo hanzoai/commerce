@@ -1,4 +1,4 @@
-package log
+package log_
 
 import (
 	"hanzo.io/models/mixin"
