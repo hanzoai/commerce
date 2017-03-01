@@ -36,8 +36,8 @@ import (
 	dataApi "hanzo.io/api/data"
 	deployApi "hanzo.io/api/deploy"
 	formApi "hanzo.io/api/form"
-	logApi "hanzo.io/api/log"
 	namespaceApi "hanzo.io/api/namespace"
+	noteApi "hanzo.io/api/note"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
 	referrerApi "hanzo.io/api/referrer"
@@ -110,7 +110,7 @@ func Route(api router.Router) {
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
-	logApi.Route(api, tokenRequired)
+	noteApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
