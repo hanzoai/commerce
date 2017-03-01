@@ -108,11 +108,9 @@ func Route(api router.Router) {
 	affiliateApi.Route(api, tokenRequired)
 	campaignApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
-	counterApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
-	noteApi.Route(api, adminRequired)
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
@@ -166,6 +164,12 @@ func Route(api router.Router) {
 
 	// dashv2
 	dashv2Api.Route(api)
+
+	// Counter Api (admin only)
+	counterApi.Route(api, adminRequired)
+
+	// Note Api (admin only)
+	noteApi.Route(api, adminRequired)
 }
 
 func init() {
