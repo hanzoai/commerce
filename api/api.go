@@ -61,6 +61,7 @@ import (
 
 func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
+	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -110,7 +111,7 @@ func Route(api router.Router) {
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
-	noteApi.Route(api, tokenRequired)
+	noteApi.Route(api, adminRequired)
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
