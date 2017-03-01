@@ -8,6 +8,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/discount"
+	"hanzo.io/models/note"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
@@ -38,7 +39,6 @@ import (
 	deployApi "hanzo.io/api/deploy"
 	formApi "hanzo.io/api/form"
 	namespaceApi "hanzo.io/api/namespace"
-	noteApi "hanzo.io/api/note"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
 	referrerApi "hanzo.io/api/referrer"
@@ -89,15 +89,16 @@ func Route(api router.Router) {
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
+	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
+	rest.New(return_.Return{}).Route(api, tokenRequired)
 	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
-	rest.New(return_.Return{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
@@ -167,9 +168,6 @@ func Route(api router.Router) {
 
 	// Counter Api (admin only)
 	counterApi.Route(api, adminRequired)
-
-	// Note Api (admin only)
-	noteApi.Route(api, adminRequired)
 }
 
 func init() {
