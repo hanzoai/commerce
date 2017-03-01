@@ -1,4 +1,4 @@
-package note
+package search
 
 import (
 	"time"
@@ -16,7 +16,7 @@ type searchReq struct {
 	Before time.Time `json:"before"`
 }
 
-func search(c *gin.Context) {
+func searchNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
