@@ -6,6 +6,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	stringutil "hanzo.io/util/strings"
 )
@@ -118,8 +119,18 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 		ord.ShippingAddress.Name = usr.Name()
 	}
 
-	// Ensure key is allocated before setting parent
-	// Order is parented to user
+	// Set statuses (if they are not set)
+	if ord.Status == "" {
+		ord.Status = order.Open
+	}
+	if ord.PaymentStatus == "" {
+		ord.PaymentStatus = payment.Unpaid
+	}
+	if ord.Fulfillment.Status == "" {
+		ord.Fulfillment.Status = fulfillment.Pending
+	}
+
+	// Ensure key is allocated before setting parent, Order is parented to user
 	ord.Parent = usr.Key()
 	ord.UserId = usr.Id()
 	ord.SetKey(ord.Key())
