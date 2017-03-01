@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/models/webhook"
+	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
