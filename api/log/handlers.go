@@ -1,4 +1,4 @@
-package log
+package log_
 
 import (
 	"github.com/gin-gonic/gin"
@@ -14,7 +14,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	origin := middleware.AccessControl("*")
 
-	api := rest.New(log.Log{})
+	api := rest.New(log_.Log{})
 	api.Use(adminRequired, origin)
 	api.POST("/search", search)
 
