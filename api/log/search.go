@@ -1,4 +1,4 @@
-package log
+package log_
 
 import (
 	"time"
@@ -21,9 +21,9 @@ func search(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	req := &searchReq{}
-	var lgs []*log.Log
+	var lgs []*log_.Log
 
-	q := log.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
+	q := log_.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
 	if _, err := q.GetAll(&lgs); err != nil {
 		http.Fail(c, 500, "Failed to get logs", err)
 		return
