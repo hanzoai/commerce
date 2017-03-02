@@ -17,5 +17,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	group.GET("/user", adminRequired, namespaced, searchUser)
 	group.GET("/order", adminRequired, namespaced, searchOrder)
-	group.GET("/note", adminRequired, namespaced, searchNote)
+	group.POST("/note", adminRequired, namespaced, searchNote)
 }
