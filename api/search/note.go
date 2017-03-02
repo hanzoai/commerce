@@ -8,6 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/note"
+	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 )
 
@@ -21,6 +22,11 @@ func searchNote(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	req := &searchReq{}
+	if err := json.Decode(c.Request.Body, req); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
 	nts := make([]*note.Note, 0)
 
 	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before)
