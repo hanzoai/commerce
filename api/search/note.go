@@ -23,7 +23,7 @@ func searchNote(c *gin.Context) {
 	req := &searchReq{}
 	nts := make([]*note.Note, 0)
 
-	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
+	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before)
 	if _, err := q.GetAll(&nts); err != nil {
 		http.Fail(c, 500, "Failed to get logs", err)
 		return
