@@ -16,7 +16,7 @@ indexes:
   - name: Period
   - name: Time
 
-- kind: log
+- kind: note
   ancestor: no
   properties:
   - name: Enabled
