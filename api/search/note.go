@@ -21,7 +21,7 @@ func searchNote(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	req := &searchReq{}
-	var nts []*note.Note
+	nts := make([]*note.Note, 0)
 
 	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before).Order("Time")
 	if _, err := q.GetAll(&nts); err != nil {
