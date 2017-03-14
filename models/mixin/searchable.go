@@ -8,18 +8,6 @@ import (
 
 var DefaultIndex = "everything"
 
-type SearchKind struct {
-	Kind search.Atom `search:",facet"`
-}
-
-func (sk SearchKind) GetKind() string {
-	return string(sk.Kind)
-}
-
-func (sk SearchKind) SetKind(kind string) {
-	sk.Kind = search.Atom(kind)
-}
-
 type Document interface {
 	Id() string
 	GetKind() string
@@ -46,7 +34,7 @@ func (m Model) PutDocument() error {
 
 		_, err = index.Put(m.Db.Context, m.Id(), doc)
 		if err != nil {
-			log.Error("Could not save search document for model with id %v", m.Id(), m.Db.Context)
+			log.Error("Could not save search document for model with id %v\nError: %s", m.Id(), err, m.Db.Context)
 			return err
 		}
 	}
