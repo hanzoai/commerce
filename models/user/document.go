@@ -12,7 +12,7 @@ import (
 )
 
 type Document struct {
-	mixin.SearchKind
+	Kind search.Atom `search:",facet"`
 
 	Id_               string
 	Email             search.Atom
@@ -55,13 +55,19 @@ func (d Document) Id() string {
 	return string(d.Id_)
 }
 
+func (d Document) GetKind() string {
+	return string(d.Kind)
+}
+
+func (d Document) SetKind(kind string) {
+	d.Kind = search.Atom(kind)
+}
+
 func (u User) Document() mixin.Document {
 	emailUser := strings.Split(u.Email, "@")[0]
 
 	return &Document{
-		mixin.SearchKind{
-			search.Atom(kind),
-		},
+		search.Atom(kind),
 		u.Id(),
 		search.Atom(u.Email),
 		searchpartial.Partials(emailUser) + " " + emailUser,

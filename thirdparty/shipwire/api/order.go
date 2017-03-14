@@ -76,7 +76,6 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
 
 	// Update fulfillment states
-	ord.FulfillmentStatus = fulfillment.Status(o.Status)
 	ord.Fulfillment.Status = fulfillment.Status(o.Status)
 	ord.Fulfillment.Pricing = currency.Cents(o.Pricing.Resource.Total * 100)
 	ord.Fulfillment.PricingEstimate = currency.Cents(o.PricingEstimate.Resource.Total * 100)

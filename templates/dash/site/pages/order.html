@@ -377,7 +377,7 @@
           <div class="panel-body">
             <control label="Status" input="{ inputs.status }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
             <control label="Payment Status" input="{ inputs.paymentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
-            <control label="Fulfillment Status" input="{ inputs.fulfillmentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
+            <control label="Fulfillment Status" input="{ inputs['fulfillment.status'] }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
           </div>
         </div>
 
@@ -422,7 +422,7 @@
                   <div class="col-xs-12" style="padding:0">
                     <button __disabled="{ sending }" onclick="{ resendOrderConfirmation }" type="button" class="btn btn-block btn-dark">Resend Confirmation</button>
                   </div>
-                  <div class="col-xs-12" if="{ parent.model.fulfillmentStatus == 'shipped' }" style="padding:0">
+                  <div class="col-xs-12" if="{ parent.model.fulfillment.status == 'shipped' }" style="padding:0">
                     <button __disabled="{ sending }" onclick="{ resendShippingConfirmation }" type="button" class="btn btn-block btn-dark">Resend Shipping</button>
                   </div>
                   <div class="col-xs-12 mt20" style="padding:0">
