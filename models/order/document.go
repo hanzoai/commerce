@@ -11,7 +11,7 @@ import (
 )
 
 type Document struct {
-	mixin.SearchKind
+	Kind search.Atom `search:",facet"`
 
 	Id_    string
 	Number float64
@@ -58,6 +58,14 @@ func (d Document) Id() string {
 	return d.Id_
 }
 
+func (d Document) GetKind() string {
+	return string(d.Kind)
+}
+
+func (d Document) SetKind(kind string) {
+	d.Kind = search.Atom(kind)
+}
+
 func (o Order) Document() mixin.Document {
 	preorder := "true"
 	if !o.Preorder {
@@ -79,9 +87,7 @@ func (o Order) Document() mixin.Document {
 	}
 
 	return &Document{
-		mixin.SearchKind{
-			search.Atom(kind),
-		},
+		search.Atom(kind),
 
 		o.Id(),
 		float64(o.NumberFromId()),

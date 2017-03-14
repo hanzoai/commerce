@@ -446,7 +446,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		Refinements: []search.Facet{
 			search.Facet{
 				Name:  "kind",
-				Value: r.Kind,
+				Value: search.Atom(r.Kind),
 			},
 		},
 	}); ; {
