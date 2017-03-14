@@ -6,8 +6,24 @@ import (
 	"hanzo.io/util/log"
 )
 
+var DefaultIndex = "everything"
+
+type SearchKind struct {
+	Kind search.Atom `search:",facet"`
+}
+
+func (sk SearchKind) GetKind() string {
+	return string(sk.Kind)
+}
+
+func (sk SearchKind) SetKind(kind string) {
+	sk.Kind = search.Atom(kind)
+}
+
 type Document interface {
 	Id() string
+	GetKind() string
+	SetKind(string)
 }
 
 type Searchable interface {
@@ -22,7 +38,7 @@ func (m Model) PutDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err
@@ -46,7 +62,7 @@ func (m Model) DeleteDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err
