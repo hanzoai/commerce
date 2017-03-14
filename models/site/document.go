@@ -7,7 +7,7 @@ import (
 )
 
 type Document struct {
-	mixin.SearchKind
+	Kind search.Atom `search:",facet"`
 
 	Id_    string
 	Name   string
@@ -19,11 +19,17 @@ func (d Document) Id() string {
 	return d.Id_
 }
 
+func (d Document) GetKind() string {
+	return string(d.Kind)
+}
+
+func (d Document) SetKind(kind string) {
+	d.Kind = search.Atom(kind)
+}
+
 func (s Site) Document() mixin.Document {
 	return &Document{
-		mixin.SearchKind{
-			search.Atom(kind),
-		},
+		search.Atom(kind),
 		s.Id(),
 		s.Name,
 		s.Domain,
