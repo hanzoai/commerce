@@ -1,10 +1,14 @@
 package site
 
 import (
+	"appengine/search"
+
 	"hanzo.io/models/mixin"
 )
 
 type Document struct {
+	mixin.SearchKind
+
 	Id_    string
 	Name   string
 	Domain string
@@ -17,9 +21,12 @@ func (d Document) Id() string {
 
 func (s Site) Document() mixin.Document {
 	return &Document{
-		Id_:    s.Id(),
-		Name:   s.Name,
-		Domain: s.Domain,
-		Url:    s.Url,
+		mixin.SearchKind{
+			search.Atom(kind),
+		},
+		s.Id(),
+		s.Name,
+		s.Domain,
+		s.Url,
 	}
 }
