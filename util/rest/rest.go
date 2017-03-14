@@ -350,8 +350,8 @@ func (r Rest) list(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	if _, ok := entity.(mixin.Searchable); ok {
-		qStr := query.Get("q")
+	qStr := query.Get("q")
+	if _, ok := entity.(mixin.Searchable); ok && qStr != "" {
 		r.listSearch(c, entity, qStr, pageStr, displayStr, limitStr, sortField)
 	} else {
 		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
