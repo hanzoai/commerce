@@ -10,6 +10,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/mixin"
 	"hanzo.io/models/user"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json/http"
@@ -19,16 +20,22 @@ func searchUser(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	u := user.User{}
-	index, err := search.Open(u.Kind())
+	index, err := search.Open(mixin.DefaultIndex)
 	if err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'user'"), err)
 		return
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
-
 	keys := make([]*aeds.Key, 0)
-	for t := index.Search(db.Context, q, nil); ; {
+	for t := index.Search(db.Context, q, &search.SearchOptions{
+		Refinements: []search.Facet{
+			search.Facet{
+				Name:  "kind",
+				Value: u.Kind(),
+			},
+		},
+	}); ; {
 		var doc user.Document
 		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
 		if err == search.Done {
