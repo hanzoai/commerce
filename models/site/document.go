@@ -19,14 +19,6 @@ func (d Document) Id() string {
 	return d.Id_
 }
 
-func (d Document) GetKind() string {
-	return string(d.Kind)
-}
-
-func (d Document) SetKind(kind string) {
-	d.Kind = search.Atom(kind)
-}
-
 func (s Site) Document() mixin.Document {
 	return &Document{
 		search.Atom(kind),
