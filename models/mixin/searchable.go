@@ -10,8 +10,6 @@ var DefaultIndex = "everything"
 
 type Document interface {
 	Id() string
-	GetKind() string
-	SetKind(string)
 }
 
 type Searchable interface {
