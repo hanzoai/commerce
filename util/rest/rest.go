@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"appengine"
+	aeds "appengine/datastore"
+	"appengine/search"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/mixin"
+	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -328,8 +331,6 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	entity := r.newEntity(c)
-	entities := r.newEntitySlice()
 	query := c.Request.URL.Query()
 
 	// Determine deafult sort order
@@ -338,15 +339,28 @@ func (r Rest) list(c *gin.Context) {
 		sortField = r.DefaultSortField
 	}
 
-	// Create query
-	q := entity.Query().All().Order(sortField)
-
 	// Update query with page/display params
-	var display int
-	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
 	limitStr := query.Get("limit")
+
+	entity := r.newEntity(c)
+
+	if _, ok := entity.(mixin.Searchable); ok {
+		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+	} else {
+		qStr := query.Get("q")
+		r.listSearch(c, entity, qStr, pageStr, displayStr, limitStr, sortField)
+	}
+}
+
+func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
+	// Create query
+	entities := r.newEntitySlice()
+	q := entity.Query().All().Order(sortField)
+
+	var display int
+	var err error
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -367,7 +381,7 @@ func (r Rest) list(c *gin.Context) {
 		}
 	}
 
-	if _, err = q.GetAll(entities); err != nil {
+	if _, err := q.GetAll(entities); err != nil {
 		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
@@ -375,6 +389,89 @@ func (r Rest) list(c *gin.Context) {
 	count, err := entity.Query().All().Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
+		return
+	}
+
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
+	}
+
+	r.Render(c, 200, Pagination{
+		Page:    pageStr,
+		Display: displayStr,
+		Models:  entities,
+		Count:   count,
+	})
+}
+
+func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, displayStr, limitStr, sortField string) {
+	// Create query
+	entities := r.newEntitySlice()
+
+	var display int
+	var err error
+
+	opts := search.SearchOptions{}
+
+	// if we have pagination values, then trigger pagination calculations
+	if displayStr != "" {
+		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
+			opts.Limit = display
+		} else {
+			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	if pageStr != "" && displayStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			opts.Offset = display * (page - 1)
+		} else {
+			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	// open index
+	index, err := search.Open(mixin.DefaultIndex)
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to open index for '"+r.Kind+"'"), err)
+		return
+	}
+
+	keys := make([]*aeds.Key, 0)
+	for t := index.Search(entity.Context(), qStr, &search.SearchOptions{
+		Refinements: []search.Facet{
+			search.Facet{
+				Name:  "kind",
+				Value: r.Kind,
+			},
+		},
+	}); ; {
+		var doc mixin.Document
+		_, err := t.Next(doc) // We use the int id stored on the doc rather than the key
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			http.Fail(c, 500, fmt.Sprintf("Failed to search index for '"+r.Kind+"'"), err)
+			return
+		}
+
+		keys = append(keys, hashid.MustDecodeKey(entity.Context(), doc.Id()))
+	}
+
+	count, err := entity.Query().All().Count()
+	if err != nil {
+		r.Fail(c, 500, "Could not count the models.", err)
+		return
+	}
+
+	db := entity.Datastore()
+	if err := db.GetMulti(keys, &entities); err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
 		return
 	}
 
