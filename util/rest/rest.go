@@ -292,9 +292,13 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 }
 
 // helper which returns a slice which is compatible with this entity
-func (r Rest) newEntitySlice() interface{} {
+func (r Rest) newEntitySlice(length, capacity int) interface{} {
 	// Create pointer to a slice value and set it to the slice
-	slice := reflect.MakeSlice(r.sliceType, 0, 0)
+	slice := reflect.MakeSlice(r.sliceType, length, capacity)
+	for i := 0; i < length; i++ {
+		slice.Index(i).Set(reflect.New(r.entityType))
+	}
+
 	ptr := reflect.New(slice.Type())
 	ptr.Elem().Set(slice)
 	return ptr.Interface()
@@ -356,7 +360,6 @@ func (r Rest) list(c *gin.Context) {
 
 func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
 	// Create query
-	entities := r.newEntitySlice()
 	q := entity.Query().All().Order(sortField)
 
 	var display int
@@ -381,6 +384,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 		}
 	}
 
+	entities := r.newEntitySlice(0, 0)
 	if _, err := q.GetAll(entities); err != nil {
 		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
@@ -407,13 +411,25 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 }
 
 func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, displayStr, limitStr, sortField string) {
-	// Create query
-	entities := r.newEntitySlice()
-
 	var display int
 	var err error
 
+	sortExpr := sortField
+	sortReverse := sortExpr[0:1] == "-"
+	if sortReverse {
+		sortExpr = sortExpr[1:]
+	}
+
+	// should have already checked this
 	opts := search.SearchOptions{}
+	opts.Sort = &search.SortOptions{
+		Expressions: []search.SortExpression{
+			search.SortExpression{
+				Expr:    sortExpr,
+				Reverse: sortReverse,
+			},
+		},
+	}
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -442,16 +458,16 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 	}
 
 	keys := make([]*aeds.Key, 0)
-	for t := index.Search(entity.Context(), qStr, &search.SearchOptions{
-		Refinements: []search.Facet{
-			search.Facet{
-				Name:  "kind",
-				Value: search.Atom(r.Kind),
-			},
+	opts.IDsOnly = true
+	opts.Refinements = []search.Facet{
+		search.Facet{
+			Name:  "Kind",
+			Value: search.Atom(r.Kind),
 		},
-	}); ; {
-		var doc mixin.Document
-		_, err := t.Next(doc) // We use the int id stored on the doc rather than the key
+	}
+
+	for t := index.Search(entity.Context(), qStr, &opts); ; {
+		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
 		if err == search.Done {
 			break
 		}
@@ -460,17 +476,28 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 			return
 		}
 
-		keys = append(keys, hashid.MustDecodeKey(entity.Context(), doc.Id()))
+		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
 	}
 
-	count, err := entity.Query().All().Count()
+	t := index.Search(entity.Context(), qStr, &search.SearchOptions{
+		IDsOnly: true,
+		Refinements: []search.Facet{
+			search.Facet{
+				Name:  "Kind",
+				Value: search.Atom(r.Kind),
+			},
+		},
+	})
+
+	count := t.Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
 	}
 
+	entities := r.newEntitySlice(len(keys), len(keys))
 	db := entity.Datastore()
-	if err := db.GetMulti(keys, &entities); err != nil {
+	if err := db.GetMulti(keys, entities); err != nil {
 		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
 		return
 	}
