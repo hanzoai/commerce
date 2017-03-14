@@ -4,11 +4,15 @@ import (
 	"strings"
 	"time"
 
+	"appengine/search"
+
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
 )
 
 type Document struct {
+	mixin.SearchKind
+
 	Id_    string
 	Number float64
 	UserId string
@@ -75,6 +79,10 @@ func (o Order) Document() mixin.Document {
 	}
 
 	return &Document{
+		mixin.SearchKind{
+			search.Atom(kind),
+		},
+
 		o.Id(),
 		float64(o.NumberFromId()),
 		o.UserId,
