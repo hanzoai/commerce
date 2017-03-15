@@ -7,6 +7,7 @@ import (
 )
 
 type Document struct {
+	// Special Kind Facet
 	Kind search.Atom `search:",facet"`
 
 	Id_    string
