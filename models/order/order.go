@@ -47,6 +47,7 @@ const (
 type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
+	mixin.DocumentSaveLoad
 
 	Number int `json:"number,omitempty"`
 
