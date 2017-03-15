@@ -470,6 +470,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		},
 	}
 
+	log.Error("Searching...", c)
 	t := index.Search(entity.Context(), qStr, &opts)
 	for {
 		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
@@ -483,12 +484,14 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 
 		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
 	}
+	log.Error("Searching2... %v", keys, c)
 
 	facets, err := t.Facets()
 	if err != nil {
 		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"' options"), err)
 		return
 	}
+	log.Error("Searching3... %v", facets, c)
 
 	t = index.Search(entity.Context(), qStr, &search.SearchOptions{
 		IDsOnly: true,
