@@ -63,10 +63,11 @@ type Rest struct {
 }
 
 type Pagination struct {
-	Page    string      `json:"page,omitempty"`
-	Display string      `json:"display,omitempty"`
-	Count   int         `json:"count"`
-	Models  interface{} `json:"models"`
+	Page    string                 `json:"page,omitempty"`
+	Display string                 `json:"display,omitempty"`
+	Count   int                    `json:"count"`
+	Models  interface{}            `json:"models"`
+	Options [][]search.FacetResult `json:"options"`
 }
 
 func (r *Rest) Init(prefix string) {
@@ -350,8 +351,8 @@ func (r Rest) list(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	qStr := query.Get("q")
-	if _, ok := entity.(mixin.Searchable); ok && qStr != "" {
+	if _, ok := entity.(mixin.Searchable); ok {
+		qStr := query.Get("q")
 		r.listSearch(c, entity, qStr, pageStr, displayStr, limitStr, sortField)
 	} else {
 		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
@@ -422,6 +423,9 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 
 	// should have already checked this
 	opts := search.SearchOptions{}
+	opts.Facets = []search.FacetSearchOption{
+		search.AutoFacetDiscovery(10, 20),
+	}
 	opts.Sort = &search.SortOptions{
 		Expressions: []search.SortExpression{
 			search.SortExpression{
@@ -466,7 +470,8 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		},
 	}
 
-	for t := index.Search(entity.Context(), qStr, &opts); ; {
+	t := index.Search(entity.Context(), qStr, &opts)
+	for {
 		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
 		if err == search.Done {
 			break
@@ -479,7 +484,13 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
 	}
 
-	t := index.Search(entity.Context(), qStr, &search.SearchOptions{
+	facets, err := t.Facets()
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"' options"), err)
+		return
+	}
+
+	t = index.Search(entity.Context(), qStr, &search.SearchOptions{
 		IDsOnly: true,
 		Refinements: []search.Facet{
 			search.Facet{
@@ -488,12 +499,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 			},
 		},
 	})
-
 	count := t.Count()
-	if err != nil {
-		r.Fail(c, 500, "Could not count the models.", err)
-		return
-	}
 
 	entities := r.newEntitySlice(len(keys), len(keys))
 	db := entity.Datastore()
@@ -508,11 +514,16 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		}
 	}
 
+	if facets == nil {
+		facets = [][]search.FacetResult{}
+	}
+
 	r.Render(c, 200, Pagination{
 		Page:    pageStr,
 		Display: displayStr,
 		Models:  entities,
 		Count:   count,
+		Options: facets,
 	})
 }
 
