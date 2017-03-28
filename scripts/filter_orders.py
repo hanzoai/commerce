@@ -176,20 +176,20 @@ if __name__ == '__main__':
     # orders = get_orders()
 
     # Get specific order
-    orders = get_orders(lambda order: order.number == '70141')
+    # orders = get_orders(lambda order: order.number == '70141')
 
     # Get subset of orders
-    # orders = get_orders(lambda order: all((
-    #     open(order),
-    #     not cancelled(order),
-    #     not disputed(order),
-    #     not processed(order),
-    #     # domestic(order),
-    #     # batch1(order),
-    #     # partial_refund(order),
-    #     # contacted_us(order),
-    #     # from2016(order),
-    # )))
+    orders = get_orders(lambda order: all((
+        open(order),
+        not cancelled(order),
+        not disputed(order),
+        not processed(order),
+        domestic(order),
+        # batch1(order),
+        # partial_refund(order),
+        not contacted_us(order),
+        # from2016(order),
+    )))
 
     # Sort by amount paid
     # orders.sort(key=lambda x: x.paid, reverse=True)
