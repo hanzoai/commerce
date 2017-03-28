@@ -22,5 +22,5 @@ class Order(Export):
 
 if __name__ == '__main__':
     sw = shipwire.Shipwire()
-    for order in Order('orders.csv').read_csv():
-        sw.ship_order(order, level='2D')
+    for order in Order('_export/orders.csv').read_csv():
+        sw.ship_order(order, level='GD')
