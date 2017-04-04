@@ -46,7 +46,6 @@ class OrderForm extends Form
 
     input('status', '', 'order-status-select'),
     input('paymentStatus', '', 'payment-status-select'),
-    input('fulfillmentStatus', '', 'fulfillment-status-select'),
 
     input('shippingService', '', 'shipping-service-select'),
     input('sendReturnEmail', '', 'switch')
@@ -57,6 +56,7 @@ class OrderForm extends Form
     input('returns3', '', 'numeric')
     input('returns4', '', 'numeric')
     input('returnSummary', '', 'basic-textarea')
+    input('fulfillment.status', '', 'fulfillment-status-select'),
     input('fulfillment.externalId', '', 'static')
     input('fulfillment.carrier', '', 'static')
     input('fulfillment.service', '', 'static')
