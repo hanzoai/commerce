@@ -38,6 +38,13 @@ func (t Type) ToStringNoSymbol(c Cents) string {
 	return strconv.Itoa(int(c)/100) + "." + cents
 }
 
+func (t Type) ToFloat(c Cents) float64 {
+	if t.IsZeroDecimal() {
+		return float64(c)
+	}
+	return float64(c) / 100.0
+}
+
 func (t Type) Label() string {
 	return t.Symbol() + " " + t.Code()
 }

@@ -15,7 +15,7 @@ class OrderList extends BasicList
     field('total', 'Total', 'money')
     field('status', 'Order Status')
     field('paymentStatus', 'Paid')
-    field('fulfillmentStatus', 'Fulfillment Status')
+    field('fulfillment.status', 'Fulfillment Status')
     field('couponCodes', 'Coupon(s)', 'id-list', 'id-path:#coupon')
     field('createdAt', 'Created', 'date')
     field('updatedAt', 'Last Updated', 'ago')

@@ -11,6 +11,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/mixin"
 	"hanzo.io/models/order"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json/http"
@@ -28,16 +29,22 @@ func searchOrder(c *gin.Context) {
 	}
 
 	o := order.Order{}
-	index, err := search.Open(o.Kind())
+	index, err := search.Open(mixin.DefaultIndex)
 	if err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'order'"), err)
 		return
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
-
 	keys := make([]*aeds.Key, 0)
-	for t := index.Search(db.Context, q, nil); ; {
+	for t := index.Search(db.Context, q, &search.SearchOptions{
+		Refinements: []search.Facet{
+			search.Facet{
+				Name:  "kind",
+				Value: o.Kind(),
+			},
+		},
+	}); ; {
 		var doc order.Document
 		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
 		if err == search.Done {
