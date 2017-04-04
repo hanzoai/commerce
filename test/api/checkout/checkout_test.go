@@ -15,12 +15,13 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/types/commission"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
 
-	. "hanzo.io/models"
 	. "hanzo.io/util/test/ginkgo"
 )
 
@@ -149,7 +150,8 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(ord.Tax).To(Equal(req.Order.Tax))
 			Expect(ord.LineTotal).To(Equal(req.Order.LineTotal))
 			Expect(ord.Items).To(Equal(req.Order.Items))
-			Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
+			Expect(ord.Fulfillment.Status).To(Equal(fulfillment.Pending))
+			log.Warn("%s != %s", ord.Fulfillment.Status, fulfillment.Pending)
 		})
 
 		It("Should parent order to user", func() {

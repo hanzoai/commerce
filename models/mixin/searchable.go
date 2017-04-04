@@ -6,6 +6,8 @@ import (
 	"hanzo.io/util/log"
 )
 
+var DefaultIndex = "everything"
+
 type Document interface {
 	Id() string
 }
@@ -22,7 +24,7 @@ func (m Model) PutDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err
@@ -30,7 +32,7 @@ func (m Model) PutDocument() error {
 
 		_, err = index.Put(m.Db.Context, m.Id(), doc)
 		if err != nil {
-			log.Error("Could not save search document for model with id %v", m.Id(), m.Db.Context)
+			log.Error("Could not save search document for model with id %v\nError: %s", m.Id(), err, m.Db.Context)
 			return err
 		}
 	}
@@ -46,7 +48,7 @@ func (m Model) DeleteDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err

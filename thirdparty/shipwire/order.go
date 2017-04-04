@@ -39,7 +39,6 @@ func (c *Client) CreateOrder(ord *order.Order, usr *user.User, opts OrderOptions
 		return &o, res, err
 	}
 
-	ord.FulfillmentStatus = fulfillment.Pending
 	ord.Fulfillment.Status = fulfillment.Pending
 	ord.Fulfillment.Type = fulfillment.Shipwire
 	ord.Fulfillment.ExternalId = strconv.Itoa(o.ID)
