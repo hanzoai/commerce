@@ -4,8 +4,20 @@ View = crowdcontrol.view.View
 m = crowdcontrol.utils.mediator
 
 class ModalSpinner extends View
-  tag: 'modal-spinner'
-  html: '<div class="{ animated: true, fadeIn: isActive(), fadeOut: !isActive(), hide: hide }"><div class="loader"></div></div>'
+  tag:  'modal-spinner'
+  html: '''
+    <div class="{ animated: true, fadeIn: isActive(), fadeOut: !isActive(), hide: hide }">'
+      <!-- Loader -->
+      <div class="loader">
+        <div class="sk-folding-cube">
+          <div class="sk-cube1 sk-cube"></div>
+          <div class="sk-cube2 sk-cube"></div>
+          <div class="sk-cube4 sk-cube"></div>
+          <div class="sk-cube3 sk-cube"></div>
+        </div>
+      </div>
+    </div>
+  '''
   js: ()->
     @active = {}
     @hide = true
