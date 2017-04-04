@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	aeds "appengine/datastore"
-	"appengine/search"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
@@ -16,11 +15,9 @@ import (
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction"
-	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
-	"hanzo.io/util/searchpartial"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
@@ -87,47 +84,6 @@ type User struct {
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 
 	AffiliateId string `json:"affiliateId,omitempty"`
-}
-
-func (u User) Document() mixin.Document {
-	emailUser := strings.Split(u.Email, "@")[0]
-	return &Document{
-		u.Id(),
-		search.Atom(u.Email),
-		searchpartial.Partials(emailUser) + " " + emailUser,
-		u.Username,
-		searchpartial.Partials(u.Username),
-		u.FirstName,
-		searchpartial.Partials(u.FirstName),
-		u.LastName,
-		searchpartial.Partials(u.LastName),
-		u.Phone,
-
-		u.BillingAddress.Line1,
-		u.BillingAddress.Line2,
-		u.BillingAddress.City,
-		u.BillingAddress.State,
-		u.BillingAddress.Country,
-		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.BillingAddress.PostalCode,
-
-		u.ShippingAddress.Line1,
-		u.ShippingAddress.Line2,
-		u.ShippingAddress.City,
-		u.ShippingAddress.State,
-		u.ShippingAddress.Country,
-		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.ShippingAddress.PostalCode,
-
-		u.CreatedAt,
-		u.UpdatedAt,
-
-		u.Accounts.Stripe.BalanceTransactionId,
-		u.Accounts.Stripe.CardId,
-		u.Accounts.Stripe.ChargeId,
-		u.Accounts.Stripe.CustomerId,
-		u.Accounts.Stripe.LastFour,
-	}
 }
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {

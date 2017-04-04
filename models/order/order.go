@@ -47,6 +47,7 @@ const (
 type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
+	mixin.DocumentSaveLoad
 
 	Number int `json:"number,omitempty"`
 
@@ -67,9 +68,8 @@ type Order struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Status
-	Status            Status             `json:"status"`
-	PaymentStatus     payment.Status     `json:"paymentStatus"`
-	FulfillmentStatus fulfillment.Status `json:"fulfillmentStatus"`
+	Status        Status         `json:"status"`
+	PaymentStatus payment.Status `json:"paymentStatus"`
 
 	// Whether this was a preorder or not
 	Preorder bool `json:"preorder"`
