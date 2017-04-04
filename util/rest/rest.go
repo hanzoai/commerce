@@ -3,17 +3,21 @@ package rest
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"appengine"
+	aeds "appengine/datastore"
+	"appengine/search"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/mixin"
+	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -60,10 +64,11 @@ type Rest struct {
 }
 
 type Pagination struct {
-	Page    string      `json:"page,omitempty"`
-	Display string      `json:"display,omitempty"`
-	Count   int         `json:"count"`
-	Models  interface{} `json:"models"`
+	Page    string                 `json:"page,omitempty"`
+	Display string                 `json:"display,omitempty"`
+	Count   int                    `json:"count"`
+	Models  interface{}            `json:"models"`
+	Options [][]search.FacetResult `json:"options"`
 }
 
 func (r *Rest) Init(prefix string) {
@@ -289,9 +294,13 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 }
 
 // helper which returns a slice which is compatible with this entity
-func (r Rest) newEntitySlice() interface{} {
+func (r Rest) newEntitySlice(length, capacity int) interface{} {
 	// Create pointer to a slice value and set it to the slice
-	slice := reflect.MakeSlice(r.sliceType, 0, 0)
+	slice := reflect.MakeSlice(r.sliceType, length, capacity)
+	for i := 0; i < length; i++ {
+		slice.Index(i).Set(reflect.New(r.entityType))
+	}
+
 	ptr := reflect.New(slice.Type())
 	ptr.Elem().Set(slice)
 	return ptr.Interface()
@@ -328,8 +337,6 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	entity := r.newEntity(c)
-	entities := r.newEntitySlice()
 	query := c.Request.URL.Query()
 
 	// Determine deafult sort order
@@ -338,15 +345,27 @@ func (r Rest) list(c *gin.Context) {
 		sortField = r.DefaultSortField
 	}
 
-	// Create query
-	q := entity.Query().All().Order(sortField)
-
 	// Update query with page/display params
-	var display int
-	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
 	limitStr := query.Get("limit")
+
+	entity := r.newEntity(c)
+
+	if _, ok := entity.(mixin.Searchable); ok {
+		qStr := query.Get("q")
+		r.listSearch(c, entity, qStr, pageStr, displayStr, limitStr, sortField)
+	} else {
+		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+	}
+}
+
+func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
+	// Create query
+	q := entity.Query().All().Order(sortField)
+
+	var display int
+	var err error
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -367,7 +386,8 @@ func (r Rest) list(c *gin.Context) {
 		}
 	}
 
-	if _, err = q.GetAll(entities); err != nil {
+	entities := r.newEntitySlice(0, 0)
+	if _, err := q.GetAll(entities); err != nil {
 		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
@@ -389,6 +409,135 @@ func (r Rest) list(c *gin.Context) {
 		Display: displayStr,
 		Models:  entities,
 		Count:   count,
+	})
+}
+
+func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, displayStr, limitStr, sortField string) {
+	var display int
+	var err error
+
+	sortExpr := sortField
+	sortReverse := sortExpr[0:1] == "-"
+	if sortReverse {
+		sortExpr = sortExpr[1:]
+	}
+
+	// should have already checked this
+	opts := search.SearchOptions{}
+	opts.Facets = []search.FacetSearchOption{
+		search.AutoFacetDiscovery(10, 20),
+	}
+	opts.Sort = &search.SortOptions{
+		Expressions: []search.SortExpression{
+			search.SortExpression{
+				Expr:    sortExpr,
+				Reverse: sortReverse,
+			},
+		},
+	}
+
+	// if we have pagination values, then trigger pagination calculations
+	if displayStr != "" {
+		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
+			opts.Limit = display
+		} else {
+			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	if pageStr != "" && displayStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			opts.Offset = display * (page - 1)
+		} else {
+			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	// open index
+	index, err := search.Open(mixin.DefaultIndex)
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to open index for '"+r.Kind+"'"), err)
+		return
+	}
+
+	keys := make([]*aeds.Key, 0)
+	opts.IDsOnly = true
+	opts.Refinements = []search.Facet{
+		search.Facet{
+			Name:  "Kind",
+			Value: search.Atom(r.Kind),
+		},
+	}
+
+	t := index.Search(entity.Context(), qStr, &opts)
+	for {
+		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			http.Fail(c, 500, fmt.Sprintf("Failed to search index for '"+r.Kind+"'"), err)
+			return
+		}
+
+		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
+	}
+
+	facets, err := t.Facets()
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"' options"), err)
+		return
+	}
+
+	t = index.Search(entity.Context(), qStr, &search.SearchOptions{
+		IDsOnly: true,
+		Refinements: []search.Facet{
+			search.Facet{
+				Name:  "Kind",
+				Value: search.Atom(r.Kind),
+			},
+		},
+	})
+	count := t.Count()
+
+	entities := r.newEntitySlice(len(keys), len(keys))
+	db := entity.Datastore()
+	if err := db.GetMulti(keys, entities); err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
+		return
+	}
+
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
+	}
+
+	if facets == nil {
+		facets = [][]search.FacetResult{}
+	}
+
+	// Prevent +/-inf json 'unfortunate' serialization
+	for i, facet := range facets {
+		log.Error("Facet... %v", facet, c)
+		for j, facetResult := range facet {
+			if _, ok := facetResult.Value.(search.Range); ok {
+				facets[i][j].Value = search.Range{
+					Start: -math.MaxFloat64,
+					End:   math.MaxFloat64,
+				}
+			}
+		}
+	}
+
+	r.Render(c, 200, Pagination{
+		Page:    pageStr,
+		Display: displayStr,
+		Models:  entities,
+		Count:   count,
+		Options: facets,
 	})
 }
 
