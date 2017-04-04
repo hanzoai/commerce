@@ -425,7 +425,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 	// should have already checked this
 	opts := search.SearchOptions{}
 	opts.Facets = []search.FacetSearchOption{
-		search.AutoFacetDiscovery(10, 20),
+		search.AutoFacetDiscovery(100, 20),
 	}
 	opts.Sort = &search.SortOptions{
 		Expressions: []search.SortExpression{
@@ -500,6 +500,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 			},
 		},
 	})
+	t.Next(entity.Context())
 	count := t.Count()
 
 	entities := r.newEntitySlice(len(keys), len(keys))
