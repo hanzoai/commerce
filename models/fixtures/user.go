@@ -12,16 +12,6 @@ var User = New("user", func(c *gin.Context) *user.User {
 	db := datastore.New(c)
 
 	// Such tees owner & operator
-	u := user.New(db)
-	u.Email = "victor@suchtees.com"
-	u.GetOrCreate("Email=", u.Email)
-
-	u.FirstName = "Victor"
-	u.LastName = "Canera"
-	u.PasswordHash, _ = password.Hash("78v6gvKhrkEwWZsJ")
-	u.MustPut()
-
-	// Such tees owner & operator
 	usr := user.New(db)
 	usr.Email = "dev@hanzo.ai"
 	usr.GetOrCreate("Email=", usr.Email)
