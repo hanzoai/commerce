@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var Victor = New("organization", func(c *gin.Context) *organization.Organization {
+var Victor = New("victor", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Our fake T-shirt company
