@@ -1,7 +1,6 @@
 package order
 
 import (
-	"reflect"
 	"strings"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 )
 
 type Document struct {
-	mixin.DocumentSaveLoad
+	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
 	// Special Kind Option
 	Kind search.Atom `search:",facet"`
@@ -128,7 +127,7 @@ func (o Order) Document() mixin.Document {
 	}
 
 	doc := &Document{}
-	doc.DocumentSaveLoad.Value = reflect.ValueOf(doc).Elem()
+	doc.DocumentSaveLoad.SetDocument(doc)
 	doc.Kind = search.Atom(kind)
 	doc.Id_ = o.Id()
 	doc.Number = float64(o.NumberFromId())
