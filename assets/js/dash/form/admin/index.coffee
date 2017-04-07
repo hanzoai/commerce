@@ -1,6 +1,11 @@
 module.exports =
   apikeys:              require './apikeys'
   profile:              require './profile'
-  stripeIntegration:    require './stripeintegration'
+  stripeIntegration:    require './stripe-integration'
+  mailchimpIntegration: require './mailchimp-integration'
+  mandrillIntegration:  require './mandrill-integration'
+  netlifyIntegration:   require './netlify-integration'
+  reamazeIntegration:   require './reamaze-integration'
+  recaptchaIntegration: require './recaptcha-integration'
   newpassword:          require './newpassword'
   organization:         require './organization'

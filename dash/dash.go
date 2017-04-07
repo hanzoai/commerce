@@ -48,6 +48,27 @@ func init() {
 	dash.GET("/organization", api.Organization)
 	dash.POST("/organization", api.UpdateOrganization)
 
+	dash.GET("/integration/mailchimp", api.Mailchimp)
+	dash.POST("/integration/mailchimp", api.UpdateMailchimp)
+
+	dash.GET("/integration/mandrill", api.Mandrill)
+	dash.POST("/integration/mandrill", api.UpdateMandrill)
+
+	dash.GET("/integration/netlify", api.Netlify)
+	dash.POST("/integration/netlify", api.UpdateNetlify)
+
+	dash.GET("/integration/affiliate", api.Affiliate)
+	dash.POST("/integration/affiliate", api.UpdateAffiliate)
+
+	dash.GET("/integration/reamaze", api.Reamaze)
+	dash.POST("/integration/reamaze", api.UpdateReamaze)
+
+	dash.GET("/integration/shipwire", api.Shipwire)
+	dash.POST("/integration/shipwire", api.UpdateShipwire)
+
+	dash.GET("/integration/recaptcha", api.Recaptcha)
+	dash.POST("/integration/recaptcha", api.UpdateRecaptcha)
+
 	dash.GET("/organization/:organizationid/set-active", api.SetActiveOrganization)
 
 	dash.GET("/settings", user.Profile)

@@ -13,7 +13,6 @@ import (
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/stripe/connect"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
@@ -110,85 +109,31 @@ type Organization struct {
 	} `json:"-"`
 
 	// Salesforce settings
-	Salesforce struct {
-		AccessToken        string `json:"accessToken"`
-		DefaultPriceBookId string `json:"defaultPriceBookId"`
-		// personalized login url
-		Id           string `json:"id"`
-		InstanceUrl  string `json:"instanceUrl"`
-		IssuedAt     string `json:"issuedAt"`
-		RefreshToken string `json:"refreshToken"`
-		Signature    string `json:"signature" datastore:",noindex"`
-	} `json:"-"`
+	Salesforce Salesforce `json:"-"`
 
 	// Paypal connection
-	Paypal struct {
-		Live struct {
-			Email             string `json:"paypalEmail"`
-			SecurityUserId    string
-			SecurityPassword  string `datastore:",noindex"`
-			SecuritySignature string `datastore:",noindex"`
-			ApplicationId     string
-		}
-		Test struct {
-			Email             string `json:"paypalEmail"`
-			SecurityUserId    string
-			SecurityPassword  string `datastore:",noindex"`
-			SecuritySignature string `datastore:",noindex"`
-			ApplicationId     string
-		}
-
-		ConfirmUrl string `json:"confirmUrl" datastore:",noindex"`
-		CancelUrl  string `json:"cancelUrl" datastore:",noindex"`
-	} `json:"-"`
+	Paypal Paypal `json:"-"`
 
 	// Stripe connection
-	Stripe struct {
-		// For convenience duplicated
-		AccessToken    string
-		PublishableKey string
-		RefreshToken   string
-		UserId         string
-
-		// Save entire live and test tokens
-		Live connect.Token `datastore:",noindex"`
-		Test connect.Token `datastore:",noindex"`
-	} `json:"-"`
+	Stripe Stripe `json:"-"`
 
 	// Mailchimp settings
-	Mailchimp struct {
-		ListId string `json:"listId"`
-		APIKey string `json:"apiKey"`
-	} `json:"-"`
+	Mailchimp Mailchimp `json:"-"`
 
 	// Mandrill settings
-	Mandrill struct {
-		APIKey string
-	} `json:"-"`
+	Mandrill Mandrill `json:"-"`
 
 	// Netlify settings
-	Netlify struct {
-		AccessToken string
-		CreatedAt   time.Time
-		Email       string
-		Id          string
-		Uid         string
-	} `json:"-"`
+	Netlify Netlify `json:"-"`
 
 	// Affiliate configuration
-	Affiliate struct {
-		SuccessUrl string
-		ErrorUrl   string
-	} `json:"-" datastore:",noindex"`
+	Affiliate Affiliate `json:"-" datastore:",noindex"`
 
-	Reamaze struct {
-		Secret string
-	} `json:"-"`
+	Reamaze Reamaze `json:"-"`
 
-	Shipwire struct {
-		Username string
-		Password string
-	} `json:"-"`
+	Shipwire Shipwire `json:"-"`
+
+	Recaptcha Recaptcha `json:"-" datastore:",noindex"`
 
 	// Signup options
 	SignUpOptions struct {
@@ -203,11 +148,6 @@ type Organization struct {
 		TwoStageEnabled bool `json:"twoStageEnabled"`
 		ImmediateLogin  bool `json:"immediateLogin"`
 	} `json:"signUpOptions" datastore:",noindex"`
-
-	Recaptcha struct {
-		Enabled   bool
-		SecretKey string
-	} `json:"-" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
