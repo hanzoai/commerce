@@ -20,7 +20,7 @@ class Integrations extends Page
   name: 'Integrations'
   html: require '../../templates/dash/site/pages/integrations.html'
 
-  tab: 'paymentprocessors'
+  tab: 'general'
 
   # models maintained by integration models
   # models:
