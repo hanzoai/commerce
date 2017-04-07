@@ -48,7 +48,7 @@ func PasswordResetSubmit(c *gin.Context) {
 		return
 	}
 
-	resetUrl := config.UrlFor("dash", "/password-reset/") + token.Id()
+	resetUrl := config.AbsoluteUrlFor("dash", "/password-reset/") + token.Id()
 
 	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
