@@ -13,15 +13,16 @@ import (
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
+	namespaced := middleware.Namespace()
 
 	api := rest.New(organization.Organization{})
 	api.DefaultNamespace = true
 	api.Prefix = "/c/"
 
-	api.GET("/:organizationid/analytics", adminRequired, analytics.Get)
-	api.POST("/:organizationid/analytics", adminRequired, analytics.Set)
-	api.PUT("/:organizationid/analytics", adminRequired, analytics.Set)
-	api.PATCH("/:organizationid/analytics", adminRequired, analytics.Update)
+	api.GET("/analytics", adminRequired, namespaced, analytics.Get)
+	api.POST("/analytics", adminRequired, namespaced, analytics.Set)
+	api.PUT("/analytics", adminRequired, namespaced, analytics.Set)
+	api.PATCH("/analytics", adminRequired, namespaced, analytics.Update)
 
 	api.Route(router, args...)
 }
