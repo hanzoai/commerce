@@ -118,13 +118,21 @@ func loadCodec(t reflect.Type) (*structCodec, error) {
 }
 
 type DocumentSaveLoad struct {
-	Value reflect.Value
+	document reflect.Value
+}
+
+func (s *DocumentSaveLoad) SetDocument(doc interface{}) {
+	s.document = reflect.Indirect(reflect.ValueOf(doc))
+}
+
+func (s *DocumentSaveLoad) GetDocument() reflect.Value {
+	return s.document
 }
 
 func (s DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMetadata) error {
 	var err error
 
-	val := s.Value
+	val := s.document
 	codec, err := loadCodec(val.Type())
 	if err != nil {
 		return err
@@ -205,7 +213,7 @@ func (s DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMetad
 }
 
 func (s DocumentSaveLoad) Save() ([]search.Field, *search.DocumentMetadata, error) {
-	val := s.Value
+	val := s.GetDocument()
 	codec, err := loadCodec(val.Type())
 	if err != nil {
 		return nil, nil, err
