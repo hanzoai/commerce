@@ -2,6 +2,8 @@ package log
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httputil"
 
 	"github.com/op/go-logging"
 
@@ -145,6 +147,51 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 	default:
 		std.Debugf("\n%s", json.Encode(v))
 	}
+}
+
+func Request(req *http.Request, args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	if !std.Verbose() {
+		return
+	}
+
+	dump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		std.Errorf("Failed to dump request: %v", err)
+		return
+	}
+	std.Debug(string(dump))
+}
+
+func RequestOut(req *http.Request, args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	if !std.Verbose() {
+		return
+	}
+
+	dump, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		std.Errorf("Failed to dump request: %v", err)
+		return
+	}
+	std.Debug(string(dump))
+}
+
+func Response(res *http.Response, args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	if !std.Verbose() {
+		return
+	}
+
+	dump, err := httputil.DumpResponse(res, true)
+	if err != nil {
+		std.Errorf("Failed to dump request: %v", err)
+		return
+	}
+	std.Debug(string(dump))
 }
 
 func Stack(args ...interface{}) {
