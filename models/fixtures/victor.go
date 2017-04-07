@@ -29,6 +29,7 @@ var Victor = New("victor", func(c *gin.Context) *organization.Organization {
 	u.MustPut()
 
 	org.Owners = append(org.Owners, u.Id())
+	org.MustPut()
 
 	return org
 })
