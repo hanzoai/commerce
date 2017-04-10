@@ -118,8 +118,10 @@ func loadCodec(t reflect.Type) (*structCodec, error) {
 }
 
 type DocumentSaveLoad struct {
-	document         reflect.Value
-	DummyFieldForGob string
+	document reflect.Value
+
+	// Dummy field for gob, see: https://github.com/golang/go/issues/5819
+	Dummy string `json:"-" datastore:"-"`
 }
 
 func (s *DocumentSaveLoad) SetDocument(doc interface{}) {
