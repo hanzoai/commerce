@@ -118,7 +118,8 @@ func loadCodec(t reflect.Type) (*structCodec, error) {
 }
 
 type DocumentSaveLoad struct {
-	document reflect.Value
+	document         reflect.Value
+	DummyFieldForGob string
 }
 
 func (s *DocumentSaveLoad) SetDocument(doc interface{}) {
