@@ -2,7 +2,7 @@
 
 files=()
 for file in $(find ./test -name "*_test.go"); do
-    file=hanzo.io/$(echo $(dirname $file) | cut -c 3-)
+    file=$(echo $(dirname $file) | cut -c 3-)
     files+=" $file"
 done
 
