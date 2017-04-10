@@ -6,7 +6,7 @@ dependencies:
         timeout: 300
 test:
   override:
-    - util/test/test-runner:
+    - scripts/test-runner:
         parallel: true
   post:
     - make coverage
