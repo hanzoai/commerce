@@ -22,7 +22,7 @@ type Review struct {
 
 	Name    string `json:"name"`
 	Device  string `json:"device"`
-	Comment string `json:"comment"`
+	Comment string `json:"comment" datastore:",noindex"`
 	Rating  int    `json:"rating"`
 
 	Enabled bool `json:"-"`

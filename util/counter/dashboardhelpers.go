@@ -91,6 +91,8 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 		buckets = 24
 	}
 
+	log.Debug("Period %s from %s to %s", t, oldDate, newDate, ctx)
+
 	currencies, err := Members(ctx, setName(org, currencySetKey))
 	if err != nil {
 		log.Error("Counter Error: %v", err)
