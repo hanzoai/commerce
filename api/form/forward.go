@@ -38,7 +38,7 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	toEmail := ml.Forward.Email
 	toName := ml.Forward.Name
 	fromEmail := "noreply@hanzo.io"
-	fromName := "Crowdstart"
+	fromName := "Hanzo"
 	subject := "New submission for form " + ml.Name
 
 	html := ""
