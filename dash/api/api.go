@@ -118,6 +118,8 @@ func Search(c *gin.Context) {
 	orders := make([]*order.Order, 0)
 	for t := index.Search(db.Context, q, nil); ; {
 		var doc order.Document
+		doc.Init()
+
 		id, err := t.Next(&doc)
 		if err == search.Done {
 			break
