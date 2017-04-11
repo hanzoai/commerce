@@ -93,8 +93,8 @@ type Organization struct {
 	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
-	// Analytics config
-	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
+	// All types of integrations
+	Integration []Integration `json:"integrations" datastore:",noindex"`
 
 	// Email config
 	Email EmailConfig `json:"email" datastore:",noindex"`
@@ -108,32 +108,8 @@ type Organization struct {
 		StartDate time.Time
 	} `json:"-"`
 
-	// Salesforce settings
-	Salesforce Salesforce `json:"-"`
-
-	// Paypal connection
-	Paypal Paypal `json:"-"`
-
-	// Stripe connection
-	Stripe Stripe `json:"-"`
-
-	// Mailchimp settings
-	Mailchimp Mailchimp `json:"-"`
-
-	// Mandrill settings
-	Mandrill Mandrill `json:"-"`
-
-	// Netlify settings
-	Netlify Netlify `json:"-"`
-
 	// Affiliate configuration
 	Affiliate Affiliate `json:"-" datastore:",noindex"`
-
-	Reamaze Reamaze `json:"-"`
-
-	Shipwire Shipwire `json:"-"`
-
-	Recaptcha Recaptcha `json:"-" datastore:",noindex"`
 
 	// Signup options
 	SignUpOptions struct {
@@ -154,6 +130,36 @@ type Organization struct {
 
 	// List of comma deliminated email globs that result in charges of 50 cents
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
+
+	// Integrations (deprecated)
+
+	// Analytics config
+	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
+
+	// Mailchimp settings
+	Mailchimp Mailchimp `json:"-"`
+
+	// Mandrill settings
+	Mandrill Mandrill `json:"-"`
+
+	// Netlify settings
+	Netlify Netlify `json:"-"`
+
+	// Paypal connection
+	Paypal Paypal `json:"-"`
+
+	Reamaze Reamaze `json:"-"`
+
+	Recaptcha Recaptcha `json:"-" datastore:",noindex"`
+
+	// Salesforce settings
+	Salesforce Salesforce `json:"-"`
+
+	// Shipwire settings
+	Shipwire Shipwire `json:"-"`
+
+	// Stripe connection
+	Stripe Stripe `json:"-"`
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
