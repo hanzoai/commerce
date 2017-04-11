@@ -4,18 +4,83 @@ import (
 	"time"
 
 	"hanzo.io/thirdparty/stripe/connect"
+
+	enjson "encoding/json"
 )
 
-// Salesforce settings
-type Salesforce struct {
-	AccessToken        string `json:"accessToken"`
-	DefaultPriceBookId string `json:"defaultPriceBookId"`
-	// personalized login url
-	Id           string `json:"id"`
-	InstanceUrl  string `json:"instanceUrl"`
-	IssuedAt     string `json:"issuedAt"`
-	RefreshToken string `json:"refreshToken"`
-	Signature    string `json:"signature" datastore:",noindex"`
+type IntegrationType string
+
+const (
+	MailchimpType  IntegrationType = "mailchimp"
+	MandrillType   IntegrationType = "mandrill"
+	NetlifyType    IntegrationType = "netlify"
+	PaypalType     IntegrationType = "paypal"
+	ReamazeType    IntegrationType = "reamaze"
+	RecaptchaType  IntegrationType = "recaptcha"
+	SalesforceType IntegrationType = "salesforce"
+	ShipwireType   IntegrationType = "shipwire"
+	StripeType     IntegrationType = "stripe"
+)
+
+// Analytics
+
+// Generic fields
+type AnalyticsIntegration struct {
+	// Common to all integrations
+	Type  string `json:"type"`
+	Event string `json:"event,omitempty"`
+	Id    string `json:"id,omitempty"`
+
+	// Sampling percentage
+	Sampling float64 `json:"sampling,omitempty"`
+}
+
+// Integration specific properties
+type Custom struct {
+	AnalyticsIntegration
+
+	Code string `json:"code,omitempty"`
+}
+
+type FacebookPixel struct {
+	AnalyticsIntegration
+
+	Values Values `json:"values,omitempty"`
+}
+
+type FacebookConversions struct {
+	AnalyticsIntegration
+
+	Value    string `json:"value,omitempty"`
+	Currency string `json:"currency,omitempty"`
+}
+
+type Heap struct {
+}
+
+type Sentry struct {
+}
+
+// Others
+
+// Mailchimp settings
+type Mailchimp struct {
+	ListId string `json:"listId"`
+	APIKey string `json:"apiKey"`
+}
+
+// Mandrill settings
+type Mandrill struct {
+	APIKey string `json:"apiKey"`
+}
+
+// Netlify settings
+type Netlify struct {
+	AccessToken string    `json:"accessToken"`
+	CreatedAt   time.Time `json:"createdAt"`
+	Email       string    `json:"email"`
+	Id          string    `json:"id"`
+	Uid         string    `json:"uId"`
 }
 
 // Paypal connection
@@ -39,6 +104,40 @@ type Paypal struct {
 	CancelUrl  string `json:"cancelUrl" datastore:",noindex"`
 }
 
+// Affiliate configuration
+type Affiliate struct {
+	SuccessUrl string `json:"successUrl"`
+	ErrorUrl   string `json:"errorUrl"`
+}
+
+type Reamaze struct {
+	Secret string `json:"secret"`
+}
+
+type Recaptcha struct {
+	Enabled   bool   `json:"enabled"`
+	SecretKey string `json:"secretKey"`
+}
+
+// Salesforce settings
+type Salesforce struct {
+	Integration
+
+	AccessToken        string `json:"accessToken"`
+	DefaultPriceBookId string `json:"defaultPriceBookId"`
+	// personalized login url
+	Id           string `json:"id"`
+	InstanceUrl  string `json:"instanceUrl"`
+	IssuedAt     string `json:"issuedAt"`
+	RefreshToken string `json:"refreshToken"`
+	Signature    string `json:"signature" datastore:",noindex"`
+}
+
+type Shipwire struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 // Stripe connection
 type Stripe struct {
 	// For convenience duplicated
@@ -52,42 +151,29 @@ type Stripe struct {
 	Test connect.Token `json:"test" datastore:",noindex"`
 }
 
-// Mailchimp settings
-type Mailchimp struct {
-	ListId string `json:"listId"`
-	APIKey string `json:"apiKey"`
+type BasicIntegration struct {
+	Enabled bool            `json:"enabled"`
+	Type    IntegrationType `json:"type"`
+
+	CreatedAt time.Time         `json:"createdAt"`
+	UpdatedAt time.Time         `json:"updatedAt"`
+	Data      enjson.RawMessage `json:"data"`
 }
 
-// Mandrill settings
-type Mandrill struct {
-	APIKey string `json:"apiKey"`
-}
+type Integration struct {
+	BasicIntegration
 
-// Netlify settings
-type Netlify struct {
-	AccessToken string    `json:"accessToken"`
-	CreatedAt   time.Time `json:"createdAt"`
-	Email       string    `json:"email"`
-	Id          string    `json:"id"`
-	Uid         string    `json:"uId"`
-}
+	// Analytics
+	CustomAnalytics CustomAnalytics `json:"-"`
 
-// Affiliate configuration
-type Affiliate struct {
-	SuccessUrl string `json:"successUrl"`
-	ErrorUrl   string `json:"errorUrl"`
-}
-
-type Reamaze struct {
-	Secret string `json:"secret"`
-}
-
-type Shipwire struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type Recaptcha struct {
-	Enabled   bool   `json:"enabled"`
-	SecretKey string `json:"secretKey"`
+	// Others
+	Mailchimp  Mailchimp  `json: "-"`
+	Mandrill   Mandrill   `json: "-"`
+	Netlify    Netlify    `json: "-"`
+	Paypal     Paypal     `json: "-"`
+	Reamaze    Reamaze    `json: "-"`
+	Recaptcha  Recaptcha  `json: "-"`
+	Salesforce Salesforce `json: "-"`
+	Shipwire   Shipwire   `json: "-"`
+	Stripe     Stripe     `json: "-"`
 }
