@@ -11,6 +11,7 @@ import (
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/analytics"
+	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/util/permission"
@@ -93,9 +94,6 @@ type Organization struct {
 	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
-	// All types of integrations
-	Integration []Integration `json:"integrations" datastore:",noindex"`
-
 	// Email config
 	Email EmailConfig `json:"email" datastore:",noindex"`
 
@@ -130,6 +128,9 @@ type Organization struct {
 
 	// List of comma deliminated email globs that result in charges of 50 cents
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
+
+	// Integrations
+	Integration integrations.Integrations `json:"integrations" datastore:",noindex"`
 
 	// Integrations (deprecated)
 

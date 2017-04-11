@@ -1,4 +1,4 @@
-package organization
+package integrations
 
 import (
 	"time"
@@ -176,11 +176,10 @@ type Stripe struct {
 }
 
 type BasicIntegration struct {
-	// uuid for updating if we support duplicates
-	Id      string          `json:"id"`
 	Enabled bool            `json:"enabled"`
 	Type    IntegrationType `json:"type"`
 
+	Id        string            `json:"id"`
 	CreatedAt time.Time         `json:"createdAt"`
 	UpdatedAt time.Time         `json:"updatedAt"`
 	Data      enjson.RawMessage `json:"data"`
