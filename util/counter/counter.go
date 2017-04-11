@@ -29,7 +29,7 @@ const (
 	Hourly  Period = "hourly"
 	Daily   Period = "daily"
 	Weekly  Period = "weekly"
-	Monthly Period = "monthy"
+	Monthly Period = "monthly"
 	Yearly  Period = "yearly"
 )
 
