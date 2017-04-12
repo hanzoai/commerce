@@ -212,7 +212,9 @@ func (s *DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMeta
 		}
 		f.Set(v)
 	}
-	return err
+
+	// None of the errors are blocking
+	return nil
 }
 
 func (s DocumentSaveLoad) Save() ([]search.Field, *search.DocumentMetadata, error) {
