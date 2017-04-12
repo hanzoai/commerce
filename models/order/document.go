@@ -108,8 +108,12 @@ type Document struct {
 	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
 }
 
-func (d Document) Id() string {
+func (d *Document) Id() string {
 	return d.Id_
+}
+
+func (d *Document) Init() {
+	d.SetDocument(d)
 }
 
 func (o Order) Document() mixin.Document {
@@ -127,7 +131,7 @@ func (o Order) Document() mixin.Document {
 	}
 
 	doc := &Document{}
-	doc.DocumentSaveLoad.SetDocument(doc)
+	doc.Init()
 	doc.Kind = search.Atom(kind)
 	doc.Id_ = o.Id()
 	doc.Number = float64(o.NumberFromId())

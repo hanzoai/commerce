@@ -95,13 +95,12 @@ func Search(c *gin.Context) {
 		id, err := t.Next(&doc)
 		if err == search.Done {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			break
 		}
 
 		u := user.New(db)
-		err = u.GetById(id)
+		err = datastore.IgnoreFieldMismatch(u.GetById(id))
 		if err != nil {
 			continue
 		}
@@ -115,23 +114,30 @@ func Search(c *gin.Context) {
 		return
 	}
 
+	log.Warn("Get Orders with Query %s", q, c)
 	orders := make([]*order.Order, 0)
 	for t := index.Search(db.Context, q, nil); ; {
 		var doc order.Document
+		doc.Init()
+
+		log.Warn("Get Next Order", c)
 		id, err := t.Next(&doc)
 		if err == search.Done {
+			log.Warn("Order Search Done", c)
 			break
-		}
-		if err != nil {
+		} else if err != nil {
+			log.Warn("Order Search Error %s", err, c)
 			break
 		}
 
 		o := order.New(db)
-		err = o.GetById(id)
+		err = datastore.IgnoreFieldMismatch(o.GetById(id))
 		if err != nil {
+			log.Warn("Order DB Get Error %s", err, c)
 			continue
 		}
 
+		log.Warn("Appending Order", c)
 		orders = append(orders, o)
 	}
 
