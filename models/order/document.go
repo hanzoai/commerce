@@ -108,11 +108,11 @@ type Document struct {
 	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
 }
 
-func (d Document) Id() string {
+func (d *Document) Id() string {
 	return d.Id_
 }
 
-func (d Document) Init() {
+func (d *Document) Init() {
 	d.SetDocument(d)
 }
 

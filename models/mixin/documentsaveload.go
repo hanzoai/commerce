@@ -132,7 +132,7 @@ func (s *DocumentSaveLoad) GetDocument() reflect.Value {
 	return s.document
 }
 
-func (s DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMetadata) error {
+func (s *DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMetadata) error {
 	var err error
 
 	val := s.document
