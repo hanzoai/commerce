@@ -7,11 +7,20 @@ import (
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
-func List(c *gin.Context) {
+func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	http.Render(c, 200, org.Integrations)
+	ins := org.Integrations
+	for i, in := range ins {
+		if err := integrations.Decode(in, &in); err != nil {
+			log.Warn("Could not encode integration: %s", err, c)
+			continue
+		}
+		ins[i] = in
+	}
+	http.Render(c, 200, ins)
 }
 
 func Upsert(c *gin.Context) {
