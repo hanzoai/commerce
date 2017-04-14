@@ -14,7 +14,7 @@ func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ins := org.Integrations
 	for i, in := range ins {
-		if err := integrations.Decode(in, &in); err != nil {
+		if err := integrations.Encode(in, &in); err != nil {
 			log.Warn("Could not encode integration: %s", err, c)
 			continue
 		}
