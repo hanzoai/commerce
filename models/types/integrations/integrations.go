@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 )
 
@@ -17,7 +18,7 @@ var (
 
 type Integrations []Integration
 
-func Update(src, dst *Integration) error {
+func Decode(src, dst *Integration) error {
 	switch src.Type {
 	case AnalyticsCustomType:
 		json.DecodeBytes(src.Data, &dst.AnalyticsCustom)
@@ -53,11 +54,12 @@ func Update(src, dst *Integration) error {
 
 	dst.Enabled = src.Enabled
 	dst.UpdatedAt = time.Now()
+	dst.Type = src.Type
 
 	return nil
 }
 
-func (i Integrations) Create(src Integration) error {
+func (i Integrations) Append(src Integration) (Integrations, error) {
 	switch src.Type {
 	case AnalyticsCustomType:
 	case AnalyticsFacebookPixelType:
@@ -66,7 +68,7 @@ func (i Integrations) Create(src Integration) error {
 	case AnalyticsSentryType:
 	default:
 		if len(i.FilterByType(src.Type)) > 0 {
-			return ErrorTooMany
+			return i, ErrorTooMany
 		}
 	}
 
@@ -75,29 +77,98 @@ func (i Integrations) Create(src Integration) error {
 	dst.Type = src.Type
 	dst.CreatedAt = time.Now()
 
-	if err := Update(&src, &dst); err != nil {
-		return err
+	if err := Decode(&src, &dst); err != nil {
+		return i, err
 	}
 
-	i = append(i, dst)
-	return nil
+	log.Debug("Length %v", len(i))
+	// log.Warn("Appending %s", dst.Type)
+	ins := append(i, dst)
+	// log.Warn("List")
+	// for _, in := range ins {
+	// 	log.Warn("%s", in.Type)
+	// }
+	log.Debug("Length %v", len(i))
+	return ins, nil
 }
 
-func (i Integrations) Update(in Integration) error {
-	if in.Id != "" {
-		dst, err := i.FindById(in.Id)
+func (i Integrations) MustAppend(src Integration) Integrations {
+	if ins, err := i.Append(src); err != nil {
+		panic(err)
+	} else {
+		return ins
+	}
+}
+
+func (i Integrations) Update(src Integration) (Integrations, error) {
+	if src.Id != "" {
+		dst, err := i.FindById(src.Id)
 		if err != nil {
-			return err
+			return i, err
 		}
-		err = Update(&in, dst)
-		return err
+
+		ins := Integrations{}
+		for _, in := range i {
+			if dst.Id == src.Id {
+				err = Decode(&src, dst)
+				ins = append(ins, *dst)
+			} else {
+				ins = append(ins, in)
+			}
+		}
+		log.Debug("Before %s\nAfter %s", dst, src)
+		return ins, err
 	}
 
-	if in.Type != "" {
-		return i.Create(in)
+	if src.Type != "" {
+		return i.Append(src)
 	}
 
-	return ErrorIdTypeNotSet
+	return i, ErrorIdTypeNotSet
+}
+
+func (i Integrations) MustUpdate(in Integration) Integrations {
+	if ins, err := i.Update(in); err != nil {
+		panic(err)
+	} else {
+		return ins
+	}
+}
+
+func (i Integrations) Remove(id string) (Integrations, error) {
+	ins := Integrations{}
+	for _, in := range i {
+		// Go is terrible
+		// if in.Id == id {
+		// 	ins := append(i[:j], i[j+1:]...)
+		// 	return ins, nil
+		// }
+		if in.Id != id {
+			ins = append(ins, in)
+		}
+	}
+
+	if len(ins) != len(i) {
+		return ins, nil
+	}
+
+	return i, ErrorNotFound
+}
+
+func (i Integrations) MustRemove(id string) Integrations {
+	// log.Warn("ListB.1")
+	// for _, in := range i {
+	// 	log.Warn("%s - %s", in.Id, in.Type)
+	// }
+	if ins, err := i.Remove(id); err != nil {
+		panic(err)
+	} else {
+		// log.Warn("ListB.2")
+		// for _, in := range i {
+		// 	log.Warn("%s - %s", in.Id, in.Type)
+		// }
+		return ins
+	}
 }
 
 func (i Integrations) FilterByType(typ IntegrationType) Integrations {
