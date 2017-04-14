@@ -18,7 +18,52 @@ var (
 
 type Integrations []Integration
 
-func Decode(src, dst *Integration) error {
+func Encode(src Integration, dst *Integration) error {
+	switch src.Type {
+	case AnalyticsCustomType:
+		dst.Data = json.EncodeBytes(src.AnalyticsCustom)
+	case AnalyticsFacebookPixelType:
+		dst.Data = json.EncodeBytes(src.AnalyticsFacebookPixel)
+	case AnalyticsFacebookConversionsType:
+		dst.Data = json.EncodeBytes(src.AnalyticsFacebookConversions)
+	case AnalyticsHeapType:
+		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
+	case AnalyticsSentryType:
+		dst.Data = json.EncodeBytes(src.AnalyticsSentry)
+	case MailchimpType:
+		dst.Data = json.EncodeBytes(src.Mailchimp)
+	case MandrillType:
+		dst.Data = json.EncodeBytes(src.Mandrill)
+	case NetlifyType:
+		dst.Data = json.EncodeBytes(src.Netlify)
+	case PaypalType:
+		dst.Data = json.EncodeBytes(src.Paypal)
+	case ReamazeType:
+		dst.Data = json.EncodeBytes(src.Reamaze)
+	case RecaptchaType:
+		dst.Data = json.EncodeBytes(src.Recaptcha)
+	case SalesforceType:
+		dst.Data = json.EncodeBytes(src.Salesforce)
+	case ShipwireType:
+		dst.Data = json.EncodeBytes(src.Shipwire)
+	case StripeType:
+		dst.Data = json.EncodeBytes(src.Stripe)
+	default:
+		return ErrorInvalidType
+	}
+
+	dst.Enabled = src.Enabled
+	dst.Show = src.Show
+
+	dst.Id = src.Id
+	dst.Type = src.Type
+
+	dst.CreatedAt = src.CreatedAt
+	dst.UpdatedAt = src.UpdatedAt
+	return nil
+}
+
+func Decode(src Integration, dst *Integration) error {
 	switch src.Type {
 	case AnalyticsCustomType:
 		json.DecodeBytes(src.Data, &dst.AnalyticsCustom)
@@ -53,8 +98,11 @@ func Decode(src, dst *Integration) error {
 	}
 
 	dst.Enabled = src.Enabled
-	dst.UpdatedAt = time.Now()
+	dst.Show = src.Show
+
 	dst.Type = src.Type
+
+	dst.UpdatedAt = time.Now()
 
 	return nil
 }
@@ -73,11 +121,13 @@ func (i Integrations) Append(src Integration) (Integrations, error) {
 	}
 
 	dst := Integration{}
+
 	dst.Id = rand.ShortId()
 	dst.Type = src.Type
+
 	dst.CreatedAt = time.Now()
 
-	if err := Decode(&src, &dst); err != nil {
+	if err := Decode(src, &dst); err != nil {
 		return i, err
 	}
 
@@ -110,7 +160,7 @@ func (i Integrations) Update(src Integration) (Integrations, error) {
 		ins := Integrations{}
 		for _, in := range i {
 			if dst.Id == src.Id {
-				err = Decode(&src, dst)
+				err = Decode(src, dst)
 				ins = append(ins, *dst)
 			} else {
 				ins = append(ins, in)
