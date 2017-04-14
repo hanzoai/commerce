@@ -176,13 +176,15 @@ type Stripe struct {
 }
 
 type BasicIntegration struct {
-	Enabled bool            `json:"enabled"`
-	Type    IntegrationType `json:"type"`
+	Enabled bool `json:"enabled"`
+	Show    bool `json:"show"`
 
-	Id        string            `json:"id"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
-	Data      enjson.RawMessage `json:"data"`
+	Id   string            `json:"id"`
+	Data enjson.RawMessage `json:"data"`
+	Type IntegrationType   `json:"type"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Integration struct {

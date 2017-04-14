@@ -2,6 +2,7 @@ package test
 
 import (
 	// "hanzo.io/util/log"
+	"regexp"
 
 	. "hanzo.io/models/types/integrations"
 
@@ -272,6 +273,31 @@ var _ = Describe("models/types/integrations", func() {
 
 			results := ins.FilterByType(AnalyticsCustomType)
 			Expect(len(results)).To(Equal(2))
+		})
+	})
+
+	Context("Encode/Decode", func() {
+		It("should encode/decode stuff", func() {
+			in := Integration{}
+			in.Type = MailchimpType
+			in.Data = []byte("{ \"listId\": \"LIST\", \"apiKey\": \"APIKEY\" }")
+
+			inD := Integration{}
+
+			err := Decode(in, &inD)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(inD.Type).To(Equal(MailchimpType))
+			Expect(inD.Mailchimp.ListId).To(Equal("LIST"))
+			Expect(inD.Mailchimp.APIKey).To(Equal("APIKEY"))
+
+			inE := Integration{}
+
+			r, _ := regexp.Compile("\\s")
+
+			err = Encode(inD, &inE)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(inE.Type).To(Equal(MailchimpType))
+			Expect(r.ReplaceAllString(string(inE.Data), "")).To(Equal("{\"listId\":\"LIST\",\"apiKey\":\"APIKEY\"}"))
 		})
 	})
 })

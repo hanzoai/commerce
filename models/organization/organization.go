@@ -130,7 +130,7 @@ type Organization struct {
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 
 	// Integrations
-	Integration integrations.Integrations `json:"integrations" datastore:",noindex"`
+	Integrations integrations.Integrations `json:"integrations" datastore:",noindex"`
 
 	// Integrations (deprecated)
 
