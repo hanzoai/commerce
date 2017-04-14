@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/organization/analytics"
+	"hanzo.io/api/organization/integrations"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/permission"
@@ -23,6 +24,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/analytics", adminRequired, namespaced, analytics.Set)
 	api.PUT("/analytics", adminRequired, namespaced, analytics.Set)
 	api.PATCH("/analytics", adminRequired, namespaced, analytics.Update)
+
+	api.GET("/integrations", adminRequired, namespaced, integrations.Get)
+	api.POST("/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PUT("/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PATCH("/integrations", adminRequired, namespaced, integrations.Upsert)
 
 	api.Route(router, args...)
 }
