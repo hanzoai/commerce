@@ -1,6 +1,8 @@
 package integrations
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
@@ -12,6 +14,13 @@ import (
 
 func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
+		return
+	}
+
 	ins := org.Integrations
 	for i, in := range ins {
 		if err := integrations.Encode(&in, &in); err != nil {
@@ -25,6 +34,13 @@ func Get(c *gin.Context) {
 
 func Upsert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
+		return
+	}
+
 	ins := org.Integrations
 	in := integrations.Integration{}
 

@@ -1,6 +1,8 @@
 package analytics
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
@@ -17,6 +19,13 @@ func Get(c *gin.Context) {
 
 func Set(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
+		return
+	}
+
 	integrations := analytics.Analytics{}
 
 	// Decode response body for listing
@@ -42,6 +51,12 @@ func Set(c *gin.Context) {
 func Update(c *gin.Context) {
 	// Get organization
 	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
+		return
+	}
 
 	// Decode response body for listing
 	if err := json.Decode(c.Request.Body, &org.Analytics); err != nil {

@@ -20,15 +20,15 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.DefaultNamespace = true
 	api.Prefix = "/c/"
 
-	api.GET("/analytics", adminRequired, namespaced, analytics.Get)
-	api.POST("/analytics", adminRequired, namespaced, analytics.Set)
-	api.PUT("/analytics", adminRequired, namespaced, analytics.Set)
-	api.PATCH("/analytics", adminRequired, namespaced, analytics.Update)
+	api.GET("/:organizationid/analytics", adminRequired, namespaced, analytics.Get)
+	api.POST("/:organizationid/analytics", adminRequired, namespaced, analytics.Set)
+	api.PUT("/:organizationid/analytics", adminRequired, namespaced, analytics.Set)
+	api.PATCH("/:organizationid/analytics", adminRequired, namespaced, analytics.Update)
 
-	api.GET("/integrations", adminRequired, namespaced, integrations.Get)
-	api.POST("/integrations", adminRequired, namespaced, integrations.Upsert)
-	api.PUT("/integrations", adminRequired, namespaced, integrations.Upsert)
-	api.PATCH("/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.GET("/:organizationid/integrations", adminRequired, namespaced, integrations.Get)
+	api.POST("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PUT("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PATCH("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
 
 	api.Route(router, args...)
 }
