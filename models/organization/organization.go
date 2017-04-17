@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	aeds "appengine/datastore"
+
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
@@ -15,6 +17,7 @@ import (
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
+	"hanzo.io/util/json"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
@@ -133,7 +136,8 @@ type Organization struct {
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 
 	// Integrations
-	Integrations integrations.Integrations `json:"integrations" datastore:",noindex"`
+	Integrations  integrations.Integrations `json:"integrations" datastore:"-"`
+	Integrations_ string                    `json:"-" datastore:",noindex"`
 
 	// Integrations (deprecated)
 
@@ -164,6 +168,30 @@ type Organization struct {
 
 	// Stripe connection
 	Stripe integrations.Stripe `json:"-"`
+}
+
+func (o *Organization) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	o.Defaults()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+		return err
+	}
+
+	if len(o.Integrations_) > 0 {
+		err = json.DecodeBytes([]byte(o.Integrations_), &o.Integrations)
+	}
+
+	return err
+}
+
+func (o *Organization) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
