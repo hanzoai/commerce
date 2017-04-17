@@ -70,35 +70,70 @@ func Encode(src *Integration, dst *Integration) error {
 func Decode(src *Integration, dst *Integration) error {
 	switch src.Type {
 	case AnalyticsCustomType:
-		json.DecodeBytes(src.Data, &dst.AnalyticsCustom)
+		dst.AnalyticsCustom = src.AnalyticsCustom
 	case AnalyticsFacebookPixelType:
-		json.DecodeBytes(src.Data, &dst.AnalyticsFacebookPixel)
+		dst.AnalyticsFacebookPixel = src.AnalyticsFacebookPixel
 	case AnalyticsFacebookConversionsType:
-		json.DecodeBytes(src.Data, &dst.AnalyticsFacebookConversions)
+		dst.AnalyticsFacebookConversions = src.AnalyticsFacebookConversions
 	case AnalyticsHeapType:
-		json.DecodeBytes(src.Data, &dst.AnalyticsHeap)
+		dst.AnalyticsHeap = src.AnalyticsHeap
 	case AnalyticsSentryType:
-		json.DecodeBytes(src.Data, &dst.AnalyticsSentry)
+		dst.AnalyticsSentry = src.AnalyticsSentry
 	case MailchimpType:
-		json.DecodeBytes(src.Data, &dst.Mailchimp)
+		dst.Mailchimp = src.Mailchimp
 	case MandrillType:
-		json.DecodeBytes(src.Data, &dst.Mandrill)
+		dst.Mandrill = src.Mandrill
 	case NetlifyType:
-		json.DecodeBytes(src.Data, &dst.Netlify)
+		dst.Netlify = src.Netlify
 	case PaypalType:
-		json.DecodeBytes(src.Data, &dst.Paypal)
+		dst.Paypal = src.Paypal
 	case ReamazeType:
-		json.DecodeBytes(src.Data, &dst.Reamaze)
+		dst.Reamaze = src.Reamaze
 	case RecaptchaType:
-		json.DecodeBytes(src.Data, &dst.Recaptcha)
+		dst.Recaptcha = dst.Recaptcha
 	case SalesforceType:
-		json.DecodeBytes(src.Data, &dst.Salesforce)
+		dst.Salesforce = dst.Salesforce
 	case ShipwireType:
-		json.DecodeBytes(src.Data, &dst.Shipwire)
+		dst.Shipwire = dst.Shipwire
 	case StripeType:
-		json.DecodeBytes(src.Data, &dst.Stripe)
+		dst.Stripe = dst.Stripe
 	default:
 		return ErrorInvalidType
+	}
+
+	if len(src.Data) > 0 {
+		switch src.Type {
+		case AnalyticsCustomType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsCustom)
+		case AnalyticsFacebookPixelType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsFacebookPixel)
+		case AnalyticsFacebookConversionsType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsFacebookConversions)
+		case AnalyticsHeapType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsHeap)
+		case AnalyticsSentryType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsSentry)
+		case MailchimpType:
+			json.DecodeBytes(src.Data, &dst.Mailchimp)
+		case MandrillType:
+			json.DecodeBytes(src.Data, &dst.Mandrill)
+		case NetlifyType:
+			json.DecodeBytes(src.Data, &dst.Netlify)
+		case PaypalType:
+			json.DecodeBytes(src.Data, &dst.Paypal)
+		case ReamazeType:
+			json.DecodeBytes(src.Data, &dst.Reamaze)
+		case RecaptchaType:
+			json.DecodeBytes(src.Data, &dst.Recaptcha)
+		case SalesforceType:
+			json.DecodeBytes(src.Data, &dst.Salesforce)
+		case ShipwireType:
+			json.DecodeBytes(src.Data, &dst.Shipwire)
+		case StripeType:
+			json.DecodeBytes(src.Data, &dst.Stripe)
+		default:
+			return ErrorInvalidType
+		}
 	}
 
 	dst.Enabled = src.Enabled
@@ -166,7 +201,7 @@ func (i Integrations) Update(src *Integration) (Integrations, error) {
 
 		ins := Integrations{}
 		for _, in := range i {
-			if dst.Id == src.Id {
+			if in.Id == src.Id {
 				err = Decode(src, dst)
 				ins = append(ins, *dst)
 			} else {
