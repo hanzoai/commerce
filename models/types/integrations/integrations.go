@@ -18,7 +18,7 @@ var (
 
 type Integrations []Integration
 
-func Encode(src Integration, dst *Integration) error {
+func Encode(src *Integration, dst *Integration) error {
 	switch src.Type {
 	case AnalyticsCustomType:
 		dst.Data = json.EncodeBytes(src.AnalyticsCustom)
@@ -26,6 +26,10 @@ func Encode(src Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.AnalyticsFacebookPixel)
 	case AnalyticsFacebookConversionsType:
 		dst.Data = json.EncodeBytes(src.AnalyticsFacebookConversions)
+	case AnalyticsGoogleAdwordsType:
+		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
+	case AnalyticsGoogleAnalyticsType:
+		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
 	case AnalyticsHeapType:
 		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
 	case AnalyticsSentryType:
@@ -63,7 +67,7 @@ func Encode(src Integration, dst *Integration) error {
 	return nil
 }
 
-func Decode(src Integration, dst *Integration) error {
+func Decode(src *Integration, dst *Integration) error {
 	switch src.Type {
 	case AnalyticsCustomType:
 		json.DecodeBytes(src.Data, &dst.AnalyticsCustom)
@@ -107,7 +111,7 @@ func Decode(src Integration, dst *Integration) error {
 	return nil
 }
 
-func (i Integrations) Append(src Integration) (Integrations, error) {
+func (i Integrations) Append(src *Integration) (Integrations, error) {
 	switch src.Type {
 	case AnalyticsCustomType:
 	case AnalyticsFacebookPixelType:
@@ -139,10 +143,13 @@ func (i Integrations) Append(src Integration) (Integrations, error) {
 	// 	log.Warn("%s", in.Type)
 	// }
 	log.Debug("Length %v", len(i))
+	src.Id = dst.Id
+	src.CreatedAt = dst.CreatedAt
+	src.UpdatedAt = dst.UpdatedAt
 	return ins, nil
 }
 
-func (i Integrations) MustAppend(src Integration) Integrations {
+func (i Integrations) MustAppend(src *Integration) Integrations {
 	if ins, err := i.Append(src); err != nil {
 		panic(err)
 	} else {
@@ -150,7 +157,7 @@ func (i Integrations) MustAppend(src Integration) Integrations {
 	}
 }
 
-func (i Integrations) Update(src Integration) (Integrations, error) {
+func (i Integrations) Update(src *Integration) (Integrations, error) {
 	if src.Id != "" {
 		dst, err := i.FindById(src.Id)
 		if err != nil {
@@ -167,6 +174,7 @@ func (i Integrations) Update(src Integration) (Integrations, error) {
 			}
 		}
 		log.Debug("Before %s\nAfter %s", dst, src)
+		src.UpdatedAt = dst.UpdatedAt
 		return ins, err
 	}
 
@@ -177,7 +185,7 @@ func (i Integrations) Update(src Integration) (Integrations, error) {
 	return i, ErrorIdTypeNotSet
 }
 
-func (i Integrations) MustUpdate(in Integration) Integrations {
+func (i Integrations) MustUpdate(in *Integration) Integrations {
 	if ins, err := i.Update(in); err != nil {
 		panic(err)
 	} else {
