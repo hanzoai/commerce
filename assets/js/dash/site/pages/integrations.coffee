@@ -101,7 +101,7 @@ class Integrations extends Page
 
     @saving = true
 
-    @api.post("c/organization/analytics", model).then((res)=>
+    @api.post("c/organization/#{window.Organization}/analytics", model).then((res)=>
       @saving = false
       @showSave = false
       @model = model
@@ -166,7 +166,7 @@ class Integrations extends Page
 
     @api = api = Api.get 'crowdstart'
 
-    api.get("c/organization/analytics").then((res)=>
+    api.get("c/organization/#{window.Organization}/analytics").then((res)=>
       if res.status != 200 && res.status != 204
         throw new Error 'Form failed to load: '
 
