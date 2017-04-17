@@ -4,7 +4,7 @@ import (
 	"regexp"
 
 	. "hanzo.io/models/types/integrations"
-	// "hanzo.io/util/log"
+	"hanzo.io/util/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -94,9 +94,25 @@ var _ = Describe("models/types/integrations", func() {
 			ins = ins.MustUpdate(&in)
 
 			Expect(ins[0].Type).To(Equal(MailchimpType))
-			Expect(ins[0].UpdatedAt).ToNot(Equal(in.UpdatedAt))
+			Expect(ins[0].UpdatedAt).To(Equal(in.UpdatedAt))
 			Expect(ins[0].Mailchimp.ListId).To(Equal("LIST"))
 			Expect(ins[0].Mailchimp.APIKey).To(Equal("APIKEY"))
+		})
+
+		It("should delegate to append", func() {
+			ins := Integrations{}
+			Expect(len(ins)).To(Equal(0))
+			ins = ins.MustUpdate(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			})
+			Expect(len(ins)).To(Equal(1))
+
+			in := ins[0]
+
+			Expect(in.CreatedAt.IsZero()).To(BeFalse())
+			Expect(in.UpdatedAt.IsZero()).To(BeFalse())
 		})
 
 		It("should be immutable", func() {
@@ -134,7 +150,89 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(ins[0].Mailchimp.APIKey).To(Equal(""))
 
 			Expect(ins2[0].Type).To(Equal(MailchimpType))
-			Expect(ins2[0].UpdatedAt).ToNot(Equal(in.UpdatedAt))
+			Expect(ins2[0].UpdatedAt).To(Equal(in.UpdatedAt))
+			Expect(ins2[0].Mailchimp.ListId).To(Equal("LIST"))
+			Expect(ins2[0].Mailchimp.APIKey).To(Equal("APIKEY"))
+		})
+
+		It("should update explicitly without data too", func() {
+			ins := Integrations{}
+			Expect(len(ins)).To(Equal(0))
+
+			ins = ins.MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			}).MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsFacebookPixelType,
+				},
+			}).MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			})
+
+			Expect(len(ins)).To(Equal(3))
+
+			in := Integration{}
+			in.Id = ins[0].Id
+			in.Type = MailchimpType
+			in.Mailchimp.ListId = "LIST"
+			in.Mailchimp.APIKey = "APIKEY"
+
+			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
+
+			ins2 := ins.MustUpdate(&in)
+
+			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
+			Expect(ins[0].UpdatedAt).ToNot(Equal(ins[2].UpdatedAt))
+			Expect(ins[0].Mailchimp.ListId).To(Equal(""))
+			Expect(ins[0].Mailchimp.APIKey).To(Equal(""))
+
+			Expect(ins2[0].Type).To(Equal(MailchimpType))
+			Expect(ins2[0].UpdatedAt).To(Equal(in.UpdatedAt))
+			Expect(ins2[0].Mailchimp.ListId).To(Equal("LIST"))
+			Expect(ins2[0].Mailchimp.APIKey).To(Equal("APIKEY"))
+		})
+		It("should overwrite explicit with data", func() {
+			ins := Integrations{}
+			Expect(len(ins)).To(Equal(0))
+
+			ins = ins.MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			}).MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsFacebookPixelType,
+				},
+			}).MustAppend(&Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			})
+
+			Expect(len(ins)).To(Equal(3))
+
+			in := Integration{}
+			in.Id = ins[0].Id
+			in.Type = MailchimpType
+			in.Mailchimp.ListId = "L"
+			in.Mailchimp.APIKey = "APIKEY"
+			in.Data = []byte("{ \"listId\": \"LIST\" }")
+
+			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
+
+			ins2 := ins.MustUpdate(&in)
+
+			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
+			Expect(ins[0].UpdatedAt).ToNot(Equal(ins[2].UpdatedAt))
+			Expect(ins[0].Mailchimp.ListId).To(Equal(""))
+			Expect(ins[0].Mailchimp.APIKey).To(Equal(""))
+
+			Expect(ins2[0].Type).To(Equal(MailchimpType))
+			Expect(ins2[0].UpdatedAt).To(Equal(in.UpdatedAt))
 			Expect(ins2[0].Mailchimp.ListId).To(Equal("LIST"))
 			Expect(ins2[0].Mailchimp.APIKey).To(Equal("APIKEY"))
 		})
