@@ -34,12 +34,12 @@ var _ = New("update-integrations",
 				in.Type = integrations.AnalyticsHeapType
 			}
 
-			in.Id = an.IntegrationId
-			in.Data = json.EncodeBytes(an)
+			in.BasicIntegration.Id = an.IntegrationId
+			in.BasicIntegration.Data = json.EncodeBytes(an)
 
 			org.Integrations.MustUpdate(&in)
 
-			org.Analytics.Integrations[i].IntegrationId = in.Id
+			org.Analytics.Integrations[i].IntegrationId = in.BasicIntegration.Id
 		}
 
 		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
