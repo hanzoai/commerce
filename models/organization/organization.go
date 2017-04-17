@@ -9,6 +9,7 @@ import (
 
 	"appengine"
 
+	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/integrations"
@@ -19,6 +20,8 @@ import (
 
 	. "hanzo.io/models"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Email struct {
 	Enabled   bool   `json:"enabled"`
@@ -107,7 +110,7 @@ type Organization struct {
 	} `json:"-"`
 
 	// Affiliate configuration
-	Affiliate Affiliate `json:"-" datastore:",noindex"`
+	Affiliate integrations.Affiliate `json:"-" datastore:",noindex"`
 
 	// Signup options
 	SignUpOptions struct {
@@ -138,29 +141,29 @@ type Organization struct {
 	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
 	// Mailchimp settings
-	Mailchimp Mailchimp `json:"-"`
+	Mailchimp integrations.Mailchimp `json:"-"`
 
 	// Mandrill settings
-	Mandrill Mandrill `json:"-"`
+	Mandrill integrations.Mandrill `json:"-"`
 
 	// Netlify settings
-	Netlify Netlify `json:"-"`
+	Netlify integrations.Netlify `json:"-"`
 
 	// Paypal connection
-	Paypal Paypal `json:"-"`
+	Paypal integrations.Paypal `json:"-"`
 
-	Reamaze Reamaze `json:"-"`
+	Reamaze integrations.Reamaze `json:"-"`
 
-	Recaptcha Recaptcha `json:"-" datastore:",noindex"`
+	Recaptcha integrations.Recaptcha `json:"-" datastore:",noindex"`
 
 	// Salesforce settings
-	Salesforce Salesforce `json:"-"`
+	Salesforce integrations.Salesforce `json:"-"`
 
 	// Shipwire settings
-	Shipwire Shipwire `json:"-"`
+	Shipwire integrations.Shipwire `json:"-"`
 
 	// Stripe connection
-	Stripe Stripe `json:"-"`
+	Stripe integrations.Stripe `json:"-"`
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {

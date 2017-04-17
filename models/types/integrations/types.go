@@ -16,6 +16,8 @@ const (
 	AnalyticsCustomType              IntegrationType = "analytics-custom"
 	AnalyticsFacebookPixelType       IntegrationType = "analytics-facebook-pixel"
 	AnalyticsFacebookConversionsType IntegrationType = "analytics-facebook-conversions"
+	AnalyticsGoogleAdwordsType       IntegrationType = "analytics-google-adwords"
+	AnalyticsGoogleAnalyticsType     IntegrationType = "analytics-google-analytics"
 	AnalyticsHeapType                IntegrationType = "analytics-heap"
 	AnalyticsSentryType              IntegrationType = "analytics-sentry"
 
@@ -77,6 +79,14 @@ type AnalyticsFacebookConversions struct {
 
 	Value    string `json:"value,omitempty"`
 	Currency string `json:"currency,omitempty"`
+}
+
+type AnalyticsGoogleAdwords struct {
+	AnalyticsIntegration
+}
+
+type AnalyticsGoogleAnalytics struct {
+	AnalyticsIntegration
 }
 
 type AnalyticsHeap struct {
@@ -194,6 +204,8 @@ type Integration struct {
 	AnalyticsCustom              AnalyticsCustom              `json:"-"`
 	AnalyticsFacebookPixel       AnalyticsFacebookPixel       `json:"-"`
 	AnalyticsFacebookConversions AnalyticsFacebookConversions `json:"-"`
+	AnalyticsGoogleAdwords       AnalyticsGoogleAdwords       `json:"-"`
+	AnalyticsGoogleAnalytics     AnalyticsGoogleAnalytics     `json:"-"`
 	AnalyticsHeap                AnalyticsHeap                `json:"-"`
 	AnalyticsSentry              AnalyticsSentry              `json:"-"`
 

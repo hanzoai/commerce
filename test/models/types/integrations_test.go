@@ -1,10 +1,10 @@
 package test
 
 import (
-	// "hanzo.io/util/log"
 	"regexp"
 
 	. "hanzo.io/models/types/integrations"
+	// "hanzo.io/util/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,7 +15,7 @@ var _ = Describe("models/types/integrations", func() {
 		It("should return integrations with new one appended", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -31,7 +31,7 @@ var _ = Describe("models/types/integrations", func() {
 		It("should be immutable", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
-			ins2 := ins.MustAppend(Integration{
+			ins2 := ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -44,6 +44,23 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(in.CreatedAt.IsZero()).To(BeFalse())
 			Expect(in.UpdatedAt.IsZero()).To(BeFalse())
 		})
+
+		It("should pass by reference", func() {
+			ins := Integrations{}
+			Expect(len(ins)).To(Equal(0))
+			in := &Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			}
+			ins = ins.MustAppend(in)
+
+			// log.Warn(ins[0].Id)
+
+			Expect(in.Id).ToNot(Equal(""))
+			Expect(in.CreatedAt.IsZero()).To(BeFalse())
+			Expect(in.UpdatedAt.IsZero()).To(BeFalse())
+		})
 	})
 
 	Context("Update", func() {
@@ -51,15 +68,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -74,7 +91,7 @@ var _ = Describe("models/types/integrations", func() {
 
 			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
 
-			ins = ins.MustUpdate(in)
+			ins = ins.MustUpdate(&in)
 
 			Expect(ins[0].Type).To(Equal(MailchimpType))
 			Expect(ins[0].UpdatedAt).ToNot(Equal(in.UpdatedAt))
@@ -86,15 +103,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -109,7 +126,7 @@ var _ = Describe("models/types/integrations", func() {
 
 			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
 
-			ins2 := ins.MustUpdate(in)
+			ins2 := ins.MustUpdate(&in)
 
 			Expect(ins[0].Type).To(Equal(AnalyticsCustomType))
 			Expect(ins[0].UpdatedAt).ToNot(Equal(ins[2].UpdatedAt))
@@ -121,21 +138,45 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(ins2[0].Mailchimp.ListId).To(Equal("LIST"))
 			Expect(ins2[0].Mailchimp.APIKey).To(Equal("APIKEY"))
 		})
+		It("should pass by reference", func() {
+			ins := Integrations{}
+			Expect(len(ins)).To(Equal(0))
+
+			in := &Integration{
+				BasicIntegration: BasicIntegration{
+					Type: AnalyticsCustomType,
+				},
+			}
+
+			ins = ins.MustAppend(in)
+
+			Expect(in.Id).ToNot(Equal(""))
+			Expect(in.CreatedAt.IsZero()).To(BeFalse())
+			Expect(in.UpdatedAt.IsZero()).To(BeFalse())
+
+			id := in.Id
+			uat := in.UpdatedAt
+
+			ins = ins.MustUpdate(in)
+
+			Expect(id).To(Equal(in.Id))
+			Expect(uat).ToNot(Equal(in.UpdatedAt))
+		})
 	})
 
 	Context("Remove", func() {
 		It("should return return integrations with one removed", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -156,15 +197,15 @@ var _ = Describe("models/types/integrations", func() {
 		It("should be immutable", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -203,15 +244,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -228,15 +269,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -255,15 +296,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 
-			ins = ins.MustAppend(Integration{
+			ins = ins.MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsFacebookPixelType,
 				},
-			}).MustAppend(Integration{
+			}).MustAppend(&Integration{
 				BasicIntegration: BasicIntegration{
 					Type: AnalyticsCustomType,
 				},
@@ -284,7 +325,7 @@ var _ = Describe("models/types/integrations", func() {
 
 			inD := Integration{}
 
-			err := Decode(in, &inD)
+			err := Decode(&in, &inD)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(inD.Type).To(Equal(MailchimpType))
 			Expect(inD.Mailchimp.ListId).To(Equal("LIST"))
@@ -294,7 +335,7 @@ var _ = Describe("models/types/integrations", func() {
 
 			r, _ := regexp.Compile("\\s")
 
-			err = Encode(inD, &inE)
+			err = Encode(&inD, &inE)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(inE.Type).To(Equal(MailchimpType))
 			Expect(r.ReplaceAllString(string(inE.Data), "")).To(Equal("{\"listId\":\"LIST\",\"apiKey\":\"APIKEY\"}"))

@@ -14,7 +14,7 @@ func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ins := org.Integrations
 	for i, in := range ins {
-		if err := integrations.Encode(in, &in); err != nil {
+		if err := integrations.Encode(&in, &in); err != nil {
 			log.Warn("Could not encode integration: %s", err, c)
 			continue
 		}
@@ -35,7 +35,7 @@ func Upsert(c *gin.Context) {
 	}
 
 	// Update integration
-	if ins, err := ins.Update(in); err != nil {
+	if ins, err := ins.Update(&in); err != nil {
 		http.Fail(c, 500, "Failed to save integrations", err)
 	} else {
 		org.Integrations = ins
