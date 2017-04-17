@@ -61,9 +61,10 @@ type Integration struct {
 	Disabled_ *bool  `json:"disabled,omitempty" datastore:"-"`
 
 	// Common to all integrations
-	Type  string `json:"type"`
-	Event string `json:"event,omitempty"`
-	Id    string `json:"id,omitempty"`
+	Type          string `json:"type"`
+	Event         string `json:"event,omitempty"`
+	Id            string `json:"id,omitempty"`
+	IntegrationId string `json:"-"`
 
 	// Sampling percentage
 	Sampling float64 `json:"sampling,omitempty"`
