@@ -27,9 +27,9 @@ func Encode(src *Integration, dst *Integration) error {
 	case AnalyticsFacebookConversionsType:
 		dst.Data = json.EncodeBytes(src.AnalyticsFacebookConversions)
 	case AnalyticsGoogleAdwordsType:
-		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
+		dst.Data = json.EncodeBytes(src.AnalyticsGoogleAdwords)
 	case AnalyticsGoogleAnalyticsType:
-		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
+		dst.Data = json.EncodeBytes(src.AnalyticsGoogleAnalytics)
 	case AnalyticsHeapType:
 		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
 	case AnalyticsSentryType:
