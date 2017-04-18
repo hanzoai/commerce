@@ -91,100 +91,100 @@ type AnalyticsSentry struct {
 
 // Mailchimp settings
 type Mailchimp struct {
-	ListId string `json:"listId"`
-	APIKey string `json:"apiKey"`
+	ListId string `json:"listId,omitempty"`
+	APIKey string `json:"apiKey,omitempty"`
 }
 
 // Mandrill settings
 type Mandrill struct {
-	APIKey string `json:"apiKey"`
+	APIKey string `json:"apiKey,omitempty"`
 }
 
 // Netlify settings
 type Netlify struct {
-	AccessToken string    `json:"accessToken"`
-	CreatedAt   time.Time `json:"createdAt"`
-	Email       string    `json:"email"`
-	Id          string    `json:"id"`
-	Uid         string    `json:"uId"`
+	AccessToken string    `json:"accessToken,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	Email       string    `json:"email,omitempty"`
+	Id          string    `json:"id,omitempty"`
+	Uid         string    `json:"uId,omitempty"`
 }
 
 // Paypal connection
 type Paypal struct {
 	Live struct {
-		Email             string `json:"email"`
-		SecurityUserId    string `json:"securityUserId"`
-		SecurityPassword  string `json:"securityPassword" datastore:",noindex"`
-		SecuritySignature string `json:"SecuritySignature" datastore:",noindex"`
-		ApplicationId     string `json:"applicationId"`
-	} `json:"live"`
+		Email             string `json:"email,omitempty"`
+		SecurityUserId    string `json:"securityUserId,omitempty"`
+		SecurityPassword  string `json:"securityPassword,omitempty" datastore:",noindex"`
+		SecuritySignature string `json:"SecuritySignature,omitempty" datastore:",noindex"`
+		ApplicationId     string `json:"applicationId,omitempty"`
+	} `json:"live,omitempty"`
 	Test struct {
-		Email             string `json:"email"`
-		SecurityUserId    string `json:"securityUserId"`
-		SecurityPassword  string `json:"securityPassword" datastore:",noindex"`
-		SecuritySignature string `json:"SecuritySignature" datastore:",noindex"`
-		ApplicationId     string `json:"applicationId"`
-	} `json:"test"`
+		Email             string `json:"email,omitempty"`
+		SecurityUserId    string `json:"securityUserId,omitempty"`
+		SecurityPassword  string `json:"securityPassword,omitempty" datastore:",noindex"`
+		SecuritySignature string `json:"SecuritySignature,omitempty" datastore:",noindex"`
+		ApplicationId     string `json:"applicationId,omitempty"`
+	} `json:"test,omitempty"`
 
-	ConfirmUrl string `json:"confirmUrl" datastore:",noindex"`
-	CancelUrl  string `json:"cancelUrl" datastore:",noindex"`
+	ConfirmUrl string `json:"confirmUrl,omitempty" datastore:",noindex"`
+	CancelUrl  string `json:"cancelUrl,omitempty" datastore:",noindex"`
 }
 
 // Affiliate configuration
 type Affiliate struct {
-	SuccessUrl string `json:"successUrl"`
-	ErrorUrl   string `json:"errorUrl"`
+	SuccessUrl string `json:"successUrl,omitempty"`
+	ErrorUrl   string `json:"errorUrl,omitempty"`
 }
 
 type Reamaze struct {
-	Secret string `json:"secret"`
+	Secret string `json:"secret,omitempty"`
 }
 
 type Recaptcha struct {
-	Enabled   bool   `json:"enabled"`
-	SecretKey string `json:"secretKey"`
+	Enabled   bool   `json:"enabled,omitempty"`
+	SecretKey string `json:"secretKey,omitempty"`
 }
 
 // Salesforce settings
 type Salesforce struct {
-	AccessToken        string `json:"accessToken"`
-	DefaultPriceBookId string `json:"defaultPriceBookId"`
+	AccessToken        string `json:"accessToken,omitempty"`
+	DefaultPriceBookId string `json:"defaultPriceBookId,omitempty"`
 	// personalized login url
-	Id           string `json:"id"`
-	InstanceUrl  string `json:"instanceUrl"`
-	IssuedAt     string `json:"issuedAt"`
-	RefreshToken string `json:"refreshToken"`
-	Signature    string `json:"signature" datastore:",noindex"`
+	Id           string `json:"id,omitempty"`
+	InstanceUrl  string `json:"instanceUrl,omitempty"`
+	IssuedAt     string `json:"issuedAt,omitempty"`
+	RefreshToken string `json:"refreshToken,omitempty"`
+	Signature    string `json:"signature,omitempty" datastore:",noindex"`
 }
 
 type Shipwire struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 // Stripe connection
 type Stripe struct {
 	// For convenience duplicated
-	AccessToken    string `json:"accessToken"`
-	PublishableKey string `json:"publishableKey"`
-	RefreshToken   string `json:"refreshToken"`
-	UserId         string `json:"userId"`
+	AccessToken    string `json:"accessToken,omitempty"`
+	PublishableKey string `json:"publishableKey,omitempty"`
+	RefreshToken   string `json:"refreshToken,omitempty"`
+	UserId         string `json:"userId,omitempty"`
 
 	// Save entire live and test tokens
-	Live connect.Token `json:"live" datastore:",noindex"`
-	Test connect.Token `json:"test" datastore:",noindex"`
+	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
+	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
 type BasicIntegration struct {
-	Enabled bool `json:"enabled"`
-	Show    bool `json:"show"`
+	Enabled bool `json:"enabled,omitempty"`
+	Show    bool `json:"show,omitempty"`
 
-	Id   string            `json:"id"`
-	Data enjson.RawMessage `json:"data"`
-	Type IntegrationType   `json:"type"`
+	Id   string            `json:"id,omitempty"`
+	Data enjson.RawMessage `json:"data,omitempty"`
+	Type IntegrationType   `json:"type,omitempty"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 type Integration struct {
@@ -200,13 +200,13 @@ type Integration struct {
 	AnalyticsSentry              AnalyticsSentry              `json:"-"`
 
 	// Others
-	Mailchimp  Mailchimp  `json: "-"`
-	Mandrill   Mandrill   `json: "-"`
-	Netlify    Netlify    `json: "-"`
-	Paypal     Paypal     `json: "-"`
-	Reamaze    Reamaze    `json: "-"`
-	Recaptcha  Recaptcha  `json: "-"`
-	Salesforce Salesforce `json: "-"`
-	Shipwire   Shipwire   `json: "-"`
-	Stripe     Stripe     `json: "-"`
+	Mailchimp  Mailchimp  `json:"-"`
+	Mandrill   Mandrill   `json:"-"`
+	Netlify    Netlify    `json:"-"`
+	Paypal     Paypal     `json:"-"`
+	Reamaze    Reamaze    `json:"-"`
+	Recaptcha  Recaptcha  `json:"-"`
+	Salesforce Salesforce `json:"-"`
+	Shipwire   Shipwire   `json:"-"`
+	Stripe     Stripe     `json:"-"`
 }

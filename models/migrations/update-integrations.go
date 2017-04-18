@@ -37,11 +37,19 @@ var _ = New("update-integrations",
 				continue
 			}
 
-			log.Warn("Updating Integration Id: %s Type: %s", in.Id, in.Type, db.Context)
 			in.Id = an.IntegrationId
+			in.Enabled = !an.Disabled
 			in.Data = json.EncodeBytes(an)
 
-			org.Integrations.MustUpdate(&in)
+			log.Warn("Updating Integration\nId: '%s'\nType: '%s'\nData: '%s'", in.Id, in.Type, in.Data, db.Context)
+			if ins, err := org.Integrations.Update(&in); err == integrations.ErrorNotFound {
+				in.Id = ""
+				org.Integrations = org.Integrations.MustUpdate(&in)
+			} else if err != nil {
+				panic(err)
+			} else {
+				org.Integrations = ins
+			}
 
 			org.Analytics.Integrations[i].IntegrationId = in.Id
 		}
@@ -49,69 +57,109 @@ var _ = New("update-integrations",
 		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
 			m := mailchimps[0]
 			m.Mailchimp = org.Mailchimp
-			org.Integrations.MustUpdate(&m)
+			org.Integrations = org.Integrations.MustUpdate(&m)
 		} else {
 			m := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.MailchimpType,
+					Enabled: org.Mailchimp.APIKey != "",
+				},
 				Mailchimp: org.Mailchimp,
 			}
-			org.Integrations.MustUpdate(&m)
+			org.Integrations = org.Integrations.MustUpdate(&m)
 		}
 
 		if mandrills := org.Integrations.FilterByType(integrations.MandrillType); len(mandrills) > 0 {
 			m := mandrills[0]
 			m.Mandrill = org.Mandrill
-			org.Integrations.MustUpdate(&m)
+			org.Integrations = org.Integrations.MustUpdate(&m)
 		} else {
 			m := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.MandrillType,
+					Enabled: org.Mandrill.APIKey != "",
+				},
 				Mandrill: org.Mandrill,
 			}
-			org.Integrations.MustUpdate(&m)
+			org.Integrations = org.Integrations.MustUpdate(&m)
 		}
 
 		if netlifies := org.Integrations.FilterByType(integrations.NetlifyType); len(netlifies) > 0 {
 			n := netlifies[0]
 			n.Netlify = org.Netlify
-			org.Integrations.MustUpdate(&n)
+			org.Integrations = org.Integrations.MustUpdate(&n)
 		} else {
 			n := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.NetlifyType,
+					Enabled: org.Netlify.AccessToken != "",
+				},
 				Netlify: org.Netlify,
 			}
-			org.Integrations.MustUpdate(&n)
+			org.Integrations = org.Integrations.MustUpdate(&n)
 		}
 
 		if reamazes := org.Integrations.FilterByType(integrations.ReamazeType); len(reamazes) > 0 {
 			r := reamazes[0]
 			r.Reamaze = org.Reamaze
-			org.Integrations.MustUpdate(&r)
+			org.Integrations = org.Integrations.MustUpdate(&r)
 		} else {
 			r := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.ReamazeType,
+					Enabled: org.Reamaze.Secret != "",
+				},
 				Reamaze: org.Reamaze,
 			}
-			org.Integrations.MustUpdate(&r)
+			org.Integrations = org.Integrations.MustUpdate(&r)
 		}
 
 		if recaptchas := org.Integrations.FilterByType(integrations.RecaptchaType); len(recaptchas) > 0 {
 			r := recaptchas[0]
 			r.Recaptcha = org.Recaptcha
-			org.Integrations.MustUpdate(&r)
+			org.Integrations = org.Integrations.MustUpdate(&r)
 		} else {
 			r := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.RecaptchaType,
+					Enabled: org.Recaptcha.Enabled,
+				},
 				Recaptcha: org.Recaptcha,
 			}
-			org.Integrations.MustUpdate(&r)
+			org.Integrations = org.Integrations.MustUpdate(&r)
 		}
 
-		if stripes := org.Integrations.FilterByType(integrations.MailchimpType); len(stripes) > 0 {
-			s := stripes[0]
-			s.Stripe = org.Stripe
-			org.Integrations.MustUpdate(&s)
+		if shipwires := org.Integrations.FilterByType(integrations.ShipwireType); len(shipwires) > 0 {
+			s := shipwires[0]
+			s.Shipwire = org.Shipwire
+			org.Integrations = org.Integrations.MustUpdate(&s)
 		} else {
 			s := integrations.Integration{
-				Stripe: org.Stripe,
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.ShipwireType,
+					Enabled: org.Shipwire.Username != "",
+				},
+				Shipwire: org.Shipwire,
 			}
-			org.Integrations.MustUpdate(&s)
+			org.Integrations = org.Integrations.MustUpdate(&s)
 		}
 
-		org.Update()
+		if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
+			s := stripes[0]
+			s.Stripe = org.Stripe
+			org.Integrations = org.Integrations.MustUpdate(&s)
+		} else {
+			s := integrations.Integration{
+				BasicIntegration: integrations.BasicIntegration{
+					Type:    integrations.StripeType,
+					Enabled: org.Stripe.AccessToken != "",
+				},
+				Stripe: org.Stripe,
+			}
+			org.Integrations = org.Integrations.MustUpdate(&s)
+		}
+
+		log.Warn("Updating Integrations '%s'", string(json.Encode(org.Integrations)), db.Context)
+		org.MustUpdate()
 	},
 )
