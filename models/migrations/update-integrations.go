@@ -17,6 +17,7 @@ var _ = New("update-integrations",
 		return NoArgs
 	},
 	func(db *ds.Datastore, org *organization.Organization) {
+		org.Integrations = integrations.Integrations{}
 		for i, an := range org.Analytics.Integrations {
 			in := integrations.Integration{}
 			switch an.Type {
@@ -41,7 +42,7 @@ var _ = New("update-integrations",
 			in.Enabled = !an.Disabled
 			in.Data = json.EncodeBytes(an)
 
-			log.Warn("Updating Integration\nId: '%s'\nType: '%s'\nData: '%s'", in.Id, in.Type, in.Data, db.Context)
+			log.Debug("Updating Integration\nId: '%s'\nType: '%s'\nData: '%s'", in.Id, in.Type, in.Data, db.Context)
 			if ins, err := org.Integrations.Update(&in); err == integrations.ErrorNotFound {
 				in.Id = ""
 				org.Integrations = org.Integrations.MustUpdate(&in)
@@ -144,22 +145,28 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&s)
 		}
 
+		// Stripe has third party structs where json is not set to omit empty,
+		// therefore we have to use Data instead
 		if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
 			s := stripes[0]
-			s.Stripe = org.Stripe
+			s.Data = json.EncodeBytes(org.Stripe)
 			org.Integrations = org.Integrations.MustUpdate(&s)
+			// log.Warn("Updating Stripe1 '%s'", string(json.EncodeBytes(org.Stripe)), db.Context)
+			// log.Warn("Updating Stripe2 '%s'", string(json.EncodeBytes(s.Stripe)), db.Context)
 		} else {
 			s := integrations.Integration{
 				BasicIntegration: integrations.BasicIntegration{
 					Type:    integrations.StripeType,
 					Enabled: org.Stripe.AccessToken != "",
+					Data:    json.EncodeBytes(org.Stripe),
 				},
-				Stripe: org.Stripe,
 			}
 			org.Integrations = org.Integrations.MustUpdate(&s)
+			// log.Warn("Updating Stripe3 '%s'", string(json.EncodeBytes(org.Stripe)), db.Context)
+			// log.Warn("Updating Stripe4 '%s'", string(json.EncodeBytes(s.Stripe)), db.Context)
 		}
 
-		log.Warn("Updating Integrations '%s'", string(json.Encode(org.Integrations)), db.Context)
+		// log.Warn("Updating Integrations '%s'", string(json.Encode(org.Integrations)), db.Context)
 		org.MustUpdate()
 	},
 )
