@@ -75,6 +75,10 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.AnalyticsFacebookPixel = src.AnalyticsFacebookPixel
 	case AnalyticsFacebookConversionsType:
 		dst.AnalyticsFacebookConversions = src.AnalyticsFacebookConversions
+	case AnalyticsGoogleAdwordsType:
+		dst.AnalyticsGoogleAdwords = src.AnalyticsGoogleAdwords
+	case AnalyticsGoogleAnalyticsType:
+		dst.AnalyticsGoogleAnalytics = src.AnalyticsGoogleAnalytics
 	case AnalyticsHeapType:
 		dst.AnalyticsHeap = src.AnalyticsHeap
 	case AnalyticsSentryType:
