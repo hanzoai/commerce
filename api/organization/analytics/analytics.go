@@ -21,7 +21,7 @@ func Set(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 
-	if id != org.Id() {
+	if id != org.Id() && id != org.Name && id != org.FullName {
 		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 		return
 	}
@@ -53,7 +53,7 @@ func Update(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 
-	if id != org.Id() {
+	if id != org.Id() && id != org.Name && id != org.FullName {
 		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 		return
 	}
