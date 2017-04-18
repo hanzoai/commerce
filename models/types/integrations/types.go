@@ -3,7 +3,7 @@ package integrations
 import (
 	"time"
 
-	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/analytics"
 	"hanzo.io/thirdparty/stripe/connect"
 
 	enjson "encoding/json"
@@ -38,7 +38,6 @@ const (
 // Generic fields
 type AnalyticsIntegration struct {
 	// Common to all integrations
-	Type  string `json:"type"`
 	Event string `json:"event,omitempty"`
 	Id    string `json:"id,omitempty"`
 
@@ -49,18 +48,9 @@ type AnalyticsIntegration struct {
 // Integration specific properties
 
 // Override value for a given event
-type Value struct {
-	Percent float64        `json:"percent,omitempty"`
-	Value   currency.Cents `json:"value,omitempty"`
-}
+type Value analytics.Value
 
-type Values struct {
-	Currency         currency.Type `json:"currency,omitempty"`
-	ViewedProduct    Value         `json:"viewedProduct,omitempty"`
-	AddedProduct     Value         `json:"addedProduct,omitempty"`
-	InitiateCheckout Value         `json:"initiateCheckout,omitempty"`
-	AddPaymentInfo   Value         `json:"addPaymentInfo,omitempty"`
-}
+type Values analytics.Values
 
 type AnalyticsCustom struct {
 	AnalyticsIntegration
