@@ -33,10 +33,11 @@ var _ = New("update-integrations",
 			case "heap":
 				in.Type = integrations.AnalyticsHeapType
 			default:
-				log.Warn("Analytics Type not supported %s:", an.Type, db.Context)
+				log.Warn("Analytics Type not supported: %s", an.Type, db.Context)
 				continue
 			}
 
+			log.Warn("Updating Integration Id: %s Type: %s", in.Id, in.Type, db.Context)
 			in.Id = an.IntegrationId
 			in.Data = json.EncodeBytes(an)
 
