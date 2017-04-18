@@ -121,7 +121,12 @@ func Upsert(c *gin.Context) {
 		org.Recaptcha = r.Recaptcha
 	}
 
-	if stripes := org.Integrations.FilterByType(integrations.MailchimpType); len(stripes) > 0 {
+	if shipwires := org.Integrations.FilterByType(integrations.ShipwireType); len(shipwires) > 0 {
+		s := shipwires[0]
+		org.Shipwire = s.Shipwire
+	}
+
+	if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
 		s := stripes[0]
 		org.Stripe = s.Stripe
 	}
