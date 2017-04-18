@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"hanzo.io/util/json"
@@ -11,7 +12,6 @@ import (
 
 var (
 	ErrorNotFound     = errors.New("Integration not found")
-	ErrorInvalidType  = errors.New("Invalid Type")
 	ErrorTooMany      = errors.New("Too many of this Integration found")
 	ErrorIdTypeNotSet = errors.New("Integration ID and Type not set")
 )
@@ -53,7 +53,7 @@ func Encode(src *Integration, dst *Integration) error {
 	case StripeType:
 		dst.Data = json.EncodeBytes(src.Stripe)
 	default:
-		return ErrorInvalidType
+		return errors.New(fmt.Sprintf("Invalid Type: '%s'", src.Type))
 	}
 
 	dst.Enabled = src.Enabled
@@ -94,15 +94,15 @@ func Decode(src *Integration, dst *Integration) error {
 	case ReamazeType:
 		dst.Reamaze = src.Reamaze
 	case RecaptchaType:
-		dst.Recaptcha = dst.Recaptcha
+		dst.Recaptcha = src.Recaptcha
 	case SalesforceType:
-		dst.Salesforce = dst.Salesforce
+		dst.Salesforce = src.Salesforce
 	case ShipwireType:
-		dst.Shipwire = dst.Shipwire
+		dst.Shipwire = src.Shipwire
 	case StripeType:
-		dst.Stripe = dst.Stripe
+		dst.Stripe = src.Stripe
 	default:
-		return ErrorInvalidType
+		return errors.New(fmt.Sprintf("Invalid Type: '%s'", src.Type))
 	}
 
 	if len(src.Data) > 0 {
@@ -113,6 +113,10 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.AnalyticsFacebookPixel)
 		case AnalyticsFacebookConversionsType:
 			json.DecodeBytes(src.Data, &dst.AnalyticsFacebookConversions)
+		case AnalyticsGoogleAdwordsType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsGoogleAdwords)
+		case AnalyticsGoogleAnalyticsType:
+			json.DecodeBytes(src.Data, &dst.AnalyticsGoogleAnalytics)
 		case AnalyticsHeapType:
 			json.DecodeBytes(src.Data, &dst.AnalyticsHeap)
 		case AnalyticsSentryType:
@@ -136,7 +140,7 @@ func Decode(src *Integration, dst *Integration) error {
 		case StripeType:
 			json.DecodeBytes(src.Data, &dst.Stripe)
 		default:
-			return ErrorInvalidType
+			return errors.New(fmt.Sprintf("Invalid Type: '%s'", src.Type))
 		}
 	}
 
@@ -146,8 +150,7 @@ func Decode(src *Integration, dst *Integration) error {
 	dst.Type = src.Type
 
 	dst.UpdatedAt = time.Now()
-
-	return nil
+	return Encode(dst, dst)
 }
 
 func (i Integrations) Append(src *Integration) (Integrations, error) {
@@ -183,6 +186,7 @@ func (i Integrations) Append(src *Integration) (Integrations, error) {
 	// }
 	log.Debug("Length %v", len(i))
 	src.Id = dst.Id
+	src.Data = dst.Data
 	src.CreatedAt = dst.CreatedAt
 	src.UpdatedAt = dst.UpdatedAt
 	return ins, nil
@@ -213,6 +217,7 @@ func (i Integrations) Update(src *Integration) (Integrations, error) {
 			}
 		}
 		log.Debug("Before %s\nAfter %s", dst, src)
+		src.Data = dst.Data
 		src.UpdatedAt = dst.UpdatedAt
 		return ins, err
 	}
@@ -221,10 +226,14 @@ func (i Integrations) Update(src *Integration) (Integrations, error) {
 		return i.Append(src)
 	}
 
-	return i, ErrorIdTypeNotSet
+	return i, errors.New(fmt.Sprintf("Missing Id: '%s' and Type: '%s'", src.Id, src.Type))
 }
 
 func (i Integrations) MustUpdate(in *Integration) Integrations {
+	// if in.Id == "" && in.Type == "" {
+	// 	panic(errors.New(fmt.Sprintf("Wut?? '%s'", in)))
+	// }
+
 	if ins, err := i.Update(in); err != nil {
 		panic(err)
 	} else {
