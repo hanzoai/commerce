@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/util/json"
-	// "hanzo.io/util/log"
+	"hanzo.io/util/log"
 
 	ds "hanzo.io/datastore"
 )
@@ -32,14 +32,17 @@ var _ = New("update-integrations",
 				in.Type = integrations.AnalyticsGoogleAnalyticsType
 			case "heap":
 				in.Type = integrations.AnalyticsHeapType
+			default:
+				log.Warn("Analytics Type not supported %s:", an.Type, db.Context)
+				continue
 			}
 
-			in.BasicIntegration.Id = an.IntegrationId
-			in.BasicIntegration.Data = json.EncodeBytes(an)
+			in.Id = an.IntegrationId
+			in.Data = json.EncodeBytes(an)
 
 			org.Integrations.MustUpdate(&in)
 
-			org.Analytics.Integrations[i].IntegrationId = in.BasicIntegration.Id
+			org.Analytics.Integrations[i].IntegrationId = in.Id
 		}
 
 		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
