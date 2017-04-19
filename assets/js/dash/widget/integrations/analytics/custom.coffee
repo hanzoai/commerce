@@ -4,7 +4,7 @@ input = require '../../../form/input'
 
 class CustomAnalytics extends Integration
   tag: 'custom-integration'
-  type: 'custom'
+  type: 'analytics-custom'
   html: require '../../../templates/dash/widget/integrations/analytics/custom.html'
   img: '/img/integrations/custom.png'
   text: 'Custom Analytics'
@@ -13,9 +13,9 @@ class CustomAnalytics extends Integration
     code: '//Do Something in JS'
 
   inputConfigs: [
-    input('event', 'Choose an event', 'analytics-events-select required')
-    input('code', '//Do Something in JS', 'js required')
-    input('sampling', '', 'numeric')
+    input('data.event', 'Choose an event', 'analytics-events-select required')
+    input('data.code', '//Do Something in JS', 'js required')
+    input('data.sampling', '', 'numeric')
   ]
 
 CustomAnalytics.register()

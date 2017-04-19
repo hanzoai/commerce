@@ -19,6 +19,7 @@ class Integration extends FormView
   src: ''
   text: ''#'Basic Integration'
   alt: 'Basic'
+  duplicates: true
 
   name: 'Basic Integration'
 
@@ -60,7 +61,7 @@ class Integration extends FormView
     @on 'update', ()->
       $('[data-toggle="tooltip"]').tooltip()
 
-    @model.disabled = false if !@model.disabled?
+    @model.enabled = if @model.enabled == true then true else false
     @model.type = @type
 
     $(@root).attr('id', 'current-integration').addClass('animated').addClass('fadeIn')
@@ -93,7 +94,7 @@ class Integration extends FormView
     @obs.trigger Events.Integration.Remove, event
 
   toggle: (event)->
-    @model.disabled = !@model.disabled
+    @model.enabled = !@model.enabled
     @submit()
     @update()
 

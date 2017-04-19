@@ -1,2 +1,3 @@
 module.exports =
-  Analytics: require './analytics'
+  Analytics:    require './analytics'
+  Other:        require './other'

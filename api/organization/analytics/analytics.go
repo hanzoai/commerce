@@ -1,43 +1,28 @@
 package analytics
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
+	"hanzo.io/middleware"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 )
 
 func Get(c *gin.Context) {
-	id := c.Params.ByName("organizationid")
-	db := datastore.New(c)
-
-	// Get organization
-	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
-		return
-	}
-
+	org := middleware.GetOrganization(c)
 	integrations := org.Analytics.UpdateShownDisabledStatus()
 	http.Render(c, 200, integrations)
 }
 
 func Set(c *gin.Context) {
+	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
-	db := datastore.New(c)
 
-	// Get organization
-	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
+	if id != org.Id() && id != org.Name && id != org.FullName {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 		return
 	}
 
@@ -64,14 +49,12 @@ func Set(c *gin.Context) {
 }
 
 func Update(c *gin.Context) {
-	id := c.Params.ByName("organizationid")
-	db := datastore.New(c)
-
 	// Get organization
-	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
+	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() && id != org.Name && id != org.FullName {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 		return
 	}
 
