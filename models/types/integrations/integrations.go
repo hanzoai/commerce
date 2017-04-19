@@ -95,6 +95,7 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.Reamaze = src.Reamaze
 	case RecaptchaType:
 		dst.Recaptcha = src.Recaptcha
+		dst.Recaptcha.Enabled = src.Enabled
 	case SalesforceType:
 		dst.Salesforce = src.Salesforce
 	case ShipwireType:
@@ -133,6 +134,7 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.Reamaze)
 		case RecaptchaType:
 			json.DecodeBytes(src.Data, &dst.Recaptcha)
+			dst.Recaptcha.Enabled = src.Enabled
 		case SalesforceType:
 			json.DecodeBytes(src.Data, &dst.Salesforce)
 		case ShipwireType:
