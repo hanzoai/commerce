@@ -1,10 +1,10 @@
 <div class="panel-heading">
   <img if="{ model.src }" src="{ model.src }" alt="{ model.alt }">
   <span if="{ model.text }">{ model.text }</span>
-  <i if="{ model.error && !model.model.disabled }" class="fa fa-exclamation-triangle warning animated fadeIn" data-toggle="tooltip" data-placement="right" title="Please correct the errors to enable this plugin"></i>
+  <i if="{ model.error && model.model.enabled }" class="fa fa-exclamation-triangle warning animated fadeIn" data-toggle="tooltip" data-placement="right" title="Please correct the errors to enable this plugin"></i>
   <span class="admin-form integration-toggle">
     <label class="switch switch-primary">
-      <input id="integration-toggle-{ model.instanceId }" type="checkbox" __checked="{ !model.model.disabled }" onchange="{ model.toggle }"></input>
+      <input id="integration-toggle-{ model.instanceId }" type="checkbox" __checked="{ model.model.enabled }" onchange="{ model.toggle }"></input>
       <label for="integration-toggle-{ model.instanceId }" data-on="ON" data-off="OFF"></label>
     </label>
     <i class="fa fa-times integration-remove" onclick="{ model.removeModal }"></i>
