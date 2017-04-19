@@ -29,6 +29,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
 	api.PUT("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
 	api.PATCH("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.DELETE("/:organizationid/integrations/:integrationid", adminRequired, namespaced, integrations.Delete)
 
 	api.Route(router, args...)
 }
