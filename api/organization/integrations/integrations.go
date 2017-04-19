@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"errors"
+	// "net/http/httputil"
 
 	"github.com/gin-gonic/gin"
 
@@ -33,6 +34,27 @@ func Get(c *gin.Context) {
 	http.Render(c, 200, ins)
 }
 
+func Delete(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	id := c.Params.ByName("organizationid")
+
+	if id != org.Id() && id != org.Name && id != org.FullName {
+		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
+		return
+	}
+
+	iId := c.Params.ByName("integrationid")
+	org.Integrations = org.Integrations.MustRemove(iId)
+
+	// Save organization
+	if err := org.Update(); err != nil {
+		http.Fail(c, 500, "Failed to save integrations", err)
+	} else {
+		c.Writer.Header().Add("Location", c.Request.URL.Path)
+		http.Render(c, 201, org.Integrations)
+	}
+}
+
 func Upsert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
@@ -43,99 +65,118 @@ func Upsert(c *gin.Context) {
 	}
 
 	ins := org.Integrations
-	in := integrations.Integration{}
+	updateIns := integrations.Integrations{}
+
+	// dump, _ := httputil.DumpRequestOut(c.Request, true)
+	// log.Warn("Request %s", dump, c)
 
 	// Decode response body
-	if err := json.Decode(c.Request.Body, &in); err != nil {
+	if err := json.Decode(c.Request.Body, &updateIns); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
-	// Update integration
-	if ins, err := ins.Update(&in); err != nil {
-		http.Fail(c, 500, "Failed to save integrations", err)
-	} else {
-		org.Integrations = ins
-	}
+	// log.Warn("Received %s", string(json.EncodeBytes(in.Data)), c)
 
-	ans := analytics.Analytics{}
-
-	for _, in_ := range ins {
-		an := analytics.Integration{}
-		switch in_.Type {
-		case integrations.AnalyticsCustomType:
-			an.Type = "custom"
-			an.Event = in_.AnalyticsCustom.Event
-			an.Sampling = in_.AnalyticsCustom.Sampling
-			an.Code = in_.AnalyticsCustom.Code
-		case integrations.AnalyticsFacebookConversionsType:
-			an.Type = "facebook-conversions"
-			an.Event = in_.AnalyticsFacebookConversions.Event
-			an.Sampling = in_.AnalyticsFacebookConversions.Sampling
-			an.Value = in_.AnalyticsFacebookConversions.Value
-			an.Currency = in_.AnalyticsFacebookConversions.Currency
-		case integrations.AnalyticsFacebookPixelType:
-			an.Type = "facebook-pixel"
-			an.Event = in_.AnalyticsFacebookPixel.Event
-			an.Sampling = in_.AnalyticsFacebookPixel.Sampling
-			an.Values = analytics.Values(in_.AnalyticsFacebookPixel.Values)
-		case integrations.AnalyticsGoogleAdwordsType:
-			an.Type = "google-adwords"
-		case integrations.AnalyticsGoogleAnalyticsType:
-			an.Type = "google-analytics"
-		case integrations.AnalyticsHeapType:
-			an.Type = "heap"
-		default:
-			continue
+	org.RunInTransaction(func() error {
+		// Update integration
+		for _, in := range updateIns {
+			if ins, err := ins.Update(&in); err != nil {
+				http.Fail(c, 500, "Failed to save integrations", err)
+				return err
+			} else {
+				org.Integrations = ins
+			}
 		}
-		an.Disabled = !in_.Enabled
-		an.IntegrationId = in.Id
-		ans.Integrations = append(ans.Integrations, an)
-	}
 
-	org.Analytics = ans
+		log.Warn("Saved %s", json.Encode(org.Integrations), c)
 
-	// Synchronize integrations
-	if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
-		m := mailchimps[0]
-		org.Mailchimp = m.Mailchimp
-	}
+		ans := analytics.Analytics{}
 
-	if mandrills := org.Integrations.FilterByType(integrations.MandrillType); len(mandrills) > 0 {
-		m := mandrills[0]
-		org.Mandrill = m.Mandrill
-	}
+		for _, in := range org.Integrations {
+			an := analytics.Integration{}
+			switch in.Type {
+			case integrations.AnalyticsCustomType:
+				an.Type = "custom"
+				an.Event = in.AnalyticsCustom.Event
+				an.Sampling = in.AnalyticsCustom.Sampling
+				an.Code = in.AnalyticsCustom.Code
+				an.Disabled = !in.Enabled
+			case integrations.AnalyticsFacebookConversionsType:
+				an.Type = "facebook-conversions"
+				an.Event = in.AnalyticsFacebookConversions.Event
+				an.Sampling = in.AnalyticsFacebookConversions.Sampling
+				an.Value = in.AnalyticsFacebookConversions.Value
+				an.Currency = in.AnalyticsFacebookConversions.Currency
+				an.Disabled = !in.Enabled
+			case integrations.AnalyticsFacebookPixelType:
+				an.Type = "facebook-pixel"
+				an.Event = in.AnalyticsFacebookPixel.Event
+				an.Sampling = in.AnalyticsFacebookPixel.Sampling
+				an.Values = analytics.Values(in.AnalyticsFacebookPixel.Values)
+				an.Disabled = !in.Enabled
+			case integrations.AnalyticsGoogleAdwordsType:
+				an.Type = "google-adwords"
+				an.Disabled = !in.Enabled
+			case integrations.AnalyticsGoogleAnalyticsType:
+				an.Type = "google-analytics"
+				an.Disabled = !in.Enabled
+			case integrations.AnalyticsHeapType:
+				an.Type = "heap"
+				an.Disabled = !in.Enabled
+			default:
+				continue
+			}
+			an.Disabled = !in.Enabled
+			an.IntegrationId = in.Id
+			ans.Integrations = append(ans.Integrations, an)
+		}
 
-	if netlifies := org.Integrations.FilterByType(integrations.NetlifyType); len(netlifies) > 0 {
-		n := netlifies[0]
-		org.Netlify = n.Netlify
-	}
+		org.Analytics = ans
 
-	if reamazes := org.Integrations.FilterByType(integrations.ReamazeType); len(reamazes) > 0 {
-		r := reamazes[0]
-		org.Reamaze = r.Reamaze
-	}
+		// Synchronize integrations
+		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
+			m := mailchimps[0]
+			org.Mailchimp = m.Mailchimp
+		}
 
-	if recaptchas := org.Integrations.FilterByType(integrations.RecaptchaType); len(recaptchas) > 0 {
-		r := recaptchas[0]
-		org.Recaptcha = r.Recaptcha
-	}
+		if mandrills := org.Integrations.FilterByType(integrations.MandrillType); len(mandrills) > 0 {
+			m := mandrills[0]
+			org.Mandrill = m.Mandrill
+		}
 
-	if shipwires := org.Integrations.FilterByType(integrations.ShipwireType); len(shipwires) > 0 {
-		s := shipwires[0]
-		org.Shipwire = s.Shipwire
-	}
+		if netlifies := org.Integrations.FilterByType(integrations.NetlifyType); len(netlifies) > 0 {
+			n := netlifies[0]
+			org.Netlify = n.Netlify
+		}
 
-	if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
-		s := stripes[0]
-		org.Stripe = s.Stripe
-	}
+		if reamazes := org.Integrations.FilterByType(integrations.ReamazeType); len(reamazes) > 0 {
+			r := reamazes[0]
+			org.Reamaze = r.Reamaze
+		}
 
-	// Save organization
-	if err := org.Update(); err != nil {
-		http.Fail(c, 500, "Failed to save integrations", err)
-	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 201, ins)
-	}
+		if recaptchas := org.Integrations.FilterByType(integrations.RecaptchaType); len(recaptchas) > 0 {
+			r := recaptchas[0]
+			org.Recaptcha = r.Recaptcha
+		}
+
+		if shipwires := org.Integrations.FilterByType(integrations.ShipwireType); len(shipwires) > 0 {
+			s := shipwires[0]
+			org.Shipwire = s.Shipwire
+		}
+
+		if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
+			s := stripes[0]
+			org.Stripe = s.Stripe
+		}
+
+		// Save organization
+		if err := org.Update(); err != nil {
+			http.Fail(c, 500, "Failed to save integrations", err)
+		} else {
+			c.Writer.Header().Add("Location", c.Request.URL.Path)
+			http.Render(c, 201, org.Integrations)
+		}
+		return nil
+	})
 }
