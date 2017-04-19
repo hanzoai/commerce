@@ -1,12 +1,12 @@
 <div class="panel form-horizontal animated fadeIn">
   <integration-header model="{this}">
   </integration-header>
-  <div class="{ panel-body: true, collapsed: model.disabled }">
+  <div class="{ panel-body: true, collapsed: !model.enabled }">
     <div class="section">
-      <control label="ID" input="{ inputs.id}"></control>
+      <control label="ID" input="{ inputs['data.id'] }"></control>
     </div>
     <div class="section">
-      <control label="Sampling Percent" input="{ inputs.sampling }"></control>
+      <control label="Sampling Percent" input="{ inputs['data.sampling'] }"></control>
     </div>
   </div>
 </div>
