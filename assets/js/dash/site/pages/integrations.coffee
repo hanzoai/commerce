@@ -173,7 +173,7 @@ class Integrations extends Page
         integrations.Analytics.HeapAnalytics
         integrations.Other.Mailchimp
         integrations.Other.Mandrill
-        integrations.Other.Netlify
+        # integrations.Other.Netlify
         integrations.Other.Reamaze
         integrations.Other.Recaptcha
         integrations.Other.Stripe
