@@ -1,15 +1,15 @@
 <div class="panel form-horizontal animated fadeIn">
   <integration-header model="{this}">
   </integration-header>
-  <div class="{panel-body: true, collapsed: model.disabled}">
+  <div class="{panel-body: true, collapsed: !model.enabled }">
     <div class="section mb20">
-      <control label="Tracking Event" input="{ inputs.event }"></control>
+      <control label="Tracking Event" input="{ inputs['data.event'] }"></control>
     </div>
     <div class="section mb20">
-      <control label="Sampling Percent" input="{ inputs.sampling }"></control>
+      <control label="Sampling Percent" input="{ inputs['data.sampling'] }"></control>
     </div>
     <div class="section">
-      <control label="Custom Javascript" input="{ inputs.code }"></control>
+      <control label="Custom Javascript" input="{ inputs['data.code'] }"></control>
     </div>
   </div>
 </div>
