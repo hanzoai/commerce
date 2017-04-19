@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/organization/analytics"
+	"hanzo.io/api/organization/integrations"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/permission"
@@ -13,15 +14,22 @@ import (
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
+	namespaced := middleware.Namespace()
 
 	api := rest.New(organization.Organization{})
 	api.DefaultNamespace = true
 	api.Prefix = "/c/"
 
-	api.GET("/:organizationid/analytics", adminRequired, analytics.Get)
-	api.POST("/:organizationid/analytics", adminRequired, analytics.Set)
-	api.PUT("/:organizationid/analytics", adminRequired, analytics.Set)
-	api.PATCH("/:organizationid/analytics", adminRequired, analytics.Update)
+	api.GET("/:organizationid/analytics", adminRequired, namespaced, analytics.Get)
+	api.POST("/:organizationid/analytics", adminRequired, namespaced, analytics.Set)
+	api.PUT("/:organizationid/analytics", adminRequired, namespaced, analytics.Set)
+	api.PATCH("/:organizationid/analytics", adminRequired, namespaced, analytics.Update)
+
+	api.GET("/:organizationid/integrations", adminRequired, namespaced, integrations.Get)
+	api.POST("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PUT("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.PATCH("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
+	api.DELETE("/:organizationid/integrations/:integrationid", adminRequired, namespaced, integrations.Delete)
 
 	api.Route(router, args...)
 }

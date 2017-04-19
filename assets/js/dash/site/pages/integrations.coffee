@@ -20,7 +20,7 @@ class Integrations extends Page
   name: 'Integrations'
   html: require '../../templates/dash/site/pages/integrations.html'
 
-  tab: 'general'
+  tab: 'analytics'
 
   # models maintained by integration models
   # models:
@@ -64,10 +64,24 @@ class Integrations extends Page
 
     drop: (e)->
       if @draggingIntegration?
+        if !@draggingIntegration.prototype.duplicates
+          for int in @integrations[tab]
+            if @draggingIntegration == int
+              return
+
         @addIntegration @draggingIntegration, @tab
+        @showSave = true
+
+      if @draggingIntegration == integrations.Stripe
+        @save()
 
   addIntegration: (integration, tab, model = {})->
     i = @integrations[tab].length
+
+    if !integration.prototype.duplicates
+      for int in @integrations[tab]
+        if integration == int
+          return
 
     @integrations[tab].push integration
     @models[tab].push model
@@ -78,9 +92,22 @@ class Integrations extends Page
     obs.on Events.Integration.Remove, ()=>
       obs.off Events.Integration.Remove
       console.log('remove', i)
+      model = @models[tab][i]
       delete @integrations[tab][i]
       delete @models[tab][i]
       delete @obses[tab][i]
+
+      if model.id
+        @saving = true
+        @api.delete("c/organization/#{window.Organization}/integrations/#{model.id}").then((res)=>
+          @saving = false
+          @model = res.responseText
+
+          riot.update()
+        ).catch (e)=>
+          console.log(e.stack)
+          @error = e
+
       riot.update()
 
     obs.on Events.Integration.Update, ()=>
@@ -91,23 +118,23 @@ class Integrations extends Page
     riot.update()
 
   #only works for analytics right now
-  save: (event)->
-    model =
-      integrations: []
-
-    for m in @models['analytics']
-      if m? and m._validated
-        model.integrations.push(m)
+  save: ()->
+    i = 0
+    model = []
 
     @saving = true
 
-    @api.post("c/organization/#{window.Organization}/analytics", model).then((res)=>
-      @saving = false
-      @showSave = false
-      @model = model
+    for i, m of @models['analytics']
+      if m? and m._validated
+        model.push m
 
+    @api.post("c/organization/#{window.Organization}/integrations", model).then((res)=>
       if res.status != 200 && res.status != 201 && res.status != 204
         throw new Error 'Form failed to load: '
+
+      @saving = false
+      @showSave = false
+      @model = res.responseText
 
       riot.update()
     ).catch (e)=>
@@ -138,12 +165,18 @@ class Integrations extends Page
 
     @integrationClasses =
       analytics: [
-        integrations.Analytics.GoogleAnalytics
-        integrations.Analytics.GoogleAdwords
+        integrations.Analytics.Custom
         integrations.Analytics.FacebookConversions
         integrations.Analytics.FacebookPixel
-        integrations.Analytics.Custom
+        integrations.Analytics.GoogleAdwords
+        integrations.Analytics.GoogleAnalytics
         integrations.Analytics.HeapAnalytics
+        integrations.Other.Mailchimp
+        integrations.Other.Mandrill
+        # integrations.Other.Netlify
+        integrations.Other.Reamaze
+        integrations.Other.Recaptcha
+        integrations.Other.Stripe
       ]
 
     @integrations =
@@ -161,18 +194,23 @@ class Integrations extends Page
         e
         #console?.log e
 
-    @on 'update', ()->
-      $('.tray-right').outerHeight $('#content').outerHeight()
+    @on 'update', ->
+      $('.tray-right').outerHeight $('.tray-right div').outerHeight() + 100
+      $('.tray-center').outerHeight $('.tray-right div').outerHeight() + 100
+
+    $(window).on 'resize', ->
+      $('.tray-right').outerHeight $('.tray-right div').outerHeight() + 100
+      $('.tray-center').outerHeight $('.tray-right div').outerHeight() + 100
 
     @api = api = Api.get 'crowdstart'
 
-    api.get("c/organization/#{window.Organization}/analytics").then((res)=>
+    api.get("c/organization/#{window.Organization}/integrations").then((res)=>
       if res.status != 200 && res.status != 204
         throw new Error 'Form failed to load: '
 
       @model = res.responseText
 
-      for model in @model.integrations
+      for model in @model
         for analyticsClass in @integrationClasses.analytics
           if model.type == analyticsClass.prototype.type
             @addIntegration analyticsClass, 'analytics', model

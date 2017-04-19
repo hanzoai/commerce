@@ -4,20 +4,27 @@ import (
 	"strings"
 	"time"
 
+	aeds "appengine/datastore"
+
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
 	"appengine"
 
+	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/analytics"
+	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
+	"hanzo.io/util/json"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Email struct {
 	Enabled   bool   `json:"enabled"`
@@ -93,9 +100,6 @@ type Organization struct {
 	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
-	// Analytics config
-	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
-
 	// Email config
 	Email EmailConfig `json:"email" datastore:",noindex"`
 
@@ -108,32 +112,8 @@ type Organization struct {
 		StartDate time.Time
 	} `json:"-"`
 
-	// Salesforce settings
-	Salesforce Salesforce `json:"-"`
-
-	// Paypal connection
-	Paypal Paypal `json:"-"`
-
-	// Stripe connection
-	Stripe Stripe `json:"-"`
-
-	// Mailchimp settings
-	Mailchimp Mailchimp `json:"-"`
-
-	// Mandrill settings
-	Mandrill Mandrill `json:"-"`
-
-	// Netlify settings
-	Netlify Netlify `json:"-"`
-
 	// Affiliate configuration
-	Affiliate Affiliate `json:"-" datastore:",noindex"`
-
-	Reamaze Reamaze `json:"-"`
-
-	Shipwire Shipwire `json:"-"`
-
-	Recaptcha Recaptcha `json:"-" datastore:",noindex"`
+	Affiliate integrations.Affiliate `json:"-" datastore:",noindex"`
 
 	// Signup options
 	SignUpOptions struct {
@@ -154,6 +134,72 @@ type Organization struct {
 
 	// List of comma deliminated email globs that result in charges of 50 cents
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
+
+	// Integrations
+	Integrations  integrations.Integrations `json:"integrations" datastore:"-"`
+	Integrations_ string                    `json:"-" datastore:",noindex"`
+
+	// Integrations (deprecated)
+
+	// Analytics config
+	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
+
+	// Mailchimp settings
+	Mailchimp integrations.Mailchimp `json:"-"`
+
+	// Mandrill settings
+	Mandrill integrations.Mandrill `json:"-"`
+
+	// Netlify settings
+	Netlify integrations.Netlify `json:"-"`
+
+	// Paypal connection
+	Paypal integrations.Paypal `json:"-"`
+
+	Reamaze integrations.Reamaze `json:"-"`
+
+	Recaptcha integrations.Recaptcha `json:"-" datastore:",noindex"`
+
+	// Salesforce settings
+	Salesforce integrations.Salesforce `json:"-"`
+
+	// Shipwire settings
+	Shipwire integrations.Shipwire `json:"-"`
+
+	// Stripe connection
+	Stripe integrations.Stripe `json:"-"`
+}
+
+func (o *Organization) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	o.Defaults()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+		return err
+	}
+
+	if len(o.Integrations_) > 0 {
+		err = json.DecodeBytes([]byte(o.Integrations_), &o.Integrations)
+	}
+
+	for i, in := range o.Integrations {
+		err = integrations.Decode(&in, &in)
+		o.Integrations[i] = in
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+func (o *Organization) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
