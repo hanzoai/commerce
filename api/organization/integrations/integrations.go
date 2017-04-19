@@ -81,11 +81,12 @@ func Upsert(c *gin.Context) {
 	org.RunInTransaction(func() error {
 		// Update integration
 		for _, in := range updateIns {
-			if ins, err := ins.Update(&in); err != nil {
+			if ins_, err := ins.Update(&in); err != nil {
 				http.Fail(c, 500, "Failed to save integrations", err)
 				return err
 			} else {
-				org.Integrations = ins
+				ins = ins_
+				org.Integrations = ins_
 			}
 		}
 
