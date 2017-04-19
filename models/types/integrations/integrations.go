@@ -158,6 +158,8 @@ func (i Integrations) Append(src *Integration) (Integrations, error) {
 	case AnalyticsCustomType:
 	case AnalyticsFacebookPixelType:
 	case AnalyticsFacebookConversionsType:
+	case AnalyticsGoogleAdwordsType:
+	case AnalyticsGoogleAnalyticsType:
 	case AnalyticsHeapType:
 	case AnalyticsSentryType:
 	default:
