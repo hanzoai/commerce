@@ -183,6 +183,14 @@ func (o *Organization) Load(c <-chan aeds.Property) (err error) {
 		err = json.DecodeBytes([]byte(o.Integrations_), &o.Integrations)
 	}
 
+	for i, in := range o.Integrations {
+		err = integrations.Decode(&in, &in)
+		o.Integrations[i] = in
+		if err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 
