@@ -98,12 +98,14 @@ func Upsert(c *gin.Context) {
 			switch in.Type {
 			case integrations.AnalyticsCustomType:
 				an.Type = "custom"
+				an.Id = in.AnalyticsCustom.Id
 				an.Event = in.AnalyticsCustom.Event
 				an.Sampling = in.AnalyticsCustom.Sampling
 				an.Code = in.AnalyticsCustom.Code
 				an.Disabled = !in.Enabled
 			case integrations.AnalyticsFacebookConversionsType:
 				an.Type = "facebook-conversions"
+				an.Id = in.AnalyticsFacebookConversions.Id
 				an.Event = in.AnalyticsFacebookConversions.Event
 				an.Sampling = in.AnalyticsFacebookConversions.Sampling
 				an.Value = in.AnalyticsFacebookConversions.Value
@@ -111,18 +113,28 @@ func Upsert(c *gin.Context) {
 				an.Disabled = !in.Enabled
 			case integrations.AnalyticsFacebookPixelType:
 				an.Type = "facebook-pixel"
+				an.Id = in.AnalyticsFacebookPixel.Id
 				an.Event = in.AnalyticsFacebookPixel.Event
 				an.Sampling = in.AnalyticsFacebookPixel.Sampling
 				an.Values = analytics.Values(in.AnalyticsFacebookPixel.Values)
 				an.Disabled = !in.Enabled
 			case integrations.AnalyticsGoogleAdwordsType:
 				an.Type = "google-adwords"
+				an.Id = in.AnalyticsGoogleAdwords.Id
+				an.Event = in.AnalyticsGoogleAdwords.Event
+				an.Sampling = in.AnalyticsGoogleAdwords.Sampling
 				an.Disabled = !in.Enabled
 			case integrations.AnalyticsGoogleAnalyticsType:
 				an.Type = "google-analytics"
+				an.Id = in.AnalyticsGoogleAnalytics.Id
+				an.Event = in.AnalyticsGoogleAnalytics.Event
+				an.Sampling = in.AnalyticsGoogleAnalytics.Sampling
 				an.Disabled = !in.Enabled
 			case integrations.AnalyticsHeapType:
 				an.Type = "heap"
+				an.Id = in.AnalyticsHeap.Id
+				an.Event = in.AnalyticsHeap.Event
+				an.Sampling = in.AnalyticsHeap.Sampling
 				an.Disabled = !in.Enabled
 			default:
 				continue
