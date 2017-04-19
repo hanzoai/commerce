@@ -15,7 +15,6 @@ class RecaptchaIntegrationForm extends Integration
 
   inputConfigs: [
     input('data.secretKey', 'Secret Key',  'required')
-    input('data.enabled', 'Enabled',  'switch')
   ]
 
 RecaptchaIntegrationForm.register()
