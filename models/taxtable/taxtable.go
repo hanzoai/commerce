@@ -23,6 +23,8 @@ type TaxRate struct {
 type TaxTable struct {
 	mixin.Model
 
+	StoreId string `json:"storeId,omitempty`
+
 	Rates  []TaxRate `json:"rates" datastore:"-"`
 	Rates_ string    `json:"-"`
 }

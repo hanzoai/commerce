@@ -25,6 +25,8 @@ type ShippingRate struct {
 type ShippingTable struct {
 	mixin.Model
 
+	StoreId string `json:"storeId,omitempty`
+
 	Rates  []ShippingRate `json:"rates" datastore:"-"`
 	Rates_ string         `json:"-"`
 }
