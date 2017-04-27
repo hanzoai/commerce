@@ -65,7 +65,7 @@ class Integrations extends Page
     drop: (e)->
       if @draggingIntegration?
         if !@draggingIntegration.prototype.duplicates
-          for int in @integrations[tab]
+          for int in @integrations[@tab]
             if @draggingIntegration == int
               return
 
