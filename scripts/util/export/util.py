@@ -48,6 +48,10 @@ def to_json(obj):
 
 def to_csv(rows, filename, fields=()):
     """Write list of entities into CSV."""
+    if len(rows) == 0:
+        print 'No data to write'
+        return
+
     rows  = iter(rows)
     first = next(rows)
 
