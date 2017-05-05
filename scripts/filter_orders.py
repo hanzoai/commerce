@@ -180,15 +180,15 @@ if __name__ == '__main__':
 
     # Get subset of orders
     orders = get_orders(lambda order: all((
-        open(order),
-        not cancelled(order),
-        not disputed(order),
-        not processed(order),
-        domestic(order),
+        not open(order),
+        # cancelled(order),
+        # disputed(order),
+        # not processed(order),
+        # domestic(order),
         # batch1(order),
         # partial_refund(order),
-        not contacted_us(order),
-        # from2016(order),
+        # not contacted_us(order),
+        not from2016(order),
     )))
 
     # Sort by amount paid
