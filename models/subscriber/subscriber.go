@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,21 @@ import (
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+var mailchimpReserved = map[string]bool{
+	"INTERESTS":  true,
+	"REWARDS":    true,
+	"ARCHIVE":    true,
+	"USER_URL":   true,
+	"DATE":       true,
+	"EMAIL":      true,
+	"EMAIL_TYPE": true,
+	"TO":         true,
+	"MC":         true,
+	"LIST":       true,
+}
+
+var invalidFieldNameRe = regexp.MustCompile("[ -]")
 
 type Subscriber struct {
 	mixin.Model
@@ -57,9 +73,23 @@ func (s Subscriber) MergeFields() map[string]string {
 	fields["region"] = s.Client.Region
 	fields["city"] = s.Client.City
 
-	// Remove any empty merge fields
+	// Normalize merge fields
 	for k, v := range fields {
+		// Remove any empty merge fields
 		if v == "" {
+			delete(fields, k)
+		}
+
+		// Rename invalid fieldnames
+		if invalidFieldNameRe.Match([]byte(k)) {
+			k2 := invalidFieldNameRe.ReplaceAll([]byte(k), []byte("_"))
+			fields[string(k2)] = v
+			delete(fields, k)
+		}
+
+		// Reserved field names should be renamed
+		if _, ok := mailchimpReserved[strings.ToUpper(k)]; ok {
+			fields["_"+k] = v
 			delete(fields, k)
 		}
 	}
