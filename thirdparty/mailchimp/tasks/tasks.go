@@ -27,6 +27,7 @@ var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, ml
 		}
 
 		if err.Status > 499 {
+			log.Error("Failed to subscribe user: %v", err, ctx)
 			return err
 		}
 	}
