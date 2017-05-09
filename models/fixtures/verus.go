@@ -89,19 +89,19 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromEmail = "hi@bellabeat.com"
 
 	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
+	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
 	org.Email.OrderConfirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
+	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
 	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
 	org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmation.html")
+	// org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmation.html")
 	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
 	org.Email.User.EmailConfirmation.Enabled = true
 
 	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmed.html")
+	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmed.html")
 	org.Email.User.EmailConfirmed.Enabled = true
 
 	// Save org into default namespace
