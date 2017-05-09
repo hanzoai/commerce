@@ -11,7 +11,7 @@ class MailingListPagedTable extends BasicPagedTable
   path: 'mailinglist'
   headers: [
     field('id', 'Name', 'id', 'id-display:name id-path:#mailinglist')
-    field('mailchimp.id', 'MailChimp List ID')
+    field('mailchimp.listId', 'MailChimp List ID')
     field('id', 'Snippet', 'snippet')
     field('createdAt', 'Created On', 'date')
     field('updatedAt', 'Last Updated', 'ago')
