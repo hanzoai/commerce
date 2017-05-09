@@ -40,7 +40,7 @@ type ThankYou struct {
 
 // Mailchimp configuration
 type MailChimp struct {
-	ListId           string `json:"listId"`
+	Id               string `json:"listId"`
 	APIKey           string `json:"apiKey"`
 	DoubleOptin      bool   `json:"doubleOptin"`
 	UpdateExisting   bool   `json:"updateExisting"`
