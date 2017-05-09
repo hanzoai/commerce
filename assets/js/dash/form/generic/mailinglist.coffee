@@ -21,7 +21,7 @@ class MailingListForm extends Form
     input('thankyou.type', 'Choose what happens after form submit', 'mailinglist-thankyou-select required')
     input('thankyou.html', 'HTML ex. Thank You or <p style="font-weight:600">Thank You</p>\nUrl ex. /thankyou or www.yoursite.com/thankyou.html', 'text copy:thankyou.url')
 
-    input('mailchimp.id', 'ex. z1593c999e', 'required')
+    input('mailchimp.listId', 'ex. z1593c999e', 'required')
     input('mailchimp.apiKey', 'ex. myapikey-us2', 'required')
 
     input('mailchimp.doubleOptin', 'Double Optin?', 'switch')
