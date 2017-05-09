@@ -1,9 +1,6 @@
-riot         = require 'riot'
-_            = require 'underscore'
-crowdcontrol = require 'crowdcontrol'
-
-window.riot   = riot
+window._      = require 'underscore'
 window.moment = require 'moment'
+window.riot   = require 'riot'
 
 window.crowdstart =
   form:   require './form'
