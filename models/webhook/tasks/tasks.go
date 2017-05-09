@@ -62,7 +62,7 @@ var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, ev
 
 	// Fetch any webhooks for this organization
 	hooks := make([]*webhook.Webhook, 0)
-	_, err := webhook.Query(db).GetAll(hooks)
+	_, err := webhook.Query(db).GetAll(&hooks)
 	if err != nil {
 		log.Warn("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
 	}
