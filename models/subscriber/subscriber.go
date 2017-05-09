@@ -57,6 +57,13 @@ func (s Subscriber) MergeFields() map[string]string {
 	fields["region"] = s.Client.Region
 	fields["city"] = s.Client.City
 
+	// Remove any empty merge fields
+	for k, v := range fields {
+		if v == "" {
+			delete(fields, k)
+		}
+	}
+
 	return fields
 }
 
