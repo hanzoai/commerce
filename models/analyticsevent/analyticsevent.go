@@ -1,4 +1,4 @@
-package analytics
+package analyticsevent
 
 import (
 	"time"
@@ -41,7 +41,10 @@ type UserAgent struct {
 type AnalyticsEvent struct {
 	mixin.Model
 
-	UserId     string `json:"userId"`
+	ClientId     string `json:"clientId"`
+	UserId       string `json:"userId"`
+	SubscriberId string `json:"subscriberId"`
+
 	SessionId  string `json:"sessionId"`
 	PageId     string `json:"pageId"`
 	PageViewId string `json:"pageViewId"`

@@ -8,7 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/aggregate"
-	"hanzo.io/models/analytics"
+	"hanzo.io/models/analyticsevent"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
@@ -33,7 +33,7 @@ func create(c *gin.Context) {
 
 	db = datastore.New(org.Namespaced(ctx))
 
-	var events []*analytics.AnalyticsEvent
+	var events []*analyticsevent.AnalyticsEvent
 
 	if err := json.Decode(c.Request.Body, &events); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
