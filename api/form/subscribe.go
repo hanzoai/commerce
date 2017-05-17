@@ -46,13 +46,9 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 		return
 	}
 
-	if err := counter.IncrSubscriber; err != nil {
-		log.Error("IncrSubscriber Error: %v", err, c)
-	}
-
 	// Increment subscribers
 	if err := counter.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
+		log.Error("IncrSubscriber Error: %v", err, c)
 	}
 
 	// Add subscriber to Mailchimp
