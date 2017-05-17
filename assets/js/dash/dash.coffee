@@ -1,8 +1,9 @@
 riot         = require 'riot'
+window.riot   = riot
+
 _            = require 'underscore'
 crowdcontrol = require 'crowdcontrol'
 
-window.riot   = riot
 window.moment = require 'moment'
 
 window.crowdstart =

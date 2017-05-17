@@ -13,7 +13,7 @@ var kinds = map[string]int{
 	"organization":    6,
 	"payment":         7,
 	"plan":            8,
-	"event":           9,
+	"analyticsevent":  9,
 	"product":         10,
 	"store":           11,
 	"token":           12,
@@ -41,6 +41,7 @@ var kinds = map[string]int{
 	"review":          40,
 	"return":          41,
 	"note":            42,
+	"analyticsidmap":  43,
 }
 
 var kindsReversed = make(map[int]string)
