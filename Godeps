@@ -25,7 +25,7 @@ github.com/onsi/gomega master
 github.com/op/go-logging master
 github.com/qedus/nds classic
 github.com/ryanuber/go-glob master
-github.com/speps/go-hashids master
+github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go v17.1.0
 github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
