@@ -9,6 +9,8 @@ import (
 
 func init() {
 	analytics := router.New("analytics")
+	tokenRequired := middleware.TokenRequired()
+	namespaced := middleware.Namespace()
 
 	// Use permissive CORS policy for all API routes.
 	analytics.Use(middleware.AccessControl("*"))
@@ -17,5 +19,6 @@ func init() {
 	})
 
 	analytics.POST("/:organizationid", create)
+	analytics.POST("/", tokenRequired, namespaced, create)
 	analytics.HEAD("/", router.Empty)
 }
