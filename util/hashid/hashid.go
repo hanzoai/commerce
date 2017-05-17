@@ -20,7 +20,10 @@ func init() {
 }
 
 func Encode(numbers ...int) string {
-	h := hashids.NewWithData(hd)
+	h, err := hashids.NewWithData(hd)
+	if err != nil {
+		panic(err)
+	}
 	hashid, err := h.Encode(numbers)
 	if err != nil {
 		panic(err)
@@ -29,7 +32,10 @@ func Encode(numbers ...int) string {
 }
 
 func Decode(hashid string) ([]int, error) {
-	h := hashids.NewWithData(hd)
+	h, err := hashids.NewWithData(hd)
+	if err != nil {
+		panic(err)
+	}
 	return h.DecodeWithError(hashid)
 }
 
