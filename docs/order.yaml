@@ -1,0 +1,1360 @@
+  '/order/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_order-id
+      tags:
+        - Order
+      description: >-
+        Basic Order calls are keyed upon the unique ID of the Order.  As with
+        all calls,
+
+        it also requires an access key included with the request.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CreateanOrderrequest'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CreateanOrderresponse'
+    delete:
+      operationId: DELETE_order-id
+      tags:
+        - Order
+      description: >-
+        Deleting a Order is as simple as passing its ID to the Order endpoint
+        using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        200.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+    get:
+      operationId: GET_order-id
+      tags:
+        - Order
+      description: >-
+        Basic Order calls are keyed upon the unique ID of the Order.  As with
+        all calls,
+
+        it also requires an access key included with the request.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetanOrderresponse'
+          examples:
+            application/json:
+              id: y9i0QxNHljRQ
+              createdAt: '2016-04-15T04:54:23.306962Z'
+              updatedAt: '2016-04-15T04:54:23.306962Z'
+              number: 3330032
+              status: open
+              paymentStatus: unpaid
+              fulfillmentStatus: unfulfilled
+              preorder: false
+              unconfirmed: false
+              currency: usd
+              type: ''
+              shippingMethod: ''
+              lineTotal: 2500
+              discount: 0
+              subtotal: 2500
+              shipping: 0
+              tax: 0
+              total: 2500
+              balance: 0
+              paid: 0
+              refunded: 0
+              billingAddress: {}
+              shippingAddress:
+                line1: line1
+                line2: line2
+                city: city
+                state: state
+                postalCode: '11111'
+                country: USA
+              items:
+                - _: ''
+                  collectionId: ''
+                  productId: eAc2E8K5I6oA7
+                  productName: Sad Keanu T-shirt
+                  productSlug: sad-keanu-shirt
+                  price: 2500
+                  quantity: 1
+                  weight: 0
+                  weightUnit: ''
+                  taxable: false
+                  free: false
+                  addedBy: ''
+              payments: null
+              fulfillment:
+                carrier: ''
+                service: ''
+                trackingNumber: ''
+                createdAt: '0001-01-01T00:00:00Z'
+                shippedAt: '0001-01-01T00:00:00Z'
+                cost: 0
+              metadata: {}
+              gift: false
+              giftMessage: ''
+              giftEmail: ''
+    patch:
+      operationId: PATCH_order-id
+      tags:
+        - Order
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion.  Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            properties:
+              id:
+                type: string
+              shippingAddress:
+                type: object
+                properties:
+                  line1:
+                    type: string
+            type: object
+            example:
+              id: y9i0QxNHljRQ
+              shippingAddress:
+                line1: line1u
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              number:
+                type: integer
+              status:
+                type: string
+              paymentStatus:
+                type: string
+              fulfillmentStatus:
+                type: string
+              preorder:
+                type: boolean
+              unconfirmed:
+                type: boolean
+              currency:
+                type: string
+              type:
+                type: string
+              shippingMethod:
+                type: string
+              lineTotal:
+                type: integer
+              discount:
+                type: integer
+              subtotal:
+                type: integer
+              shipping:
+                type: integer
+              tax:
+                type: integer
+              total:
+                type: integer
+              balance:
+                type: integer
+              paid:
+                type: integer
+              refunded:
+                type: integer
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties:
+                  line1:
+                    type: string
+                  line2:
+                    type: string
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  postalCode:
+                    type: string
+                  country:
+                    type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _:
+                      type: string
+                    collectionId:
+                      type: string
+                    productId:
+                      type: string
+                    productName:
+                      type: string
+                    productSlug:
+                      type: string
+                    price:
+                      type: integer
+                    quantity:
+                      type: integer
+                    weight:
+                      type: integer
+                    weightUnit:
+                      type: string
+                    taxable:
+                      type: boolean
+                    free:
+                      type: boolean
+                    addedBy:
+                      type: string
+              payments:
+                type: 'null'
+              fulfillment:
+                type: object
+                properties:
+                  carrier:
+                    type: string
+                  service:
+                    type: string
+                  trackingNumber:
+                    type: string
+                  createdAt:
+                    type: string
+                  shippedAt:
+                    type: string
+                  cost:
+                    type: integer
+              metadata:
+                type: object
+                properties: {}
+              gift:
+                type: boolean
+              giftMessage:
+                type: string
+              giftEmail:
+                type: string
+          examples:
+            application/json:
+              id: y9i0QxNHljRQ
+              createdAt: '2016-04-15T04:54:23.306962Z'
+              updatedAt: '2016-04-15T04:54:26.545728821Z'
+              number: 3330032
+              status: open
+              paymentStatus: unpaid
+              fulfillmentStatus: unfulfilled
+              preorder: false
+              unconfirmed: false
+              currency: usd
+              type: ''
+              shippingMethod: ''
+              lineTotal: 2500
+              discount: 0
+              subtotal: 2500
+              shipping: 0
+              tax: 0
+              total: 2500
+              balance: 0
+              paid: 0
+              refunded: 0
+              billingAddress: {}
+              shippingAddress:
+                line1: line1u
+                line2: line2
+                city: city
+                state: state
+                postalCode: '11111'
+                country: USA
+              items:
+                - _: ''
+                  collectionId: ''
+                  productId: eAc2E8K5I6oA7
+                  productName: Sad Keanu T-shirt
+                  productSlug: sad-keanu-shirt
+                  price: 2500
+                  quantity: 1
+                  weight: 0
+                  weightUnit: ''
+                  taxable: false
+                  free: false
+                  addedBy: ''
+              payments: null
+              fulfillment:
+                carrier: ''
+                service: ''
+                trackingNumber: ''
+                createdAt: '0001-01-01T00:00:00Z'
+                shippedAt: '0001-01-01T00:00:00Z'
+                cost: 0
+              metadata: {}
+              gift: false
+              giftMessage: ''
+              giftEmail: ''
+    put:
+      operationId: PUT_order-id
+      tags:
+        - Order
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid Order JSON (see the POST method), will overwrite any
+        and all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+  /order:
+    post:
+      operationId: POST_order
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              shippingAddress:
+                type: object
+                properties:
+                  line1:
+                    type: string
+                  line2:
+                    type: string
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  postalCode:
+                    type: string
+                  country:
+                    type: string
+              currency:
+                type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    productSlug:
+                      type: string
+                    quantity:
+                      type: integer
+            example:
+              shippingAddress:
+                line1: line1
+                line2: line2
+                city: city
+                state: state
+                postalCode: '11111'
+                country: USA
+              currency: usd
+              items:
+                - productSlug: sad-keanu-shirt
+                  quantity: 1
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              status:
+                type: string
+              paymentStatus:
+                type: string
+              fulfillmentStatus:
+                type: string
+              preorder:
+                type: boolean
+              unconfirmed:
+                type: boolean
+              currency:
+                type: string
+              type:
+                type: string
+              shippingMethod:
+                type: string
+              lineTotal:
+                type: integer
+              discount:
+                type: integer
+              subtotal:
+                type: integer
+              shipping:
+                type: integer
+              tax:
+                type: integer
+              total:
+                type: integer
+              balance:
+                type: integer
+              paid:
+                type: integer
+              refunded:
+                type: integer
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties:
+                  line1:
+                    type: string
+                  line2:
+                    type: string
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  postalCode:
+                    type: string
+                  country:
+                    type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _:
+                      type: string
+                    collectionId:
+                      type: string
+                    productId:
+                      type: string
+                    productName:
+                      type: string
+                    productSlug:
+                      type: string
+                    price:
+                      type: integer
+                    quantity:
+                      type: integer
+                    weight:
+                      type: integer
+                    weightUnit:
+                      type: string
+                    taxable:
+                      type: boolean
+                    free:
+                      type: boolean
+                    addedBy:
+                      type: string
+              payments:
+                type: 'null'
+              fulfillment:
+                type: object
+                properties:
+                  carrier:
+                    type: string
+                  service:
+                    type: string
+                  trackingNumber:
+                    type: string
+                  createdAt:
+                    type: string
+                  shippedAt:
+                    type: string
+                  cost:
+                    type: integer
+              metadata:
+                type: object
+                properties: {}
+              gift:
+                type: boolean
+              giftMessage:
+                type: string
+              giftEmail:
+                type: string
+          examples:
+            application/json:
+              id: y9i0QxNHljRQ
+              createdAt: '2016-04-15T04:54:23.306962718Z'
+              updatedAt: '2016-04-15T04:54:23.306962718Z'
+              status: open
+              paymentStatus: unpaid
+              fulfillmentStatus: unfulfilled
+              preorder: false
+              unconfirmed: false
+              currency: usd
+              type: ''
+              shippingMethod: ''
+              lineTotal: 2500
+              discount: 0
+              subtotal: 2500
+              shipping: 0
+              tax: 0
+              total: 2500
+              balance: 0
+              paid: 0
+              refunded: 0
+              billingAddress: {}
+              shippingAddress:
+                line1: line1
+                line2: line2
+                city: city
+                state: state
+                postalCode: '11111'
+                country: USA
+              items:
+                - _: ''
+                  collectionId: ''
+                  productId: eAc2E8K5I6oA7
+                  productName: Sad Keanu T-shirt
+                  productSlug: sad-keanu-shirt
+                  price: 2500
+                  quantity: 1
+                  weight: 0
+                  weightUnit: ''
+                  taxable: false
+                  free: false
+                  addedBy: ''
+              payments: null
+              fulfillment:
+                carrier: ''
+                service: ''
+                trackingNumber: ''
+                createdAt: '0001-01-01T00:00:00Z'
+                shippedAt: '0001-01-01T00:00:00Z'
+                cost: 0
+              metadata: {}
+              gift: false
+              giftMessage: ''
+              giftEmail: ''
+    get:
+      operationId: GET_order
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+              models:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    number:
+                      type: integer
+                    userId:
+                      type: string
+                    status:
+                      type: string
+                    paymentStatus:
+                      type: string
+                    fulfillmentStatus:
+                      type: string
+                    preorder:
+                      type: boolean
+                    unconfirmed:
+                      type: boolean
+                    currency:
+                      type: string
+                    type:
+                      type: string
+                    shippingMethod:
+                      type: string
+                    lineTotal:
+                      type: integer
+                    discount:
+                      type: integer
+                    subtotal:
+                      type: integer
+                    shipping:
+                      type: integer
+                    tax:
+                      type: integer
+                    total:
+                      type: integer
+                    balance:
+                      type: integer
+                    paid:
+                      type: integer
+                    refunded:
+                      type: integer
+                    billingAddress:
+                      type: object
+                      properties: {}
+                    shippingAddress:
+                      type: object
+                      properties:
+                        line1:
+                          type: string
+                        line2:
+                          type: string
+                        city:
+                          type: string
+                        state:
+                          type: string
+                        postalCode:
+                          type: string
+                        country:
+                          type: string
+                    items:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          _:
+                            type: string
+                          collectionId:
+                            type: string
+                          productId:
+                            type: string
+                          productName:
+                            type: string
+                          productSlug:
+                            type: string
+                          price:
+                            type: integer
+                          quantity:
+                            type: integer
+                          weight:
+                            type: integer
+                          weightUnit:
+                            type: string
+                          taxable:
+                            type: boolean
+                          free:
+                            type: boolean
+                          addedBy:
+                            type: string
+                    payments:
+                      type: array
+                      items:
+                        type: string
+                    fulfillment:
+                      type: object
+                      properties:
+                        carrier:
+                          type: string
+                        service:
+                          type: string
+                        trackingNumber:
+                          type: string
+                        createdAt:
+                          type: string
+                        shippedAt:
+                          type: string
+                        cost:
+                          type: integer
+                    metadata:
+                      type: object
+                      properties: {}
+                    gift:
+                      type: boolean
+                    giftMessage:
+                      type: string
+                    giftEmail:
+                      type: string
+          examples:
+            application/json:
+              count: 336
+              models:
+                - id: 0Wim6Bqu2HlnmvEtD1gJ
+                  createdAt: '2016-04-15T00:00:18.781993Z'
+                  updatedAt: '2016-04-15T00:00:18.781993Z'
+                  number: 1160007
+                  userId: 73HmBz4wFlox9
+                  status: open
+                  paymentStatus: paid
+                  fulfillmentStatus: unfulfilled
+                  preorder: false
+                  unconfirmed: false
+                  currency: usd
+                  type: ''
+                  shippingMethod: ''
+                  lineTotal: 2500
+                  discount: 0
+                  subtotal: 2500
+                  shipping: 0
+                  tax: 0
+                  total: 2500
+                  balance: 0
+                  paid: 2500
+                  refunded: 0
+                  billingAddress: {}
+                  shippingAddress:
+                    line1: line1
+                    line2: line2
+                    city: city
+                    state: state
+                    postalCode: '11111'
+                    country: USA
+                  items:
+                    - _: ''
+                      collectionId: ''
+                      productId: eAc2E8K5I6oA7
+                      productName: Sad Keanu T-shirt
+                      productSlug: sad-keanu-shirt
+                      price: 2500
+                      quantity: 1
+                      weight: 0
+                      weightUnit: ''
+                      taxable: false
+                      free: false
+                      addedBy: ''
+                  payments:
+                    - wmhZNvBoIyi3dbOi9HZX8JEuOwkE
+                  fulfillment:
+                    carrier: ''
+                    service: ''
+                    trackingNumber: ''
+                    createdAt: '0001-01-01T00:00:00Z'
+                    shippedAt: '0001-01-01T00:00:00Z'
+                    cost: 0
+                  metadata: {}
+                  gift: false
+                  giftMessage: ''
+                  giftEmail: ''
+  '/order/{id}/refund':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_order-id-refund
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              amount:
+                type: integer
+            example:
+              id: 0WizkeyjF2HwmEKFD1gJ
+              amount: 2400
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              number:
+                type: integer
+              userId:
+                type: string
+              status:
+                type: string
+              paymentStatus:
+                type: string
+              fulfillmentStatus:
+                type: string
+              preorder:
+                type: boolean
+              unconfirmed:
+                type: boolean
+              currency:
+                type: string
+              type:
+                type: string
+              shippingMethod:
+                type: string
+              lineTotal:
+                type: integer
+              discount:
+                type: integer
+              subtotal:
+                type: integer
+              shipping:
+                type: integer
+              tax:
+                type: integer
+              total:
+                type: integer
+              balance:
+                type: integer
+              paid:
+                type: integer
+              refunded:
+                type: integer
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties:
+                  line1:
+                    type: string
+                  line2:
+                    type: string
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  postalCode:
+                    type: string
+                  country:
+                    type: string
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    _:
+                      type: string
+                    collectionId:
+                      type: string
+                    productId:
+                      type: string
+                    productName:
+                      type: string
+                    productSlug:
+                      type: string
+                    price:
+                      type: integer
+                    quantity:
+                      type: integer
+                    weight:
+                      type: integer
+                    weightUnit:
+                      type: string
+                    taxable:
+                      type: boolean
+                    free:
+                      type: boolean
+                    addedBy:
+                      type: string
+              payments:
+                type: array
+                items:
+                  type: string
+              fulfillment:
+                type: object
+                properties:
+                  carrier:
+                    type: string
+                  service:
+                    type: string
+                  trackingNumber:
+                    type: string
+                  createdAt:
+                    type: string
+                  shippedAt:
+                    type: string
+                  cost:
+                    type: integer
+              metadata:
+                type: object
+                properties: {}
+              gift:
+                type: boolean
+              giftMessage:
+                type: string
+              giftEmail:
+                type: string
+          examples:
+            application/json:
+              id: 0WizkeyjF2HwmEKFD1gJ
+              createdAt: '2016-04-15T04:54:28.118564Z'
+              updatedAt: '2016-04-15T04:54:30.8647703Z'
+              number: 6140041
+              userId: BQH49eYIYNBx
+              status: cancelled
+              paymentStatus: refunded
+              fulfillmentStatus: unfulfilled
+              preorder: false
+              unconfirmed: false
+              currency: usd
+              type: ''
+              shippingMethod: ''
+              lineTotal: 2500
+              discount: 0
+              subtotal: 2500
+              shipping: 0
+              tax: 0
+              total: 2500
+              balance: 0
+              paid: 0
+              refunded: 2500
+              billingAddress: {}
+              shippingAddress:
+                line1: line1
+                line2: line2
+                city: city
+                state: state
+                postalCode: '11111'
+                country: USA
+              items:
+                - _: ''
+                  collectionId: ''
+                  productId: eAc2E8K5I6oA7
+                  productName: Sad Keanu T-shirt
+                  productSlug: sad-keanu-shirt
+                  price: 2500
+                  quantity: 1
+                  weight: 0
+                  weightUnit: ''
+                  taxable: false
+                  free: false
+                  addedBy: ''
+              payments:
+                - ZrhPJdjHziyxDN4uwHyE0AIqkgx
+              fulfillment:
+                carrier: ''
+                service: ''
+                trackingNumber: ''
+                createdAt: '0001-01-01T00:00:00Z'
+                shippedAt: '0001-01-01T00:00:00Z'
+                cost: 0
+              metadata: {}
+              gift: false
+              giftMessage: ''
+              giftEmail: ''
+  '/order/{id}/payments':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_order-id-payments
+      tags:
+        - Order
+      description: >-
+        It is possible to get a listing of all the payments on a specific order
+        with
+
+        this endpoint.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetPaymentsonanOrderresponse'
+  '/order/{id}/capture':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_order-id-capture
+      tags:
+        - Checkout API
+      description: >-
+        The second step of the two-step payment process involves capturing a
+
+        pre-authorized payment.  The order ID is required for this step, but it
+        is
+
+        returned in the Authorize step (see above).
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CapturePaymentResponse'
+definitions:
+  GetPaymentsonanOrderresponse:
+    title: Get Payments on an Order response
+    type: object
+    properties:
+      account:
+        type: object
+      currency:
+        type: string
+      campaignid:
+        type: string
+      chargeid:
+        type: string
+      amount:
+        type: integer
+        format: int64
+      amountrefunded:
+        type: integer
+        format: int64
+      status:
+        type: string
+      client:
+        type: object
+      captured:
+        type: boolean
+      live:
+        type: boolean
+    required:
+      - account
+      - currency
+      - campaignid
+      - chargeid
+      - amount
+      - amountrefunded
+      - status
+      - client
+      - captured
+      - live
+  CreateanOrderrequest:
+    title: Create an Order request
+    type: object
+    properties:
+      userId:
+        type: string
+      shipping:
+        type: integer
+        format: int64
+      tax:
+        type: integer
+        format: int64
+      subtotal:
+        type: integer
+        format: int64
+      total:
+        type: integer
+        format: int64
+      items:
+        type: array
+        items:
+          type: object
+      campaignId:
+        type: string
+      preorder:
+        type: boolean
+      cancelled:
+        type: boolean
+      shipped:
+        type: boolean
+      test:
+        type: boolean
+    required:
+      - userId
+      - shipping
+      - tax
+      - subtotal
+      - total
+      - items
+      - campaignId
+      - preorder
+      - cancelled
+      - shipped
+      - test
+  ChargeanOrderrequest:
+    title: Charge an Order request
+    type: object
+    properties:
+      buyer:
+        type: object
+      order:
+        type: object
+    required:
+      - buyer
+      - order
+  ChargeanOrderresponse:
+    title: Charge an Order response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      campaignId:
+        type: string
+      orderStatus:
+        type: string
+      paymentStatus:
+        type: string
+      fulfillmentStatus:
+        type: string
+      preorder:
+        type: boolean
+      unconfirmed:
+        type: boolean
+      currency:
+        type: string
+      type:
+        type: string
+      shippingMethod:
+        type: string
+      lineTotal:
+        type: integer
+        format: int64
+      discount:
+        type: integer
+        format: int64
+      subtotal:
+        type: integer
+        format: int64
+      shipping:
+        type: integer
+        format: int64
+      tax:
+        type: integer
+        format: int64
+      total:
+        type: integer
+        format: int64
+      balance:
+        type: integer
+        format: int64
+      paid:
+        type: integer
+        format: int64
+      refunded:
+        type: integer
+        format: int64
+      fee:
+        type: integer
+        format: int64
+      billingAddress:
+        type: object
+      shippingAddress:
+        type: object
+      items:
+        type: array
+        items:
+          type: object
+      discounts:
+        type: array
+        items:
+          type: string
+      payments:
+        type: array
+        items:
+          type: object
+      fulfillment:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - campaignId
+      - orderStatus
+      - paymentStatus
+      - fulfillmentStatus
+      - preorder
+      - unconfirmed
+      - currency
+      - type
+      - shippingMethod
+      - lineTotal
+      - discount
+      - subtotal
+      - shipping
+      - tax
+      - total
+      - balance
+      - paid
+      - refunded
+      - fee
+      - billingAddress
+      - shippingAddress
+      - items
+      - discounts
+      - payments
+      - fulfillment
+  CreateanOrderresponse:
+    title: Create an Order response
+    type: object
+    properties:
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+      shipping:
+        type: integer
+        format: int64
+      tax:
+        type: integer
+        format: int64
+      subtotal:
+        type: integer
+        format: int64
+      total:
+        type: integer
+        format: int64
+      items:
+        type: array
+        items:
+          type: object
+      campaignId:
+        type: string
+      preorder:
+        type: boolean
+      cancelled:
+        type: boolean
+      shipped:
+        type: boolean
+      test:
+        type: boolean
+    required:
+      - createdAt
+      - updatedAt
+      - id
+      - userId
+      - shipping
+      - tax
+      - subtotal
+      - total
+      - items
+      - campaignId
+      - preorder
+      - cancelled
+      - shipped
+      - test
+  GetanOrderresponse:
+    title: Get an Order response
+    type: object
+    properties:
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      id:
+        type: string
+      userId:
+        type: string
+      shipping:
+        type: integer
+        format: int64
+      tax:
+        type: integer
+        format: int64
+      subtotal:
+        type: integer
+        format: int64
+      total:
+        type: integer
+        format: int64
+      items:
+        type: array
+        items:
+          type: object
+      campaignId:
+        type: string
+      preorder:
+        type: boolean
+      cancelled:
+        type: boolean
+      shipped:
+        type: boolean
+      test:
+        type: boolean
+    required:
+      - createdAt
+      - updatedAt
+      - id
+      - userId
+      - shipping
+      - tax
+      - subtotal
+      - total
+      - items
+      - campaignId
+      - preorder
+      - cancelled
+      - shipped
+      - test

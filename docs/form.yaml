@@ -1,0 +1,146 @@
+  '/form/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: DELETE_form-id
+      tags:
+        - Form
+      description: >-
+        Deleting a Form is as simple as passing its ID to the Form endpoint
+        using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        204.
+      responses:
+        '200':
+          description: ''
+    put:
+      operationId: PUT_form-id
+      tags:
+        - Form
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid Form JSON (see the POST method), will overwrite any and
+        all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+    patch:
+      operationId: PATCH_form-id
+      tags:
+        - Form
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion. Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      responses:
+        '200':
+          description: ''
+    post:
+      operationId: POST_form-id
+      tags:
+        - Form
+      description: |-
+        Basic Form calls are keyed to the unique ID of the form.  As with
+        all calls, it also requires an API key to be included with the request.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CreateaFormrequest'
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+    get:
+      operationId: GET_form-id
+      tags:
+        - Form
+      description: |-
+        Basic Form calls are keyed to the unique ID of the form.  As with
+        all calls, it also requires an API key to be included with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetaFormresponse'
+definitions:
+  GetaFormresponse:
+    title: Get a Form response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      name:
+        type: string
+      type:
+        type: string
+      sendWelcome:
+        type: boolean
+      mailchimp:
+        type: object
+      forward:
+        type: object
+      thankyou:
+        type: object
+      facebook:
+        type: object
+      google:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - name
+      - type
+      - sendWelcome
+      - mailchimp
+      - forward
+      - thankyou
+      - facebook
+      - google
+definitions:
+  CreateaFormrequest:
+    title: Create a Form request
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        type: string
+      sendWelcome:
+        type: boolean
+      mailchimp:
+        type: object
+      thankyou:
+        type: object
+      facebook:
+        type: object
+      google:
+        type: object
+    required:
+      - name
+      - type
+      - sendWelcome
+      - mailchimp
+      - thankyou
+      - facebook
+      - google

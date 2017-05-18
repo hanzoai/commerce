@@ -1,0 +1,331 @@
+  '/user/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_user-id
+      tags:
+        - User
+      description: >-
+        Basic User calls are keyed upon the unique ID of the User.  As with all
+        calls,
+
+        it also requires an access key included with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetAUserResponse'
+    patch:
+      operationId: PATCH_user-id
+      tags:
+        - User
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion.  Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      responses:
+        '200':
+          description: ''
+    post:
+      operationId: POST_user-id
+      tags:
+        - User
+      description: >-
+        Basic User calls are keyed upon the unique ID of the User.  As with all
+        calls,
+
+        it also requires an access key included with the request.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CreateAUserRequest'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CreateAUserResponse'
+    delete:
+      operationId: DELETE_user-id
+      tags:
+        - User
+      description: >-
+        Deleting a User is as simple as passing its ID to the User endpoint
+        using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        200.
+      responses:
+        '200':
+          description: ''
+    put:
+      operationId: PUT_user-id
+      tags:
+        - User
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid User JSON (see the POST method), will overwrite any and
+        all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+  '/referral/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: DELETE_referral-id
+      tags:
+        - Referral
+      description: >-
+        Deleting a Referral is as simple as passing its ID to the Referral
+        endpoint using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        200.
+      responses:
+        '200':
+          description: ''
+    post:
+      operationId: POST_referral-id
+      tags:
+        - Referral
+      description: >-
+        Basic Referral calls are keyed upon the unique ID of the Referral.  As
+        with all
+
+        calls, it also requires an access key included with the request.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CreatingaReferralrequest'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CreatingaReferralresponse'
+    get:
+      operationId: GET_referral-id
+      tags:
+        - Referral
+      description: >-
+        Basic Referral calls are keyed upon the unique ID of the Referral.  As
+        with all
+
+        calls, it also requires an access key included with the request.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetaReferralresponse'
+          examples:
+            application/json:
+              id: OxslNprfZvDW
+              createdAt: '2016-04-15T04:54:40.248177Z'
+              updatedAt: '2016-04-15T04:54:40.248177Z'
+              userId: AyHX5egNclOgN
+              orderId: referredOrderId
+              referrerUserId: w4HZNvlwsQ2nO
+              referrerId: JJFx6Gku71rj
+    patch:
+      operationId: PATCH_referral-id
+      tags:
+        - Referral
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion.  Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            properties:
+              id:
+                type: string
+            type: object
+            example:
+              id: OxslNprfZvDW
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              userId:
+                type: string
+              orderId:
+                type: string
+              referrerUserId:
+                type: string
+              referrerId:
+                type: string
+          examples:
+            application/json:
+              id: OxslNprfZvDW
+              createdAt: '2016-04-15T04:54:40.248177Z'
+              updatedAt: '2016-04-15T04:54:41.962107681Z'
+              userId: AyHX5egNclOgN
+              orderId: referredOrderId
+              referrerUserId: w4HZNvlwsQ2nO
+              referrerId: JJFx6Gku71rj
+    put:
+      operationId: PUT_referral-id
+      tags:
+        - Referral
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid Referral JSON (see the POST method), will overwrite any
+        and all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+definitions:
+  GetAUserResponse:
+    title: Get a User response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      phone:
+        type: string
+      billingAddress:
+        type: object
+      shippingAddress:
+        type: object
+      email:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - username
+      - firstName
+      - lastName
+      - phone
+      - billingAddress
+      - shippingAddress
+      - email
+  CreateAUserResponse:
+    title: Create a User response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      username:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      phone:
+        type: string
+      billingAddress:
+        type: object
+      shippingAddress:
+        type: object
+      email:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - username
+      - firstName
+      - lastName
+      - phone
+      - billingAddress
+      - shippingAddress
+      - email
+  CreateAUserRequest:
+    title: Create a User request
+    type: object
+    properties:
+      username:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      phone:
+        type: string
+      billingAddress:
+        type: object
+      shippingAddress:
+        type: object
+      email:
+        type: string
+    required:
+      - username
+      - firstName
+      - lastName
+      - phone
+      - billingAddress
+      - shippingAddress
+      - email
