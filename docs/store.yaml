@@ -1,0 +1,293 @@
+  '/store/{id}/variant/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        It is possible to access the product variants organized under a store by
+
+        providing the store's unique identifier and the variant's unique key. As
+        with
+
+        all calls, this requires an API key included along with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetAStoresVariantResponse'
+    patch:
+      operationId: PATCH_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion.  Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      responses:
+        '200':
+          description: ''
+    delete:
+      operationId: DELETE_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        Deleting a Variant is as simple as passing its ID to the Variant
+        endpoint using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        200.
+      responses:
+        '200':
+          description: ''
+    put:
+      operationId: PUT_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid Variant JSON (see the POST method), will overwrite any
+        and all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+  /:
+    get:
+      operationId: GET_root
+      produces:
+        - text/plain
+      parameters:
+        - name: Via
+          in: header
+          type: string
+        - name: Connect-Time
+          in: header
+          type: integer
+        - name: Total-Route-Time
+          in: header
+          type: integer
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+  '/store/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_store-id
+      tags:
+        - Store
+      description: >-
+        Basic Store calls are keyed upon the unique ID of the Store.  As with
+        all calls,
+
+        it also requires an access key included with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetAStoreResponse'
+  '/form/{id}/submit':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_form-id-submit
+      tags:
+        - Form
+      responses:
+        '200':
+          description: ''
+  '/site/{siteid}/deploy':
+    parameters:
+      - name: siteid
+        in: path
+        required: true
+        type: string
+    post:
+      operationId: POST_site-siteid-deploy
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              siteId:
+                type: string
+              files:
+                type: object
+                properties:
+                  index.html:
+                    type: string
+            example:
+              siteId: 7lUOzwphlox9
+              files:
+                index.html: ca08d7cc98edaa9481224faba78eb80f2160ddea
+        - name: Content-Type
+          in: header
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              siteId:
+                type: string
+              state:
+                type: string
+              required:
+                type: array
+                items:
+                  type: string
+              deployUrl:
+                type: string
+              url:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+          examples:
+            application/json:
+              id: 571073f5d6865d30969f33fa
+              siteId: 7lUOzwphlox9
+              state: uploading
+              required:
+                - ca08d7cc98edaa9481224faba78eb80f2160ddea
+              deployUrl: 'http://571073f5d6865d30969f33fa.site-02mg.hanzo.io'
+              url: 'http://site-02mg.hanzo.io'
+              createdAt: '2016-04-15T04:54:13Z'
+              updatedAt: '2016-04-15T04:54:13Z'
+  '/store/{id}/product/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_store-id-product-key
+      tags:
+        - Store
+      description: >-
+        It is possible to access the products belonging to a store by passing in
+        the
+
+        store's unique identifier, followed by the product's unique key.  As
+        with all
+
+        calls, this also requires an access key to be included with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetaStoresProductResponse'
+definitions:
+  GetAStoresVariantResponse:
+    title: Get a store's variant response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      sku:
+        type: string
+      price:
+        type: integer
+        format: int64
+      inventory:
+        type: integer
+        format: int64
+      weight:
+        type: integer
+        format: int64
+      dimensions:
+        type: string
+      options:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - sku
+      - price
+      - inventory
+      - weight
+      - dimensions
+      - options
+  GetAStoreResponse:
+    title: Get a store response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      hostname:
+        type: string
+      prefix:
+        type: string
+      currency:
+        type: string
+      taxNexus:
+        type: array
+        items:
+          type: object
+      listings:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - name
+      - slug
+      - hostname
+      - prefix
+      - currency
+      - taxNexus
+      - listings

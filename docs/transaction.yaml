@@ -1,0 +1,170 @@
+  '/transaction/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_transaction-id
+      tags:
+        - Transaction
+      description: >-
+        This is the only call that is available for Transactions, as they are
+        too
+
+        directly sensitive to allow to be modified.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetaTransactionresponse'
+  /referral:
+    get:
+      operationId: GET_referral
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+              models:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    userId:
+                      type: string
+                    orderId:
+                      type: string
+                    referrerUserId:
+                      type: string
+                    referrerId:
+                      type: string
+          examples:
+            application/json:
+              count: 72
+              models:
+                - id: 01szpkrfEdk2
+                  createdAt: '2016-04-15T04:32:49.212679Z'
+                  updatedAt: '2016-04-15T04:32:49.212679Z'
+                  userId: j4HB3PPF9o5v
+                  orderId: 0Wizkeyeu2HbOWWiD1gJ
+                  referrerUserId: dpHEGy1H0xXP
+                  referrerId: 8WFG2yNCWqX2
+    post:
+      operationId: POST_referral
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              referrerId:
+                type: string
+              referrerUserId:
+                type: string
+              userId:
+                type: string
+              orderId:
+                type: string
+            example:
+              referrerId: JJFx6Gku71rj
+              referrerUserId: w4HZNvlwsQ2nO
+              userId: AyHX5egNclOgN
+              orderId: referredOrderId
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              userId:
+                type: string
+              orderId:
+                type: string
+              referrerUserId:
+                type: string
+              referrerId:
+                type: string
+          examples:
+            application/json:
+              id: dysvkrrbT0xXP
+              createdAt: '2016-04-15T04:54:41.684769129Z'
+              updatedAt: '2016-04-15T04:54:41.684769129Z'
+              userId: AyHX5egNclOgN
+              orderId: referredOrderId
+              referrerUserId: w4HZNvlwsQ2nO
+              referrerId: JJFx6Gku71rj
+definitions:
+  GetaTransactionresponse:
+    title: Get a Transaction response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+      type:
+        type: string
+      currency:
+        type: string
+      amount:
+        type: integer
+        format: int64
+      test:
+        type: boolean
+      notes:
+        type: string
+      tags:
+        type: string
+      sourceId:
+        type: string
+      sourceKind:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - userId
+      - type
+      - currency
+      - amount
+      - test
+      - notes
+      - tags
+      - sourceId
+      - sourceKind

@@ -1,0 +1,428 @@
+  '/referrer/{id}/referrals':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_referrer-id-referrals
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                createdAt:
+                  type: string
+                updatedAt:
+                  type: string
+                userId:
+                  type: string
+                orderId:
+                  type: string
+                referrerUserId:
+                  type: string
+                referrerId:
+                  type: string
+          examples:
+            application/json:
+              - id: OxslNprfZvDW
+                createdAt: '2016-04-15T04:54:40.248177Z'
+                updatedAt: '2016-04-15T04:54:41.962107Z'
+                userId: AyHX5egNclOgN
+                orderId: referredOrderId
+                referrerUserId: w4HZNvlwsQ2nO
+                referrerId: JJFx6Gku71rj
+  /referrer:
+    get:
+      operationId: GET_referrer
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+              models:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    program:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        triggers:
+                          type: array
+                          items:
+                            type: integer
+                        actions:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type:
+                                type: string
+                              currency:
+                                type: string
+                              amount:
+                                type: integer
+                    orderId:
+                      type: string
+                    userId:
+                      type: string
+          examples:
+            application/json:
+              count: 71
+              models:
+                - id: 0GFgJJJsEdk2
+                  createdAt: '2016-04-14T21:44:43.209434Z'
+                  updatedAt: '2016-04-14T21:44:47.885402Z'
+                  program:
+                    name: Sample Program
+                    triggers:
+                      - 0
+                    actions:
+                      - type: credit
+                        currency: points
+                        amount: 1
+                  orderId: orderId
+                  userId: 64HrPpPntzYPD
+    post:
+      operationId: POST_referrer
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              userId:
+                type: string
+              orderId:
+                type: string
+              program:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  triggers:
+                    type: array
+                    items:
+                      type: integer
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        amount:
+                          type: integer
+                        currency:
+                          type: string
+            example:
+              userId: w4HZNvlwsQ2nO
+              orderId: orderId
+              program:
+                name: Sample Program
+                triggers:
+                  - 0
+                actions:
+                  - type: credit
+                    amount: 1
+                    currency: points
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              program:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  triggers:
+                    type: array
+                    items:
+                      type: integer
+                  actions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        currency:
+                          type: string
+                        amount:
+                          type: integer
+              orderId:
+                type: string
+              userId:
+                type: string
+          examples:
+            application/json:
+              id: xWF4J3wf3r5A
+              createdAt: '2016-04-15T04:54:40.839161941Z'
+              updatedAt: '2016-04-15T04:54:40.839161941Z'
+              program:
+                name: Sample Program
+                triggers:
+                  - 0
+                actions:
+                  - type: credit
+                    currency: points
+                    amount: 1
+              orderId: orderId
+              userId: w4HZNvlwsQ2nO
+  '/referrer/{id}/transactions':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_referrer-id-transactions
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                createdAt:
+                  type: string
+                updatedAt:
+                  type: string
+                userId:
+                  type: string
+                type:
+                  type: string
+                currency:
+                  type: string
+                amount:
+                  type: integer
+                test:
+                  type: boolean
+                notes:
+                  type: string
+                tags:
+                  type: string
+                sourceId:
+                  type: string
+                sourceKind:
+                  type: string
+          examples:
+            application/json:
+              - id: 0gizw8Z2hEdk2
+                createdAt: '2016-04-15T04:54:44.119563Z'
+                updatedAt: '2016-04-15T04:54:44.119563Z'
+                userId: w4HZNvlwsQ2nO
+                type: deposit
+                currency: points
+                amount: 1
+                test: false
+                notes: Deposit from referral JJFx6Gku71rj
+                tags: referral
+                sourceId: JJFx6Gku71rj
+                sourceKind: referrer
+definitions:
+  GetaReferralresponse:
+    title: Get a Referral response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+      orderId:
+        type: string
+      referrerUserId:
+        type: string
+      referrerId:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - userId
+      - orderId
+      - referrerUserId
+      - referrerId
+  GetaReferrerresponse:
+    title: Get a Referrer response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      program:
+        type: object
+      orderId:
+        type: string
+      userId:
+        type: string
+      referralIds:
+        type: string
+      transactionsIds:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - program
+      - orderId
+      - userId
+      - referralIds
+      - transactionsIds
+  CreatingaReferrerresponse:
+    title: Creating a Referrer response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      program:
+        type: object
+      orderId:
+        type: string
+      userId:
+        type: string
+      referralIds:
+        type: string
+      transactionsIds:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - program
+      - orderId
+      - userId
+      - referralIds
+      - transactionsIds
+  CreatingaReferrerrequest:
+    title: Creating a Referrer request
+    type: object
+    properties:
+      program:
+        type: object
+      orderId:
+        type: string
+      userId:
+        type: string
+      referralIds:
+        type: string
+      transactionsIds:
+        type: string
+    required:
+      - program
+      - orderId
+      - userId
+      - referralIds
+      - transactionsIds
+  CreatingaReferralrequest:
+    title: Creating a Referral request
+    type: object
+    properties:
+      userId:
+        type: string
+      orderId:
+        type: string
+      referrerUserId:
+        type: string
+      referrerId:
+        type: string
+    required:
+      - userId
+      - orderId
+      - referrerUserId
+      - referrerId
+  CreatingaReferralresponse:
+    title: Creating a Referral response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+      orderId:
+        type: string
+      referrerUserId:
+        type: string
+      referrerId:
+        type: string
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - userId
+      - orderId
+      - referrerUserId
+      - referrerId

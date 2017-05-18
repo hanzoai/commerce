@@ -1,0 +1,245 @@
+  '/site/{siteid}/deploy/{deployid}/files/index.html':
+    parameters:
+      - name: siteid
+        in: path
+        required: true
+        type: string
+      - name: deployid
+        in: path
+        required: true
+        type: string
+    put:
+      operationId: PUT_site-siteid-deploy-deployid-files-index-html
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '307':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+  '/site/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_site-id
+      tags:
+        - Site
+      description: >-
+        These site calls are keyed on the SiteId in the Site object. As with all
+        calls,
+
+        it also requires an access key to be sent along with the request.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetASinglesiteresponse'
+    put:
+      operationId: PUT_site-id
+      tags:
+        - Site
+      description: This functionally is a POST/Create command with a contextual site ID.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/UpdateASiteRequest'
+      responses:
+        '200':
+          description: ''
+    delete:
+      operationId: DELETE_site-id
+      tags:
+        - Site
+      description: >-
+        The only input this requires is the contextual site ID, and it will
+        respond with
+
+        200 OK.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+  /site:
+    post:
+      operationId: POST_site
+      tags:
+        - Site
+      description: This will deploy a new site.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              domain:
+                type: string
+              name:
+                type: string
+              url:
+                type: string
+          examples:
+            application/json:
+              id: 6KUrjkA2szYPD
+              createdAt: '2016-04-06T07:36:28.16298876Z'
+              updatedAt: '2016-04-06T07:36:28.16298876Z'
+              domain: domain.com
+              name: site-0no5
+              url: ''
+    get:
+      operationId: GET_site
+      tags:
+        - Site
+      description: Returns all sites that you are authorized to see.
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/GetAllSitesResponse'
+definitions:
+  CreateASiteRequest:
+    title: Create a Site request
+    type: object
+    properties:
+      name:
+        type: string
+      custom_domain:
+        type: string
+      password:
+        type: string
+      repo:
+        type: string
+    required:
+      - name
+      - custom_domain
+      - password
+      - repo
+  GetASinglesiteresponse:
+    title: Get a single site response
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      custom_domain:
+        type: string
+      notification_email:
+        type: string
+      url:
+        type: string
+      admin_url:
+        type: string
+      screenshot_url:
+        type: string
+      created_at:
+        type: string
+      updated_at:
+        type: string
+    required:
+      - id
+      - name
+      - custom_domain
+      - notification_email
+      - url
+      - admin_url
+      - screenshot_url
+      - created_at
+      - updated_at
+  GetAllSitesResponse:
+    title: Get all Sites response
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      custom_domain:
+        type: string
+      url:
+        type: string
+      admin_url:
+        type: string
+      screenshot_url:
+        type: string
+      created_at:
+        type: string
+      updated_at:
+        type: string
+    required:
+      - id
+      - name
+      - custom_domain
+      - url
+      - admin_url
+      - screenshot_url
+      - created_at
+      - updated_at
+  UpdateASiteRequest:
+    title: Update a site request
+    type: object
+    properties:
+      name:
+        type: string
+      custom_domain:
+        type: string
+      password:
+        type: string
+      repo:
+        type: string
+    required:
+      - name
+      - custom_domain
+      - password
+      - repo

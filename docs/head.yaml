@@ -1,0 +1,35 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Hanzo API
+  description: >-
+    ## Welcome
+
+
+    This is a place to put general notes and extra information, for internal
+    use.
+
+
+    To get started designing/documenting this API, select a version on the left.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:

@@ -1,0 +1,564 @@
+  '/variant/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: DELETE_variant-id
+      tags:
+        - Variant
+      description: >-
+        Deleting a Variant is as simple as passing its ID to the Variant
+        endpoint using
+
+        the HTTP Delete method. You will not receive a response past the normal
+        HTTP
+
+        200.
+      produces:
+        - text/html
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+        '204':
+          description: ''
+          schema:
+            type: object
+            properties: {}
+          examples:
+            application/json: null
+    post:
+      operationId: POST_variant-id
+      tags:
+        - Variant
+      description: >-
+        Basic Variant calls are keyed upon the unique ID of the Variant.  As
+        with all
+
+        calls, it also requires an access key included with the request.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/CreateAVariantRequest'
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/CreateAVariantResponse'
+    patch:
+      operationId: PATCH_variant-id
+      tags:
+        - Variant
+      description: >-
+        The PATCH method will allow you to replace a given ID's data in a
+        piecemeal
+
+        fashion.  Any fields passed in to a PATCH method will be updated with
+        what you
+
+        request, while any fields not specified in the JSON will be left alone.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            properties:
+              sku:
+                type: string
+              price:
+                type: integer
+            type: object
+            example:
+              sku: sad-keanu-shirt-0f
+              price: 3500
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              _:
+                type: string
+              productId:
+                type: string
+              sku:
+                type: string
+              name:
+                type: string
+              currency:
+                type: string
+              price:
+                type: integer
+              available:
+                type: boolean
+              availability:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+              inventory:
+                type: integer
+              sold:
+                type: integer
+              weight:
+                type: integer
+              weightUnit:
+                type: string
+              dimensions:
+                type: string
+              taxable:
+                type: boolean
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+          examples:
+            application/json:
+              id: nwCXA3rJHQ59k
+              createdAt: '2016-04-15T04:54:49.438066Z'
+              updatedAt: '2016-04-15T04:54:50.005451307Z'
+              _: ''
+              productId: n8cQKRzcQ59k
+              sku: sad-keanu-shirt-0f
+              name: Sad Keanu T-shirt (Medium)
+              currency: USD
+              price: 3500
+              available: false
+              availability:
+                active: false
+                startDate: '0001-01-01T00:00:00Z'
+                endDate: '0001-01-01T00:00:00Z'
+              inventory: 0
+              sold: 0
+              weight: 0
+              weightUnit: ''
+              dimensions: ''
+              taxable: false
+              options:
+                - name: size
+                  value: medium
+    put:
+      operationId: PUT_variant-id
+      tags:
+        - Variant
+      description: >-
+        The PUT method will allow you to replace a given ID's data in its
+        entirety.
+
+        Passing in valid Variant JSON (see the POST method), will overwrite any
+        and all
+
+        data existing on that ID.
+      responses:
+        '200':
+          description: ''
+    get:
+      operationId: GET_variant-id
+      tags:
+        - Variant
+      description: >-
+        Basic Variant calls are keyed upon the unique ID of the Variant.  As
+        with all
+
+        calls, it also requires an access key included with the request.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/GetAVariantResponse'
+          examples:
+            application/json:
+              id: nwCXA3rJHQ59k
+              createdAt: '2016-04-15T04:54:49.438066Z'
+              updatedAt: '2016-04-15T04:54:49.438066Z'
+              _: ''
+              productId: n8cQKRzcQ59k
+              sku: sad-keanu-shirt-0f
+              name: Sad Keanu T-shirt (Medium)
+              currency: USD
+              price: 2000
+              available: false
+              availability:
+                active: false
+                startDate: '0001-01-01T00:00:00Z'
+                endDate: '0001-01-01T00:00:00Z'
+              inventory: 0
+              sold: 0
+              weight: 0
+              weightUnit: ''
+              dimensions: ''
+              taxable: false
+              options:
+                - name: size
+                  value: medium
+  /variant:
+    post:
+      operationId: POST_variant
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              productId:
+                type: string
+              sku:
+                type: string
+              name:
+                type: string
+              price:
+                type: integer
+              currency:
+                type: string
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+            example:
+              productId: n8cQKRzcQ59k
+              sku: sad-keanu-shirt-0f
+              name: Sad Keanu T-shirt (Medium)
+              price: 2000
+              currency: USD
+              options:
+                - name: size
+                  value: medium
+                - name: color
+                  value: dark
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              _:
+                type: string
+              productId:
+                type: string
+              sku:
+                type: string
+              name:
+                type: string
+              currency:
+                type: string
+              price:
+                type: integer
+              available:
+                type: boolean
+              availability:
+                type: object
+                properties:
+                  active:
+                    type: boolean
+                  startDate:
+                    type: string
+                  endDate:
+                    type: string
+              inventory:
+                type: integer
+              sold:
+                type: integer
+              weight:
+                type: integer
+              weightUnit:
+                type: string
+              dimensions:
+                type: string
+              taxable:
+                type: boolean
+              options:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+          examples:
+            application/json:
+              id: nwCXA3rJHQ59k
+              createdAt: '2016-04-15T04:54:49.438066836Z'
+              updatedAt: '2016-04-15T04:54:49.438066836Z'
+              _: ''
+              productId: n8cQKRzcQ59k
+              sku: sad-keanu-shirt-0f
+              name: Sad Keanu T-shirt (Medium)
+              currency: USD
+              price: 2000
+              available: false
+              availability:
+                active: false
+                startDate: '0001-01-01T00:00:00Z'
+                endDate: '0001-01-01T00:00:00Z'
+              inventory: 0
+              sold: 0
+              weight: 0
+              weightUnit: ''
+              dimensions: ''
+              taxable: false
+              options:
+                - name: size
+                  value: medium
+    get:
+      operationId: GET_variant
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              count:
+                type: integer
+              models:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    _:
+                      type: string
+                    productId:
+                      type: string
+                    sku:
+                      type: string
+                    name:
+                      type: string
+                    currency:
+                      type: string
+                    price:
+                      type: integer
+                    available:
+                      type: boolean
+                    availability:
+                      type: object
+                      properties:
+                        active:
+                          type: boolean
+                        startDate:
+                          type: string
+                        endDate:
+                          type: string
+                    inventory:
+                      type: integer
+                    sold:
+                      type: integer
+                    weight:
+                      type: integer
+                    weightUnit:
+                      type: string
+                    dimensions:
+                      type: string
+                    taxable:
+                      type: boolean
+                    options:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          value:
+                            type: string
+          examples:
+            application/json:
+              count: 3
+              models:
+                - id: JGCZyR6CKcmnJZ2HBnkJ
+                  createdAt: '2016-01-20T01:46:42.56383Z'
+                  updatedAt: '2016-01-20T01:46:42.69951Z'
+                  _: ''
+                  productId: eAc2E8K5I6oA7
+                  sku: T-SHIRT-M
+                  name: ''
+                  currency: usd
+                  price: 2000
+                  available: false
+                  availability:
+                    active: false
+                    startDate: '0001-01-01T00:00:00Z'
+                    endDate: '0001-01-01T00:00:00Z'
+                  inventory: 0
+                  sold: 0
+                  weight: 0
+                  weightUnit: ''
+                  dimensions: ''
+                  taxable: false
+                  options:
+                    - name: Size
+                      value: Much
+definitions:
+  CreateAVariantResponse:
+    title: Create a Variant response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      sku:
+        type: string
+      price:
+        type: integer
+        format: int64
+      inventory:
+        type: integer
+        format: int64
+      weight:
+        type: integer
+        format: int64
+      dimensions:
+        type: string
+      options:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - sku
+      - price
+      - inventory
+      - weight
+      - dimensions
+      - options
+  GetAVariantResponse:
+    title: Get a Variant response
+    type: object
+    properties:
+      id:
+        type: string
+      createdAt:
+        type: string
+      updatedAt:
+        type: string
+      sku:
+        type: string
+      price:
+        type: integer
+        format: int64
+      inventory:
+        type: integer
+        format: int64
+      weight:
+        type: integer
+        format: int64
+      dimensions:
+        type: string
+      options:
+        type: object
+    required:
+      - id
+      - createdAt
+      - updatedAt
+      - sku
+      - price
+      - inventory
+      - weight
+      - dimensions
+      - options
+  CreateAVariantRequest:
+    title: Create a Variant request
+    type: object
+    properties:
+      sku:
+        type: string
+      price:
+        type: integer
+        format: int64
+      inventory:
+        type: integer
+        format: int64
+      weight:
+        type: integer
+        format: int64
+      dimensions:
+        type: string
+      options:
+        type: object
+    required:
+      - sku
+      - price
+      - inventory
+      - weight
+      - dimensions
+      - options

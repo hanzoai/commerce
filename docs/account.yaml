@@ -1,0 +1,318 @@
+  /account/login:
+    post:
+      operationId: POST_account-login
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: '{"email":"0wt8@email.com","password":"0k9q91"}'
+          in: formData
+          type: string
+        - name: '{"email":"0oba@email.com","password":"0k9q91"}'
+          in: formData
+          type: string
+        - name: '{"email":"0xrt@email.com","password":"0drz4y"}'
+          in: formData
+          type: string
+        - name: '{"email":"0ljf@email.com","password":"0drz4y"}'
+          in: formData
+          type: string
+        - name: '{"email":"0xrt@email.com","password":"0e71q7"}'
+          in: formData
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+          examples:
+            application/json:
+              token: >-
+                eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE0NjA2OTYwOTgsImV4cCI6MTQ2MDc4MjQ5OCwiaXNzIjoieTVJWjNHYkZsalJRIiwianRpIjoidWtxUDJSU2FWNW8iLCJGaXJzdE5hbWUiOiIiLCJMYXN0TmFtZSI6IiIsImFwcCI6IlN0b3JlIiwidXNyIjoiUnlIMDI2QnUyM0cxIiwib3JnIjoic3VjaHRlZXMiLCJ0eXAiOiJjdXN0b21lciIsInRzdCI6dHJ1ZSwiYml0Ijo0NTAzNjE3MDc1Njc1MTc2fQ.dQZt_A9rLBpmBYu-QpaRdU4XlwwG5SyMv25rVqrz7a0
+        '401':
+          description: ''
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+          examples:
+            application/json:
+              error:
+                type: api-error
+                message: Email or password is incorrect
+  /account:
+    patch:
+      operationId: PATCH_account
+      consumes:
+        - application/x-www-form-urlencoded
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: '{"firstName":"0zg1"}'
+          in: formData
+          type: string
+        - name: '{"firstName":"0aod"}'
+          in: formData
+          type: string
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              _:
+                type: string
+              username:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+              company:
+                type: string
+              phone:
+                type: string
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties: {}
+              email:
+                type: string
+              paypalEmail:
+                type: string
+              enabled:
+                type: boolean
+              metadata:
+                type: object
+                properties: {}
+              balances:
+                type: 'null'
+          examples:
+            application/json:
+              id: RyH026Bu23G1
+              createdAt: '2016-04-15T04:54:51.771428Z'
+              updatedAt: '2016-04-15T04:55:00.262050169Z'
+              _: ''
+              username: ''
+              firstName: 0aod
+              lastName: 0d91
+              company: ''
+              phone: ''
+              billingAddress: {}
+              shippingAddress: {}
+              email: 0xrt@email.com
+              paypalEmail: ''
+              enabled: true
+              metadata: {}
+              balances: null
+    get:
+      operationId: GET_account
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: Accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              _:
+                type: string
+              username:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+              company:
+                type: string
+              phone:
+                type: string
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties: {}
+              email:
+                type: string
+              paypalEmail:
+                type: string
+              enabled:
+                type: boolean
+              metadata:
+                type: object
+                properties: {}
+              balances:
+                type: object
+                properties: {}
+          examples:
+            application/json:
+              id: RyH026Bu23G1
+              createdAt: '2016-04-15T04:54:51.771428Z'
+              updatedAt: '2016-04-15T04:54:51.771428Z'
+              _: ''
+              username: ''
+              firstName: 0ggj
+              lastName: 0d91
+              company: ''
+              phone: ''
+              billingAddress: {}
+              shippingAddress: {}
+              email: 0xrt@email.com
+              paypalEmail: ''
+              enabled: true
+              metadata: {}
+              balances: {}
+  /account/create:
+    post:
+      operationId: POST_account-create
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            type: object
+            properties:
+              firstName:
+                type: string
+              lastName:
+                type: string
+              email:
+                type: string
+              password:
+                type: string
+              passwordConfirm:
+                type: string
+            example:
+              firstName: referred0t6d
+              lastName: referred0kbf
+              email: referred0kq3@email.com
+              password: 0p5chl
+              passwordConfirm: 0p5chl
+        - name: Accept
+          in: header
+          type: string
+        - name: Content-Type
+          in: header
+          type: string
+      responses:
+        '201':
+          description: ''
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              createdAt:
+                type: string
+              updatedAt:
+                type: string
+              _:
+                type: string
+              username:
+                type: string
+              firstName:
+                type: string
+              lastName:
+                type: string
+              company:
+                type: string
+              phone:
+                type: string
+              billingAddress:
+                type: object
+                properties: {}
+              shippingAddress:
+                type: object
+                properties: {}
+              email:
+                type: string
+              paypalEmail:
+                type: string
+              enabled:
+                type: boolean
+              metadata:
+                type: object
+                properties: {}
+              balances:
+                type: 'null'
+          examples:
+            application/json:
+              id: RyH026Bu23G1
+              createdAt: '2016-04-15T04:54:51.771428207Z'
+              updatedAt: '2016-04-15T04:54:51.771428207Z'
+              _: ''
+              username: ''
+              firstName: 0ggj
+              lastName: 0d91
+              company: ''
+              phone: ''
+              billingAddress: {}
+              shippingAddress: {}
+              email: 0xrt@email.com
+              paypalEmail: ''
+              enabled: true
+              metadata: {}
+              balances: null
+        '400':
+          description: ''
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  message:
+                    type: string
+          examples:
+            application/json:
+              error:
+                type: api-error
+                message: Email is not valid
