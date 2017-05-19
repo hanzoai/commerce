@@ -4,13 +4,13 @@ info:
   title: Hanzo API
   description: >-
     ## Welcome
+    Hanzo is a cutting edge ecommerce and marketing platform.
+    Whether you're just starting or headed for the next level,
+    Hanzo tools will provide everything you need.
 
-
-    This is a place to put general notes and extra information, for internal
-    use.
-
-
-    To get started designing/documenting this API, select a version on the left.
+    ## Standards
+    [descriptions of API key norms]
+    [get/post/put/patch norms]
 host: api.hanzo.io
 schemes:
   - https
