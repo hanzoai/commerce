@@ -8,6 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/dimensions"
 	"hanzo.io/models/types/weight"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
@@ -45,9 +46,10 @@ type Product struct {
 
 	Inventory int `json:"inventory"`
 
-	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit"`
-	Dimensions string      `json:"dimensions"`
+	Weight         weight.Mass     `json:"weight"`
+	WeightUnit     weight.Unit     `json:"weightUnit"`
+	Dimensions     dimensions.Size `json:"dimensions"`
+	DimensionUnits dimensions.Unit `json:"dimensionsUnit"`
 
 	Taxable bool `json:"taxable"`
 
