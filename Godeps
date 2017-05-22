@@ -1,3 +1,4 @@
+cloud.google.com/go/storage
 github.com/Machiel/slugify master
 github.com/cenkalti/backoff master
 github.com/davecgh/go-spew/spew master
