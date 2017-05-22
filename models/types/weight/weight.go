@@ -20,13 +20,13 @@ type Unit string
 // Print nice names
 func (u Unit) Name() string {
 	switch u {
-	case "lb":
+	case Pound:
 		return "Pound"
-	case "oz":
+	case Ounce:
 		return "Ounce"
-	case "kg":
+	case Kilogram:
 		return "Kilogram"
-	case "g":
+	case Gram:
 		return "Gram"
 	}
 	return ""
