@@ -3,10 +3,10 @@ info:
   version: v1.0
   title: Variant API
   description: >-
-    A Variant represents a specific kind of Product. Most typically,
+    A Variant represents a specific kind of Product. Typically,
     they are used to represent a particular color, size, color/size
     combination, etc.
-host: api.hanzo.io/
+host: api.hanzo.io
 schemes:
   - https
 consumes:
@@ -39,14 +39,7 @@ paths:
       tags:
         - Variant
       description: >-
-        Deleting a Variant is generally a bad idea as it can leave
-        orphaned line items in orders.  In this case, the line item
-        and the price it sold for will continue to exist, but you will
-        be unable to trace back to the sold item. If a particular Variant is
-        discontinued, consider using the PATCH or PUT methods instead
-        to change its availability. If a Variant was accidentally
-        created, however, a delete can be just what you need to clean
-        up the mess.
+        Permanently deletes a Variant
       produces:
         - text/html
       parameters:
@@ -54,175 +47,57 @@ paths:
           in: query
           required: false
           type: string
+          description: The unique identifier for the Variant.
         - name: Accept
           in: header
           required: false
           type: string
       responses:
         '200':
-          description: ''
+          description: 'Everything is OK!'
         '204':
-          description: ''
+          description: 'Everything is OK, but there is nothing to return.'
           schema:
             type: object
             properties: {}
-          examples:
-            application/json: null
-    post:
-      operationId: POST_variant-id
-      tags:
-        - Variant
-      description: >-
-        Created Variants will be dependent upon their host Product,
-        and can potentially be changed implicitly if their linked Product
-        changes.
-      parameters:
-        - name: body
-          in: body
-          schema:
-            $ref: '#/definitions/CreateVariantRequest'
-      responses:
-        '200':
-          description: ''
-          schema:
-            $ref: '#/definitions/CreateVariantResponse'
     patch:
       operationId: PATCH_variant-id
       tags:
         - Variant
       description: >-
-        PATCH requests carry no risk of mutating existing orders
-        or line items; these objects keep their own data for prices,
-        names, etc during their creation. However, orders and line
-        items can link back to Variants by ID, and modifying high
-        visibility data like names can therefore get a little confusing
-        if you do so carelessly.
+        Updates a variant partially. Parameters not passed are not updated.
       parameters:
-        - name: token
-          in: query
-          required: false
-          type: string
         - name: body
           in: body
           schema:
-            properties:
-              sku:
-                type: string
-              price:
-                type: integer
-            type: object
-            example:
-              sku: sad-keanu-shirt-0f
-              price: 3500
-        - name: Accept
-          in: header
-          required: false
-          type: string
-        - name: Content-Type
-          in: header
-          required: false
-          type: string
+            $ref: '#/definitions/Variant'
       responses:
         '200':
           description: ''
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              _:
-                type: string
-              productId:
-                type: string
-              sku:
-                type: string
-              name:
-                type: string
-              currency:
-                type: string
-              price:
-                type: integer
-              available:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              inventory:
-                type: integer
-              sold:
-                type: integer
-              weight:
-                type: integer
-              weightUnit:
-                type: string
-              dimensions:
-                type: string
-              taxable:
-                type: boolean
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
-          examples:
-            application/json:
-              id: nwCXA3rJHQ59k
-              createdAt: '2016-04-15T04:54:49.438066Z'
-              updatedAt: '2016-04-15T04:54:50.005451307Z'
-              _: ''
-              productId: n8cQKRzcQ59k
-              sku: sad-keanu-shirt-0f
-              name: Sad Keanu T-shirt (Medium)
-              currency: USD
-              price: 3500
-              available: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              inventory: 0
-              sold: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              options:
-                - name: size
-                  value: medium
+            $ref: '#/definitions/Variant'
     put:
       operationId: PUT_variant-id
       tags:
         - Variant
       description: >-
-        PUT requests carry no risk of mutating existing orders
-        or line items; these objects keep their own data for prices,
-        names, etc during their creation. However, orders and line
-        items can link back to Variants by ID, and modifying high
-        visibility data like names can therefore get a little confusing
-        if you do so carelessly.
+        Updates the object wholly. Unpassed parameters are blanked.
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Variant'
       responses:
         '200':
           description: ''
+          schema:
+            $ref: '#/definitions/Variant'
     get:
       operationId: GET_variant-id
       tags:
         - Variant
       description: >-
-
+        Gets a specific Variant, keyed by ID.
       parameters:
         - name: token
           in: query
@@ -236,168 +111,30 @@ paths:
         '200':
           description: ''
           schema:
-            $ref: '#/definitions/GetVariantResponse'
-          examples:
-            application/json:
-              id: nwCXA3rJHQ59k
-              createdAt: '2016-04-15T04:54:49.438066Z'
-              updatedAt: '2016-04-15T04:54:49.438066Z'
-              _: ''
-              productId: n8cQKRzcQ59k
-              sku: sad-keanu-shirt-0f
-              name: Sad Keanu T-shirt (Medium)
-              currency: USD
-              price: 2000
-              available: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              inventory: 0
-              sold: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              options:
-                - name: size
-                  value: medium
+            $ref: '#/definitions/Variant'
   /variant:
     post:
-      operationId: POST_variant
+      description: >-
+        Creates a new Variant.
+      operationId: post_variant
       parameters:
-        - name: token
-          in: query
-          type: string
         - name: body
           in: body
           schema:
-            type: object
-            properties:
-              productId:
-                type: string
-              sku:
-                type: string
-              name:
-                type: string
-              price:
-                type: integer
-              currency:
-                type: string
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
-            example:
-              productId: n8cQKRzcQ59k
-              sku: sad-keanu-shirt-0f
-              name: Sad Keanu T-shirt (Medium)
-              price: 2000
-              currency: USD
-              options:
-                - name: size
-                  value: medium
-                - name: color
-                  value: dark
-        - name: Accept
-          in: header
-          type: string
-        - name: Content-Type
-          in: header
-          type: string
+            $ref: '#/definitions/Variant'
       responses:
-        '201':
-          description: ''
+        '200':
+          description: 'Everything is ok!'
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              _:
-                type: string
-              productId:
-                type: string
-              sku:
-                type: string
-              name:
-                type: string
-              currency:
-                type: string
-              price:
-                type: integer
-              available:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              inventory:
-                type: integer
-              sold:
-                type: integer
-              weight:
-                type: integer
-              weightUnit:
-                type: string
-              dimensions:
-                type: string
-              taxable:
-                type: boolean
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    value:
-                      type: string
-          examples:
-            application/json:
-              id: nwCXA3rJHQ59k
-              createdAt: '2016-04-15T04:54:49.438066836Z'
-              updatedAt: '2016-04-15T04:54:49.438066836Z'
-              _: ''
-              productId: n8cQKRzcQ59k
-              sku: sad-keanu-shirt-0f
-              name: Sad Keanu T-shirt (Medium)
-              currency: USD
-              price: 2000
-              available: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              inventory: 0
-              sold: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              options:
-                - name: size
-                  value: medium
+            $ref: '#/definitions/Variant'
     get:
-      operationId: GET_variant
+      description: >-
+        Returns a list of all available Variants.
       parameters:
         - name: token
           in: query
           type: string
-        - name: Accept
+        - name: accept
           in: header
           type: string
       responses:
@@ -415,13 +152,13 @@ paths:
                   properties:
                     id:
                       type: string
-                    createdAt:
+                    createdat:
                       type: string
-                    updatedAt:
+                    updatedat:
                       type: string
                     _:
                       type: string
-                    productId:
+                    productid:
                       type: string
                     sku:
                       type: string
@@ -438,9 +175,9 @@ paths:
                       properties:
                         active:
                           type: boolean
-                        startDate:
+                        startdate:
                           type: string
-                        endDate:
+                        enddate:
                           type: string
                     inventory:
                       type: integer
@@ -448,7 +185,7 @@ paths:
                       type: integer
                     weight:
                       type: integer
-                    weightUnit:
+                    weightunit:
                       type: string
                     dimensions:
                       type: string
@@ -463,127 +200,43 @@ paths:
                             type: string
                           value:
                             type: string
-          examples:
-            application/json:
-              count: 3
-              models:
-                - id: JGCZyR6CKcmnJZ2HBnkJ
-                  createdAt: '2016-01-20T01:46:42.56383Z'
-                  updatedAt: '2016-01-20T01:46:42.69951Z'
-                  _: ''
-                  productId: eAc2E8K5I6oA7
-                  sku: T-SHIRT-M
-                  name: ''
-                  currency: usd
-                  price: 2000
-                  available: false
-                  availability:
-                    active: false
-                    startDate: '0001-01-01T00:00:00Z'
-                    endDate: '0001-01-01T00:00:00Z'
-                  inventory: 0
-                  sold: 0
-                  weight: 0
-                  weightUnit: ''
-                  dimensions: ''
-                  taxable: false
-                  options:
-                    - name: Size
-                      value: Much
 definitions:
-  CreateVariantResponse:
-    title: Create a Variant response
+  Variant:
+    title: Variant
+    description: A Variant model, usable in POST, PUT, or PATCH requests,
+      and returned as a response from GET, POST, PUT, and PATCH.
     type: object
     properties:
       id:
         type: string
-      createdAt:
+        description: The hanzo-assigned guid to identify this item.
+      productId:
         type: string
-      updatedAt:
-        type: string
+        description: The ID of the product this Variant is
+          associated with (or, a variant of).
       sku:
         type: string
+        description: The unique identifier for stock-keeping.
+          Can technically be whatever as long as it is unique,
+          but recommended to be the same as UPC if you have
+          one available for your product.
       price:
         type: integer
         format: int64
+        description: How much something costs, in the lowest
+          value unit available in the currency your store runs
+          in. USD stores will use cents, JPY stores will use yen, etc.
       inventory:
         type: integer
         format: int64
+        description: The number of items on hand and ready for sale.
       weight:
         type: integer
         format: int64
+        description: The mass of the item. Traditionally kept in grams.
       dimensions:
         type: string
+        description: The physical measurements of the item. Traditionally
+          kept in length x width x height and in centimeters.
       options:
         type: object
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - sku
-      - price
-      - inventory
-      - weight
-      - dimensions
-      - options
-  GetVariantResponse:
-    title: Get a Variant response
-    type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-      updatedAt:
-        type: string
-      sku:
-        type: string
-      price:
-        type: integer
-        format: int64
-      inventory:
-        type: integer
-        format: int64
-      weight:
-        type: integer
-        format: int64
-      dimensions:
-        type: string
-      options:
-        type: object
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - sku
-      - price
-      - inventory
-      - weight
-      - dimensions
-      - options
-  CreateVariantRequest:
-    title: Create a Variant request
-    type: object
-    properties:
-      sku:
-        type: string
-      price:
-        type: integer
-        format: int64
-      inventory:
-        type: integer
-        format: int64
-      weight:
-        type: integer
-        format: int64
-      dimensions:
-        type: string
-      options:
-        type: object
-    required:
-      - sku
-      - price
-      - inventory
-      - weight
-      - dimensions
-      - options
