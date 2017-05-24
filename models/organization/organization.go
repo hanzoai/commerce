@@ -14,6 +14,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/analytics"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
@@ -168,6 +169,8 @@ type Organization struct {
 
 	// Stripe connection
 	Stripe integrations.Stripe `json:"-"`
+
+	Currency currency.Type `json:"currency"`
 }
 
 func (o *Organization) Load(c <-chan aeds.Property) (err error) {
