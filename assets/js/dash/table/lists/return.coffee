@@ -11,7 +11,7 @@ class ReturnList extends BasicList
   path: 'return'
   headers: [
     field('id', 'Id', '', '')
-    field('externalId', 'Shipwire', 'id', 'id-path://merchant.shipwire.com/merchants/store/tracking/orderId/')
+    field('externalId', 'Shipwire', 'id', 'id-path://merchant.shipwire.com/merchants/store/tracking/orderId')
     field('createdAt', 'Created', 'date')
     # field('updatedAt', 'Last Updated', 'ago')
   ]
