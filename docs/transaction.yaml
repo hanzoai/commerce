@@ -1,3 +1,31 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Transaction API
+  description: >-
+    A Transaction represents money moving to satisfy a payment or refund.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
   '/transaction/{id}':
     parameters:
       - name: id
@@ -9,162 +37,52 @@
       tags:
         - Transaction
       description: >-
-        This is the only call that is available for Transactions, as they are
-        too
-
-        directly sensitive to allow to be modified.
+        Returns a specific Transaction.
       responses:
         '200':
           description: ''
           schema:
-            $ref: '#/definitions/GetaTransactionresponse'
-  /referral:
-    get:
-      operationId: GET_referral
-      parameters:
-        - name: token
-          in: query
-          type: string
-        - name: Accept
-          in: header
-          type: string
-      responses:
-        '200':
-          description: ''
-          schema:
-            type: object
-            properties:
-              count:
-                type: integer
-              models:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    createdAt:
-                      type: string
-                    updatedAt:
-                      type: string
-                    userId:
-                      type: string
-                    orderId:
-                      type: string
-                    referrerUserId:
-                      type: string
-                    referrerId:
-                      type: string
-          examples:
-            application/json:
-              count: 72
-              models:
-                - id: 01szpkrfEdk2
-                  createdAt: '2016-04-15T04:32:49.212679Z'
-                  updatedAt: '2016-04-15T04:32:49.212679Z'
-                  userId: j4HB3PPF9o5v
-                  orderId: 0Wizkeyeu2HbOWWiD1gJ
-                  referrerUserId: dpHEGy1H0xXP
-                  referrerId: 8WFG2yNCWqX2
-    post:
-      operationId: POST_referral
-      parameters:
-        - name: token
-          in: query
-          type: string
-        - name: body
-          in: body
-          schema:
-            type: object
-            properties:
-              referrerId:
-                type: string
-              referrerUserId:
-                type: string
-              userId:
-                type: string
-              orderId:
-                type: string
-            example:
-              referrerId: JJFx6Gku71rj
-              referrerUserId: w4HZNvlwsQ2nO
-              userId: AyHX5egNclOgN
-              orderId: referredOrderId
-        - name: Accept
-          in: header
-          type: string
-        - name: Content-Type
-          in: header
-          type: string
-      responses:
-        '201':
-          description: ''
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              userId:
-                type: string
-              orderId:
-                type: string
-              referrerUserId:
-                type: string
-              referrerId:
-                type: string
-          examples:
-            application/json:
-              id: dysvkrrbT0xXP
-              createdAt: '2016-04-15T04:54:41.684769129Z'
-              updatedAt: '2016-04-15T04:54:41.684769129Z'
-              userId: AyHX5egNclOgN
-              orderId: referredOrderId
-              referrerUserId: w4HZNvlwsQ2nO
-              referrerId: JJFx6Gku71rj
+            $ref: '#/definitions/Transaction'
 definitions:
-  GetaTransactionresponse:
-    title: Get a Transaction response
+  Transaction:
+    title: Transaction
     type: object
     properties:
       id:
         type: string
+        description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
+        description: The time this Transaction was created. Conforms to RFC3339.
       updatedAt:
         type: string
+        description: The time this Transaction was last updated. Conforms to RFC3339.
       userId:
         type: string
+        description: The ID for the user that initiated this transaction.
       type:
         type: string
+        description: The general type of transaction.
       currency:
         type: string
+        description: The type of money used on the transaction. USD for United States
+          Dollar, JPY for Japanese yen, etc. Conforms to ISO 4217 codes.
       amount:
         type: integer
         format: int64
+        description: The quantity of money involved in the Transaction. Represented in
+          the least significant denomination possible in the given currency - so
+          cents in USD, yen in JPY, etc.
       test:
         type: boolean
+        description: Whether or not this transaction is a test.
       notes:
         type: string
+        description: Supplementary text regarding the transaction.
       tags:
         type: string
+        description: A collection of meta-identifiers for the transaction.
       sourceId:
         type: string
       sourceKind:
         type: string
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - userId
-      - type
-      - currency
-      - amount
-      - test
-      - notes
-      - tags
-      - sourceId
-      - sourceKind

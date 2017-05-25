@@ -1,6 +1,37 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Product API
+  description: >-
+    A product represents a specific offering in your store. Typically,
+    these are unique things or services; for closely related things
+    or services, check the Variant object.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
   /product:
     post:
       operationId: POST_product
+      description: Creates a new product
       parameters:
         - name: token
           in: query
@@ -8,189 +39,16 @@
         - name: body
           in: body
           schema:
-            type: object
-            properties:
-              slug:
-                type: string
-              name:
-                type: string
-              price:
-                type: integer
-              currency:
-                type: string
-              headline:
-                type: string
-              description:
-                type: string
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    values:
-                      type: array
-                      items:
-                        type: string
-            example:
-              slug: sad-keanu-shirt0z
-              name: Sad Keanu T-shirt
-              price: 2500
-              currency: USD
-              headline: Oh Keanu
-              description: Sad Keanu is sad.
-              options:
-                - name: size
-                  values:
-                    - small
-                    - medium
-                    - large
-                - name: color
-                  values:
-                    - dark
-                    - light
-        - name: Accept
-          in: header
-          type: string
-        - name: Content-Type
-          in: header
-          type: string
+            $ref: '#/definitions/Product'
       responses:
         '201':
           description: ''
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              slug:
-                type: string
-              sku:
-                type: string
-              currency:
-                type: string
-              price:
-                type: integer
-              listPrice:
-                type: integer
-              shipping:
-                type: integer
-              inventory:
-                type: integer
-              weight:
-                type: integer
-              weightUnit:
-                type: string
-              dimensions:
-                type: string
-              taxable:
-                type: boolean
-              name:
-                type: string
-              headline:
-                type: string
-              excerpt:
-                type: string
-              description:
-                type: string
-              headerImage:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  alt:
-                    type: string
-                  url:
-                    type: string
-                  x:
-                    type: integer
-                  'y':
-                    type: integer
-              media:
-                type: 'null'
-              available:
-                type: boolean
-              hidden:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              preorder:
-                type: boolean
-              addLabel:
-                type: string
-              estimatedDelivery:
-                type: string
-              variants:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    values:
-                      type: array
-                      items:
-                        type: string
-          examples:
-            application/json:
-              id: n8cQKRzcQ59k
-              createdAt: '2016-04-15T04:54:49.225307107Z'
-              updatedAt: '2016-04-15T04:54:49.225307107Z'
-              slug: sad-keanu-shirt0z
-              sku: ''
-              currency: USD
-              price: 2500
-              listPrice: 0
-              shipping: 0
-              inventory: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              name: Sad Keanu T-shirt
-              headline: Oh Keanu
-              excerpt: ''
-              description: Sad Keanu is sad.
-              headerImage:
-                type: ''
-                alt: ''
-                url: ''
-                x: 0
-                'y': 0
-              media: null
-              available: false
-              hidden: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              preorder: false
-              addLabel: ''
-              estimatedDelivery: ''
-              variants: []
-              options:
-                - name: size
-                  values:
-                    - small
+            $ref: '#/definitions/Product'
     get:
       operationId: GET_product
+      description: >-
+        Gets a list of all available products.
       parameters:
         - name: token
           in: query
@@ -202,181 +60,19 @@
         '200':
           description: ''
           schema:
-            type: object
-            properties:
-              count:
-                type: integer
-              models:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    createdAt:
-                      type: string
-                    updatedAt:
-                      type: string
-                    slug:
-                      type: string
-                    sku:
-                      type: string
-                    currency:
-                      type: string
-                    price:
-                      type: integer
-                    listPrice:
-                      type: integer
-                    shipping:
-                      type: integer
-                    inventory:
-                      type: integer
-                    weight:
-                      type: integer
-                    weightUnit:
-                      type: string
-                    dimensions:
-                      type: string
-                    taxable:
-                      type: boolean
-                    name:
-                      type: string
-                    headline:
-                      type: string
-                    excerpt:
-                      type: string
-                    description:
-                      type: string
-                    headerImage:
-                      type: object
-                      properties:
-                        type:
-                          type: string
-                        alt:
-                          type: string
-                        url:
-                          type: string
-                        x:
-                          type: integer
-                        'y':
-                          type: integer
-                    media:
-                      type: 'null'
-                    available:
-                      type: boolean
-                    hidden:
-                      type: boolean
-                    availability:
-                      type: object
-                      properties:
-                        active:
-                          type: boolean
-                        startDate:
-                          type: string
-                        endDate:
-                          type: string
-                    preorder:
-                      type: boolean
-                    addLabel:
-                      type: string
-                    estimatedDelivery:
-                      type: string
-                    variants:
-                      type: array
-                      items:
-                        type: object
-                        properties: {}
-                    options:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          name:
-                            type: string
-                          values:
-                            type: array
-                            items:
-                              type: string
-          examples:
-            application/json:
-              count: 6
-              models:
-                - id: 0Kc32x8SEdk2
-                  createdAt: '2016-01-20T01:46:41.231698Z'
-                  updatedAt: '2016-01-20T01:46:41.36838Z'
-                  slug: doge-shirt
-                  sku: ''
-                  currency: usd
-                  price: 2000
-                  listPrice: 0
-                  shipping: 0
-                  inventory: 0
-                  weight: 0
-                  weightUnit: ''
-                  dimensions: ''
-                  taxable: false
-                  name: Such T-shirt
-                  headline: wow  such shirt  much tee
-                  excerpt: ''
-                  description: "wow\n\t　　　　　　such shirt\n\tmuch tee\n\n\t\t\tnice shop\n\n\t　so hip\n\n\t　　　　so doge\n\t"
-                  headerImage:
-                    type: ''
-                    alt: ''
-                    url: ''
-                    x: 0
-                    'y': 0
-                  media: null
-                  available: false
-                  hidden: false
-                  availability:
-                    active: false
-                    startDate: '0001-01-01T00:00:00Z'
-                    endDate: '0001-01-01T00:00:00Z'
-                  preorder: false
-                  addLabel: ''
-                  estimatedDelivery: ''
-                  variants: []
-                  options:
-                    - name: Size
-                      values:
-                        - Much
+            $ref: '#/definitions/ProductArray'
   '/product/{id}':
     parameters:
       - name: id
         in: path
         required: true
         type: string
-    post:
-      operationId: POST_product-id
-      tags:
-        - Product
-      description: >-
-        Basic Product calls are keyed upon the unique ID of the Product.  As
-        with all
-
-        calls, it also requires an access key included with the request.
-      parameters:
-        - name: body
-          in: body
-          schema:
-            $ref: '#/definitions/CreatingAProductRequest'
-      responses:
-        '200':
-          description: ''
-          schema:
-            $ref: '#/definitions/CreatingAProductResponse'
     patch:
       operationId: PATCH_product-id
       tags:
         - Product
       description: >-
-        The PATCH method will allow you to replace a given ID's data in a
-        piecemeal
-
-        fashion.  Any fields passed in to a PATCH method will be updated with
-        what you
-
-        request, while any fields not specified in the JSON will be left alone.
+        Replaces a product piecemeal. Parameters not passed are not updated.
       parameters:
         - name: token
           in: query
@@ -385,165 +81,18 @@
         - name: body
           in: body
           schema:
-            properties:
-              slug:
-                type: string
-              price:
-                type: integer
-            type: object
-            example:
-              slug: sad-keanu-shirt06
-              price: 3500
-        - name: Content-Type
-          in: header
-          required: false
-          type: string
-        - name: Accept
-          in: header
-          required: false
-          type: string
+            $ref: '#/definitions/Product'
       responses:
         '200':
           description: ''
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              slug:
-                type: string
-              sku:
-                type: string
-              currency:
-                type: string
-              price:
-                type: integer
-              listPrice:
-                type: integer
-              shipping:
-                type: integer
-              inventory:
-                type: integer
-              weight:
-                type: integer
-              weightUnit:
-                type: string
-              dimensions:
-                type: string
-              taxable:
-                type: boolean
-              name:
-                type: string
-              headline:
-                type: string
-              excerpt:
-                type: string
-              description:
-                type: string
-              headerImage:
-                type: object
-                properties:
-                  type:
-                    type: string
-                  alt:
-                    type: string
-                  url:
-                    type: string
-                  x:
-                    type: integer
-                  'y':
-                    type: integer
-              media:
-                type: 'null'
-              available:
-                type: boolean
-              hidden:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              preorder:
-                type: boolean
-              addLabel:
-                type: string
-              estimatedDelivery:
-                type: string
-              variants:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              options:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    values:
-                      type: array
-                      items:
-                        type: string
-          examples:
-            application/json:
-              id: GAcxZbyFO2nZ
-              createdAt: '2016-04-15T04:54:31.085223Z'
-              updatedAt: '2016-04-15T04:54:31.733594196Z'
-              slug: sad-keanu-shirt0u
-              sku: ''
-              currency: USD
-              price: 3500
-              listPrice: 0
-              shipping: 0
-              inventory: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              name: Sad Keanu T-shirt
-              headline: Oh Keanu
-              excerpt: ''
-              description: Sad Keanu is sad.
-              headerImage:
-                type: ''
-                alt: ''
-                url: ''
-                x: 0
-                'y': 0
-              media: null
-              available: false
-              hidden: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              preorder: false
-              addLabel: ''
-              estimatedDelivery: ''
-              variants: []
-              options:
-                - name: size
-                  values:
-                    - sadness
+            $ref: '#/definitions/Product'
     get:
       operationId: GET_product-id
       tags:
         - Product
       description: >-
-        Basic Product calls are keyed upon the unique ID of the Product.  As
-        with all
-
-        calls, it also requires an access key included with the request.
+        Retrieves a specified product
       parameters:
         - name: token
           in: query
@@ -557,83 +106,13 @@
         '200':
           description: ''
           schema:
-            $ref: '#/definitions/GetaProductresponse'
-          examples:
-            application/json:
-              id: eAc2E8K5I6oA7
-              createdAt: '2016-01-20T01:46:41.962839Z'
-              updatedAt: '2016-01-20T01:46:43.018687Z'
-              slug: sad-keanu-shirt
-              sku: ''
-              currency: usd
-              price: 2500
-              listPrice: 0
-              shipping: 0
-              inventory: 0
-              weight: 0
-              weightUnit: ''
-              dimensions: ''
-              taxable: false
-              name: Sad Keanu T-shirt
-              headline: Oh Keanu
-              excerpt: ''
-              description: Sad Keanu is sad.
-              headerImage:
-                type: ''
-                alt: ''
-                url: ''
-                x: 0
-                'y': 0
-              media: null
-              available: false
-              hidden: false
-              availability:
-                active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              preorder: false
-              addLabel: ''
-              estimatedDelivery: ''
-              variants:
-                - id: JGCZyR6CKcmnJZ2HBnkJ
-                  createdAt: '2016-01-20T01:46:42.563830236Z'
-                  updatedAt: '2016-01-20T01:46:42.699510797Z'
-                  _: ''
-                  productId: eAc2E8K5I6oA7
-                  sku: T-SHIRT-M
-                  name: ''
-                  currency: usd
-                  price: 2000
-                  available: false
-                  availability:
-                    active: false
-                    startDate: '0001-01-01T00:00:00Z'
-                    endDate: '0001-01-01T00:00:00Z'
-                  inventory: 0
-                  sold: 0
-                  weight: 0
-                  weightUnit: ''
-                  dimensions: ''
-                  taxable: false
-                  options:
-                    - name: Size
-                      value: Much
-              options:
-                - name: Size
-                  values:
-                    - Sadness
+            $ref: '#/definitions/Product'
     delete:
       operationId: DELETE_product-id
       tags:
         - Product
       description: >-
-        Deleting a Product is as simple as passing its ID to the Product
-        endpoint using
-
-        the HTTP Delete method. You will not receive a response past the normal
-        HTTP
-
-        200.
+        Permanently deletes a specified product. Cannot be undone.
       produces:
         - text/html
       parameters:
@@ -646,8 +125,6 @@
           required: false
           type: string
       responses:
-        '200':
-          description: ''
         '204':
           description: ''
           schema:
@@ -660,247 +137,80 @@
       tags:
         - Product
       description: >-
-        The PUT method will allow you to replace a given ID's data in its
-        entirety.
-
-        Passing in valid Product JSON (see the POST method), will overwrite any
-        and all
-
-        data existing on that ID.
+        Wholly replaces a given product. Parameters not passed are blanked.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Product'
       responses:
         '200':
           description: ''
+          schema:
+            $ref: '#/definitions/Product'
+  '/store/{id}/product/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_store-id-product-key
+      tags:
+        - Store
+      description: >-
+        Gets a specific product that the store has access to.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Product'
 definitions:
-  GetaStoresProductResponse:
-    title: Get a Store's Product response
+  Product:
+    title: Product
     type: object
     properties:
       id:
         type: string
+        description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
+        description: The time this Variant was created. Conforms to RFC3339.
       updatedAt:
         type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
       slug:
         type: string
-      sku:
-        type: string
-      currency:
-        type: string
-      price:
-        type: integer
-        format: int64
-      shipping:
-        type: integer
-        format: int64
-      inventory:
-        type: integer
-        format: int64
-      sold:
-        type: integer
-        format: int64
-      weight:
-        type: integer
-        format: int64
-      weightUnit:
-        type: string
-      dimensions:
-        type: string
-      taxable:
-        type: boolean
-      name:
-        type: string
-      headline:
-        type: string
-      excerpt:
-        type: string
-      description:
-        type: string
-      headerImage:
-        type: object
-      media:
-        type: string
-      available:
-        type: boolean
-      hidden:
-        type: boolean
-      availability:
-        type: object
-      preorder:
-        type: boolean
-      addLabel:
-        type: string
-      variants:
-        type: array
-        items:
-          type: string
-      options:
-        type: array
-        items:
-          type: object
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - slug
-      - sku
-      - currency
-      - price
-      - shipping
-      - inventory
-      - sold
-      - weight
-      - weightUnit
-      - dimensions
-      - taxable
-      - name
-      - headline
-      - excerpt
-      - description
-      - headerImage
-      - media
-      - available
-      - hidden
-      - availability
-      - preorder
-      - addLabel
-      - variants
-      - options
-  GetaProductresponse:
-    title: Get a Product response
-    type: object
-    properties:
-      id:
-        type: string
-      slug:
-        type: string
+        description: The human-readable URL extension for this product.
       title:
         type: string
+        description: The human-friendly banner for this product.
       headline:
         type: string
+        description: The tag line for this product.
       excerpt:
         type: string
+        description: A high visiblity selection.
       description:
         type: string
+        description: The long form depiction.
       released:
         type: string
+        description: The date this product was released. Conforms to RFC3339.
       available:
         type: boolean
-      addLabel:
-        type: string
-      headerImage:
-        type: object
-      media:
-        type: array
-        items:
-          type: object
-      variants:
-        type: array
-        items:
-          type: object
-    required:
-      - id
-      - slug
-      - title
-      - headline
-      - excerpt
-      - description
-      - released
-      - available
-      - addLabel
-      - headerImage
-      - media
-      - variants
-  CreatingAProductRequest:
-    title: Creating a Product request
-    type: object
-    properties:
-      slug:
-        type: string
-      title:
-        type: string
-      headline:
-        type: string
-      excerpt:
-        type: string
-      description:
-        type: string
-      released:
-        type: string
-      available:
-        type: boolean
-      addLabel:
-        type: string
-      headerImage:
-        type: object
-      media:
-        type: array
-        items:
-          type: object
-      variants:
-        type: array
-        items:
-          type: object
-    required:
-      - slug
-      - title
-      - headline
-      - excerpt
-      - description
-      - released
-      - available
-      - addLabel
-      - headerImage
-      - media
-      - variants
-  CreatingAProductResponse:
-    title: Creating a Product response
-    type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-      updatedAt:
-        type: string
-      slug:
-        type: string
-      title:
-        type: string
-      headline:
-        type: string
-      excerpt:
-        type: string
-      description:
-        type: string
-      released:
-        type: string
-      available:
-        type: boolean
-      addLabel:
-        type: string
-      headerImage:
-        type: object
-      media:
-        type: array
-        items:
-          type: object
-      variants:
-        type: array
-        items:
-          type: object
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - slug
-      - title
-      - headline
-      - excerpt
-      - description
-      - released
-      - available
-      - addLabel
-      - headerImage
-      - media
-      - variants
+        description: Whether or not the product is able to be purchased.
+  ProductArray:
+    title: ProductArray
+    description: An array of Products
+    type: array
+    items:
+      $ref: '#/definitions/Product'

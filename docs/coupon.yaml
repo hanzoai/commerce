@@ -1,6 +1,37 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Coupon API
+  description: >-
+    A Coupon represents a special offer attached to a code or certificate
+    that is redeemable in your store.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
   /coupon:
     get:
       operationId: GET_coupon
+      description: >-
+        Returns all available coupons.
       parameters:
         - name: token
           in: query
@@ -12,67 +43,7 @@
         '200':
           description: ''
           schema:
-            type: object
-            properties:
-              count:
-                type: integer
-              models:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    createdAt:
-                      type: string
-                    updatedAt:
-                      type: string
-                    name:
-                      type: string
-                    type:
-                      type: string
-                    code:
-                      type: string
-                    startDate:
-                      type: string
-                    endDate:
-                      type: string
-                    filter:
-                      type: string
-                    once:
-                      type: boolean
-                    enabled:
-                      type: boolean
-                    amount:
-                      type: integer
-                    used:
-                      type: integer
-                    freeProductId:
-                      type: string
-                    freeVariantId:
-                      type: string
-                    freeQuantity:
-                      type: integer
-          examples:
-            application/json:
-              count: 66
-              models:
-                - id: 0ks5Zy7UEdk2
-                  createdAt: '2016-01-21T05:38:12.641825Z'
-                  updatedAt: '2016-01-21T05:38:12.641825Z'
-                  name: Such Test Coupon
-                  type: flat
-                  code: SUCH-TEST-COUPON
-                  startDate: '2016-01-21T05:37:56.513Z'
-                  endDate: '2016-02-21T05:37:56.513Z'
-                  filter: ''
-                  once: true
-                  enabled: true
-                  amount: 500
-                  used: 0
-                  freeProductId: ''
-                  freeVariantId: ''
-                  freeQuantity: 0
+            $ref: '#/definitions/CouponArray'
     post:
       operationId: POST_coupon
       parameters:
@@ -82,294 +53,75 @@
         - name: body
           in: body
           schema:
-            type: object
-            properties:
-              code:
-                type: string
-              name:
-                type: string
-              type:
-                type: string
-              startDate:
-                type: string
-              endDate:
-                type: string
-              once:
-                type: boolean
-              enabled:
-                type: boolean
-              amount:
-                type: integer
-            example:
-              code: such-test-coupon
-              name: Such Test Coupon
-              type: flat
-              startDate: '2016-04-15T04:53:45.548Z'
-              endDate: '2016-05-15T04:53:45.548Z'
-              once: true
-              enabled: true
-              amount: 500
-        - name: Accept
-          in: header
-          type: string
-        - name: Content-Type
-          in: header
-          type: string
+            $ref: '#/definitions/Coupon'
       responses:
         '201':
-          description: ''
+          description: 'Everything is OK - new coupon created.'
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              name:
-                type: string
-              type:
-                type: string
-              code:
-                type: string
-              startDate:
-                type: string
-              endDate:
-                type: string
-              filter:
-                type: string
-              once:
-                type: boolean
-              enabled:
-                type: boolean
-              amount:
-                type: integer
-              used:
-                type: integer
-              freeProductId:
-                type: string
-              freeVariantId:
-                type: string
-              freeQuantity:
-                type: integer
-          examples:
-            application/json:
-              id: EGsmjZKcwDr1
-              createdAt: '2016-04-15T04:54:12.601799098Z'
-              updatedAt: '2016-04-15T04:54:12.601799098Z'
-              name: Such Test Coupon
-              type: flat
-              code: SUCH-TEST-COUPON
-              startDate: '2016-04-15T04:53:45.548Z'
-              endDate: '2016-05-15T04:53:45.548Z'
-              filter: ''
-              once: true
-              enabled: true
-              amount: 500
-              used: 0
-              freeProductId: ''
-              freeVariantId: ''
-              freeQuantity: 0
+            $ref: '#/definitions/Coupon'
   '/coupon/{id}':
     parameters:
       - name: id
         in: path
         required: true
         type: string
-    post:
-      operationId: POST_coupon-id
-      tags:
-        - Coupon
-      description: >-
-        Basic Coupon calls are keyed upon the unique ID of the Coupon.  As with
-        all
-
-        calls, it also requires an access key included with the request.
-      parameters:
-        - name: body
-          in: body
-          schema:
-            $ref: '#/definitions/CreateaCouponrequest'
-      responses:
-        '200':
-          description: ''
-          schema:
-            $ref: '#/definitions/CreateaCouponresponse'
     put:
       operationId: PUT_coupon-id
       tags:
         - Coupon
       description: >-
-        The PUT method will allow you to replace a given ID's data in its
-        entirety.
-
-        Passing in valid Coupon JSON (see the POST method), will overwrite any
-        and all
-
-        data existing on that ID.
+        Wholly replaces the requested coupon. Any fields not provided are blanked.
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/Coupon'
       responses:
         '200':
           description: ''
+          schema:
+            $ref: '#/definitions/Coupon'
     patch:
       operationId: PATCH_coupon-id
       tags:
         - Coupon
       description: >-
-        The PATCH method will allow you to replace a given ID's data in a
-        piecemeal
-
-        fashion.  Any fields passed in to a PATCH method will be updated with
-        what you
-
-        request, while any fields not specified in the JSON will be left alone.
+        Replaces the requested coupon piecemeal. Any fields not provided are not changed.
       parameters:
         - name: token
           in: query
-          required: false
           type: string
         - name: body
           in: body
           schema:
-            properties:
-              code:
-                type: string
-            type: object
-            example:
-              code: SUCH-COUPON
-        - name: Accept
-          in: header
-          required: false
-          type: string
-        - name: Content-Type
-          in: header
-          required: false
-          type: string
+            $ref: '#/definitions/Coupon'
       responses:
         '200':
-          description: ''
+          description: 'Everything is OK'
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              name:
-                type: string
-              type:
-                type: string
-              code:
-                type: string
-              startDate:
-                type: string
-              endDate:
-                type: string
-              filter:
-                type: string
-              once:
-                type: boolean
-              enabled:
-                type: boolean
-              amount:
-                type: integer
-              used:
-                type: integer
-              freeProductId:
-                type: string
-              freeVariantId:
-                type: string
-              freeQuantity:
-                type: integer
-          examples:
-            application/json:
-              id: zOsjWpz0UJp2G
-              createdAt: '2016-01-20T01:46:44.241704Z'
-              updatedAt: '2016-04-15T04:54:12.838748556Z'
-              name: Such Coupon
-              type: flat
-              code: SUCH-COUPON
-              startDate: '2016-01-20T01:46:43.792122Z'
-              endDate: '2016-02-19T01:46:43.792122Z'
-              filter: ''
-              once: true
-              enabled: true
-              amount: 500
-              used: 0
-              freeProductId: ''
-              freeVariantId: ''
-              freeQuantity: 0
+            $ref: '#/definitions/Coupon'
     delete:
       operationId: DELETE_coupon-id
       tags:
         - Coupon
       description: >-
-        Deleting a Coupon is as simple as passing its ID to the Coupon endpoint
-        using
-
-        the HTTP Delete method. You will not receive a response past the normal
-        HTTP
-
-        204.
+        Deletes the specified coupon. Cannot be undone.
       responses:
-        '200':
-          description: ''
+        '204':
+          description: 'Everything is OK.'
+          schema:
+            type: object
+            properties: {}
     get:
       operationId: GET_coupon-id
       tags:
         - Coupon
       description: >-
-        Basic Coupon calls are keyed upon the unique ID of the Coupon.  As with
-        all
-
-        calls, it also requires an access key included with the request.
+        Returns the specified coupon.
       parameters:
-        - name: '0'
-          in: query
-          required: false
-          type: string
-        - name: '1'
-          in: query
-          required: false
-          type: string
-        - name: '2'
-          in: query
-          required: false
-          type: string
-        - name: '3'
-          in: query
-          required: false
-          type: string
-        - name: '4'
-          in: query
-          required: false
-          type: string
-        - name: '5'
-          in: query
-          required: false
-          type: string
-        - name: '6'
-          in: query
-          required: false
-          type: string
-        - name: '7'
-          in: query
-          required: false
-          type: string
-        - name: '8'
-          in: query
-          required: false
-          type: string
-        - name: '9'
-          in: query
-          required: false
-          type: string
-        - name: '10'
-          in: query
-          required: false
-          type: string
         - name: token
           in: query
           required: false
@@ -382,161 +134,60 @@
         '200':
           description: ''
           schema:
-            $ref: '#/definitions/GetaCouponresponse'
-          examples:
-            application/json:
-              id: zOsjWpz0UJp2G
-              createdAt: '2016-01-20T01:46:44.241704Z'
-              updatedAt: '2016-04-15T04:54:12.838748Z'
-              name: Such Coupon
-              type: flat
-              code: SUCH-COUPON
-              startDate: '2016-01-20T01:46:43.792122Z'
-              endDate: '2016-02-19T01:46:43.792122Z'
-              filter: ''
-              once: true
-              enabled: true
-              amount: 500
-              used: 0
-              freeProductId: ''
-              freeVariantId: ''
-              freeQuantity: 0
+            $ref: '#/definitions/Coupon'
 definitions:
-  CreateaCouponrequest:
-    title: Create a Coupon request
-    type: object
-    properties:
-      name:
-        type: string
-      type:
-        type: string
-      code:
-        type: string
-      campaignId:
-        type: string
-      startDate:
-        type: string
-      endDate:
-        type: string
-      filter:
-        type: string
-      once:
-        type: boolean
-      productId:
-        type: string
-      enabled:
-        type: boolean
-      amount:
-        type: integer
-        format: int64
-      used:
-        type: integer
-        format: int64
-    required:
-      - name
-      - type
-      - code
-      - campaignId
-      - startDate
-      - endDate
-      - filter
-      - once
-      - productId
-      - enabled
-      - amount
-      - used
-  GetaCouponresponse:
-    title: Get a Coupon response
-    type: object
-    properties:
-      name:
-        type: string
-      type:
-        type: string
-      code:
-        type: string
-      campaignId:
-        type: string
-      startDate:
-        type: string
-      endDate:
-        type: string
-      filter:
-        type: string
-      once:
-        type: boolean
-      productId:
-        type: string
-      enabled:
-        type: boolean
-      amount:
-        type: integer
-        format: int64
-      used:
-        type: integer
-        format: int64
-    required:
-      - name
-      - type
-      - code
-      - campaignId
-      - startDate
-      - endDate
-      - filter
-      - once
-      - productId
-      - enabled
-      - amount
-      - used
-  CreateaCouponresponse:
-    title: Create a Coupon response
+  Coupon:
+    title: Coupon
     type: object
     properties:
       id:
         type: string
+        description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
+        description: The time this Variant was created. Conforms to RFC3339.
       updatedAt:
         type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
       name:
         type: string
+        description: The human-friendly identifier for the coupon.
       type:
         type: string
+        description: The general class of coupon, such as a discount, free shipping, etc.
       code:
         type: string
-      campaignId:
-        type: string
+        description: The unique key, preferably human friendly, that users will enter
+          to use the coupon on your store.
       startDate:
         type: string
+        description: The time the Coupon becomes valid. Conforms to RFC3339.
       endDate:
         type: string
+        description: The time the Coupon stops being valid. Conforms to RFC3339.
       filter:
         type: string
       once:
         type: boolean
+        description: A switch indicating whether this is a one-use coupon or not.
       productId:
         type: string
+        description: The hanzo-provided unique product ID that this coupon applies to.
       enabled:
         type: boolean
+        description: Whether or not the coupon is active.
       amount:
         type: integer
         format: int64
+        description: The monetary value the coupon is good for. Represented in least
+          valuable denomination available (so cents for USD, yen for JPY, etc)
       used:
         type: integer
         format: int64
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - name
-      - type
-      - code
-      - campaignId
-      - startDate
-      - endDate
-      - filter
-      - once
-      - productId
-      - enabled
-      - amount
-      - used
+        description: How many times the coupon has been redeemed.
+  CouponArray:
+    title: CouponArray
+    description: An array of Coupons
+    type: array
+    items:
+      $ref: '#/definitions/Coupon'

@@ -53,10 +53,8 @@ paths:
           required: false
           type: string
       responses:
-        '200':
-          description: 'Everything is OK!'
         '204':
-          description: 'Everything is OK, but there is nothing to return.'
+          description: 'Everything is OK.'
           schema:
             type: object
             properties: {}
@@ -73,7 +71,7 @@ paths:
             $ref: '#/definitions/Variant'
       responses:
         '200':
-          description: ''
+          description: 'Everything is OK.'
           schema:
             $ref: '#/definitions/Variant'
     put:
@@ -123,7 +121,7 @@ paths:
           schema:
             $ref: '#/definitions/Variant'
       responses:
-        '200':
+        '201':
           description: 'Everything is ok!'
           schema:
             $ref: '#/definitions/Variant'
@@ -141,65 +139,64 @@ paths:
         '200':
           description: ''
           schema:
+            $ref: '#/definitions/VariantArray'
+  '/store/{id}/variant/{key}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - name: key
+        in: path
+        required: true
+        type: string
+    get:
+      operationId: GET_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        Returns a specific Variant if it is accessible inside the store.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+    patch:
+      operationId: PATCH_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        Updates a variant the store has access to partially. Parameters
+        not included are ignored.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
+    delete:
+      operationId: DELETE_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        Deletes a variant the store has access to. Cannot be undone.
+      responses:
+        '204':
+          description: 'Everything is OK.'
+          schema:
             type: object
-            properties:
-              count:
-                type: integer
-              models:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    createdat:
-                      type: string
-                    updatedat:
-                      type: string
-                    _:
-                      type: string
-                    productid:
-                      type: string
-                    sku:
-                      type: string
-                    name:
-                      type: string
-                    currency:
-                      type: string
-                    price:
-                      type: integer
-                    available:
-                      type: boolean
-                    availability:
-                      type: object
-                      properties:
-                        active:
-                          type: boolean
-                        startdate:
-                          type: string
-                        enddate:
-                          type: string
-                    inventory:
-                      type: integer
-                    sold:
-                      type: integer
-                    weight:
-                      type: integer
-                    weightunit:
-                      type: string
-                    dimensions:
-                      type: string
-                    taxable:
-                      type: boolean
-                    options:
-                      type: array
-                      items:
-                        type: object
-                        properties:
-                          name:
-                            type: string
-                          value:
-                            type: string
+            properties: {}
+    put:
+      operationId: PUT_store-id-variant-key
+      tags:
+        - Store
+      description: >-
+        Wholly replaces a variant the store has access to. Parameters
+        not included are blanked.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Variant'
 definitions:
   Variant:
     title: Variant
@@ -220,6 +217,12 @@ definitions:
           Can technically be whatever as long as it is unique,
           but recommended to be the same as UPC if you have
           one available for your product.
+      createdAt:
+        type: string
+        description: The time this Variant was created. Conforms to RFC3339.
+      updatedAt:
+        type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
       price:
         type: integer
         format: int64
@@ -240,3 +243,9 @@ definitions:
           kept in length x width x height and in centimeters.
       options:
         type: object
+  VariantArray:
+    title: VariantArray
+    description: An array of Variants
+    type: array
+    items:
+      $ref: '#/definitions/Variant'

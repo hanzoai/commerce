@@ -1,3 +1,32 @@
+swagger: '2.0'
+info:
+  version: v1.0
+  title: Collection API
+  description: >-
+    A collection represents a set of Products designed to be sold together,
+    usually for some sort of discount or special deal.
+host: api.hanzo.io
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+securityDefinitions:
+  oauth2:
+    type: oauth2
+    flow: password
+    scopes: {}
+    tokenUrl: 'https://api.hanzo.io/auth'
+  Authorization:
+    name: Authorization
+    type: apiKey
+    in: header
+  token:
+    name: token
+    type: apiKey
+    in: query
+paths:
   '/collection/{id}':
     parameters:
       - name: id
@@ -9,135 +38,23 @@
       tags:
         - Collection
       description: >-
-        The PATCH method will allow you to replace a given ID's data in a
-        piecemeal
-
-        fashion.  Any fields passed in to a PATCH method will be updated with
-        what you
-
-        request, while any fields not specified in the JSON will be left alone.
-      parameters:
-        - name: token
-          in: query
-          required: false
-          type: string
-        - name: body
-          in: body
-          schema:
-            properties:
-              slug:
-                type: string
-            type: object
-            example:
-              slug: such-tees-pack
-        - name: Accept
-          in: header
-          required: false
-          type: string
-        - name: Content-Type
-          in: header
-          required: false
-          type: string
-      responses:
-        '200':
-          description: ''
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              slug:
-                type: string
-              name:
-                type: string
-              description:
-                type: string
-              media:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              available:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  Active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              published:
-                type: boolean
-              preorder:
-                type: boolean
-              outOfStock:
-                type: boolean
-              productIds:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              variantIds:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-          examples:
-            application/json:
-              id: OdSk6YrCZvDW
-              createdAt: '2016-03-22T02:22:51.18972Z'
-              updatedAt: '2016-04-15T04:54:12.02623884Z'
-              slug: such-tees-pack
-              name: Such tees pack
-              description: Much tees in one pack!
-              media: []
-              available: true
-              availability:
-                Active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              published: true
-              preorder: false
-              outOfStock: false
-              productIds: []
-              variantIds: []
-    post:
-      operationId: POST_collection-id
-      tags:
-        - Collection
-      description: >-
-        Basic Collection calls are keyed to the unique ID of the collection.  As
-        with
-
-        all calls, it also requires an API key to be included with the request.
+        Updates the Collection piecemeal. Parameters not included in the request are not updated.
       parameters:
         - name: body
           in: body
           schema:
-            $ref: '#/definitions/CreateaCollectionrequest'
+            $ref: '#/definitions/Collection'
       responses:
         '200':
-          description: ''
+          description: 'Everything is okay!'
           schema:
-            $ref: '#/definitions/CreateaCollectionresponse'
+            $ref: '#/definitions/Collection'
     delete:
       operationId: DELETE_collection-id
       tags:
         - Collection
       description: >-
-        Deleting a Collection is as simple as passing its ID to the Collection
-        endpoint using
-
-        the HTTP Delete method. You will not receive a response past the normal
-        HTTP
-
-        204.
+        Deletes a Collection.  Cannot be undone.
       responses:
         '200':
           description: ''
@@ -146,10 +63,7 @@
       tags:
         - Collection
       description: >-
-        Basic Collection calls are keyed to the unique ID of the collection.  As
-        with
-
-        all calls, it also requires an API key to be included with the request.
+        Returns a given Collection.
       parameters:
         - name: token
           in: query
@@ -163,219 +77,24 @@
         '200':
           description: ''
           schema:
-            $ref: '#/definitions/GetaCollectionresponse'
-          examples:
-            application/json:
-              id: OdSk6YrCZvDW
-              createdAt: '2016-03-22T02:22:51.18972Z'
-              updatedAt: '2016-04-15T04:53:54.142207Z'
-              slug: such-tees-pack
-              name: Such tees pack
-              description: Much tees in one pack!
-              media: []
-              available: true
-              availability:
-                Active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              published: true
-              preorder: false
-              outOfStock: false
-              productIds: []
-              variantIds: []
+            $ref: '#/definitions/Collection'
     put:
       operationId: PUT_collection-id
       tags:
         - Collection
       description: >-
-        The PUT method will allow you to replace a given ID's data in its
-        entirety.
-
-        Passing in valid Collection JSON (see the POST method), will overwrite
-        any and all
-
-        data existing on that ID.
-      responses:
-        '200':
-          description: ''
-  '/referrer/{id}':
-    parameters:
-      - name: id
-        in: path
-        required: true
-        type: string
-    patch:
-      operationId: PATCH_referrer-id
-      tags:
-        - Referrer
-      description: >-
-        The PATCH method will allow you to replace a given ID's data in a
-        piecemeal
-
-        fashion.  Any fields passed in to a PATCH method will be updated with
-        what you
-
-        request, while any fields not specified in the JSON will be left alone.
-      parameters:
-        - name: token
-          in: query
-          required: false
-          type: string
-        - name: body
-          in: body
-          schema:
-            properties:
-              id:
-                type: string
-            type: object
-            example:
-              id: JJFx6Gku71rj
-        - name: Accept
-          in: header
-          required: false
-          type: string
-        - name: Content-Type
-          in: header
-          required: false
-          type: string
-      responses:
-        '200':
-          description: ''
-          schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              program:
-                type: object
-                properties:
-                  name:
-                    type: string
-                  triggers:
-                    type: array
-                    items:
-                      type: integer
-                  actions:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        type:
-                          type: string
-                        currency:
-                          type: string
-                        amount:
-                          type: integer
-              orderId:
-                type: string
-              userId:
-                type: string
-          examples:
-            application/json:
-              id: JJFx6Gku71rj
-              createdAt: '2016-04-15T04:54:40.038159Z'
-              updatedAt: '2016-04-15T04:54:41.050365077Z'
-              program:
-                name: Sample Program
-                triggers:
-                  - 0
-                actions:
-                  - type: credit
-                    currency: points
-                    amount: 1
-              orderId: orderId
-              userId: w4HZNvlwsQ2nO
-    delete:
-      operationId: DELETE_referrer-id
-      tags:
-        - Referrer
-      description: >-
-        Deleting a Referrer is as simple as passing its ID to the Referrer
-        endpoint using
-
-        the HTTP Delete method. You will not receive a response past the normal
-        HTTP
-
-        200.
-      responses:
-        '200':
-          description: ''
-    post:
-      operationId: POST_referrer-id
-      tags:
-        - Referrer
-      description: >-
-        Basic Referrer calls are keyed upon the unique ID of the Referrer.  As
-        with all
-
-        calls, it also requires an access key included with the request.
+        Entirely replaces the given Collection with what is passed.
+        Any unpassed parameters will be blanked.
       parameters:
         - name: body
           in: body
           schema:
-            $ref: '#/definitions/CreatingaReferrerrequest'
+            $ref: '#/definitions/Collection'
       responses:
         '200':
-          description: ''
+          description: 'Everything is OK.'
           schema:
-            $ref: '#/definitions/CreatingaReferrerresponse'
-    get:
-      operationId: GET_referrer-id
-      tags:
-        - Referrer
-      description: >-
-        Basic Referrer calls are keyed upon the unique ID of the Referrer.  As
-        with all
-
-        calls, it also requires an access key included with the request.
-      parameters:
-        - name: token
-          in: query
-          required: false
-          type: string
-        - name: Accept
-          in: header
-          required: false
-          type: string
-      responses:
-        '200':
-          description: ''
-          schema:
-            $ref: '#/definitions/GetaReferrerresponse'
-          examples:
-            application/json:
-              id: JJFx6Gku71rj
-              createdAt: '2016-04-15T04:54:40.038159Z'
-              updatedAt: '2016-04-15T04:54:40.038159Z'
-              program:
-                name: Sample Program
-                triggers:
-                  - 0
-                actions:
-                  - type: credit
-                    currency: points
-                    amount: 1
-              orderId: orderId
-              userId: w4HZNvlwsQ2nO
-    put:
-      operationId: PUT_referrer-id
-      tags:
-        - Referrer
-      description: >-
-        The PUT method will allow you to replace a given ID's data in its
-        entirety.
-
-        Passing in valid Referrer JSON (see the POST method), will overwrite any
-        and all
-
-        data existing on that ID.
-      responses:
-        '200':
-          description: ''
+            $ref: '#/definitions/Collection'
   /collection:
     get:
       operationId: GET_collection
@@ -390,300 +109,47 @@
         '200':
           description: ''
           schema:
-            type: object
-            properties:
-              count:
-                type: integer
-              models:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    createdAt:
-                      type: string
-                    updatedAt:
-                      type: string
-                    slug:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-                    media:
-                      type: 'null'
-                    available:
-                      type: boolean
-                    availability:
-                      type: object
-                      properties:
-                        Active:
-                          type: boolean
-                        startDate:
-                          type: string
-                        endDate:
-                          type: string
-                    published:
-                      type: boolean
-                    preorder:
-                      type: boolean
-                    outOfStock:
-                      type: boolean
-                    productIds:
-                      type: 'null'
-                    variantIds:
-                      type: 'null'
-          examples:
-            application/json:
-              count: 128
-              models:
-                - id: OdSk6YrCZvDW
-                  createdAt: '2016-03-22T02:22:51.18972Z'
-                  updatedAt: '2016-04-15T04:53:54.142207Z'
-                  slug: such-tees-pack
-                  name: Such tees pack
-                  description: Much tees in one pack!
-                  media: null
-                  available: true
-                  availability:
-                    Active: false
-                    startDate: '0001-01-01T00:00:00Z'
-                    endDate: '0001-01-01T00:00:00Z'
-                  published: true
-                  preorder: false
-                  outOfStock: false
-                  productIds: null
-                  variantIds: null
+            $ref: '#/definitions/Collection'
     post:
       operationId: POST_collection
       parameters:
-        - name: token
-          in: query
-          type: string
         - name: body
           in: body
           schema:
-            type: object
-            properties:
-              slug:
-                type: string
-              name:
-                type: string
-              description:
-                type: string
-              available:
-                type: boolean
-              published:
-                type: boolean
-            example:
-              slug: such-tees-pack
-              name: Such tees pack
-              description: Much tees in one pack!
-              available: true
-              published: true
-        - name: Accept
-          in: header
-          type: string
-        - name: Content-Type
-          in: header
-          type: string
+            $ref: '#/definitions/Collection'
       responses:
         '201':
           description: ''
           schema:
-            type: object
-            properties:
-              id:
-                type: string
-              createdAt:
-                type: string
-              updatedAt:
-                type: string
-              slug:
-                type: string
-              name:
-                type: string
-              description:
-                type: string
-              media:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              available:
-                type: boolean
-              availability:
-                type: object
-                properties:
-                  Active:
-                    type: boolean
-                  startDate:
-                    type: string
-                  endDate:
-                    type: string
-              published:
-                type: boolean
-              preorder:
-                type: boolean
-              outOfStock:
-                type: boolean
-              productIds:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-              variantIds:
-                type: array
-                items:
-                  type: object
-                  properties: {}
-          examples:
-            application/json:
-              id: y7S2brvhljRQ
-              createdAt: '2016-04-15T04:54:11.715154793Z'
-              updatedAt: '2016-04-15T04:54:11.715154793Z'
-              slug: such-tees-pack
-              name: Such tees pack
-              description: Much tees in one pack!
-              media: []
-              available: true
-              availability:
-                Active: false
-                startDate: '0001-01-01T00:00:00Z'
-                endDate: '0001-01-01T00:00:00Z'
-              published: true
-              preorder: false
-              outOfStock: false
-              productIds: []
-              variantIds: []
+            $ref: '#/definitions/Collection'
 definitions:
-  CreateaCollectionrequest:
-    title: Create a Collection request
-    type: object
-    properties:
-      slug:
-        type: string
-      name:
-        type: string
-      description:
-        type: string
-      available:
-        type: boolean
-      availability:
-        type: object
-      published:
-        type: boolean
-      preorder:
-        type: boolean
-      outOfStock:
-        type: boolean
-    required:
-      - slug
-      - name
-      - description
-      - available
-      - availability
-      - published
-      - preorder
-      - outOfStock
-  CreateaCollectionresponse:
-    title: Create a Collection response
+  Collection:
+    title: Collection
+    description: A Collection model, usable in POST, PUT, or PATCH requests,
+      and returned from GET, POST, PUT, and PATCH.
     type: object
     properties:
       id:
         type: string
+        description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
+        description: The time this Variant was created. Conforms to RFC3339.
       updatedAt:
         type: string
+        description: The time this Variant was last updated. Conforms to RFC3339.
       slug:
         type: string
+        description: The human-readable unique identifier for use in URLs.
       name:
         type: string
+        description: A short name for the collection.
       description:
         type: string
-      media:
-        type: string
-      available:
-        type: boolean
-      availability:
-        type: object
-      published:
-        type: boolean
-      preorder:
-        type: boolean
-      outOfStock:
-        type: boolean
+        description: The long-form description of what the collection is.
       productIds:
         type: string
+        description: A list of IDs relating to Products included in the Collection.
       variantIds:
         type: string
-      history:
-        type: string
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - slug
-      - name
-      - description
-      - media
-      - available
-      - availability
-      - published
-      - preorder
-      - outOfStock
-      - productIds
-      - variantIds
-      - history
-  GetaCollectionresponse:
-    title: Get a Collection response
-    type: object
-    properties:
-      id:
-        type: string
-      createdAt:
-        type: string
-      updatedAt:
-        type: string
-      slug:
-        type: string
-      name:
-        type: string
-      description:
-        type: string
-      media:
-        type: string
-      available:
-        type: boolean
-      availability:
-        type: object
-      published:
-        type: boolean
-      preorder:
-        type: boolean
-      outOfStock:
-        type: boolean
-      productIds:
-        type: string
-      variantIds:
-        type: string
-      history:
-        type: string
-    required:
-      - id
-      - createdAt
-      - updatedAt
-      - slug
-      - name
-      - description
-      - media
-      - available
-      - availability
-      - published
-      - preorder
-      - outOfStock
-      - productIds
-      - variantIds
-      - history
+        description: A list of IDs relating to Variants include in the Collection.
