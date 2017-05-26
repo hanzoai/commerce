@@ -22,6 +22,9 @@ type Document struct {
 	Description       string
 	EstimatedDelivery string
 
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
 	// Facets
 	PriceOption         float64 `search:"price,facet"`
 	ListPriceOption     float64 `search:"listPrice,facet"`
@@ -40,9 +43,6 @@ type Document struct {
 	AvailableOption search.Atom `search:"available,facet"`
 	HiddenOption    search.Atom `search:"hidden,facet"`
 	PreorderOption  search.Atom `search:"preorder,facet"`
-
-	CreatedAtOption time.Time `search:"createdAt,facet"`
-	UpdatedAtOption time.Time `search:"updatedAt,facet"`
 }
 
 func (d *Document) Id() string {
@@ -64,6 +64,9 @@ func (p Product) Document() mixin.Document {
 	doc.Name = p.Name
 	doc.Description = p.Description
 	doc.EstimatedDelivery = p.EstimatedDelivery
+
+	doc.CreatedAt = p.CreatedAt
+	doc.UpdatedAt = p.UpdatedAt
 
 	doc.PriceOption = p.Currency.ToFloat(p.Price)
 	doc.ListPriceOption = p.Currency.ToFloat(p.ListPrice)
@@ -89,9 +92,6 @@ func (p Product) Document() mixin.Document {
 	if p.Preorder {
 		doc.PreorderOption = "preorder"
 	}
-
-	doc.CreatedAtOption = p.CreatedAt
-	doc.UpdatedAtOption = p.UpdatedAt
 
 	return doc
 }
