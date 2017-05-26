@@ -29,6 +29,7 @@ type Option struct {
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
 	mixin.Model
+	mixin.DocumentSaveLoad
 
 	// Unique human readable id
 	Slug string `json:"slug"`
