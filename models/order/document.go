@@ -60,6 +60,9 @@ type Document struct {
 	FulfillmentService    string
 	FulfillmentCarrier    string
 
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
 	// Facets
 	ProductNameOption0 search.Atom `search:"productName,facet"`
 	ProductNameOption1 search.Atom `search:"productName,facet"`
@@ -101,9 +104,6 @@ type Document struct {
 	FulfillmentTrackingOption0 search.Atom `search:"fulfillmentTracking,facet"`
 	FulfillmentTrackingOption1 search.Atom `search:"fulfillmentTracking,facet"`
 	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
-
-	CreatedAtOption time.Time `search:"createdAt,facet"`
-	UpdatedAtOption time.Time `search:"updatedAt,facet"`
 }
 
 func (d *Document) Id() string {
@@ -161,6 +161,9 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
 
 	doc.Type = string(o.Type)
+
+	doc.CreatedAt = o.CreatedAt
+	doc.UpdatedAt = o.UpdatedAt
 
 	doc.CouponCodes = strings.Join(o.CouponCodes, " ")
 	doc.ReferrerId = o.ReferrerId
@@ -252,9 +255,6 @@ func (o Order) Document() mixin.Document {
 	if nTrackings > 2 {
 		doc.FulfillmentTrackingOption2 = search.Atom(o.Fulfillment.Trackings[2].Number)
 	}
-
-	doc.CreatedAtOption = o.CreatedAt
-	doc.UpdatedAtOption = o.UpdatedAt
 
 	return doc
 }
