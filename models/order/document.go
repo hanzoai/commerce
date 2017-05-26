@@ -47,11 +47,6 @@ type Document struct {
 
 	Type string
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	Currency    string
-	Total       float64
 	CouponCodes string
 
 	Status            string
@@ -87,16 +82,16 @@ type Document struct {
 	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddressPostalCode,facet"`
 	ShippingAddressCountryOption    search.Atom `search:"shippingAddressCountry,facet"`
 
-	CurrencyOption   search.Atom `search:"currency,facet"`
-	DiscountOption   float64     `search:"discount,facet"`
-	SubtotalOption   float64     `search:"subtotal,facet"`
-	ShippingOption   float64     `search:"shipping,facet"`
-	TaxOption        float64     `search:"tax,facet"`
-	AdjustmentOption float64     `search:"adjustment,facet"`
-	TotalOption      float64     `search:"total,facet"`
-	PaidOption       float64     `search:"paid,facet"`
-	RefundedOption   float64     `search:"refunded,facet"`
+	DiscountOption   float64 `search:"discount,facet"`
+	SubtotalOption   float64 `search:"subtotal,facet"`
+	ShippingOption   float64 `search:"shipping,facet"`
+	TaxOption        float64 `search:"tax,facet"`
+	AdjustmentOption float64 `search:"adjustment,facet"`
+	TotalOption      float64 `search:"total,facet"`
+	PaidOption       float64 `search:"paid,facet"`
+	RefundedOption   float64 `search:"refunded,facet"`
 
+	TypeOption        search.Atom `search:"type,facet"`
 	CouponCodeOption0 search.Atom `search:"couponCode,facet"`
 
 	StatusOption            search.Atom `search:"status,facet"`
@@ -106,6 +101,9 @@ type Document struct {
 	FulfillmentTrackingOption0 search.Atom `search:"fulfillmentTracking,facet"`
 	FulfillmentTrackingOption1 search.Atom `search:"fulfillmentTracking,facet"`
 	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
+
+	CreatedAtOption time.Time `search:"createdAt,facet"`
+	UpdatedAtOption time.Time `search:"updatedAt,facet"`
 }
 
 func (d *Document) Id() string {
@@ -164,11 +162,6 @@ func (o Order) Document() mixin.Document {
 
 	doc.Type = string(o.Type)
 
-	doc.CreatedAt = o.CreatedAt
-	doc.UpdatedAt = o.UpdatedAt
-
-	doc.Currency = string(o.Currency)
-	doc.Total = float64(o.Total)
 	doc.CouponCodes = strings.Join(o.CouponCodes, " ")
 	doc.ReferrerId = o.ReferrerId
 
@@ -229,7 +222,6 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressPostalCodeOption = search.Atom(doc.ShippingAddressPostalCode)
 	doc.ShippingAddressCountryOption = search.Atom(doc.ShippingAddressCountry)
 
-	doc.CurrencyOption = search.Atom(doc.Currency)
 	doc.DiscountOption = o.Currency.ToFloat(o.Discount)
 	doc.SubtotalOption = o.Currency.ToFloat(o.Subtotal)
 	doc.ShippingOption = o.Currency.ToFloat(o.Shipping)
@@ -238,6 +230,8 @@ func (o Order) Document() mixin.Document {
 	doc.TotalOption = o.Currency.ToFloat(o.Total)
 	doc.PaidOption = o.Currency.ToFloat(o.Paid)
 	doc.RefundedOption = o.Currency.ToFloat(o.Refunded)
+
+	doc.TypeOption = search.Atom(o.Type)
 
 	nCoupons := len(o.CouponCodes)
 	if nCoupons > 0 {
@@ -258,6 +252,9 @@ func (o Order) Document() mixin.Document {
 	if nTrackings > 2 {
 		doc.FulfillmentTrackingOption2 = search.Atom(o.Fulfillment.Trackings[2].Number)
 	}
+
+	doc.CreatedAtOption = o.CreatedAt
+	doc.UpdatedAtOption = o.UpdatedAt
 
 	return doc
 }
