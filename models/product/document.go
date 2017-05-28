@@ -52,9 +52,9 @@ type Document struct {
 	WeightOption     float64     `search:"weight,facet"`
 	WeightUnitOption search.Atom `search:"weightUnit,facet"`
 
-	DimensionsLengthOption float64     `search:"dimensions.length,facet"`
-	DimensionsWidthOption  float64     `search:"dimensions.width,facet"`
-	DimensionsHeightOption float64     `search:"dimensions.height,facet"`
+	DimensionsLengthOption float64     `search:"dimensionsLength,facet"`
+	DimensionsWidthOption  float64     `search:"dimensionsWidth,facet"`
+	DimensionsHeightOption float64     `search:"dimensionsHeight,facet"`
 	DimensionsUnitOption   search.Atom `search:"dimensionsUnit,facet"`
 
 	AvailableOption search.Atom `search:"available,facet"`
