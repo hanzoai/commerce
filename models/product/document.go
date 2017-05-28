@@ -14,10 +14,27 @@ type Document struct {
 	// Special Kind Option
 	Kind search.Atom `search:",facet"`
 
-	Id_               string
-	Slug              string
-	SKU               string
-	UPC               string
+	Id_  string
+	Slug string
+	SKU  string
+	UPC  string
+
+	Currency      string
+	Price         float64
+	ListPrice     float64
+	InventoryCost float64
+
+	Shipping  float64
+	Inventory float64
+
+	Weight     float64
+	WeightUnit string
+
+	DimensionsLength float64
+	DimensionsWidth  float64
+	DimensionsHeight float64
+	DimensionsUnit   string
+
 	Name              string
 	Description       string
 	EstimatedDelivery string
@@ -35,10 +52,10 @@ type Document struct {
 	WeightOption     float64     `search:"weight,facet"`
 	WeightUnitOption search.Atom `search:"weightUnit,facet"`
 
-	DimensionsLengthOption float64     `search:"dimensionLength,facet"`
-	DimensionsWidthOption  float64     `search:"dimensionWidth,facet"`
-	DimensionsHeightOption float64     `search:"dimensionHeight,facet"`
-	DimensionUnitsOption   search.Atom `search:"dimensionUnits,facet"`
+	DimensionsLengthOption float64     `search:"dimensions.length,facet"`
+	DimensionsWidthOption  float64     `search:"dimensions.width,facet"`
+	DimensionsHeightOption float64     `search:"dimensions.height,facet"`
+	DimensionsUnitOption   search.Atom `search:"dimensionsUnit,facet"`
 
 	AvailableOption search.Atom `search:"available,facet"`
 	HiddenOption    search.Atom `search:"hidden,facet"`
@@ -61,6 +78,23 @@ func (p Product) Document() mixin.Document {
 	doc.Slug = p.Slug
 	doc.SKU = p.SKU
 	doc.UPC = p.UPC
+
+	doc.Currency = string(p.Currency)
+	doc.Price = float64(p.Price)
+	doc.ListPrice = float64(p.ListPrice)
+	doc.InventoryCost = float64(p.InventoryCost)
+
+	doc.Shipping = float64(p.Shipping)
+	doc.Inventory = float64(p.Inventory)
+
+	doc.Weight = float64(p.Weight)
+	doc.WeightUnit = string(p.WeightUnit)
+
+	doc.DimensionsLength = float64(p.Dimensions.Length)
+	doc.DimensionsWidth = float64(p.Dimensions.Width)
+	doc.DimensionsHeight = float64(p.Dimensions.Height)
+	doc.DimensionsUnit = string(p.DimensionsUnit)
+
 	doc.Name = p.Name
 	doc.Description = p.Description
 	doc.EstimatedDelivery = p.EstimatedDelivery
@@ -79,7 +113,7 @@ func (p Product) Document() mixin.Document {
 	doc.DimensionsLengthOption = p.Dimensions.Length
 	doc.DimensionsWidthOption = p.Dimensions.Width
 	doc.DimensionsHeightOption = p.Dimensions.Height
-	doc.DimensionUnitsOption = search.Atom(p.DimensionUnits)
+	doc.DimensionsUnitOption = search.Atom(p.DimensionsUnit)
 
 	if p.Available {
 		doc.AvailableOption = "available"
