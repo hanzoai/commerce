@@ -63,26 +63,26 @@ type Document struct {
 	UpdatedAt time.Time
 
 	// Facets
-	ProductNameOption0 search.Atom `search:"product.name,facet"`
-	ProductNameOption1 search.Atom `search:"product.name,facet"`
-	ProductNameOption2 search.Atom `search:"product.name,facet"`
-	ProductNameOption3 search.Atom `search:"product.name,facet"`
-	ProductNameOption4 search.Atom `search:"product.name,facet"`
-	ProductNameOption5 search.Atom `search:"product.name,facet"`
-	ProductNameOption6 search.Atom `search:"product.name,facet"`
-	ProductNameOption7 search.Atom `search:"product.name,facet"`
-	ProductNameOption8 search.Atom `search:"product.name,facet"`
-	ProductNameOption9 search.Atom `search:"product.name,facet"`
+	ProductNameOption0 search.Atom `search:"productName,facet"`
+	ProductNameOption1 search.Atom `search:"productName,facet"`
+	ProductNameOption2 search.Atom `search:"productName,facet"`
+	ProductNameOption3 search.Atom `search:"productName,facet"`
+	ProductNameOption4 search.Atom `search:"productName,facet"`
+	ProductNameOption5 search.Atom `search:"productName,facet"`
+	ProductNameOption6 search.Atom `search:"productName,facet"`
+	ProductNameOption7 search.Atom `search:"productName,facet"`
+	ProductNameOption8 search.Atom `search:"productName,facet"`
+	ProductNameOption9 search.Atom `search:"productName,facet"`
 
-	BillingAddressCityOption       search.Atom `search:"billingAddress.city,facet"`
-	BillingAddressStateOption      search.Atom `search:"billingAddress.state,facet"`
-	BillingAddressPostalCodeOption search.Atom `search:"billingAddress.postalCode,facet"`
-	BillingAddressCountryOption    search.Atom `search:"billingAddress.country,facet"`
+	BillingAddressCityOption       search.Atom `search:"billingAddressCity,facet"`
+	BillingAddressStateOption      search.Atom `search:"billingAddressState,facet"`
+	BillingAddressPostalCodeOption search.Atom `search:"billingAddressPostalCode,facet"`
+	BillingAddressCountryOption    search.Atom `search:"billingAddressCountry,facet"`
 
-	ShippingAddressCityOption       search.Atom `search:"shippingAddress.city,facet"`
-	ShippingAddressStateOption      search.Atom `search:"shippingAddress.state,facet"`
-	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddress.postalCode,facet"`
-	ShippingAddressCountryOption    search.Atom `search:"shippingAddress.country,facet"`
+	ShippingAddressCityOption       search.Atom `search:"shippingAddressCity,facet"`
+	ShippingAddressStateOption      search.Atom `search:"shippingAddressState,facet"`
+	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddressPostalCode,facet"`
+	ShippingAddressCountryOption    search.Atom `search:"shippingAddressCountry,facet"`
 
 	DiscountOption   float64 `search:"discount,facet"`
 	SubtotalOption   float64 `search:"subtotal,facet"`
@@ -102,9 +102,9 @@ type Document struct {
 	PreorderOption          search.Atom `search:"preorder,facet"`
 	ConfirmedOption         search.Atom `search:"confirmed,facet"`
 
-	FulfillmentTrackingOption0 search.Atom `search:"fulfillment.tracking,facet"`
-	FulfillmentTrackingOption1 search.Atom `search:"fulfillment.tracking,facet"`
-	FulfillmentTrackingOption2 search.Atom `search:"fulfillment.tracking,facet"`
+	FulfillmentTrackingOption0 search.Atom `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption1 search.Atom `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
 }
 
 func (d *Document) Id() string {
