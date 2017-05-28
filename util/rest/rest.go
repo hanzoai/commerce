@@ -499,6 +499,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 				Value: search.Atom(r.Kind),
 			},
 		},
+		CountAccuracy: 10000,
 	})
 	t.Next(entity.Context())
 	count := t.Count()
