@@ -20,6 +20,7 @@ type Document struct {
 	Number     float64
 	UserId     string
 	StoreId    string
+	CampaignId string
 	CartId     string
 	ReferrerId string
 
@@ -52,8 +53,6 @@ type Document struct {
 	Status            string
 	PaymentStatus     string
 	FulfillmentStatus string
-	Preorder          string
-	Confirmed         string
 
 	FulfillmentTracking   string
 	FulfillmentExternalId string
@@ -64,26 +63,26 @@ type Document struct {
 	UpdatedAt time.Time
 
 	// Facets
-	ProductNameOption0 search.Atom `search:"productName,facet"`
-	ProductNameOption1 search.Atom `search:"productName,facet"`
-	ProductNameOption2 search.Atom `search:"productName,facet"`
-	ProductNameOption3 search.Atom `search:"productName,facet"`
-	ProductNameOption4 search.Atom `search:"productName,facet"`
-	ProductNameOption5 search.Atom `search:"productName,facet"`
-	ProductNameOption6 search.Atom `search:"productName,facet"`
-	ProductNameOption7 search.Atom `search:"productName,facet"`
-	ProductNameOption8 search.Atom `search:"productName,facet"`
-	ProductNameOption9 search.Atom `search:"productName,facet"`
+	ProductNameOption0 search.Atom `search:"product.name,facet"`
+	ProductNameOption1 search.Atom `search:"product.name,facet"`
+	ProductNameOption2 search.Atom `search:"product.name,facet"`
+	ProductNameOption3 search.Atom `search:"product.name,facet"`
+	ProductNameOption4 search.Atom `search:"product.name,facet"`
+	ProductNameOption5 search.Atom `search:"product.name,facet"`
+	ProductNameOption6 search.Atom `search:"product.name,facet"`
+	ProductNameOption7 search.Atom `search:"product.name,facet"`
+	ProductNameOption8 search.Atom `search:"product.name,facet"`
+	ProductNameOption9 search.Atom `search:"product.name,facet"`
 
-	BillingAddressCityOption       search.Atom `search:"billingAddressCity,facet"`
-	BillingAddressStateOption      search.Atom `search:"billingAddressState,facet"`
-	BillingAddressPostalCodeOption search.Atom `search:"billingAddressPostalCode,facet"`
-	BillingAddressCountryOption    search.Atom `search:"billingAddressCountry,facet"`
+	BillingAddressCityOption       search.Atom `search:"billingAddress.city,facet"`
+	BillingAddressStateOption      search.Atom `search:"billingAddress.state,facet"`
+	BillingAddressPostalCodeOption search.Atom `search:"billingAddress.postalCode,facet"`
+	BillingAddressCountryOption    search.Atom `search:"billingAddress.country,facet"`
 
-	ShippingAddressCityOption       search.Atom `search:"shippingAddressCity,facet"`
-	ShippingAddressStateOption      search.Atom `search:"shippingAddressState,facet"`
-	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddressPostalCode,facet"`
-	ShippingAddressCountryOption    search.Atom `search:"shippingAddressCountry,facet"`
+	ShippingAddressCityOption       search.Atom `search:"shippingAddress.city,facet"`
+	ShippingAddressStateOption      search.Atom `search:"shippingAddress.state,facet"`
+	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddress.postalCode,facet"`
+	ShippingAddressCountryOption    search.Atom `search:"shippingAddress.country,facet"`
 
 	DiscountOption   float64 `search:"discount,facet"`
 	SubtotalOption   float64 `search:"subtotal,facet"`
@@ -100,10 +99,12 @@ type Document struct {
 	StatusOption            search.Atom `search:"status,facet"`
 	PaymentStatusOption     search.Atom `search:"paymentStatus,facet"`
 	FulfillmentStatusOption search.Atom `search:"fulfillmentStatus,facet"`
+	PreorderOption          search.Atom `search:"preorder,facet"`
+	ConfirmedOption         search.Atom `search:"confirmed,facet"`
 
-	FulfillmentTrackingOption0 search.Atom `search:"fulfillmentTracking,facet"`
-	FulfillmentTrackingOption1 search.Atom `search:"fulfillmentTracking,facet"`
-	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption0 search.Atom `search:"fulfillment.tracking,facet"`
+	FulfillmentTrackingOption1 search.Atom `search:"fulfillment.tracking,facet"`
+	FulfillmentTrackingOption2 search.Atom `search:"fulfillment.tracking,facet"`
 }
 
 func (d *Document) Id() string {
@@ -135,6 +136,7 @@ func (o Order) Document() mixin.Document {
 	doc.Number = float64(o.NumberFromId())
 	doc.UserId = o.UserId
 	doc.StoreId = o.StoreId
+	doc.CampaignId = o.CampaignId
 	doc.CartId = o.CartId
 	doc.ReferrerId = o.ReferrerId
 
@@ -171,13 +173,6 @@ func (o Order) Document() mixin.Document {
 	doc.Status = string(o.Status)
 	doc.PaymentStatus = string(o.PaymentStatus)
 	doc.FulfillmentStatus = string(o.Fulfillment.Status)
-	if o.Preorder {
-		doc.Preorder = "preorder"
-	}
-	if !o.Unconfirmed {
-		doc.Confirmed = "confirmed"
-	}
-
 	doc.FulfillmentTracking = strings.Join(trackings, " ")
 	doc.FulfillmentExternalId = o.Fulfillment.ExternalId
 	doc.FulfillmentService = o.Fulfillment.Service
@@ -244,6 +239,12 @@ func (o Order) Document() mixin.Document {
 	doc.StatusOption = search.Atom(doc.Status)
 	doc.PaymentStatusOption = search.Atom(doc.PaymentStatus)
 	doc.FulfillmentStatusOption = search.Atom(doc.FulfillmentStatus)
+	if o.Preorder {
+		doc.PreorderOption = "preorder"
+	}
+	if !o.Unconfirmed {
+		doc.ConfirmedOption = "confirmed"
+	}
 
 	nTrackings := len(o.Fulfillment.Trackings)
 	if nTrackings > 0 {
