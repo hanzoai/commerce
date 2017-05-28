@@ -1,5 +1,5 @@
 github.com/Machiel/slugify master
-github.com/cenkalti/backoff master
+github.com/cenkalti/backoff b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
 github.com/davidtai/goauth2old/appengine/serviceaccount master
@@ -33,5 +33,6 @@ github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
 golang.org/x/tools/cmd/cover master
+golang.org/x/text/encoding master
 gopkg.in/yaml.v2
 
