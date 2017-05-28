@@ -49,7 +49,7 @@ type Product struct {
 	Weight         weight.Mass     `json:"weight"`
 	WeightUnit     weight.Unit     `json:"weightUnit"`
 	Dimensions     dimensions.Size `json:"dimensions"`
-	DimensionUnits dimensions.Unit `json:"dimensionsUnit"`
+	DimensionsUnit dimensions.Unit `json:"dimensionsUnit"`
 
 	Taxable bool `json:"taxable"`
 
