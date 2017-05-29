@@ -74,6 +74,37 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/User'
+  /user:
+    post:
+      description: >-
+        Creates a new user.
+      operationId: post_User
+      parameters:
+        - name: body
+          in: body
+          schema:
+            $ref: '#/definitions/User'
+      responses:
+        '201':
+          description: 'Everything is ok!'
+          schema:
+            $ref: '#/definitions/User'
+    get:
+      description: >-
+        Returns a list of all available users.
+      operationId: get_User
+      parameters:
+        - name: token
+          in: query
+          type: string
+        - name: accept
+          in: header
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/UserArray'
 definitions:
   User:
     title: User
@@ -109,3 +140,9 @@ definitions:
       email:
         type: string
         description: The address the user can be reached at via email.
+  UserArray:
+    title: UserArray
+    description: An array of Users
+    type: array
+    items:
+      $ref: '#/definitions/User'
