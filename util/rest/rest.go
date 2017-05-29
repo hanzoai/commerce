@@ -491,18 +491,20 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		return
 	}
 
-	t = index.Search(entity.Context(), qStr, &search.SearchOptions{
-		IDsOnly: true,
-		Refinements: []search.Facet{
-			search.Facet{
-				Name:  "Kind",
-				Value: search.Atom(r.Kind),
-			},
-		},
-		// CountAccuracy: 10000,
-	})
-	t.Next(entity.Context())
-	count := t.Count()
+	// Ignore this for now, use more accurate Kind facet count
+	// t = index.Search(entity.Context(), qStr, &search.SearchOptions{
+	// 	IDsOnly: true,
+	// 	Refinements: []search.Facet{
+	// 		search.Facet{
+	// 			Name:  "Kind",
+	// 			Value: search.Atom(r.Kind),
+	// 		},
+	// 	},
+	// 	// CountAccuracy: 10000,
+	// })
+	// t.Next(entity.Context())
+	// count := t.Count()
+	count := 0
 
 	entities := r.newEntitySlice(len(keys), len(keys))
 	db := entity.Datastore()
@@ -525,6 +527,10 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 	for i, facet := range facets {
 		log.Error("Facet... %v", facet, c)
 		for j, facetResult := range facet {
+			if facetResult.Name == "Kind" {
+				count = facetResult.Count
+			}
+
 			if r, ok := facetResult.Value.(search.Range); ok {
 				s := r.Start
 				if math.IsInf(s, -1) {
