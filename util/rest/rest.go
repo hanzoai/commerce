@@ -68,7 +68,7 @@ type Pagination struct {
 	Display string                 `json:"display,omitempty"`
 	Count   int                    `json:"count"`
 	Models  interface{}            `json:"models"`
-	Options [][]search.FacetResult `json:"options"`
+	Facets  [][]search.FacetResult `json:"facets"`
 }
 
 func (r *Rest) Init(prefix string) {
@@ -525,10 +525,18 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 	for i, facet := range facets {
 		log.Error("Facet... %v", facet, c)
 		for j, facetResult := range facet {
-			if _, ok := facetResult.Value.(search.Range); ok {
+			if r, ok := facetResult.Value.(search.Range); ok {
+				s := r.Start
+				if math.IsInf(s, -1) {
+					s = -math.MaxFloat64
+				}
+				e := r.End
+				if math.IsInf(e, 1) {
+					e = math.MaxFloat64
+				}
 				facets[i][j].Value = search.Range{
-					Start: -math.MaxFloat64,
-					End:   math.MaxFloat64,
+					Start: s,
+					End:   e,
 				}
 			}
 		}
@@ -539,7 +547,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 		Display: displayStr,
 		Models:  entities,
 		Count:   count,
-		Options: facets,
+		Facets:  facets,
 	})
 }
 
