@@ -242,6 +242,85 @@ paths:
           description: ''
           schema:
             $ref: '#/definitions/Referral'
+  '/referral/{id}':
+    parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+    delete:
+      operationId: DELETE_referral-id
+      tags:
+        - Referral
+      description: >-
+        Deletes the requested Referral.  Cannot be undone.
+      responses:
+        '204':
+          description: ''
+    get:
+      operationId: GET_referral-id
+      tags:
+        - Referral
+      description: >-
+        Gets the requested referral.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: Accept
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Referrer'
+    patch:
+      operationId: PATCH_referral-id
+      tags:
+        - Referral
+      description: >-
+        Replaces the Referral piecemeal. Any fields not included are ignored.
+      parameters:
+        - name: token
+          in: query
+          required: false
+          type: string
+        - name: body
+          in: body
+          schema:
+            properties:
+              id:
+                type: string
+            type: object
+            example:
+              id: OxslNprfZvDW
+        - name: Accept
+          in: header
+          required: false
+          type: string
+        - name: Content-Type
+          in: header
+          required: false
+          type: string
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Referrer'
+    put:
+      operationId: PUT_referral-id
+      tags:
+        - Referral
+      description: >-
+        Replaces the Referral wholly. Any fields not included will be blanked.
+      responses:
+        '200':
+          description: ''
+          schema:
+            $ref: '#/definitions/Referrer'
 definitions:
   Referrer:
     title: Referrer
@@ -274,10 +353,10 @@ definitions:
         description: The hanzo-assigned guid to identify this item.
       createdAt:
         type: string
-        description: The time this Referrer was created. Conforms to RFC3339.
+        description: The time this Referral was created. Conforms to RFC3339.
       updatedAt:
         type: string
-        description: The time this Referrer was last updated. Conforms to RFC3339.
+        description: The time this Referral was last updated. Conforms to RFC3339.
       userId:
         type: string
         description: The ID denoting the user account of this referral.
