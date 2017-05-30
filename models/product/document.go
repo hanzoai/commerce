@@ -80,9 +80,9 @@ func (p Product) Document() mixin.Document {
 	doc.UPC = p.UPC
 
 	doc.Currency = string(p.Currency)
-	doc.Price = float64(p.Price)
-	doc.ListPrice = float64(p.ListPrice)
-	doc.InventoryCost = float64(p.InventoryCost)
+	doc.Price = p.Currency.ToFloat(p.Price)
+	doc.ListPrice = p.Currency.ToFloat(p.ListPrice)
+	doc.InventoryCost = p.Currency.ToFloat(p.InventoryCost)
 
 	doc.Shipping = float64(p.Shipping)
 	doc.Inventory = float64(p.Inventory)
@@ -102,9 +102,9 @@ func (p Product) Document() mixin.Document {
 	doc.CreatedAt = p.CreatedAt
 	doc.UpdatedAt = p.UpdatedAt
 
-	doc.PriceOption = p.Currency.ToFloat(p.Price)
-	doc.ListPriceOption = p.Currency.ToFloat(p.ListPrice)
-	doc.InventoryCostOption = p.Currency.ToFloat(p.InventoryCost)
+	doc.PriceOption = float64(p.Price)
+	doc.ListPriceOption = float64(p.ListPrice)
+	doc.InventoryCostOption = float64(p.InventoryCost)
 
 	doc.InventoryOption = float64(p.Inventory)
 	doc.WeightOption = float64(p.Weight)
