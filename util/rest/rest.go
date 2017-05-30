@@ -71,6 +71,25 @@ type Pagination struct {
 	Facets  [][]search.FacetResult `json:"facets"`
 }
 
+// These 3 facet structs are used for deserialization
+type StringFacet struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type RangeFacet struct {
+	Name  string `json:"name"`
+	Value struct {
+		Start float64 `json:"start"`
+		End   float64 `json:"end"`
+	} `json:"value"`
+}
+
+type Facets struct {
+	StringFacets []StringFacet `json:"string"`
+	RangeFacets  []RangeFacet  `json:"range"`
+}
+
 func (r *Rest) Init(prefix string) {
 	r.Prefix = prefix
 	r.routes = make(routeMap)
@@ -354,7 +373,8 @@ func (r Rest) list(c *gin.Context) {
 
 	if _, ok := entity.(mixin.Searchable); ok {
 		qStr := query.Get("q")
-		r.listSearch(c, entity, qStr, pageStr, displayStr, limitStr, sortField)
+		fStr := query.Get("facets")
+		r.listSearch(c, entity, qStr, fStr, pageStr, displayStr, limitStr, sortField)
 	} else {
 		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
 	}
@@ -412,7 +432,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 	})
 }
 
-func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, displayStr, limitStr, sortField string) {
+func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageStr, displayStr, limitStr, sortField string) {
 	var display int
 	var err error
 
@@ -469,6 +489,29 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, pageStr, dis
 			Name:  "Kind",
 			Value: search.Atom(r.Kind),
 		},
+	}
+
+	if fStr != "" {
+		f := Facets{}
+		if err := json.DecodeBytes([]byte(fStr), &f); err != nil {
+			log.Warn("Unable to decode: %v", err, c)
+		} else {
+			for _, facet := range f.StringFacets {
+				opts.Refinements = append(opts.Refinements, search.Facet{
+					Name:  facet.Name,
+					Value: search.Atom(facet.Value),
+				})
+			}
+			for _, facet := range f.RangeFacets {
+				opts.Refinements = append(opts.Refinements, search.Facet{
+					Name: facet.Name,
+					Value: search.Range{
+						Start: facet.Value.Start,
+						End:   facet.Value.End,
+					},
+				})
+			}
+		}
 	}
 
 	t := index.Search(entity.Context(), qStr, &opts)
