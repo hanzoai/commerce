@@ -46,6 +46,15 @@ type Document struct {
 	ShippingAddressCountry     string
 	ShippingAddressPostalCode  string
 
+	Discount   float64
+	Subtotal   float64
+	Shipping   float64
+	Tax        float64
+	Adjustment float64
+	Total      float64
+	Paid       float64
+	Refunded   float64
+
 	Type string
 
 	CouponCodes string
@@ -162,6 +171,15 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressCountry = country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
 	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
 
+	doc.Discount = o.Currency.ToFloat(o.Discount)
+	doc.Subtotal = o.Currency.ToFloat(o.Subtotal)
+	doc.Shipping = o.Currency.ToFloat(o.Shipping)
+	doc.Tax = o.Currency.ToFloat(o.Tax)
+	doc.Adjustment = o.Currency.ToFloat(o.Adjustment)
+	doc.Total = o.Currency.ToFloat(o.Total)
+	doc.Paid = o.Currency.ToFloat(o.Paid)
+	doc.Refunded = o.Currency.ToFloat(o.Refunded)
+
 	doc.Type = string(o.Type)
 
 	doc.CreatedAt = o.CreatedAt
@@ -220,14 +238,14 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressPostalCodeOption = search.Atom(doc.ShippingAddressPostalCode)
 	doc.ShippingAddressCountryOption = search.Atom(doc.ShippingAddressCountry)
 
-	doc.DiscountOption = o.Currency.ToFloat(o.Discount)
-	doc.SubtotalOption = o.Currency.ToFloat(o.Subtotal)
-	doc.ShippingOption = o.Currency.ToFloat(o.Shipping)
-	doc.TaxOption = o.Currency.ToFloat(o.Tax)
-	doc.AdjustmentOption = o.Currency.ToFloat(o.Adjustment)
-	doc.TotalOption = o.Currency.ToFloat(o.Total)
-	doc.PaidOption = o.Currency.ToFloat(o.Paid)
-	doc.RefundedOption = o.Currency.ToFloat(o.Refunded)
+	doc.DiscountOption = float64(o.Discount)
+	doc.SubtotalOption = float64(o.Subtotal)
+	doc.ShippingOption = float64(o.Shipping)
+	doc.TaxOption = float64(o.Tax)
+	doc.AdjustmentOption = float64(o.Adjustment)
+	doc.TotalOption = float64(o.Total)
+	doc.PaidOption = float64(o.Paid)
+	doc.RefundedOption = float64(o.Refunded)
 
 	doc.TypeOption = search.Atom(o.Type)
 
