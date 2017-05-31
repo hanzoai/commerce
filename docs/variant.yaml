@@ -6,6 +6,10 @@ info:
     A Variant represents a specific kind of Product. Typically,
     they are used to represent a particular color, size, color/size
     combination, etc.
+
+    ## Notes
+    - Variants offer a way to organize products by SKUs
+    - Variant Ids / SKUs can be used interchangeably with Product Ids / Slugs
 host: api.hanzo.io
 schemes:
   - https
