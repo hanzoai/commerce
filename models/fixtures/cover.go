@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/util/log"
 )
@@ -18,6 +18,7 @@ var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "cover"
 	org.GetOrCreate("Name=", org.Name)
+	org.Currency = currency.USD
 
 	// Create admins
 	u := user.New(db)
