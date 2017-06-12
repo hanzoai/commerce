@@ -35,4 +35,3 @@ golang.org/x/crypto/bcrypt master
 golang.org/x/tools/cmd/cover master
 golang.org/x/text/encoding master
 gopkg.in/yaml.v2
-
