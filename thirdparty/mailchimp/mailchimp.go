@@ -154,6 +154,13 @@ func (api API) CreateStore(stor *store.Store) *Error {
 	})
 }
 
+func (api API) StoreExists(id string) *Error {
+	return wrapError(func() error {
+		_, err := api.client.GetStore(id, nil)
+		return err
+	})
+}
+
 func (api API) UpdateStore(stor *store.Store) *Error {
 	return wrapError(func() error {
 		req := &gochimp3.Store{
