@@ -15,7 +15,7 @@ var CelebCoins = New("celebcoins", func(c *gin.Context) *organization.Organizati
 
 	// Create organization
 	org := organization.New(db)
-	org.Name = ""
+	org.Name = "celebcoins"
 	org.GetOrCreate("Name=", org.Name)
 
 	// Create admins
@@ -26,7 +26,7 @@ var CelebCoins = New("celebcoins", func(c *gin.Context) *organization.Organizati
 	u.Put()
 
 	// Configure org
-	org.FullName = ""
+	org.FullName = "Celeb Coins"
 	org.AddOwner(u.Id())
 	org.Website = "http://celebcoins.com"
 	org.SecretKey = []byte("41l34vk2FmV5MLOFBF8htfC6DbynO8u3")
