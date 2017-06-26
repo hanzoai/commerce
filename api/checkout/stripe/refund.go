@@ -89,6 +89,13 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	ord.Paid = ord.Paid - refundAmount
 	usr := user.New(db)
 	usr.GetById(ord.UserId)
+
+	// Determine store to use
+	storeId := ord.StoreId
+	if storeId == "" {
+		storeId = org.DefaultStore
+	}
+
 	if ord.Total == ord.Refunded {
 		emails.SendFullRefundEmail(ctx, org, ord, usr, payments[0])
 
@@ -96,7 +103,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
 		// Delete refunded order in mailchimp
-		if err := client.DeleteOrder(org.DefaultStore, ord); err != nil {
+		if err := client.DeleteOrder(storeId, ord); err != nil {
 			log.Warn("Failed to delete renfuded Mailchimp order: %v", err, ctx)
 		}
 
