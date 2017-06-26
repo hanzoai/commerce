@@ -40,7 +40,10 @@ var _ = New("mailchimp-products",
 
 		client := mailchimp.New(db.Context, apiKey)
 		// Create order in mailchimp
-		if err := client.CreateProduct(defaultStore, prod); err != nil {
+		if err := client.CreateProduct("rdtXY3AUj3zbX", prod); err != nil {
+			log.Warn("Failed to create Mailchimp product: %v", err, db.Context)
+		}
+		if err := client.CreateProduct("petm7PEohWk8bm", prod); err != nil {
 			log.Warn("Failed to create Mailchimp product: %v", err, db.Context)
 		}
 	},
