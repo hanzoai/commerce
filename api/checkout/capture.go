@@ -18,7 +18,6 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/log"
@@ -195,33 +194,6 @@ func updateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 			if err := counter.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
 				log.Warn("Counter Error %s", err, ctx)
 			}
-		}
-	}
-}
-
-func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
-	// Save user as customer in Mailchimp if configured
-	if org.Mailchimp.APIKey != "" {
-		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
-
-		// Update cart
-		car := cart.New(ord.Db)
-
-		if ord.CartId != "" {
-			if err := car.GetById(ord.CartId); err != nil {
-				log.Warn("Unable to find cart: %v", err, ctx)
-			} else {
-				// Delete cart in mailchimp
-				if err := client.DeleteCart(org.DefaultStore, car); err != nil {
-					log.Warn("Failed to delete Mailchimp cart: %v", err, ctx)
-				}
-			}
-		}
-
-		// Create order in mailchimp
-		if err := client.CreateOrder(org.DefaultStore, ord); err != nil {
-			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
 		}
 	}
 }
