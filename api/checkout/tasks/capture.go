@@ -179,19 +179,25 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 		// Update cart
 		car := cart.New(ord.Db)
 
+		// Determine store to use
+		storeId := ord.StoreId
+		if storeId == "" {
+			storeId = org.DefaultStore
+		}
+
 		if ord.CartId != "" {
 			if err := car.GetById(ord.CartId); err != nil {
 				log.Warn("Unable to find cart: %v", err, ctx)
 			} else {
 				// Delete cart in mailchimp
-				if err := client.DeleteCart(org.DefaultStore, car); err != nil {
+				if err := client.DeleteCart(storeId, car); err != nil {
 					log.Warn("Failed to delete Mailchimp cart: %v", err, ctx)
 				}
 			}
 		}
 
 		// Create order in mailchimp
-		if err := client.CreateOrder(org.DefaultStore, ord); err != nil {
+		if err := client.CreateOrder(storeId, ord); err != nil {
 			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
 		}
 	}
