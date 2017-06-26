@@ -82,11 +82,18 @@ func Set(c *gin.Context) {
 		http.Render(c, 200, car)
 	}
 
+	org := middleware.GetOrganization(c)
+
+	// Determine store to use
+	storeId := car.StoreId
+	if storeId == "" {
+		storeId = org.DefaultStore
+	}
+
 	// Update Mailchimp cart
 	if car.UserId != "" || car.Email != "" {
-		org := middleware.GetOrganization(c)
 		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-		client.UpdateOrCreateCart(org.DefaultStore, car)
+		client.UpdateOrCreateCart(storeId, car)
 	}
 }
 
@@ -111,11 +118,18 @@ func Discard(c *gin.Context) {
 		http.Render(c, 200, CartResponse{Id: car.Id()})
 	}
 
+	org := middleware.GetOrganization(c)
+
+	// Determine store to use
+	storeId := car.StoreId
+	if storeId == "" {
+		storeId = org.DefaultStore
+	}
+
 	// Update Mailchimp cart
 	if car.UserId != "" || car.Email != "" {
-		org := middleware.GetOrganization(c)
 		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-		client.DeleteCart(org.DefaultStore, car)
+		client.DeleteCart(storeId, car)
 	}
 }
 
@@ -138,11 +152,18 @@ func create(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
+		org := middleware.GetOrganization(c)
+
+		// Determine store to use
+		storeId := car.StoreId
+		if storeId == "" {
+			storeId = org.DefaultStore
+		}
+
 		// Create Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			org := middleware.GetOrganization(c)
 			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-			client.CreateCart(org.DefaultStore, car)
+			client.CreateCart(storeId, car)
 		}
 
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+car.Id())
@@ -190,11 +211,18 @@ func update(r *rest.Rest) func(*gin.Context) {
 			r.Render(c, 200, car)
 		}
 
+		org := middleware.GetOrganization(c)
+
+		// Determine store to use
+		storeId := car.StoreId
+		if storeId == "" {
+			storeId = org.DefaultStore
+		}
+
 		// Update Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			org := middleware.GetOrganization(c)
 			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-			client.UpdateOrCreateCart(org.DefaultStore, car)
+			client.UpdateOrCreateCart(storeId, car)
 		}
 	}
 }
@@ -229,11 +257,18 @@ func patch(r *rest.Rest) func(*gin.Context) {
 			r.Render(c, 200, car)
 		}
 
+		org := middleware.GetOrganization(c)
+
+		// Determine store to use
+		storeId := car.StoreId
+		if storeId == "" {
+			storeId = org.DefaultStore
+		}
+
 		// Update Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			org := middleware.GetOrganization(c)
 			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-			client.UpdateOrCreateCart(org.DefaultStore, car)
+			client.UpdateOrCreateCart(storeId, car)
 		}
 	}
 }
