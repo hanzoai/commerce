@@ -30,6 +30,7 @@ type createReq struct {
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
 	Captcha         string `json:"g-recaptcha-response"`
+	StoreId         string `json:"storeId"`
 }
 
 type createRes struct {
@@ -154,6 +155,14 @@ func create(c *gin.Context) {
 
 	usr.Enabled = org.SignUpOptions.AccountsEnabledByDefault
 
+	// Determine store to use
+	storeId := req.StoreId
+	if storeId == "" {
+		storeId = org.DefaultStore
+	}
+
+	usr.StoreId = storeId
+
 	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
@@ -200,7 +209,7 @@ func create(c *gin.Context) {
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
 		// Create customer in mailchimp for this user
-		if err := client.CreateCustomer(org.DefaultStore, usr); err != nil {
+		if err := client.CreateCustomer(storeId, usr); err != nil {
 			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
 		}
 	}
