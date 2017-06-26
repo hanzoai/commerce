@@ -94,8 +94,14 @@ func patch(c *gin.Context) {
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
+		// Determine store to use
+		storeId := usr.StoreId
+		if storeId == "" {
+			storeId = org.DefaultStore
+		}
+
 		// Update customer in mailchimp for this user
-		if err := client.UpdateCustomer(org.DefaultStore, usr); err != nil {
+		if err := client.UpdateCustomer(storeId, usr); err != nil {
 			log.Warn("Failed to update Mailchimp customer: %v", err, ctx)
 		}
 
