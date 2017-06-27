@@ -67,7 +67,7 @@ var _ = New("mailchimp-orders",
 		// }
 
 		// Just get buyer off first payment
-		// if err := client.SubscribeCustomer(listId, pay.Buyer); err != nil {
+		// if err := client.SubscribeCustomer(listId, pay.Buyer, ""); err != nil {
 		// 	log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", pay.Buyer.Email, listId, err, db.Context)
 		// }
 	},
