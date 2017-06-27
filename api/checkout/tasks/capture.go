@@ -223,7 +223,7 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 		}
 
 		if err := client.SubscribeCustomer(stor.Mailchimp.ListId, buy, referralLink); err != nil {
-			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
+			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
 		}
 
 		// Create order in mailchimp
