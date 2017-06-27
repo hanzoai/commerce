@@ -200,18 +200,29 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 			}
 		}
 
+		stor := store.New(ord.Db)
+		stor.MustGetById(storeId)
+
 		// Subscribe user to list
 		buy := Buyer{
 			Email:     usr.Email,
 			FirstName: usr.FirstName,
 			LastName:  usr.LastName,
+			Phone:     usr.Phone,
 			Address:   ord.ShippingAddress,
 		}
 
-		stor := store.New(ord.Db)
-		stor.MustGetById(storeId)
+		referralLink := ""
 
-		if err := client.SubscribeCustomer(stor.Mailchimp.ListId, buy); err != nil {
+		if err := usr.LoadReferrals(); err != nil {
+			log.Warn("Failed to load referrals for user: %v", err, ctx)
+		}
+
+		if len(usr.Referrers) > 0 {
+			referralLink = stor.ReferralBaseUrl + usr.Referrers[0].Id()
+		}
+
+		if err := client.SubscribeCustomer(stor.Mailchimp.ListId, buy, referralLink); err != nil {
 			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
 		}
 
