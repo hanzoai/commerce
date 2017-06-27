@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
@@ -207,7 +208,10 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 			Address:   ord.ShippingAddress,
 		}
 
-		if err := client.SubscribeCustomer(storeId, buy); err != nil {
+		stor := store.New(ord.Db)
+		stor.MustGetById(storeId)
+
+		if err := client.SubscribeCustomer(stor.Mailchimp.ListId, buy); err != nil {
 			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
 		}
 
