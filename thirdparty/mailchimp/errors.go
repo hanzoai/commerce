@@ -4,7 +4,7 @@ import "github.com/zeekay/gochimp3"
 
 type Error struct {
 	Unknown   error
-	Mailchimp *gochimp3.APIError
+	Mailchimp error
 	Status    int
 }
 
@@ -26,7 +26,7 @@ func wrapError(fn func() error) *Error {
 
 	// Handle Mailchimp API Errors
 	if merr, ok := err.(*gochimp3.APIError); ok {
-		return &Error{Mailchimp: merr, Status: merr.Status}
+		return &Error{Mailchimp: err, Status: merr.Status}
 	}
 
 	// Handle any other errors
