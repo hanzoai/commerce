@@ -214,21 +214,28 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 
 		referralLink := ""
 
-		if err := usr.LoadReferrals(); err != nil {
+		referrers := make([]referrer.Referrer, 0)
+		if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
 			log.Warn("Failed to load referrals for user: %v", err, ctx)
 		}
 
-		if len(usr.Referrers) > 0 {
+		if len(referrers) > 0 {
 			referralLink = stor.ReferralBaseUrl + usr.Referrers[0].Id()
 		}
 
+		log.Warn("Referral Link: %v from %v", referralLink, usr.Referrers, ctx)
+
 		if err := client.SubscribeCustomer(stor.Mailchimp.ListId, buy, referralLink); err != nil {
-			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
+			log.Warn("Failed to create Mailchimp customer - status: %v", err.Status, ctx)
+			log.Warn("Failed to create Mailchimp customer - unknown error: %v", err.Unknown, ctx)
+			log.Warn("Failed to create Mailchimp customer - mailchimp error: %v", err.Mailchimp, ctx)
 		}
 
 		// Create order in mailchimp
 		if err := client.CreateOrder(storeId, ord); err != nil {
-			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
+			log.Warn("Failed to create Mailchimp order - status: %v", err.Status, ctx)
+			log.Warn("Failed to create Mailchimp order - unknown error: %v", err.Unknown, ctx)
+			log.Warn("Failed to create Mailchimp order - mailchimp error: %v", err.Mailchimp, ctx)
 		}
 	}
 }
