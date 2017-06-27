@@ -119,6 +119,16 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) *Error {
 			Client: client.Client{
 				Country: buy.Address.Country,
 			},
+			Metadata: Map{
+				"FNAME":    buy.FirstName,
+				"LNAME":    buy.LastName,
+				"ADDRESS1": buy.Address.Line1,
+				"ADDRESS2": buy.Address.Line2,
+				"CITY":     buy.Address.City,
+				"STATE":    buy.Address.State,
+				"POSTAL":   buy.Address.PostalCode,
+				"COUNTRY":  buy.Address.Country,
+			},
 		}
 		return api.Subscribe(ml, s)
 	})
