@@ -93,9 +93,10 @@ type Store struct {
 		PriceBookId string `json:"PriceBookId"`
 	} `json:"-"`
 
-	Email    string `json:"email,omitempty"`
-	Phone    string `json:"phone,omitempty"`
-	Timezone string `json:"timezone,omitempty`
+	Email           string `json:"email,omitempty"`
+	Phone           string `json:"phone,omitempty"`
+	Timezone        string `json:"timezone,omitempty"`
+	ReferralBaseUrl string `json:"referralBaseUrl,omitempty"`
 
 	Mailchimp struct {
 		ListId string `json:"listId"`
