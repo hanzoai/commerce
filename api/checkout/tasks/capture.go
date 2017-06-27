@@ -26,11 +26,12 @@ import (
 var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId string, ordId string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
+	org.MustGetById(orgId)
+
 	nsdb := datastore.New(org.Namespaced(ctx))
 	ord := order.New(nsdb)
 	usr := user.New(nsdb)
 
-	org.MustGetById(orgId)
 	ord.MustGetById(ordId)
 	usr.MustGetById(ord.UserId)
 
@@ -220,7 +221,7 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 		}
 
 		if len(referrers) > 0 {
-			referralLink = stor.ReferralBaseUrl + usr.Referrers[0].Id()
+			referralLink = stor.ReferralBaseUrl + referrers[0].Id_
 		}
 
 		log.Warn("Referral Link: %v from %v", referralLink, usr.Referrers, ctx)
