@@ -27,11 +27,14 @@ var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId
 	org := organization.New(db)
 	nsdb := datastore.New(org.Namespaced(ctx))
 	ord := order.New(nsdb)
+	usr := user.New(nsdb)
 
 	org.MustGetById(orgId)
 	ord.MustGetById(ordId)
+	usr.MustGetById(ord.UserId)
 
-	updateMailchimp(ctx, org, ord)
+	updateMailchimp(ctx, org, ord, usr)
+
 	// payments := make([]*payment.Payment, 0)
 	// if _, err := payment.Query(nsdb).Ancestor(ord.Key()).GetAll(payments); err != nil {
 	// 	log.Error("Unable to find payments associated with order '%s'", ord.Id())
@@ -170,7 +173,7 @@ func updateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 	}
 }
 
-func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
+func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
 		// Create new mailchimp client
@@ -194,6 +197,18 @@ func updateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 					log.Warn("Failed to delete Mailchimp cart: %v", err, ctx)
 				}
 			}
+		}
+
+		// Subscribe user to list
+		buy := Buyer{
+			Email:     usr.Email,
+			FirstName: usr.FirstName,
+			LastName:  usr.LastName,
+			Address:   ord.ShippingAddress,
+		}
+
+		if err := client.SubscribeCustomer(storeId, buy); err != nil {
+			log.Warn("Failed to create Mailchimp order: %v", err, ctx)
 		}
 
 		// Create order in mailchimp
