@@ -109,7 +109,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 	})
 }
 
-func (api API) SubscribeCustomer(listId string, buy Buyer) *Error {
+func (api API) SubscribeCustomer(listId string, buy Buyer, referralUrl string) *Error {
 	return wrapError(func() error {
 		ml := new(mailinglist.MailingList)
 		ml.Mailchimp.ListId = listId
@@ -128,6 +128,8 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) *Error {
 				"STATE":    buy.Address.State,
 				"POSTAL":   buy.Address.PostalCode,
 				"COUNTRY":  buy.Address.Country,
+				"PHONE":    buy.Phone,
+				"REFERRAL": referralUrl,
 			},
 		}
 		return api.Subscribe(ml, s)
