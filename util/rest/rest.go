@@ -456,6 +456,8 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 		},
 	}
 
+	opts.Limit = 100
+
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
 		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
