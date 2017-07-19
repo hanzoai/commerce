@@ -35,6 +35,15 @@ var mailchimpReserved = map[string]bool{
 }
 
 var invalidFieldNameRe = regexp.MustCompile("[ -]")
+var invalidNameChars = regexp.MustCompile(`[-_ ]`)
+var invalidNameMorpheme = regexp.MustCompile(`^f|^l|^full|name$`)
+
+func normalizeName(s string) string {
+	empty := []byte("")
+	b := invalidNameChars.ReplaceAll([]byte(s), empty)
+	b = invalidNameMorpheme.ReplaceAll(b, empty)
+	return string(b)
+}
 
 type Subscriber struct {
 	mixin.Model
@@ -56,6 +65,46 @@ func (s Subscriber) Md5() string {
 	h := md5.New()
 	io.WriteString(h, s.Email)
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (s Subscriber) Name() string {
+	firstName := ""
+	lastName := ""
+	fullName := ""
+
+	// Check metadata for name keys
+	for k := range s.Metadata {
+		k = normalizeName(k)
+		if v, ok := s.Metadata[k].(string); ok {
+			if k == "first" {
+				firstName = v
+			}
+			if k == "last" {
+				lastName = v
+			}
+			if k == "full" {
+				fullName = v
+			}
+
+		}
+	}
+
+	// Use full name if found
+	if fullName != "" {
+		return fullName
+	}
+
+	// Combine first/last into full name
+	parts := make([]string, 0)
+	if firstName != "" {
+		parts = append(parts, firstName)
+	}
+
+	if lastName != "" {
+		parts = append(parts, lastName)
+	}
+
+	return strings.Join(parts, " ")
 }
 
 func (s Subscriber) MergeFields() map[string]string {
