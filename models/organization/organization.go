@@ -66,12 +66,17 @@ type EmailConfig struct {
 
 	// Per-email configuration
 	OrderConfirmation Email `json:"orderConfirmation"`
-	User              struct {
+
+	User struct {
 		Welcome           Email `json:"welcome`
 		EmailConfirmation Email `json:"emailConfirmation"`
 		EmailConfirmed    Email `json:"emailConfirmed"`
 		PasswordReset     Email `json:"PasswordReset"`
 	} `json:"user"`
+
+	Subscriber struct {
+		Welcome Email `json:"welcome`
+	} `json:"subscriber"`
 }
 
 type Organization struct {

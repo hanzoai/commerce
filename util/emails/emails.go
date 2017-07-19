@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
@@ -106,7 +107,28 @@ func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organizati
 	mandrill.SendTemplate(ctx, "user-email-confirmed", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendWelcomeEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
+func SendSubscriberWelcome(ctx appengine.Context, org *organization.Organization, s *subscriber.Subscriber) {
+	conf := org.Email.Subscriber.Welcome.Config(org)
+	if !MandrillEnabled(ctx, org, conf) {
+		return
+	}
+
+	// From
+	fromName := conf.FromName
+	fromEmail := conf.FromEmail
+
+	// To
+	toEmail := s.Email
+	toName := s.Name()
+
+	// Subject
+	subject := conf.Subject
+
+	// Send Email
+	mandrill.SendTemplate(ctx, "subscriber-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, s.Metadata)
+}
+
+func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr *user.User) {
 	conf := org.Email.User.Welcome.Config(org)
 	if !MandrillEnabled(ctx, org, conf) {
 		return
@@ -134,7 +156,7 @@ func SendWelcomeEmail(ctx appengine.Context, org *organization.Organization, usr
 	}
 
 	// Send Email
-	mandrill.SendTemplate(ctx, "welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, "user-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {

@@ -200,7 +200,7 @@ func create(c *gin.Context) {
 		// Send welcome, email confirmation emails
 		ctx := middleware.GetAppEngine(c)
 		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
-		emails.SendWelcomeEmail(ctx, org, usr)
+		emails.SendUserWelcome(ctx, org, usr)
 	}
 
 	// Save user as customer in Mailchimp if configured
