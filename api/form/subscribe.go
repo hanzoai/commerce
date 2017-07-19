@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/counter"
+	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -55,6 +56,9 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	if ml.Mailchimp.Enabled {
 		mailchimp.Subscribe.Call(db.Context, ml.JSON(), s.JSON())
 	}
+
+	// Send welcome email
+	emails.SendSubscriberWelcome(ctx, org, s)
 
 	// Forward subscriber (if enabled)
 	forward(ctx, org, ml, s)
