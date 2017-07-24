@@ -22,17 +22,17 @@ deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/api \
 		  hanzo.io/dash
 
-gae_development = config/development/app.yaml \
+gae_development = config/development \
 				  config/development/dispatch.yaml \
 				  api/app.dev.yaml \
 				  dash/app.dev.yaml
 
-gae_staging = config/staging/app.yaml \
+gae_staging = config/staging \
 			  config/staging/dispatch.yaml \
 			  api/app.staging.yaml \
 			  dash/app.staging.yaml
 
-gae_production = config/production/app.yaml \
+gae_production = config/production \
 			  	 config/production/dispatch.yaml \
 				 api \
 				 dash
