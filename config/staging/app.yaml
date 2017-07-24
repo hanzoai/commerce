@@ -61,16 +61,6 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
-- url: /assets/css/(.*\.styl)
-  static_files: assets/css/\1
-  upload: assets/css/(.*\.style)
-  mime_type: application/stylus
-
-- url: /assets/js/(.*\.coffee)
-  static_files: assets/js/\1
-  upload: assets/js/(.*\.coffee)
-  mime_type: application/coffee-script
-
 - url: /font/(.*\.woff)
   static_files: static/font/\1
   upload: static/font/(.*\.woff)
