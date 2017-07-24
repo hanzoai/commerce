@@ -27,16 +27,18 @@ gae_development = config/development/app.yaml \
 				  api/app.dev.yaml \
 				  dash/app.dev.yaml
 
-gae_sandbox = config/sandbox \
-			  api/app.sandbox.yaml
-
-gae_staging = config/staging \
+gae_staging = config/staging/app.yaml \
+			  config/staging/dispatch.yaml \
 			  api/app.staging.yaml \
 			  dash/app.staging.yaml
 
-gae_production = config/production \
+gae_production = config/production/app.yaml \
+			  	 config/production/dispatch.yaml \
 				 api \
 				 dash
+
+gae_sandbox = config/sandbox \
+			  api/app.sandbox.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
