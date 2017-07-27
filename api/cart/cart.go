@@ -154,6 +154,8 @@ func create(r *rest.Rest) func(*gin.Context) {
 
 		org := middleware.GetOrganization(c)
 
+		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+
 		// Determine store to use
 		storeId := car.StoreId
 		if storeId == "" {

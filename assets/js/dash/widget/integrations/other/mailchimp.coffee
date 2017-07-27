@@ -16,6 +16,7 @@ class MailchimpIntegrationForm extends Integration
   inputConfigs: [
     input('data.listId', 'List Id',  'required')
     input('data.apiKey', 'API Key',  'required')
+    input('data.checkoutUrl', 'Checkout URL',  'required')
   ]
 
 MailchimpIntegrationForm.register()

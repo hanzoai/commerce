@@ -91,8 +91,9 @@ type AnalyticsSentry struct {
 
 // Mailchimp settings
 type Mailchimp struct {
-	ListId string `json:"listId,omitempty"`
-	APIKey string `json:"apiKey,omitempty"`
+	ListId      string `json:"listId,omitempty"`
+	APIKey      string `json:"apiKey,omitempty"`
+	CheckoutUrl string `json:"checkoutUrl,omitempty"`
 }
 
 // Mandrill settings
