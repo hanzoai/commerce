@@ -84,6 +84,10 @@ func Set(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
+	if car.Mailchimp.CheckoutUrl == "" {
+		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+	}
+
 	// Determine store to use
 	storeId := car.StoreId
 	if storeId == "" {
@@ -154,7 +158,9 @@ func create(r *rest.Rest) func(*gin.Context) {
 
 		org := middleware.GetOrganization(c)
 
-		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		if car.Mailchimp.CheckoutUrl == "" {
+			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
 
 		// Determine store to use
 		storeId := car.StoreId
@@ -215,6 +221,10 @@ func update(r *rest.Rest) func(*gin.Context) {
 
 		org := middleware.GetOrganization(c)
 
+		if car.Mailchimp.CheckoutUrl == "" {
+			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
+
 		// Determine store to use
 		storeId := car.StoreId
 		if storeId == "" {
@@ -260,6 +270,10 @@ func patch(r *rest.Rest) func(*gin.Context) {
 		}
 
 		org := middleware.GetOrganization(c)
+
+		if car.Mailchimp.CheckoutUrl == "" {
+			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
 
 		// Determine store to use
 		storeId := car.StoreId
