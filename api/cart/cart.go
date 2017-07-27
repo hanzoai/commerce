@@ -75,17 +75,17 @@ func Set(c *gin.Context) {
 		return
 	}
 
+	org := middleware.GetOrganization(c)
+
+	if car.Mailchimp.CheckoutUrl == "" {
+		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+	}
+
 	// Update cart in datastore
 	if err := car.Update(); err != nil {
 		http.Fail(c, 500, "Failed to update cart", err)
 	} else {
 		http.Render(c, 200, car)
-	}
-
-	org := middleware.GetOrganization(c)
-
-	if car.Mailchimp.CheckoutUrl == "" {
-		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
 	}
 
 	// Determine store to use
@@ -151,15 +151,15 @@ func create(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
-		if err := car.Create(); err != nil {
-			r.Fail(c, 500, "Failed to create "+r.Kind, err)
-			return
-		}
-
 		org := middleware.GetOrganization(c)
 
 		if car.Mailchimp.CheckoutUrl == "" {
 			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
+
+		if err := car.Create(); err != nil {
+			r.Fail(c, 500, "Failed to create "+r.Kind, err)
+			return
 		}
 
 		// Determine store to use
@@ -209,6 +209,12 @@ func update(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
+		org := middleware.GetOrganization(c)
+
+		if car.Mailchimp.CheckoutUrl == "" {
+			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
+
 		// Use same key to save cart
 		car.SetKey(key)
 
@@ -217,12 +223,6 @@ func update(r *rest.Rest) func(*gin.Context) {
 			r.Fail(c, 500, "Failed to update "+r.Kind, err)
 		} else {
 			r.Render(c, 200, car)
-		}
-
-		org := middleware.GetOrganization(c)
-
-		if car.Mailchimp.CheckoutUrl == "" {
-			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
 		}
 
 		// Determine store to use
@@ -263,16 +263,16 @@ func patch(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
-		if err := car.Update(); err != nil {
-			r.Fail(c, 500, "Failed to update "+r.Kind, err)
-		} else {
-			r.Render(c, 200, car)
-		}
-
 		org := middleware.GetOrganization(c)
 
 		if car.Mailchimp.CheckoutUrl == "" {
 			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
+		}
+
+		if err := car.Update(); err != nil {
+			r.Fail(c, 500, "Failed to update "+r.Kind, err)
+		} else {
+			r.Render(c, 200, car)
 		}
 
 		// Determine store to use
