@@ -17,6 +17,8 @@ import (
 
 var _ = New("fix-currency-set",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -39,6 +41,8 @@ var _ = New("fix-currency-set",
 
 var _ = New("load-counter-orders",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -91,6 +95,8 @@ var _ = New("load-counter-orders",
 
 var _ = New("load-counter-product-orders",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -124,6 +130,8 @@ var _ = New("load-counter-product-orders",
 
 var _ = New("load-counter-users",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
@@ -147,6 +155,8 @@ var _ = New("load-counter-users",
 
 var _ = New("load-counter-subscribers",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
 		return NoArgs
 	},
 	func(db *ds.Datastore, sub *subscriber.Subscriber) {
