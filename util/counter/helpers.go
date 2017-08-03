@@ -33,7 +33,7 @@ func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, 
 		}
 		key = storeKey + string(Total)
 		log.Debug("%v incremented by %v", key, value, ctx)
-		if err := IncrementBy(ctx, key, tag, storeId, "", Monthly, value, t); err != nil {
+		if err := IncrementBy(ctx, key, tag, storeId, "", Total, value, t); err != nil {
 			return err
 		}
 	}
@@ -51,7 +51,7 @@ func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, 
 		}
 		key = geoKey + string(Total)
 		log.Debug("%v incremented by %v", key, value, ctx)
-		if err := IncrementBy(ctx, key, tag, "", geo, Monthly, value, t); err != nil {
+		if err := IncrementBy(ctx, key, tag, "", geo, Total, value, t); err != nil {
 			return err
 		}
 	}
@@ -69,7 +69,7 @@ func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, 
 		}
 		key = storeGeoKey + string(Total)
 		log.Debug("%v incremented by %v", key, value, ctx)
-		if err := IncrementBy(ctx, key, tag, storeId, geo, Monthly, value, t); err != nil {
+		if err := IncrementBy(ctx, key, tag, storeId, geo, Total, value, t); err != nil {
 			return err
 		}
 	}
