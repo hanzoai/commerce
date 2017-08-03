@@ -61,6 +61,7 @@ func search(c *gin.Context) {
 		Count: 0,
 	}
 
+	log.Error("Searching for %v", req, c)
 	if _, err := q.GetAll(ctx, &shards); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
