@@ -7,15 +7,16 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
-	"hanzo.io/models/aggregate"
-	"hanzo.io/models/analytics"
+	// "hanzo.io/models/aggregate"
+	"hanzo.io/models/analyticsevent"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 
-	. "hanzo.io/util/aggregate/tasks"
-	. "hanzo.io/util/analytics/tasks"
+	. "hanzo.io/models/analyticsidentifier/tasks"
+	// . "hanzo.io/util/aggregate/tasks"
+	// . "hanzo.io/util/analytics/tasks"
 )
 
 func create(c *gin.Context) {
@@ -31,9 +32,10 @@ func create(c *gin.Context) {
 		return
 	}
 
-	db = datastore.New(org.Namespaced(ctx))
+	nsCtx := org.Namespaced(ctx)
+	db = datastore.New(nsCtx)
 
-	var events []*analytics.AnalyticsEvent
+	var events []*analyticsevent.AnalyticsEvent
 
 	if err := json.Decode(c.Request.Body, &events); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -54,9 +56,12 @@ func create(c *gin.Context) {
 				return
 			}
 
-			UpsertAggregate(ctx, org.Name, event.Name, "AnalyticsEvent", event.CalculatedTimestamp, aggregate.Hourly, 1, nil)
-			UpdateFunnels(ctx, org.Name, event.Id())
+			// UpsertAggregate(ctx, org.Name, event.Name, "AnalyticsEvent", event.CalculatedTimestamp, aggregate.Hourly, 1, nil)
+			// UpdateFunnels(ctx, org.Name, event.Id())
 		}
 	}
+
+	CohereIds.Call(nsCtx, events[len(events)-1].Id)
+
 	http.Render(c, 204, nil)
 }
