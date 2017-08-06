@@ -17,5 +17,5 @@ func init() {
 	})
 
 	analytics.POST("/:organizationid", create)
-	analytics.HEAD("/", router.Empty)
+	analytics.HEAD("/", router.Ok)
 }
