@@ -107,7 +107,7 @@ else
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-						 pip install macfsevents --upgrade
+						 pip2 install macfsevents --upgrade
 	sed = @sed -i .bak -e
 endif
 
