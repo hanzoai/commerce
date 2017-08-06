@@ -1,6 +1,9 @@
 application: crowdstart-us
 
 dispatch:
+  - url: "*/analytics/*"
+    module: analytics
+
   - url: "*/api/*"
     module: api
 
