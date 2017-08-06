@@ -20,6 +20,7 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"
 	_ "hanzo.io/cron/tasks"
+	_ "hanzo.io/models/analyticsidentifier/tasks"
 	_ "hanzo.io/models/fixtures"
 	_ "hanzo.io/models/migrations"
 	_ "hanzo.io/models/referrer/tasks"
