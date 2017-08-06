@@ -1,4 +1,4 @@
-package analytics
+package analyticsevent
 
 import (
 	"time"
@@ -6,6 +6,7 @@ import (
 	aeds "appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/models/analyticsidentifier"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
@@ -41,13 +42,15 @@ type UserAgent struct {
 type AnalyticsEvent struct {
 	mixin.Model
 
-	UserId     string `json:"userId"`
+	analyticsidentifier.Ids
+
 	SessionId  string `json:"sessionId"`
 	PageId     string `json:"pageId"`
 	PageViewId string `json:"pageViewId"`
 
-	UAString            string    `json:"uaString"`
-	UA                  UserAgent `json:"ua"`
+	UAString string    `json:"uaString"`
+	UA       UserAgent `json:"ua"`
+
 	Timestamp           time.Time `json:"timestamp"`
 	CalculatedTimestamp time.Time `json:"-"`
 
@@ -55,8 +58,7 @@ type AnalyticsEvent struct {
 	Event           string        `json:"event"`
 	Data            Map           `json:"data" datastore:"-"`
 	Data_           string        `json:"-" datastore:",noindex"`
-	Count           int           `json:"count"`
-	RequestMetadata client.Client `json:"-"`
+	RequestMetadata client.Client `json:"requestMetadata"`
 }
 
 func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {
