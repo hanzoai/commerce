@@ -1,7 +1,6 @@
 application: crowdstart-us
 
 dispatch:
-  # hanzo
   - url: "default.hanzo.io/*"
     module: default
 
@@ -11,7 +10,7 @@ dispatch:
   - url: "static.hanzo.io/*"
     module: default
 
-  - url: "analytics.hanzo.io/*"
+  - url: "a.hanzo.io/*"
     module: analytics
 
   - url: "cdn.hanzo.io/*"
@@ -22,19 +21,3 @@ dispatch:
 
   - url: "dash.hanzo.io/*"
     module: dash
-
-  # crowdstart (deprecated)
-  - url: "default.crowdstart.com/*"
-    module: default
-
-  - url: "js.crowdstart.com/*"
-    module: default
-
-  - url: "static.crowdstart.com/*"
-    module: default
-
-  - url: "cdn.crowdstart.com/*"
-    module: api
-
-  - url: "api.crowdstart.com/*"
-    module: api
