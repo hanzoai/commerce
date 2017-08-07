@@ -23,7 +23,7 @@ var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyti
 
 	found := false
 
-	err := db.RunInTransaction(func(db *datastore.Datastore) error {
+	db.RunInTransaction(func(db *datastore.Datastore) error {
 		ids := make([]*analyticsidentifier.AnalyticsIdentifier, 0)
 		if _, err := analyticsidentifier.Query(db).Filter("UUId=", id.UUId).GetAll(&ids); err != nil {
 			log.Error("Failed trying to find AnalyticsIdentifier with UUId %v", id.UUId, ctx)
@@ -32,8 +32,34 @@ var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyti
 
 		found = len(ids) > 0
 
-		if id.UserId != "" {
-			for _, id2 := range ids {
+		userIdUpdates := id.UserId != ""
+
+		newGAId := true
+		newFBId := true
+
+		// New GA Id check
+		for _, id2 := range ids {
+			if id.GAId == id2.GAId {
+				newGAId = false
+				break
+			}
+		}
+
+		// New FacebookId check
+		for _, id2 := range ids {
+			if id.FBId == id2.FBId {
+				newFBId = false
+				break
+			}
+		}
+
+		// New UserId check
+		if userIdUpdates {
+			for i, id2 := range ids {
+				if id.UserId == id2.UserId {
+					continue
+				}
+
 				id2.Db = db
 				id2.Entity = id2
 
@@ -42,10 +68,10 @@ var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyti
 			}
 		}
 
+		if newGAId || newFBId {
+			id.Create()
+		}
+
 		return nil
 	})
-
-	if err == nil {
-		return
-	}
 })
