@@ -118,7 +118,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 
 	// Use Id_ as default sort field if nothing is specified.
 	if r.DefaultSortField == "" {
-		r.DefaultSortField = "CreatedAt"
+		r.DefaultSortField = "UpdatedAt"
 	}
 }
 

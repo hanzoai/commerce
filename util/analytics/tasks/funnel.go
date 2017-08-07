@@ -6,7 +6,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/aggregate"
-	"hanzo.io/models/analytics"
+	"hanzo.io/models/analyticsevent"
 	"hanzo.io/models/funnel"
 	. "hanzo.io/util/aggregate/tasks"
 	"hanzo.io/util/log"
@@ -21,7 +21,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 
 	db := datastore.New(nsctx)
 
-	event := analytics.New(db)
+	event := analyticsevent.New(db)
 	err = event.GetById(eventId)
 	if err != nil {
 		log.Error("Could not get event %v, %v", eventId, err, ctx)
@@ -44,7 +44,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 		for i, step := range f.Events {
 			found := false
 			// Each step of the funnel must be a member of a set of events
-			previousSameEvent := analytics.New(db)
+			previousSameEvent := analyticsevent.New(db)
 
 			for _, option := range step {
 				log.Debug("%v ?= %v", event.Name, option)
@@ -72,7 +72,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 				found := false
 				previousStep := f.Events[last]
 				for _, option := range previousStep {
-					e := analytics.New(db)
+					e := analyticsevent.New(db)
 					ok, err := e.Query().Filter("SessionId=", currentEvent.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp>=", previousSameEvent.CalculatedTimestamp).Filter("CalculatedTimestamp<=", currentEvent.CalculatedTimestamp).Order("-CalculatedTimestamp").Get()
 					if err != nil {
 						log.Error("Could not get latest analytics event", err, ctx)
