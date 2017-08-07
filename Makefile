@@ -19,21 +19,25 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= hanzo.io/api \
+modules	= hanzo.io/analytics \
+		  hanzo.io/api \
 		  hanzo.io/dash
 
 gae_development = config/development \
 				  config/development/dispatch.yaml \
+				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
 				  dash/app.dev.yaml
 
 gae_staging = config/staging \
 			  config/staging/dispatch.yaml \
+			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
 			  dash/app.staging.yaml
 
 gae_production = config/production \
 			  	 config/production/dispatch.yaml \
+				 analytics \
 				 api \
 				 dash
 
