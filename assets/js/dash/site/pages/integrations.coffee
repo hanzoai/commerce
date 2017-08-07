@@ -125,6 +125,10 @@ class Integrations extends Page
     @saving = true
 
     for i, m of @models['analytics']
+      # OAuth modules should not save
+      if m.type == 'stripe'
+        continue
+
       if m? and m._validated
         model.push m
 
