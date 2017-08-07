@@ -7,6 +7,9 @@ dispatch:
   - url: "static-staging.hanzo.io/*"
     module: default
 
+  - url: "analytics-staging.hanzo.io/*"
+    module: analytics
+
   - url: "api-staging.hanzo.io/*"
     module: api
 
