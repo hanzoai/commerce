@@ -59,9 +59,9 @@ func create(c *gin.Context) {
 			// UpsertAggregate(ctx, org.Name, event.Name, "AnalyticsEvent", event.CalculatedTimestamp, aggregate.Hourly, 1, nil)
 			// UpdateFunnels(ctx, org.Name, event.Id())
 		}
-	}
 
-	CohereIds.Call(nsCtx, events[len(events)-1].Id)
+		CohereIds.Call(nsCtx, events[len(events)-1].Id)
+	}
 
 	http.Render(c, 204, nil)
 }
