@@ -17,6 +17,8 @@ var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, ml
 	s := subscriber.FromJSON(db, sJSON)
 	api := mailchimp.New(ctx, ml.Mailchimp.APIKey)
 	if err := api.Subscribe(ml, s); err != nil {
+		log.Error("Subscribe Error %v", err, ctx)
+
 		if err.Mailchimp == nil {
 			return err
 		}

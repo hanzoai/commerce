@@ -4,6 +4,7 @@ node_modules
 npm-debug.log
 .datastore.bin
 _export
+config/env.go
 
 config.json
 config/production/bulkloader_helper.pyc

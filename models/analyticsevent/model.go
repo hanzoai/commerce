@@ -1,4 +1,4 @@
-package analytics
+package analyticsevent
 
 import (
 	"hanzo.io/datastore"
@@ -6,7 +6,7 @@ import (
 	. "hanzo.io/models"
 )
 
-var kind = "event"
+var kind = "analyticsevent"
 
 func (e AnalyticsEvent) Kind() string {
 	return kind
