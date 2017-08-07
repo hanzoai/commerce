@@ -19,21 +19,22 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= hanzo.io/api \
+modules	= hanzo.io/analytics \
+		  hanzo.io/api \
 		  hanzo.io/dash
 
 gae_development = config/development \
-				  config/development/dispatch.yaml \
+				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
 				  dash/app.dev.yaml
 
 gae_staging = config/staging \
-			  config/staging/dispatch.yaml \
+			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
 			  dash/app.staging.yaml
 
 gae_production = config/production \
-			  	 config/production/dispatch.yaml \
+				 analytics \
 				 api \
 				 dash
 
@@ -107,7 +108,7 @@ else
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-						 pip install macfsevents --upgrade
+						 pip2 install macfsevents --upgrade
 	sed = @sed -i .bak -e
 endif
 
@@ -120,14 +121,17 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	project_id = crowdstart-us
-	gae_config = $(gae_production)
+	project_env = production
+	project_id  = crowdstart-us
+	gae_config  = $(gae_production)
 else ifeq ($(sandbox), 1)
-	project_id = crowdstart-sandbox
-	gae_config = $(gae_sandbox)
+	project_env = sandbox
+	project_id  = crowdstart-sandbox
+	gae_config  = $(gae_sandbox)
 else
-	project_id = crowdstart-staging
-	gae_config = $(gae_staging)
+	project_env = staging
+	project_id  = crowdstart-staging
+	gae_config  = $(gae_staging)
 endif
 
 # force a single module to deploy
@@ -231,19 +235,22 @@ install-deps:
 	$(goapp) install $(deps)
 
 # DEV SERVER
-serve: assets
+update-env:
+	@echo 'package config\n\nvar Env = "development"' > config/env.go
+
+serve: assets update-env
 	$(bebop) &
 	$(dev_appserver) $(gae_development)
 
-serve-clear-datastore: assets
+serve-clear-datastore: assets update-env
 	$(bebop) &
 	$(dev_appserver) --clear_datastore=true $(gae_development)
 
-serve-public: assets
+serve-public: assets update-env
 	$(bebop) &
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
-serve-no-reload: assets
+serve-no-reload: assets update-env
 	$(dev_appserver) $(gae_development)
 
 # GOLANG TOOLS
@@ -296,10 +303,9 @@ deploy-app: rollback
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
-	$(appcfg.py) update_dispatch $(firstword $(gae_config))
 
-	# Reset env
-	@echo 'package config\n\nvar Env = "development"' > config/env.go
+update-dispatch:
+	$(appcfg.py) update_dispatch config/$(project_env)
 
 rollback:
 	for module in $(gae_config); do \
