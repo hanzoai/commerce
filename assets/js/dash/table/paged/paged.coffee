@@ -145,7 +145,7 @@ class BasicPagedTable extends BasicTableView
       sortField = lowerCaseFirstLetter sortField
 
       coeff = 1
-      if @filterModel.sortDirection == 'sort-asc'
+      if @filterModel.sortDirection == 'sort-desc'
         coeff = -1
 
       @staticModel.sort((a, b)->
