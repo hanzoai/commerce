@@ -129,7 +129,7 @@ else ifeq ($(sandbox), 1)
 	project_id  = crowdstart-sandbox
 	gae_config  = $(gae_sandbox)
 else
-	project_env = development
+	project_env = staging
 	project_id  = crowdstart-staging
 	gae_config  = $(gae_staging)
 endif
@@ -305,7 +305,7 @@ deploy-app: rollback
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 update-dispatch:
-	$(appcfg.py) update_dispatch config/$(project_env)/dispatch.yaml
+	$(appcfg.py) update_dispatch config/$(project_env)
 
 rollback:
 	for module in $(gae_config); do \
