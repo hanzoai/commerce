@@ -48,9 +48,6 @@ type AnalyticsEvent struct {
 	PageId     string `json:"pageId"`
 	PageViewId string `json:"pageViewId"`
 
-	UAString string    `json:"uaString"`
-	UA       UserAgent `json:"ua"`
-
 	Timestamp           time.Time `json:"timestamp"`
 	CalculatedTimestamp time.Time `json:"-"`
 

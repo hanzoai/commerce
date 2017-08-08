@@ -55,7 +55,7 @@ var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyti
 
 		// New UserId check
 		if userIdUpdates {
-			for i, id2 := range ids {
+			for _, id2 := range ids {
 				if id.UserId == id2.UserId {
 					continue
 				}
