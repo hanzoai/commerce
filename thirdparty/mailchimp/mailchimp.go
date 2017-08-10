@@ -93,14 +93,14 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 			},
 		}
 
-		log.Info("Update or create list member: %v", req, api.ctx)
+		log.Info("Update or create list member: %v", json.Encode(req), api.ctx)
 
 		// Try to update subscriber, create new member if that fails.
 		log.Info("Update list member '%v'", s.Email, api.ctx)
 		if _, err := list.UpdateMember(s.Md5(), req); err != nil {
 			log.Info("Create list member '%v'", s.Email, api.ctx)
 			if _, err := list.CreateMember(req); err != nil {
-				log.Info("Failed create Mailchimp list member '%v': %v", s.Email, err, api.ctx)
+				log.Info("Failed create Mailchimp list member '%v': %v", s.Email, json.Encode(err), api.ctx)
 				return err
 			}
 		}
