@@ -282,6 +282,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 			"createdmonthname": ord.CreatedAt.Month().String(),
 			"createdyear":      ord.CreatedAt.Year(),
 			"referral":         referralCode,
+			"storeId":          ord.StoreId,
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
 		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
@@ -300,6 +301,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
 		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
 		"ORDER_REFERRAL":                    referralCode,
+		"ORDER_STOREID":                     ord.StoreId,
 
 		"user": map[string]interface{}{
 			"firstname": strings.Title(usr.FirstName),
@@ -380,6 +382,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 			"createdday":       ord.CreatedAt.Day(),
 			"createdmonthname": ord.CreatedAt.Month().String(),
 			"createdyear":      ord.CreatedAt.Year(),
+			"storeId":          ord.StoreId,
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
 		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
@@ -398,6 +401,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
 		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
 		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+		"ORDER_STOREID":                     ord.StoreId,
 
 		"user": map[string]interface{}{
 			"firstname": strings.Title(usr.FirstName),
@@ -484,6 +488,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 			"createdday":       ord.CreatedAt.Day(),
 			"createdmonthname": ord.CreatedAt.Month().String(),
 			"createdyear":      ord.CreatedAt.Year(),
+			"storeId":          ord.StoreId,
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
 		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
@@ -502,6 +507,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
 		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
 		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+		"ORDER_STOREID":                     ord.StoreId,
 
 		"user": map[string]interface{}{
 			"firstname": usr.FirstName,
