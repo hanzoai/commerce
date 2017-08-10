@@ -79,6 +79,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		req := &gochimp3.MemberRequest{
 			EmailAddress: s.Email,
 			Status:       status,
+			StatusIfNew:  status,
 			MergeFields:  s.MergeFields(),
 			Interests:    make(map[string]bool),
 			Language:     s.Client.Language,
