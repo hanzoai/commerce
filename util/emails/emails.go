@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/referrer"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
@@ -60,16 +61,16 @@ func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organizatio
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
 		"token": map[string]interface{}{
 			"id": tok.Id(),
 		},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
-		"TOKEN_ID":       tok.Id(),
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
+		"TOKEN_ID":       strings.Title(tok.Id()),
 	}
 
 	// Send Email
@@ -96,11 +97,11 @@ func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organizati
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 	}
 
 	// Send Email
@@ -148,11 +149,11 @@ func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr 
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 	}
 
 	// Send Email
@@ -190,15 +191,15 @@ func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organizati
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
 		"token": map[string]interface{}{
 			"id": tok.Id(),
 		},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 		"TOKEN_ID":       tok.Id(),
 	}
 
@@ -242,6 +243,16 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	// order.orderYear
 	subject := conf.Subject
 
+	referralCode := ""
+	referrers := make([]referrer.Referrer, 0)
+	if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+		log.Warn("Failed to load referrals for user: %v", err, ctx)
+	}
+
+	if len(referrers) > 0 {
+		referralCode = referrers[0].Id_
+	}
+
 	currencyCode := strings.ToUpper(ord.Currency.Code())
 	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
 	stateName := ord.ShippingAddress.State
@@ -259,17 +270,18 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 			"currency":        currencyCode,
 			"items":           items,
 			"shippingaddress": map[string]interface{}{
-				"name":       ord.ShippingAddress.Name,
-				"line1":      ord.ShippingAddress.Line1,
-				"line2":      ord.ShippingAddress.Line2,
+				"name":       strings.Title(ord.ShippingAddress.Name),
+				"line1":      strings.Title(ord.ShippingAddress.Line1),
+				"line2":      strings.Title(ord.ShippingAddress.Line2),
 				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       ord.ShippingAddress.City,
+				"city":       strings.Title(ord.ShippingAddress.City),
 				"state":      stateName,
 				"country":    countryName,
 			},
 			"createdday":       ord.CreatedAt.Day(),
 			"createdmonthname": ord.CreatedAt.Month().String(),
 			"createdyear":      ord.CreatedAt.Year(),
+			"referral":         referralCode,
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
 		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
@@ -277,24 +289,25 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
 		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_NAME":       ord.ShippingAddress.Name,
-		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
+		"ORDER_SHIPPING_ADDRESS_NAME":       strings.Title(ord.ShippingAddress.Name),
+		"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
+		"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
 		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
+		"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
 		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
 		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
 		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
 		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
 		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+		"ORDER_REFERRAL":                    referralCode,
 
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 	}
 
 	if ord.Discount != 0 {
@@ -357,10 +370,10 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 			"currency":         currencyCode,
 			"items":            items,
 			"shippingaddress": map[string]interface{}{
-				"line1":      ord.ShippingAddress.Line1,
-				"line2":      ord.ShippingAddress.Line2,
+				"line1":      strings.Title(ord.ShippingAddress.Line1),
+				"line2":      strings.Title(ord.ShippingAddress.Line2),
 				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       ord.ShippingAddress.City,
+				"city":       strings.Title(ord.ShippingAddress.City),
 				"state":      stateName,
 				"country":    countryName,
 			},
@@ -376,10 +389,10 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
 		"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
 		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
+		"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
+		"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
 		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
+		"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
 		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
 		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
 		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
@@ -387,12 +400,12 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
 
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 
 		"payment": map[string]interface{}{
 			"lastfour": pay.Account.LastFour,
@@ -565,10 +578,10 @@ func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization,
 			"currency":         currencyCode,
 			"items":            items,
 			"shippingaddress": map[string]interface{}{
-				"line1":      ord.ShippingAddress.Line1,
-				"line2":      ord.ShippingAddress.Line2,
+				"line1":      strings.Title(ord.ShippingAddress.Line1),
+				"line2":      strings.Title(ord.ShippingAddress.Line2),
 				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       ord.ShippingAddress.City,
+				"city":       strings.Title(ord.ShippingAddress.City),
 				"state":      stateName,
 				"country":    countryName,
 			},
@@ -603,12 +616,12 @@ func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization,
 		"ORDER_FULFILLMENT_CARRIER":         ord.Fulfillment.Carrier,
 
 		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
+			"firstname": strings.Title(usr.FirstName),
+			"lastname":  strings.Title(usr.LastName),
 		},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+		"USER_FIRSTNAME": strings.Title(usr.FirstName),
+		"USER_LASTNAME":  strings.Title(usr.LastName),
 
 		"payment": map[string]interface{}{
 			"lastfour": pay.Account.LastFour,
