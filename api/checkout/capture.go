@@ -31,6 +31,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	var err error
 	var payments []*payment.Payment
 
+	log.Error("Order %v", json.Encode(ord), org.Context())
+
 	switch ord.Type {
 	case "null":
 		ord, payments, err = null.Capture(org, ord)
@@ -53,7 +55,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 
 	updateOrder(ctx, ord, payments)
 
-	log.Warn("Order %v", json.Encode(ord), ctx)
+	log.Error("Order %v", json.Encode(ord), ctx)
 
 	if err := saveOrder(ctx, ord, payments); err != nil {
 		return err
