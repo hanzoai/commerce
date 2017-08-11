@@ -1,4 +1,5 @@
 github.com/Machiel/slugify master
+github.com/Sirupsen/logrus 95002bc71734b797b2dc8ffb20ffc725c9f543ed
 github.com/cenkalti/backoff b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
@@ -32,6 +33,6 @@ github.com/vincent-petithory/countries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
-golang.org/x/tools/cmd/cover master
 golang.org/x/text/encoding master
+golang.org/x/tools/cmd/cover master
 gopkg.in/yaml.v2
