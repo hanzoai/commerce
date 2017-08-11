@@ -50,6 +50,24 @@ var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId
 	// updateMailchimp(ctx, org, ord)
 })
 
+var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx appengine.Context, orgId, ordId, email, firstName, lastName string) {
+	// Send Create user
+	usr := new(user.User)
+	usr.Email = email
+	usr.FirstName = firstName
+	usr.LastName = lastName
+
+	db := datastore.New(ctx)
+	org := organization.New(db)
+	org.MustGetById(orgId)
+
+	nsdb := datastore.New(org.Namespaced(ctx))
+	ord := order.New(nsdb)
+	ord.MustGetById(ordId)
+
+	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
+})
+
 func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
 	totalPaid := 0
 
@@ -71,15 +89,6 @@ func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Paym
 	}
 
 	return multi.Update(vals)
-}
-
-func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order, buyer Buyer) {
-	// Send Create user
-	usr := new(user.User)
-	usr.Email = buyer.Email
-	usr.FirstName = buyer.FirstName
-	usr.LastName = buyer.LastName
-	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
 }
 
 func saveRedemptions(ctx appengine.Context, ord *order.Order) {
