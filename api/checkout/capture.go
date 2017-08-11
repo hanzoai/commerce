@@ -20,6 +20,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/emails"
+	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 
 	. "hanzo.io/models"
@@ -51,6 +52,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	ctx := ord.Context()
 
 	updateOrder(ctx, ord, payments)
+
+	log.Warn("Order %v", json.Encode(ord), ctx)
 
 	if err := saveOrder(ctx, ord, payments); err != nil {
 		return err
