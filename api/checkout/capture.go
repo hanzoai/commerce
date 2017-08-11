@@ -17,21 +17,14 @@ import (
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/emails"
-	"hanzo.io/util/json"
 	"hanzo.io/util/log"
-
-	. "hanzo.io/models"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
-
-	log.Error("Order %v", json.Encode(ord), org.Context())
 
 	switch ord.Type {
 	case "null":
@@ -55,20 +48,20 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 
 	updateOrder(ctx, ord, payments)
 
-	log.Error("Order %v", json.Encode(ord), ctx)
-
 	if err := saveOrder(ctx, ord, payments); err != nil {
 		return err
 	}
 
 	// TODO: Run in task(CaptureAsync), no need to block call on rest of this
-	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
 	saveRedemptions(ctx, ord)
 	saveReferral(org, ord)
 	updateCart(ctx, ord)
 	updateStats(ctx, org, ord, payments)
 
+	buyer := payments[0].Buyer
+
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
+	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
 	return nil
 }
 
@@ -93,15 +86,6 @@ func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Paym
 	}
 
 	return multi.Update(vals)
-}
-
-func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order, buyer Buyer) {
-	// Send Create user
-	usr := new(user.User)
-	usr.Email = buyer.Email
-	usr.FirstName = buyer.FirstName
-	usr.LastName = buyer.LastName
-	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
 }
 
 func saveRedemptions(ctx appengine.Context, ord *order.Order) {
