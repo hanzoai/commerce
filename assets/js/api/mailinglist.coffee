@@ -87,7 +87,7 @@ do ->
         type = el.getAttribute('type').toLowerCase()
 
         if (type == 'checkbox' || type == 'radio') && !el.checked
-          return
+          continue
 
         # Skip inputs we don't care about
         if k == '' or v == '' or type == 'submit'
