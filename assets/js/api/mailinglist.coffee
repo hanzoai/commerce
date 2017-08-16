@@ -84,7 +84,7 @@ do ->
         # Clean up inputs
         k = el.name.trim().toLowerCase()
         v = el.value.trim()
-        type = el.getAttribute('type').toLowerCase()
+        type = (el.getAttribute('type') ? '').toLowerCase()
 
         if (type == 'checkbox' || type == 'radio') && !el.checked
           continue
