@@ -84,9 +84,13 @@ do ->
         # Clean up inputs
         k = el.name.trim().toLowerCase()
         v = el.value.trim()
+        type = el.getAttribute('type').toLowerCase()
+
+        if (type == 'checkbox' || type == 'radio') && !el.checked
+          return
 
         # Skip inputs we don't care about
-        if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+        if k == '' or v == '' or type == 'submit'
           continue
 
         # Detect emails
