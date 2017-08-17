@@ -554,8 +554,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 	entities := r.newEntitySlice(len(keys), len(keys))
 	db := entity.Datastore()
 	if err := db.GetMulti(keys, entities); err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
-		return
+		log.Error(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
 	}
 
 	if limitStr != "" {
