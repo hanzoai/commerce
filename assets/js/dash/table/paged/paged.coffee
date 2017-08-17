@@ -66,7 +66,7 @@ class BasicPagedTable extends BasicTableView
       store.set 'display', @display
 
     @filterModel =
-      sortField: 'UpdatedAt'
+      sortField: ''
       sortDirection: ''
       minDate: ''
       maxDate: ''
@@ -165,7 +165,8 @@ class BasicPagedTable extends BasicTableView
       return
 
     # construct sort query string if querying server
-    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + sortField
+    path = @path + '?page=' + @page + '&display=' + @display
+    path += '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + sortField if @filterModel.sortDirection
     path += '&limit=1000' if !window.User.owner
     requestAnimationFrame ()->
       $('.previous, .next').addClass('disabled')
