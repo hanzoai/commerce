@@ -7,6 +7,7 @@ import (
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
+	"github.com/stripe/stripe-go/source"
 
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
@@ -37,6 +38,27 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card.Zip = pay.Buyer.Address.PostalCode
 	card.Country = pay.Buyer.Address.Country
 	return &card
+}
+
+// Create a Source object to pay with Bitcoin.
+func (c Client) CreateSource(pay *payment.Payment, usr *user.User) (uint64, string, string, error) {
+
+	sourceParams := &stripe.SourceObjectParams{
+		Type:     "bitcoin",
+		Amount:   pay.Amount,
+		Currency: "usd",
+		Owner: &stripe.SourceOwnerParams{
+			Email: usr.Email,
+		},
+	}
+
+	s, err := source.New(sourceParams)
+
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	return 0, "", "", nil
 }
 
 // Do authorization, return token
