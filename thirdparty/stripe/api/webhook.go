@@ -38,19 +38,19 @@ func getToken(ctx appengine.Context, event *stripe.Event) (*organization.Organiz
 
 	// Try to find organization with connected Stripe account
 	// TODO: Make it impossible to connect the same user to multiple organizations
-	ok, err := org.Query().Filter("Stripe.UserId=", event.UserID).Get()
+	ok, err := org.Query().Filter("Stripe.UserId=", event.Account).Get()
 	if err != nil {
-		return nil, "", fmt.Errorf("Failed to query organization associated with Stripe account '%s': %v\n%#v", event.UserID, err, event, ctx)
+		return nil, "", fmt.Errorf("Failed to query organization associated with Stripe account '%s': %v\n%#v", event.Account, err, event, ctx)
 	}
 
 	if !ok {
-		return nil, "", fmt.Errorf("No organization associated with Stripe account '%s'\n%#v", event.UserID, event, ctx)
+		return nil, "", fmt.Errorf("No organization associated with Stripe account '%s'\n%#v", event.Account, event, ctx)
 	}
 
 	// Look up access token (if we don't have this we won't bother processing event)
-	token, err := org.GetStripeAccessToken(event.UserID)
+	token, err := org.GetStripeAccessToken(event.Account)
 	if err != nil {
-		return nil, "", fmt.Errorf("No access token found for organization '%s', with matching Stripe user '%s': %v", org.Name, event.UserID, err)
+		return nil, "", fmt.Errorf("No access token found for organization '%s', with matching Stripe user '%s': %v", org.Name, event.Account, err)
 	}
 
 	return org, token, nil
