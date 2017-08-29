@@ -17,6 +17,7 @@ type Event stripe.Event
 type Reversal stripe.Reversal
 type Token stripe.Token
 type Transfer stripe.Transfer
+type Payout stripe.Payout
 
 const ReportFraudulent = charge.ReportFraudulent
 const ReportSafe = charge.ReportSafe
