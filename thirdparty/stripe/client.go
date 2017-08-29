@@ -58,7 +58,7 @@ func (c Client) CreateSource(pay *payment.Payment, usr *user.User) (int64, strin
 		return 0, "", "", err
 	}
 
-	return src.Amount, src.Receiver.Address, "", nil
+	return src.Amount, "", "", nil
 }
 
 // Do authorization, return token
