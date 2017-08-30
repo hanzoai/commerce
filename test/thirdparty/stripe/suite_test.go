@@ -9,13 +9,15 @@ import (
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
+	"hanzo.io/thirdparty/stripe"
 	. "hanzo.io/util/test/ginkgo"
 )
 
 var (
-	c   *gin.Context
-	ctx ae.Context
-	db  *datastore.Datastore
+	c      *gin.Context
+	ctx    ae.Context
+	db     *datastore.Datastore
+	client *stripe.Client
 )
 
 func Test(t *testing.T) {
@@ -26,6 +28,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
+	client = stripe.New(ctx, "sk_test_RnnTXycI4vLympetwb66jTab")
 })
 
 var _ = AfterSuite(func() {

@@ -54,7 +54,7 @@ func (c Client) CreateSource(pay *payment.Payment, usr *user.User) (int64, strin
 
 	src, err := source.New(sourceParams)
 
-	log.Debug(json.Encode(src))
+	log.JSON(src)
 
 	if err != nil {
 		return 0, "", "", err
