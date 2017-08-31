@@ -120,6 +120,10 @@ func Webhook(c *gin.Context) {
 		if tr := unmarshal(ctx, event, &stripe.Transfer{}); tr != nil {
 			addTask(tasks.TransferSync, ctx, event, org, token, tr)
 		}
+	case "source.chargeable":
+		// bitcoin payment just became chargable
+	case "source.canceled":
+		// bitcoin payment just expired
 	case "ping":
 		c.String(200, "pong")
 		return
