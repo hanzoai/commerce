@@ -95,7 +95,7 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 
 	// Initiate transfer on Stripe's side
 	sc := stripe.New(ctx, stripeToken)
-	res, err := sc.Transfer(tr)
+	res, err := sc.Payout(tr)
 
 	// Save transfer ID
 	tr.Account.Id = res.ID
@@ -105,9 +105,9 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 
 		// Update transfer to reflect failure status
 		tr.Status = transfer.Error
-		if res.FailMsg == "" {
+		if res.FailMessage == "" {
 			tr.FailureCode = string(res.FailCode)
-			tr.FailureMessage = res.FailMsg
+			tr.FailureMessage = res.FailMessage
 		} else {
 			tr.FailureCode = "stripe-error"
 			tr.FailureMessage = err.Error()
