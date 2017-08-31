@@ -9,9 +9,11 @@ import (
 var _ = Describe("thirdparty.stripe.client.CreateSource", func() {
 
 	Context("When CreateSource is called", func() {
-		pay := payment.Payment{Amount: 20420}
-		usr := user.User{Email: "dev@hanzo.ai"}
+		It("Should do a thing", func() {
+			pay := payment.Payment{Amount: 20420}
+			usr := user.User{Email: "dev@hanzo.ai"}
 
-		client.CreateSource(&pay, &usr)
+			client.CreateSource(&pay, &usr)
+		})
 	})
 })
