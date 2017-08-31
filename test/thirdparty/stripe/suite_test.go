@@ -7,6 +7,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/util/gincontext"
+	"hanzo.io/util/log"
 	"hanzo.io/util/test/ae"
 
 	"hanzo.io/thirdparty/stripe"
@@ -28,7 +29,8 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
-	client = stripe.New(ctx, "sk_test_RnnTXycI4vLympetwb66jTab")
+	log.Warn("Before Suite")
+	client = stripe.New(ctx, "sk_test_UmnR9sIn9Scdx3xi99cpOozQ")
 })
 
 var _ = AfterSuite(func() {
