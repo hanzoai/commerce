@@ -13,7 +13,7 @@ var _ = Describe("thirdparty.stripe.client.CreateSource", func() {
 			pay := payment.Payment{Amount: 20420}
 			usr := user.User{Email: "dev@hanzo.ai"}
 
-			client.CreateSource(&pay, &usr)
+			client.CreateBitcoinSource(&pay, &usr)
 		})
 	})
 })
