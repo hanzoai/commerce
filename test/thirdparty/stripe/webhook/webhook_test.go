@@ -27,7 +27,7 @@ func fakeCharge() *stripe.Charge {
 // Create a mock stripe event
 func fakeEvent(name string, obj interface{}) *stripe.Event {
 	ev := new(stripe.Event)
-	ev.UserID = "1"
+	ev.Account = "1"
 	ev.Live = true
 	ev.Type = name
 	ev.ID = "evt_000000000000000000000000"
