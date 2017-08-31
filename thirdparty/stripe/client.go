@@ -39,6 +39,45 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	return &card
 }
 
+// Create a Source object to pay with Bitcoin.
+func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
+
+	sourceParams := &stripe.SourceObjectParams{
+		Type:     "bitcoin",
+		Amount:   uint64(pay.Amount),
+		Currency: "usd",
+		Owner: &stripe.SourceOwnerParams{
+			Email: usr.Email,
+		},
+	}
+
+	src, err := c.API.Sources.New(sourceParams)
+
+	log.JSON(src)
+
+	if err != nil {
+		return 0, "", "", err
+	}
+
+	return src.TypeData["amount"].(int64), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+}
+
+func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
+	chargeParams := &stripe.ChargeParams{
+		Amount:   1000,
+		Currency: "usd",
+	}
+
+	chargeParams.SetSource(src)
+	ch, err := c.API.Charges.New(chargeParams)
+
+	if err != nil {
+		return false, err
+	}
+
+	return ch.Status == "succeeded", err
+}
+
 // Do authorization, return token
 func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
@@ -321,7 +360,7 @@ func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 		Amount:   int64(tr.Amount),
 		Dest:     tr.Destination,
 		Currency: stripe.Currency(tr.Currency),
-		Desc:     tr.Description,
+		Meta:     map[string]string{"description": tr.Description},
 	}
 	params.Params.IdempotencyKey = tid
 
@@ -342,6 +381,37 @@ func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 
 	t := (*Transfer)(str)
 	UpdateTransferFromStripe(tr, t)
+
+	return t, err
+}
+
+func (c Client) Payout(tr *transfer.Transfer) (*Payout, error) {
+	tid := tr.Id()
+	params := &stripe.PayoutParams{
+		Amount:              int64(tr.Amount),
+		Destination:         tr.Destination,
+		Currency:            stripe.Currency(tr.Currency),
+		StatementDescriptor: tr.Description,
+	}
+	params.Params.IdempotencyKey = tid
+
+	if tr.AffiliateId != "" {
+		params.AddMeta("affiliate", tr.AffiliateId)
+	}
+	if tr.PartnerId != "" {
+		params.AddMeta("affiliate", tr.AffiliateId)
+	}
+	params.AddMeta("payout", tid)
+	params.AddMeta("fee", tr.FeeId)
+
+	// Create transfer
+	str, err := c.API.Payouts.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	t := (*Payout)(str)
+	UpdatePayoutFromStripe(tr, t)
 
 	return t, err
 }
