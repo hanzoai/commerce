@@ -7,7 +7,6 @@ import (
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
-	"github.com/stripe/stripe-go/source"
 
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
@@ -52,7 +51,7 @@ func (c Client) CreateSource(pay *payment.Payment, usr *user.User) (int64, strin
 		},
 	}
 
-	src, err := source.New(sourceParams)
+	src, err := c.API.Sources.New(sourceParams)
 
 	log.JSON(src)
 
@@ -60,7 +59,7 @@ func (c Client) CreateSource(pay *payment.Payment, usr *user.User) (int64, strin
 		return 0, "", "", err
 	}
 
-	return src.Amount, "", "", nil
+	return src.TypeData["amount"].(int64), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
 }
 
 // Do authorization, return token
