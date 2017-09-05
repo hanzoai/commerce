@@ -4,16 +4,39 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/log"
 )
 
+// Get authorization for a payment. First step to getting money.
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	// Create stripe client
-	client := stripe.New(ord.Db.Context, org.StripeToken())
 
-	// Do authorization
+	if pay.Currency == currency.BTC {
+		// Bitcoin flow. Creates source instead of using normal authorize.
+		return authorizeSource(org, ord, usr, pay)
+	} else {
+		// Do card authorization
+		return authorizeCard(org, ord, usr, pay)
+	}
+}
+
+func authorizeSource(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
+	client := stripe.New(ord.Db.Context, org.StripeToken())
+	src, err := client.CreateBitcoinSource(pay, usr)
+	if err != nil {
+		log.Warn("Failed to authorize payment '%s'", pay.Id())
+		log.JSON(pay)
+		return err
+	}
+	updatePaymentFromBitcoinSource(pay, src)
+	return nil
+}
+
+func authorizeCard(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
+	client := stripe.New(ord.Db.Context, org.StripeToken())
 	tok, err := client.Authorize(pay)
 	if err != nil {
 		log.Warn("Failed to authorize payment '%s'", pay.Id())
