@@ -40,7 +40,7 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 }
 
 // Create a Source object to pay with Bitcoin.
-func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
+func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (*stripe.Source, error) {
 
 	sourceParams := &stripe.SourceObjectParams{
 		Type:     "bitcoin",
@@ -56,19 +56,20 @@ func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64
 	log.JSON(src)
 
 	if err != nil {
-		return 0, "", "", err
+		return nil, err
 	}
 
-	return src.TypeData["amount"].(int64), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+	return src, nil
+	//return src.TypeData["amount"].(int64), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
 }
 
-func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
+func (c Client) ChargeBitcoinSource(pay *payment.Payment, srcId string) (bool, error) {
 	chargeParams := &stripe.ChargeParams{
-		Amount:   1000,
+		Amount:   uint64(pay.Amount),
 		Currency: "usd",
 	}
 
-	chargeParams.SetSource(src)
+	chargeParams.SetSource(srcId)
 	ch, err := c.API.Charges.New(chargeParams)
 
 	if err != nil {

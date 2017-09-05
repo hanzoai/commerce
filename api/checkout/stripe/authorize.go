@@ -56,6 +56,13 @@ func updateUserFromPayment(usr *user.User, pay *payment.Payment) {
 	usr.Accounts.Stripe.CVCCheck = string(pay.Account.CVCCheck)
 }
 
+func updatePaymentFromBitcoinSource(pay *payment.Payment, src *stripe.Source) {
+	pay.Account.BtcSourceId = src.ID
+	pay.Account.BtcReceiverAddress = src.TypeData["address"].(string)
+	pay.Account.BtcUri = src.TypeData["uri"].(string)
+	pay.Account.BtcAmount = src.TypeData["amount"].(int64)
+}
+
 func dedupeCards(client *stripe.Client, card *stripe.Card, cust *stripe.Customer, usr *user.User) {
 	// Keep track of last four we've seen
 	seen := make(map[string]bool)
