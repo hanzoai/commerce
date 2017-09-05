@@ -23,6 +23,8 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	}
 }
 
+// Create and act on a payment source - ostensibly this could be other things
+// but for now it's always about bitcoin.
 func authorizeSource(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	client := stripe.New(ord.Db.Context, org.StripeToken())
 	src, err := client.CreateBitcoinSource(pay, usr)
@@ -35,6 +37,7 @@ func authorizeSource(org *organization.Organization, ord *order.Order, usr *user
 	return nil
 }
 
+// Authorize a card to be captured later.
 func authorizeCard(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	client := stripe.New(ord.Db.Context, org.StripeToken())
 	tok, err := client.Authorize(pay)
