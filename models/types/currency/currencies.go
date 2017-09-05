@@ -29,6 +29,7 @@ const (
 	BOB      = "bob" // Bolivian Boliviano*
 	BRL      = "brl" // Brazilian Real*
 	BSD      = "bsd" // Bahamian Dollar
+	BTC      = "btc" // Bitcoin
 	BWP      = "bwp" // Botswana Pula
 	BZD      = "bzd" // Belize Dollar
 	CDF      = "cdf" // Congolese Franc
