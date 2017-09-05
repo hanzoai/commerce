@@ -18,6 +18,7 @@ type Reversal stripe.Reversal
 type Token stripe.Token
 type Transfer stripe.Transfer
 type Payout stripe.Payout
+type Source stripe.Source
 
 const ReportFraudulent = charge.ReportFraudulent
 const ReportSafe = charge.ReportSafe

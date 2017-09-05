@@ -71,6 +71,10 @@ type StripeAccount struct {
 	CardId               string `json:"cardId,omitempty"`
 	ChargeId             string `json:"chargeId,omitempty"`
 	CustomerId           string `json:"customerId,omitempty"`
+	BtcSourceId          string `json:"btcSourceId,omitempty"`
+	BtcReceiverAddress   string `json:"btcReceiverAddress,omitEmpty"`
+	BtcUri               string `json:"btcUri,omitEmpty"`
+	BtcAmount            int64  `json:"btcAmount,omitEmpty"`
 
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Funding     string `json:"funding,omitempty"`
