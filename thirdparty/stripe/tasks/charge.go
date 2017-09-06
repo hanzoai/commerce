@@ -42,9 +42,30 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	}
 }
 
-//var ChargeSource = delay.Func("stripe-charge-source", func(ctx appengine.Context, ns string, token string, src stripe.Source, start time.Time) {
-//
-//)}
+var ChargeSource = delay.Func("stripe-charge-source", func(ctx appengine.Context, ns string, token string, src stripe.Source, start time.Time) {
+
+	// get namespace context
+	ctx = getNamespacedContext(ctx, ns)
+
+	// run datastore query to retrieve payment
+	pay, _, err := getPaymentFromSource(ctx, &src)
+	if err != nil {
+		log.Error("Failed to query for payment associated with source '%s', namespace: '%s': %v\n%#v", src.ID, err, src, ctx)
+		return
+	}
+	// run Capture in stripe client
+	client := stripe.New(ctx, token)
+	client.ChargeBitcoinSource(pay, src.ID)
+
+	// get order on payment id
+	_, _, err = getOrderFromPayment(ctx, pay)
+
+	if err != nil {
+		log.Error("Failed to query for order associated with payment '%s', namespace: '%s': %v\n%#v", pay.Id, err, pay, ctx)
+		return
+	}
+	// update order and payment
+})
 
 // Synchronize payment using charge
 var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {

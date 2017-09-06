@@ -6,6 +6,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/fee"
+	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
@@ -60,6 +61,34 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
 	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).Get()
 	return pay, ok, err
+}
+
+func getPaymentFromSource(ctx appengine.Context, src *stripe.Source) (*payment.Payment, bool, error) {
+
+	db := datastore.New(ctx)
+	pay := payment.New(db)
+
+	// Try to lookup payment using charge id
+	log.Debug("Lookup payment by source id: %v", src.ID, ctx)
+	ok, err := pay.Query().Filter("Account.BtcSourceId=", src.ID).Get()
+	return pay, ok, err
+}
+
+func getOrderFromPayment(ctx appengine.Context, pay *payment.Payment) (*order.Order, bool, error) {
+
+	db := datastore.New(ctx)
+	ord := order.New(db)
+
+	// Try to lookup payment using charge id
+	log.Debug("Lookup order by payment id: %v", pay.Id, ctx)
+	err := ord.GetById(pay.OrderId)
+
+	ok := false
+	if err == nil {
+		ok = true
+	}
+
+	return ord, ok, err
 }
 
 // Get our transfer from a stripe transfer
