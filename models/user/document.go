@@ -8,10 +8,13 @@ import (
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
+	"hanzo.io/util/log"
 	"hanzo.io/util/searchpartial"
 )
 
 type Document struct {
+	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
+
 	// Special Kind Facet
 	Kind search.Atom `search:",facet"`
 
@@ -26,17 +29,21 @@ type Document struct {
 	LastNamePartials  string
 	Phone             string
 
+	BillingAddressName        string
 	BillingAddressLine1       string
 	BillingAddressLine2       string
 	BillingAddressCity        string
+	BillingAddressStateCode   string
 	BillingAddressState       string
 	BillingAddressCountryCode string
 	BillingAddressCountry     string
 	BillingAddressPostalCode  string
 
+	ShippingAddressName        string
 	ShippingAddressLine1       string
 	ShippingAddressLine2       string
 	ShippingAddressCity        string
+	ShippingAddressStateCode   string
 	ShippingAddressState       string
 	ShippingAddressCountryCode string
 	ShippingAddressCountry     string
@@ -56,45 +63,81 @@ func (d Document) Id() string {
 	return string(d.Id_)
 }
 
+func (d *Document) Init() {
+	d.SetDocument(d)
+}
+
 func (u User) Document() mixin.Document {
 	emailUser := strings.Split(u.Email, "@")[0]
 
-	return &Document{
-		search.Atom(kind),
-		u.Id(),
-		search.Atom(u.Email),
-		searchpartial.Partials(emailUser) + " " + emailUser,
-		u.Username,
-		searchpartial.Partials(u.Username),
-		u.FirstName,
-		searchpartial.Partials(u.FirstName),
-		u.LastName,
-		searchpartial.Partials(u.LastName),
-		u.Phone,
+	doc := &Document{}
+	doc.Init()
+	doc.Kind = search.Atom(kind)
+	doc.Id_ = u.Id()
+	doc.Email = search.Atom(u.Email)
+	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser
+	doc.Username = u.Username
+	doc.UsernamePartials = searchpartial.Partials(u.Username)
+	doc.FirstName = u.FirstName
+	doc.FirstNamePartials = searchpartial.Partials(u.FirstName)
+	doc.LastName = u.LastName
+	doc.LastNamePartials = searchpartial.Partials(u.LastName)
+	doc.Phone = u.Phone
 
-		u.BillingAddress.Line1,
-		u.BillingAddress.Line2,
-		u.BillingAddress.City,
-		u.BillingAddress.State,
-		u.BillingAddress.Country,
-		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.BillingAddress.PostalCode,
+	doc.BillingAddressName = u.BillingAddress.Name
+	doc.BillingAddressLine1 = u.BillingAddress.Line1
+	doc.BillingAddressLine2 = u.BillingAddress.Line2
+	doc.BillingAddressCity = u.BillingAddress.City
+	doc.BillingAddressStateCode = u.BillingAddress.State
+	doc.BillingAddressCountryCode = u.BillingAddress.Country
+	if u.BillingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(u.BillingAddress.Country); err == nil {
+			doc.BillingAddressCountry = c.Name.Common
 
-		u.ShippingAddress.Line1,
-		u.ShippingAddress.Line2,
-		u.ShippingAddress.City,
-		u.ShippingAddress.State,
-		u.ShippingAddress.Country,
-		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		u.ShippingAddress.PostalCode,
-
-		u.CreatedAt,
-		u.UpdatedAt,
-
-		u.Accounts.Stripe.BalanceTransactionId,
-		u.Accounts.Stripe.CardId,
-		u.Accounts.Stripe.ChargeId,
-		u.Accounts.Stripe.CustomerId,
-		u.Accounts.Stripe.LastFour,
+			if u.BillingAddress.State != "" {
+				if sd, err := c.FindSubDivision(u.BillingAddress.State); err == nil {
+					doc.BillingAddressState = sd.Name
+				} else {
+					log.Error("BillingAddress State Code '%s' caused an error: %s ", u.BillingAddress.State, err, u.Context())
+				}
+			}
+		} else {
+			log.Error("BillingAddress Country Code '%s' caused an error: %s", u.BillingAddress.Country, err, u.Context())
+		}
 	}
+	doc.BillingAddressPostalCode = u.BillingAddress.PostalCode
+
+	doc.ShippingAddressName = u.ShippingAddress.Name
+	doc.ShippingAddressLine1 = u.ShippingAddress.Line1
+	doc.ShippingAddressLine2 = u.ShippingAddress.Line2
+	doc.ShippingAddressCity = u.ShippingAddress.City
+	doc.ShippingAddressStateCode = u.ShippingAddress.State
+	doc.ShippingAddressCountryCode = u.ShippingAddress.Country
+	if u.ShippingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(u.ShippingAddress.Country); err == nil {
+			doc.ShippingAddressCountry = c.Name.Common
+
+			if u.ShippingAddress.State != "" {
+				if sd, err := c.FindSubDivision(u.ShippingAddress.State); err == nil {
+					doc.ShippingAddressState = sd.Name
+				} else {
+					log.Error("ShippingAddress State Code '%s' caused an error: %s ", u.ShippingAddress.State, err, u.Context())
+				}
+			}
+		} else {
+			log.Error("ShippingAddress Country Code '%s' caused an error: %s", u.ShippingAddress.Country, err, u.Context())
+		}
+	}
+	doc.ShippingAddressPostalCode = u.ShippingAddress.PostalCode
+
+	doc.CreatedAt = u.CreatedAt
+	doc.UpdatedAt = u.UpdatedAt
+
+	doc.StripeBalanceTransactionId = u.Accounts.Stripe.BalanceTransactionId
+	doc.StripeCardId = u.Accounts.Stripe.CardId
+	doc.StripeChargeId = u.Accounts.Stripe.ChargeId
+	doc.StripeCustomerId = u.Accounts.Stripe.CustomerId
+	doc.StripeLastFour = u.Accounts.Stripe.LastFour
+
+	return doc
 }
