@@ -81,7 +81,7 @@ type EmailConfig struct {
 
 type Organization struct {
 	mixin.Model
-	mixin.AccessToken
+	mixin.AccessTokens
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
