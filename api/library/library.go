@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
+	// "hanzo.io/datastore"
+	// "hanzo.io/middleware"
 	"hanzo.io/models/types/country"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -72,8 +72,8 @@ type LoadShopJSRes struct {
 }
 
 func LoadShopJS(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	// org := middleware.GetOrganization(c)
+	// db := datastore.New(org.Namespaced(c))
 
 	req := &LoadShopJSReq{}
 
