@@ -4,8 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
-
 	"github.com/dgrijalva/jwt-go"
 
 	"hanzo.io/util/bit"
@@ -79,7 +77,7 @@ func (t *Token) getJWT() *jwt.Token {
 	return jwt
 }
 
-func (t *Token) Verify(ctx appengine.Context, secret []byte) (bool, error) {
+func (t *Token) Verify(secret []byte) (bool, error) {
 	parts := strings.Split(t.TokenString, ".")
 
 	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {

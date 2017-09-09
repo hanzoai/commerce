@@ -9,8 +9,8 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/log"
+	token "hanzo.io/util/oldjwt"
 	"hanzo.io/util/session"
-	"hanzo.io/util/token"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {
