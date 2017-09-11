@@ -44,6 +44,8 @@ var kinds = map[string]int{
 	"analyticsidentifier": 43,
 	"taxrates":            44,
 	"shippingrates":       45,
+	"oauthtoken":          46,
+	"app":                 47,
 }
 
 var kindsReversed = make(map[int]string)
