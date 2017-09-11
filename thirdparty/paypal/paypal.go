@@ -104,10 +104,11 @@ func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Or
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)
 		return "", err
+	} else {
+		defer res.Body.Close()
 	}
 
 	responseBytes, err := ioutil.ReadAll(res.Body)
@@ -206,10 +207,11 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *o
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)
 		return err
+	} else {
+		defer res.Body.Close()
 	}
 
 	responseBytes, err := ioutil.ReadAll(res.Body)
