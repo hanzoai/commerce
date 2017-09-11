@@ -1,7 +1,56 @@
 package organization
 
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/app"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/store"
+	"hanzo.io/util/log"
+	"hanzo.io/util/rand"
+)
+
+const (
+	DefaultAppName   = "Hanzo App"
+	DefaultStoreName = "Default"
+)
+
 // Hooks
 func (o *Organization) BeforeCreate() error {
 	o.Fees.Id = o.Id()
+	o.SecretKey = []byte(rand.SecretKey())
+
+	return nil
+}
+
+func (o *Organization) AfterCreate() error {
+	// Save namespace so we can decode keys for this organization later
+	db := datastore.New(o.Context())
+	ns := namespace.New(db)
+	err := ns.GetOrCreate("Name=", o.Name)
+
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
+	ns.Name = o.Name
+	ns.IntId = o.Key().IntID()
+	ns.MustUpdate()
+
+	nsCtx := o.Namespaced(o.Context())
+	nsDb := datastore.New(nsCtx)
+
+	ap := app.New(nsDb)
+	ap.Name = DefaultAppName
+	ap.MustCreate()
+
+	stor := store.New(nsDb)
+	stor.Name = DefaultStoreName
+	stor.MustCreate()
+
+	o.DefaultApp = ap.Id()
+	o.DefaultStore = stor.Id()
+
+	o.MustUpdate()
+
 	return nil
 }

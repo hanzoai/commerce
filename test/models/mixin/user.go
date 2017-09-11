@@ -8,7 +8,7 @@ import (
 
 type User struct {
 	mixin.Model
-	mixin.AccessToken
+	mixin.AccessTokens
 
 	Email string
 	Name  string
@@ -28,7 +28,7 @@ func (u *User) Defaults() {
 
 func (u *User) Init(db *datastore.Datastore) {
 	u.Model.Init(db, u)
-	u.AccessToken = mixin.AccessToken{Entity: u}
+	u.AccessTokens = mixin.AccessTokens{Entity: u}
 }
 
 func (u *User) Document() mixin.Document {

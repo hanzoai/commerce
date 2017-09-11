@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
+	// "hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/log"
@@ -81,13 +81,13 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.MustPut()
 
 	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	// ns := namespace.New(db)
+	// ns.Name = org.Name
+	// ns.IntId = org.Key().IntID()
+	// err := ns.Put()
+	// if err != nil {
+	// 	log.Warn("Failed to put namespace: %v", err)
+	// }
 
 	// Add org to user and also save
 	usr.Organizations = []string{org.Id()}

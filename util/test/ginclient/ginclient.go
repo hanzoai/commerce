@@ -35,9 +35,9 @@ func defaultStatus(code int) func([]interface{}) []interface{} {
 }
 
 type Client struct {
-	Router   *gin.Engine
-	Context  *gin.Context
-	defaults defaultsFunc
+	Router     *gin.Engine
+	Context    *gin.Context
+	defaultsFn defaultsFunc
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
@@ -81,10 +81,10 @@ func (cl *Client) Use(mw ...gin.HandlerFunc) {
 
 // Set defaults for each request
 func (cl *Client) Defaults(fn defaultsFunc) {
-	cl.defaults = fn
+	cl.defaultsFn = fn
 }
 
-func (cl *Client) newRequest(method, uri string, reader io.Reader) *http.Request {
+func (cl *Client) NewRequest(method, uri string, reader io.Reader) *http.Request {
 	// Create new request
 	r, err := http.NewRequest(method, uri, reader)
 	if err != nil {
@@ -92,7 +92,7 @@ func (cl *Client) newRequest(method, uri string, reader io.Reader) *http.Request
 	}
 
 	// Run any sort of setup code necessary
-	cl.defaults(r)
+	cl.defaultsFn(r)
 
 	return r
 }
@@ -100,7 +100,7 @@ func (cl *Client) newRequest(method, uri string, reader io.Reader) *http.Request
 // Make request without a body
 func (cl *Client) doRequest(method, uri string) *httptest.ResponseRecorder {
 	// Create request
-	r := cl.newRequest(method, uri, nil)
+	r := cl.NewRequest(method, uri, nil)
 
 	// Do request
 	w := httptest.NewRecorder()
@@ -117,21 +117,21 @@ func (cl *Client) doRequestBody(method, uri string, body interface{}) *httptest.
 	case url.Values:
 		// Posting a form
 		reader := strings.NewReader(v.Encode())
-		r = cl.newRequest(method, uri, reader)
+		r = cl.NewRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	case string:
 		// Assume strings are already JSON-encoded
 		reader := strings.NewReader(v)
-		r = cl.newRequest(method, uri, reader)
+		r = cl.NewRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/json")
 	case nil:
 		reader := strings.NewReader("{}")
-		r = cl.newRequest(method, uri, reader)
+		r = cl.NewRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/json")
 	default:
 		// Blindly JSON encode!
 		buf := json.EncodeBuffer(body)
-		r = cl.newRequest(method, uri, buf)
+		r = cl.NewRequest(method, uri, buf)
 		r.Header.Set("Content-Type", "application/json")
 	}
 
@@ -186,6 +186,15 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 	return w
 }
 
+func (c *Client) Do(req *http.Request) *httptest.ResponseRecorder {
+	// Run any sort of setup code necessary
+	c.defaultsFn(req)
+
+	w := httptest.NewRecorder()
+	c.Router.ServeHTTP(w, req)
+	return w
+}
+
 // Make OPTIONS request
 func (cl *Client) Options(uri string, args ...interface{}) *httptest.ResponseRecorder {
 	return cl.request("OPTIONS", uri, nil, nil, args...)
@@ -209,6 +218,31 @@ func (cl *Client) Patch(uri string, body interface{}, res interface{}, args ...i
 // Make POST request
 func (cl *Client) Post(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
 	return cl.request("POST", uri, body, res, args...)
+}
+
+// Make POST with Form Data
+func (c *Client) PostForm(path string, data url.Values) *httptest.ResponseRecorder {
+	req := c.NewRequest("POST", path, nil)
+	req.PostForm = data
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	return c.Do(req)
+}
+
+// Make POST with JSON Data
+func (c *Client) PostJSON(path string, src interface{}) *httptest.ResponseRecorder {
+	encoded := json.Encode(src)
+	reader := strings.NewReader(encoded)
+	req := c.NewRequest("POST", path, reader)
+	req.Header.Set("Content-Type", "application/json")
+	return c.Do(req)
+}
+
+// Make POST with Raw JSON Data
+func (c *Client) PostRawJSON(path string, src string) *httptest.ResponseRecorder {
+	reader := strings.NewReader(src)
+	req := c.NewRequest("POST", path, reader)
+	req.Header.Set("Content-Type", "application/json")
+	return c.Do(req)
 }
 
 // Make PUT request

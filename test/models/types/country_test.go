@@ -11,6 +11,10 @@ import (
 
 var _ = Describe("models/types/country", func() {
 	Context("Countries", func() {
+		It("should be populated", func() {
+			Expect(len(Countries)).To(Equal(247))
+		})
+
 		It("should be sorted", func() {
 			cs := make([]string, 0)
 			for _, c := range Countries {
