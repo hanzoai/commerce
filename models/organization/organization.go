@@ -13,12 +13,14 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
+	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
@@ -109,8 +111,11 @@ type Organization struct {
 	// Email config
 	Email EmailConfig `json:"email" datastore:",noindex"`
 
-	// Default store
+	// Default Store
 	DefaultStore string `json:"defaultStore"`
+
+	// Default App
+	DefaultApp string `json:"defaultApp"`
 
 	// Plan settings
 	Plan struct {
@@ -224,6 +229,7 @@ func (o *Organization) Validator() *val.Validator {
 	return val.New().Check("FullName").Exists()
 }
 
+// Old JWT / AccessToken AUTH
 func (o *Organization) AddDefaultTokens() {
 	o.RemoveToken("live-secret-key")
 	o.RemoveToken("live-published-key")
@@ -233,6 +239,72 @@ func (o *Organization) AddDefaultTokens() {
 	o.AddToken("live-published-key", permission.Published|permission.Live|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
 	o.AddToken("test-secret-key", permission.Admin|permission.Test)
 	o.AddToken("test-published-key", permission.Published|permission.Test|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
+}
+
+// New JWT / OAUTH
+func (o *Organization) ResetReferenceToken(usr *user.User, claims oauthtoken.Claims) (*oauthtoken.Token, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, UserNotTopLevel
+	}
+
+	if _, _, err := o.RevokeReferenceToken(usr); err != nil {
+		return nil, err
+	}
+
+	tok := oauthtoken.New(o.Db)
+
+	log.Info("Creating New Reference Token for user '%s' from org '%s'.", usr.Id(), o.Name, o.Context())
+
+	claims.OrganizationName = o.Name
+	claims.UserId = usr.Id()
+	claims.Type = oauthtoken.Reference
+	claims.JTI = tok.Id()
+	claims.IssuedAt = time.Now().Unix()
+
+	tok.Claims = claims
+	tok.AccessPeriod = 24 * 30
+
+	if _, err := tok.Encode(o.SecretKey); err != nil {
+		log.Info("Failed to create New Reference Token for user '%s' from org '%s': %s", usr.Id(), o.Name, err, o.Context())
+		return nil, err
+	}
+
+	tok.MustCreate()
+
+	return tok, nil
+}
+
+func (o *Organization) GetReferenceToken(usr *user.User) (*oauthtoken.Token, bool, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, false, UserNotTopLevel
+	}
+
+	log.Info("Getting Reference Token for user '%s' from org '%s'.", usr.Id(), o.Name, o.Context())
+
+	tok := oauthtoken.New(o.Db)
+
+	if ok, err := tok.Query().Filter("Claims.OrganizationName=", o.Name).Filter("Claims.Type=", oauthtoken.Reference).Filter("Revoked=", false).Filter("Claims.UserId=", usr.Id()).Get(); !ok {
+		log.Info("Failed to get Reference Token for user '%s' from org '%s': %s", usr.Id(), o.Name, err, o.Context())
+		return nil, false, err
+	}
+
+	return tok, true, nil
+}
+
+func (o *Organization) RevokeReferenceToken(usr *user.User) (*oauthtoken.Token, bool, error) {
+	if usr.Key().Namespace() != "" {
+		return nil, false, UserNotTopLevel
+	}
+
+	log.Info("Revoking Reference Token for user '%s' from org '%s'.", usr.Id(), o.Name, o.Context())
+
+	if tok, ok, err := o.GetReferenceToken(usr); !ok {
+		log.Info("Failed to revoke Reference Token for user '%s' from org '%s': %s", usr.Id(), o.Name, err, o.Context())
+		return nil, false, err
+	} else {
+		tok.Revoke()
+		return tok, true, nil
+	}
 }
 
 func userId(userOrId interface{}) string {
