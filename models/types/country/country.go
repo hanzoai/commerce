@@ -25,7 +25,7 @@ func makeError(errMsg, errType string) error {
 }
 
 func init() {
-	Countries := make([]Country, 0)
+	Countries = make([]Country, 0)
 	ByISO3166_2 = make(map[string]Country)
 
 	q := gountries.New()
