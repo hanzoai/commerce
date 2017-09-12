@@ -13,6 +13,7 @@ func (t *ShippingRates) Init(db *datastore.Datastore) {
 }
 
 func (t *ShippingRates) Defaults() {
+	t.GeoRates = make([]GeoRate, 0)
 }
 
 func New(db *datastore.Datastore) *ShippingRates {
