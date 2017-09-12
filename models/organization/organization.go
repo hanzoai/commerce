@@ -12,8 +12,10 @@ import (
 	"appengine"
 
 	"hanzo.io/datastore"
+	"hanzo.io/models/app"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/oauthtoken"
+	"hanzo.io/models/store"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/integrations"
@@ -405,4 +407,26 @@ func (o Organization) Pricing() (*pricing.Fees, []pricing.Partner) {
 	fees := o.Fees
 	fees.Id = o.Id()
 	return &fees, o.Partners
+}
+
+// Return DefaultStore
+func (o Organization) GetDefaultStore() (*store.Store, error) {
+	db := datastore.New(o.Namespaced(o.Context()))
+	s := store.New(db)
+	if err := s.GetById(o.DefaultStore); err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// Return DefaultApp
+func (o Organization) GetDefaultApp() (*app.App, error) {
+	db := datastore.New(o.Namespaced(o.Context()))
+	a := app.New(db)
+	if err := a.GetById(o.DefaultApp); err != nil {
+		return nil, err
+	}
+
+	return a, nil
 }
