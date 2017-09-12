@@ -1,6 +1,8 @@
 package taxrates
 
-import "hanzo.io/datastore"
+import (
+	"hanzo.io/datastore"
+)
 
 var kind = "taxrates"
 
@@ -13,6 +15,7 @@ func (t *TaxRates) Init(db *datastore.Datastore) {
 }
 
 func (t *TaxRates) Defaults() {
+	t.GeoRates = make([]GeoRate, 0)
 }
 
 func New(db *datastore.Datastore) *TaxRates {

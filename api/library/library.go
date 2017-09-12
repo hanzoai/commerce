@@ -5,8 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	// "hanzo.io/datastore"
-	// "hanzo.io/middleware"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/country"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -61,43 +63,76 @@ type LoadShopJSReq struct {
 	HasTaxRates      bool `json:"hasTaxRates"`
 	HasShippingRates bool `json:"hasShippingRates"`
 
-	GetUpdatedAt time.Time `json:"date"`
-	StoreId      string    `json:"storeId"`
+	LastChecked time.Time `json:"lastChecked"`
+	StoreId     string    `json:"storeId"`
 }
 
 type LoadShopJSRes struct {
-	Countries []Country `json:"countries"`
-	// TaxRates  *TaxRates `json:"taxRates"`
-	// ShippingRates  *ShippingRates `json:"shippingRates"`
+	Countries     []Country                    `json:"countries"`
+	TaxRates      *taxrates.TaxRates           `json:"taxRates"`
+	ShippingRates *shippingrates.ShippingRates `json:"shippingRates"`
 }
 
 func LoadShopJS(c *gin.Context) {
-	// org := middleware.GetOrganization(c)
-	// db := datastore.New(org.Namespaced(c))
-
-	req := &LoadShopJSReq{}
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
 
 	// Decode response body to get ShopJS Params
+	req := &LoadShopJSReq{}
+
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
-	if !req.HasCountries {
-
-	} else {
-
+	// Default store if StoreId is left blank
+	if req.StoreId == "" {
+		req.StoreId = org.DefaultStore
 	}
 
-	if !req.HasTaxRates {
+	// Build response
+	res := LoadShopJSRes{}
 
-	} else {
-
+	if !req.HasCountries ||
+		req.LastChecked.Before(CountryLastUpdated) {
+		res.Countries = Countries
 	}
 
-	if !req.HasShippingRates {
-
+	if req.HasTaxRates {
+		tr := taxrates.New(db)
+		if ok, err := tr.Query().Filter("StoreId=", req.StoreId).Filter("UpdatedAt>=", req.LastChecked).Get(); ok {
+			res.TaxRates = tr
+		} else if err != nil {
+			http.Fail(c, 500, err.Error(), err)
+			return
+		}
 	} else {
-
+		tr := taxrates.New(db)
+		if ok, err := tr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
+			res.TaxRates = tr
+		} else if err != nil {
+			http.Fail(c, 500, err.Error(), err)
+			return
+		}
 	}
+
+	if req.HasShippingRates {
+		sr := shippingrates.New(db)
+		if ok, err := sr.Query().Filter("StoreId=", req.StoreId).Filter("UpdatedAt>=", req.LastChecked).Get(); ok {
+			res.ShippingRates = sr
+		} else if err != nil {
+			http.Fail(c, 500, err.Error(), err)
+			return
+		}
+	} else {
+		sr := shippingrates.New(db)
+		if ok, err := sr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
+			res.ShippingRates = sr
+		} else if err != nil {
+			http.Fail(c, 500, err.Error(), err)
+			return
+		}
+	}
+
+	http.Render(c, 200, res)
 }
