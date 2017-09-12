@@ -5,6 +5,8 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/shipping"
 	"hanzo.io/models/types/weight"
@@ -168,4 +170,24 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	// Ensure currency is set to currency of store
 	field := ev.FieldByName("Currency")
 	field.Set(reflect.ValueOf(s.Currency))
+}
+
+// Return TaxRates
+func (s Store) GetTaxRates() (*taxrates.TaxRates, error) {
+	tr := taxrates.New(s.Db)
+	if ok, err := tr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
+		return tr, err
+	}
+
+	return tr, nil
+}
+
+// Return ShippingRates
+func (s Store) GetShippingRates() (*shippingrates.ShippingRates, error) {
+	sr := shippingrates.New(s.Db)
+	if ok, err := sr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
+		return sr, err
+	}
+
+	return sr, nil
 }
