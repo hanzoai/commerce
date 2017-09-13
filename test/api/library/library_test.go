@@ -73,9 +73,15 @@ var _ = BeforeSuite(func() {
 	sr, err := stor.GetShippingRates()
 	Expect(err).NotTo(HaveOccurred())
 	sr.GeoRates = append(sr.GeoRates, shippingrates.GeoRate{
-		georate.GeoRate{
-			Cost: 499,
-		},
+		georate.New(
+			"",
+			"",
+			"",
+			"",
+			0,
+			499,
+		),
+		false,
 		"SHIPPING",
 	})
 	sr.MustUpdate()
@@ -83,29 +89,38 @@ var _ = BeforeSuite(func() {
 	tr, err := stor.GetTaxRates()
 	Expect(err).NotTo(HaveOccurred())
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.GeoRate{
-			Country:     "US",
-			State:       "KS",
-			PostalCodes: "66212",
-			Percent:     0.0885,
-		},
+		georate.New(
+			"US",
+			"KS",
+			"",
+			"66212",
+			0.0885,
+			0,
+		),
 		false,
 		"TEST TAX",
 	})
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.GeoRate{
-			Country: "US",
-			State:   "KS",
-			Percent: 0.065,
-		},
+		georate.New(
+			"US",
+			"KS",
+			"",
+			"",
+			0.065,
+			0,
+		),
 		false,
 		"TEST TAX",
 	})
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.GeoRate{
-			Country: "GB",
-			Percent: 0.2,
-		},
+		georate.New(
+			"GB",
+			"",
+			"",
+			"",
+			0.2,
+			0,
+		),
 		false,
 		"VAT",
 	})
@@ -161,6 +176,14 @@ var _ = Describe("library", func() {
 			Expect(len(res.ShippingRates.GeoRates)).To(Equal(1))
 			Expect(res.TaxRates.StoreId).To(Equal(org.DefaultStore))
 			Expect(len(res.TaxRates.GeoRates)).To(Equal(3))
+		})
+
+		It("Should fail for missing store", func() {
+			req := libraryApi.LoadShopJSReq{
+				StoreId: "123",
+			}
+
+			cl.Post("/library/shopjs", req, nil, 404)
 		})
 	})
 })
