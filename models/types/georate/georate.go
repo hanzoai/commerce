@@ -49,6 +49,9 @@ func New(ctr, st, ct, pcs string, pt float64, cst currency.Cents) GeoRate {
 		pcs = ""
 	}
 
+	// Trim leading/trailing commas
+	pcs = strings.Trim(pcs, ",")
+
 	return GeoRate{
 		clean(ctr),
 		clean(st),
@@ -70,12 +73,17 @@ func clean(str string) string {
 }
 
 // Match GeoRate with country, state, city/postal code.  Report if there's a
-// match or partial match and the level of match
+// match and the level of match.  If false, also return level of any partial match
 func (g GeoRate) Match(ctr, st, ct, pc string) (bool, int) {
 	ctr = clean(ctr)
 	st = clean(st)
 	ct = clean(ct)
 	pc = clean(pc)
+
+	if ctr == "" || st == "" || (ct == "" && pc == "") {
+		log.Debug("Invalid Input")
+		return false, 0
+	}
 
 	if g.Country == "" {
 		log.Debug("Country is Wild Card")
@@ -84,31 +92,60 @@ func (g GeoRate) Match(ctr, st, ct, pc string) (bool, int) {
 
 	if g.Country == ctr {
 		if g.State == "" {
-			log.Debug("State is Blank")
+			log.Debug("Country Match")
 			return true, 1
 		}
 
 		if g.State == st {
-			if ct != "" && g.City == ct {
+			if g.City == "" && g.PostalCodes == "" {
+				log.Debug("State Match")
+				return true, 2
+			}
+
+			if g.City != "" && g.City == ct {
 				log.Debug("City Match")
 				return true, 3
 			}
 
-			codes := strings.Split(g.PostalCodes, ",")
-
-			for _, code := range codes {
-				if code == pc {
-					log.Debug("Postal Code Match")
-					return true, 3
+			if g.PostalCodes != "" {
+				codes := strings.Split(g.PostalCodes, ",")
+				for _, code := range codes {
+					if code == pc {
+						log.Debug("Postal Code Match")
+						return true, 3
+					}
 				}
 			}
-			log.Debug("State Match")
-			return true, 2
+
+			log.Debug("City/Postal Code Mismatch")
+			return false, 2
 		}
-		log.Debug("Country Match")
-		return true, 1
+		log.Debug("State Mismatch")
+		return false, 1
 	}
 
 	log.Debug("No Match")
 	return false, 0
+}
+
+// Match across an array of georates, return result with highest match level,
+// return first result if there is a tie
+func Match(grs []GeoRate, ctr, st, ct, pc string) (*GeoRate, int, int) {
+	var retGr *GeoRate
+	currentLevel := -1
+	idx := -1
+
+	for i, gr := range grs {
+		if isMatch, level := gr.Match(ctr, st, ct, pc); isMatch && level > currentLevel {
+			if level == 3 {
+				return &gr, level, i
+			}
+
+			retGr = &grs[i]
+			currentLevel = level
+			idx = i
+		}
+	}
+
+	return retGr, currentLevel, idx
 }
