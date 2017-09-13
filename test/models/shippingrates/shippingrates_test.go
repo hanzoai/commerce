@@ -1,0 +1,267 @@
+package test
+
+import (
+	"testing"
+
+	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/types/georate"
+	"hanzo.io/util/fake"
+
+	. "hanzo.io/util/test/ginkgo"
+)
+
+func Test(t *testing.T) {
+	Setup("models/shippingrates", t)
+}
+
+var _ = Describe("models/shippingrates", func() {
+	Context("Match", func() {
+		It("Should Match Match with Highest Level", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("us", "ks", "", "66212")
+			Expect(gr).To(Equal(&grs.GeoRates[3]))
+			Expect(level).To(Equal(3))
+			Expect(idx).To(Equal(3))
+		})
+
+		It("Should Return L0 Default Rates", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("gb", "bkm", "", "sl8")
+			Expect(gr).To(Equal(&grs.GeoRates[2]))
+			Expect(level).To(Equal(0))
+			Expect(idx).To(Equal(2))
+		})
+
+		It("Should Return L1 Country Rates", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("US", "ky", "", "12345")
+			Expect(gr).To(Equal(&grs.GeoRates[5]))
+			Expect(level).To(Equal(1))
+			Expect(idx).To(Equal(5))
+		})
+
+		It("Should Return L2 State Rates", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("us", "kS", "", "12345")
+			Expect(gr).To(Equal(&grs.GeoRates[0]))
+			Expect(level).To(Equal(2))
+			Expect(idx).To(Equal(0))
+		})
+
+		It("Should Return L3 City Rates", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("uS", "Ks", "Emporia", "")
+			Expect(gr).To(Equal(&grs.GeoRates[3]))
+			Expect(level).To(Equal(3))
+			Expect(idx).To(Equal(3))
+		})
+
+		It("Should Return L3 Postal Code Rates", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("us", "ks", "", "66212")
+			Expect(gr).To(Equal(&grs.GeoRates[4]))
+			Expect(level).To(Equal(3))
+			Expect(idx).To(Equal(4))
+		})
+
+		It("Should Fail Without a Default Rate", func() {
+			grs := shippingrates.ShippingRates{
+				GeoRates: []shippingrates.GeoRate{
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "mo", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "emporia", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "ks", "", "66212", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+					shippingrates.GeoRate{
+						GeoRate:      georate.New("us", "", "", "", 0.1, 1),
+						ShippingName: fake.Characters(16),
+					},
+				},
+			}
+
+			gr, level, idx := grs.Match("gb", "bkm", "", "sl8")
+			Expect(gr).To(BeNil())
+			Expect(level).To(Equal(-1))
+			Expect(idx).To(Equal(-1))
+		})
+	})
+})
