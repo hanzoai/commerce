@@ -8,6 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/store"
 	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/country"
 	"hanzo.io/util/json"
@@ -88,6 +89,12 @@ func LoadShopJS(c *gin.Context) {
 	// Default store if StoreId is left blank
 	if req.StoreId == "" {
 		req.StoreId = org.DefaultStore
+	}
+
+	stor := store.New(db)
+	if err := stor.GetById(req.StoreId); err != nil {
+		http.Fail(c, 404, "Store `"+req.StoreId+"` not found", err)
+		return
 	}
 
 	// Build response
