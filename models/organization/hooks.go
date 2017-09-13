@@ -45,6 +45,7 @@ func (o *Organization) AfterCreate() error {
 
 	stor := store.New(nsDb)
 	stor.Name = DefaultStoreName
+	stor.Currency = o.Currency
 	stor.MustCreate()
 
 	o.DefaultApp = ap.Id()

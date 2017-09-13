@@ -21,3 +21,20 @@ type ShippingRates struct {
 	// TODO: Support Mass / Dimension Based Rates
 	// DimRates []DimRate `json:"dimRates"`
 }
+
+func (t ShippingRates) GetGeoRates() []georate.GeoRate {
+	grs := make([]georate.GeoRate, 0)
+	for i, _ := range t.GeoRates {
+		grs = append(grs, t.GeoRates[i].GeoRate)
+	}
+	return grs
+}
+
+func (t ShippingRates) Match(ctr, st, ct, pc string) (*GeoRate, int, int) {
+	gr, level, i := georate.Match(t.GetGeoRates(), ctr, st, ct, pc)
+	if gr != nil {
+		return &t.GeoRates[i], level, i
+	}
+
+	return nil, level, i
+}
