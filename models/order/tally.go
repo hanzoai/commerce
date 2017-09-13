@@ -6,6 +6,7 @@ import (
 
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
+	// "hanzo.io/models/types/georate"
 	"hanzo.io/util/log"
 )
 
@@ -87,6 +88,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		if trs, err := stor.GetTaxRates(); trs == nil {
 			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
 		} else {
+			// match, level := georate.Match(trs.GeoRates, o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.State)
 		}
 
 		if srs, err := stor.GetShippingRates(); srs == nil {
