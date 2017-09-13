@@ -25,6 +25,13 @@ func (o *Order) Tally() {
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
+	// Taxless
+	useFallback := false
+	if stor == nil {
+		useFallback = true
+		log.Warn("Fallback: Using client tax and shipping values.", o.Context())
+	}
+
 	ctx := o.Context()
 
 	// Get coupons from datastore
@@ -54,9 +61,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update against store listings
 	log.Debug("Updating items against store listing")
-	if stor != nil {
-		o.UpdateEntities(stor)
-	}
+	o.UpdateEntities(stor)
 
 	// Update line items using that information
 	log.Debug("Updating line items")
@@ -76,6 +81,19 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update order total discount
 	o.Discount = discount
+
+	// If not using fallback mode, skip taxes
+	if !useFallback {
+		if trs, err := stor.GetTaxRates(); trs == nil {
+			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
+		} else {
+		}
+
+		if srs, err := stor.GetShippingRates(); srs == nil {
+			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
+		} else {
+		}
+	}
 
 	// Tally up order again
 	o.Tally()
