@@ -108,20 +108,25 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Order", func() {
 	Context("Storeless (Deprecated)", func() {
-		// Apparently not tamper resistent....
-		// BeforeEach(func() {
-		// 	// Scramble currency values so we know they are being replaced
-		// 	for i, _ := range ord.Items {
-		// 		ord.Items[i].Price = currency.Cents(rand.Int64())
-		// 	}
+		// Make sure out of order execution works because tax is left alone in
+		// deprecated flow
+		BeforeEach(func() {
+			// Scramble currency values so we know they are being replaced
+			for i, _ := range ord.Coupons {
+				ord.Coupons[i].Amount = rand.Int()
+			}
 
-		// 	ord.LineTotal = currency.Cents(rand.Int64())
-		// 	ord.Discount = currency.Cents(rand.Int64())
-		// 	ord.Subtotal = currency.Cents(rand.Int64())
-		// 	ord.Tax = currency.Cents(rand.Int64())
-		// 	ord.Shipping = currency.Cents(rand.Int64())
-		// 	ord.Total = currency.Cents(rand.Int64())
-		// })
+			for i, _ := range ord.Items {
+				ord.Items[i].Price = currency.Cents(rand.Int64())
+			}
+
+			ord.LineTotal = currency.Cents(rand.Int64())
+			ord.Discount = currency.Cents(rand.Int64())
+			ord.Subtotal = currency.Cents(rand.Int64())
+			ord.Tax = 0      //currency.Cents(rand.Int64())
+			ord.Shipping = 0 //currency.Cents(rand.Int64())
+			ord.Total = currency.Cents(rand.Int64())
+		})
 
 		It("Should UpdateAndTally", func() {
 			ord.CouponCodes = []string{}
