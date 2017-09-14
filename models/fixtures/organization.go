@@ -6,8 +6,10 @@ import (
 	"hanzo.io/datastore"
 	// "hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/store"
+	"hanzo.io/models/taxrates"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/models/types/analytics"
 )
@@ -61,8 +63,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Paypal.Test.SecuritySignature = ""
 
 	// Add default access tokens
-	org.AddDefaultTokens()
-	log.Debug("Adding tokens: %v", org.Tokens)
+	// org.AddDefaultTokens()
+	// log.Debug("Adding tokens: %v", org.Tokens)
 
 	// Add default analytics config
 	integrations := []Integration{
@@ -79,6 +81,30 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	// Save org into default namespace
 	org.MustPut()
+
+	// Retrofit existing thing
+	if org.DefaultStore == "" {
+		nsdb := datastore.New(org.Namespaced(org.Context()))
+
+		stor := store.New(nsdb)
+		stor.GetOrCreate("Name=", "Default")
+		stor.Name = "Default"
+		stor.Currency = org.Currency
+		stor.MustUpdate()
+
+		trs := taxrates.New(nsdb)
+		trs.GetOrCreate("StoreId=", stor.Id())
+		trs.StoreId = stor.Id()
+		trs.MustCreate()
+
+		srs := shippingrates.New(nsdb)
+		srs.GetOrCreate("StoreId=", stor.Id())
+		srs.StoreId = stor.Id()
+		srs.MustCreate()
+
+		org.DefaultStore = stor.Id()
+		org.MustUpdate()
+	}
 
 	// Save namespace so we can decode keys for this organization later
 	// ns := namespace.New(db)
