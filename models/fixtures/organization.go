@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/shippingrates"
 	"hanzo.io/models/store"
 	"hanzo.io/models/taxrates"
+	"hanzo.io/models/types/georate"
 	"hanzo.io/models/user"
 
 	. "hanzo.io/models/types/analytics"
@@ -105,6 +106,60 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 		org.DefaultStore = stor.Id()
 		org.MustUpdate()
 	}
+
+	stor, _ := org.GetDefaultStore()
+
+	trs, _ := stor.GetTaxRates()
+	trs.GeoRates = []taxrates.GeoRate{
+		taxrates.GeoRate{
+			GeoRate: georate.New(
+				"US",
+				"MO",
+				"",
+				"64108",
+				0.08475,
+				0,
+			),
+		},
+		taxrates.GeoRate{
+			GeoRate: georate.New(
+				"US",
+				"MO",
+				"",
+				"",
+				0.04225,
+				0,
+			),
+		},
+	}
+
+	trs.MustUpdate()
+
+	srs, _ := stor.GetShippingRates()
+	srs.GeoRates = []shippingrates.GeoRate{
+		shippingrates.GeoRate{
+			GeoRate: georate.New(
+				"US",
+				"",
+				"",
+				"",
+				0,
+				499,
+			),
+		},
+		shippingrates.GeoRate{
+			GeoRate: georate.New(
+				"",
+				"",
+				"",
+				"",
+				0,
+				999,
+			),
+		},
+	}
+
+	srs.MustUpdate()
 
 	// Save namespace so we can decode keys for this organization later
 	// ns := namespace.New(db)
