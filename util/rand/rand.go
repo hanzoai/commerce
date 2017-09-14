@@ -34,6 +34,18 @@ func ShortId() string {
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
 }
 
+func SecretKey() string {
+	// 75% of 256 bytes
+	size := 192
+
+	rb := make([]byte, size)
+	if _, err := rand.Read(rb); err != nil {
+		log.Error("Failed to genrate random characters: %v", err)
+	}
+
+	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
+}
+
 func Int() int {
 	return mathrand.Int()
 }
