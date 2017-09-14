@@ -81,7 +81,6 @@ var _ = BeforeSuite(func() {
 			0,
 			499,
 		),
-		false,
 		"SHIPPING",
 	})
 	sr.MustUpdate()
