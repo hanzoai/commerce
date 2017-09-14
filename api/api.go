@@ -22,7 +22,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/models/webhook"
-	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
@@ -39,6 +38,7 @@ import (
 	dataApi "hanzo.io/api/data"
 	deployApi "hanzo.io/api/deploy"
 	formApi "hanzo.io/api/form"
+	libraryApi "hanzo.io/api/library"
 	namespaceApi "hanzo.io/api/namespace"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
@@ -63,7 +63,6 @@ import (
 
 func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
-	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -171,7 +170,10 @@ func Route(api router.Router) {
 	dashv2Api.Route(api)
 
 	// Counter Api (admin only)
-	counterApi.Route(api, adminRequired)
+	counterApi.Route(api)
+
+	// Library Api
+	libraryApi.Route(api)
 }
 
 func init() {
