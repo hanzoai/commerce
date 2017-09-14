@@ -254,7 +254,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	}
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
 	stateName := ord.ShippingAddress.State
 	if len(stateName) <= 2 {
 		stateName = strings.ToUpper(stateName)
@@ -354,7 +354,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 	subject := conf.Subject
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
 	stateName := ord.ShippingAddress.State
 	if len(stateName) <= 2 {
 		stateName = strings.ToUpper(stateName)
@@ -460,7 +460,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 	subject := conf.Subject
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
 	stateName := ord.ShippingAddress.State
 	if len(stateName) <= 2 {
 		stateName = strings.ToUpper(stateName)
@@ -566,7 +566,7 @@ func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization,
 	subject := conf.Subject
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
 	stateName := ord.ShippingAddress.State
 	if len(stateName) <= 2 {
 		stateName = strings.ToUpper(stateName)

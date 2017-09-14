@@ -29,7 +29,7 @@ github.com/ryanuber/go-glob master
 github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go v25.0.0
 github.com/vanng822/go-premailer/premailer master
-github.com/vincent-petithory/countries master
+github.com/pariz/gountries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master

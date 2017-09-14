@@ -8,6 +8,7 @@ import (
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
+	"hanzo.io/util/log"
 )
 
 type Document struct {
@@ -32,6 +33,7 @@ type Document struct {
 	BillingAddressLine1       string
 	BillingAddressLine2       string
 	BillingAddressCity        string
+	BillingAddressStateCode   string
 	BillingAddressState       string
 	BillingAddressCountryCode string
 	BillingAddressCountry     string
@@ -41,6 +43,7 @@ type Document struct {
 	ShippingAddressLine1       string
 	ShippingAddressLine2       string
 	ShippingAddressCity        string
+	ShippingAddressStateCode   string
 	ShippingAddressState       string
 	ShippingAddressCountryCode string
 	ShippingAddressCountry     string
@@ -157,18 +160,46 @@ func (o Order) Document() mixin.Document {
 	doc.BillingAddressLine1 = o.BillingAddress.Line1
 	doc.BillingAddressLine2 = o.BillingAddress.Line2
 	doc.BillingAddressCity = o.BillingAddress.City
-	doc.BillingAddressState = o.BillingAddress.State
+	doc.BillingAddressStateCode = o.BillingAddress.State
 	doc.BillingAddressCountryCode = o.BillingAddress.Country
-	doc.BillingAddressCountry = country.ByISOCodeISO3166_2[o.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	if o.BillingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.BillingAddress.Country); err == nil {
+			doc.BillingAddressCountry = c.Name.Common
+
+			if o.BillingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.BillingAddress.State); err == nil {
+					doc.BillingAddressState = sd.Name
+				} else {
+					log.Error("BillingAddress State Code '%s' caused an error: %s ", o.BillingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("BillingAddress Country Code '%s' caused an error: %s", o.BillingAddress.Country, err, o.Context())
+		}
+	}
 	doc.BillingAddressPostalCode = o.BillingAddress.PostalCode
 
 	doc.ShippingAddressName = o.ShippingAddress.Name
 	doc.ShippingAddressLine1 = o.ShippingAddress.Line1
 	doc.ShippingAddressLine2 = o.ShippingAddress.Line2
 	doc.ShippingAddressCity = o.ShippingAddress.City
-	doc.ShippingAddressState = o.ShippingAddress.State
+	doc.ShippingAddressStateCode = o.ShippingAddress.State
 	doc.ShippingAddressCountryCode = o.ShippingAddress.Country
-	doc.ShippingAddressCountry = country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	if o.ShippingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.ShippingAddress.Country); err == nil {
+			doc.ShippingAddressCountry = c.Name.Common
+
+			if o.ShippingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.ShippingAddress.State); err == nil {
+					doc.ShippingAddressState = sd.Name
+				} else {
+					log.Error("ShippingAddress State Code '%s' caused an error: %s ", o.ShippingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("ShippingAddress Country Code '%s' caused an error: %s", o.ShippingAddress.Country, err, o.Context())
+		}
+	}
 	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
 
 	doc.Discount = o.Currency.ToFloat(o.Discount)

@@ -11,7 +11,12 @@ import (
 
 // Calculates order totals
 func (o *Order) Tally() {
-	log.Debug("Tallying up order")
+	o.TallySubtotal()
+	o.TallyTotal()
+}
+
+func (o *Order) TallySubtotal() {
+	log.Debug("Tallying up order subtotal")
 
 	// Update total
 	linetotal := 0
@@ -20,11 +25,22 @@ func (o *Order) Tally() {
 	}
 	o.LineTotal = currency.Cents(linetotal)
 	o.Subtotal = o.LineTotal - o.Discount
+}
+
+func (o *Order) TallyTotal() {
+	log.Debug("Tallying up order total")
 	o.Total = o.Subtotal + o.Tax + o.Shipping
 }
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
+	// Taxless
+	useFallback := false
+	if stor == nil {
+		useFallback = true
+		log.Warn("Fallback: Using client tax and shipping values.", o.Context())
+	}
+
 	ctx := o.Context()
 
 	// Get coupons from datastore
@@ -78,7 +94,33 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	o.Discount = discount
 
 	// Tally up order again
-	o.Tally()
+	o.TallySubtotal()
+
+	// If not using fallback mode, skip taxes
+	if !useFallback {
+		if stor.Currency != "" {
+			o.Currency = stor.Currency
+		}
+
+		// Tax may depend on shipping so calcualte that first
+		if srs, err := stor.GetShippingRates(); srs == nil {
+			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
+		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+			o.Shipping = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
+		}
+
+		if trs, err := stor.GetTaxRates(); trs == nil {
+			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
+		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+			if match.TaxShipping {
+				o.Tax = match.Cost + currency.Cents(float64(o.Subtotal+o.Shipping)*match.Percent)
+			} else {
+				o.Tax = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
+			}
+		}
+	}
+
+	o.TallyTotal()
 
 	return nil
 }

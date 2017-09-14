@@ -1,6 +1,9 @@
 package store
 
-import "hanzo.io/datastore"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/types/currency"
+)
 
 var kind = "store"
 
@@ -14,13 +17,13 @@ func (s *Store) Init(db *datastore.Datastore) {
 
 func (s *Store) Defaults() {
 	s.Listings = make(Listings)
-	s.ShippingRateTable = make(ShippingRateTable)
+	// s.ShippingRateTable = make(ShippingRateTable)
+	s.Currency = currency.USD
 }
 
 func New(db *datastore.Datastore) *Store {
 	s := new(Store)
 	s.Init(db)
-	s.Defaults()
 	s.Defaults()
 	return s
 }
