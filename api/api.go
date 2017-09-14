@@ -29,6 +29,7 @@ import (
 	accessTokenApi "hanzo.io/api/accesstoken"
 	accountApi "hanzo.io/api/account"
 	affiliateApi "hanzo.io/api/affiliate"
+	authApi "hanzo.io/api/auth"
 	campaignApi "hanzo.io/api/campaign"
 	cartApi "hanzo.io/api/cart"
 	cdnApi "hanzo.io/api/cdn"
@@ -138,6 +139,9 @@ func Route(api router.Router) {
 
 	// Access token API
 	accessTokenApi.Route(api)
+
+	// OAuth API
+	authApi.Route(api)
 
 	// Reamaze custom store API endpoints
 	reamazeApi.Route(api)

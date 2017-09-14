@@ -7,7 +7,7 @@ import (
 
 type User struct {
 	mixin.Model
-	mixin.AccessToken
+	mixin.AccessTokens
 
 	Name    string
 	BCreate string
@@ -19,7 +19,7 @@ func (u User) Kind() string {
 
 func (u *User) Init(db *datastore.Datastore) {
 	u.Model = mixin.Model{Db: db, Entity: u}
-	u.AccessToken = mixin.AccessToken{Entity: u}
+	u.AccessTokens = mixin.AccessTokens{Entity: u}
 }
 
 func (u *User) Document() mixin.Document {

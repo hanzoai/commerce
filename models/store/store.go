@@ -5,6 +5,8 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/shipping"
 	"hanzo.io/models/types/weight"
@@ -82,8 +84,8 @@ type Store struct {
 	TaxNexus []Address `json:"taxNexus,omitempty"`
 
 	// Shipping Rate Table, country name to shipping rate
-	ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore:"-"`
-	ShippingRateTable_ string            `json:"-" datastore:",noindex"`
+	// ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore:"-"`
+	// ShippingRateTable_ string            `json:"-" datastore:",noindex"`
 
 	// Overrides per item
 	Listings  Listings `json:"listings" datastore:"-"`
@@ -118,9 +120,9 @@ func (s *Store) Load(c <-chan aeds.Property) (err error) {
 		err = json.DecodeBytes([]byte(s.Listings_), &s.Listings)
 	}
 
-	if len(s.ShippingRateTable_) > 0 {
-		err = json.DecodeBytes([]byte(s.ShippingRateTable_), &s.ShippingRateTable)
-	}
+	// if len(s.ShippingRateTable_) > 0 {
+	// 	err = json.DecodeBytes([]byte(s.ShippingRateTable_), &s.ShippingRateTable)
+	// }
 
 	return err
 }
@@ -128,7 +130,7 @@ func (s *Store) Load(c <-chan aeds.Property) (err error) {
 func (s *Store) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	s.Listings_ = string(json.EncodeBytes(&s.Listings))
-	s.ShippingRateTable_ = string(json.EncodeBytes(&s.ShippingRateTable))
+	// s.ShippingRateTable_ = string(json.EncodeBytes(&s.ShippingRateTable))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
@@ -168,4 +170,24 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	// Ensure currency is set to currency of store
 	field := ev.FieldByName("Currency")
 	field.Set(reflect.ValueOf(s.Currency))
+}
+
+// Return TaxRates
+func (s Store) GetTaxRates() (*taxrates.TaxRates, error) {
+	tr := taxrates.New(s.Db)
+	if ok, err := tr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
+		return nil, err
+	}
+
+	return tr, nil
+}
+
+// Return ShippingRates
+func (s Store) GetShippingRates() (*shippingrates.ShippingRates, error) {
+	sr := shippingrates.New(s.Db)
+	if ok, err := sr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
+		return nil, err
+	}
+
+	return sr, nil
 }
