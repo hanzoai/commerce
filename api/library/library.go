@@ -107,8 +107,10 @@ func LoadShopJS(c *gin.Context) {
 
 	if req.HasTaxRates {
 		tr := taxrates.New(db)
-		if ok, err := tr.Query().Filter("StoreId=", req.StoreId).Filter("UpdatedAt>=", req.LastChecked).Get(); ok {
-			res.TaxRates = tr
+		if ok, err := tr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
+			if req.LastChecked.Before(tr.UpdatedAt) {
+				res.TaxRates = tr
+			}
 		} else if err != nil {
 			http.Fail(c, 500, err.Error(), err)
 			return
@@ -125,8 +127,10 @@ func LoadShopJS(c *gin.Context) {
 
 	if req.HasShippingRates {
 		sr := shippingrates.New(db)
-		if ok, err := sr.Query().Filter("StoreId=", req.StoreId).Filter("UpdatedAt>=", req.LastChecked).Get(); ok {
-			res.ShippingRates = sr
+		if ok, err := sr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
+			if req.LastChecked.Before(sr.UpdatedAt) {
+				res.ShippingRates = sr
+			}
 		} else if err != nil {
 			http.Fail(c, 500, err.Error(), err)
 			return
