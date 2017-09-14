@@ -24,10 +24,11 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx  ae.Context
-	db   *datastore.Datastore
-	ord  *order.Order
-	stor *store.Store
+	ctx   ae.Context
+	db    *datastore.Datastore
+	ord   *order.Order
+	stor  *store.Store
+	stor2 *store.Store
 )
 
 // Setup appengine context and datastore before tests
@@ -41,6 +42,9 @@ var _ = BeforeSuite(func() {
 
 	stor = store.New(ord.Db)
 	stor.MustCreate()
+
+	stor2 = store.New(ord.Db)
+	stor2.MustCreate()
 
 	sr, err := stor.GetShippingRates()
 	Expect(err).NotTo(HaveOccurred())
@@ -99,6 +103,19 @@ var _ = BeforeSuite(func() {
 	tr.MustUpdate()
 
 	fixtures.Coupon(c)
+
+	stor2 = store.New(ord.Db)
+	stor2.MustCreate()
+
+	sr2, err := stor2.GetShippingRates()
+	Expect(err).NotTo(HaveOccurred())
+
+	sr2.MustDelete()
+
+	tr2, err := stor2.GetTaxRates()
+	Expect(err).NotTo(HaveOccurred())
+
+	tr2.MustDelete()
 })
 
 // Tear-down appengine context
@@ -134,6 +151,26 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
 			Expect(ord.Total).To(Equal(currency.Cents(50000)))
+		})
+
+		It("Should UpdateAndTally With No Tax or ShippingRates without crashing", func() {
+			sr, _ := stor2.GetShippingRates()
+			Expect(sr).To(BeNil())
+
+			tr, _ := stor2.GetTaxRates()
+			Expect(tr).To(BeNil())
+
+			ord.CouponCodes = []string{}
+			err := ord.UpdateAndTally(stor2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
+
+			tax := currency.Cents(0)
+			shipping := currency.Cents(0)
+
+			Expect(ord.Tax).To(Equal(tax))
+			Expect(ord.Shipping).To(Equal(shipping))
+			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
 		})
 
 		It("Should UpdateAndTally With Coupon", func() {
