@@ -473,7 +473,7 @@ func (o *Order) UpdateEntities(stor *store.Store) {
 		}
 	}
 
-	// Update order to reflectw which store was used
+	// Update order to reflecte which store was used
 	o.StoreId = stor.Id()
 }
 

@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/util/bit"
 	"hanzo.io/util/log"
-	"hanzo.io/util/token"
+	token "hanzo.io/util/oldjwt"
 )
 
 // Error for expired jti's
@@ -13,8 +13,8 @@ var ErrorExpiredToken = errors.New("This token is expired")
 var TokenNotFound = errors.New("Token not found")
 var TokenNotFoundByName = errors.New("Token not found by name")
 
-// AccessToken is a mixin for securing objects with an AccessToken
-type AccessToken struct {
+// AccessTokens is a mixin for securing objects with an AccessTokens
+type AccessTokens struct {
 	// Entity is a struct with a Entity mixin
 	Entity Entity `json:"-" datastore:"-"`
 
@@ -27,18 +27,18 @@ type AccessToken struct {
 	currentToken *token.Token
 }
 
-func (at *AccessToken) Init(e Entity) {
+func (at *AccessTokens) Init(e Entity) {
 	at.Entity = e
 }
 
-func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
+func (at *AccessTokens) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
 	return t.String()
 }
 
-func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
+func (at *AccessTokens) CompareToken(tok1, tok2 *token.Token) error {
 	if tok1.Id != tok2.Id {
 		return ErrorExpiredToken
 	}
@@ -50,7 +50,7 @@ func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
 	return nil
 }
 
-func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
+func (at *AccessTokens) GetTokenByName(name string) (*token.Token, error) {
 	for _, tok := range at.Tokens {
 		if tok.Name == name {
 			tok.Secret = at.SecretKey
@@ -62,7 +62,7 @@ func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
 	return nil, TokenNotFoundByName
 }
 
-func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
+func (at *AccessTokens) MustGetTokenByName(name string) *token.Token {
 	tok, err := at.GetTokenByName(name)
 	if err != nil {
 		panic(err)
@@ -70,7 +70,7 @@ func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
 	return tok
 }
 
-func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
+func (at *AccessTokens) GetToken(accessToken string) (*token.Token, error) {
 	tok, err := token.FromString(accessToken, at.SecretKey)
 	if err != nil {
 		return tok, err
@@ -91,7 +91,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	return tok, TokenNotFound
 }
 
-func (at *AccessToken) RemoveToken(name string) {
+func (at *AccessTokens) RemoveToken(name string) {
 	num := len(at.Tokens)
 	tokens := make([]token.Token, 0)
 	if num <= 0 {
@@ -110,11 +110,11 @@ func (at *AccessToken) RemoveToken(name string) {
 	at.Tokens = tokens
 }
 
-func (at *AccessToken) ClearTokens() {
+func (at *AccessTokens) ClearTokens() {
 	at.Tokens = make([]token.Token, 0)
 }
 
-func (at *AccessToken) GetWithAccessToken(accessToken string) (*token.Token, error) {
+func (at *AccessTokens) GetWithAccessToken(accessToken string) (*token.Token, error) {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
 		log.Warn("Failed to get %v using token '%v': %v", at.Entity.Kind(), accessToken, err)
@@ -126,6 +126,6 @@ func (at *AccessToken) GetWithAccessToken(accessToken string) (*token.Token, err
 	return tok, nil
 }
 
-func (at *AccessToken) HasPermission(mask bit.Mask) bool {
+func (at *AccessTokens) HasPermission(mask bit.Mask) bool {
 	return at.currentToken.HasPermission(mask)
 }

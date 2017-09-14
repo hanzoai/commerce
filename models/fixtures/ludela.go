@@ -18,7 +18,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/util/token"
+	token "hanzo.io/util/oldjwt"
 )
 
 var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
