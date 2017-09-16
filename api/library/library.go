@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 )
@@ -69,9 +70,10 @@ type LoadShopJSReq struct {
 }
 
 type LoadShopJSRes struct {
-	Countries     []Country                    `json:"countries"`
-	TaxRates      *taxrates.TaxRates           `json:"taxRates"`
-	ShippingRates *shippingrates.ShippingRates `json:"shippingRates"`
+	Countries     []Country                    `json:"countries,omitempty"`
+	TaxRates      *taxrates.TaxRates           `json:"taxRates,omitempty"`
+	ShippingRates *shippingrates.ShippingRates `json:"shippingRates,omitempty"`
+	Currency      currency.Type                `json:"currency,omitempty"`
 }
 
 func LoadShopJS(c *gin.Context) {
@@ -103,6 +105,18 @@ func LoadShopJS(c *gin.Context) {
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {
 		res.Countries = Countries
+	}
+
+	if res.Currency == "" {
+		res.Currency = stor.Currency
+	}
+
+	if res.Currency == "" {
+		res.Currency = org.Currency
+	}
+
+	if res.Currency == "" {
+		res.Currency = currency.USD
 	}
 
 	if req.HasTaxRates {
