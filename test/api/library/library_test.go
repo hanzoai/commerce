@@ -10,8 +10,10 @@ import (
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/shippingrates"
+	"hanzo.io/models/store"
 	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/georate"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/log"
@@ -34,10 +36,13 @@ var (
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
+	stor        *store.Store
 )
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
+	var err error
+
 	publishedRequired := middleware.TokenRequired(permission.Published)
 
 	// Create a new app engine context
@@ -55,7 +60,7 @@ var _ = BeforeSuite(func() {
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Published)
-	err := org.Put()
+	err = org.Put()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
@@ -67,7 +72,7 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(org.Namespaced(ctx))
 
 	// Add some basic rate date
-	stor, err := org.GetDefaultStore()
+	stor, err = org.GetDefaultStore()
 	Expect(err).NotTo(HaveOccurred())
 
 	sr, err := stor.GetShippingRates()
@@ -140,9 +145,10 @@ var _ = Describe("library", func() {
 			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
 			Expect(len(res.Countries)).To(Equal(len(country.Countries)))
 			Expect(res.ShippingRates.StoreId).To(Equal(org.DefaultStore))
-			Expect(len(res.ShippingRates.GeoRates)).To(Equal(1))
+			Expect(len(res.ShippingRates.GeoRates)).To(Equal(3))
 			Expect(res.TaxRates.StoreId).To(Equal(org.DefaultStore))
-			Expect(len(res.TaxRates.GeoRates)).To(Equal(3))
+			Expect(len(res.TaxRates.GeoRates)).To(Equal(5))
+			Expect(res.Currency).ToNot(Equal(""))
 		})
 
 		It("Should get nothing", func() {
@@ -172,9 +178,9 @@ var _ = Describe("library", func() {
 			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
 			Expect(len(res.Countries)).To(Equal(len(country.Countries)))
 			Expect(res.ShippingRates.StoreId).To(Equal(org.DefaultStore))
-			Expect(len(res.ShippingRates.GeoRates)).To(Equal(1))
+			Expect(len(res.ShippingRates.GeoRates)).To(Equal(3))
 			Expect(res.TaxRates.StoreId).To(Equal(org.DefaultStore))
-			Expect(len(res.TaxRates.GeoRates)).To(Equal(3))
+			Expect(len(res.TaxRates.GeoRates)).To(Equal(5))
 		})
 
 		It("Should fail for missing store", func() {
@@ -183,6 +189,34 @@ var _ = Describe("library", func() {
 			}
 
 			cl.Post("/library/shopjs", req, nil, 404)
+		})
+
+		It("Should return the currency right", func() {
+			req := libraryApi.LoadShopJSReq{}
+			res := libraryApi.LoadShopJSRes{}
+
+			// Default to USD
+			org.Currency = ""
+			org.MustUpdate()
+			stor.Currency = ""
+			stor.MustUpdate()
+
+			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
+			Expect(string(res.Currency)).To(Equal(string(currency.USD)))
+
+			// Use Order if Store is Blank
+			org.Currency = currency.ZMW
+			org.MustUpdate()
+
+			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
+			Expect(string(res.Currency)).To(Equal(string(currency.ZMW)))
+
+			// Use Store is Available
+			stor.Currency = currency.AUD
+			stor.MustUpdate()
+
+			log.Debug("Response %s", cl.Post("/library/shopjs", req, &res))
+			Expect(string(res.Currency)).To(Equal(string(currency.AUD)))
 		})
 	})
 })
