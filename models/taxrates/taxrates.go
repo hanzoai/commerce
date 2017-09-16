@@ -8,6 +8,7 @@ import (
 type GeoRate struct {
 	georate.GeoRate
 
+	// Implement this flag when we need it
 	TaxShipping bool `json:"taxShipping`
 	// Tax Name like 'Tax' or 'VAT'
 	TaxName string `json:"taxName`
