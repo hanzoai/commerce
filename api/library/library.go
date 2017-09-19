@@ -25,7 +25,7 @@ type SubDivision struct {
 type Country struct {
 	Name         string        `json:"name"`
 	IsoCode      string        `json:"code"`
-	SubDivisions []SubDivision `json:"subdivision"`
+	SubDivisions []SubDivision `json:"subdivisions"`
 }
 
 var Countries []Country
