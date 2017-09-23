@@ -47,5 +47,11 @@ var KirbyForStonedAndSuchTees = New("kirby-for-stoned-and-suchtees", func(c *gin
 	u.LastName = "Chamblin"
 	u.Organizations = []string{org.Id(), org2.Id()}
 	u.PasswordHash, _ = password.Hash("H4tguADoBH")
-	u.Put()
+	u.MustUpdate()
+
+	org.Owners = append(org.Owners, u.Id())
+	org.MustUpdate()
+
+	org2.Owners = append(org.Owners, u.Id())
+	org2.MustUpdate()
 })
