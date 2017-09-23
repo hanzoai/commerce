@@ -22,6 +22,7 @@ import (
 	_ "hanzo.io/cron/tasks"
 	_ "hanzo.io/models/analyticsidentifier/tasks"
 	_ "hanzo.io/models/fixtures"
+	_ "hanzo.io/models/fixtures/users"
 	_ "hanzo.io/models/migrations"
 	_ "hanzo.io/models/referrer/tasks"
 	_ "hanzo.io/models/webhook/tasks"
