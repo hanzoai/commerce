@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"hanzo.io/util/crypto/aes"
+	"hanzo.io/util/rand"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -35,6 +36,26 @@ var _ = Describe("aes.AddBase64Padding", func() {
 
 var _ = Describe("aes.Unpad", func() {
 	It("should work", func() {
+	})
+})
+
+var _ = Describe("aes.AES128KeyFromPassword", func() {
+	It("should generate a rederivable key", func() {
+		salt := rand.SecretKey()
+		password := rand.ShortPassword()
+
+		key, err := aes.AES128KeyFromPassword([]byte(password), []byte(salt))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(key).ToNot(Equal(password))
+		Expect(len(key)).To(Equal(16))
+
+		key2, err := aes.AES128KeyFromPassword([]byte(password), []byte(salt))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred())
+		Expect(key2).ToNot(Equal(password))
+		Expect(len(key2)).To(Equal(16))
+
+		Expect(key).To(Equal(key2))
 	})
 })
 
