@@ -2,24 +2,21 @@ package ether
 
 import (
 	"crypto/ecdsa"
-	"math/big"
+	"crypto/rand"
+	"encoding/hex"
 
 	"hanzo.io/util/tokensale/ether/crypto"
 )
 
-func GenerateKeyPairFromBytes(pk []byte) (ecdsa.PrivateKey, ecdsa.PublicKey) {
-	curve := crypto.S256()
-
-	x, y := curve.ScalarBaseMult(pk)
-
-	priv := ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     x,
-			Y:     y,
-		},
-		D: new(big.Int).SetBytes(pk),
+func GenerateKeyPair() (string, string, string, error) {
+	priv, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	if err != nil {
+		return "", "", "", err
 	}
 
-	return priv, priv.PublicKey
+	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), PubkeyToAddress(priv.PublicKey), nil
+}
+
+func PubkeyToAddress(p ecdsa.PublicKey) string {
+	return crypto.PubkeyToAddress(p).Hex()
 }
