@@ -14,9 +14,11 @@ func GenerateKeyPair() (string, string, string, error) {
 		return "", "", "", err
 	}
 
-	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), PubkeyToAddress(priv.PublicKey), nil
+	// Remove the extra pubkey byte before serializing hex (drop the first 0x04)
+	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)[1:]), PubkeyToAddress(priv.PublicKey), nil
 }
 
 func PubkeyToAddress(p ecdsa.PublicKey) string {
-	return crypto.PubkeyToAddress(p).Hex()
+	// Remove the '0x' from the address
+	return crypto.PubkeyToAddress(p).Hex()[2:]
 }
