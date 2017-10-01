@@ -145,9 +145,12 @@ type Order struct {
 	ReturnIds []string `json:"returnIds" datastore:",noindex"`
 
 	// Gift options
-	Gift        bool   `json:"gift"`                                       // Is this a gift?
+	Gift        bool   `json:"gift,omitempty"`                             // Is this a gift?
 	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
+
+	// Contribution Mode
+	Contribution bool `json:"contribution,omitempty"`
 
 	// Mailchimp tracking information
 	Mailchimp struct {
