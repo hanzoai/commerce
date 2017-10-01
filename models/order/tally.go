@@ -16,6 +16,11 @@ func (o *Order) Tally() {
 }
 
 func (o *Order) TallySubtotal() {
+	// Contributions do not have items
+	if o.Contribution {
+		return
+	}
+
 	log.Debug("Tallying up order subtotal")
 
 	// Update total

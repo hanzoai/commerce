@@ -9,6 +9,12 @@ import (
 	"hanzo.io/util/tokensale/ether"
 )
 
+type Type string
+
+const (
+	Ethereum Type = "ethereum"
+)
+
 type Account struct {
 	Encrypted string `json:"encrypted,omitempty"`
 	Salt      string `json:"salt,omitempty"`
@@ -17,7 +23,9 @@ type Account struct {
 	PublicKey  string `json:"publicKey,omitempty"`
 	Address    string `json:"address,omitempty"`
 
-	Deleted   bool      `json:"-"`
+	Deleted bool `json:"-"`
+	Type    Type `json:"type"`
+
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
@@ -78,23 +86,28 @@ type Wallet struct {
 }
 
 // Create a new Account
-func (w *Wallet) CreateAccount(withPassword []byte) (*Account, error) {
-	priv, pub, add, err := ether.GenerateKeyPair()
+func (w *Wallet) CreateAccount(typ Type, withPassword []byte) (*Account, error) {
+	switch typ {
+	case Ethereum:
+		priv, pub, add, err := ether.GenerateKeyPair()
 
-	if err != nil {
-		return nil, err
+		if err != nil {
+			return nil, err
+		}
+
+		a := &Account{
+			PrivateKey: priv,
+			PublicKey:  pub,
+			Address:    add,
+			CreatedAt:  time.Now(),
+		}
+
+		if err := a.Encrypt(withPassword); err != nil {
+			return nil, err
+		}
+
+		return a, nil
 	}
 
-	a := &Account{
-		PrivateKey: priv,
-		PublicKey:  pub,
-		Address:    add,
-		CreatedAt:  time.Now(),
-	}
-
-	if err := a.Encrypt(withPassword); err != nil {
-		return nil, err
-	}
-
-	return a, nil
+	return nil, InvalidTypeSpecified
 }
