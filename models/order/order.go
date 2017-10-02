@@ -23,6 +23,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/pricing"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
@@ -47,6 +48,7 @@ const (
 type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
+	wallet.WalletHolder
 
 	Number int `json:"number,omitempty"`
 
@@ -167,6 +169,9 @@ type Order struct {
 	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
+
+	// Passphrase for the wallet accounts the order controls, never send to the client
+	WalletPassphrase string `json:"-"`
 }
 
 func (o *Order) Validator() *val.Validator {
