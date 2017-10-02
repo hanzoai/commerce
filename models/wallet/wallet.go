@@ -4,80 +4,8 @@ import (
 	"time"
 
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/crypto/aes"
-	"hanzo.io/util/rand"
 	"hanzo.io/util/tokensale/ether"
 )
-
-type Type string
-
-const (
-	Ethereum Type = "ethereum"
-)
-
-type Account struct {
-	Encrypted string `json:"encrypted,omitempty"`
-	Salt      string `json:"salt,omitempty"`
-
-	PrivateKey string `json:"privateKey,omitempty" datastore:"-"`
-	PublicKey  string `json:"publicKey,omitempty"`
-	Address    string `json:"address,omitempty"`
-
-	Deleted bool `json:"-"`
-	Type    Type `json:"type"`
-
-	CreatedAt time.Time `json:"createdAt,omitempty"`
-}
-
-// Encrypt the Account's Private Key
-func (a *Account) Encrypt(withPassword []byte) error {
-	if a.PrivateKey == "" {
-		return NoPrivateKeySetError
-	}
-
-	// generate salt
-	salt := rand.SecretKey()
-	a.Salt = salt
-
-	key, err := aes.AES128KeyFromPassword(withPassword, []byte(salt))
-
-	if err != nil {
-		return err
-	}
-
-	e, err := aes.EncryptCBC(key, a.PrivateKey)
-
-	if err != nil {
-		return err
-	}
-
-	a.Encrypted = e
-
-	return nil
-}
-
-// Decrypt the Account's Private Key
-func (a *Account) Decrypt(withPassword []byte) error {
-	if a.Encrypted == "" {
-		return NoEncryptedKeyFound
-	}
-
-	if a.Salt == "" {
-		return NoSaltSetError
-	}
-
-	key, err := aes.AES128KeyFromPassword(withPassword, []byte(a.Salt))
-
-	p, err := aes.DecryptCBC(key, a.Encrypted)
-
-	if err != nil {
-		return err
-	}
-
-	a.PrivateKey = p
-
-	return nil
-}
 
 type Wallet struct {
 	mixin.Model
@@ -85,29 +13,40 @@ type Wallet struct {
 	Accounts []Account `json:"accounts,omitempty"`
 }
 
-// Create a new Account
-func (w *Wallet) CreateAccount(typ Type, withPassword []byte) (*Account, error) {
+// Create a new Account, saves if wallet is created
+func (w *Wallet) CreateAccount(typ Type, withPassword []byte) (Account, error) {
 	switch typ {
 	case Ethereum:
 		priv, pub, add, err := ether.GenerateKeyPair()
 
 		if err != nil {
-			return nil, err
+			return Account{}, err
 		}
 
-		a := &Account{
+		a := Account{
 			PrivateKey: priv,
 			PublicKey:  pub,
 			Address:    add,
+			Type:       typ,
 			CreatedAt:  time.Now(),
 		}
 
 		if err := a.Encrypt(withPassword); err != nil {
-			return nil, err
+			return Account{}, err
+		}
+
+		w.Accounts = append(w.Accounts, a)
+
+		// Only save if the wallet is created
+		// Otherwise let the user manage that
+		if w.Created() {
+			if err := w.Update(); err != nil {
+				return Account{}, err
+			}
 		}
 
 		return a, nil
 	}
 
-	return nil, InvalidTypeSpecified
+	return Account{}, InvalidTypeSpecified
 }
