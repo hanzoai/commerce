@@ -1,7 +1,10 @@
 package test
 
 import (
+	"strings"
+
 	"hanzo.io/models/wallet"
+	"hanzo.io/util/json"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -53,6 +56,23 @@ var _ = Describe("Account", func() {
 
 			err := acc.Decrypt([]byte(password))
 			Expect(err).To(Equal(wallet.NoEncryptedKeyFound))
+		})
+
+		It("should never serialize the privatekey", func() {
+			Expect(acc.PrivateKey).ToNot(Equal(""))
+			Expect(acc.Encrypted).ToNot(Equal(""))
+
+			a2 := wallet.Account{}
+			jsn := json.Encode(acc)
+
+			Expect(strings.Index(jsn, acc.PrivateKey)).To(Equal(-1))
+			Expect(strings.Index(jsn, acc.Encrypted)).ToNot(Equal(-1))
+
+			err := json.DecodeBytes([]byte(jsn), &a2)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(a2.PrivateKey).To(Equal(""))
+			Expect(a2.Encrypted).To(Equal(acc.Encrypted))
 		})
 	})
 
