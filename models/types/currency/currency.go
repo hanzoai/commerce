@@ -16,6 +16,15 @@ func (t Type) IsZeroDecimal() bool {
 	return false
 }
 
+func (t Type) IsCrypto() bool {
+	switch t {
+	case BTC, ETH, XBT:
+		return true
+	}
+
+	return false
+}
+
 func (t Type) ToString(c Cents) string {
 	if t.IsZeroDecimal() {
 		return t.Symbol() + strconv.Itoa(int(c))
