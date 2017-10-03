@@ -1,11 +1,11 @@
-package ether
+package ethereum
 
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
 
-	"hanzo.io/util/tokensale/ether/crypto"
+	"hanzo.io/util/tokensale/ethereum/crypto"
 )
 
 func GenerateKeyPair() (string, string, string, error) {

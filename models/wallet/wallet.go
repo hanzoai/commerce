@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/tokensale/ether"
+	"hanzo.io/util/tokensale/ethereum"
 )
 
 type Wallet struct {
@@ -17,7 +17,7 @@ type Wallet struct {
 func (w *Wallet) CreateAccount(typ Type, withPassword []byte) (Account, error) {
 	switch typ {
 	case Ethereum:
-		priv, pub, add, err := ether.GenerateKeyPair()
+		priv, pub, add, err := ethereum.GenerateKeyPair()
 
 		if err != nil {
 			return Account{}, err

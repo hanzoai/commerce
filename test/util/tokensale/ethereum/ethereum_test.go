@@ -4,19 +4,19 @@ import (
 	"testing"
 
 	"hanzo.io/util/log"
-	"hanzo.io/util/tokensale/ether"
+	"hanzo.io/util/tokensale/ethereum"
 
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	Setup("util/tokensale/ether", t)
+	Setup("util/tokensale/ethereum", t)
 }
 
 // PubkeyToAddress is covered in this test too
 var _ = Describe("ether.GenerateKeyPair", func() {
 	It("should work", func() {
-		priv, pub, add, err := ether.GenerateKeyPair()
+		priv, pub, add, err := ethereum.GenerateKeyPair()
 		Expect(err).ToNot(HaveOccurred())
 
 		log.Debug("\nPrivate: %v\nPublic: %v\nAddress: %v\n", priv, pub, add)
@@ -27,10 +27,10 @@ var _ = Describe("ether.GenerateKeyPair", func() {
 	})
 
 	It("should be random", func() {
-		priv, pub, add, err := ether.GenerateKeyPair()
+		priv, pub, add, err := ethereum.GenerateKeyPair()
 		Expect(err).ToNot(HaveOccurred())
 
-		priv2, pub2, add2, err := ether.GenerateKeyPair()
+		priv2, pub2, add2, err := ethereum.GenerateKeyPair()
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(priv).ToNot(Equal(priv2))
