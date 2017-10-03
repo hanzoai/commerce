@@ -23,8 +23,8 @@ import (
 	"math/rand"
 	"reflect"
 
-	"hanzo.io/util/tokensale/ether/common/hexutil"
-	"hanzo.io/util/tokensale/ether/crypto/sha3"
+	"hanzo.io/util/tokensale/ethereum/common/hexutil"
+	"hanzo.io/util/tokensale/ethereum/crypto/sha3"
 )
 
 const (
