@@ -6,7 +6,7 @@ import (
 	. "hanzo.io/util/test/ginkgo"
 )
 
-var _ = Describe("Account", func() {
+var _ = Describe("Wallet", func() {
 	Context("CreateAccount", func() {
 		var wal *wallet.Wallet
 

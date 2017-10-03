@@ -151,8 +151,11 @@ type Order struct {
 	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
 
-	// Contribution Mode
-	Contribution bool `json:"contribution,omitempty"`
+	// Contribution are orders without items
+	Contribution bool `json:"contribution"`
+
+	// Token sales are processed differently, similar to contribution
+	TokenSaleId string `json:"tokenSaleId,omitempty"`
 
 	// Mailchimp tracking information
 	Mailchimp struct {
@@ -172,6 +175,9 @@ type Order struct {
 
 	// Passphrase for the wallet accounts the order controls, never send to the client
 	WalletPassphrase string `json:"-"`
+
+	// At what point do we stop taking payments
+	PaymentStop time.Time `json:"paymentStop"`
 }
 
 func (o *Order) Validator() *val.Validator {

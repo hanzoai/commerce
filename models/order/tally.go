@@ -17,7 +17,7 @@ func (o *Order) Tally() {
 
 func (o *Order) TallySubtotal() {
 	// Contributions do not have items
-	if o.Contribution {
+	if o.Contribution || o.TokenSaleId != "" {
 		return
 	}
 

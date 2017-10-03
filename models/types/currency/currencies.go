@@ -140,6 +140,11 @@ const (
 	ZAR      = "zar" // South African Rand
 	ZMW      = "zmw" // Zambian Kwacha
 
+	// Subject to change without reason
+	ETH = "eth" // Ethereum
+	XBT = "xbt" // Bitcoin
+	BTC = "btc" // Old bitcoin
+
 	PNT = "points" // points
 )
 
