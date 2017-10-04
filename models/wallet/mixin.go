@@ -19,11 +19,15 @@ func (w *WalletHolder) GetOrCreateWallet(db *datastore.Datastore) (*Wallet, erro
 		}
 
 		w.WalletId = wal.Id()
+		w.Wallet = *wal
 		return wal, nil
 	}
 
 	// get
 	err := wal.GetById(w.WalletId)
+	if wal != nil {
+		w.Wallet = *wal
+	}
 	return wal, err
 }
 
