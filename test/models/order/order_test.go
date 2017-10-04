@@ -236,6 +236,10 @@ var _ = Describe("Order", func() {
 			ord.Tax = currency.Cents(rand.Int64())
 			ord.Shipping = currency.Cents(rand.Int64())
 			ord.Total = currency.Cents(rand.Int64())
+			ord.TokenSaleId = ""
+			ord.WalletId = ""
+			ord.WalletPassphrase = ""
+			ord.Contribution = false
 		})
 
 		It("Should UpdateAndTally", func() {
@@ -243,6 +247,38 @@ var _ = Describe("Order", func() {
 			err := ord.UpdateAndTally(stor)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
+
+			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
+			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+
+			Expect(ord.Tax).To(Equal(tax))
+			Expect(ord.Shipping).To(Equal(shipping))
+			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
+		})
+
+		It("Should UpdateAndTally with Provided Subtotal for Contributions", func() {
+			ord.CouponCodes = []string{}
+			ord.Contribution = true
+			subTotal := ord.Subtotal
+			err := ord.UpdateAndTally(stor)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(subTotal))
+
+			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
+			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+
+			Expect(ord.Tax).To(Equal(tax))
+			Expect(ord.Shipping).To(Equal(shipping))
+			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
+		})
+
+		It("Should UpdateAndTally with Provided Subtotal for TokenSales", func() {
+			ord.CouponCodes = []string{}
+			ord.TokenSaleId = "1234"
+			subTotal := ord.Subtotal
+			err := ord.UpdateAndTally(stor)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(subTotal))
 
 			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
 			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)

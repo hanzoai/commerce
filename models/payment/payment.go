@@ -32,12 +32,12 @@ const (
 type Type string
 
 const (
-	Null     Type = "null"
-	Balance  Type = "balance"
 	Affirm   Type = "affirm"
-	Stripe   Type = "stripe"
-	PayPal   Type = "paypal"
+	Balance  Type = "balance"
 	Ethereum Type = "ethereum"
+	Null     Type = "null"
+	PayPal   Type = "paypal"
+	Stripe   Type = "stripe"
 )
 
 type AffirmAccount struct {

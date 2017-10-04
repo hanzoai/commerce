@@ -2,7 +2,7 @@ package hashid
 
 import "fmt"
 
-// DO NOT ALPHABETIZE THESE
+// DO NOT ALPHABETIZE THESE OR ALTER IN ANYWAY
 var kinds = map[string]int{
 	"bundle":              0,
 	"campaign":            1,
@@ -47,6 +47,7 @@ var kinds = map[string]int{
 	"oauthtoken":          46,
 	"app":                 47,
 	"wallet":              48,
+	"tokensale":           49,
 }
 
 var kindsReversed = make(map[int]string)
