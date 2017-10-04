@@ -42,6 +42,7 @@ var Model = fake.Model
 var Month = fake.Month
 var MonthNum = fake.MonthNum
 var MonthShort = fake.MonthShort
+var Number = rand.Intn
 var Paragraph = fake.Paragraph
 var Paragraphs = fake.ParagraphsN
 var Password = fake.Password
