@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/balance"
+	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
@@ -98,13 +99,18 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Handle authorization
 	switch ord.Type {
-	case "null":
-		err = null.Authorize(org, ord, usr, pay)
-	case "balance":
+	case payment.Balance:
 		err = balance.Authorize(org, ord, usr, pay)
-	case "paypal":
+	case payment.Ethereum:
+		err = ethereum.Authorize(org, ord, usr)
+	case payment.Null:
+		err = null.Authorize(org, ord, usr, pay)
+	case payment.PayPal:
 		err = paypal.Authorize(org, ord, usr, pay)
-	case "stripe":
+	case payment.Stripe:
+		if org.Currency.IsCrypto() {
+			return nil, UnsupportedStripeCurrency
+		}
 		err = stripe.Authorize(org, ord, usr, pay)
 	default:
 		err = stripe.Authorize(org, ord, usr, pay)
@@ -125,11 +131,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Batch save user, order, payment, fees
 	entities := []interface{}{usr, ord, pay}
 
-	// Link payments/fees
-	for _, fe := range fees {
-		fe.PaymentId = pay.Id()
-		pay.FeeIds = append(pay.FeeIds, fe.Id())
-		entities = append(entities, fe)
+	if ord.Type == payment.Ethereum {
+		entities = []interface{}{usr, ord}
+	} else {
+		// Link payments/fees
+		for _, fe := range fees {
+			fe.PaymentId = pay.Id()
+			pay.FeeIds = append(pay.FeeIds, fe.Id())
+			entities = append(entities, fe)
+		}
 	}
 
 	if usr.CreatedAt.IsZero() && !ord.Test {
