@@ -177,7 +177,7 @@ type Order struct {
 	WalletPassphrase string `json:"-"`
 
 	// At what point do we stop taking payments
-	PaymentStop time.Time `json:"paymentStop"`
+	// PaymentStop time.Time `json:"paymentStop"`
 }
 
 func (o *Order) Validator() *val.Validator {
