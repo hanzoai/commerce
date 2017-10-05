@@ -11,10 +11,15 @@ import (
 	stringutil "hanzo.io/util/strings"
 )
 
+type TokenSale struct {
+	Passphrase string `json:"passphrase"`
+}
+
 type Authorization struct {
-	User    *user.User       `json:"user"`
-	Payment *payment.Payment `json:"payment"`
-	Order   *order.Order     `json:"order"`
+	User      *user.User       `json:"user"`
+	Payment   *payment.Payment `json:"payment"`
+	Order     *order.Order     `json:"order"`
+	TokenSale *TokenSale       `json:"tokenSale"`
 }
 
 // Copy newer attributes from request user onto existing user
