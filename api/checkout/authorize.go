@@ -1,7 +1,6 @@
 package checkout
 
 import (
-	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,9 +15,11 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/store"
+	"hanzo.io/models/tokensale"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
@@ -26,14 +27,14 @@ import (
 )
 
 // Decode authorization request, grab user and payment information off it
-func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, error) {
+func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
 	a := new(Authorization)
 	db := ord.Db
 
 	// Decode request
 	if err := json.Decode(c.Request.Body, a); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
-		return nil, nil, FailedToDecodeRequestBody
+		return nil, nil, nil, FailedToDecodeRequestBody
 	}
 
 	log.JSON("Authorization:", a)
@@ -48,17 +49,17 @@ func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment
 
 	// Initialize and normalize models in authorization request
 	if err := a.Init(db); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	log.JSON("Order after initalization:", ord)
 
-	return a.User, a.Payment, nil
+	return a.User, a.Payment, a.TokenSale, nil
 }
 
 func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
 	// Decode authorization request
-	usr, pay, err := decodeAuthorization(c, ord)
+	usr, pay, tsPass, err := decodeAuthorization(c, ord)
 	if err != nil {
 		return nil, err
 	}
@@ -73,8 +74,30 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Update order with information from datastore, and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
-		log.Error(err, c)
-		return nil, errors.New("Invalid or incomplete order")
+		log.Error("Invalid or incomplete order error: %v", err, c)
+		return nil, InvalidOrIncompleteOrder
+	}
+
+	// Validate token sale
+	if (ord.TokenSaleId != "") == (tsPass != nil) {
+		ts := tokensale.New(ord.Db)
+		if err := ts.GetById(ord.TokenSaleId); err != nil {
+			log.Error("Token sale not found error: %v", err, c)
+			return nil, TokenSaleNotFound
+		}
+
+		// Create ethereum block chain wallets for funding
+		w, err := usr.GetOrCreateWallet(usr.Db)
+		if err != nil {
+			log.Error("Wallet creation error: %v", err, c)
+			return nil, WalletCreationError
+		}
+
+		_, err = w.CreateAccount(wallet.Ethereum, []byte(tsPass.Passphrase))
+		if err != nil {
+			log.Error("Funding account creation error: %v", err, c)
+			return nil, FundingAccountCreationError
+		}
 	}
 
 	// Override total to $0.50 is test email is used
@@ -102,6 +125,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case payment.Balance:
 		err = balance.Authorize(org, ord, usr, pay)
 	case payment.Ethereum:
+		if org.Currency != currency.ETH {
+			return nil, UnsupportedEthereumCurrency
+		}
 		err = ethereum.Authorize(org, ord, usr)
 	case payment.Null:
 		err = null.Authorize(org, ord, usr, pay)
