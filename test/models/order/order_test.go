@@ -248,8 +248,8 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
 
-			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -264,8 +264,8 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(subTotal))
 
-			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -280,8 +280,8 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord.Subtotal).To(Equal(subTotal))
 
-			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -295,8 +295,8 @@ var _ = Describe("Order", func() {
 
 			Expect(ord.Subtotal).To(Equal(currency.Cents(49500)))
 
-			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -312,8 +312,8 @@ var _ = Describe("Order", func() {
 
 			Expect(ord.Subtotal).To(Equal(currency.Cents(49500)))
 
-			tax := currency.Cents(1 + float64(ord.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
 
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
@@ -332,8 +332,8 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 
-			tax := currency.Cents(1 + float64(ord2.Subtotal)*0.0885)
-			shipping := currency.Cents(499 + float64(ord2.Subtotal)*0.1)
+			tax := 1 + currency.Cents(float64(ord2.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord2.Subtotal)*0.1)
 
 			Expect(ord2.Tax).To(Equal(tax))
 			Expect(ord2.Shipping).To(Equal(shipping))
@@ -350,8 +350,8 @@ var _ = Describe("Order", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 
-			tax = currency.Cents(1 + float64(ord2.Subtotal)*0.0885)
-			shipping = currency.Cents(499 + float64(ord2.Subtotal)*0.1)
+			tax = 1 + currency.Cents(float64(ord2.Subtotal)*0.0885)
+			shipping = 499 + currency.Cents(float64(ord2.Subtotal)*0.1)
 
 			Expect(ord2.Tax).To(Equal(tax))
 			Expect(ord2.Shipping).To(Equal(shipping))
