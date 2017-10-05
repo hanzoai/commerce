@@ -3,7 +3,7 @@ package tokensale
 import (
 	"hanzo.io/models/mixin"
 	// "hanzo.io/models/payment"
-	"hanzo.io/models/types/pricing"
+	// "hanzo.io/models/types/pricing"
 	"hanzo.io/models/wallet"
 )
 
@@ -16,11 +16,11 @@ type TokenSale struct {
 	Name        string `json:"name"`
 	TotalTokens int    `json:"totalTokens"`
 
-	// Fee structure for this tokensale
-	Fees pricing.Fees `json:"fees" datastore:",noindex"`
+	// // Fee structure for this tokensale
+	// Fees pricing.Fees `json:"fees" datastore:",noindex"`
 
-	// Partner fees (private, should be up to partner to disclose)
-	Partners []pricing.Partner `json:"-" datastore:",noindex"`
+	// // Partner fees (private, should be up to partner to disclose)
+	// Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
 	// Slug string `json:"slug"`
 
@@ -30,9 +30,9 @@ type TokenSale struct {
 	WalletPassphrase string `json:"-"`
 }
 
-func (ts TokenSale) Pricing() (*pricing.Fees, []pricing.Partner) {
-	// Ensure our id is set on fees used
-	fees := ts.Fees
-	fees.Id = ts.Id()
-	return &fees, ts.Partners
-}
+// func (ts TokenSale) Pricing() (*pricing.Fees, []pricing.Partner) {
+// 	// Ensure our id is set on fees used
+// 	fees := ts.Fees
+// 	fees.Id = ts.Id()
+// 	return &fees, ts.Partners
+// }
