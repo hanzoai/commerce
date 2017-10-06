@@ -146,6 +146,10 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 
 // Correctly initialize payment provided in authorization
 func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, ord *order.Order) {
+	if pay == nil {
+		return
+	}
+
 	pay.Init(db)
 
 	// Update payment status
