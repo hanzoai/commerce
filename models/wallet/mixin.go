@@ -5,8 +5,8 @@ import (
 )
 
 type WalletHolder struct {
-	WalletId string `json:"walletId"`
-	Wallet   Wallet `json:"wallet,omitempty" datastore:"-"`
+	WalletId string  `json:"walletId"`
+	Wallet   *Wallet `json:"wallet,omitempty" datastore:"-"`
 }
 
 func (w *WalletHolder) GetOrCreateWallet(db *datastore.Datastore) (*Wallet, error) {
@@ -19,15 +19,13 @@ func (w *WalletHolder) GetOrCreateWallet(db *datastore.Datastore) (*Wallet, erro
 		}
 
 		w.WalletId = wal.Id()
-		w.Wallet = *wal
+		w.Wallet = wal
 		return wal, nil
 	}
 
 	// get
 	err := wal.GetById(w.WalletId)
-	if wal != nil {
-		w.Wallet = *wal
-	}
+	w.Wallet = wal
 	return wal, err
 }
 
@@ -37,7 +35,7 @@ func (w *WalletHolder) LoadWallet(db *datastore.Datastore) error {
 	if err != nil {
 		return err
 	}
-	w.Wallet = *wal
+	w.Wallet = wal
 
 	return nil
 }
