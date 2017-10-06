@@ -59,7 +59,7 @@ func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64
 		return 0, "", "", err
 	}
 
-	return src.TypeData["amount"].(int64), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+	return int64(src.TypeData["amount"].(float64)), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
 }
 
 func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
