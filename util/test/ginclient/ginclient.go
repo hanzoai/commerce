@@ -35,9 +35,10 @@ func defaultStatus(code int) func([]interface{}) []interface{} {
 }
 
 type Client struct {
-	Router     *gin.Engine
-	Context    *gin.Context
-	defaultsFn defaultsFunc
+	Router       *gin.Engine
+	Context      *gin.Context
+	defaultsFn   defaultsFunc
+	ignoreErrors bool
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
@@ -55,6 +56,10 @@ func New(ctx ae.Context) *Client {
 	cl.Router = router
 	cl.Defaults(func(r *http.Request) {})
 	return cl
+}
+
+func (cl *Client) IgnoreErrors(ignore bool) {
+	cl.ignoreErrors = ignore
 }
 
 // Add a new handler to router
@@ -172,15 +177,21 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 		// TODO: Do we need to close this?
 		err := json.DecodeBuffer(w.Body, res)
 		msg := fmt.Sprintf("Unable to decode body, %v:\n%v", err, w.Body)
-		Expect2(err == nil).To(BeTrue(), msg)
+		if !cl.ignoreErrors {
+			Expect2(err == nil).To(BeTrue(), msg)
+		}
 	}
 
 	if code == 0 {
 		msg := fmt.Sprintf("Request failed with invalid status:\n%s", w.Body)
-		Expect2(w.Code).To(BeNumerically("<", 400), msg)
+		if !cl.ignoreErrors {
+			Expect2(w.Code).To(BeNumerically("<", 400), msg)
+		}
 	} else {
 		msg := fmt.Sprintf("Request failed with invalid status:\n%s", w.Body)
-		Expect2(w.Code).To(Equal(code), msg)
+		if !cl.ignoreErrors {
+			Expect2(w.Code).To(Equal(code), msg)
+		}
 	}
 
 	return w
