@@ -47,13 +47,12 @@ var kinds = map[string]int{
 	"oauthtoken":          46,
 	"app":                 47,
 
-	"ad":         50,
-	"adcampaign": 51,
-	"adconfig":   52,
-	"adcopy":     53,
-	"adheadline": 54,
-	"adset":      55,
-	"media":      56,
+	"adcampaign": 50,
+	"adconfig":   51,
+	"adset":      52,
+	"ad":         53,
+	"copy":       54,
+	"media":      55,
 }
 
 var kindsReversed = make(map[int]string)

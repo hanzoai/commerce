@@ -1,6 +1,9 @@
 package adcampaign
 
-import "hanzo.io/datastore"
+import (
+	"hanzo.io/datastore"
+	. "hanzo.io/models/ads"
+)
 
 var kind = "adcampaign"
 
@@ -13,6 +16,7 @@ func (a *AdCampaign) Init(db *datastore.Datastore) {
 }
 
 func (a *AdCampaign) Defaults() {
+	a.Status = PendingStatus
 }
 
 func New(db *datastore.Datastore) *AdCampaign {

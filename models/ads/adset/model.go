@@ -1,6 +1,10 @@
 package adset
 
-import "hanzo.io/datastore"
+import (
+	"hanzo.io/datastore"
+
+	. "hanzo.io/models/ads"
+)
 
 var kind = "adset"
 
@@ -13,6 +17,7 @@ func (a *AdSet) Init(db *datastore.Datastore) {
 }
 
 func (a *AdSet) Defaults() {
+	a.Status = PendingStatus
 }
 
 func New(db *datastore.Datastore) *AdSet {
