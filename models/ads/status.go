@@ -4,7 +4,7 @@ type Status string
 
 const (
 	// Experimenting Status = "experimenting"
-	Pending Status = "pending"
-	Running Status = "running"
-	Stopped Status = "stopped"
+	PendingStatus Status = "pending"
+	RunningStatus Status = "running"
+	StoppedStatus Status = "stopped"
 )

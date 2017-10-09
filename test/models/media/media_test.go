@@ -111,5 +111,37 @@ var _ = Describe("models/media", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p2.Id()).To(Equal(p.Id()))
 		})
+
+		It("Should error correctly", func() {
+			m := media.New(db)
+
+			_, err := util.GetParentMedia(db, m)
+			Expect(err).To(Equal(util.NoParentMediaFound))
+		})
+	})
+
+	Context("util.GetMedias", func() {
+		It("Should work correctly", func() {
+			p := media.New(db)
+			p.MustCreate()
+
+			m := p.Fork()
+			m.MustCreate()
+
+			m2 := p.Fork()
+			m2.MustCreate()
+
+			ms, err := util.GetMedias(db, p)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(ms)).To(Equal(2))
+		})
+
+		It("Should not error if no results", func() {
+			m := media.New(db)
+
+			ms, err := util.GetMedias(db, m)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(ms)).To(Equal(0))
+		})
 	})
 })
