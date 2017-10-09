@@ -1,29 +1,38 @@
 package adconfig
 
 import (
-	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+
+	. "hanzo.io/models/ads"
 )
 
-var kind = "adconfig"
+type AdConfig struct {
+	mixin.Model
+	FacebookAdTypePlacements
 
-func (a AdConfig) Kind() string {
-	return kind
+	AdCampaignId string `json:"adCampaignId"`
 }
 
-func (a *AdConfig) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+func (a AdConfig) GetAdCampaignId() string {
+	return a.AdCampaignId
 }
 
-func (a *AdConfig) Defaults() {
+func (a AdConfig) GetAdSetSearchFieldAndIds() (string, []string) {
+	return "AdConfigId", []string{a.Id()}
 }
 
-func New(db *datastore.Datastore) *AdConfig {
-	a := new(AdConfig)
-	a.Init(db)
-	a.Defaults()
-	return a
+func (a AdConfig) GetAdSearchFieldAndIds() (string, []string) {
+	return "AdConfigId", []string{a.Id()}
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func (a AdConfig) GetHeadlineSearchFieldAndIds() (string, []string) {
+	return "AdConfigId", []string{a.Id()}
+}
+
+func (a AdConfig) GetCopySearchFieldAndIds() (string, []string) {
+	return "AdConfigId", []string{a.Id()}
+}
+
+func (a AdConfig) GetMediaSearchFieldAndIds() (string, []string) {
+	return "AdConfigId", []string{a.Id()}
 }

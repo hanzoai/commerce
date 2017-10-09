@@ -5,6 +5,8 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
+
+	. "hanzo.io/models/ads"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -41,7 +43,9 @@ type Media struct {
 	Usage Usage `json:"usage"`
 
 	// Just start adding usage ids here
-	AdId      string `json:"AdId,omitempty"`
+
+	// This is for ads
+	AdIntegration
 	ProductId string `json:"productId,omitempty"`
 }
 
@@ -82,4 +86,8 @@ func (m *Media) Save(c chan<- aeds.Property) (err error) {
 
 func (m Media) GetParentMediaId() string {
 	return m.ParentMediaId
+}
+
+func (m Media) GetMediaSearchFieldAndIds() (string, []string) {
+	return "ParentMediaId", []string{m.Id()}
 }

@@ -1,29 +1,41 @@
 package util
 
-type HasCampaign interface {
-	GetCampaignId() string
+type BelongsToAdCampaign interface {
+	GetAdCampaignId() string
 }
 
-type HasAdset interface {
-	GetAdsetId() string
+type BelongsToAdSet interface {
+	GetAdSetId() string
 }
 
-type HasAdConfig interface {
+type BelongsToAdConfig interface {
 	GetAdConfigId() string
 }
 
-type HasAd interface {
+type BelongsToAd interface {
 	GetAdId() string
 }
 
+type HasAdSets interface {
+	GetAdSetSearchFieldAndIds() (string, []string)
+}
+
+type HasAdConfigs interface {
+	GetAdConfigSearchFieldAndIds() (string, []string)
+}
+
+type HasAds interface {
+	GetAdSearchFieldAndIds() (string, []string)
+}
+
 type HasHeadlines interface {
-	GetHeadlineSearchFieldAndId() (string, string)
+	GetHeadlineSearchFieldAndIds() (string, []string)
 }
 
 type HasCopies interface {
-	GetCopySearchFieldAndId() (string, string)
+	GetCopySearchFieldAndIds() (string, []string)
 }
 
 type HasMedias interface {
-	GetMediaSearchFieldAndId() (string, string)
+	GetMediaSearchFieldAndIds() (string, []string)
 }
