@@ -18,7 +18,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	Setup("models/tokens", t)
+	Setup("models/ads", t)
 }
 
 var (
