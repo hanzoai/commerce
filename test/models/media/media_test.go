@@ -44,6 +44,7 @@ var _ = Describe("models/media", func() {
 	Context("media.Fork", func() {
 		It("Should fork correctly", func() {
 			m := media.New(db)
+			m.MustCreate()
 			m2 := m.Fork()
 
 			Expect(m2.ParentMediaId).To(Equal(m.Id()))

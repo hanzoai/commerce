@@ -7,7 +7,9 @@ import (
 
 	"hanzo.io/middleware"
 	"hanzo.io/models/collection"
+	"hanzo.io/models/copy"
 	"hanzo.io/models/discount"
+	"hanzo.io/models/media"
 	"hanzo.io/models/note"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
@@ -88,7 +90,9 @@ func Route(api router.Router) {
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
+	rest.New(copy.Copy{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
+	rest.New(media.Media{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
