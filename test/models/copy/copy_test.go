@@ -43,6 +43,7 @@ var _ = Describe("models/copy", func() {
 	Context("copy.Fork", func() {
 		It("Should fork correctly", func() {
 			m := copy.New(db)
+			m.MustCreate()
 			m2 := m.Fork()
 
 			Expect(m2.ParentCopyId).To(Equal(m.Id()))
