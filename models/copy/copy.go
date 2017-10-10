@@ -32,9 +32,15 @@ type Copy struct {
 	IsParent bool `json:"isParent"`
 }
 
-func (m *Copy) Fork() *Copy {
+func (m Copy) Fork() *Copy {
 	m2 := New(m.Db)
+
+	m2.AdIntegration = m.AdIntegration
+	m2.Type = m.Type
+	m2.Text = m.Text
 	m2.ParentCopyId = m.Id()
+	m2.IsParent = false
+
 	return m2
 }
 
