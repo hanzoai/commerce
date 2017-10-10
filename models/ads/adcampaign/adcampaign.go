@@ -6,6 +6,12 @@ import (
 	. "hanzo.io/models/ads"
 )
 
+type Engine string
+
+const (
+	DemoEngine Engine = "demo"
+)
+
 type FacebookAdCampaign struct {
 }
 
@@ -13,6 +19,7 @@ type AdCampaign struct {
 	mixin.Model
 	FacebookAdCampaign
 
+	Engine Engine `json:"engine"`
 	Status Status `json:"status"`
 }
 

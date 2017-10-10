@@ -49,9 +49,17 @@ type Media struct {
 	ProductId string `json:"productId,omitempty"`
 }
 
-func (m *Media) Fork() *Media {
+func (m Media) Fork() *Media {
 	m2 := New(m.Db)
+
+	m2.AdIntegration = m.AdIntegration
+	m2.Type = m.Type
+	m2.URI = m.URI
 	m2.ParentMediaId = m.Id()
+	m2.IsParent = false
+	m2.Usage = m.Usage
+	m2.ProductId = m.ProductId
+
 	return m2
 }
 
