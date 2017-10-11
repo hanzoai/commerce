@@ -73,7 +73,7 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-var _ = Describe("marketin", func() {
+var _ = Describe("marketing", func() {
 	Context("Create", func() {
 		It("Should create an adcampaign & associated ad stuff", func() {
 			// Demo Engine Test
