@@ -18,6 +18,9 @@ type FacebookAdCampaign struct {
 type AdCampaign struct {
 	mixin.Model
 	FacebookAdCampaign
+	StatsWeCareAbout
+
+	Name string `json:"name"`
 
 	Engine Engine `json:"engine"`
 	Status Status `json:"status"`
