@@ -41,6 +41,7 @@ import (
 	deployApi "hanzo.io/api/deploy"
 	formApi "hanzo.io/api/form"
 	libraryApi "hanzo.io/api/library"
+	marketingApi "hanzo.io/api/marketing"
 	namespaceApi "hanzo.io/api/namespace"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
@@ -178,6 +179,9 @@ func Route(api router.Router) {
 
 	// Library Api
 	libraryApi.Route(api)
+
+	// Library Api
+	marketingApi.Route(api)
 }
 
 func init() {
