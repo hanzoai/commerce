@@ -69,3 +69,17 @@ indexes:
   properties:
   - name: __key__
     direction: desc
+
+- kind: copy
+  ancestor: no
+  properties:
+  - name: Type
+  - name: AdId
+
+- kind: copy
+  ancestor: no
+  properties:
+  - name: Type
+  - name: AdSetId
+
+
