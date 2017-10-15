@@ -16,6 +16,7 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/val"
@@ -28,6 +29,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type User struct {
 	mixin.Model
 	mixin.Salesforce
+	wallet.WalletHolder
 
 	// Crowdstart Id, found in default namespace
 	Cid string `json:"-"`
