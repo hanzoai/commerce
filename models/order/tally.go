@@ -16,6 +16,11 @@ func (o *Order) Tally() {
 }
 
 func (o *Order) TallySubtotal() {
+	// Contributions do not have items
+	if o.Contribution || o.TokenSaleId != "" {
+		return
+	}
+
 	log.Debug("Tallying up order subtotal")
 
 	// Update total
@@ -61,11 +66,14 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	log.Debug("Add free items from coupons")
 	o.UpdateCouponItems()
 
-	// Get underlying product/variant entities
-	log.Debug("Fetching underlying line items")
-	if err := o.GetItemEntities(); err != nil {
-		log.Error(err, ctx)
-		return errors.New("Failed to get all underlying line items")
+	// Tokensales have no items
+	if o.TokenSaleId == "" {
+		// Get underlying product/variant entities
+		log.Debug("Fetching underlying line items")
+		if err := o.GetItemEntities(); err != nil {
+			log.Error(err, ctx)
+			return errors.New("Failed to get all underlying line items")
+		}
 	}
 
 	// Update against store listings
