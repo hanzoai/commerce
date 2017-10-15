@@ -11,10 +11,15 @@ import (
 	stringutil "hanzo.io/util/strings"
 )
 
+type TokenSale struct {
+	Passphrase string `json:"passphrase"`
+}
+
 type Authorization struct {
-	User    *user.User       `json:"user"`
-	Payment *payment.Payment `json:"payment"`
-	Order   *order.Order     `json:"order"`
+	User      *user.User       `json:"user"`
+	Payment   *payment.Payment `json:"payment"`
+	Order     *order.Order     `json:"order"`
+	TokenSale *TokenSale       `json:"tokenSale"`
 }
 
 // Copy newer attributes from request user onto existing user
@@ -141,6 +146,10 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 
 // Correctly initialize payment provided in authorization
 func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, ord *order.Order) {
+	if pay == nil {
+		return
+	}
+
 	pay.Init(db)
 
 	// Update payment status
