@@ -23,6 +23,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/pricing"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
@@ -47,6 +48,7 @@ const (
 type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
+	wallet.WalletHolder
 
 	Number int `json:"number,omitempty"`
 
@@ -145,9 +147,15 @@ type Order struct {
 	ReturnIds []string `json:"returnIds" datastore:",noindex"`
 
 	// Gift options
-	Gift        bool   `json:"gift"`                                       // Is this a gift?
+	Gift        bool   `json:"gift,omitempty"`                             // Is this a gift?
 	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
+
+	// Contribution are orders without items
+	Contribution bool `json:"contribution"`
+
+	// Token sales are processed differently, similar to contribution
+	TokenSaleId string `json:"tokenSaleId,omitempty"`
 
 	// Mailchimp tracking information
 	Mailchimp struct {
@@ -164,6 +172,12 @@ type Order struct {
 	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
+
+	// Passphrase for the wallet accounts the order controls, never send to the client
+	WalletPassphrase string `json:"-"`
+
+	// At what point do we stop taking payments
+	// PaymentStop time.Time `json:"paymentStop"`
 }
 
 func (o *Order) Validator() *val.Validator {
