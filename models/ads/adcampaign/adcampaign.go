@@ -20,8 +20,7 @@ type AdCampaign struct {
 	FacebookAdCampaign
 	StatsWeCareAbout
 
-	Name string `json:"name"`
-
+	Name   string `json:"name"`
 	Engine Engine `json:"engine"`
 	Status Status `json:"status"`
 }
