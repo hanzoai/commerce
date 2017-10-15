@@ -3,7 +3,10 @@ package wallet
 import (
 	"time"
 
+	"hanzo.io/models/blockchains"
+	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/mixin"
+	"hanzo.io/util/hashid"
 	"hanzo.io/util/tokensale/ethereum"
 )
 
@@ -45,7 +48,20 @@ func (w *Wallet) CreateAccount(typ Type, withPassword []byte) (Account, error) {
 			}
 		}
 
-		return a, nil
+		ba := blockaddress.New(w.Db)
+		ba.Address = add
+		ba.Type = blockchains.EthereumType
+		ba.WalletId = w.Id()
+
+		ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
+		if err != nil {
+			return a, err
+		}
+
+		ba.WalletNamespace = ns
+		err = ba.Create()
+
+		return a, err
 	}
 
 	return Account{}, InvalidTypeSpecified

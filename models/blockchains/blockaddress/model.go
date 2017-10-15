@@ -1,6 +1,8 @@
 package blockaddress
 
 import (
+	"appengine"
+
 	"hanzo.io/datastore"
 )
 
@@ -19,7 +21,11 @@ func (b *BlockAddress) Defaults() {
 
 func New(db *datastore.Datastore) *BlockAddress {
 	b := new(BlockAddress)
-	b.Init(db)
+	if ctx, err := appengine.Namespace(db.Context, "blockchains"); err != nil {
+		panic(err)
+	} else {
+		b.Init(datastore.New(ctx))
+	}
 	b.Defaults()
 	return b
 }
