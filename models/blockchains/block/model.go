@@ -1,6 +1,8 @@
 package block
 
 import (
+	"appengine"
+
 	"hanzo.io/datastore"
 )
 
@@ -19,7 +21,11 @@ func (b *Block) Defaults() {
 
 func New(db *datastore.Datastore) *Block {
 	b := new(Block)
-	b.Init(db)
+	if err, ctx := appengine.Namespace(db.Context, "blockchains"); err != nil {
+		panic(err)
+	} else {
+		b.Init(datastore.New(ctx))
+	}
 	b.Defaults()
 	return b
 }

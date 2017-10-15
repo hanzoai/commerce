@@ -1,6 +1,8 @@
 package test
 
 import (
+	"hanzo.io/models/blockchains"
+	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/wallet"
 
 	. "hanzo.io/util/test/ginkgo"
@@ -44,6 +46,15 @@ var _ = Describe("Wallet", func() {
 			err = acc2.Decrypt([]byte(password))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(acc2.PrivateKey).To(Equal(priv))
+
+			// Should create blockchain stuff
+			ba := blockaddress.New(bcDb)
+			ok, err := ba.Query().Filter("Address=", add).Get()
+			Expect(ok).To(Equal(true))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ba.WalletId).To(Equal(wal.Id()))
+			Expect(ba.WalletNamespace).To(Equal(""))
+			Expect(ba.Type).To(Equal(blockchains.EthereumType))
 		})
 
 		It("should throw errors for unknown types", func() {
