@@ -31,7 +31,7 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 	fixtures.BlockchainNamespace(c)
 
-	nsDb, _ := appengine.Namespace(ctx, "blockchains")
+	nsDb, _ := appengine.Namespace(ctx, "_blockchains")
 	bcDb = datastore.New(nsDb)
 })
 
