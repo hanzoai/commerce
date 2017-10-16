@@ -238,7 +238,7 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 
 	if o.ReferrerId == "" {
 		// No referrer, no need to check affiliate
-		log.Warn("No ReferrerId")
+		log.Warn("No ReferrerIdi %s", o.ReferrerId, o.Context)
 		return fees, nil
 	}
 
@@ -248,20 +248,20 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 	// Lookup referrer
 	ref := referrer.New(db)
 	if err := ref.GetById(o.ReferrerId); err != nil {
-		log.Warn("No Referrer")
+		log.Error("No Referrer %s", o.ReferrerId, o.Context)
 		return fees, err
 	}
 
 	if ref.AffiliateId == "" {
 		// No affiliate, no fee
-		log.Warn("No Affiliate Id")
+		log.Warn("No Affiliate Id", o.Context)
 		return fees, nil
 	}
 
 	// Lookup affiliate
 	aff := affiliate.New(db)
 	if err := aff.GetById(ref.AffiliateId); err != nil {
-		log.Warn("No Affiliate")
+		log.Error("No Affiliate", o.Context)
 		return fees, err
 	}
 
