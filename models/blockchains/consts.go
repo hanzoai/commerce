@@ -7,6 +7,9 @@ const (
 	// Ethereum Blockchain
 	EthereumType Type = "ethereum"
 
+	// Ethereum Default Testnet
+	EthereumRopsten Type = "ethereum-ropsten"
+
 	// Bitcoin Blockchain
 	BitcoinType Type = "bitcoin"
 )
