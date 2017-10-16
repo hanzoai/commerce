@@ -14,7 +14,7 @@ github.com/gorilla/schema master
 github.com/gorilla/sessions master
 github.com/hashicorp/golang-lru
 github.com/headzoo/surf master
-github.com/huandu/facebook master
+github.com/huandu/facebook v1.8.1
 github.com/icrowley/fake master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
 github.com/mattn/goveralls master
