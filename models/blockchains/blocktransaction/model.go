@@ -4,6 +4,7 @@ import (
 	"appengine"
 
 	"hanzo.io/datastore"
+	. "hanzo.io/models/blockchains"
 )
 
 var kind = "blocktransaction"
@@ -21,7 +22,7 @@ func (b *BlockTransaction) Defaults() {
 
 func New(db *datastore.Datastore) *BlockTransaction {
 	b := new(BlockTransaction)
-	if err, ctx := appengine.Namespace(db.Context, "_blockchains"); err != nil {
+	if ctx, err := appengine.Namespace(db.Context, BlockchainNamespace); err != nil {
 		panic(err)
 	} else {
 		b.Init(datastore.New(ctx))
