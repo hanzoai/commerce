@@ -21,7 +21,7 @@ func (b *BlockAddress) Defaults() {
 
 func New(db *datastore.Datastore) *BlockAddress {
 	b := new(BlockAddress)
-	if ctx, err := appengine.Namespace(db.Context, "blockchains"); err != nil {
+	if ctx, err := appengine.Namespace(db.Context, "_blockchains"); err != nil {
 		panic(err)
 	} else {
 		b.Init(datastore.New(ctx))
