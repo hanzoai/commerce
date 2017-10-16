@@ -6,25 +6,25 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/namespace"
 	"hanzo.io/util/log"
-)
 
-var BlockchainName = "_blockchains"
+	"hanzo.io/models/blockchains"
+)
 
 var BlockchainNamespace = New("blockchain-namespace", func(c *gin.Context) *namespace.Namespace {
 	db := datastore.New(c)
 	ns := namespace.New(db)
-	ns.Id_ = BlockchainName
-	ns.Name = BlockchainName
+	ns.Id_ = blockchains.BlockchainNamespace
+	ns.Name = blockchains.BlockchainNamespace
 	ns.IntId = 1234567890
 
-	err := ns.GetOrCreate("Name=", BlockchainName)
+	err := ns.GetOrCreate("Name=", blockchains.BlockchainNamespace)
 
 	if err != nil {
 		log.Warn("Failed to put namespace: %v", err)
 	}
 
-	ns.Id_ = BlockchainName
-	ns.Name = BlockchainName
+	ns.Id_ = blockchains.BlockchainNamespace
+	ns.Name = blockchains.BlockchainNamespace
 	ns.IntId = 1234567890
 	ns.MustUpdate()
 

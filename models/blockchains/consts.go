@@ -20,3 +20,5 @@ const (
 	ReadingProcessStatus  ProcessStatus = "reading"
 	FinishedProcessStatus ProcessStatus = "finished"
 )
+
+var BlockchainNamespace = "_blockchains"
