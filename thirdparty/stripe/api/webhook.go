@@ -24,6 +24,7 @@ import (
 func decodeEvent(c *gin.Context) (*stripe.Event, error) {
 	event := new(stripe.Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
+		log.Error("Could not Decode:\n%s", c.Request.Body, c)
 		return nil, fmt.Errorf("Failed to parse Stripe webhook: %v", err)
 	}
 
