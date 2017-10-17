@@ -27,12 +27,15 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c := gincontext.New(ctx)
 
-	fixtures.Organization(c)
-	nsCtx, _ := appengine.Namespace(ctx, "suchtees")
-	db = datastore.New(nsCtx)
-
 	// We need to create the blockchain namespace
 	fixtures.BlockchainNamespace(c)
+
+	// Create the suchtees org and namespace for realism
+	fixtures.Organization(c)
+
+	// Create dbs for the two namespaces
+	nsCtx, _ := appengine.Namespace(ctx, "suchtees")
+	db = datastore.New(nsCtx)
 
 	nsCtx, _ = appengine.Namespace(ctx, "_blockchains")
 	bcDb = datastore.New(nsCtx)
