@@ -25,14 +25,17 @@ var (
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	db = datastore.New(ctx)
+	c := gincontext.New(ctx)
+
+	fixtures.Organization(c)
+	nsCtx, _ := appengine.Namespace(ctx, "suchtees")
+	db = datastore.New(nsCtx)
 
 	// We need to create the blockchain namespace
-	c := gincontext.New(ctx)
 	fixtures.BlockchainNamespace(c)
 
-	nsDb, _ := appengine.Namespace(ctx, "_blockchains")
-	bcDb = datastore.New(nsDb)
+	nsCtx, _ = appengine.Namespace(ctx, "_blockchains")
+	bcDb = datastore.New(nsCtx)
 })
 
 // Tear-down appengine context
