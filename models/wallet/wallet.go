@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/hashid"
+	"hanzo.io/util/log"
 	"hanzo.io/util/tokensale/ethereum"
 )
 
@@ -41,14 +42,7 @@ func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Acco
 
 		w.Accounts = append(w.Accounts, a)
 
-		// Only save if the wallet is created
-		// Otherwise let the user manage that
-		if w.Created() {
-			if err := w.Update(); err != nil {
-				return Account{}, err
-			}
-		}
-
+		// Create a blockaddress so we track this in the ethereum reader
 		ba := blockaddress.New(w.Db)
 		ba.Address = add
 		ba.Type = blockchains.EthereumType
@@ -56,11 +50,22 @@ func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Acco
 
 		ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
 		if err != nil {
-			return a, err
+			log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
 		}
 
 		ba.WalletNamespace = ns
 		err = ba.Create()
+		if err != nil {
+			log.Error("Could not create BlockAddress: %v", err, w.Context())
+		}
+
+		// Only save if the wallet is created
+		// Otherwise let the user manage that
+		if w.Created() {
+			if err := w.Update(); err != nil {
+				return Account{}, err
+			}
+		}
 
 		return a, err
 	}
