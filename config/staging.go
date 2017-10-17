@@ -18,6 +18,10 @@ func Staging() *Config {
 
 	config.StaticUrl = "//static-staging.hanzo.io"
 
+	config.Ethereum.TestPrivateKey = ""
+	config.Ethereum.MainNetNodes = []string{"35.202.166.74"}
+	config.Ethereum.TestNetNodes = []string{"35.192.74.139"}
+
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
 	config.Paypal.IpnUrl = "https://api-staging.hanzo.io/paypal/ipn/"
