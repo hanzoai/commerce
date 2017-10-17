@@ -54,7 +54,7 @@ var _ = Describe("Wallet", func() {
 			Expect(ok).To(Equal(true))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ba.WalletId).To(Equal(wal.Id()))
-			Expect(ba.WalletNamespace).To(Equal(""))
+			Expect(ba.WalletNamespace).To(Equal("suchtees"))
 			Expect(ba.Type).To(Equal(blockchains.EthereumType))
 		})
 
