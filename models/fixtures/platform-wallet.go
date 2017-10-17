@@ -13,9 +13,9 @@ var PlatformWallet = New("platform-wallet", func(c *gin.Context) *wallet.Wallet 
 	db := datastore.New(c)
 
 	w := wallet.New(db)
-	w.Id_ = "test-wallet"
+	w.Id_ = "platform-wallet"
 	w.UseStringKey = true
-	w.GetOrCreate("Id_=", "test-wallet")
+	w.GetOrCreate("Id_=", "platform-wallet")
 
 	if len(w.Accounts) == 0 {
 		if _, err := w.CreateAccount("Ethereum Ropsten Test Account", wallet.Ethereum, []byte(config.Ethereum.TestPassword)); err != nil {
