@@ -82,4 +82,9 @@ indexes:
   - name: Type
   - name: AdSetId
 
-
+- kind: blockaddress
+  ancestor: no
+  properties:
+  - name: Type
+  - name: CreatedAt
+    direction: desc
