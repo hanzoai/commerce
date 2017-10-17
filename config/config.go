@@ -43,6 +43,8 @@ type Config struct {
 
 	Ethereum struct {
 		TestPrivateKey string
+		MainNetNodes   []string
+		TestNetNodes   []string
 	}
 
 	Secret      string
