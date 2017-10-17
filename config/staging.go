@@ -18,7 +18,8 @@ func Staging() *Config {
 
 	config.StaticUrl = "//static-staging.hanzo.io"
 
-	config.Ethereum.TestPrivateKey = ""
+	config.Ethereum.TestPassword = ""
+	config.Ethereum.DepositPassword = ""
 	config.Ethereum.MainNetNodes = []string{"35.202.166.74"}
 	config.Ethereum.TestNetNodes = []string{"35.192.74.139"}
 

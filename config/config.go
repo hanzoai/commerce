@@ -42,9 +42,10 @@ type Config struct {
 	StaticUrl         string
 
 	Ethereum struct {
-		TestPrivateKey string
-		MainNetNodes   []string
-		TestNetNodes   []string
+		TestPassword    string
+		DepositPassword string
+		MainNetNodes    []string
+		TestNetNodes    []string
 	}
 
 	Secret      string
