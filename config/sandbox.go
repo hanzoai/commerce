@@ -13,7 +13,8 @@ func Sandbox() *Config {
 	config.Hosts["api"] = "api.sandbox.hanzo.io"
 	config.Hosts["dash"] = "dash.sandbox.hanzo.io"
 
-	config.Ethereum.TestPrivateKey = ""
+	config.Ethereum.TestPassword = ""
+	config.Ethereum.DepositPassword = ""
 	config.Ethereum.MainNetNodes = []string{"35.202.166.74"}
 	config.Ethereum.TestNetNodes = []string{"35.192.74.139"}
 
