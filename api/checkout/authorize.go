@@ -96,7 +96,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, WalletCreationError
 		}
 
-		_, err = w.CreateAccount(wallet.Ethereum, []byte(tsPass.Passphrase))
+		_, err = w.CreateAccount("Account for Order "+ord.Id(), wallet.Ethereum, []byte(tsPass.Passphrase))
 		if err != nil {
 			log.Error("Funding account creation error: %v", err, c)
 			return nil, FundingAccountCreationError
