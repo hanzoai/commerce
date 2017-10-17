@@ -17,6 +17,6 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 	ord.WalletPassphrase = rand.SecretKey()
 
-	_, err = w.CreateAccount(wallet.Ethereum, []byte(ord.WalletPassphrase))
+	_, err = w.CreateAccount("Receiver Account", wallet.Ethereum, []byte(ord.WalletPassphrase))
 	return err
 }

@@ -13,6 +13,6 @@ func (ts *TokenSale) BeforeCreate() error {
 		return err
 	}
 
-	_, err = w.CreateAccount(wallet.Ethereum, []byte(ts.WalletPassphrase))
+	_, err = w.CreateAccount("default", wallet.Ethereum, []byte(ts.WalletPassphrase))
 	return err
 }
