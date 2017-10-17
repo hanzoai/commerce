@@ -41,6 +41,10 @@ type Config struct {
 	SiteTitle         string
 	StaticUrl         string
 
+	Ethereum struct {
+		TestPrivateKey string
+	}
+
 	Secret      string
 	SessionName string
 
@@ -222,6 +226,7 @@ var CookieDomain = config.CookieDomain
 var Cloudflare = config.Cloudflare
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
+var Ethereum = config.Ethereum
 var Facebook = config.Facebook
 var Fee = config.Fee
 var Google = config.Google

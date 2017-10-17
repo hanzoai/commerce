@@ -17,6 +17,7 @@ type Account struct {
 	Encrypted string `json:"encrypted,omitempty"`
 	Salt      string `json:"salt,omitempty"`
 
+	Name       string `json:"name"`
 	PrivateKey string `json:"-" datastore:"-"`
 	PublicKey  string `json:"publicKey,omitempty"`
 	Address    string `json:"address,omitempty"`

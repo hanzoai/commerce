@@ -19,6 +19,8 @@ func Defaults() *Config {
 
 	config.DemoMode = demoMode
 
+	config.Ethereum.TestPrivateKey = ""
+
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
 	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"

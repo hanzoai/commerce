@@ -20,7 +20,7 @@ var _ = Describe("Wallet", func() {
 			wal.MustCreate()
 
 			password := "Th1$1s@b@dp@$$w0rd"
-			acc, err := wal.CreateAccount(wallet.Ethereum, []byte(password))
+			acc, err := wal.CreateAccount("test", wallet.Ethereum, []byte(password))
 
 			Expect(err).ToNot(HaveOccurred())
 
@@ -38,6 +38,7 @@ var _ = Describe("Wallet", func() {
 			Expect(len(w2.Accounts)).To(Equal(1))
 
 			acc2 := w2.Accounts[0]
+			Expect(acc2.Name).To(Equal("test"))
 			Expect(acc2.Encrypted).To(Equal(enc))
 			Expect(acc2.PrivateKey).To(Equal(""))
 			Expect(acc2.PublicKey).To(Equal(pub))
@@ -61,7 +62,7 @@ var _ = Describe("Wallet", func() {
 			wal.MustCreate()
 
 			password := "Th1$1s@b@dp@$$w0rd"
-			acc, err := wal.CreateAccount(wallet.Type("nopecoin"), []byte(password))
+			acc, err := wal.CreateAccount("nope", wallet.Type("nopecoin"), []byte(password))
 
 			Expect(err).To(Equal(wallet.InvalidTypeSpecified))
 			Expect(acc).To(Equal(wallet.Account{}))
