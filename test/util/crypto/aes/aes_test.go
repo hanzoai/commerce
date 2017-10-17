@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"hanzo.io/util/crypto/aes"
+	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 
 	. "hanzo.io/util/test/ginkgo"
@@ -127,6 +128,7 @@ var _ = Describe("aes.EncryptCBC / aes.DecryptCBC Other", func() {
 		Expect(str).ToNot(Equal(""))
 
 		decodedMsg, err := aes.DecryptCBC([]byte("BadEncryptionKey"), str)
+		log.Error("Incase this is somehow Decrypted Again...?\n%s =? %s\nDecoded %s", key, []byte("BadEncryptionKey"), decodedMsg)
 		Expect(err).To(Equal(aes.UnpadError))
 		Expect(decodedMsg).To(Equal(""))
 	})
