@@ -28,11 +28,13 @@ func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Acco
 			return Account{}, err
 		}
 
+		add = strings.ToLower(add)
+
 		a := Account{
 			Name:       name,
 			PrivateKey: priv,
 			PublicKey:  pub,
-			Address:    strings.ToLower(add),
+			Address:    add,
 			Type:       typ,
 			CreatedAt:  time.Now(),
 		}
