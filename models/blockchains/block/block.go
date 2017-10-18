@@ -8,7 +8,7 @@ import (
 
 // Datastructure for Bitcoin Block
 type BitcoinBlock struct {
-	BitcoinNumber string `json:"bitcoinNumber"`
+	BitcoinBlockNumber string `json:"bitcoinBlockNumber"`
 }
 
 // Datastructure for Ethereum Block
