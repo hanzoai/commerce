@@ -19,23 +19,23 @@ type BitcoinBlock struct {
 // Error: property.name contains a path delimiter, and the entity contains one or more indexed entity value.
 //
 type EthereumBlock struct {
-	EthereumNumber           int64     `json:"ethereumNumber"`
-	EthereumHash             string    `json:"ethereumHash"`
-	EthereumParentHash       string    `json:"ethereumParentHash"`
-	EthereumNonce            string    `json:"ethereumNonce"`
-	EthereumSha3Uncles       string    `json:"ethereumSha3Uncles"`
-	EthereumLogsBloom        string    `json:"ethereumLogsBloom"`
-	EthereumTransacitonsRoot string    `json:"ethereumTransactionsRoot"`
-	EthereumStateRoot        string    `json:"ethereumStateRoot"`
-	EthereumMiner            string    `json:"ethereumMiner"`
-	EthereumDifficulty       BigNumber `json:"ethereumDifficulty"`
-	EthereumTotalDifficulty  BigNumber `json:"ethereumTotalDifficulty"`
-	EthereumExtraData        string    `json:"ethereumExtraData"`
-	EthereumSize             int64     `json:"ethereumSize"`
-	EthereumGasLimit         int64     `json:"ethereumGasLimit"`
-	EthereumGasUsed          int64     `json:"ethereumGasUsed"`
-	EthereumTimeStamp        int64     `json:"ethereumTimestamp"`
-	EthereumUncles           []string  `json:"ethereumUncles"`
+	EthereumBlockNumber           int64     `json:"ethereumBlockNumber"`
+	EthereumBlockHash             string    `json:"ethereumBlockHash"`
+	EthereumBlockParentHash       string    `json:"ethereumBlockParentHash"`
+	EthereumBlockNonce            string    `json:"ethereumBlockNonce"`
+	EthereumBlockSha3Uncles       string    `json:"ethereumBlockSha3Uncles"`
+	EthereumBlockLogsBloom        string    `json:"ethereumBlockLogsBloom"`
+	EthereumBlockTransacitonsRoot string    `json:"ethereumBlockTransactionsRoot"`
+	EthereumBlockStateRoot        string    `json:"ethereumBlockStateRoot"`
+	EthereumBlockMiner            string    `json:"ethereumBlockMiner"`
+	EthereumBlockDifficulty       BigNumber `json:"ethereumBlockDifficulty"`
+	EthereumBlockTotalDifficulty  BigNumber `json:"ethereumBlockTotalDifficulty"`
+	EthereumBlockExtraData        string    `json:"ethereumBlockExtraData"`
+	EthereumBlockSize             int64     `json:"ethereumBlockSize"`
+	EthereumBlockGasLimit         int64     `json:"ethereumBlockGasLimit"`
+	EthereumBlockGasUsed          int64     `json:"ethereumBlockGasUsed"`
+	EthereumBlockTimeStamp        int64     `json:"ethereumBlockTimestamp"`
+	EthereumBlockUncles           []string  `json:"ethereumBlockUncles"`
 }
 
 // Datastructure combining all the different types of blockchain blocks
