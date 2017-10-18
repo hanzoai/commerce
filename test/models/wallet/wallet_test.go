@@ -55,8 +55,8 @@ var _ = Describe("Wallet", func() {
 			// Should create blockchain stuff
 			ba := blockaddress.New(bcDb)
 			ok, err := ba.Query().Filter("Address=", add).Get()
-			Expect(ok).To(Equal(true))
 			Expect(err).ToNot(HaveOccurred())
+			Expect(ok).To(Equal(true))
 			Expect(ba.WalletId).To(Equal(wal.Id()))
 			Expect(ba.WalletNamespace).To(Equal("suchtees"))
 			Expect(ba.Type).To(Equal(blockchains.EthereumType))
