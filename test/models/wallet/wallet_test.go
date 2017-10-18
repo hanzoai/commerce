@@ -1,6 +1,8 @@
 package test
 
 import (
+	"strings"
+
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/wallet"
@@ -43,6 +45,8 @@ var _ = Describe("Wallet", func() {
 			Expect(acc2.PrivateKey).To(Equal(""))
 			Expect(acc2.PublicKey).To(Equal(pub))
 			Expect(acc2.Address).To(Equal(add))
+			// Address should be lower case
+			Expect(strings.ToLower(add)).To(Equal(add))
 
 			err = acc2.Decrypt([]byte(password))
 			Expect(err).ToNot(HaveOccurred())
