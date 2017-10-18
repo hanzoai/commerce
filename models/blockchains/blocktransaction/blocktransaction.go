@@ -12,17 +12,17 @@ type BitcoinTransaction struct {
 
 // Datastructure for Ethereum Transaction
 type EthereumTransaction struct {
-	EthereumHash             string    `json:"ethereumHash"`
-	EthereumNonce            int64     `json:"ethereumNonce"`
-	EthereumBlockHash        string    `json:"ethereumBlockHash"`
-	EthereumBlockNumber      int64     `json:"ethereumBlockNumber"`
-	EthereumTransactionIndex int64     `json:"ethereumTransactionIndex"`
-	EthereumFrom             string    `json:"ethereumFrom"`
-	EthereumTo               string    `json:"ethereumTo"`
-	EthereumValue            BigNumber `json:"ethereumValue"`
-	EthereumGasPrice         BigNumber `json:"ethereumGasPrice"`
-	EthereumGas              BigNumber `json:"ethereumGas"`
-	EthereumInput            string    `json:"ethereumInput"`
+	EthereumTransactionHash             string    `json:"ethereumTransactionHash"`
+	EthereumTransactionNonce            int64     `json:"ethereumTransactionNonce"`
+	EthereumTransactionBlockHash        string    `json:"ethereumTransactionBlockHash"`
+	EthereumTransactionBlockNumber      int64     `json:"ethereumTransactionBlockNumber"`
+	EthereumTransactionTransactionIndex int64     `json:"ethereumTransactionTransactionIndex"`
+	EthereumTransactionFrom             string    `json:"ethereumTransactionFrom"`
+	EthereumTransactionTo               string    `json:"ethereumTransactionTo"`
+	EthereumTransactionValue            BigNumber `json:"ethereumTransactionValue"`
+	EthereumTransactionGasPrice         BigNumber `json:"ethereumTransactionGasPrice"`
+	EthereumTransactionGas              BigNumber `json:"ethereumTransactionGas"`
+	EthereumTransactionInput            string    `json:"ethereumTransactionInput"`
 }
 
 // Datastructure for Bitcoin Transaction Receipt
@@ -44,15 +44,15 @@ type BitcoinTransactionReceipt struct {
 
 // Datastructure for Ethereum Transaction Receipt
 type EthereumTransactionReceipt struct {
-	EthereumBlockHash         string    `json:"ethereumBlockHash"`
-	EthereumBlockNumber       int64     `json:"ethereumBlockNumber"`
-	EthereumTransactionHash   string    `json:"ethereumTransactionHash"`
-	EthereumTransactionIndex  int64     `json:"ethereumTransactionIndex"`
-	EthereumFrom              string    `json:"ethereumFrom"`
-	EthereumTo                string    `json:"ethereumTo"`
-	EthereumCumulativeGasUsed BigNumber `json:"ethereumCumulativeGasUsed"`
-	EthereumGasUsed           BigNumber `json:"ethereumGasUsed"`
-	EthereumContractAddress   string    `json:"ethereumContractAddress"`
+	EthereumTransactionReceiptBlockHash         string    `json:"ethereumTransactionReceiptBlockHash"`
+	EthereumTransactionReceiptBlockNumber       int64     `json:"ethereumTransactionReceiptBlockNumber"`
+	EthereumTransactionReceiptTransactionHash   string    `json:"ethereumTransactionReceiptTransactionHash"`
+	EthereumTransactionReceiptTransactionIndex  int64     `json:"ethereumTransactionReceiptTransactionIndex"`
+	EthereumTransactionReceiptFrom              string    `json:"ethereumTransactionReceiptFrom"`
+	EthereumTransactionReceiptTo                string    `json:"ethereumTransactionReceiptTo"`
+	EthereumTransactionReceiptCumulativeGasUsed BigNumber `json:"ethereumTransactionReceiptCumulativeGasUsed"`
+	EthereumTransactionReceiptGasUsed           BigNumber `json:"ethereumTransactionReceiptGasUsed"`
+	EthereumTransactionReceiptContractAddress   string    `json:"ethereumTransactionReceiptContractAddress"`
 	// Logs              []EthereumTransactionLog `json:"logs,omitempty"`
 }
 
