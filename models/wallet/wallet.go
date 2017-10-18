@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"strings"
 	"time"
 
 	"hanzo.io/models/blockchains"
@@ -31,7 +32,7 @@ func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Acco
 			Name:       name,
 			PrivateKey: priv,
 			PublicKey:  pub,
-			Address:    add,
+			Address:    strings.ToLower(add),
 			Type:       typ,
 			CreatedAt:  time.Now(),
 		}
