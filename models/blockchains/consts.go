@@ -2,6 +2,7 @@ package blockchains
 
 // Type is the blockchain identifier
 type Type string
+type BigNumber string
 
 const (
 	// Ethereum Blockchain
@@ -17,8 +18,16 @@ const (
 type ProcessStatus string
 
 const (
-	ReadingProcessStatus  ProcessStatus = "reading"
-	FinishedProcessStatus ProcessStatus = "finished"
+	ReadingProcessStatus   ProcessStatus = "reading"
+	PendingProcessStatus   ProcessStatus = "pending"
+	ConfirmedProcessStatus ProcessStatus = "confirmed"
+)
+
+type Usage string
+
+const (
+	SenderUsage   Usage = "sender"
+	ReceiverUsage Usage = "receiver"
 )
 
 var BlockchainNamespace = "_blockchains"
