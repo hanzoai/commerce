@@ -47,6 +47,8 @@ var _ = Describe("Wallet", func() {
 			Expect(acc2.Address).To(Equal(add))
 			// Address should be lower case
 			Expect(strings.ToLower(add)).To(Equal(add))
+			// Address should start with 0x
+			Expect(add[0:2]).To(Equal("0x"))
 
 			err = acc2.Decrypt([]byte(password))
 			Expect(err).ToNot(HaveOccurred())
