@@ -89,6 +89,22 @@ indexes:
   - name: CreatedAt
     direction: desc
 
+- kind: block
+  ancestor: no
+  properties:
+  - name: Type
+  - name: Status
+  - name: EthereumBlockNumber
+    direction: desc
+
+- kind: block
+  ancestor: no
+  properties:
+  - name: Type
+  - name: Status
+  - name: BitcoinBlockNumber
+    direction: desc
+
 - kind: blockaddress
   ancestor: no
   properties:
