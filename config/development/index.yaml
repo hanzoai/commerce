@@ -119,4 +119,10 @@ indexes:
   - name: CreatedAt
     direction: desc
 
-
+- kind: blocktransaction
+  ancestor: no
+  properties:
+  - name: Type
+  - name: EthereumTransactionBlockNumber
+  - name: Address
+    direction: desc
