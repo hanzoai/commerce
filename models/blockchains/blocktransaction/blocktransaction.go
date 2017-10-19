@@ -44,15 +44,15 @@ type BitcoinTransactionReceipt struct {
 
 // Datastructure for Ethereum Transaction Receipt
 type EthereumTransactionReceipt struct {
-	EthereumTransactionReceiptBlockHash         string    `json:"ethereumTransactionReceiptBlockHash"`
-	EthereumTransactionReceiptBlockNumber       int64     `json:"ethereumTransactionReceiptBlockNumber"`
-	EthereumTransactionReceiptTransactionHash   string    `json:"ethereumTransactionReceiptTransactionHash"`
-	EthereumTransactionReceiptTransactionIndex  int64     `json:"ethereumTransactionReceiptTransactionIndex"`
-	EthereumTransactionReceiptFrom              string    `json:"ethereumTransactionReceiptFrom"`
-	EthereumTransactionReceiptTo                string    `json:"ethereumTransactionReceiptTo"`
-	EthereumTransactionReceiptCumulativeGasUsed BigNumber `json:"ethereumTransactionReceiptCumulativeGasUsed"`
-	EthereumTransactionReceiptGasUsed           BigNumber `json:"ethereumTransactionReceiptGasUsed"`
-	EthereumTransactionReceiptContractAddress   string    `json:"ethereumTransactionReceiptContractAddress"`
+	EthereumTransactionReceiptBlockHash         string `json:"ethereumTransactionReceiptBlockHash"`
+	EthereumTransactionReceiptBlockNumber       int64  `json:"ethereumTransactionReceiptBlockNumber"`
+	EthereumTransactionReceiptTransactionHash   string `json:"ethereumTransactionReceiptTransactionHash"`
+	EthereumTransactionReceiptTransactionIndex  int64  `json:"ethereumTransactionReceiptTransactionIndex"`
+	EthereumTransactionReceiptFrom              string `json:"ethereumTransactionReceiptFrom"`
+	EthereumTransactionReceiptTo                string `json:"ethereumTransactionReceiptTo"`
+	EthereumTransactionReceiptCumulativeGasUsed int64  `json:"ethereumTransactionReceiptCumulativeGasUsed"`
+	EthereumTransactionReceiptGasUsed           int64  `json:"ethereumTransactionReceiptGasUsed"`
+	EthereumTransactionReceiptContractAddress   string `json:"ethereumTransactionReceiptContractAddress"`
 	// Logs              []EthereumTransactionLog `json:"logs,omitempty"`
 }
 

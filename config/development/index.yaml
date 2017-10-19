@@ -124,5 +124,4 @@ indexes:
   properties:
   - name: Type
   - name: EthereumTransactionBlockNumber
-  - name: Address
     direction: desc
