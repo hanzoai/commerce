@@ -93,6 +93,13 @@ indexes:
   ancestor: no
   properties:
   - name: Type
+  - name: EthereumBlockNumber
+    direction: desc
+
+- kind: block
+  ancestor: no
+  properties:
+  - name: Type
   - name: Status
   - name: EthereumBlockNumber
     direction: desc
