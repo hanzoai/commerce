@@ -66,7 +66,8 @@ type BlockTransaction struct {
 	EthereumTransaction
 	EthereumTransactionReceipt
 
-	Type   Type          `json:"type"`
-	Status ProcessStatus `json:"status"`
-	Usage  Usage         `json:"usage"`
+	Type          Type          `json:"type"`
+	Status        ProcessStatus `json:"status"`
+	Usage         Usage         `json:"usage"`
+	Confirmations int64         `json:"confirmations"`
 }
