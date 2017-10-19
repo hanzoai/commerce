@@ -46,6 +46,8 @@ type Config struct {
 		DepositPassword string
 		MainNetNodes    []string
 		TestNetNodes    []string
+
+		WebhookPassword string
 	}
 
 	Secret      string
