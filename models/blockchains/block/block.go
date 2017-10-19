@@ -45,6 +45,7 @@ type Block struct {
 	BitcoinBlock
 	EthereumBlock
 
-	Type   Type          `json:"type"`
-	Status ProcessStatus `json:"status"`
+	Type          Type          `json:"type"`
+	Status        ProcessStatus `json:"status"`
+	Confirmations int64         `json:"confirmations"`
 }

@@ -30,6 +30,7 @@ func Development() *Config {
 	config.Ethereum.DepositPassword = ""
 	config.Ethereum.MainNetNodes = []string{"35.202.166.74"}
 	config.Ethereum.TestNetNodes = []string{"35.192.74.139"}
+	config.Ethereum.WebhookPassword = ""
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
