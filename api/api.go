@@ -52,11 +52,12 @@ import (
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
 
+	stripeApi "hanzo.io/thirdparty/ethereum/api"
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
 	reamazeApi "hanzo.io/thirdparty/reamaze"
 	shipstationApi "hanzo.io/thirdparty/shipstation"
 	shipwireApi "hanzo.io/thirdparty/shipwire/api"
-	stripeApi "hanzo.io/thirdparty/stripe/api"
+	ethereumApi "hanzo.io/thirdparty/stripe/api"
 
 	dashv2Api "hanzo.io/api/dashv2"
 
@@ -180,8 +181,11 @@ func Route(api router.Router) {
 	// Library Api
 	libraryApi.Route(api)
 
-	// Library Api
+	// Marketing Api
 	marketingApi.Route(api)
+
+	// Ethereum webhook
+	ethereumApi.Route(api)
 }
 
 func init() {
