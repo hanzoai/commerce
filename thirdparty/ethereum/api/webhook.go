@@ -23,12 +23,13 @@ const (
 )
 
 type Event struct {
-	Id       string `json:"id"`
-	Kind     Kind   `json:"kind"`
+	Name     string `json:"name"`
 	Type     Type   `json:"type"`
 	Password string `json:"password"`
 
-	Data map[string]interface{} `json:"data"`
+	DataId   string                 `json:"dataId"`
+	DataKind Kind                   `json:"dataKind"`
+	Data     map[string]interface{} `json:"data"`
 }
 
 // Decode Ethereum payload
