@@ -28,10 +28,10 @@ import (
 	"math/big"
 	"os"
 
-	"hanzo.io/util/tokensale/ethereum/common"
-	"hanzo.io/util/tokensale/ethereum/common/math"
-	"hanzo.io/util/tokensale/ethereum/crypto/sha3"
-	"hanzo.io/util/tokensale/ethereum/rlp"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/common"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/common/math"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/sha3"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/rlp"
 )
 
 var (
