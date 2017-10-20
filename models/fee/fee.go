@@ -25,6 +25,11 @@ const (
 	Refunded    Status = "refunded"
 )
 
+type EthereumFee struct {
+	Address           string `json:"address,omitempty"`
+	SignedTransaction string `json:"signedTransaction,omitempty"`
+}
+
 type Fee struct {
 	mixin.Model
 
@@ -44,6 +49,8 @@ type Fee struct {
 	AmountRefunded currency.Cents `json:"amountRefunded,omitempty"`
 
 	Status Status `json:"status"`
+
+	EthereumFee `json:"ethereumFee"`
 
 	// Stripe livemode
 	Live bool `json:"live"`

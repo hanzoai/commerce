@@ -21,7 +21,7 @@ import (
 	"crypto/elliptic"
 	"fmt"
 
-	"hanzo.io/util/tokensale/ethereum/crypto/btcec"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 )
 
 func Ecrecover(hash, sig []byte) ([]byte, error) {
