@@ -28,8 +28,8 @@ func Development() *Config {
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
-	config.Ethereum.MainNetNodes = []string{"35.202.166.74"}
-	config.Ethereum.TestNetNodes = []string{"35.192.74.139"}
+	config.Ethereum.MainNetNodes = []string{"http://35.202.166.74:80"}
+	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:80"}
 	config.Ethereum.WebhookPassword = ""
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId

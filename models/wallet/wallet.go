@@ -7,9 +7,9 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/mixin"
+	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/log"
-	"hanzo.io/util/tokensale/ethereum"
 )
 
 type Wallet struct {
@@ -28,7 +28,7 @@ func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Acco
 			return Account{}, err
 		}
 
-		add = "0x" + strings.ToLower(add)
+		add = strings.ToLower(add)
 
 		a := Account{
 			Name:       name,
