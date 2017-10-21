@@ -1,7 +1,7 @@
 package tokensale
 
 import (
-	"hanzo.io/models/wallet"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/util/rand"
 )
 
@@ -13,6 +13,6 @@ func (ts *TokenSale) BeforeCreate() error {
 		return err
 	}
 
-	_, err = w.CreateAccount("default", wallet.Ethereum, []byte(ts.WalletPassphrase))
+	_, err = w.CreateAccount("default", blockchains.EthereumType, []byte(ts.WalletPassphrase))
 	return err
 }

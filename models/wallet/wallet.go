@@ -19,9 +19,9 @@ type Wallet struct {
 }
 
 // Create a new Account, saves if wallet is created
-func (w *Wallet) CreateAccount(name string, typ Type, withPassword []byte) (Account, error) {
+func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (Account, error) {
 	switch typ {
-	case Ethereum:
+	case blockchains.EthereumType, blockchains.EthereumRopstenType:
 		priv, pub, add, err := ethereum.GenerateKeyPair()
 
 		if err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 )
 
@@ -18,11 +19,11 @@ var PlatformWallet = New("platform-wallet", func(c *gin.Context) *wallet.Wallet 
 	w.GetOrCreate("Id_=", "platform-wallet")
 
 	if len(w.Accounts) == 0 {
-		if _, err := w.CreateAccount("Ethereum Ropsten Test Account", wallet.Ethereum, []byte(config.Ethereum.TestPassword)); err != nil {
+		if _, err := w.CreateAccount("Ethereum Ropsten Test Account", blockchains.EthereumRopstenType, []byte(config.Ethereum.TestPassword)); err != nil {
 			panic(err)
 		}
 
-		if _, err := w.CreateAccount("Ethereum Deposit Account", wallet.Ethereum, []byte(config.Ethereum.DepositPassword)); err != nil {
+		if _, err := w.CreateAccount("Ethereum Deposit Account", blockchains.EthereumType, []byte(config.Ethereum.DepositPassword)); err != nil {
 			panic(err)
 		}
 	}

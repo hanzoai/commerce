@@ -8,8 +8,11 @@ const (
 	// Ethereum Blockchain
 	EthereumType Type = "ethereum"
 
+	// Ethereum Morden Testnet
+	EthereumMordenType Type = "ethereum-morden"
+
 	// Ethereum Default Testnet
-	EthereumRopsten Type = "ethereum-ropsten"
+	EthereumRopstenType Type = "ethereum-ropsten"
 
 	// Bitcoin Blockchain
 	BitcoinType Type = "bitcoin"
@@ -18,6 +21,7 @@ const (
 type ProcessStatus string
 
 const (
+	QueuedProcessStatus    ProcessStatus = "queued"
 	ReadingProcessStatus   ProcessStatus = "reading"
 	PendingProcessStatus   ProcessStatus = "pending"
 	ConfirmedProcessStatus ProcessStatus = "confirmed"
