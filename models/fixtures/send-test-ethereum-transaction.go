@@ -1,10 +1,13 @@
 package fixtures
 
 import (
+	"math/big"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/log"
@@ -12,6 +15,7 @@ import (
 
 var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {
 	db := datastore.New(c)
+	ctx := db.Context
 
 	w := wallet.New(db)
 	w.Id_ = "test-customer-wallet"
@@ -19,35 +23,33 @@ var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *
 	w.GetOrCreate("Id_=", "test-customer-wallet")
 
 	if len(w.Accounts) == 0 {
-		if _, err := w.CreateAccount("Test Customer Account", wallet.Ethereum, []byte(config.Ethereum.TestPassword)); err != nil {
+		if _, err := w.CreateAccount("Test Customer Account", blockchains.EthereumRopstenType, []byte(config.Ethereum.TestPassword)); err != nil {
 			panic(err)
 		}
 	}
 
-	aI := -1
+	var account wallet.Account
 	pw := wallet.New(db)
-	pw.MustGetById("platform-wallet")
-	for i, a := range pw.Accounts {
+	pw.GetOrCreate("Id_=", "platform-wallet")
+	for _, a := range pw.Accounts {
+		log.Info("Account %s ?= %s", a.Name, "Ethereum Ropsten Test Account", ctx)
 		if a.Name != "Ethereum Ropsten Test Account" {
 			continue
 		}
-		aI = i
+		log.Info("Account Found", ctx)
 		if err := a.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
 			panic(err)
 		}
+		account = a
+		break
 	}
 
 	client := ethereum.New(db.Context, config.Ethereum.TestNetNodes[0])
 
-	signedTx, err := ethereum.NewSignedTransaction(ethereum.MainNet, w.Accounts[aI].PrivateKey, pw.Accounts[0].Address, 1000000, 0, 0, []byte{})
+	hash, err := client.SendTransaction(ethereum.Ropsten, account.PrivateKey, account.Address, w.Accounts[0].Address, big.NewInt(1000000000000000), big.NewInt(0), big.NewInt(0), []byte{})
 	if err != nil {
 		panic(err)
 	}
 
-	jrr, err := client.SendRawTransaction(signedTx)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Info("Geth Node Response: %v", jrr, c)
+	log.Info("Geth Node Response: %v", hash, c)
 })

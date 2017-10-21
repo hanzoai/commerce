@@ -3,14 +3,10 @@ package wallet
 import (
 	"time"
 
+	"hanzo.io/models/blockchains"
+
 	"hanzo.io/util/crypto/aes"
 	"hanzo.io/util/rand"
-)
-
-type Type string
-
-const (
-	Ethereum Type = "ethereum"
 )
 
 type Account struct {
@@ -22,8 +18,8 @@ type Account struct {
 	PublicKey  string `json:"publicKey,omitempty"`
 	Address    string `json:"address,omitempty"`
 
-	Deleted bool `json:"-"`
-	Type    Type `json:"type"`
+	Deleted bool             `json:"-"`
+	Type    blockchains.Type `json:"type"`
 
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
