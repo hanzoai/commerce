@@ -22,7 +22,7 @@ var _ = Describe("Wallet", func() {
 			wal.MustCreate()
 
 			password := "Th1$1s@b@dp@$$w0rd"
-			acc, err := wal.CreateAccount("test", wallet.Ethereum, []byte(password))
+			acc, err := wal.CreateAccount("test", blockchains.EthereumRopstenType, []byte(password))
 
 			Expect(err).ToNot(HaveOccurred())
 
