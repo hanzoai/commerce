@@ -10,6 +10,7 @@ import (
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/multi"
 	"hanzo.io/models/order"
@@ -20,7 +21,6 @@ import (
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
@@ -96,7 +96,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, WalletCreationError
 		}
 
-		_, err = w.CreateAccount("Account for Order "+ord.Id(), wallet.Ethereum, []byte(tsPass.Passphrase))
+		_, err = w.CreateAccount("Account for Order "+ord.Id(), blockchains.EthereumType, []byte(tsPass.Passphrase))
 		if err != nil {
 			log.Error("Funding account creation error: %v", err, c)
 			return nil, FundingAccountCreationError

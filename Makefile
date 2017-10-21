@@ -304,6 +304,13 @@ deploy-app: rollback
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
+deploy-default: rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+
+	$(appcfg.py) update config/production
+	$(appcfg.py) update_indexes $(firstword $(gae_config))
+
 update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
 
