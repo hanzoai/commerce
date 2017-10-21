@@ -132,3 +132,12 @@ indexes:
   - name: Type
   - name: EthereumTransactionBlockNumber
     direction: desc
+
+- kind: blocktransaction
+  ancestor: no
+  properties:
+  - name: Type
+  - name: EthereumTransactionFrom
+  - name: EthereumTransactionNonce
+    direction: desc
+
