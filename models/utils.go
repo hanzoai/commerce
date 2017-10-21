@@ -13,15 +13,16 @@ import (
 )
 
 func FloatPrice(price currency.Cents) float64 {
-	return math.Floor(float64(price)*100+0.5) / 10000
+	f, _ := strconv.ParseFloat(price.String(), 10)
+	return math.Floor(f*100+0.5) / 10000
 }
 
 func DisplayPrice(t currency.Type, price currency.Cents) string {
 	f := ""
 	if t.IsZeroDecimal() {
-		f = strconv.FormatFloat(float64(price), 'f', 0, 64)
+		f = strconv.FormatFloat(price.Float64(), 'f', 0, 64)
 	} else {
-		f = strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+		f = strconv.FormatFloat(price.Float64(), 'f', 2, 64)
 	}
 	bits := strings.Split(f, ".")
 	decimal := ""

@@ -182,7 +182,7 @@ func (p Product) MinPrice() currency.Cents {
 	min := p.Variants[0].Price
 
 	for _, v := range p.Variants {
-		if v.Price < min {
+		if v.Price.Cmp(min.Int) < 0 {
 			min = v.Price
 		}
 	}

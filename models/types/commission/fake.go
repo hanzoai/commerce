@@ -7,8 +7,8 @@ import (
 
 func Fake() Commission {
 	var c Commission
-	c.Flat = currency.Cents(0).Fake()
-	c.Minimum = currency.Cents(0).Fake()
+	c.Flat = currency.NewCents(0).Fake()
+	c.Minimum = currency.NewCents(0).Fake()
 	c.Percent = fake.Percent
 	return c
 }

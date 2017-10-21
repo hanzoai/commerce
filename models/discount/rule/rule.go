@@ -28,7 +28,7 @@ func (t Trigger) Type() trigger.Type {
 		return trigger.Quantity
 	}
 
-	if t.Price.Start > 0 {
+	if t.Price.Start.Cmp(currency.NewInt(0)) > 0 {
 		return trigger.Price
 	}
 

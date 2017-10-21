@@ -72,7 +72,7 @@ func (li LineItem) ToMap() map[string]interface{} {
 	vals["ProductId"] = li.ProductId
 	vals["VariantId"] = li.VariantId
 	vals["Quantity"] = int64(li.Quantity)
-	vals["Price"] = int64(li.Price)
+	vals["Price"] = li.Price.String()
 	vals["Taxable"] = li.Taxable
 	vals["Free"] = li.Free
 	vals["AddedBy"] = li.AddedBy
@@ -81,7 +81,7 @@ func (li LineItem) ToMap() map[string]interface{} {
 }
 
 func (li LineItem) TotalPrice() currency.Cents {
-	return li.Price * currency.Cents(li.Quantity)
+	return currency.Cents{li.Price.Mul(currency.NewInt(int64(li.Quantity)))}
 }
 
 func (li LineItem) DisplayPrice(t currency.Type) string {
