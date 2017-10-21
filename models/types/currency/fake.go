@@ -9,9 +9,9 @@ func Fake() Type {
 }
 
 func (c Cents) Fake() Cents {
-	return Cents(rand.Intn(99) * 100)
+	return NewCents(int64(rand.Intn(99) * 100))
 }
 
 func (c Cents) FakeN(max int) Cents {
-	return Cents(rand.Intn(max) * 100)
+	return NewCents(int64(rand.Intn(max) * 100))
 }

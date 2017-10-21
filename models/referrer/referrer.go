@@ -184,12 +184,12 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 		}
 
 		// Total balance
-		balance := 0
+		balance := currency.NewInt(0)
 		for _, t := range trans {
 			if t.Type == transaction.Withdraw {
-				balance -= int(t.Amount)
+				balance = balance.Sub(t.Amount.Int)
 			} else {
-				balance += int(t.Amount)
+				balance = balance.Add(t.Amount.Int)
 			}
 		}
 
@@ -202,13 +202,13 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 			if action.Once && ok && done {
 				log.Debug("Don't forward since this was executed once")
 			} else {
-				balance += int(action.Amount)
+				balance = balance.Add(action.Amount.Int)
 				log.Debug("Balance Amount %s", balance)
 			}
 		}
 
 		// Check trigger
-		if balance >= int(trig.CreditGreaterThanOrEquals) {
+		if balance.Cmp(trig.CreditGreaterThanOrEquals.Int) >= 0 {
 			return true, nil
 		}
 	case referralprogram.ReferralsGreaterThanOrEquals:

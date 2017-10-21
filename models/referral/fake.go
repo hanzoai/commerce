@@ -10,7 +10,7 @@ func Fake(db *datastore.Datastore, userId, orderId string) *Referral {
 	r.Type = NewOrder
 	r.OrderId = orderId
 	r.Referrer = Referrer{UserId: userId}
-	r.Fee = Fee{Currency: currency.USD, Amount: currency.Cents(0).FakeN(90)}
+	r.Fee = Fee{Currency: currency.USD, Amount: currency.NewCents(0).FakeN(90)}
 
 	return r
 }

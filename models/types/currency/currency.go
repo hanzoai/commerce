@@ -1,7 +1,6 @@
 package currency
 
 import (
-	"strconv"
 	"strings"
 )
 
@@ -27,31 +26,32 @@ func (t Type) IsCrypto() bool {
 
 func (t Type) ToString(c Cents) string {
 	if t.IsZeroDecimal() {
-		return t.Symbol() + strconv.Itoa(int(c))
+		return t.Symbol() + c.String()
 	}
-	cents := strconv.Itoa(int(c) % 100)
+	cents := c.Mod(NewInt(100)).String()
 	if len(cents) < 2 {
 		cents += "0"
 	}
-	return t.Symbol() + strconv.Itoa(int(c)/100) + "." + cents
+	return t.Symbol() + c.Div(NewInt(100)).String() + "." + cents
 }
 
 func (t Type) ToStringNoSymbol(c Cents) string {
 	if t.IsZeroDecimal() {
-		return strconv.Itoa(int(c))
+		return c.String()
 	}
-	cents := strconv.Itoa(int(c) % 100)
+	cents := c.Mod(NewInt(100)).String()
 	if len(cents) < 2 {
 		cents = "0" + cents
 	}
-	return strconv.Itoa(int(c)/100) + "." + cents
+	return c.Mod(NewInt(100)).String() + "." + cents
 }
 
 func (t Type) ToFloat(c Cents) float64 {
+	f := c.Float64()
 	if t.IsZeroDecimal() {
-		return float64(c)
+		return f
 	}
-	return float64(c) / 100.0
+	return f / 100.0
 }
 
 func (t Type) Label() string {
