@@ -1,12 +1,17 @@
 package api
 
 import (
+	ej "encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains/blockaddress"
+	"hanzo.io/models/blockchains/blocktransaction"
+	// "hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -27,9 +32,9 @@ type Event struct {
 	Type     Type   `json:"type"`
 	Password string `json:"password"`
 
-	DataId   string                 `json:"dataId"`
-	DataKind Kind                   `json:"dataKind"`
-	Data     map[string]interface{} `json:"data"`
+	DataId   string        `json:"dataId"`
+	DataKind Kind          `json:"dataKind"`
+	Data     ej.RawMessage `json:"data"`
 }
 
 // Decode Ethereum payload
@@ -45,6 +50,7 @@ func decodeEvent(c *gin.Context) (*Event, error) {
 }
 
 var AccessDeniedError = errors.New("Access Denied")
+var BlockTransactionNotFound = errors.New("BlockTransaction not found, it should exist for this webhook to be received")
 
 // Handle stripe webhook POSTs
 func Webhook(c *gin.Context) {
@@ -59,5 +65,49 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
+	db := datastore.New(c)
+
+	switch event.DataKind {
+	case BlockTransaction:
+		switch event.Name {
+		case "blocktransaction.confirmed":
+			// Confirm a block transaction
+			bt := blocktransaction.New(db)
+
+			// Decode event data
+			if err := json.Unmarshal([]byte(event.Data), bt); err != nil {
+				http.Fail(c, 500, err.Error(), err)
+				panic(err)
+			}
+
+			// We only care about payments we receive for orders
+			if bt.Usage != ReceiverUsage {
+				break
+			}
+
+			// Get block address
+			ba := blockaddress.New(db)
+			if ok, err := ba.Query().Filter("Type=", bt.Type).Filter("Address=", bt.Address).Get(); !ok {
+				if err != nil {
+					http.Fail(c, 500, err.Error(), err)
+					panic(err)
+				}
+
+				http.Fail(c, 500, BlockTransactionNotFound.Error(), BlockTransactionNotFound)
+				panic(err)
+			}
+
+			// Ignore updates about platform wallets
+			// May start listening for deposits in the future
+			if ba.WalletNamespace == "" {
+				break
+			}
+		case "ping":
+			c.String(200, "pong")
+			return
+		}
+	}
+
 	log.Info("Received Ethereum Webhook: %v", event, c)
+	c.String(200, "ok")
 }

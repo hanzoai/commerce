@@ -103,13 +103,16 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		}
 	} else if (ord.TokenSaleId != "") || (tsPass != nil) {
 		return nil, MissingTokenSaleOrPassphrase
-	} else if ord.Type != payment.Ethereum {
-		// Override total to $0.50 is test email is used
-		if org.IsTestEmail(pay.Buyer.Email) {
-			ord.Total = currency.Cents(50)
-			pay.Test = true
-		}
+	}
 
+	// Override total to $0.50 is test email is used
+	if org.IsTestEmail(pay.Buyer.Email) {
+		ord.Total = currency.Cents(50)
+		pay.Test = true
+	}
+
+	// Ethereum payments are handles in the webhook
+	if ord.Type != payment.Ethereum {
 		// Use updated order total
 		pay.Amount = ord.Total
 
