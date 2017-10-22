@@ -49,7 +49,16 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 		client := ethereum.New(org.Db.Context, config.Ethereum.TestNetNodes[0])
 
-		if _, err := client.SendTransaction(ethereum.Ropsten, account.PrivateKey, account.Address, w.Accounts[0].Address, big.NewInt(1000000000000000), big.NewInt(0), big.NewInt(0), []byte{}); err != nil {
+		if _, err := client.SendTransaction(
+			ethereum.Ropsten,
+			account.PrivateKey,
+			account.Address,
+			w.Accounts[0].Address,
+			ord.Currency.ToMinimalUnits(ord.Total),
+			big.NewInt(0),
+			big.NewInt(0),
+			[]byte{},
+		); err != nil {
 			return err
 		}
 	}

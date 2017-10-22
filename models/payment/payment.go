@@ -1,9 +1,12 @@
 package payment
 
 import (
+	"math/big"
+
 	aeds "appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/client"
@@ -101,11 +104,18 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	return true
 }
 
+type EthereumTransaction struct {
+	EthereumTransactionHash string           `json:"EthereumTransactionHash,omitempty"`
+	EthereumChainType       blockchains.Type `json:"EthereumChainType,omitempty"`
+	WeiAmount               *big.Int         `json:"WeiAmount,omitempty"`
+}
+
 // Sort of a union type of all possible payment accounts, used everywhere for convenience
 type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
+	EthereumTransaction
 
 	Error string `json:"error,omitempty"`
 }
