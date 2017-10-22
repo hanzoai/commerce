@@ -1,5 +1,6 @@
 package currency
 
+// Give the currency's symbol
 func (t Type) Symbol() string {
 	switch t {
 	case ARS, AUD, BSD, BBD, BMD, BND, CAD, KYD, CLP, COP, XCD, SVC, FJD, GYD, HKD, LRD, MXN, NAD, NZD, SGD, SBD, SRD, USD:
