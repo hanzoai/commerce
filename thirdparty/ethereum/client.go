@@ -47,6 +47,13 @@ type JsonRpcResponse struct {
 	Error          JsonRpcError  `json:"error"`
 }
 
+var IsTest = false
+
+func Test(b bool) bool {
+	IsTest = b
+	return b
+}
+
 var JsonRpcVersion = "2.0"
 var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":[%s],"id":%v}`
 
@@ -71,6 +78,11 @@ func paramsToString(parts ...string) string {
 
 // Post a JSON-RPC Command
 func (c Client) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) {
+	if IsTest {
+		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte("0x0"))}
+		return jrr, nil
+	}
+
 	log.Info("Posting command to Geth Node '%s': '%s'", c.address, jsonRpcCommand, c.ctx)
 	res, err := c.httpClient.Post(c.address, "application/json", strings.NewReader(jsonRpcCommand))
 	if err != nil {

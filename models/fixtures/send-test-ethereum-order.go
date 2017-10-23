@@ -1,14 +1,17 @@
 package fixtures
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"appengine/urlfetch"
 
+	"hanzo.io/api/checkout"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
@@ -17,7 +20,9 @@ import (
 
 var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context) {
 	org := Organization(c).(*organization.Organization)
-	ctx := org.Context()
+	accessToken := org.MustGetTokenByName("test-published-key")
+
+	ctx := org.Db.Context
 
 	db := getNamespaceDb(c)
 
@@ -35,16 +40,32 @@ var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context
 	ord.ShippingAddress.State = sd.Code
 	ord.ShippingAddress.Country = ctr.Codes.Alpha2
 	ord.ShippingAddress.PostalCode = "66212"
+	ord.Type = payment.Ethereum
 
 	ord.Currency = currency.ETH
 	ord.Subtotal = currency.Cents(100)
 	ord.Contribution = true
 
-	log.Info("Sending Test Order", c)
+	ch := checkout.Authorization{
+		Order: ord,
+	}
+
+	j := json.Encode(ch)
+
+	log.Info("Sending Test Order: %s", j, c)
+
 	client := urlfetch.Client(ctx)
-	if res, err := client.Post("https://api.hanzo.io/authorize/", "application/json", strings.NewReader(json.Encode(ord))); err != nil {
+	req, err := http.NewRequest("POST", "https://api.hanzo.io/authorize/", strings.NewReader(j))
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", accessToken.String())
+
+	if res, err := client.Do(req); err != nil {
 		panic(err)
 	} else {
-		log.Info("Geth Node Response: %v", res, c)
+		log.Info("Hanzo Test Response: %v", res, c)
 	}
 })
