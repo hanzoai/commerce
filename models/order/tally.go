@@ -66,8 +66,9 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	log.Debug("Add free items from coupons")
 	o.UpdateCouponItems()
 
-	// Tokensales have no items
-	if o.TokenSaleId == "" {
+	log.Info("IsContribution? '%v'\nTokenSaleId: '%s'", o.Contribution, o.TokenSaleId, o.Context())
+	// Tokensales and contributions have no items
+	if !o.Contribution && o.TokenSaleId == "" {
 		// Get underlying product/variant entities
 		log.Debug("Fetching underlying line items")
 		if err := o.GetItemEntities(); err != nil {

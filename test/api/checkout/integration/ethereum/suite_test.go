@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/tokensale"
 	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
@@ -39,6 +40,9 @@ var (
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
+	// Set EthereumClient to Test Mode
+	ethereum.Test(true)
+
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	ctx = ae.NewContext()
@@ -48,6 +52,7 @@ var _ = BeforeSuite(func() {
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
 	fixtures.BlockchainNamespace(c)
+	fixtures.PlatformWallet(c)
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))

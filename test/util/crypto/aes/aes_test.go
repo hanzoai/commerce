@@ -128,8 +128,12 @@ var _ = Describe("aes.EncryptCBC / aes.DecryptCBC Other", func() {
 		Expect(str).ToNot(Equal(""))
 
 		decodedMsg, err := aes.DecryptCBC([]byte("BadEncryptionKey"), str)
-		log.Error("Incase this is somehow Decrypted Again...?\n%s =? %s\nDecoded %s", key, []byte("BadEncryptionKey"), decodedMsg)
-		Expect(err).To(Equal(aes.UnpadError))
-		Expect(decodedMsg).To(Equal(""))
+		if err != nil {
+			log.Error("Incase this is somehow Decrypted Again...?\n%s =? %s\nDecoded %s", key, []byte("BadEncryptionKey"), decodedMsg)
+			Expect(err).To(Equal(aes.UnpadError))
+			Expect(decodedMsg).To(Equal(""))
+		} else {
+			Expect(decodedMsg).ToNot(Equal("This is the test message. It better pass."))
+		}
 	})
 })

@@ -68,7 +68,7 @@ var _ = Describe("Wallet", func() {
 			wal.MustCreate()
 
 			password := "Th1$1s@b@dp@$$w0rd"
-			acc, err := wal.CreateAccount("nope", wallet.Type("nopecoin"), []byte(password))
+			acc, err := wal.CreateAccount("nope", blockchains.Type("nopecoin"), []byte(password))
 
 			Expect(err).To(Equal(wallet.InvalidTypeSpecified))
 			Expect(acc).To(Equal(wallet.Account{}))
