@@ -1,4 +1,4 @@
-package task
+package tasks
 
 import (
 	"math/big"
@@ -15,13 +15,29 @@ import (
 	"hanzo.io/util/log"
 )
 
-var EthereumProcessPayment = delay.Func("ethereum-process-payment", func(ctx appengine.Context, walletNs, walletId, txHash, chainType string, amount *big.Int) {
-	if err := EthereumProcessPaymentImpl(ctx, walletNs, walletId, txHash, chainType, amount); err != nil {
-		panic(err)
-	}
-})
+var EthereumProcessPayment = delay.Func(
+	"ethereum-process-payment",
+	func(
+		ctx appengine.Context,
+		walletNs,
+		walletId,
+		txHash,
+		chainType string,
+		amount *big.Int,
+	) {
+		if err := EthereumProcessPaymentImpl(ctx, walletNs, walletId, txHash, chainType, amount); err != nil {
+			panic(err)
+		}
+	})
 
-func EthereumProcessPaymentImpl(ctx appengine.Context, walletNs, walletId, txHash, chainType string, amount *big.Int) error {
+func EthereumProcessPaymentImpl(
+	ctx appengine.Context,
+	walletNs,
+	walletId,
+	txHash,
+	chainType string,
+	amount *big.Int,
+) error {
 	// Namespace the context
 	nsCtx, err := appengine.Namespace(ctx, walletNs)
 	if err != nil {
@@ -52,7 +68,7 @@ func EthereumProcessPaymentImpl(ctx appengine.Context, walletNs, walletId, txHas
 	// Make sure payment with TransactionHash does not exist (transaction
 	// already processed)
 	pay := payment.New(db)
-	if ok, err := pay.Query().Filter("EthereumTransactionHash=", txHash).Get(); ok {
+	if ok, err := pay.Query().Filter("Account.EthereumTransactionHash=", txHash).Get(); ok {
 		log.Warn("Payment already created for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
 		return nil
 	} else if err != nil {
@@ -71,8 +87,11 @@ func EthereumProcessPaymentImpl(ctx appengine.Context, walletNs, walletId, txHas
 	if err := pay.RunInTransaction(func() error {
 		pay.Account.EthereumTransactionHash = txHash
 		pay.Account.EthereumChainType = blockchains.Type(chainType)
-		pay.Account.WeiAmount = amount
+		pay.Account.WeiAmount = blockchains.BigNumber(amount.String())
 
+		log.Warn(ord.Currency)
+
+		pay.Test = ord.Test
 		pay.Status = payment.Paid
 		pay.Type = ord.Type
 		pay.Buyer = usr.Buyer()
@@ -93,6 +112,7 @@ func EthereumProcessPaymentImpl(ctx appengine.Context, walletNs, walletId, txHas
 		}
 
 		ord.Paid += pay.Amount
+		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
 		if err := pay.Create(); err != nil {
 			log.Warn("Could not save payment for Order '%s', Wallet '%s', TxHash '%s'", ord.Id(), w.Id(), txHash, ctx)

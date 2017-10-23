@@ -1,8 +1,6 @@
 package payment
 
 import (
-	"math/big"
-
 	aeds "appengine/datastore"
 
 	"hanzo.io/datastore"
@@ -105,9 +103,9 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 }
 
 type EthereumTransaction struct {
-	EthereumTransactionHash string           `json:"EthereumTransactionHash,omitempty"`
-	EthereumChainType       blockchains.Type `json:"EthereumChainType,omitempty"`
-	WeiAmount               *big.Int         `json:"WeiAmount,omitempty"`
+	EthereumTransactionHash string                `json:"EthereumTransactionHash,omitempty"`
+	EthereumChainType       blockchains.Type      `json:"EthereumChainType,omitempty"`
+	WeiAmount               blockchains.BigNumber `json:"WeiAmount,omitempty"`
 }
 
 // Sort of a union type of all possible payment accounts, used everywhere for convenience

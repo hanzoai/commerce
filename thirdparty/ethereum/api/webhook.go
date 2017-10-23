@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/blockchains/blocktransaction"
 	// "hanzo.io/models/wallet"
+	"hanzo.io/thirdparty/ethereum/tasks"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -66,6 +67,7 @@ func Webhook(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
+	ctx := db.Context
 
 	switch event.DataKind {
 	case BlockTransaction:
@@ -102,6 +104,18 @@ func Webhook(c *gin.Context) {
 			if ba.WalletNamespace == "" {
 				break
 			}
+
+			if err := tasks.EthereumProcessPayment.Call(
+				ctx, ba.WalletNamespace,
+				ba.WalletId,
+				bt.EthereumTransactionHash,
+				bt.Type,
+				bt.EthereumTransactionValue,
+			); err != nil {
+				http.Fail(c, 500, err.Error(), err)
+				panic(err)
+			}
+
 		case "ping":
 			c.String(200, "pong")
 			return
