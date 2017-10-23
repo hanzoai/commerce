@@ -458,6 +458,7 @@ func (o *Order) GetItemEntities() error {
 	log.JSON("Getting underlying entities for:", o.Items)
 
 	nItems := len(o.Items)
+
 	keys := make([]datastore.Key, nItems, nItems)
 	vals := make([]interface{}, nItems, nItems)
 

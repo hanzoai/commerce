@@ -48,7 +48,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		// Create a blockaddress so we track this in the ethereum reader
 		ba := blockaddress.New(w.Db)
 		ba.Address = add
-		ba.Type = blockchains.EthereumType
+		ba.Type = typ
 		ba.WalletId = w.Id()
 
 		ns, err := hashid.GetNamespace(w.Db.Context, w.Id())

@@ -65,17 +65,6 @@ func EthereumProcessPaymentImpl(
 		return nil
 	}
 
-	// Make sure payment with TransactionHash does not exist (transaction
-	// already processed)
-	pay := payment.New(db)
-	if ok, err := pay.Query().Filter("Account.EthereumTransactionHash=", txHash).Get(); ok {
-		log.Warn("Payment already created for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
-		return nil
-	} else if err != nil {
-		log.Warn("No payment expected for Wallet '%s', TxHash '%s' but error encountered: %v", w.Id(), txHash, err, ctx)
-		return err
-	}
-
 	// Get user so we can get a buyer
 	usr := user.New(db)
 	if err := usr.GetById(ord.UserId); err != nil {
@@ -84,7 +73,18 @@ func EthereumProcessPaymentImpl(
 	}
 
 	// Create payment, update order
+	pay := payment.New(db)
 	if err := pay.RunInTransaction(func() error {
+		// Make sure payment with TransactionHash does not exist (transaction
+		// already processed)
+		if ok, err := pay.Query().Filter("Account.EthereumTransactionHash=", txHash).Get(); ok {
+			log.Warn("Payment already created for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
+			return nil
+		} else if err != nil {
+			log.Warn("No payment expected for Wallet '%s', TxHash '%s' but error encountered: %v", w.Id(), txHash, err, ctx)
+			return err
+		}
+
 		pay.Account.EthereumTransactionHash = txHash
 		pay.Account.EthereumChainType = blockchains.Type(chainType)
 		pay.Account.WeiAmount = blockchains.BigNumber(amount.String())

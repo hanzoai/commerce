@@ -4,6 +4,7 @@ import (
 	ej "encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/gin-gonic/gin"
 
@@ -52,6 +53,7 @@ func decodeEvent(c *gin.Context) (*Event, error) {
 
 var AccessDeniedError = errors.New("Access Denied")
 var BlockTransactionNotFound = errors.New("BlockTransaction not found, it should exist for this webhook to be received")
+var CouldNotConvertToBigInt = errors.New("BlockTransaction Value could not be converted")
 
 // Handle stripe webhook POSTs
 func Webhook(c *gin.Context) {
@@ -105,12 +107,18 @@ func Webhook(c *gin.Context) {
 				break
 			}
 
+			bi, ok := big.NewInt(0).SetString(string(bt.EthereumTransactionValue), 10)
+			if !ok {
+				http.Fail(c, 500, CouldNotConvertToBigInt.Error(), CouldNotConvertToBigInt)
+				panic(CouldNotConvertToBigInt)
+			}
+
 			if err := tasks.EthereumProcessPayment.Call(
 				ctx, ba.WalletNamespace,
 				ba.WalletId,
 				bt.EthereumTransactionHash,
-				bt.Type,
-				bt.EthereumTransactionValue,
+				string(bt.Type),
+				bi,
 			); err != nil {
 				http.Fail(c, 500, err.Error(), err)
 				panic(err)

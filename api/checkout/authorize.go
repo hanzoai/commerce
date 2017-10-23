@@ -102,13 +102,24 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, FundingAccountCreationError
 		}
 	} else if (ord.TokenSaleId != "") || (tsPass != nil) {
+		log.Error("TokensSaleId '%s' or TokenSalePassphrase '%s' is missing", ord.TokenSaleId, tsPass, c)
 		return nil, MissingTokenSaleOrPassphrase
 	}
 
 	// Override total to $0.50 is test email is used
-	if org.IsTestEmail(pay.Buyer.Email) {
+	if org.IsTestEmail(usr.Email) {
 		ord.Total = currency.Cents(50)
-		pay.Test = true
+		if pay != nil {
+			pay.Test = true
+		}
+	}
+
+	// Set test mode based on org live status
+	if !org.Live {
+		ord.Test = true
+		if pay != nil {
+			pay.Test = true
+		}
 	}
 
 	// Ethereum payments are handles in the webhook
@@ -159,8 +170,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if err != nil {
 		// Update payment status accordingly
 		ord.Status = order.Cancelled
-		pay.Status = payment.Cancelled
-		pay.Account.Error = err.Error()
+		if pay != nil {
+			pay.Status = payment.Cancelled
+			pay.Account.Error = err.Error()
+		}
 		return nil, err
 	}
 
