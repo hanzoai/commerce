@@ -31,6 +31,8 @@ type Client struct {
 	httpClient *http.Client
 
 	address string
+
+	Test bool
 }
 
 type JsonRpcError struct {
@@ -60,7 +62,7 @@ func New(ctx appengine.Context, address string) Client {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return Client{ctx, httpClient, address}
+	return Client{ctx, httpClient, address, false}
 }
 
 func paramsToString(parts ...string) string {
