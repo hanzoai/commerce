@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("models/types/currency", func() {
+var _ = Describe("models/types/currency", func() {
 	Context("Type.IsZero", func() {
 		It("Should return true for certain currencies and false for others", func() {
 			Expect(JPY.IsZeroDecimal()).To(BeTrue())

@@ -8,6 +8,8 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
+	"hanzo.io/util/log"
+
 	stringutil "hanzo.io/util/strings"
 )
 
@@ -187,6 +189,16 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 }
 
 func (a *Authorization) Init(db *datastore.Datastore) error {
+	// Handle the nil user case
+	if a.User == nil && a.Order.UserId != "" {
+		// If the user is on the order, do that
+		a.User = user.New(db)
+		a.User.Id_ = a.Order.UserId
+	} else if a.User == nil {
+		log.Error("No User Found:\nUser: '%v'\nOrder.UserId: '%s'", a.User, a.Order.UserId, db.Context)
+		return UserNotProvided
+	}
+
 	if err := initUser(db, a.User, a.Order); err != nil {
 		return err
 	}
