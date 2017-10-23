@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"errors"
 	"math/big"
 
 	"hanzo.io/config"
@@ -14,6 +15,9 @@ import (
 	"hanzo.io/util/rand"
 )
 
+var PlatformWalletNotFound = errors.New("Platform Wallet Not Found.")
+var PlatformAccountNotFound = errors.New("Platform Account Not Found.")
+
 // This creates the wallet for
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User) error {
 	ctx := org.Db.Context
@@ -25,17 +29,19 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 	ord.WalletPassphrase = rand.SecretKey()
 
-	_, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase))
-
 	if ord.Test {
 		var account wallet.Account
 		pw := wallet.New(org.Db)
-		if _, err := w.Query().Filter("Id_=", "platform-wallet").Get(); err != nil {
-			return err
+		if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
+			if err != nil {
+				return err
+			}
+			return PlatformWalletNotFound
 		}
 
 		// Find The Test Account
 		for _, a := range pw.Accounts {
+			log.Info("Account %s ?= %s", a.Name, "Ethereum Ropsten Test Account", ctx)
 			if a.Name != "Ethereum Ropsten Test Account" {
 				continue
 			}
@@ -45,6 +51,15 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 			}
 			account = a
 			break
+		}
+
+		if account.PrivateKey == "" {
+			return PlatformAccountNotFound
+		}
+
+		log.Info("Ethereum Test Mode", ctx)
+		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumRopstenType, []byte(ord.WalletPassphrase)); err != nil {
+			return err
 		}
 
 		client := ethereum.New(org.Db.Context, config.Ethereum.TestNetNodes[0])
@@ -59,6 +74,11 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 			big.NewInt(0),
 			[]byte{},
 		); err != nil {
+			return err
+		}
+	} else {
+		log.Info("Ethereum Production Mode", ctx)
+		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase)); err != nil {
 			return err
 		}
 	}
