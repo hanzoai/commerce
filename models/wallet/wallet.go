@@ -75,3 +75,15 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 
 	return Account{}, InvalidTypeSpecified
 }
+
+func (w *Wallet) GetAccountByName(name string) (*Account, bool) {
+	// Find The Test Account
+	for _, a := range w.Accounts {
+		if a.Name != name {
+			continue
+		}
+		return &a, true
+	}
+
+	return nil, false
+}

@@ -17,6 +17,7 @@ import (
 
 var PlatformWalletNotFound = errors.New("Platform Wallet Not Found.")
 var PlatformAccountNotFound = errors.New("Platform Account Not Found.")
+var PlatformAccountDecryptionFailed = errors.New("Platform Account Decryption Failed.")
 
 // This creates the wallet for
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User) error {
@@ -30,7 +31,6 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 	ord.WalletPassphrase = rand.SecretKey()
 
 	if ord.Test {
-		var account wallet.Account
 		pw := wallet.New(org.Db)
 		if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
 			if err != nil {
@@ -40,21 +40,18 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		}
 
 		// Find The Test Account
-		for _, a := range pw.Accounts {
-			log.Info("Account %s ?= %s", a.Name, "Ethereum Ropsten Test Account", ctx)
-			if a.Name != "Ethereum Ropsten Test Account" {
-				continue
-			}
-			log.Info("Account Found", ctx)
-			if err := a.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
-				panic(err)
-			}
-			account = a
-			break
+		account, ok := pw.GetAccountByName("Ethereum Ropsten Test Account")
+		if !ok {
+			return PlatformAccountNotFound
+		}
+
+		log.Info("Account Found", ctx)
+		if err := account.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
+			return err
 		}
 
 		if account.PrivateKey == "" {
-			return PlatformAccountNotFound
+			return PlatformAccountDecryptionFailed
 		}
 
 		log.Info("Ethereum Test Mode", ctx)
