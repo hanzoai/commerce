@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/gin-gonic/gin"
@@ -28,20 +29,18 @@ var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *
 		}
 	}
 
-	var account wallet.Account
 	pw := wallet.New(db)
 	pw.GetOrCreate("Id_=", "platform-wallet")
-	for _, a := range pw.Accounts {
-		log.Info("Account %s ?= %s", a.Name, "Ethereum Ropsten Test Account", ctx)
-		if a.Name != "Ethereum Ropsten Test Account" {
-			continue
-		}
-		log.Info("Account Found", ctx)
-		if err := a.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
-			panic(err)
-		}
-		account = a
-		break
+
+	// Find The Test Account
+	account, ok := pw.GetAccountByName("Ethereum Ropsten Test Account")
+	if !ok {
+		panic(errors.New("Platform Account Not Found."))
+	}
+
+	log.Info("Account Found", ctx)
+	if err := account.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
+		panic(err)
 	}
 
 	client := ethereum.New(db.Context, config.Ethereum.TestNetNodes[0])
