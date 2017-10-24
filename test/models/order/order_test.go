@@ -143,6 +143,10 @@ var _ = Describe("Order", func() {
 			ord.Tax = 0      //currency.Cents(rand.Int64())
 			ord.Shipping = 0 //currency.Cents(rand.Int64())
 			ord.Total = currency.Cents(rand.Int64())
+			ord.TokenSaleId = ""
+			ord.WalletId = ""
+			ord.WalletPassphrase = ""
+			ord.Contribution = false
 		})
 
 		It("Should UpdateAndTally", func() {
