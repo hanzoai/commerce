@@ -22,6 +22,7 @@ const (
 	AnalyticsSentryType              IntegrationType = "analytics-sentry"
 
 	// Others
+	EthereumType   IntegrationType = "ethereum"
 	MailchimpType  IntegrationType = "mailchimp"
 	MandrillType   IntegrationType = "mandrill"
 	NetlifyType    IntegrationType = "netlify"
@@ -176,6 +177,11 @@ type Stripe struct {
 	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
+// Ethereum
+type Ethereum struct {
+	Address string `json:"address,omitempty"`
+}
+
 type BasicIntegration struct {
 	Enabled bool `json:"enabled,omitempty"`
 	Show    bool `json:"show,omitempty"`
@@ -201,6 +207,7 @@ type Integration struct {
 	AnalyticsSentry              AnalyticsSentry              `json:"-"`
 
 	// Others
+	Ethereum   Ethereum   `json:"-"`
 	Mailchimp  Mailchimp  `json:"-"`
 	Mandrill   Mandrill   `json:"-"`
 	Netlify    Netlify    `json:"-"`
