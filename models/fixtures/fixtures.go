@@ -27,15 +27,15 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 	fix.fnv = reflect.ValueOf(fn)
 
 	// Register task
-	task.Func(name, func(c *gin.Context) {
+	task.Func(name, func(c2 *gin.Context) {
 		log.Debug("Running %s", name)
-		fix.fnv.Call([]reflect.Value{reflect.ValueOf(c)})
+		fix.fnv.Call([]reflect.Value{reflect.ValueOf(c2)})
 	})
 
 	// Return wrapper that memoizes result for safe chaining
-	return func(c *gin.Context) mixin.Entity {
+	return func(c3 *gin.Context) mixin.Entity {
 		if fix.entity == nil {
-			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c)})
+			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c3)})
 			fix.entity = res[0].Interface().(mixin.Entity)
 		}
 
