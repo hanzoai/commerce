@@ -24,6 +24,10 @@ func (o *Organization) Defaults() {
 
 	o.Fees.Card.Flat = 50
 	o.Fees.Card.Percent = 0.05
+	o.Fees.Bitcoin.Flat = 0
+	o.Fees.Bitcoin.Percent = 0.05
+	o.Fees.Ethereum.Flat = 0
+	o.Fees.Ethereum.Percent = 0.05
 	o.Fees.Affiliate.Flat = 30
 	o.Fees.Affiliate.Percent = 0.30
 

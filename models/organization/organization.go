@@ -158,6 +158,9 @@ type Organization struct {
 	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
 	// Mailchimp settings
+	Ethereum integrations.Ethereum `json:"-"`
+
+	// Mailchimp settings
 	Mailchimp integrations.Mailchimp `json:"-"`
 
 	// Mandrill settings
