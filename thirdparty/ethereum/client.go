@@ -32,7 +32,8 @@ type Client struct {
 
 	address string
 
-	Test bool
+	IsTest   bool
+	Commands []string
 }
 
 type JsonRpcError struct {
@@ -47,18 +48,19 @@ type JsonRpcResponse struct {
 	Error          JsonRpcError  `json:"error"`
 }
 
-var IsTest = false
-
-func Test(b bool) bool {
-	IsTest = b
-	return b
-}
-
 var JsonRpcVersion = "2.0"
 var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":[%s],"id":%v}`
 
 var IdMismatch = errors.New("Ids do not match!")
 var InvalidChainId = errors.New("Invalid ChainId")
+
+var IsTest = false
+
+// Flip to Universal Test Mode
+func Test(b bool) bool {
+	IsTest = b
+	return b
+}
 
 // Create a new Ethereum JSON-RPC client
 func New(ctx appengine.Context, address string) Client {
@@ -69,17 +71,25 @@ func New(ctx appengine.Context, address string) Client {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return Client{ctx, httpClient, address, false}
+	return Client{ctx, httpClient, address, false, []string{}}
 }
 
 func paramsToString(parts ...string) string {
 	return `"` + strings.Join(parts, `","`) + `"`
 }
 
+// Flip to Test Mode
+func (c Client) Test(b bool) bool {
+	c.IsTest = b
+	return b
+}
+
 // Post a JSON-RPC Command
 func (c Client) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) {
-	if IsTest {
-		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte("0x0"))}
+	c.Commands = append(c.Commands, jsonRpcCommand)
+
+	if c.IsTest || IsTest {
+		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
 		return jrr, nil
 	}
 
@@ -110,7 +120,6 @@ func (c Client) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) 
 
 // Send a transaction
 func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amount, gasLimit, gasPrice *big.Int, data []byte) (string, error) {
-
 	// Figure out what chain we are using
 	var chainType Type
 	switch chainId {
@@ -130,12 +139,14 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 		gasLimit = big.NewInt(defaultGas)
 	}
 
-	if price, err := c.GasPrice(); err != nil || price.Cmp(big.NewInt(0)) == 0 {
-		log.Error("Could Not Determine Gas Price '%s': %v", price, err, ctx)
-		gasPrice = big.NewInt(defaultGasPrice)
-	} else {
-		log.Error("Current Gas Price is '%s'", price, ctx)
-		gasPrice = price
+	if gasPrice.Cmp(big.NewInt(0)) == 0 {
+		if price, err := c.GasPrice(); err != nil || price.Cmp(big.NewInt(0)) == 0 {
+			log.Error("Could Not Determine Gas Price '%s': %v", price, err, ctx)
+			gasPrice = big.NewInt(defaultGasPrice)
+		} else {
+			log.Error("Current Gas Price is '%s'", price, ctx)
+			gasPrice = price
+		}
 	}
 
 	// Decode the private key
