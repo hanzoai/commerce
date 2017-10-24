@@ -52,12 +52,12 @@ import (
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
 
-	stripeApi "hanzo.io/thirdparty/ethereum/api"
+	ethereumApi "hanzo.io/thirdparty/ethereum/api"
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
 	reamazeApi "hanzo.io/thirdparty/reamaze"
 	shipstationApi "hanzo.io/thirdparty/shipstation"
 	shipwireApi "hanzo.io/thirdparty/shipwire/api"
-	ethereumApi "hanzo.io/thirdparty/stripe/api"
+	stripeApi "hanzo.io/thirdparty/stripe/api"
 
 	dashv2Api "hanzo.io/api/dashv2"
 
