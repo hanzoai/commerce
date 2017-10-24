@@ -300,7 +300,15 @@ func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fe
 	fe.Parent = pricing.Key(ctx)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
-	fe.Amount = pricing.Card.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Card.Percent)) // Round up for platform fee
+
+	switch o.Currency {
+	case currency.ETH:
+		fe.Amount = pricing.Ethereum.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Ethereum.Percent)) // Round up for platform fee
+	case currency.BTC, currency.XBT:
+		fe.Amount = pricing.Bitcoin.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Bitcoin.Percent)) // Round up for platform fee
+	default:
+		fe.Amount = pricing.Card.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Card.Percent)) // Round up for platform fee
+	}
 
 	return append(fees, fe)
 }
@@ -316,7 +324,16 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 		fe.Parent = partner.Key(ctx)
 		fe.Type = fee.Platform
 		fe.Currency = o.Currency
-		fe.Amount = partner.Commission.Flat + currency.Cents(math.Floor(float64(o.Total)*partner.Commission.Percent))
+
+		switch o.Currency {
+		case currency.ETH:
+			fe.Amount = partner.Ethereum.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Ethereum.Commission.Percent)) // Round up for platform fee
+		case currency.BTC, currency.XBT:
+			fe.Amount = partner.Bitcoin.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Bitcoin.Commission.Percent)) // Round up for platform fee
+		default:
+			fe.Amount = partner.Card.Commission.Flat + currency.Cents(math.Ceil(float64(o.Total)*partner.Card.Commission.Percent)) // Round up for platform fee
+		}
+
 		fees = append(fees, fe)
 	}
 
