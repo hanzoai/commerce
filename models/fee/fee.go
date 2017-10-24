@@ -1,6 +1,7 @@
 package fee
 
 import (
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/commission"
 	"hanzo.io/models/types/currency"
@@ -26,8 +27,9 @@ const (
 )
 
 type EthereumFee struct {
-	Address           string `json:"address,omitempty"`
-	SignedTransaction string `json:"signedTransaction,omitempty"`
+	Address           string                `json:"address,omitempty"`
+	SignedTransaction string                `json:"signedTransaction,omitempty"`
+	TransferCost      blockchains.BigNumber `json:"transferCost,omitempty`
 }
 
 type Fee struct {

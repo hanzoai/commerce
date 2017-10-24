@@ -74,4 +74,39 @@ var _ = Describe("Wallet", func() {
 			Expect(acc).To(Equal(wallet.Account{}))
 		})
 	})
+
+	Context("GetAccountByName", func() {
+		var wal *wallet.Wallet
+
+		Before(func() {
+			wal = wallet.New(db)
+		})
+
+		It("should find an account by name", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.EthereumRopstenType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+
+			acc, err := wal.CreateAccount("test2", blockchains.EthereumRopstenType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(len(wal.Accounts)).To(Equal(2))
+
+			acc2, ok := wal.GetAccountByName("test2")
+			Expect(ok).To(BeTrue())
+			Expect(*acc2).To(Equal(acc))
+		})
+
+		It("should not find an account by name", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.EthereumRopstenType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(len(wal.Accounts)).To(Equal(1))
+
+			acc2, ok := wal.GetAccountByName("test2")
+			Expect(ok).To(BeFalse())
+			Expect(acc2).To(BeNil())
+		})
+	})
 })
