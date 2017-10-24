@@ -5,16 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fixtures"
-	"hanzo.io/models/namespace"
 	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
+	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/rand"
 	"hanzo.io/util/test/ae"
@@ -28,8 +27,10 @@ var (
 	db   *datastore.Datastore
 	nsDb *datastore.Datastore
 	ord  *order.Order
+	org  *organization.Organization
 	usr  *user.User
 	w    *wallet.Wallet
+	pw   *wallet.Wallet
 )
 
 func Test(t *testing.T) {
@@ -41,22 +42,17 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 	db = datastore.New(ctx)
 
-	ns := namespace.New(db)
-	ns.Name = "test"
-	ns.GetOrCreate("Name=", "test")
-
 	fixtures.BlockchainNamespace(c)
 
-	nsCtx, err := appengine.Namespace(ctx, "test")
-	if err != nil {
-		panic(err)
-	}
+	org = fixtures.Organization(c).(*organization.Organization)
+	pw = fixtures.PlatformWallet(c).(*wallet.Wallet)
 
+	nsCtx := org.Namespaced(ctx)
 	nsDb = datastore.New(nsCtx)
 
 	ord = order.New(nsDb)
 	ord.Currency = currency.ETH
-	ord.Total = 123
+	ord.Total = 123 * 1e3
 	ord.WalletPassphrase = rand.SecretKey()
 	ord.Test = true
 
@@ -67,10 +63,12 @@ var _ = BeforeSuite(func() {
 
 	ord.UserId = usr.Id()
 
-	w, err = ord.GetOrCreateWallet(ord.Db)
+	w, _ = ord.GetOrCreateWallet(ord.Db)
 	w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase))
 
 	ord.MustCreate()
+
+	ethereum.Test(true)
 })
 
 var _ = AfterSuite(func() {

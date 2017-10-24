@@ -14,7 +14,17 @@ type Partner struct {
 	Id string `json:"id"`
 
 	// Commission partner receives
-	Commission commission.Commission `json:"commission"`
+	Card struct {
+		Commission commission.Commission `json:"commission"`
+	} `json:"card"`
+
+	Bitcoin struct {
+		Commission commission.Commission `json:"commission"`
+	} `json:"bitcoin"`
+
+	Ethereum struct {
+		Commission commission.Commission `json:"commission"`
+	} `json:"ethereum"`
 }
 
 func (p Partner) Key(ctx appengine.Context) *aeds.Key {
@@ -36,6 +46,16 @@ type Fees struct {
 		Amex          float64        `json:"amex,omitempty"`
 		International float64        `json:"international,omitempty"`
 	} `json:"card"`
+
+	Bitcoin struct {
+		Percent float64        `json:"percent,omitempty"`
+		Flat    currency.Cents `json:"flat,omitempty"`
+	} `json:"bitcoin"`
+
+	Ethereum struct {
+		Percent float64        `json:"percent,omitempty"`
+		Flat    currency.Cents `json:"flat,omitempty"`
+	} `json:"ethereum"`
 
 	// Affiliate fees
 	Affiliate struct {

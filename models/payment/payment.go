@@ -103,9 +103,14 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 }
 
 type EthereumTransaction struct {
-	EthereumTransactionHash string                `json:"EthereumTransactionHash,omitempty"`
-	EthereumChainType       blockchains.Type      `json:"EthereumChainType,omitempty"`
-	WeiAmount               blockchains.BigNumber `json:"WeiAmount,omitempty"`
+	EthereumTransactionHash string                `json:"ethereumTransactionHash,omitempty"`
+	EthereumChainType       blockchains.Type      `json:"ethereumChainType,omitempty"`
+	EthereumAmount          blockchains.BigNumber `json:"ethereumAmount,omitempty"`
+
+	EthereumFinalTransactionHash string                `json:"finalEthereumTransactionHash,omitempty"`
+	EthereumFinalAddress         string                `json:"finalEthereumAddress,omitempty"`
+	EthereumFinalAmount          blockchains.BigNumber `json:"finalEthereumAmount,omitempty"`
+	EthereumFinalGasUsed         blockchains.BigNumber `json:"finalEthereumGasUsed,omitempty"`
 }
 
 // Sort of a union type of all possible payment accounts, used everywhere for convenience
