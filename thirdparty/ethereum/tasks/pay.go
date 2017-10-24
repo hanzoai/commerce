@@ -205,6 +205,10 @@ func EthereumProcessPaymentImpl(
 				return OrderAccountNotFound
 			}
 
+			if err := fromAccount.Decrypt([]byte(ord.WalletPassphrase)); err != nil {
+				return err
+			}
+
 			// Get current gas price so we can calculate transfer costs
 			gasPrice, err := client.GasPrice()
 			if err != nil {
@@ -239,7 +243,7 @@ func EthereumProcessPaymentImpl(
 						log.Info("Transfering Platform Fee '%s' to '%s'", platformAmount.String(), address, ctx)
 						if txHash, err := client.SendTransaction(
 							chainId,
-							account.PrivateKey,
+							fromAccount.PrivateKey,
 							fromAccount.Address,
 							account.Address,
 							platformAmount,
@@ -272,7 +276,7 @@ func EthereumProcessPaymentImpl(
 				log.Info("Transfering '%s' to '%s'", transferAmount.String(), address, ctx)
 				if txHash, err := client.SendTransaction(
 					chainId,
-					account.PrivateKey,
+					fromAccount.PrivateKey,
 					fromAccount.Address,
 					org.Ethereum.Address,
 					transferAmount,
