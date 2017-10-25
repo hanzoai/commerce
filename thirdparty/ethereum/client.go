@@ -163,11 +163,11 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	nonce := uint64(0)
 
 	nonceBt := blocktransaction.New(db)
-	_, err = nonceBt.Query().Filter("Type=", chainType).Filter("EthereumTransactionFrom=", from).Order("-EthereumTransactionNonce").Get()
+	ok, err := nonceBt.Query().Filter("Type=", chainType).Filter("EthereumTransactionFrom=", from).Order("-EthereumTransactionNonce").Get()
 	if err != nil {
 		log.Error("Could Not Find Last BlockTransaction Due to Error: %v", err, ctx)
 		return "", err
-	} else {
+	} else if ok {
 		nonce = uint64(nonceBt.EthereumTransactionNonce) + 1
 	}
 
