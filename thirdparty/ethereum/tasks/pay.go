@@ -231,12 +231,12 @@ func EthereumProcessPaymentImpl(
 
 				// Only supported fee at hte moment is the platform one
 				if fe.Name == "Platform fee" {
-					gasUsed := big.NewInt(0).Set(SimpleTransactionGasUsed)
-					gasUsed = gasUsed.Add(gasUsed, gasPrice)
+					cost := big.NewInt(0).Set(SimpleTransactionGasUsed)
+					cost = cost.Mul(cost, gasPrice)
 
 					platformFee := fe
 					platformAmount := platformFee.Currency.ToMinimalUnits(platformFee.Amount)
-					platformAmount = platformAmount.Sub(platformAmount, gasUsed)
+					platformAmount = platformAmount.Sub(platformAmount, cost)
 
 					if platformAmount.Cmp(big.NewInt(0)) > 0 {
 						// Only deal with sending the platform fee for now
@@ -259,17 +259,17 @@ func EthereumProcessPaymentImpl(
 						log.Warn("Insufficient Fee To Cover Platform Fee Transaction, After Transaction Value is '%s'", platformAmount.String(), ctx)
 					}
 					fe.Ethereum.FinalAddress = account.Address
-					fe.Ethereum.FinalGasUsed = blockchains.BigNumber(gasUsed.String())
+					fe.Ethereum.FinalTransactionCost = blockchains.BigNumber(cost.String())
 					fe.Ethereum.FinalAmount = blockchains.BigNumber(platformAmount.String())
 				}
 
 				fe.Create()
 			}
 
-			finalGasUsed := big.NewInt(0).Set(SimpleTransactionGasUsed)
-			finalGasUsed = finalGasUsed.Add(finalGasUsed, gasPrice)
+			finalCost := big.NewInt(0).Set(SimpleTransactionGasUsed)
+			finalCost = finalCost.Mul(finalCost, gasPrice)
 
-			transferAmount = transferAmount.Sub(transferAmount, finalGasUsed)
+			transferAmount = transferAmount.Sub(transferAmount, finalCost)
 
 			if transferAmount.Cmp(big.NewInt(0)) > 0 {
 				// Transfer rest of the ethereum
@@ -293,7 +293,7 @@ func EthereumProcessPaymentImpl(
 				return InsufficientTransfer
 			}
 			pay.Account.EthereumFinalAddress = org.Ethereum.Address
-			pay.Account.EthereumFinalGasUsed = blockchains.BigNumber(finalGasUsed.String())
+			pay.Account.EthereumFinalTransactionCost = blockchains.BigNumber(finalCost.String())
 			pay.Account.EthereumFinalAmount = blockchains.BigNumber(transferAmount.String())
 		}
 
