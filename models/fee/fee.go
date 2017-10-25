@@ -27,9 +27,9 @@ const (
 )
 
 type Ethereum struct {
-	FinalAddress         string                `json:"finalAddress,omitempty"`
 	FinalTransactionHash string                `json:"finalTransactionHash,omitempty"`
-	FinalGasUsed         blockchains.BigNumber `json:"finalGasUsed,omitempty"`
+	FinalTransactionCost blockchains.BigNumber `json:"finalTransactionCost,omitempty"`
+	FinalAddress         string                `json:"finalAddress,omitempty"`
 	FinalAmount          blockchains.BigNumber `json:"finalAmount,omitempty"`
 }
 
