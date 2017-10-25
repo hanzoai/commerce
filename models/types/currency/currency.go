@@ -98,6 +98,7 @@ func (t Type) ToMinimalUnits(c Cents) *big.Int {
 }
 
 func (t Type) FromMinimalUnits(b *big.Int) Cents {
-	c := b.Div(b, t.MinimalUnitFactor())
+	c := big.NewInt(0).Set(b)
+	c = c.Div(c, t.MinimalUnitFactor())
 	return Cents(c.Int64())
 }
