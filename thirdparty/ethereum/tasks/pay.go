@@ -216,8 +216,6 @@ func EthereumProcessPaymentImpl(
 				return err
 			}
 
-			log.Warn(password, gasPrice, account)
-
 			transferAmount := ord.Currency.ToMinimalUnits(ord.Total)
 
 			// Link payments/fees
@@ -226,8 +224,8 @@ func EthereumProcessPaymentImpl(
 				pay.FeeIds = append(pay.FeeIds, fe.Id())
 
 				// Subtract fee value from the total transfer value
-				feeValue := fe.Currency.ToMinimalUnits(fe.Amount)
-				transferAmount = transferAmount.Sub(transferAmount, feeValue)
+				feeAmount := fe.Currency.ToMinimalUnits(fe.Amount)
+				transferAmount = transferAmount.Sub(transferAmount, feeAmount)
 
 				// Only supported fee at hte moment is the platform one
 				if fe.Name == "Platform fee" {
@@ -247,7 +245,7 @@ func EthereumProcessPaymentImpl(
 							fromAccount.Address,
 							account.Address,
 							platformAmount,
-							big.NewInt(0),
+							big.NewInt(0).Set(SimpleTransactionGasUsed),
 							gasPrice,
 							[]byte{},
 						); err != nil {
@@ -280,7 +278,7 @@ func EthereumProcessPaymentImpl(
 					fromAccount.Address,
 					org.Ethereum.Address,
 					transferAmount,
-					big.NewInt(0),
+					big.NewInt(0).Set(SimpleTransactionGasUsed),
 					gasPrice,
 					[]byte{},
 				); err != nil {
