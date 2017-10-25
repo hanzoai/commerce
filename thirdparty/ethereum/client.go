@@ -217,7 +217,7 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	bt.EthereumTransactionFrom = from
 	bt.EthereumTransactionTo = to
 	bt.EthereumTransactionValue = BigNumber(amount.String())
-	bt.EthereumTransactionGasPrice = BigNumber(amount.String())
+	bt.EthereumTransactionGasPrice = BigNumber(gasPrice.String())
 	bt.EthereumTransactionGas = BigNumber(gasLimit.String())
 
 	bt.Address = from
