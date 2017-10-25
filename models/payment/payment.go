@@ -108,9 +108,9 @@ type EthereumTransaction struct {
 	EthereumAmount          blockchains.BigNumber `json:"ethereumAmount,omitempty"`
 
 	EthereumFinalTransactionHash string                `json:"finalEthereumTransactionHash,omitempty"`
+	EthereumFinalTransactionCost blockchains.BigNumber `json:"finalEthereumTransactionCost,omitempty"`
 	EthereumFinalAddress         string                `json:"finalEthereumAddress,omitempty"`
 	EthereumFinalAmount          blockchains.BigNumber `json:"finalEthereumAmount,omitempty"`
-	EthereumFinalGasUsed         blockchains.BigNumber `json:"finalEthereumGasUsed,omitempty"`
 }
 
 // Sort of a union type of all possible payment accounts, used everywhere for convenience
