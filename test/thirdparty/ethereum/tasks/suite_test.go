@@ -52,7 +52,7 @@ var _ = BeforeSuite(func() {
 
 	ord = order.New(nsDb)
 	ord.Currency = currency.ETH
-	ord.Total = 123 * 1e3
+	ord.Total = 123 * 1e6
 	ord.WalletPassphrase = rand.SecretKey()
 	ord.Test = true
 

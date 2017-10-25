@@ -43,7 +43,7 @@ var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context
 	ord.Type = payment.Ethereum
 
 	ord.Currency = currency.ETH
-	ord.Subtotal = currency.Cents(1000000)
+	ord.Subtotal = currency.Cents(1000000000)
 	ord.Contribution = true
 
 	ch := checkout.Authorization{
