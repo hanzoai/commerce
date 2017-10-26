@@ -175,6 +175,7 @@ class Integrations extends Page
         integrations.Analytics.GoogleAdwords
         integrations.Analytics.GoogleAnalytics
         integrations.Analytics.HeapAnalytics
+        integrations.Other.Ethereum
         integrations.Other.Mailchimp
         integrations.Other.Mandrill
         # integrations.Other.Netlify

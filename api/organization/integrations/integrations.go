@@ -148,6 +148,12 @@ func Upsert(c *gin.Context) {
 		org.Analytics = ans
 
 		// Synchronize integrations
+		if eth := org.Integrations.FilterByType(integrations.EthereumType); len(eth) > 0 {
+			m := eth[0]
+			org.Ethereum = m.Ethereum
+		}
+
+		// Synchronize integrations
 		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
 			m := mailchimps[0]
 			org.Mailchimp = m.Mailchimp
