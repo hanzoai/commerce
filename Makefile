@@ -311,7 +311,7 @@ deploy-default: rollback
 	$(appcfg.py) update config/production
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-dash: rollback
+deploy-dash: assets-min rollback
 	# Set env for deploy
 	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
 

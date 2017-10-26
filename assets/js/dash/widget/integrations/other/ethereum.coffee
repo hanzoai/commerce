@@ -17,7 +17,7 @@ class EthereumIntegrationForm extends Integration
     input('data.address', 'Address',  'required')
   ]
 
-ReamazeIntegrationForm.register()
+EthereumIntegrationForm.register()
 
-module.exports = ReamazeIntegrationForm
+module.exports = EthereumIntegrationForm
 
