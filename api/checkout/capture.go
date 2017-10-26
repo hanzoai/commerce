@@ -1,24 +1,16 @@
 package checkout
 
 import (
-	"appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/balance"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/stripe"
 	"hanzo.io/api/checkout/tasks"
-	"hanzo.io/models/cart"
-	"hanzo.io/models/multi"
+	"hanzo.io/api/checkout/util"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/counter"
-	"hanzo.io/util/log"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
@@ -46,143 +38,21 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 
 	ctx := ord.Context()
 
-	updateOrder(ctx, ord, payments)
+	util.UpdateOrder(ctx, ord, payments)
 
-	if err := saveOrder(ctx, ord, payments); err != nil {
+	if err := util.UpdateOrderPayments(ctx, ord, payments); err != nil {
 		return err
 	}
 
 	// TODO: Run in task(CaptureAsync), no need to block call on rest of this
-	saveRedemptions(ctx, ord)
-	saveReferral(org, ord)
-	updateCart(ctx, ord)
-	updateStats(ctx, org, ord, payments)
+	util.SaveRedemptions(ctx, ord)
+	util.UpdateReferral(org, ord)
+	util.UpdateCart(ctx, ord)
+	util.UpdateStats(ctx, org, ord, payments)
 
 	buyer := payments[0].Buyer
 
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
 	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
 	return nil
-}
-
-func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
-	totalPaid := 0
-
-	for _, pay := range payments {
-		totalPaid += int(pay.Amount)
-	}
-
-	ord.Paid = currency.Cents(int(ord.Paid) + totalPaid)
-	if ord.Paid == ord.Total {
-		ord.PaymentStatus = payment.Paid
-	}
-}
-
-func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
-	vals := []interface{}{ord}
-
-	for _, pay := range payments {
-		vals = append(vals, pay)
-	}
-
-	return multi.Update(vals)
-}
-
-func saveRedemptions(ctx appengine.Context, ord *order.Order) {
-	// Save coupon redemptions
-	ord.GetCoupons()
-	if len(ord.Coupons) > 0 {
-		for _, coup := range ord.Coupons {
-			if err := coup.SaveRedemption(); err != nil {
-				log.Warn("Unable to save redemption: %v", err, ctx)
-			}
-		}
-	}
-}
-
-func saveReferral(org *organization.Organization, ord *order.Order) {
-	ctx := org.Context()
-	db := ord.Db
-
-	// Check for referrer
-	if ord.ReferrerId == "" {
-		return // No referrer
-	}
-
-	// Search for referrer
-	ref := referrer.New(db)
-	if err := ref.GetById(ord.ReferrerId); err != nil {
-		log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, ctx)
-		ord.ReferrerId = ""
-		return
-	}
-
-	// Save referral
-	rfl, err := ref.SaveReferral(ctx, org.Id(), referral.NewOrder, ord)
-	if err != nil {
-		log.Warn("Unable to save referral: %v", err, ctx)
-		return
-	}
-
-	if !ord.Test {
-		if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-	}
-
-	// Update statistics
-	if ref.AffiliateId != "" {
-		if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-	}
-}
-
-func updateCart(ctx appengine.Context, ord *order.Order) {
-	// Update cart
-	car := cart.New(ord.Db)
-
-	if ord.CartId != "" {
-		if err := car.GetById(ord.CartId); err != nil {
-			log.Warn("Unable to find cart: %v", err, ctx)
-		} else {
-			car.Status = cart.Ordered
-			if err := car.Update(); err != nil {
-				log.Warn("Unable to save cart: %v", err, ctx)
-			}
-		}
-	}
-}
-
-func updateStats(ctx appengine.Context, org *organization.Organization, ord *order.Order, payments []*payment.Payment) {
-	log.Debug("Incrementing Counters? %v", ord.Test, ctx)
-	if !ord.Test {
-		log.Debug("Incrementing Counters", ctx)
-		t := ord.CreatedAt
-		if err := counter.IncrTotalOrders(ctx, org, t); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-		if err := counter.IncrTotalSales(ctx, org, payments, t); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-		if err := counter.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-
-		if err := counter.IncrOrder(ctx, ord); err != nil {
-			log.Error("IncrOrder Error %v", err, ctx)
-		}
-
-		if ord.StoreId != "" {
-			if err := counter.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
-				log.Warn("Counter Error %s", err, ctx)
-			}
-			if err := counter.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
-				log.Warn("Counter Error %s", err, ctx)
-			}
-			if err := counter.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
-				log.Warn("Counter Error %s", err, ctx)
-			}
-		}
-	}
 }
