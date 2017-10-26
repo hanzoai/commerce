@@ -6,6 +6,8 @@ import (
 
 	"appengine"
 
+	"hanzo.io/api/checkout/tasks"
+	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains"
@@ -307,6 +309,19 @@ func EthereumProcessPaymentImpl(
 			log.Warn("Could not update Order '%s' for Wallet '%s', TxHash '%s'", ord.Id(), w.Id(), txHash, ctx)
 			return err
 		}
+
+		// Run through the standard capture stuff
+
+		// TODO: Run in task(CaptureAsync), no need to block call on rest of this
+		util.SaveRedemptions(ctx, ord)
+		util.UpdateReferral(org, ord)
+		util.UpdateCart(ctx, ord)
+		util.UpdateStats(ctx, org, ord, []*payment.Payment{pay})
+
+		buyer := pay.Buyer
+
+		tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
+		tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
 
 		return nil
 	}); err != nil {
