@@ -9,11 +9,11 @@ import (
 	"hanzo.io/models/user"
 )
 
-var EthMeetup = New("ethmeetup", func(c *gin.Context) *organization.Organization {
+var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "ethmeetup"
+	org.Name = "cryptounderground"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
@@ -25,22 +25,24 @@ var EthMeetup = New("ethmeetup", func(c *gin.Context) *organization.Organization
 	u.PasswordHash, _ = password.Hash("Xtr3Lk7R")
 	u.Put()
 
-	org.FullName = "Ethereum Meetup"
+	org.FullName = "Crypto Underground"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.ethmeetupcase.com"
+	org.Website = "http://www.cryptounderground.com"
 	org.SecretKey = []byte("EGtFY6kqvTuMHsuSW6Qk5NduE22Xk39S")
 
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
 	org.Fees.Affiliate.Flat = 30
 	org.Fees.Affiliate.Percent = 0.30
+	org.Fees.Ethereum.Flat = 500000
+	org.Fees.Ethereum.Percent = 0.05
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
 
 	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Ethereum Meetup"
-	org.Email.Defaults.FromEmail = "hi@ethmeetupcase.com"
+	org.Email.Defaults.FromName = "Crypto Underground"
+	org.Email.Defaults.FromEmail = "hi@cryptounderground.com"
 
 	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
 	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
