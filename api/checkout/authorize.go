@@ -106,9 +106,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, MissingTokenSaleOrPassphrase
 	}
 
-	// Override total to $0.50 is test email is used
+	// Override total if test email is used
 	if org.IsTestEmail(usr.Email) {
-		ord.Total = currency.Cents(50)
+		switch ord.Currency {
+		case currency.ETH:
+			ord.Total = currency.Cents(100e6)
+		default:
+			ord.Total = currency.Cents(50)
+		}
+
 		if pay != nil {
 			pay.Test = true
 		}
