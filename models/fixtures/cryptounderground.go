@@ -70,8 +70,14 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 	w.UseStringKey = true
 	w.GetOrCreate("Id_=", "customer-wallet")
 
+	if a, _ := w.GetAccountByName("cryptounderground-test"); a == nil {
+		if _, err := w.CreateAccount("cryptounderground-test", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
+			panic(err)
+		}
+	}
+
 	if a, _ := w.GetAccountByName("cryptounderground"); a == nil {
-		if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
+		if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
 			panic(err)
 		}
 	}
