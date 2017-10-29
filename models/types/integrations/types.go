@@ -179,7 +179,8 @@ type Stripe struct {
 
 // Ethereum
 type Ethereum struct {
-	Address string `json:"address,omitempty"`
+	Address     string `json:"address,omitempty"`
+	TestAddress string `json:"testAddress,omitempty"`
 }
 
 type BasicIntegration struct {
