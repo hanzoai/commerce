@@ -8,6 +8,7 @@ import (
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/util/log"
 )
 
@@ -269,14 +270,26 @@ func (o Order) Document() mixin.Document {
 	doc.ShippingAddressPostalCodeOption = search.Atom(doc.ShippingAddressPostalCode)
 	doc.ShippingAddressCountryOption = search.Atom(doc.ShippingAddressCountry)
 
-	doc.DiscountOption = float64(o.Discount)
-	doc.SubtotalOption = float64(o.Subtotal)
-	doc.ShippingOption = float64(o.Shipping)
-	doc.TaxOption = float64(o.Tax)
-	doc.AdjustmentOption = float64(o.Adjustment)
-	doc.TotalOption = float64(o.Total)
-	doc.PaidOption = float64(o.Paid)
-	doc.RefundedOption = float64(o.Refunded)
+	switch o.Currency {
+	case currency.ETH, currency.BTC, currency.XBT:
+		doc.DiscountOption = float64(o.Discount) / 1e9
+		doc.SubtotalOption = float64(o.Subtotal) / 1e9
+		doc.ShippingOption = float64(o.Shipping) / 1e9
+		doc.TaxOption = float64(o.Tax) / 1e9
+		doc.AdjustmentOption = float64(o.Adjustment) / 1e9
+		doc.TotalOption = float64(o.Total) / 1e9
+		doc.PaidOption = float64(o.Paid) / 1e9
+		doc.RefundedOption = float64(o.Refunded) / 1e9
+	default:
+		doc.DiscountOption = float64(o.Discount)
+		doc.SubtotalOption = float64(o.Subtotal)
+		doc.ShippingOption = float64(o.Shipping)
+		doc.TaxOption = float64(o.Tax)
+		doc.AdjustmentOption = float64(o.Adjustment)
+		doc.TotalOption = float64(o.Total)
+		doc.PaidOption = float64(o.Paid)
+		doc.RefundedOption = float64(o.Refunded)
+	}
 
 	doc.TypeOption = search.Atom(o.Type)
 
