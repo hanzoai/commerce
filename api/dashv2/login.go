@@ -11,6 +11,7 @@ import (
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -94,10 +95,15 @@ func login(c *gin.Context) {
 	}
 
 	for i, org := range orgs {
+		cur := org.Currency
+		if cur == "" {
+			cur = currency.USD
+		}
+
 		res.Organizations[i] = organizationRes{
 			Id:               org.Id(),
 			Name:             org.Name,
-			Currency:         "USD",
+			Currency:         string(cur),
 			FullName:         org.FullName,
 			CreatedAt:        org.CreatedAt,
 			LiveSecretKey:    org.MustGetTokenByName("live-secret-key").String(),
