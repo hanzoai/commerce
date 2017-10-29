@@ -15,6 +15,7 @@ class EthereumIntegrationForm extends Integration
 
   inputConfigs: [
     input('data.address', 'Address',  'required')
+    input('data.testAddress', 'TestAddress (optional)',  '')
   ]
 
 EthereumIntegrationForm.register()
