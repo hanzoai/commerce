@@ -5,8 +5,10 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
 )
 
 var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
@@ -62,6 +64,17 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 
 	// Save org into default namespace
 	org.Update()
+
+	w := wallet.New(db)
+	w.Id_ = "customer-wallet"
+	w.UseStringKey = true
+	w.GetOrCreate("Id_=", "customer-wallet")
+
+	if a, _ := w.GetAccountByName("cryptounderground"); a == nil {
+		if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
+			panic(err)
+		}
+	}
 
 	return org
 })
