@@ -10,12 +10,12 @@ import (
 )
 
 type Account struct {
-	Encrypted string `json:"encrypted,omitempty"`
-	Salt      string `json:"salt,omitempty"`
+	Encrypted string `json:"-"`
+	Salt      string `json:"-"`
 
 	Name       string `json:"name"`
 	PrivateKey string `json:"-" datastore:"-"`
-	PublicKey  string `json:"publicKey,omitempty"`
+	PublicKey  string `json:"-"`
 	Address    string `json:"address,omitempty"`
 
 	Deleted bool             `json:"-"`
