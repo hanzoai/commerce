@@ -271,6 +271,15 @@ func EthereumProcessPaymentImpl(
 
 			transferAmount = transferAmount.Sub(transferAmount, finalCost)
 
+			// Use the ethereum address, alternatively use the test address
+			// instead if provided well.  Both networks use the same signature
+			// algo so it doesn't matter
+			transferAddress := org.Ethereum.Address
+
+			if ord.Test && org.Ethereum.TestAddress != "" {
+				transferAddress = org.Ethereum.TestAddress
+			}
+
 			if transferAmount.Cmp(big.NewInt(0)) > 0 {
 				// Transfer rest of the ethereum
 				log.Info("Transfering '%s' to '%s'", transferAmount.String(), address, ctx)
@@ -278,7 +287,7 @@ func EthereumProcessPaymentImpl(
 					chainId,
 					fromAccount.PrivateKey,
 					fromAccount.Address,
-					org.Ethereum.Address,
+					transferAddress,
 					transferAmount,
 					big.NewInt(0).Set(SimpleTransactionGasUsed),
 					gasPrice,
