@@ -6,6 +6,7 @@ import (
 	"appengine/search"
 
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
 )
 
 type Document struct {
@@ -102,9 +103,16 @@ func (p Product) Document() mixin.Document {
 	doc.CreatedAt = p.CreatedAt
 	doc.UpdatedAt = p.UpdatedAt
 
-	doc.PriceOption = float64(p.Price)
-	doc.ListPriceOption = float64(p.ListPrice)
-	doc.InventoryCostOption = float64(p.InventoryCost)
+	switch p.Currency {
+	case currency.ETH, currency.BTC, currency.XBT:
+		doc.PriceOption = float64(p.Price) / 1e9
+		doc.ListPriceOption = float64(p.ListPrice) / 1e9
+		doc.InventoryCostOption = float64(p.InventoryCost) / 1e9
+	default:
+		doc.PriceOption = float64(p.Price)
+		doc.ListPriceOption = float64(p.ListPrice)
+		doc.InventoryCostOption = float64(p.InventoryCost)
+	}
 
 	doc.InventoryOption = float64(p.Inventory)
 	doc.WeightOption = float64(p.Weight)
