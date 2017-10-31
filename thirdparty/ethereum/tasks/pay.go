@@ -19,6 +19,7 @@ import (
 	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/delay"
 	"hanzo.io/util/log"
+	"hanzo.io/util/webhook"
 )
 
 var SimpleTransactionGasUsed = big.NewInt(21000)
@@ -331,6 +332,8 @@ func EthereumProcessPaymentImpl(
 
 		tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
 		tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
+
+		webhook.Emit(ctx, orgName, "order.paid", ord)
 
 		return nil
 	}); err != nil {
