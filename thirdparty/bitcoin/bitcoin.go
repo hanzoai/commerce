@@ -1,10 +1,14 @@
 package bitcoin
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha256"
 	"golang.org/x/crypto/ripemd160"
 
+	"encoding/hex"
 	"github.com/btcsuite/btcutil/base58"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in
@@ -29,4 +33,14 @@ func PubKeyToAddress(pubKey []byte, netId byte) ([]byte, string) {
 	step8 := append(step7, step4...)
 
 	return step8, base58.Encode(step8)
+}
+
+func GenerateKeyPair() (string, string, error) {
+	priv, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Remove the extra pubkey byte before serializing hex (drop the first 0x04)
+	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
