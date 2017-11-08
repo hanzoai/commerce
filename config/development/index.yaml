@@ -108,8 +108,15 @@ indexes:
   ancestor: no
   properties:
   - name: Type
+  - name: BitcoinBlockHeight
+    direction: desc
+
+- kind: block
+  ancestor: no
+  properties:
+  - name: Type
   - name: Status
-  - name: BitcoinBlockNumber
+  - name: BitcoinBlockHeight
     direction: desc
 
 - kind: blockaddress
@@ -147,3 +154,16 @@ indexes:
   - name: EthereumTransactionNonce
     direction: desc
 
+- kind: blocktransaction
+  ancestor: no
+  properties:
+  - name: Type
+  - name: BitcoinTransactionBlockHash
+    direction: desc
+
+- kind: blocktransaction
+  ancestor: no
+  properties:
+  - name: Type
+  - name: BitcoinTransactionConfirmations
+    direction: desc
