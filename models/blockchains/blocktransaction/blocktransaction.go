@@ -8,6 +8,19 @@ import (
 
 // Datastructure for Bitcoin Transaction
 type BitcoinTransaction struct {
+	BitcoinTransactionHash          string `json:"bitcoinTransactionHash"`
+	BitcoinTransactionVersion       int64  `json:"bitcoinTransactionVersion"`
+	BitcoinTransactionSize          int64  `json:"bitcoinTransactionSize"`
+	BitcoinTransactionVSize         int64  `json:"bitcoinTransactionVSize"`
+	BitcoinTransactionLocktime      int64  `json:"bitcoinTransactionLocktime"`
+	BitcoinTransactionHex           string `json:"bitcoinTransactionHex"`
+	BitcoinTransactionBlockHash     string `json:"bitcoinTransactionBlockHash"`
+	BitcoinTransactionConfirmations int64  `json:"bitcoinTransactionConfirmations"`
+	BitcoinTransactionTime          int64  `json:"bitcoinTransactionTime"`
+	BitcoinTransactionBlockTime     int64  `json:"bitcoinTransactionBlockTime"`
+	BitcoinTransactionValue         int64  `json:"bitcoinTransactionValue"`
+	BitcoinTransactionFrom          string `json:"bitcoinTransactionFrom"`
+	BitcoinTransactionTo            string `json:"bitcoinTransactionTo"`
 }
 
 // Datastructure for Ethereum Transaction
