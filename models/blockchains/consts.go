@@ -16,6 +16,9 @@ const (
 
 	// Bitcoin Blockchain
 	BitcoinType Type = "bitcoin"
+
+	// Bitcoin Testnet
+	BitcoinTestnetType Type = "bitcoin-testnet"
 )
 
 type ProcessStatus string
