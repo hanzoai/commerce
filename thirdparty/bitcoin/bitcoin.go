@@ -98,7 +98,7 @@ func GenerateKeyPair() (string, string, error) {
 	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
-func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
+func signRawTransactionSignature(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
 	privateKeyBytes := base58.Decode(privateKeyBase58)
@@ -152,10 +152,10 @@ func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) ([]byte,
 
 	scriptSig := buffer.Bytes()
 
-	//Return the final transaction
-	return createRawTransaction(flagInputTransaction, flagInputIndex, flagDestination, flagSatoshis, scriptSig), nil
+	//Return the final transaction signature
+	return scriptSig, nil
 }
-func createScriptPubKey(publicKeyBase58 string) []byte {
+func CreateScriptPubKey(publicKeyBase58 string) []byte {
 	publicKeyBytes := base58.Decode(publicKeyBase58)
 
 	var scriptPubKey bytes.Buffer
@@ -182,7 +182,7 @@ func randInt(min int, max int) uint8 {
 	return uint8(min + mathRand.Intn(max-min))
 }
 
-func createRawTransaction(inputTransactionHash string, inputTransactionIndex int, publicKeyBase58Destination string, satoshis int, scriptSig []byte) []byte {
+func CreateRawTransaction(inputTransactionHash string, inputTransactionIndex int, publicKeyBase58Destination string, satoshis int, scriptSig []byte) []byte {
 	//Create the raw transaction.
 
 	//Version field
@@ -233,7 +233,7 @@ func createRawTransaction(inputTransactionHash string, inputTransactionIndex int
 	binary.LittleEndian.PutUint64(satoshiBytes, uint64(satoshis))
 
 	//Script pub key
-	scriptPubKey := createScriptPubKey(publicKeyBase58Destination)
+	scriptPubKey := CreateScriptPubKey(publicKeyBase58Destination)
 	scriptPubKeyLength := len(scriptPubKey)
 
 	//Lock time field
