@@ -1,18 +1,29 @@
 package bitcoin
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"golang.org/x/crypto/ripemd160"
+	"math"
+	mathRand "math/rand"
+	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-	secp256k1 "hanzo.io/thirdparty/bitcoin/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/util/log"
 )
+
+var flagPrivateKey string = "private-key"
+var flagPublicKey string = "public-key"
+var flagDestination string = "destination"
+var flagInputTransaction string = "input-transaction"
+var flagInputIndex int = 0
+var flagSatoshis int = 0
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
@@ -87,21 +98,20 @@ func GenerateKeyPair() (string, string, error) {
 	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
-func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) []byte {
+func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
-	secp256k1.Start()
-	privateKeyBytes := base58check.Decode(privateKeyBase58)
+	privateKeyBytes := base58.Decode(privateKeyBase58)
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+	publicKey := privateKey.PublicKey
+	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
 	var privateKeyBytes32 [32]byte
 
 	for i := 0; i < 32; i++ {
 		privateKeyBytes32[i] = privateKeyBytes[i]
-	}
-
-	//Get the raw public key
-	publicKeyBytes, success := secp256k1.Pubkey_create(privateKeyBytes32, false)
-	if !success {
-		log.Fatal("Failed to convert private key to public key")
 	}
 
 	//Hash the raw transaction twice before the signing
@@ -114,18 +124,12 @@ func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) []byte {
 	rawTransactionHashed := shaHash2.Sum(nil)
 
 	//Sign the raw transaction
-	signedTransaction, success := secp256k1.Sign(rawTransactionHashed, privateKeyBytes32, generateNonce())
-	if !success {
+	signedTransaction, success := crypto.Sign(rawTransactionHashed, privateKey)
+	if success != nil {
 		log.Fatal("Failed to sign transaction")
 	}
-
-	//Verify that it worked.
-	verified := secp256k1.Verify(rawTransactionHashed, signedTransaction, publicKeyBytes)
-	if !verified {
-		log.Fatal("Failed to sign transaction")
-	}
-
-	secp256k1.Stop()
+	// TODO: Should verify this when we get a second to work around a solution
+	// that maintains R and S.
 
 	hashCodeType, err := hex.DecodeString("01")
 	if err != nil {
@@ -149,10 +153,10 @@ func signRawTransaction(rawTransaction []byte, privateKeyBase58 string) []byte {
 	scriptSig := buffer.Bytes()
 
 	//Return the final transaction
-	return createRawTransaction(flagInputTransaction, flagInputIndex, flagDestination, flagSatoshis, scriptSig)
+	return createRawTransaction(flagInputTransaction, flagInputIndex, flagDestination, flagSatoshis, scriptSig), nil
 }
 func createScriptPubKey(publicKeyBase58 string) []byte {
-	publicKeyBytes := base58check.Decode(publicKeyBase58)
+	publicKeyBytes := base58.Decode(publicKeyBase58)
 
 	var scriptPubKey bytes.Buffer
 	scriptPubKey.WriteByte(byte(118))                 //OP_DUP
@@ -174,8 +178,8 @@ func generateNonce() [32]byte {
 }
 
 func randInt(min int, max int) uint8 {
-	rand.Seed(time.Now().UTC().UnixNano())
-	return uint8(min + rand.Intn(max-min))
+	mathRand.Seed(time.Now().UTC().UnixNano())
+	return uint8(min + mathRand.Intn(max-min))
 }
 
 func createRawTransaction(inputTransactionHash string, inputTransactionIndex int, publicKeyBase58Destination string, satoshis int, scriptSig []byte) []byte {
