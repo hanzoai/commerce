@@ -10,8 +10,8 @@ import (
 )
 
 type Account struct {
-	Encrypted string `json:"-"`
-	Salt      string `json:"-"`
+	Encrypted string `json:"encrypted"`
+	Salt      string `json:"salt"`
 
 	Name       string `json:"name"`
 	PrivateKey string `json:"-" datastore:"-"`

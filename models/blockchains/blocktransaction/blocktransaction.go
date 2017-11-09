@@ -18,9 +18,20 @@ type BitcoinTransaction struct {
 	BitcoinTransactionConfirmations int64  `json:"bitcoinTransactionConfirmations"`
 	BitcoinTransactionTime          int64  `json:"bitcoinTransactionTime"`
 	BitcoinTransactionBlockTime     int64  `json:"bitcoinTransactionBlockTime"`
-	BitcoinTransactionValue         int64  `json:"bitcoinTransactionValue"`
-	BitcoinTransactionFrom          string `json:"bitcoinTransactionFrom"`
-	BitcoinTransactionTo            string `json:"bitcoinTransactionTo"`
+}
+
+type BitcoinVIn struct {
+	BitcoinTransactionVInTransactionHash  string `json:"bitcoinTransactionVInTransactionHash"`
+	BitcoinTransactionVInTransacitonIndex string `json:"bitcoinTransactionVInTransactionIndex"`
+	BitcoinTransactionVInIndex            string `json:"bitcoinTransactionVInIndex"`
+	BitcoinTransactionVInFrom             string `json:"bitcoinTransactionVInFrom"`
+	BitcoinTransactionVInValue            int64  `json:"bitcoinTransactionVInValue"`
+}
+
+type BitcoinVOut struct {
+	BitcoinTransactionVOutIndex string `json:"bitcoinTransactionVOutIndex"`
+	BitcoinTransactionVOutTo    string `json:"bitcoinTransactionVOutTo"`
+	BitcoinTransactionVOutValue int64  `json:"bitcoinTransactionVOutValue"`
 }
 
 // Datastructure for Ethereum Transaction
@@ -76,6 +87,8 @@ type BlockTransaction struct {
 	Address string `json:"address"`
 
 	BitcoinTransaction
+	BitcoinVIn
+	BitcoinVOut
 	EthereumTransaction
 	EthereumTransactionReceipt
 
