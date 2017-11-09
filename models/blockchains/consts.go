@@ -21,6 +21,13 @@ const (
 	BitcoinTestnetType Type = "bitcoin-testnet"
 )
 
+type BitcoinTransactionType string
+
+const (
+	BitcoinTransactionVIn  BitcoinTransactionType = "vin"
+	BitcoinTransactionVOut BitcoinTransactionType = "vout"
+)
+
 type ProcessStatus string
 
 const (
