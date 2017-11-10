@@ -8,14 +8,15 @@ import (
 
 // Datastructure for Bitcoin Transaction
 type BitcoinTransaction struct {
-	BitcoinTransactionHeight        string                 `json:"bitcoinTransactionHeight"`
+	BitcoinTransactionBlockHash   string `json:"bitcoinTransactionBlockHash"`
+	BitcoinTransactionBlockHeight string `json:"bitcoinTransactionBlockHeight"`
+
 	BitcoinTransactionHash          string                 `json:"bitcoinTransactionHash"`
 	BitcoinTransactionVersion       int64                  `json:"bitcoinTransactionVersion"`
 	BitcoinTransactionSize          int64                  `json:"bitcoinTransactionSize"`
 	BitcoinTransactionVSize         int64                  `json:"bitcoinTransactionVSize"`
 	BitcoinTransactionLocktime      int64                  `json:"bitcoinTransactionLocktime"`
 	BitcoinTransactionHex           string                 `json:"bitcoinTransactionHex"`
-	BitcoinTransactionBlockHash     string                 `json:"bitcoinTransactionBlockHash"`
 	BitcoinTransactionConfirmations int64                  `json:"bitcoinTransactionConfirmations"`
 	BitcoinTransactionTime          int64                  `json:"bitcoinTransactionTime"`
 	BitcoinTransactionBlockTime     int64                  `json:"bitcoinTransactionBlockTime"`
@@ -38,10 +39,11 @@ type BitcoinVOut struct {
 
 // Datastructure for Ethereum Transaction
 type EthereumTransaction struct {
+	EthereumTransactionBlockHash   string `json:"ethereumTransactionBlockHash"`
+	EthereumTransactionBlockNumber int64  `json:"ethereumTransactionBlockNumber"`
+
 	EthereumTransactionHash             string    `json:"ethereumTransactionHash"`
 	EthereumTransactionNonce            int64     `json:"ethereumTransactionNonce"`
-	EthereumTransactionBlockHash        string    `json:"ethereumTransactionBlockHash"`
-	EthereumTransactionBlockNumber      int64     `json:"ethereumTransactionBlockNumber"`
 	EthereumTransactionTransactionIndex int64     `json:"ethereumTransactionTransactionIndex"`
 	EthereumTransactionFrom             string    `json:"ethereumTransactionFrom"`
 	EthereumTransactionTo               string    `json:"ethereumTransactionTo"`
