@@ -18,12 +18,26 @@ var PlatformWallet = New("platform-wallet", func(c *gin.Context) *wallet.Wallet 
 	w.UseStringKey = true
 	w.GetOrCreate("Id_=", "platform-wallet")
 
-	if len(w.Accounts) == 0 {
+	if _, ok := w.GetAccountByName("Ethereum Ropsten Test Account"); !ok {
 		if _, err := w.CreateAccount("Ethereum Ropsten Test Account", blockchains.EthereumRopstenType, []byte(config.Ethereum.TestPassword)); err != nil {
 			panic(err)
 		}
+	}
 
+	if _, ok := w.GetAccountByName("Ethereum Deposit Account"); !ok {
 		if _, err := w.CreateAccount("Ethereum Deposit Account", blockchains.EthereumType, []byte(config.Ethereum.DepositPassword)); err != nil {
+			panic(err)
+		}
+	}
+
+	if _, ok := w.GetAccountByName("Bitcoin Test Account"); !ok {
+		if _, err := w.CreateAccount("Bitcoin Test Account", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+			panic(err)
+		}
+	}
+
+	if _, ok := w.GetAccountByName("Bitcoin Deposit Account"); !ok {
+		if _, err := w.CreateAccount("Bitcoin Deposit Account", blockchains.BitcoinType, []byte(config.Bitcoin.DepositPassword)); err != nil {
 			panic(err)
 		}
 	}
