@@ -26,6 +26,16 @@ func Production() *Config {
 	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:80"}
 	config.Ethereum.WebhookPassword = ""
 
+	config.Bitcoin.TestPassword = ""
+	config.Bitcoin.DepositPassword = ""
+	config.Bitcoin.MainNetNodes = []string{"http://35.192.49.112:19283"}
+	config.Bitcoin.MainNetUsernames = []string{""}
+	config.Bitcoin.MainNetPasswords = []string{""}
+	config.Bitcoin.TestNetNodes = []string{"http://104.154.51.133:19283"}
+	config.Bitcoin.TestNetUsernames = []string{""}
+	config.Bitcoin.TestNetPasswords = []string{""}
+	config.Bitcoin.WebhookPassword = ""
+
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.paypal.com"
 	config.Paypal.IpnUrl = "https://api.hanzo.io/paypal/ipn/"
