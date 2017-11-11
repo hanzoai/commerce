@@ -16,6 +16,11 @@ import (
 	"hanzo.io/util/log"
 )
 
+type Payload struct {
+	Data        interface{} `json:"data"`
+	AccessToken string      `json:"accessToken"`
+}
+
 type Client struct {
 	ctx    appengine.Context
 	client *http.Client
@@ -79,13 +84,19 @@ var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, ev
 	for _, hook := range hooks {
 		// Has all events enabled
 		if hook.All {
-			client.Post(hook.Url, data)
+			client.Post(hook.Url, Payload{
+				Data:        data,
+				AccessToken: hook.AccessToken,
+			})
 			continue
 		}
 
 		// Check if current event is enabled
 		if enabled, ok := hook.Events[event]; ok && enabled {
-			client.Post(hook.Url, data)
+			client.Post(hook.Url, Payload{
+				Data:        data,
+				AccessToken: hook.AccessToken,
+			})
 		}
 	}
 })
