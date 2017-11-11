@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
+	"hanzo.io/models/webhook"
 )
 
 var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
@@ -63,7 +64,7 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 	// org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
-	org.Update()
+	org.MustUpdate()
 
 	w := wallet.New(db)
 	w.Id_ = "customer-wallet"
@@ -80,6 +81,21 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 		if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
 			panic(err)
 		}
+	}
+
+	wh := webhook.New(db)
+	wh.Name = "picatic-proxy"
+	wh.GetOrCreate("Name=", "picatic-proxy")
+
+	if wh.AccessToken == "" {
+		wh.AccessToken = ""
+		wh.Live = true
+		wh.Url = "http://35.188.46.251/webhook"
+		wh.Events = webhook.Events{
+			"order.paid": true,
+		}
+		wh.Enabled = true
+		wh.MustUpdate()
 	}
 
 	return org
