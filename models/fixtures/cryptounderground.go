@@ -83,7 +83,9 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 		}
 	}
 
-	wh := webhook.New(db)
+	nsDb := datastore.New(org.Namespaced(c))
+
+	wh := webhook.New(nsDb)
 	wh.Name = "picatic-proxy"
 	wh.GetOrCreate("Name=", "picatic-proxy")
 
