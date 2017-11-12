@@ -11,7 +11,7 @@ import (
 
 var _ = New("add-search-documents",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "suchtees")
+		c.Set("namespace", "cryptounderground")
 
 		return NoArgs
 	},

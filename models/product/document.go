@@ -1,8 +1,6 @@
 package product
 
 import (
-	"time"
-
 	"appengine/search"
 
 	"hanzo.io/models/mixin"
@@ -40,8 +38,8 @@ type Document struct {
 	Description       string
 	EstimatedDelivery string
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt float64
+	UpdatedAt float64
 
 	// Facets
 	PriceOption         float64 `search:"price,facet"`
@@ -100,8 +98,8 @@ func (p Product) Document() mixin.Document {
 	doc.Description = p.Description
 	doc.EstimatedDelivery = p.EstimatedDelivery
 
-	doc.CreatedAt = p.CreatedAt
-	doc.UpdatedAt = p.UpdatedAt
+	doc.CreatedAt = float64(p.CreatedAt.Unix())
+	doc.UpdatedAt = float64(p.UpdatedAt.Unix())
 
 	switch p.Currency {
 	case currency.ETH, currency.BTC, currency.XBT:

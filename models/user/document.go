@@ -2,7 +2,6 @@ package user
 
 import (
 	"strings"
-	"time"
 
 	"appengine/search"
 
@@ -49,8 +48,8 @@ type Document struct {
 	ShippingAddressCountry     string
 	ShippingAddressPostalCode  string
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt float64
+	UpdatedAt float64
 
 	StripeBalanceTransactionId string
 	StripeCardId               string
@@ -130,8 +129,8 @@ func (u User) Document() mixin.Document {
 	}
 	doc.ShippingAddressPostalCode = u.ShippingAddress.PostalCode
 
-	doc.CreatedAt = u.CreatedAt
-	doc.UpdatedAt = u.UpdatedAt
+	doc.CreatedAt = float64(u.CreatedAt.Unix())
+	doc.UpdatedAt = float64(u.UpdatedAt.Unix())
 
 	doc.StripeBalanceTransactionId = u.Accounts.Stripe.BalanceTransactionId
 	doc.StripeCardId = u.Accounts.Stripe.CardId

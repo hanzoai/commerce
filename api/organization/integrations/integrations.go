@@ -24,6 +24,15 @@ func Get(c *gin.Context) {
 	}
 
 	ins := org.Integrations
+
+	// Add a read only stripe integration (will need to do this with all other
+	// oauths)
+	if org.Stripe.AccessToken != "" {
+		in := integrations.Integration{Stripe: org.Stripe}
+		in.Enabled = true
+		ins = append(ins, in)
+	}
+
 	for i, in := range ins {
 		if err := integrations.Encode(&in, &in); err != nil {
 			log.Warn("Could not encode integration: %s", err, c)
@@ -31,6 +40,7 @@ func Get(c *gin.Context) {
 		}
 		ins[i] = in
 	}
+
 	http.Render(c, 200, ins)
 }
 
