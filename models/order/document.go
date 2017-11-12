@@ -2,7 +2,6 @@ package order
 
 import (
 	"strings"
-	"time"
 
 	"appengine/search"
 
@@ -72,8 +71,8 @@ type Document struct {
 	FulfillmentService    string
 	FulfillmentCarrier    string
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt float64
+	UpdatedAt float64
 
 	// Facets
 	ProductNameOption0 search.Atom `search:"productName,facet"`
@@ -214,8 +213,8 @@ func (o Order) Document() mixin.Document {
 
 	doc.Type = string(o.Type)
 
-	doc.CreatedAt = o.CreatedAt
-	doc.UpdatedAt = o.UpdatedAt
+	doc.CreatedAt = float64(o.CreatedAt.Unix())
+	doc.UpdatedAt = float64(o.UpdatedAt.Unix())
 
 	doc.CouponCodes = strings.Join(o.CouponCodes, " ")
 	doc.ReferrerId = o.ReferrerId
