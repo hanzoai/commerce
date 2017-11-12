@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"errors"
+	"time"
 	// "net/http/httputil"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
+	"hanzo.io/util/rand"
 )
 
 func Get(c *gin.Context) {
@@ -30,6 +32,11 @@ func Get(c *gin.Context) {
 	if org.Stripe.AccessToken != "" {
 		in := integrations.Integration{Stripe: org.Stripe}
 		in.Enabled = true
+		in.Show = true
+		in.Id = rand.ShortId()
+		in.Type = integrations.StripeType
+		in.CreatedAt = time.Now()
+		in.UpdatedAt = in.CreatedAt
 		ins = append(ins, in)
 	}
 
