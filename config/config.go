@@ -50,6 +50,21 @@ type Config struct {
 		WebhookPassword string
 	}
 
+	Bitcoin struct {
+		TestPassword    string
+		DepositPassword string
+
+		MainNetNodes     []string
+		MainNetUsernames []string
+		MainNetPasswords []string
+
+		TestNetNodes     []string
+		TestNetUsernames []string
+		TestNetPasswords []string
+
+		WebhookPassword string
+	}
+
 	Secret      string
 	SessionName string
 
@@ -227,6 +242,7 @@ var config = Get()
 // Expose global config.
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
+var Bitcoin = config.Bitcoin
 var CookieDomain = config.CookieDomain
 var Cloudflare = config.Cloudflare
 var DatastoreWarn = config.DatastoreWarn
