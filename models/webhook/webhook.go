@@ -15,6 +15,9 @@ type Events map[string]bool
 type Webhook struct {
 	mixin.Model
 
+	// Name
+	Name string `json:"name"`
+
 	// Endpoint webhook should deliver events to.
 	Url string `json:"url"`
 
@@ -23,6 +26,9 @@ type Webhook struct {
 
 	// Whether to send all events or selectively using Events.
 	All bool `json:"all"`
+
+	// Random token to check against
+	AccessToken string `json:"accessToken"`
 
 	// Events to selectively send.
 	Events  Events `json:"events" datastore:"-"`
