@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"encoding/gob"
 	"fmt"
 	"math"
 	"strconv"
@@ -44,6 +45,12 @@ const (
 	OnHold    Status = "on-hold"
 	Open      Status = "open"
 )
+
+func init() {
+	// This type must match exactly what youre going to be using,
+	// down to whether or not its a pointer
+	gob.Register(&Order{})
+}
 
 type Order struct {
 	mixin.Model
