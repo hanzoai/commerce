@@ -1,14 +1,7 @@
 package bitcoin
 
 import (
-	"io/ioutil"
-	"log"
-	"path/filepath"
-	"time"
-
 	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 )
 
 type BitcoinClient struct {
