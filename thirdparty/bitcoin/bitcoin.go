@@ -98,7 +98,7 @@ func GenerateKeyPair() (string, string, error) {
 	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
-func signRawTransactionSignature(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
+func GetRawTransactionSignature(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
 	privateKeyBytes := base58.Decode(privateKeyBase58)
@@ -182,7 +182,10 @@ func randInt(min int, max int) uint8 {
 	return uint8(min + mathRand.Intn(max-min))
 }
 
-func CreateRawTransaction(inputTransactionHash string, inputTransactionIndex int, publicKeyBase58Destination string, satoshis int, scriptSig []byte) []byte {
+/* NOTE: This function presumes you're doing a pay to public key hash
+* transaction and using a single script to authenticate the entire thing. More
+* complex stuff will come later. */
+func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndeces []int, publicKeyBase58Destinations []string, satoshisToOutput []int, scriptSig []byte) []byte {
 	//Create the raw transaction.
 
 	//Version field
@@ -191,27 +194,42 @@ func CreateRawTransaction(inputTransactionHash string, inputTransactionIndex int
 		log.Fatal(err)
 	}
 
+	in := ""
 	//# of inputs (always 1 in our case)
-	inputs, err := hex.DecodeString("01")
+	if len(inputTransactionHashes) < 10 {
+		in = "0" + string(len(inputTransactionHashes))
+	} else {
+		in = string(len(inputTransactionHashes))
+	}
+	inputs, err := hex.DecodeString(in)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	//Input transaction hash
-	inputTransactionBytes, err := hex.DecodeString(inputTransactionHash)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	//Convert input transaction hash to little-endian form
-	inputTransactionBytesReversed := make([]byte, len(inputTransactionBytes))
-	for i := 0; i < len(inputTransactionBytes); i++ {
-		inputTransactionBytesReversed[i] = inputTransactionBytes[len(inputTransactionBytes)-i-1]
+	inputTransactionLittleEndian := make([][]byte, len(inputTransactionHashes))
+	for index, inputTransactionHash := range inputTransactionHashes {
+		inputTransactionBytes, err := hex.DecodeString(inputTransactionHash)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		//Convert input transaction hash to little-endian form
+		inputTransactionBytesReversed := make([]byte, len(inputTransactionBytes))
+		for i := 0; i < len(inputTransactionBytes); i++ {
+			inputTransactionBytesReversed[i] = inputTransactionBytes[len(inputTransactionBytes)-i-1]
+		}
+		inputTransactionLittleEndian[index] = inputTransactionBytesReversed
 	}
 
 	//Output index of input transaction
-	outputIndexBytes := make([]byte, 4)
-	binary.LittleEndian.PutUint32(outputIndexBytes, uint32(inputTransactionIndex))
+	outputIndeces := make([][]byte, len(inputTransactionIndeces))
+	for index, inputTransactionIndex := range inputTransactionIndeces {
+		outputIndexBytes := make([]byte, 4)
+		binary.LittleEndian.PutUint32(outputIndexBytes, uint32(inputTransactionIndex))
+		outputIndeces[index] = outputIndexBytes
+	}
 
 	//Script sig length
 	scriptSigLength := len(scriptSig)
@@ -223,18 +241,31 @@ func CreateRawTransaction(inputTransactionHash string, inputTransactionIndex int
 	}
 
 	//Numbers of outputs for the transaction being created. Always one in this example.
-	numOutputs, err := hex.DecodeString("01")
+	out := ""
+	if len(publicKeyBase58Destinations) < 10 {
+		out = "0" + string(len(publicKeyBase58Destinations))
+	} else {
+		out = string(len(publicKeyBase58Destinations))
+	}
+
+	numOutputs, err := hex.DecodeString(out)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	//Satoshis to send.
-	satoshiBytes := make([]byte, 8)
-	binary.LittleEndian.PutUint64(satoshiBytes, uint64(satoshis))
+
+	satoshisToOutputBytes := make([][]byte, len(satoshisToOutput))
+	for _, satoshis := range satoshisToOutput {
+		satoshiBytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(satoshiBytes, uint64(satoshis))
+	}
 
 	//Script pub key
-	scriptPubKey := CreateScriptPubKey(publicKeyBase58Destination)
-	scriptPubKeyLength := len(scriptPubKey)
+	scripts := make([][]byte, len(publicKeyBase58Destinations))
+	for index, publicKeyBase58 := range publicKeyBase58Destinations {
+		scriptPubKey := CreateScriptPubKey(publicKeyBase58)
+		scripts[index] = scriptPubKey
+	}
 
 	//Lock time field
 	lockTimeField, err := hex.DecodeString("00000000")
@@ -245,15 +276,19 @@ func CreateRawTransaction(inputTransactionHash string, inputTransactionIndex int
 	var buffer bytes.Buffer
 	buffer.Write(version)
 	buffer.Write(inputs)
-	buffer.Write(inputTransactionBytesReversed)
-	buffer.Write(outputIndexBytes)
-	buffer.WriteByte(byte(scriptSigLength))
-	buffer.Write(scriptSig)
-	buffer.Write(sequence)
+	for index, bytes := range inputTransactionLittleEndian {
+		buffer.Write(bytes)
+		buffer.Write(outputIndeces[index])
+		buffer.WriteByte(byte(scriptSigLength))
+		buffer.Write(scriptSig)
+		buffer.Write(sequence)
+	}
 	buffer.Write(numOutputs)
-	buffer.Write(satoshiBytes)
-	buffer.WriteByte(byte(scriptPubKeyLength))
-	buffer.Write(scriptPubKey)
+	for index, script := range scripts {
+		buffer.Write(satoshisToOutputBytes[index])
+		buffer.WriteByte(byte(len(script)))
+		buffer.Write(script)
+	}
 	buffer.Write(lockTimeField)
 
 	return buffer.Bytes()
