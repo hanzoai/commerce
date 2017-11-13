@@ -27,6 +27,7 @@ github.com/op/go-logging master
 github.com/btcsuite/btcutil/base58 master
 github.com/qedus/nds classic
 github.com/ryanuber/go-glob master
+github.com/btcsuite/go-socks/socks master
 github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go v25.0.0
 github.com/vanng822/go-premailer/premailer master
