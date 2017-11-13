@@ -15,9 +15,19 @@ func Sandbox() *Config {
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
-	config.Ethereum.MainNetNodes = []string{"http://35.202.166.74:80"}
+	config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:80"}
 	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:80"}
 	config.Ethereum.WebhookPassword = ""
+
+	config.Bitcoin.TestPassword = ""
+	config.Bitcoin.DepositPassword = ""
+	config.Bitcoin.MainNetNodes = []string{"http://35.192.49.112:19283"}
+	config.Bitcoin.MainNetUsernames = []string{""}
+	config.Bitcoin.MainNetPasswords = []string{""}
+	config.Bitcoin.TestNetNodes = []string{"http://104.154.51.133:19283"}
+	config.Bitcoin.TestNetUsernames = []string{""}
+	config.Bitcoin.TestNetPasswords = []string{""}
+	config.Bitcoin.WebhookPassword = ""
 
 	config.StaticUrl = "//static.sandbox.hanzo.io"
 

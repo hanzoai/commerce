@@ -73,6 +73,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if ok {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
+	} else if ord.StoreId != "" {
+		stor = store.New(ord.Db)
+		if err := stor.GetById(ord.StoreId); err != nil {
+			log.Warn("Store '%v' does not exist: %v", ord.StoreId, err, c)
+			stor = nil
+		}
 	}
 
 	// Update order with information from datastore, and tally
@@ -110,7 +116,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if org.IsTestEmail(usr.Email) {
 		switch ord.Currency {
 		case currency.ETH:
-			ord.Total = currency.Cents(100e6)
+			ord.Total = currency.Cents(1e7)
 		default:
 			ord.Total = currency.Cents(50)
 		}

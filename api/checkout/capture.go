@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/util/webhook"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
@@ -54,5 +55,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
 	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
+
+	webhook.Emit(ctx, org.Name, "order.paid", ord)
 	return nil
 }
