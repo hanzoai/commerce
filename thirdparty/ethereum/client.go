@@ -136,13 +136,13 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	ctx := c.ctx
 	// Setup defaults
 	if gasLimit.Cmp(big.NewInt(0)) <= 0 {
-		gasLimit = big.NewInt(defaultGas)
+		gasLimit = big.NewInt(DefaultGas)
 	}
 
 	if gasPrice.Cmp(big.NewInt(0)) <= 0 {
 		if price, err := c.GasPrice(); err != nil || price.Cmp(big.NewInt(0)) == 0 {
 			log.Error("Could Not Determine Gas Price '%s': %v", price, err, ctx)
-			gasPrice = big.NewInt(defaultGasPrice)
+			gasPrice = big.NewInt(DefaultGasPrice)
 		} else {
 			log.Error("Current Gas Price is '%s'", price, ctx)
 			gasPrice = price
