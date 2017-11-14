@@ -18,7 +18,7 @@ const (
 
 const (
 	DefaultGas      int64 = 90000
-	DefaultGasPrice int64 = 10 * Shannon
+	DefaultGasPrice int64 = 1 * Shannon
 )
 
 func GenerateKeyPair() (string, string, string, error) {
