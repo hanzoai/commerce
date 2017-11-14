@@ -24,22 +24,42 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 	w.GetOrCreate("Id_=", "test-bitcoin-wallet")
 
 	if len(w.Accounts) == 0 {
-		if _, err := w.CreateAccount("Test Customer Account", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+		if _, err := w.CreateAccount("Test input account", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
 			panic(err)
 		}
+	}
+
+	sender, ok := w.GetAccountByName("Test input account")
+	if !ok {
+		panic(errors.New("Sender Account Not Found."))
 	}
 
 	pw := wallet.New(db)
 	pw.GetOrCreate("Id_=", "platform-wallet")
 
 	// Find The Test Account
-	account, ok := pw.GetAccountByName("Ethereum Ropsten Test Account")
+	receiver1, ok := pw.GetAccountByName("Test output account 1")
 	if !ok {
-		panic(errors.New("Platform Account Not Found."))
+		if _, err := pw.CreateAccount("Test output account 1", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+			panic(err)
+		}
 	}
 
-	log.Info("Account Found", ctx)
-	if err := account.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
+	receiver2, ok := pw.GetAccountByName("Test output account 2")
+	if !ok {
+		if _, err := pw.CreateAccount("Test output account 2", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+			panic(err)
+		}
+	}
+
+	log.Info("Accounts Found", ctx)
+	if err := sender.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
+		panic(err)
+	}
+	if err := receiver1.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
+		panic(err)
+	}
+	if err := receiver2.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
 		panic(err)
 	}
 
@@ -47,6 +67,7 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 	if err != nil {
 		panic(err)
 	}
+
 	//hash, err := client.SendTransaction(ethereum.Ropsten, account.PrivateKey, account.Address, w.Accounts[0].Address, big.NewInt(1000000000000000), big.NewInt(0), big.NewInt(0), []byte{})
 	if err != nil {
 		panic(err)
