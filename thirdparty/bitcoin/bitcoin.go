@@ -27,7 +27,7 @@ var flagSatoshis int = 0
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
+func PubKeyToAddress(pubKey string) (string, []byte, error) {
 	ripe := ripemd160.New()
 	step2decode, err := hex.DecodeString(pubKey)
 	if err != nil {
