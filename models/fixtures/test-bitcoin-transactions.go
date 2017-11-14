@@ -63,7 +63,15 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 		panic(err)
 	}
 
-	_, err := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], "", config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], nil)
+	tempScript := bitcoin.CreateScriptPubKey(sender.PublicKey)
+	rawTransaction := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, tempScript)
+	finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransaction, sender.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+	_ = bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
+
+	_, err = bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], "", config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], nil)
 	if err != nil {
 		panic(err)
 	}
