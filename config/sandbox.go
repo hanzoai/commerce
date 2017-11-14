@@ -15,7 +15,8 @@ func Sandbox() *Config {
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
-	config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:80"}
+	config.Ethereum.MainNetNodes = []string{"http://35.192.92.62:13264"}
+	// config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:80"}
 	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:80"}
 	config.Ethereum.WebhookPassword = ""
 
