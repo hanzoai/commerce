@@ -26,6 +26,25 @@ import (
 	. "hanzo.io/models/blockchains"
 )
 
+type EthGasStationResponse struct {
+	BlockNum float64 `json:"blockNum"`
+
+	BlockTime float64 `json:"block_time"`
+	Speed     float64 `json:"speed"`
+
+	FastestWait float64 `json:"fastestWait"`
+	Fastest     float64 `json:"fastest"`
+
+	FastWait float64 `json:"fastWait"`
+	Fast     float64 `json:"fast"`
+
+	AverageWait float64 `json:"avgWait"`
+	Average     float64 `json:"average"`
+
+	SafeLowWait float64 `json:"safeLowWait"`
+	SaleLow     float64 `json:"safeLow"`
+}
+
 type Client struct {
 	ctx        appengine.Context
 	httpClient *http.Client
@@ -234,6 +253,8 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 
 // Get the current average gasprice
 func (c Client) GasPrice() (*big.Int, error) {
+	// res, err := c.httpClient.Post(c.address, "application/json", strings.NewReader(jsonRpcCommand))
+
 	id := rand.Int64()
 
 	log.Info("Getting Gas Price", c.ctx)
