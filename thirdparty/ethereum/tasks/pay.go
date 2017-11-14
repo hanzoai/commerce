@@ -213,11 +213,14 @@ func EthereumProcessPaymentImpl(
 			}
 
 			// Get current gas price so we can calculate transfer costs
-			gasPrice, err := client.GasPrice()
-			if err != nil {
-				log.Error("Could not get gas price: %v", err, ctx)
-				return err
-			}
+			// gasPrice, err := client.GasPrice()
+			// if err != nil {
+			// 	log.Error("Could not get gas price: %v", err, ctx)
+			// 	return err
+			// }
+
+			// Use default gasprice
+			gasPrice := big.NewInt(ethereum.DefaultGasPrice)
 
 			transferAmount := ord.Currency.ToMinimalUnits(ord.Total)
 
