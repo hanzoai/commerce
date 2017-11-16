@@ -53,6 +53,9 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 	}
 
 	log.Info("Accounts Found", ctx)
+	log.Info("Sender Address", sender.Address)
+	log.Info("Receiver 1 Address", receiver1.Address)
+	log.Info("Receiver 2 Address", receiver2.Address)
 	if err := sender.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
 		panic(err)
 	}
