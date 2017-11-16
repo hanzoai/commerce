@@ -72,17 +72,17 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 	if err != nil {
 		panic(err)
 	}
-	_ = bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
+	rawTrx = bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
 
-	_, err = bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], "", config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], nil)
+	client, err = bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0])
 	if err != nil {
 		panic(err)
 	}
 
-	//hash, err := client.SendTransaction(ethereum.Ropsten, account.PrivateKey, account.Address, w.Accounts[0].Address, big.NewInt(1000000000000000), big.NewInt(0), big.NewInt(0), []byte{})
+	c, err := client.SendRawTransaction(rawTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Info("Geth Node Response: %v", "", c)
+	log.Info("Btcd Node Response: %v", "", c)
 })
