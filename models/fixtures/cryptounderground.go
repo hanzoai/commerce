@@ -37,7 +37,7 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 	org.Fees.Card.Percent = 0.05
 	org.Fees.Affiliate.Flat = 30
 	org.Fees.Affiliate.Percent = 0.30
-	org.Fees.Ethereum.Flat = 500000
+	org.Fees.Ethereum.Flat = 0 // 500000
 	org.Fees.Ethereum.Percent = 0.05
 
 	// Email configuration
