@@ -25,6 +25,7 @@ github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/op/go-logging master
 github.com/btcsuite/btcutil/base58 master
+github.com/btcsuite/btcd/btcjson master
 github.com/qedus/nds classic
 github.com/ryanuber/go-glob master
 github.com/btcsuite/go-socks/socks master
