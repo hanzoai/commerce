@@ -60,19 +60,19 @@ func New(ctx appengine.Context, host string) (BitcoinClient, error) {
 	return BitcoinClient{ctx, httpClient, host, false, []string{}}, nil
 }
 
-func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) error {
+func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcResponse, error) {
 	allowHighFees := false
 	cmd := btcjson.NewSendRawTransactionCmd(hex.EncodeToString(rawTransaction[:]), &allowHighFees)
 
 	cmdJson, err := ej.Marshal(cmd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	id := rand.Int64()
-	btcc.Post(string(cmdJson), id)
+	res, err := btcc.Post(string(cmdJson), id)
 
-	return nil
+	return res, err
 }
 
 // Flip to Test Mode
