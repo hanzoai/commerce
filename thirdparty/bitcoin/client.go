@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"appengine"
 	"appengine/urlfetch"
+	"bytes"
 	"encoding/hex"
 	ej "encoding/json"
 	"errors"
@@ -11,7 +12,6 @@ import (
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -21,6 +21,8 @@ type BitcoinClient struct {
 	host       string
 	IsTest     bool
 	Commands   []string
+	Username   string
+	Password   string
 }
 
 var IsTest = false
@@ -49,7 +51,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(ctx appengine.Context, host string) (BitcoinClient, error) {
+func New(ctx appengine.Context, host, username, password string) (BitcoinClient, error) {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,
@@ -57,7 +59,7 @@ func New(ctx appengine.Context, host string) (BitcoinClient, error) {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return BitcoinClient{ctx, httpClient, host, false, []string{}}, nil
+	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}, nil
 }
 
 func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcResponse, error) {
@@ -70,7 +72,7 @@ func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcRe
 	}
 
 	id := rand.Int64()
-	res, err := btcc.Post(string(cmdJson), id)
+	res, err := btcc.Post(cmdJson, id)
 
 	return res, err
 }
@@ -81,16 +83,26 @@ func (c BitcoinClient) Test(b bool) bool {
 	return b
 }
 
-func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) {
-	c.Commands = append(c.Commands, jsonRpcCommand)
+func (c BitcoinClient) Post(jsonRpcCommand []byte, id int64) (*JsonRpcResponse, error) {
+	c.Commands = append(c.Commands, string(jsonRpcCommand))
 
 	if c.IsTest || IsTest {
 		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
 		return jrr, nil
 	}
 
+	bodyReader := bytes.NewReader(jsonRpcCommand)
+	httpReq, err := http.NewRequest("POST", c.host, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Close = true
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// Configure basic access authorization.
+	httpReq.SetBasicAuth(c.Username, c.Password)
 	log.Info("Posting command to Bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
-	res, err := c.httpClient.Post(c.host, "application/json", strings.NewReader(jsonRpcCommand))
+	res, err := c.httpClient.Post(c.host, "application/json", bytes.NewReader(jsonRpcCommand))
 	if err != nil {
 		return nil, err
 	}
