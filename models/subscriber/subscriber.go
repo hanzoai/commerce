@@ -107,8 +107,8 @@ func (s Subscriber) Name() string {
 	return strings.Join(parts, " ")
 }
 
-func (s Subscriber) MergeFields() map[string]string {
-	fields := make(map[string]string)
+func (s Subscriber) MergeFields() map[string]interface{} {
+	fields := make(map[string]interface{})
 
 	for k, v := range s.Metadata {
 		fields[k] = fmt.Sprintf("%v", v)
