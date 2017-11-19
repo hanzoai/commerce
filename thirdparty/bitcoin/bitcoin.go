@@ -88,6 +88,68 @@ func PubKeyToAddress(pubKey string) (string, []byte, error) {
 	return base58.Encode(step8), step8, nil
 }
 
+func PubKeyToTestNetAddress(pubKey string) (string, []byte, error) {
+	ripe := ripemd160.New()
+	step2decode, err := hex.DecodeString(pubKey)
+	if err != nil {
+		return "", nil, err
+	}
+	step2 := sha256.Sum256(step2decode)
+
+	log.Debug("public key: %v", pubKey)
+	log.Debug("public key hex decode: %v", step2decode)
+	log.Debug("Step 2 hex: %v", hex.EncodeToString(step2[:]))
+	if len(step2) != 32 {
+		return "", nil, fmt.Errorf("Step 2: Invalid length. %v", len(step2))
+	}
+
+	log.Debug("Step 2: %v", step2)
+	ripe.Write(step2[:])
+	step3 := ripe.Sum(nil)
+
+	log.Debug("Step 3 hex: %v", hex.EncodeToString(step3))
+	if len(step3) != 20 {
+		return "", nil, fmt.Errorf("Step 3: Invalid length. %v", len(step3))
+	}
+
+	testNetPrefix, _ := hex.DecodeString("6F")
+	step4 := append(testNetPrefix, step3...)
+
+	log.Debug("Step 4 hex: %v", hex.EncodeToString(step4))
+	if len(step4) != 21 {
+		return "", nil, fmt.Errorf("Step 4: Invalid length. %v", len(step4))
+	}
+
+	step5 := sha256.Sum256(step4)
+
+	log.Debug("Step 5 hex: %v", hex.EncodeToString(step5[:]))
+	if len(step5) != 32 {
+		return "", nil, fmt.Errorf("Step 5: Invalid length. %v", len(step5))
+	}
+
+	step6 := sha256.Sum256(step5[:])
+
+	log.Debug("Step 6 hex: %v", hex.EncodeToString(step6[:]))
+	if len(step6) != 32 {
+		return "", nil, fmt.Errorf("Step 6: Invalid length. %v", len(step6))
+	}
+	step7 := step6[0:4]
+
+	log.Debug("Step 7 hex: %v", hex.EncodeToString(step7[:]))
+	if len(step7) != 4 {
+		return "", nil, fmt.Errorf("Step 7: Invalid length. %v", len(step7))
+	}
+	step8 := append(step4, step7...)
+
+	log.Debug("Step 8 hex: %v", hex.EncodeToString(step8[:]))
+	log.Debug("Step 8 Base58 encode: %v", base58.Encode(step8))
+	if len(step8) != 25 {
+		return "", nil, fmt.Errorf("Step 8: Invalid length. %v", len(step8))
+	}
+
+	return base58.Encode(step8), step8, nil
+}
+
 func GenerateKeyPair() (string, string, error) {
 	priv, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
 	if err != nil {
@@ -196,14 +258,15 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 
 	in := ""
 	//# of inputs (always 1 in our case)
-	if len(inputTransactionHashes) < 10 {
-		in = "0" + string(len(inputTransactionHashes))
+	if len(inputTransactionHashes) < 15 {
+		in = "0" + fmt.Sprintf("%x", len(inputTransactionHashes))
 	} else {
-		in = string(len(inputTransactionHashes))
+		in = fmt.Sprintf("%x", len(inputTransactionHashes))
 	}
 	inputs, err := hex.DecodeString(in)
 	if err != nil {
-		log.Fatal(err)
+		log.Error("String representation of length: %v", string(len(inputTransactionHashes)))
+		log.Fatal("Could not decode hash %s, %v", in, err)
 	}
 
 	//Input transaction hash
@@ -242,10 +305,10 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 
 	//Numbers of outputs for the transaction being created. Always one in this example.
 	out := ""
-	if len(publicKeyBase58Destinations) < 10 {
-		out = "0" + string(len(publicKeyBase58Destinations))
+	if len(publicKeyBase58Destinations) < 15 {
+		out = "0" + fmt.Sprintf("%x", len(publicKeyBase58Destinations))
 	} else {
-		out = string(len(publicKeyBase58Destinations))
+		out = fmt.Sprintf("%x", len(publicKeyBase58Destinations))
 	}
 
 	numOutputs, err := hex.DecodeString(out)
