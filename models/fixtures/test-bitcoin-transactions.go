@@ -4,6 +4,8 @@ import (
 	"errors"
 	//"math/big"
 
+	"bytes"
+	"encoding/hex"
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
@@ -14,17 +16,23 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {
+var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gin.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 
 	w := wallet.New(db)
-	w.Id_ = "test-bitcoin-wallet"
+	w.Id_ = "test-btc-wallet"
 	w.UseStringKey = true
-	w.GetOrCreate("Id_=", "test-bitcoin-wallet")
+	w.GetOrCreate("Id_=", "test-btc-wallet")
 
 	if len(w.Accounts) == 0 {
 		if _, err := w.CreateAccount("Test input account", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+			panic(err)
+		}
+		if _, err := w.CreateAccount("Test output account 1", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
+			panic(err)
+		}
+		if _, err := w.CreateAccount("Test output account 2", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
 			panic(err)
 		}
 	}
@@ -33,29 +41,19 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 	if !ok {
 		panic(errors.New("Sender Account Not Found."))
 	}
-
-	pw := wallet.New(db)
-	pw.GetOrCreate("Id_=", "platform-wallet")
-
-	// Find The Test Account
-	receiver1, ok := pw.GetAccountByName("Test output account 1")
+	receiver1, ok := w.GetAccountByName("Test output account 1")
 	if !ok {
-		if _, err := pw.CreateAccount("Test output account 1", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
-			panic(err)
-		}
+		panic(errors.New("Sender Account Not Found."))
 	}
-
-	receiver2, ok := pw.GetAccountByName("Test output account 2")
+	receiver2, ok := w.GetAccountByName("Test output account 2")
 	if !ok {
-		if _, err := pw.CreateAccount("Test output account 2", blockchains.BitcoinTestnetType, []byte(config.Bitcoin.TestPassword)); err != nil {
-			panic(err)
-		}
+		panic(errors.New("Sender Account Not Found."))
 	}
 
 	log.Info("Accounts Found", ctx)
-	log.Info("Sender Address", sender.Address)
-	log.Info("Receiver 1 Address", receiver1.Address)
-	log.Info("Receiver 2 Address", receiver2.Address)
+	log.Info("Sender Address", sender.TestNetAddress)
+	log.Info("Receiver 1 Address", receiver1.TestNetAddress)
+	log.Info("Receiver 2 Address", receiver2.TestNetAddress)
 	if err := sender.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
 		panic(err)
 	}
@@ -66,23 +64,37 @@ var SendTestBitcoinTransaction = New("send-test-ethereum-transaction", func(c *g
 		panic(err)
 	}
 
-	tempScript := bitcoin.CreateScriptPubKey(sender.PublicKey)
-	rawTransaction := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, tempScript)
-	finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransaction, sender.PrivateKey)
+	tempScript := bitcoin.CreateScriptPubKey(sender.TestNetAddress)
+	log.Info("Created temporary script key.")
+	rawTransaction := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.TestNetAddress, receiver2.TestNetAddress}, []int{1000, 5000}, tempScript)
+	log.Info("Created initial raw transaction.")
+	hashCodeType, err := hex.DecodeString("01000000")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var rawTransactionBuffer bytes.Buffer
+	rawTransactionBuffer.Write(rawTransaction)
+	rawTransactionBuffer.Write(hashCodeType)
+	rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
+	finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
 	if err != nil {
 		panic(err)
 	}
-	rawTrx = bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
+	log.Info("Created final signature.")
+	rawTrx := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
+	log.Info("Created final transaction.")
 
-	client, err = bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0])
+	client, err := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
+	if err != nil {
+		panic(err)
+	}
+	log.Info("Created Bitcoin client.")
+
+	res, err := client.SendRawTransaction(rawTrx)
 	if err != nil {
 		panic(err)
 	}
 
-	c, err := client.SendRawTransaction(rawTransaction)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Info("Btcd Node Response: %v", "", c)
+	log.Info("Btcd Node Response: %v", "", res)
 })

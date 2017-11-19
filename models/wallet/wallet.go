@@ -82,14 +82,19 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		if err != nil {
 			return Account{}, err
 		}
+		testadd, _, err := bitcoin.PubKeyToTestNetAddress(pub)
+		if err != nil {
+			return Account{}, err
+		}
 
 		a := Account{
-			Name:       name,
-			PrivateKey: priv,
-			PublicKey:  pub,
-			Address:    add,
-			Type:       typ,
-			CreatedAt:  time.Now(),
+			Name:           name,
+			PrivateKey:     priv,
+			PublicKey:      pub,
+			Address:        add,
+			TestNetAddress: testadd,
+			Type:           typ,
+			CreatedAt:      time.Now(),
 		}
 
 		if err := a.Encrypt(withPassword); err != nil {
