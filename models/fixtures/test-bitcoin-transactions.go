@@ -66,7 +66,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 
 	tempScript := bitcoin.CreateScriptPubKey(sender.TestNetAddress)
 	log.Info("Created temporary script key.")
-	rawTransaction := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.TestNetAddress, receiver2.TestNetAddress}, []int{1000, 5000}, tempScript)
+	rawTransaction := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1.TestNetAddress, receiver2.TestNetAddress}, []int{1000, 5000}, tempScript)
 	log.Info("Created initial raw transaction.")
 	hashCodeType, err := hex.DecodeString("01000000")
 	if err != nil {
@@ -82,7 +82,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		panic(err)
 	}
 	log.Info("Created final signature.")
-	rawTrx := bitcoin.CreateRawTransaction([]string{""}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
+	rawTrx := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1.PublicKey, receiver2.PublicKey}, []int{1000, 5000}, finalSignature)
 	log.Info("Created final transaction.")
 
 	client, err := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])

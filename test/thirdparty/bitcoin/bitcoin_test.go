@@ -1,9 +1,12 @@
 package test
 
 import (
+	"bytes"
+	"encoding/hex"
 	"hanzo.io/thirdparty/bitcoin"
 	"testing"
 
+	"hanzo.io/util/log"
 	. "hanzo.io/util/test/ginkgo"
 )
 
@@ -27,5 +30,30 @@ var _ = Describe("thirdparty.bitcoin", func() {
 		Expect(len(straddr)).To(Equal(33))
 		Expect(len(testbyteaddr)).To(Equal(25))
 		Expect(len(testaddr)).To(Equal(34))
+	})
+	It("should not screw up during transaction creation", func() {
+		senderPubKey, senderPrivKey, _ := bitcoin.GenerateKeyPair()
+		receiver1PubKey, _, _ := bitcoin.GenerateKeyPair()
+		receiver2PubKey, _, _ := bitcoin.GenerateKeyPair()
+
+		senderTestNetAddress, _, _ := bitcoin.PubKeyToTestNetAddress(senderPubKey)
+		receiver1TestNetAddress, _, _ := bitcoin.PubKeyToTestNetAddress(receiver1PubKey)
+		receiver2TestNetAddress, _, _ := bitcoin.PubKeyToTestNetAddress(receiver2PubKey)
+
+		tempScript := bitcoin.CreateScriptPubKey(senderTestNetAddress)
+		rawTransaction := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1TestNetAddress, receiver2TestNetAddress}, []int{1000, 5000}, tempScript)
+		log.Info("initial raw transaction created.")
+		hashCodeType, err := hex.DecodeString("01000000")
+		log.Info("Hash code type created.")
+		Expect(err).To(BeNil())
+		var rawTransactionBuffer bytes.Buffer
+		rawTransactionBuffer.Write(rawTransaction)
+		rawTransactionBuffer.Write(hashCodeType)
+		rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
+		log.Info("Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
+		finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransactionWithHashCodeType, senderPrivKey)
+		Expect(err).To(BeNil())
+		rawTrx := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1TestNetAddress, receiver2TestNetAddress}, []int{1000, 5000}, finalSignature)
+		Expect(rawTrx).ToNot(BeNil())
 	})
 })
