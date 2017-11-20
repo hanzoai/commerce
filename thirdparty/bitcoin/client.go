@@ -84,6 +84,15 @@ func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcRe
 	return res, err
 }
 
+func (btcc *BitcoinClient) GetRawTransaction(txId string) (*JsonRpcResponse, error) {
+	id := rand.Int64()
+	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "getrawtransaction", paramsToString(txId, true))
+
+	res, err := btcc.Post(jsonRpcCommand, id)
+
+	return res, err
+}
+
 // Flip to Test Mode
 func (c BitcoinClient) Test(b bool) bool {
 	c.IsTest = b
