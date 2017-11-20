@@ -21,6 +21,8 @@ type Wallet struct {
 
 // Create a new Account, saves if wallet is created
 func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (Account, error) {
+	var a Account
+
 	switch typ {
 	case blockchains.EthereumType, blockchains.EthereumRopstenType:
 		priv, pub, add, err := ethereum.GenerateKeyPair()
@@ -31,7 +33,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 
 		add = strings.ToLower(add)
 
-		a := Account{
+		a = Account{
 			Name:       name,
 			PrivateKey: priv,
 			PublicKey:  pub,
@@ -40,38 +42,6 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			CreatedAt:  time.Now(),
 		}
 
-		if err := a.Encrypt(withPassword); err != nil {
-			return Account{}, err
-		}
-
-		w.Accounts = append(w.Accounts, a)
-
-		// Create a blockaddress so we track this in the ethereum reader
-		ba := blockaddress.New(w.Db)
-		ba.Address = add
-		ba.Type = typ
-		ba.WalletId = w.Id()
-
-		ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
-		if err != nil {
-			log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
-		}
-
-		ba.WalletNamespace = ns
-		err = ba.Create()
-		if err != nil {
-			log.Error("Could not create BlockAddress: %v", err, w.Context())
-		}
-
-		// Only save if the wallet is created
-		// Otherwise let the user manage that
-		if w.Created() {
-			if err := w.Update(); err != nil {
-				return Account{}, err
-			}
-		}
-
-		return a, err
 	case blockchains.BitcoinTestnetType:
 		priv, pub, err := bitcoin.GenerateKeyPair()
 		if err != nil {
@@ -87,7 +57,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			return Account{}, err
 		}
 
-		a := Account{
+		a = Account{
 			Name:           name,
 			PrivateKey:     priv,
 			PublicKey:      pub,
@@ -97,41 +67,38 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			CreatedAt:      time.Now(),
 		}
 
-		if err := a.Encrypt(withPassword); err != nil {
-			return Account{}, err
-		}
-
-		w.Accounts = append(w.Accounts, a)
-
-		// Create a blockaddress so we track this in the ethereum reader
-		ba := blockaddress.New(w.Db)
-		ba.Address = add
-		ba.Type = typ
-		ba.WalletId = w.Id()
-
-		ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
-		if err != nil {
-			log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
-		}
-
-		ba.WalletNamespace = ns
-		err = ba.Create()
-		if err != nil {
-			log.Error("Could not create BlockAddress: %v", err, w.Context())
-		}
-
-		// Only save if the wallet is created
-		// Otherwise let the user manage that
-		if w.Created() {
-			if err := w.Update(); err != nil {
-				return Account{}, err
-			}
-		}
-
-		return a, err
+	default:
+		return Account{}, InvalidTypeSpecified
 	}
 
-	return Account{}, InvalidTypeSpecified
+	w.Accounts = append(w.Accounts, a)
+
+	// Create a blockaddress so we track this in the ethereum reader
+	ba := blockaddress.New(w.Db)
+	ba.Address = a.Address
+	ba.Type = typ
+	ba.WalletId = w.Id()
+
+	ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
+	if err != nil {
+		log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
+	}
+
+	ba.WalletNamespace = ns
+	err = ba.Create()
+	if err != nil {
+		log.Error("Could not create BlockAddress: %v", err, w.Context())
+	}
+
+	// Only save if the wallet is created
+	// Otherwise let the user manage that
+	if w.Created() {
+		if err := w.Update(); err != nil {
+			return Account{}, err
+		}
+	}
+
+	return a, err
 }
 
 func (w *Wallet) GetAccountByName(name string) (*Account, bool) {
