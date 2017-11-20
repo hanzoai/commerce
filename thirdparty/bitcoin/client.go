@@ -16,7 +16,7 @@ import (
 )
 
 var JsonRpcVersion = "1.0"
-var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":"[%s]"}`
+var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":["%s"]}`
 
 type BitcoinClient struct {
 	ctx        appengine.Context
