@@ -239,22 +239,6 @@ func CreateScriptPubKey(publicKeyBase58 string) []byte {
 	}
 	log.Debug("Script Hex: %x\n", script)
 	return script
-
-	/*log.Debug("CreateScriptPubKey: Public key given: %v", publicKeyBase58)
-	publicKeyBytes := base58.Decode(publicKeyBase58)
-	log.Debug("CreateScriptPubKey: Public key decoded: %v", publicKeyBytes)
-
-	var scriptPubKey bytes.Buffer
-	scriptPubKey.WriteByte(byte(118))                 //OP_DUP
-	scriptPubKey.WriteByte(byte(169))                 //OP_HASH160
-	scriptPubKey.WriteByte(byte(len(publicKeyBytes))) //PUSH
-	scriptPubKey.Write(publicKeyBytes)
-	scriptPubKey.WriteByte(byte(136)) //OP_EQUALVERIFY
-	scriptPubKey.WriteByte(byte(172)) //OP_CHECKSIG
-	ret := scriptPubKey.Bytes()
-	log.Debug("hex-encoded final key: %v", hex.EncodeToString(ret))
-
-	return scriptPubKey.Bytes()*/
 }
 
 func generateNonce() [32]byte {
