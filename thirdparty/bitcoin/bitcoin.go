@@ -163,12 +163,16 @@ func GenerateKeyPair() (string, string, error) {
 func GetRawTransactionSignature(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
+	log.Debug("Private key base 58, prior to decode: %v", privateKeyBase58)
 	privateKeyBytes := base58.Decode(privateKeyBase58)
+	log.Debug("Private key bytes decoded. %v", len(privateKeyBytes))
 	privateKey, err := crypto.ToECDSA(privateKeyBytes)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Private key decoding successful.")
 	publicKey := privateKey.PublicKey
+	log.Info("Public key derived: %v", publicKey)
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
 	var privateKeyBytes32 [32]byte
 
