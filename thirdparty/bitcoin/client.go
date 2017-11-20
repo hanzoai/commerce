@@ -3,20 +3,21 @@ package bitcoin
 import (
 	"appengine"
 	"appengine/urlfetch"
+	"bytes"
 	"encoding/hex"
 	ej "encoding/json"
+
 	"errors"
 	"fmt"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 	"net/http"
-	"strings"
 	"time"
 )
 
 var JsonRpcVersion = "1.0"
-var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":["%s"]}`
+var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":%s}`
 
 type BitcoinClient struct {
 	ctx        appengine.Context
@@ -65,9 +66,18 @@ func New(ctx appengine.Context, host, username, password string) (BitcoinClient,
 	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}, nil
 }
 
+func paramsToString(parts ...interface{}) string {
+	str, err := ej.Marshal(parts)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(str)
+}
+
 func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcResponse, error) {
 	id := rand.Int64()
-	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", hex.EncodeToString(rawTransaction))
+	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", paramsToString(hex.EncodeToString(rawTransaction)))
 
 	res, err := btcc.Post(jsonRpcCommand, id)
 
@@ -88,8 +98,18 @@ func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, 
 		return jrr, nil
 	}
 
-	log.Info("Posting command to bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
-	res, err := c.httpClient.Post(c.host, "application/json", strings.NewReader(jsonRpcCommand))
+	bodyReader := bytes.NewReader([]byte(jsonRpcCommand))
+	httpReq, err := http.NewRequest("POST", c.host, bodyReader)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Close = true
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// Configure basic access authorization.
+	httpReq.SetBasicAuth(c.Username, c.Password)
+	log.Info("Posting command to Bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
+	res, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
