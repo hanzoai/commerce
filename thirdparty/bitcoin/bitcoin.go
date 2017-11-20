@@ -13,17 +13,13 @@ import (
 	mathRand "math/rand"
 	"time"
 
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/util/log"
 )
-
-var flagPrivateKey string = "private-key"
-var flagPublicKey string = "public-key"
-var flagDestination string = "destination"
-var flagInputTransaction string = "input-transaction"
-var flagInputIndex int = 0
-var flagSatoshis int = 0
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
@@ -229,7 +225,24 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	return scriptSig, nil
 }
 func CreateScriptPubKey(publicKeyBase58 string) []byte {
+	address, err := btcutil.DecodeAddress(publicKeyBase58, &chaincfg.MainNetParams)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+
+	// Create a public key script that pays to the address.
+	script, err := txscript.PayToAddrScript(address)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+	log.Debug("Script Hex: %x\n", script)
+	return script
+
+	/*log.Debug("CreateScriptPubKey: Public key given: %v", publicKeyBase58)
 	publicKeyBytes := base58.Decode(publicKeyBase58)
+	log.Debug("CreateScriptPubKey: Public key decoded: %v", publicKeyBytes)
 
 	var scriptPubKey bytes.Buffer
 	scriptPubKey.WriteByte(byte(118))                 //OP_DUP
@@ -238,7 +251,10 @@ func CreateScriptPubKey(publicKeyBase58 string) []byte {
 	scriptPubKey.Write(publicKeyBytes)
 	scriptPubKey.WriteByte(byte(136)) //OP_EQUALVERIFY
 	scriptPubKey.WriteByte(byte(172)) //OP_CHECKSIG
-	return scriptPubKey.Bytes()
+	ret := scriptPubKey.Bytes()
+	log.Debug("hex-encoded final key: %v", hex.EncodeToString(ret))
+
+	return scriptPubKey.Bytes()*/
 }
 
 func generateNonce() [32]byte {

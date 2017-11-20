@@ -54,6 +54,7 @@ var _ = Describe("thirdparty.bitcoin", func() {
 		finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransactionWithHashCodeType, senderPrivKey)
 		Expect(err).To(BeNil())
 		rawTrx := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1TestNetAddress, receiver2TestNetAddress}, []int{1000, 5000}, finalSignature)
+		log.Info("Final trx: %v", hex.EncodeToString(rawTrx))
 		Expect(rawTrx).ToNot(BeNil())
 	})
 })
