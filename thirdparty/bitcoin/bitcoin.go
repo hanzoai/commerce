@@ -329,9 +329,10 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 	//Satoshis to send.
 
 	satoshisToOutputBytes := make([][]byte, len(satoshisToOutput))
-	for _, satoshis := range satoshisToOutput {
+	for index, satoshis := range satoshisToOutput {
 		satoshiBytes := make([]byte, 8)
 		binary.LittleEndian.PutUint64(satoshiBytes, uint64(satoshis))
+		satoshisToOutputBytes[index] = satoshiBytes
 	}
 
 	//Script pub key
