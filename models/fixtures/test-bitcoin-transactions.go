@@ -4,8 +4,6 @@ import (
 	"errors"
 	//"math/big"
 
-	"bytes"
-	"encoding/hex"
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
@@ -64,26 +62,15 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		panic(err)
 	}
 
-	tempScript := bitcoin.CreateScriptPubKey(sender.TestNetAddress)
-	log.Info("Created temporary script key.")
-	rawTransaction := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1.TestNetAddress}, []int{1000}, tempScript)
-	log.Info("Created initial raw transaction.")
-	hashCodeType, err := hex.DecodeString("01000000")
-	if err != nil {
-		log.Fatal(err)
+	in := []bitcoin.Input{bitcoin.Input{TxId: "5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c", OutputIndex: 0}}
+	out := []bitcoin.Destination{bitcoin.Destination{Value: 1000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 5000, Address: receiver2.TestNetAddress}}
+	senderAccount := bitcoin.Sender{
+		PrivateKey:     sender.PrivateKey,
+		PublicKey:      sender.PublicKey,
+		Address:        sender.Address,
+		TestNetAddress: sender.TestNetAddress,
 	}
-
-	var rawTransactionBuffer bytes.Buffer
-	rawTransactionBuffer.Write(rawTransaction)
-	rawTransactionBuffer.Write(hashCodeType)
-	rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
-	finalSignature, err := bitcoin.GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
-	if err != nil {
-		panic(err)
-	}
-	log.Info("Created final signature.")
-	rawTrx := bitcoin.CreateRawTransaction([]string{"5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c"}, []int{0}, []string{receiver1.TestNetAddress}, []int{1000}, finalSignature)
-	log.Info("Created final transaction.")
+	rawTrx, _ := bitcoin.CreateTransaction(in, out, senderAccount)
 
 	client, err := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 	if err != nil {
