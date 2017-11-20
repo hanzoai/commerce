@@ -102,7 +102,7 @@ func (c BitcoinClient) Post(jsonRpcCommand []byte, id int64) (*JsonRpcResponse, 
 	// Configure basic access authorization.
 	httpReq.SetBasicAuth(c.Username, c.Password)
 	log.Info("Posting command to Bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
-	res, err := c.httpClient.Post(c.host, "application/json", bytes.NewReader(jsonRpcCommand))
+	res, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (c BitcoinClient) Post(jsonRpcCommand []byte, id int64) (*JsonRpcResponse, 
 		return nil, err
 	}
 
-	log.Info("Received response from Geth Node '%s': %v", c.host, json.Encode(jrr), c.ctx)
+	log.Info("Received response from Bitcoin Node '%s': %v", c.host, json.Encode(jrr), c.ctx)
 
 	// This could mean there's a man in the middle attack?
 	if jrr.Id != id {
