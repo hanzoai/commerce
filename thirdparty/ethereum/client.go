@@ -68,7 +68,7 @@ type JsonRpcResponse struct {
 }
 
 var JsonRpcVersion = "2.0"
-var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":[%s],"id":%v}`
+var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":%s,"id":%v}`
 
 var IdMismatch = errors.New("Ids do not match!")
 var InvalidChainId = errors.New("Invalid ChainId")
@@ -93,8 +93,13 @@ func New(ctx appengine.Context, address string) Client {
 	return Client{ctx, httpClient, address, false, []string{}}
 }
 
-func paramsToString(parts ...string) string {
-	return `"` + strings.Join(parts, `","`) + `"`
+func paramsToString(parts ...interface{}) string {
+	str, err := ej.Marshal(parts)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(str)
 }
 
 // Flip to Test Mode
