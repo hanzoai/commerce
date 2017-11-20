@@ -42,7 +42,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			CreatedAt:  time.Now(),
 		}
 
-	case blockchains.BitcoinTestnetType:
+	case blockchains.BitcoinType, blockchains.BitcoinTestnetType:
 		priv, pub, err := bitcoin.GenerateKeyPair()
 		if err != nil {
 			return Account{}, err
@@ -69,6 +69,10 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 
 	default:
 		return Account{}, InvalidTypeSpecified
+	}
+
+	if err := a.Encrypt(withPassword); err != nil {
+		return Account{}, err
 	}
 
 	w.Accounts = append(w.Accounts, a)
