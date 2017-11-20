@@ -160,25 +160,26 @@ func GenerateKeyPair() (string, string, error) {
 	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
-func GetRawTransactionSignature(rawTransaction []byte, privateKeyBase58 string) ([]byte, error) {
+func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
-	log.Debug("Private key base 58, prior to decode: %v", privateKeyBase58)
-	privateKeyBytes := base58.Decode(privateKeyBase58)
-	log.Debug("Private key bytes decoded. %v", len(privateKeyBytes))
-	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	log.Debug("Private key prior to decode: %v", pk)
+	pkBytes, err := hex.DecodeString(pk)
 	if err != nil {
+		log.Error("Could not hex decode '%s': %v", pk, err)
 		return nil, err
 	}
+
+	privateKey, err := crypto.ToECDSA(pkBytes)
+	if err != nil {
+		log.Error("Could not crypto decode '%s': %v", pkBytes, err)
+		return nil, err
+	}
+
 	log.Info("Private key decoding successful.")
 	publicKey := privateKey.PublicKey
 	log.Info("Public key derived: %v", publicKey)
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
-	var privateKeyBytes32 [32]byte
-
-	for i := 0; i < 32; i++ {
-		privateKeyBytes32[i] = privateKeyBytes[i]
-	}
 
 	//Hash the raw transaction twice before the signing
 	shaHash := sha256.New()
