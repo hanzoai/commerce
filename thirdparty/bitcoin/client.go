@@ -3,17 +3,20 @@ package bitcoin
 import (
 	"appengine"
 	"appengine/urlfetch"
-	"bytes"
 	"encoding/hex"
 	ej "encoding/json"
 	"errors"
-	"github.com/btcsuite/btcd/btcjson"
+	"fmt"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 	"net/http"
+	"strings"
 	"time"
 )
+
+var JsonRpcVersion = "1.0"
+var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":[%s],}`
 
 type BitcoinClient struct {
 	ctx        appengine.Context
@@ -63,16 +66,10 @@ func New(ctx appengine.Context, host, username, password string) (BitcoinClient,
 }
 
 func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcResponse, error) {
-	allowHighFees := false
-	cmd := btcjson.NewSendRawTransactionCmd(hex.EncodeToString(rawTransaction[:]), &allowHighFees)
-
-	cmdJson, err := ej.Marshal(cmd)
-	if err != nil {
-		return nil, err
-	}
-
 	id := rand.Int64()
-	res, err := btcc.Post(cmdJson, id)
+	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", hex.EncodeToString(rawTransaction))
+
+	res, err := btcc.Post(jsonRpcCommand, id)
 
 	return res, err
 }
@@ -83,26 +80,16 @@ func (c BitcoinClient) Test(b bool) bool {
 	return b
 }
 
-func (c BitcoinClient) Post(jsonRpcCommand []byte, id int64) (*JsonRpcResponse, error) {
-	c.Commands = append(c.Commands, string(jsonRpcCommand))
+func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) {
+	c.Commands = append(c.Commands, jsonRpcCommand)
 
 	if c.IsTest || IsTest {
 		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
 		return jrr, nil
 	}
 
-	bodyReader := bytes.NewReader(jsonRpcCommand)
-	httpReq, err := http.NewRequest("POST", c.host, bodyReader)
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Close = true
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	// Configure basic access authorization.
-	httpReq.SetBasicAuth(c.Username, c.Password)
-	log.Info("Posting command to Bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
-	res, err := c.httpClient.Do(httpReq)
+	log.Info("Posting command to bitcoin Node '%s': '%s'", c.host, jsonRpcCommand, c.ctx)
+	res, err := c.httpClient.Post(c.host, "application/json", strings.NewReader(jsonRpcCommand))
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +100,7 @@ func (c BitcoinClient) Post(jsonRpcCommand []byte, id int64) (*JsonRpcResponse, 
 		return nil, err
 	}
 
-	log.Info("Received response from Bitcoin Node '%s': %v", c.host, json.Encode(jrr), c.ctx)
+	log.Info("Received response from bitcoin Node '%s': %v", c.host, json.Encode(jrr), c.ctx)
 
 	// This could mean there's a man in the middle attack?
 	if jrr.Id != id {
