@@ -48,11 +48,11 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			return Account{}, err
 		}
 
-		add, _, err := bitcoin.PubKeyToAddress(pub)
+		add, _, err := bitcoin.PubKeyToAddress(pub, false)
 		if err != nil {
 			return Account{}, err
 		}
-		testadd, _, err := bitcoin.PubKeyToTestNetAddress(pub)
+		testadd, _, err := bitcoin.PubKeyToAddress(pub, true)
 		if err != nil {
 			return Account{}, err
 		}

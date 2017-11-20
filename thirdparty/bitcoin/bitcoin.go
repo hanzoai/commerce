@@ -23,7 +23,7 @@ import (
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-func PubKeyToAddress(pubKey string) (string, []byte, error) {
+func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
 	ripe := ripemd160.New()
 	step2decode, err := hex.DecodeString(pubKey)
 	if err != nil {
@@ -31,116 +31,59 @@ func PubKeyToAddress(pubKey string) (string, []byte, error) {
 	}
 	step2 := sha256.Sum256(step2decode)
 
-	log.Debug("public key: %v", pubKey)
-	log.Debug("public key hex decode: %v", step2decode)
-	log.Debug("Step 2 hex: %v", hex.EncodeToString(step2[:]))
+	log.Debug("PubKeyToAddress: public key: %v", pubKey)
+	log.Debug("PubKeyToAddress: public key hex decode: %v", step2decode)
+	log.Debug("PubKeyToAddress: Step 2 hex: %v", hex.EncodeToString(step2[:]))
 	if len(step2) != 32 {
-		return "", nil, fmt.Errorf("Step 2: Invalid length. %v", len(step2))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 2: Invalid length. %v", len(step2))
 	}
 
-	log.Debug("Step 2: %v", step2)
+	log.Debug("PubKeyToAddress: Step 2: %v", step2)
 	ripe.Write(step2[:])
 	step3 := ripe.Sum(nil)
 
-	log.Debug("Step 3 hex: %v", hex.EncodeToString(step3))
+	log.Debug("PubKeyToAddress: Step 3 hex: %v", hex.EncodeToString(step3))
 	if len(step3) != 20 {
-		return "", nil, fmt.Errorf("Step 3: Invalid length. %v", len(step3))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 3: Invalid length. %v", len(step3))
 	}
 
-	step4 := append([]byte{byte(0)}, step3...)
+	prefix := []byte{byte(0)}
+	if testNet {
+		log.Debug("PubKeyToAddress: Appending Testnet prefix.")
+		prefix, _ = hex.DecodeString("6F")
+	}
+	step4 := append(prefix, step3...)
 
-	log.Debug("Step 4 hex: %v", hex.EncodeToString(step4))
+	log.Debug("PubKeyToAddress: Step 4 hex: %v", hex.EncodeToString(step4))
 	if len(step4) != 21 {
-		return "", nil, fmt.Errorf("Step 4: Invalid length. %v", len(step4))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 4: Invalid length. %v", len(step4))
 	}
 
 	step5 := sha256.Sum256(step4)
 
-	log.Debug("Step 5 hex: %v", hex.EncodeToString(step5[:]))
+	log.Debug("PubKeyToAddress: Step 5 hex: %v", hex.EncodeToString(step5[:]))
 	if len(step5) != 32 {
-		return "", nil, fmt.Errorf("Step 5: Invalid length. %v", len(step5))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 5: Invalid length. %v", len(step5))
 	}
 
 	step6 := sha256.Sum256(step5[:])
 
-	log.Debug("Step 6 hex: %v", hex.EncodeToString(step6[:]))
+	log.Debug("PubKeyToAddress: Step 6 hex: %v", hex.EncodeToString(step6[:]))
 	if len(step6) != 32 {
-		return "", nil, fmt.Errorf("Step 6: Invalid length. %v", len(step6))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 6: Invalid length. %v", len(step6))
 	}
 	step7 := step6[0:4]
 
-	log.Debug("Step 7 hex: %v", hex.EncodeToString(step7[:]))
+	log.Debug("PubKeyToAddress: Step 7 hex: %v", hex.EncodeToString(step7[:]))
 	if len(step7) != 4 {
-		return "", nil, fmt.Errorf("Step 7: Invalid length. %v", len(step7))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 7: Invalid length. %v", len(step7))
 	}
 	step8 := append(step4, step7...)
 
-	log.Debug("Step 8 hex: %v", hex.EncodeToString(step8[:]))
-	log.Debug("Step 8 Base58 encode: %v", base58.Encode(step8))
+	log.Debug("PubKeyToAddress: Step 8 hex: %v", hex.EncodeToString(step8[:]))
+	log.Debug("PubKeyToAddress: Step 8 Base58 encode: %v", base58.Encode(step8))
 	if len(step8) != 25 {
-		return "", nil, fmt.Errorf("Step 8: Invalid length. %v", len(step8))
-	}
-
-	return base58.Encode(step8), step8, nil
-}
-
-func PubKeyToTestNetAddress(pubKey string) (string, []byte, error) {
-	ripe := ripemd160.New()
-	step2decode, err := hex.DecodeString(pubKey)
-	if err != nil {
-		return "", nil, err
-	}
-	step2 := sha256.Sum256(step2decode)
-
-	log.Debug("public key: %v", pubKey)
-	log.Debug("public key hex decode: %v", step2decode)
-	log.Debug("Step 2 hex: %v", hex.EncodeToString(step2[:]))
-	if len(step2) != 32 {
-		return "", nil, fmt.Errorf("Step 2: Invalid length. %v", len(step2))
-	}
-
-	log.Debug("Step 2: %v", step2)
-	ripe.Write(step2[:])
-	step3 := ripe.Sum(nil)
-
-	log.Debug("Step 3 hex: %v", hex.EncodeToString(step3))
-	if len(step3) != 20 {
-		return "", nil, fmt.Errorf("Step 3: Invalid length. %v", len(step3))
-	}
-
-	testNetPrefix, _ := hex.DecodeString("6F")
-	step4 := append(testNetPrefix, step3...)
-
-	log.Debug("Step 4 hex: %v", hex.EncodeToString(step4))
-	if len(step4) != 21 {
-		return "", nil, fmt.Errorf("Step 4: Invalid length. %v", len(step4))
-	}
-
-	step5 := sha256.Sum256(step4)
-
-	log.Debug("Step 5 hex: %v", hex.EncodeToString(step5[:]))
-	if len(step5) != 32 {
-		return "", nil, fmt.Errorf("Step 5: Invalid length. %v", len(step5))
-	}
-
-	step6 := sha256.Sum256(step5[:])
-
-	log.Debug("Step 6 hex: %v", hex.EncodeToString(step6[:]))
-	if len(step6) != 32 {
-		return "", nil, fmt.Errorf("Step 6: Invalid length. %v", len(step6))
-	}
-	step7 := step6[0:4]
-
-	log.Debug("Step 7 hex: %v", hex.EncodeToString(step7[:]))
-	if len(step7) != 4 {
-		return "", nil, fmt.Errorf("Step 7: Invalid length. %v", len(step7))
-	}
-	step8 := append(step4, step7...)
-
-	log.Debug("Step 8 hex: %v", hex.EncodeToString(step8[:]))
-	log.Debug("Step 8 Base58 encode: %v", base58.Encode(step8))
-	if len(step8) != 25 {
-		return "", nil, fmt.Errorf("Step 8: Invalid length. %v", len(step8))
+		return "", nil, fmt.Errorf("PubKeyToAddress: Step 8: Invalid length. %v", len(step8))
 	}
 
 	return base58.Encode(step8), step8, nil
@@ -159,10 +102,10 @@ func GenerateKeyPair() (string, string, error) {
 func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error) {
 	//Here we start the process of signing the raw transaction.
 
-	log.Debug("Private key prior to decode: %v", pk)
+	log.Debug("GetRawTransactionSignature: Private key prior to decode: %v", pk)
 	pkBytes, err := hex.DecodeString(pk)
 	if err != nil {
-		log.Error("Could not hex decode '%s': %v", pk, err)
+		log.Error("GetRawTransactionSignature: Could not hex decode '%s': %v", pk, err)
 		return nil, err
 	}
 
@@ -174,13 +117,13 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 
 	privateKey, err := crypto.ToECDSA(pkBytes32[:])
 	if err != nil {
-		log.Error("Could not crypto decode '%s': %v", pkBytes, err)
+		log.Error("GetRawTransactionSignature: Could not crypto decode '%s': %v", pkBytes, err)
 		return nil, err
 	}
 
-	log.Info("Private key decoding successful.")
+	log.Debug("GetRawTransactionSignature: Private key decoding successful.")
 	publicKey := privateKey.PublicKey
-	log.Info("Public key derived: %v", publicKey)
+	log.Debug("GetRawTransactionSignature: Public key derived: %v", publicKey)
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
 
 	//Hash the raw transaction twice before the signing
@@ -195,10 +138,8 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	//Sign the raw transaction
 	signedTransaction, success := crypto.Sign(rawTransactionHashed, privateKey)
 	if success != nil {
-		log.Fatal("Failed to sign transaction")
+		log.Error("GetRawTransactionSignature: Failed to sign transaction")
 	}
-	// TODO: Should verify this when we get a second to work around a solution
-	// that maintains R and S.
 
 	hashCodeType, err := hex.DecodeString("01")
 	if err != nil {
@@ -237,7 +178,7 @@ func CreateScriptPubKey(publicKeyBase58 string) []byte {
 		log.Error(err)
 		return nil
 	}
-	log.Debug("Script Hex: %x\n", script)
+	log.Debug("CreateScriptPubKey: Script Hex: %x\n", script)
 	return script
 }
 
@@ -258,7 +199,7 @@ func randInt(min int, max int) uint8 {
 /* NOTE: This function presumes you're doing a pay to public key hash
 * transaction and using a single script to authenticate the entire thing. More
 * complex stuff will come later. */
-func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndeces []int, publicKeyBase58Destinations []string, satoshisToOutput []int, scriptSig []byte) []byte {
+func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byte) ([]byte, error) {
 	//Create the raw transaction.
 
 	//Version field
@@ -268,40 +209,38 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 	}
 
 	in := ""
-	//# of inputs (always 1 in our case)
-	if len(inputTransactionHashes) < 15 {
-		in = "0" + fmt.Sprintf("%x", len(inputTransactionHashes))
+	if len(inputs) < 15 {
+		in = "0" + fmt.Sprintf("%x", len(inputs))
 	} else {
-		in = fmt.Sprintf("%x", len(inputTransactionHashes))
+		in = fmt.Sprintf("%x", len(inputs))
 	}
-	inputs, err := hex.DecodeString(in)
+	inCount, err := hex.DecodeString(in)
 	if err != nil {
-		log.Error("String representation of length: %v", string(len(inputTransactionHashes)))
-		log.Fatal("Could not decode hash %s, %v", in, err)
+		log.Error("CreateRawTransaction: String representation of length: %v", string(len(inputs)))
+		log.Error("CreateRawTransaction: Could not decode hash %s, %v", in, err)
+		return nil, err
 	}
 
 	//Input transaction hash
 
-	inputTransactionLittleEndian := make([][]byte, len(inputTransactionHashes))
-	for index, inputTransactionHash := range inputTransactionHashes {
-		inputTransactionBytes, err := hex.DecodeString(inputTransactionHash)
+	inputTransactionLittleEndian := make([][]byte, len(inputs))
+	outputIndeces := make([][]byte, len(inputs))
+	for index, input := range inputs {
+		inputBytes, err := hex.DecodeString(input.TxId)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			return nil, err
 		}
 
 		//Convert input transaction hash to little-endian form
-		inputTransactionBytesReversed := make([]byte, len(inputTransactionBytes))
-		for i := 0; i < len(inputTransactionBytes); i++ {
-			inputTransactionBytesReversed[i] = inputTransactionBytes[len(inputTransactionBytes)-i-1]
+		inputBytesReversed := make([]byte, len(inputBytes))
+		for i := 0; i < len(inputBytes); i++ {
+			inputBytesReversed[i] = inputBytes[len(inputBytes)-i-1]
 		}
-		inputTransactionLittleEndian[index] = inputTransactionBytesReversed
-	}
+		inputTransactionLittleEndian[index] = inputBytesReversed
 
-	//Output index of input transaction
-	outputIndeces := make([][]byte, len(inputTransactionIndeces))
-	for index, inputTransactionIndex := range inputTransactionIndeces {
 		outputIndexBytes := make([]byte, 4)
-		binary.LittleEndian.PutUint32(outputIndexBytes, uint32(inputTransactionIndex))
+		binary.LittleEndian.PutUint32(outputIndexBytes, uint32(input.OutputIndex))
 		outputIndeces[index] = outputIndexBytes
 	}
 
@@ -311,34 +250,30 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 	//sequence_no. Normally 0xFFFFFFFF. Always in this case.
 	sequence, err := hex.DecodeString("ffffffff")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	//Numbers of outputs for the transaction being created. Always one in this example.
 	out := ""
-	if len(publicKeyBase58Destinations) < 15 {
-		out = "0" + fmt.Sprintf("%x", len(publicKeyBase58Destinations))
+	if len(outputs) < 15 {
+		out = "0" + fmt.Sprintf("%x", len(outputs))
 	} else {
-		out = fmt.Sprintf("%x", len(publicKeyBase58Destinations))
+		out = fmt.Sprintf("%x", len(outputs))
 	}
 
 	numOutputs, err := hex.DecodeString(out)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	//Satoshis to send.
 
-	satoshisToOutputBytes := make([][]byte, len(satoshisToOutput))
-	for index, satoshis := range satoshisToOutput {
+	satoshisToOutputBytes := make([][]byte, len(outputs))
+	scripts := make([][]byte, len(outputs))
+	for index, output := range outputs {
 		satoshiBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(satoshiBytes, uint64(satoshis))
+		binary.LittleEndian.PutUint64(satoshiBytes, uint64(output.Value))
 		satoshisToOutputBytes[index] = satoshiBytes
-	}
 
-	//Script pub key
-	scripts := make([][]byte, len(publicKeyBase58Destinations))
-	for index, publicKeyBase58 := range publicKeyBase58Destinations {
-		scriptPubKey := CreateScriptPubKey(publicKeyBase58)
+		scriptPubKey := CreateScriptPubKey(output.Address)
 		scripts[index] = scriptPubKey
 	}
 
@@ -350,7 +285,7 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 
 	var buffer bytes.Buffer
 	buffer.Write(version)
-	buffer.Write(inputs)
+	buffer.Write(inCount)
 	for index, bytes := range inputTransactionLittleEndian {
 		buffer.Write(bytes)
 		buffer.Write(outputIndeces[index])
@@ -366,5 +301,32 @@ func CreateRawTransaction(inputTransactionHashes []string, inputTransactionIndec
 	}
 	buffer.Write(lockTimeField)
 
-	return buffer.Bytes()
+	return buffer.Bytes(), nil
+}
+
+func CreateTransaction(inputs []Input, outputs []Destination, sender Sender) ([]byte, error) {
+
+	tempScript := CreateScriptPubKey(sender.PublicKey)
+	rawTransaction, err := CreateRawTransaction(inputs, outputs, tempScript)
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("CreateTransaction: initial raw transaction created.")
+	hashCodeType, err := hex.DecodeString("01000000")
+	log.Debug("CreateTransaction: Hash code type created.")
+	var rawTransactionBuffer bytes.Buffer
+	rawTransactionBuffer.Write(rawTransaction)
+	rawTransactionBuffer.Write(hashCodeType)
+	rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
+	log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
+	finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	rawTrx, err := CreateRawTransaction(inputs, outputs, finalSignature)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("CreateTransaction: Final trx: %v", hex.EncodeToString(rawTrx))
+	return rawTrx, nil
 }
