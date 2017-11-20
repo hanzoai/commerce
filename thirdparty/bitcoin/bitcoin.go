@@ -170,7 +170,13 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 		return nil, err
 	}
 
-	privateKey, err := crypto.ToECDSA(pkBytes)
+	var pkBytes32 [32]byte
+
+	for i := 0; i < 32; i++ {
+		pkBytes32[i] = pkBytes[i]
+	}
+
+	privateKey, err := crypto.ToECDSA(pkBytes32[:])
 	if err != nil {
 		log.Error("Could not crypto decode '%s': %v", pkBytes, err)
 		return nil, err
