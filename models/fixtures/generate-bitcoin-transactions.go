@@ -14,7 +14,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gin.Context) {
+var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", func(c *gin.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 
@@ -80,10 +80,6 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 	rawTrx, _ := bitcoin.CreateTransaction(client, in, out, senderAccount)
 
 	log.Info("Raw transaction hex: %v", rawTrx)
-	res, err := client.SendRawTransaction(rawTrx)
-	if err != nil {
-		panic(err)
-	}
 
-	log.Info("Btcd Node Response: %v", "", res)
+	log.Info("Not sending raw transaction because this is a generation Fixture. Check the Send-bitcoin-transaction to actually send it to the node.")
 })

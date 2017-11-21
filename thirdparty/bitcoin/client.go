@@ -55,7 +55,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(ctx appengine.Context, host, username, password string) (BitcoinClient, error) {
+func NewRpcClient(ctx appengine.Context, host, username, password string, testMode bool) (BitcoinClient, error) {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,
@@ -63,7 +63,7 @@ func New(ctx appengine.Context, host, username, password string) (BitcoinClient,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}, nil
+	return BitcoinClient{ctx, httpClient, host, testMode, []string{}, username, password}, nil
 }
 
 func paramsToString(parts ...interface{}) string {
@@ -102,10 +102,12 @@ func (c BitcoinClient) Test(b bool) bool {
 func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, error) {
 	c.Commands = append(c.Commands, jsonRpcCommand)
 
-	if c.IsTest || IsTest {
+	// I dunno if this is appropriate for the bitcoin junk but it sure isn't
+	// right now
+	/*if c.IsTest || IsTest {
 		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
 		return jrr, nil
-	}
+	}*/
 
 	bodyReader := bytes.NewReader([]byte(jsonRpcCommand))
 	httpReq, err := http.NewRequest("POST", c.host, bodyReader)
