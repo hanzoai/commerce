@@ -312,7 +312,8 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 	// Before starting, we need to compute change. First, take in how much
 	// value we are working with here.
 	totalChange := int64(0)
-	for _, input := range inputs {
+	inputScripts := make([]string, len(inputs))
+	for index, input := range inputs {
 		trxFromNode, err := client.GetRawTransaction(input.TxId)
 		if err != nil {
 			return nil, err
@@ -323,6 +324,8 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", input.OutputIndex, input.TxId, len(content.Vout))
 		}
 		totalChange += int64(content.Vout[input.OutputIndex].Value * 100000000) // convert to Satoshi
+		inputScripts[index] = content.Vout[input.OutputIndex].Scriptpubkey.Hex
+		log.Debug("CreateTransaction: Saving out ScriptPubKey %v at index %v to inputScripts index %v", content.Vout[input.OutputIndex].Scriptpubkey.Hex, input.OutputIndex, index)
 	}
 
 	// Subtract the amount we're giving out
@@ -350,7 +353,7 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 	}
 
 	// Create the temporary script
-	tempScript := CreateScriptPubKey(sender.PublicKey)
+	tempScript, _ := hex.DecodeString(inputScripts[0])
 	// And the initial transaction
 	rawTransaction, err := CreateRawTransaction(inputs, outputs, tempScript)
 	if err != nil {
