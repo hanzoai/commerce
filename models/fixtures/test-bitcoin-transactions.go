@@ -62,8 +62,8 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		panic(err)
 	}
 
-	in := []bitcoin.Input{bitcoin.Input{TxId: "5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c", OutputIndex: 0}}
-	out := []bitcoin.Destination{bitcoin.Destination{Value: 1000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 5000, Address: receiver2.TestNetAddress}}
+	in := []bitcoin.Input{bitcoin.Input{TxId: "e2a49ed572d18bfb8dca73ab805866fa3cf01bd5aeb1a7da7707e48bb94a2749", OutputIndex: 0}}
+	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 500000, Address: receiver2.TestNetAddress}}
 	senderAccount := bitcoin.Sender{
 		PrivateKey:     sender.PrivateKey,
 		PublicKey:      sender.PublicKey,
