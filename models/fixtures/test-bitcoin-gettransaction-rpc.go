@@ -14,7 +14,7 @@ import (
 var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *gin.Context) {
 	db := datastore.New(c)
 
-	client, err := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
+	client, err := bitcoin.NewRpcClient(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
 	if err != nil {
 		panic(err)
 	}

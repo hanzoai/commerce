@@ -18,11 +18,14 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
+	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
+var SatoshiPerByte = 200
+
 func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
 	ripe := ripemd160.New()
 	step2decode, err := hex.DecodeString(pubKey)
@@ -304,9 +307,60 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 	return buffer.Bytes(), nil
 }
 
-func CreateTransaction(inputs []Input, outputs []Destination, sender Sender) ([]byte, error) {
+func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destination, sender Sender) ([]byte, error) {
 
+	// Before starting, we need to compute change. First, take in how much
+	// value we are working with here.
+	totalChange := int64(0)
+	for _, input := range inputs {
+		trxFromNode, err := client.GetRawTransaction(input.TxId)
+		if err != nil {
+			return nil, err
+		}
+		content := &GetRawTransactionResponseResult{}
+		json.DecodeBytes(trxFromNode.Result, content)
+		if input.OutputIndex >= len(content.Vout) {
+			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", input.OutputIndex, input.TxId, len(content.Vout))
+		}
+		totalChange += int64(content.Vout[input.OutputIndex].Value * 100000000) // convert to Satoshi
+	}
+
+	// Subtract the amount we're giving out
+	for _, output := range outputs {
+		totalChange -= output.Value
+	}
+
+	// Now compute the probable fee and be pessimistic about the size of the
+	// transaction
+	// 180 is the length (in bytes) of each input.
+	// 34 is the length (in bytes) of each output.
+	// 10 is the standard length (in bytes) of basic stuff in the protocol.
+	// The final +len(inputs) is padding. Certain inputs are 11, others are 9.
+	// We're being pessimistic and adding always.
+	approximateTransactionLength := (len(inputs) * 180) + (len(outputs) * 34) + 10 + len(inputs)
+	approximateFee := int64(approximateTransactionLength * SatoshiPerByte)
+
+	// Check to see if it's worth taking change - algo here is "is there more
+	// change than twice what it costs to add another output"
+	if totalChange > (approximateFee + (2 * 34 * int64(SatoshiPerByte))) {
+		// If we're in here, it's worth taking change and we should add the
+		// sender onto the outputs.
+		approximateFee += int64(34 * SatoshiPerByte) // Update the fee to account for the extra length.
+		totalChange -= approximateFee                // pull down the change to account for the fee.
+
+		// Add the change to our outputs, asking our Bitcoin Client if we're in
+		// test mode or not.
+		if client.IsTest {
+			outputs = append(outputs, Destination{totalChange, sender.TestNetAddress})
+		} else {
+			outputs = append(outputs, Destination{totalChange, sender.Address})
+		}
+
+	}
+
+	// Create the temporary script
 	tempScript := CreateScriptPubKey(sender.PublicKey)
+	// And the initial transaction
 	rawTransaction, err := CreateRawTransaction(inputs, outputs, tempScript)
 	if err != nil {
 		return nil, err
