@@ -272,7 +272,7 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 	jrr, err := c.Post(jsonRpcCommand, id)
 	if err != nil {
-		return big.NewInt(0), err
+		return big.NewInt(DefaultGasPrice), err
 	}
 
 	priceHex := string(jrr.Result)
@@ -282,7 +282,7 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 	a, err := hexutil.DecodeBig(priceHex)
 	if err != nil {
-		return nil, err
+		return big.NewInt(DefaultGasPrice), err
 	}
 
 	// 1 is the min price
