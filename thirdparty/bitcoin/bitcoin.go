@@ -15,6 +15,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
+	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
@@ -378,6 +379,7 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("CreateTransaction: Final transaction signature: %v", finalSignature)
 	rawTrx, err := CreateRawTransaction(inputs, outputs, finalSignature)
 	if err != nil {
 		return nil, err
@@ -397,3 +399,66 @@ func CalculateFee(inputs, outputs int) int {
 	approximateTransactionLength := (inputs * 180) + (outputs * 34) + 10 + inputs
 	return approximateTransactionLength * SatoshiPerByte
 }
+
+/*func CreateTransactionBtcd(client BitcoinClient, inputs []Input, output []Output, sender Sender) {
+
+	totalChange := int64(0)
+	transaction := wire.NewMsgTx(1)
+	for index, input := range inputs {
+		trxFromNode, err := client.GetRawTransaction(input.TxId)
+		if err != nil {
+			return nil, err
+		}
+		content := &GetRawTransactionResponseResult{}
+		json.DecodeBytes(trxFromNode.Result, content)
+		if input.OutputIndex >= len(content.Vout) {
+			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", input.OutputIndex, input.TxId, len(content.Vout))
+		}
+		totalChange += int64(content.Vout[input.OutputIndex].Value * 100000000) // convert to Satoshi
+		inputScript, err = content.Vout[input.OutputIndex].Scriptpubkey.Hex
+		if err != nil {
+			return nil, err
+		}
+		outpointHash, err := chainhash.NewHashFromStr(content.Hash)
+		if err != nil {
+			return nil, err
+		}
+		transaction.AddTxIn(
+			wire.NewTxIn(
+				wire.NewOutPoint(outpointHash, input.OutputIndex),
+				inputScript,
+				nil
+			)
+		)
+		log.Debug("CreateTransaction: Created TxIn")
+	}
+
+	for _, output := range outputs {
+		totalChange -= output.Value
+		transaction.AddTxOut(
+			wire.NewTxOut(
+				output.Value,
+				CreatePubScriptKey(output.Address))
+		)
+		log.Debug("CreateTransaction: Created TxOut")
+	}
+
+	approximateFee := int64(CalculateFee(len(inputs), len(outputs)))
+	// Check to see if it's worth taking change - algo here is "is there more
+	// change than twice what it costs to add another output"
+	if totalChange > (approximateFee + (2 * 34 * int64(SatoshiPerByte))) {
+		// If we're in here, it's worth taking change and we should add the
+		// sender onto the outputs.
+		approximateFee += int64(34 * SatoshiPerByte) // Update the fee to account for the extra length.
+		totalChange -= approximateFee                // pull down the change to account for the fee.
+
+		// Add the change to our outputs, asking our Bitcoin Client if we're in
+		// test mode or not.
+		if client.IsTest {
+			transaction.AddTxOut(wire.newTxOut(totalChange, CreateScriptPubKey(sender.TestNetAddress))
+		} else {
+			transaction.AddTxOut(wire.newTxOut(totalChange, CreateScriptPubKey(sender.Address))
+		}
+
+	}
+}*/
