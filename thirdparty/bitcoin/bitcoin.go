@@ -18,6 +18,7 @@ import (
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
+	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 )
@@ -128,6 +129,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	publicKey := privateKey.PublicKey
 	log.Debug("GetRawTransactionSignature: Public key derived: %v", publicKey)
 	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
+	log.Debug("GetRawTransactionSignature: Public key bytes: %s", publicKeyBytes)
 
 	//Hash the raw transaction twice before the signing
 	shaHash := sha256.New()
@@ -139,9 +141,10 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	rawTransactionHashed := shaHash2.Sum(nil)
 
 	//Sign the raw transaction
-	signedTransaction, success := crypto.Sign(rawTransactionHashed, privateKey)
-	if success != nil {
-		log.Error("GetRawTransactionSignature: Failed to sign transaction")
+	signedTransaction, err := btcec.SignCompact(btcec.S256(), (*btcec.PrivateKey)(privateKey), rawTransactionHashed, false)
+	if err != nil {
+		log.Error("GetRawTransactionSignature: Failed to sign transaction: %v", err)
+		return nil, err
 	}
 
 	hashCodeType, err := hex.DecodeString("01")
@@ -152,16 +155,20 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	//+1 for hashCodeType
 	signedTransactionLength := byte(len(signedTransaction) + 1)
 
-	var publicKeyBuffer bytes.Buffer
-	publicKeyBuffer.Write(publicKeyBytes)
-	pubKeyLength := byte(len(publicKeyBuffer.Bytes()))
+	pubKeyLength := byte(len(publicKeyBytes))
 
+	log.Debug("# Writing ScriptSig")
 	var buffer bytes.Buffer
+	log.Debug("# %v", signedTransactionLength)
 	buffer.WriteByte(signedTransactionLength)
+	log.Debug("# %v", signedTransaction)
 	buffer.Write(signedTransaction)
+	log.Debug("# %v", hashCodeType[0])
 	buffer.WriteByte(hashCodeType[0])
+	log.Debug("# %v", pubKeyLength)
 	buffer.WriteByte(pubKeyLength)
-	buffer.Write(publicKeyBuffer.Bytes())
+	log.Debug("# %v", publicKeyBytes)
+	buffer.Write(publicKeyBytes)
 
 	scriptSig := buffer.Bytes()
 
