@@ -42,7 +42,7 @@ type EthGasStationResponse struct {
 	Average     float64 `json:"average"`
 
 	SafeLowWait float64 `json:"safeLowWait"`
-	SaleLow     float64 `json:"safeLow"`
+	SafeLow     float64 `json:"safeLow"`
 }
 
 type Client struct {
@@ -258,7 +258,12 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 
 // Get the current average gasprice
 func (c Client) GasPrice() (*big.Int, error) {
-	// res, err := c.httpClient.Post(c.address, "application/json", strings.NewReader(jsonRpcCommand))
+	gasPrice, _, err := c.GasPrice2()
+	if err == nil {
+		return gasPrice, nil
+	} else {
+		log.Warn("EthGasStation returned error '%s'", err, c.ctx)
+	}
 
 	id := rand.Int64()
 
@@ -286,4 +291,23 @@ func (c Client) GasPrice() (*big.Int, error) {
 	}
 
 	return a, nil
+}
+
+// Get the current average gasprice via https://ethgasstation.info/json/ethgasAPI.json
+func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
+	log.Info("Getting prices from ethgasstation", c.ctx)
+	res, err := c.httpClient.Get("https://ethgasstation.info/json/ethgasAPI.json")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	egr := &EthGasStationResponse{}
+
+	if err := json.Decode(res.Body, egr); err != nil {
+		return nil, nil, err
+	}
+
+	log.Info("Gas Price is %v", egr, c.ctx)
+
+	return big.NewInt(int64(egr.SafeLow + 1)), egr, nil
 }
