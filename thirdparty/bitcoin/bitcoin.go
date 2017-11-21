@@ -330,16 +330,7 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 		totalChange -= output.Value
 	}
 
-	// Now compute the probable fee and be pessimistic about the size of the
-	// transaction
-	// 180 is the length (in bytes) of each input.
-	// 34 is the length (in bytes) of each output.
-	// 10 is the standard length (in bytes) of basic stuff in the protocol.
-	// The final +len(inputs) is padding. Certain inputs are 11, others are 9.
-	// We're being pessimistic and adding always.
-	approximateTransactionLength := (len(inputs) * 180) + (len(outputs) * 34) + 10 + len(inputs)
-	approximateFee := int64(approximateTransactionLength * SatoshiPerByte)
-
+	approximateFee := int64(CalculateFee(len(inputs), len(outputs)))
 	// Check to see if it's worth taking change - algo here is "is there more
 	// change than twice what it costs to add another output"
 	if totalChange > (approximateFee + (2 * 34 * int64(SatoshiPerByte))) {
@@ -383,4 +374,16 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 	}
 	log.Info("CreateTransaction: Final trx: %v", hex.EncodeToString(rawTrx))
 	return rawTrx, nil
+}
+
+func CalculateFee(inputs, outputs int) int {
+	// Now compute the probable fee and be pessimistic about the size of the
+	// transaction
+	// 180 is the length (in bytes) of each input.
+	// 34 is the length (in bytes) of each output.
+	// 10 is the standard length (in bytes) of basic stuff in the protocol.
+	// The final +len(inputs) is padding. Certain inputs are 11, others are 9.
+	// We're being pessimistic and adding always.
+	approximateTransactionLength := (inputs * 180) + (outputs * 34) + 10 + inputs
+	return approximateTransactionLength * SatoshiPerByte
 }
