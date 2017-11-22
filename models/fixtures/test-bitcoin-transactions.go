@@ -64,7 +64,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		panic(err)
 	}
 
-	in := []bitcoin.Input{bitcoin.Input{TxId: transactionId, OutputIndex: 0}}
+	in := []bitcoin.Origin{bitcoin.Origin{TxId: transactionId, OutputIndex: 0}}
 	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 500000, Address: receiver2.TestNetAddress}}
 	senderAccount := bitcoin.Sender{
 		PrivateKey:     sender.PrivateKey,
