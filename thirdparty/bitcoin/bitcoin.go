@@ -114,13 +114,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 		return nil, err
 	}
 
-	var pkBytes32 [32]byte
-
-	for i := 0; i < 32; i++ {
-		pkBytes32[i] = pkBytes[i]
-	}
-
-	privateKey, err := crypto.ToECDSA(pkBytes32[:])
+	privateKey, err := crypto.ToECDSA(pkBytes)
 	if err != nil {
 		log.Error("GetRawTransactionSignature: Could not crypto decode '%s': %v", pkBytes, err)
 		return nil, err
@@ -141,12 +135,30 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	shaHash2.Write(hash)
 	rawTransactionHashed := shaHash2.Sum(nil)
 
+	// rawTransactionHashedReversed := make([]byte, len(rawTransactionHashed))
+	// for i := 0; i < len(rawTransactionHashed); i++ {
+	// 	rawTransactionHashedReversed[i] = rawTransactionHashed[len(rawTransactionHashed)-i-1]
+	// }
+
 	//Sign the raw transaction
-	signedTransaction, err := btcec.SignCompact(btcec.S256(), (*btcec.PrivateKey)(privateKey), rawTransactionHashed, false)
+	sig, err := (*btcec.PrivateKey)(privateKey).Sign(rawTransactionHashed)
 	if err != nil {
 		log.Error("GetRawTransactionSignature: Failed to sign transaction: %v", err)
 		return nil, err
 	}
+
+	signedTransaction := sig.Serialize()
+
+	parsedSig, err := btcec.ParseDERSignature(signedTransaction, btcec.S256())
+	if err != nil {
+		log.Error("GetRawTransactionSignature: Failed to parse signed transaction: %v", err)
+		return nil, err
+	}
+
+	// verified := sig.Verify(signedTransaction, (*btcec.PublicKey)(&publicKey))
+	// if !verified {
+	// 	log.Fatal("GetRawTransactionSignature: Failed to verify signed transaction.")
+	// }
 
 	hashCodeType, err := hex.DecodeString("01")
 	if err != nil {
@@ -294,22 +306,35 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 		log.Fatal(err)
 	}
 
+	log.Debug("# Writing Transaction")
 	var buffer bytes.Buffer
+	log.Debug("# %v", version)
 	buffer.Write(version)
+	log.Debug("# %v", inCount)
 	buffer.Write(inCount)
 	for index, bytes := range inputTransactionLittleEndian {
+		log.Debug("# %v", bytes)
 		buffer.Write(bytes)
+		log.Debug("# %v", outputIndeces[index])
 		buffer.Write(outputIndeces[index])
+		log.Debug("# %v", scriptSigLength)
 		buffer.WriteByte(byte(scriptSigLength))
+		log.Debug("# %v", scriptSig)
 		buffer.Write(scriptSig)
+		log.Debug("# %v", sequence)
 		buffer.Write(sequence)
 	}
+	log.Debug("# %v", numOutputs)
 	buffer.Write(numOutputs)
 	for index, script := range scripts {
+		log.Debug("# %v", satoshisToOutputBytes[index])
 		buffer.Write(satoshisToOutputBytes[index])
+		log.Debug("# %v", byte(len(script)))
 		buffer.WriteByte(byte(len(script)))
+		log.Debug("# %v", script)
 		buffer.Write(script)
 	}
+	log.Debug("# %v", lockTimeField)
 	buffer.Write(lockTimeField)
 
 	return buffer.Bytes(), nil
@@ -361,9 +386,14 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 	}
 
 	// Create the temporary script
-	tempScript, _ := hex.DecodeString(inputScripts[0])
+	// tempScript, _ := hex.DecodeString(inputScripts[0])
 	// And the initial transaction
-	rawTransaction, err := CreateRawTransaction(inputs, outputs, tempScript)
+	z, err := hex.DecodeString("00")
+	if err != nil {
+		return nil, err
+	}
+
+	rawTransaction, err := CreateRawTransaction(inputs, outputs, z)
 	if err != nil {
 		return nil, err
 	}
