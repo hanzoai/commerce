@@ -306,30 +306,30 @@ func CreateRawTransaction(inputs []Input, outputs []Output) ([]byte, error) {
 
 	log.Debug("# Writing Transaction")
 	var buffer bytes.Buffer
-	log.Debug("# %v", version)
+	log.Debug("Version Number: # %v", version)
 	buffer.Write(version)
-	log.Debug("# %v", inCount)
+	log.Debug("Number of inputs: # %v", inCount)
 	buffer.Write(inCount)
 	for index, bytes := range inputTransactionLittleEndian {
-		log.Debug("# %v", bytes)
+		log.Debug("bytes: # %v", bytes)
 		buffer.Write(bytes)
-		log.Debug("# %v", outputIndeces[index])
+		log.Debug("outputIndeces of index: # %v", outputIndeces[index])
 		buffer.Write(outputIndeces[index])
-		log.Debug("# %v", len(inputs[index].ScriptSig))
+		log.Debug("Script Sig Length: # %v", len(inputs[index].ScriptSig))
 		buffer.WriteByte(byte(len(inputs[index].ScriptSig)))
-		log.Debug("# %v", inputs[index].ScriptSig)
+		log.Debug("Script Sig:# %v", inputs[index].ScriptSig)
 		buffer.Write(inputs[index].ScriptSig)
-		log.Debug("# %v", sequence)
+		log.Debug("Sequence Number: # %v", sequence)
 		buffer.Write(sequence)
 	}
-	log.Debug("# %v", numOutputs)
+	log.Debug("Number of outputs: # %v", numOutputs)
 	buffer.Write(numOutputs)
 	for index, script := range scripts {
-		log.Debug("# %v", satoshisToOutputBytes[index])
+		log.Debug("Satoshis for output: # %v", satoshisToOutputBytes[index])
 		buffer.Write(satoshisToOutputBytes[index])
-		log.Debug("# %v", byte(len(script)))
+		log.Debug("Length of script: # %v", byte(len(script)))
 		buffer.WriteByte(byte(len(script)))
-		log.Debug("# %v", script)
+		log.Debug("Output script: # %v", script)
 		buffer.Write(script)
 	}
 	log.Debug("# %v", lockTimeField)
@@ -366,6 +366,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 	buildableInputs := make([]Input, len(origins))
 	for index, origin := range origins {
 		buildableInputs[index] = OriginToInput(origin)
+		inputs[index] = OriginToInput(origin)
 	}
 
 	for index, origin := range origins {
@@ -383,7 +384,6 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 
 		// Grab the Script of the Output we're hoing to redeem.
 		script, _ := hex.DecodeString(content.Vout[origin.OutputIndex].Scriptpubkey.Hex)
-		log.Debug("CreateTransaction: Saving out ScriptPubKey %v at index %v to inputScripts index %v", content.Vout[origin.OutputIndex].Scriptpubkey.Hex, origin.OutputIndex, origin)
 		buildableInputs[index].ScriptSig = script
 
 		// Create the initial raw transaction.
@@ -393,7 +393,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		}
 
 		// Add the hash code required to compute the signature.
-		log.Debug("CreateTransaction: initial raw transaction created.")
+		log.Debug("CreateTransaction: initial raw transaction created: %v", hex.EncodeToString(rawTransaction))
 		hashCodeType, err := hex.DecodeString("01000000")
 		log.Debug("CreateTransaction: Hash code type created.")
 		var rawTransactionBuffer bytes.Buffer
@@ -409,6 +409,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		}
 		// Save the signature to our input slice.
 		inputs[index].ScriptSig = finalSignature
+		log.Debug("CreateTransaction: Saved signature to input index %v: %v", index, finalSignature)
 
 		// Blank out the script signature we just used so we can keep computing
 		// the other final signatures.
@@ -433,10 +434,10 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		// Add the change to our outputs, asking our Bitcoin Client if we're in
 		// test mode or not.
 		if client.IsTest {
-			outScript, _ := hex.DecodeString(sender.TestNetAddress)
+			outScript := CreateScriptPubKey(sender.TestNetAddress)
 			outputs = append(outputs, Output{totalChange, outScript})
 		} else {
-			outScript, _ := hex.DecodeString(sender.Address)
+			outScript := CreateScriptPubKey(sender.Address)
 			outputs = append(outputs, Output{totalChange, outScript})
 		}
 
