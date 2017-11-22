@@ -154,6 +154,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 		log.Error("GetRawTransactionSignature: Failed to parse signed transaction: %v", err)
 		return nil, err
 	}
+	log.Debug("GetRawTransactionSignature: Parsed Signature: %v", parsedSig)
 
 	// verified := sig.Verify(signedTransaction, (*btcec.PublicKey)(&publicKey))
 	// if !verified {
@@ -222,7 +223,7 @@ func randInt(min int, max int) uint8 {
 /* NOTE: This function presumes you're doing a pay to public key hash
 * transaction and using a single script to authenticate the entire thing. More
 * complex stuff will come later. */
-func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byte) ([]byte, error) {
+func CreateRawTransaction(inputs []Input, outputs []Output) ([]byte, error) {
 	//Create the raw transaction.
 
 	//Version field
@@ -267,9 +268,6 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 		outputIndeces[index] = outputIndexBytes
 	}
 
-	//Script sig length
-	scriptSigLength := len(scriptSig)
-
 	//sequence_no. Normally 0xFFFFFFFF. Always in this case.
 	sequence, err := hex.DecodeString("ffffffff")
 	if err != nil {
@@ -296,7 +294,7 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 		binary.LittleEndian.PutUint64(satoshiBytes, uint64(output.Value))
 		satoshisToOutputBytes[index] = satoshiBytes
 
-		scriptPubKey := CreateScriptPubKey(output.Address)
+		scriptPubKey := output.Script
 		scripts[index] = scriptPubKey
 	}
 
@@ -317,10 +315,10 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 		buffer.Write(bytes)
 		log.Debug("# %v", outputIndeces[index])
 		buffer.Write(outputIndeces[index])
-		log.Debug("# %v", scriptSigLength)
-		buffer.WriteByte(byte(scriptSigLength))
-		log.Debug("# %v", scriptSig)
-		buffer.Write(scriptSig)
+		log.Debug("# %v", len(inputs[index].ScriptSig))
+		buffer.WriteByte(byte(len(inputs[index].ScriptSig)))
+		log.Debug("# %v", inputs[index].ScriptSig)
+		buffer.Write(inputs[index].ScriptSig)
 		log.Debug("# %v", sequence)
 		buffer.Write(sequence)
 	}
@@ -340,25 +338,82 @@ func CreateRawTransaction(inputs []Input, outputs []Destination, scriptSig []byt
 	return buffer.Bytes(), nil
 }
 
-func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destination, sender Sender) ([]byte, error) {
+func CreateTransaction(client BitcoinClient, origins []Origin, destinations []Destination, sender Sender) ([]byte, error) {
 
-	// Before starting, we need to compute change. First, take in how much
-	// value we are working with here.
+	// There will be a need to keep track of change.
 	totalChange := int64(0)
-	inputScripts := make([]string, len(inputs))
-	for index, input := range inputs {
-		trxFromNode, err := client.GetRawTransaction(input.TxId)
+
+	// We need to get our Destinations changed to proper outputs.
+	outputs := make([]Output, len(destinations))
+	for index, destination := range destinations {
+		outputs[index] = DestinationToOutput(destination)
+	}
+
+	// Then we need proper inputs. This process is a little more involved.
+
+	// To get the appropriate Signature to unlock the Script of each
+	// invoked transaction output, every OTHER input must have a blank Script.
+	// To put it another way, to get the signature for Input 2 of 4, inputs 1,
+	// 3, and 4 must have a blank Script, and Input 2 must have the Script of
+	// the transaction Output it's hoping to redeem.
+
+	// This is the final slice that we're going to eventually send into the
+	// final transaction.
+	inputs := make([]Input, len(origins))
+
+	// And this is the temporary slice that we're going to be using to satisfy
+	// the blanking requirements.
+	buildableInputs := make([]Input, len(origins))
+	for index, origin := range origins {
+		buildableInputs[index] = OriginToInput(origin)
+	}
+
+	for index, origin := range origins {
+		trxFromNode, err := client.GetRawTransaction(origin.TxId)
 		if err != nil {
 			return nil, err
 		}
 		content := &GetRawTransactionResponseResult{}
 		json.DecodeBytes(trxFromNode.Result, content)
-		if input.OutputIndex >= len(content.Vout) {
-			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", input.OutputIndex, input.TxId, len(content.Vout))
+		if origin.OutputIndex >= len(content.Vout) {
+			return nil, fmt.Errorf("CreateTransaction: Wanted output index %v of input transaction %v - only %v outputs available", origin.OutputIndex, origin.TxId, len(content.Vout))
 		}
-		totalChange += int64(content.Vout[input.OutputIndex].Value * 100000000) // convert to Satoshi
-		inputScripts[index] = content.Vout[input.OutputIndex].Scriptpubkey.Hex
-		log.Debug("CreateTransaction: Saving out ScriptPubKey %v at index %v to inputScripts index %v", content.Vout[input.OutputIndex].Scriptpubkey.Hex, input.OutputIndex, index)
+		// Keep track of how much value we're playing with.
+		totalChange += int64(content.Vout[origin.OutputIndex].Value * 100000000) // convert to Satoshi
+
+		// Grab the Script of the Output we're hoing to redeem.
+		script, _ := hex.DecodeString(content.Vout[origin.OutputIndex].Scriptpubkey.Hex)
+		log.Debug("CreateTransaction: Saving out ScriptPubKey %v at index %v to inputScripts index %v", content.Vout[origin.OutputIndex].Scriptpubkey.Hex, origin.OutputIndex, origin)
+		buildableInputs[index].ScriptSig = script
+
+		// Create the initial raw transaction.
+		rawTransaction, err := CreateRawTransaction(buildableInputs, outputs)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add the hash code required to compute the signature.
+		log.Debug("CreateTransaction: initial raw transaction created.")
+		hashCodeType, err := hex.DecodeString("01000000")
+		log.Debug("CreateTransaction: Hash code type created.")
+		var rawTransactionBuffer bytes.Buffer
+		rawTransactionBuffer.Write(rawTransaction)
+		rawTransactionBuffer.Write(hashCodeType)
+		rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
+		log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
+
+		// Compute the signature.
+		finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		// Save the signature to our input slice.
+		inputs[index].ScriptSig = finalSignature
+
+		// Blank out the script signature we just used so we can keep computing
+		// the other final signatures.
+		blankScript, _ := hex.DecodeString("00")
+		buildableInputs[index].ScriptSig = blankScript // This needs to get blanked out so the others can be computed correctly.
 	}
 
 	// Subtract the amount we're giving out
@@ -378,39 +433,16 @@ func CreateTransaction(client BitcoinClient, inputs []Input, outputs []Destinati
 		// Add the change to our outputs, asking our Bitcoin Client if we're in
 		// test mode or not.
 		if client.IsTest {
-			outputs = append(outputs, Destination{totalChange, sender.TestNetAddress})
+			outScript, _ := hex.DecodeString(sender.TestNetAddress)
+			outputs = append(outputs, Output{totalChange, outScript})
 		} else {
-			outputs = append(outputs, Destination{totalChange, sender.Address})
+			outScript, _ := hex.DecodeString(sender.Address)
+			outputs = append(outputs, Output{totalChange, outScript})
 		}
 
 	}
 
-	// Create the temporary script
-	// tempScript, _ := hex.DecodeString(inputScripts[0])
-	// And the initial transaction
-	z, err := hex.DecodeString("00")
-	if err != nil {
-		return nil, err
-	}
-
-	rawTransaction, err := CreateRawTransaction(inputs, outputs, z)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("CreateTransaction: initial raw transaction created.")
-	hashCodeType, err := hex.DecodeString("01000000")
-	log.Debug("CreateTransaction: Hash code type created.")
-	var rawTransactionBuffer bytes.Buffer
-	rawTransactionBuffer.Write(rawTransaction)
-	rawTransactionBuffer.Write(hashCodeType)
-	rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
-	log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
-	finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("CreateTransaction: Final transaction signature: %v", finalSignature)
-	rawTrx, err := CreateRawTransaction(inputs, outputs, finalSignature)
+	rawTrx, err := CreateRawTransaction(inputs, outputs)
 	if err != nil {
 		return nil, err
 	}
