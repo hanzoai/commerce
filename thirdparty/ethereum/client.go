@@ -42,7 +42,7 @@ type EthGasStationResponse struct {
 	Average     float64 `json:"average"`
 
 	SafeLowWait float64 `json:"safeLowWait"`
-	SaleLow     float64 `json:"safeLow"`
+	SafeLow     float64 `json:"safeLow"`
 }
 
 type Client struct {
@@ -68,7 +68,7 @@ type JsonRpcResponse struct {
 }
 
 var JsonRpcVersion = "2.0"
-var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":[%s],"id":%v}`
+var JsonRpcMessage = `{"jsonrpc":"%s","method":"%s","params":%s,"id":%v}`
 
 var IdMismatch = errors.New("Ids do not match!")
 var InvalidChainId = errors.New("Invalid ChainId")
@@ -93,8 +93,13 @@ func New(ctx appengine.Context, address string) Client {
 	return Client{ctx, httpClient, address, false, []string{}}
 }
 
-func paramsToString(parts ...string) string {
-	return `"` + strings.Join(parts, `","`) + `"`
+func paramsToString(parts ...interface{}) string {
+	str, err := ej.Marshal(parts)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(str)
 }
 
 // Flip to Test Mode
@@ -253,7 +258,12 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 
 // Get the current average gasprice
 func (c Client) GasPrice() (*big.Int, error) {
-	// res, err := c.httpClient.Post(c.address, "application/json", strings.NewReader(jsonRpcCommand))
+	gasPrice, _, err := c.GasPrice2()
+	if err == nil {
+		return gasPrice, nil
+	} else {
+		log.Warn("EthGasStation returned error '%s'", err, c.ctx)
+	}
 
 	id := rand.Int64()
 
@@ -262,7 +272,7 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 	jrr, err := c.Post(jsonRpcCommand, id)
 	if err != nil {
-		return big.NewInt(0), err
+		return big.NewInt(DefaultGasPrice), err
 	}
 
 	priceHex := string(jrr.Result)
@@ -272,7 +282,7 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 	a, err := hexutil.DecodeBig(priceHex)
 	if err != nil {
-		return nil, err
+		return big.NewInt(DefaultGasPrice), err
 	}
 
 	// 1 is the min price
@@ -281,4 +291,23 @@ func (c Client) GasPrice() (*big.Int, error) {
 	}
 
 	return a, nil
+}
+
+// Get the current average gasprice via https://ethgasstation.info/json/ethgasAPI.json
+func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
+	log.Info("Getting prices from ethgasstation", c.ctx)
+	res, err := c.httpClient.Get("https://ethgasstation.info/json/ethgasAPI.json")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	egr := &EthGasStationResponse{}
+
+	if err := json.Decode(res.Body, egr); err != nil {
+		return nil, nil, err
+	}
+
+	log.Info("Gas Price is %v", egr, c.ctx)
+
+	return big.NewInt(int64(egr.SafeLow + 1)), egr, nil
 }

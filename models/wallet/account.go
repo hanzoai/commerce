@@ -13,10 +13,11 @@ type Account struct {
 	Encrypted string `json:"encrypted"`
 	Salt      string `json:"salt"`
 
-	Name       string `json:"name"`
-	PrivateKey string `json:"-" datastore:"-"`
-	PublicKey  string `json:"-"`
-	Address    string `json:"address,omitempty"`
+	Name           string `json:"name"`
+	PrivateKey     string `json:"-" datastore:"-"`
+	PublicKey      string `json:"-"`
+	Address        string `json:"address,omitempty"`
+	TestNetAddress string `json:"testnetaddress,omitempty"`
 
 	Deleted bool             `json:"-"`
 	Type    blockchains.Type `json:"type"`
