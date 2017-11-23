@@ -4,6 +4,7 @@ node_modules
 npm-debug.log
 .datastore.bin
 _export
+package-lock.json
 config/env.go
 
 config.json
@@ -27,6 +28,7 @@ static/js/mailinglist.js
 *.bak
 *.orig
 *.coverprofile
+*.min.js
 
 _export
 **/*.coverprofile.*
