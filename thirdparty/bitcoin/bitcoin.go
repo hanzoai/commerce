@@ -384,37 +384,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 
 		// Grab the Script of the Output we're hoing to redeem.
 		script, _ := hex.DecodeString(content.Vout[origin.OutputIndex].Scriptpubkey.Hex)
-		buildableInputs[index].ScriptSig = script
-
-		// Create the initial raw transaction.
-		rawTransaction, err := CreateRawTransaction(buildableInputs, outputs)
-		if err != nil {
-			return nil, err
-		}
-
-		// Add the hash code required to compute the signature.
-		log.Debug("CreateTransaction: initial raw transaction created: %v", hex.EncodeToString(rawTransaction))
-		hashCodeType, err := hex.DecodeString("01000000")
-		log.Debug("CreateTransaction: Hash code type created.")
-		var rawTransactionBuffer bytes.Buffer
-		rawTransactionBuffer.Write(rawTransaction)
-		rawTransactionBuffer.Write(hashCodeType)
-		rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
-		log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
-
-		// Compute the signature.
-		finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
-		if err != nil {
-			return nil, err
-		}
-		// Save the signature to our input slice.
-		inputs[index].ScriptSig = finalSignature
-		log.Debug("CreateTransaction: Saved signature to input index %v: %v", index, finalSignature)
-
-		// Blank out the script signature we just used so we can keep computing
-		// the other final signatures.
-		blankScript, _ := hex.DecodeString("00")
-		buildableInputs[index].ScriptSig = blankScript // This needs to get blanked out so the others can be computed correctly.
+		inputs[index].ScriptSig = script // Temporary holding.
 	}
 
 	// Subtract the amount we're giving out
@@ -441,6 +411,38 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 			outputs = append(outputs, Output{totalChange, outScript})
 		}
 
+	}
+
+	for index, input := range inputs {
+		buildableInputs[index].ScriptSig = input.ScriptSig                    // Load in temporary script signature
+		rawTransaction, err := CreateRawTransaction(buildableInputs, outputs) // Create initial raw transaction
+		if err != nil {
+			return nil, err
+		}
+
+		// Add the hash code required to compute the signature.
+		log.Debug("CreateTransaction: initial raw transaction created: %v", hex.EncodeToString(rawTransaction))
+		hashCodeType, err := hex.DecodeString("01000000")
+		log.Debug("CreateTransaction: Hash code type created.")
+		var rawTransactionBuffer bytes.Buffer
+		rawTransactionBuffer.Write(rawTransaction)
+		rawTransactionBuffer.Write(hashCodeType)
+		rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
+		log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
+
+		// Compute the signature.
+		finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		// Save the final signature to our input slice.
+		input.ScriptSig = finalSignature
+		log.Debug("CreateTransaction: Saved signature to input index %v: %v", index, finalSignature)
+
+		// Blank out the script signature we just used so we can keep computing
+		// the other final signatures.
+		blankScript, _ := hex.DecodeString("00")
+		buildableInputs[index].ScriptSig = blankScript // This needs to get blanked out so the others can be computed correctly.
 	}
 
 	rawTrx, err := CreateRawTransaction(inputs, outputs)
