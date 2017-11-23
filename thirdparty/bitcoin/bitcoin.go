@@ -443,36 +443,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 
 	}
 
-<<<<<<< HEAD
 	rawTrx, err := CreateRawTransaction(inputs, outputs)
-=======
-	// Create the temporary script
-	tempScript, _ := hex.DecodeString(inputScripts[0])
-	// And the initial transaction
-	// z, err := hex.DecodeString("00")
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	rawTransaction, err := CreateRawTransaction(inputs, outputs, tempScript)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("CreateTransaction: initial raw transaction created.")
-	hashCodeType, err := hex.DecodeString("01000000")
-	log.Debug("CreateTransaction: Hash code type created.")
-	var rawTransactionBuffer bytes.Buffer
-	rawTransactionBuffer.Write(rawTransaction)
-	rawTransactionBuffer.Write(hashCodeType)
-	rawTransactionWithHashCodeType := rawTransactionBuffer.Bytes()
-	log.Debug("CreateTransaction: Raw transaction appended with hash code. %v", len(rawTransactionWithHashCodeType))
-	finalSignature, err := GetRawTransactionSignature(rawTransactionWithHashCodeType, sender.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug("CreateTransaction: Final transaction signature: %v", finalSignature)
-	rawTrx, err := CreateRawTransaction(inputs, outputs, finalSignature)
->>>>>>> works now, won't get murdered now
 	if err != nil {
 		return nil, err
 	}
