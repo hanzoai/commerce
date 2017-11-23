@@ -314,6 +314,7 @@ func CreateRawTransaction(inputs []Input, outputs []Output) ([]byte, error) {
 		log.Debug("bytes: # %v", bytes)
 		buffer.Write(bytes)
 		log.Debug("outputIndeces of index: # %v", outputIndeces[index])
+		log.Debug("outputIndeces of index (hex): # %v", hex.EncodeToString(outputIndeces[index]))
 		buffer.Write(outputIndeces[index])
 		log.Debug("Script Sig Length: # %v", len(inputs[index].ScriptSig))
 		buffer.WriteByte(byte(len(inputs[index].ScriptSig)))
@@ -441,7 +442,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 
 		// Blank out the script signature we just used so we can keep computing
 		// the other final signatures.
-		blankScript, _ := hex.DecodeString("00")
+		blankScript, _ := hex.DecodeString("")
 		buildableInputs[index].ScriptSig = blankScript // This needs to get blanked out so the others can be computed correctly.
 	}
 
