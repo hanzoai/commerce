@@ -3,6 +3,7 @@ package tasks
 import (
 	"errors"
 	"math/big"
+	"time"
 
 	"appengine"
 
@@ -32,6 +33,9 @@ var OrderAccountNotFound = errors.New("Order Account Not Found.")
 var OrderAccountDecryptionFailed = errors.New("Order Account Decryption Failed.")
 var InsufficientFee = errors.New("Not Enough Fee Balance To Cover Transaction Fee")
 var InsufficientTransfer = errors.New("Not Enough Transfer Balance To Cover Transaction Fee")
+
+var GasPrice = big.NewInt(ethereum.DefaultGasPrice)
+var LastGasPriceCheck = time.Time{}
 
 var EthereumProcessPayment = delay.Func(
 	"ethereum-process-payment",
@@ -220,7 +224,17 @@ func EthereumProcessPaymentImpl(
 			// }
 
 			// Use default gasprice
-			gasPrice := big.NewInt(ethereum.DefaultGasPrice)
+			timeCheck := time.Now().Add(-5 * time.Minute)
+			if LastGasPriceCheck.Before(timeCheck) || LastGasPriceCheck.IsZero() {
+				gp, err := client.GasPrice()
+				if err != nil {
+					return err
+				}
+
+				GasPrice = gp
+			}
+
+			gasPrice := big.NewInt(0).Set(GasPrice)
 
 			transferAmount := ord.Currency.ToMinimalUnits(ord.Total)
 
