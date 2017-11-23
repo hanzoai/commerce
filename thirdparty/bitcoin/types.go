@@ -96,7 +96,7 @@ func InputToOrigin(in Input) Origin {
 }
 
 func OriginToInput(o Origin) Input {
-	blank, _ := hex.DecodeString("00")
+	blank, _ := hex.DecodeString("")
 	return Input{
 		TxId:        o.TxId,
 		OutputIndex: o.OutputIndex,
