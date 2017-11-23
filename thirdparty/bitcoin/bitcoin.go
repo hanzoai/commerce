@@ -436,7 +436,7 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 			return nil, err
 		}
 		// Save the final signature to our input slice.
-		input.ScriptSig = finalSignature
+		inputs[index].ScriptSig = finalSignature
 		log.Debug("CreateTransaction: Saved signature to input index %v: %v", index, finalSignature)
 
 		// Blank out the script signature we just used so we can keep computing
