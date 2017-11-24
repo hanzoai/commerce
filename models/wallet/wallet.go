@@ -67,6 +67,31 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 			CreatedAt:      time.Now(),
 		}
 
+		// TODO: Update account to do this when we have time
+		// var add string
+		// switch typ {
+		// case blockchains.BitcoinType:
+		// 	add, _, err = bitcoin.PubKeyToAddress(pub, false)
+		// 	if err != nil {
+		// 		return Account{}, err
+		// 	}
+		// case blockchains.BitcoinTestnetType:
+		// 	add, _, err = bitcoin.PubKeyToAddress(pub, true)
+		// 	if err != nil {
+		// 		return Account{}, err
+		// 	}
+		// default:
+		// 	log.Fatal("This shouldn't be possible", w.Context())
+		// }
+
+		// a = Account{
+		// 	Name:       name,
+		// 	PrivateKey: priv,
+		// 	PublicKey:  pub,
+		// 	Address:    add,
+		// 	Type:       typ,
+		// 	CreatedAt:  time.Now(),
+		// }
 	default:
 		return Account{}, InvalidTypeSpecified
 	}
@@ -92,6 +117,21 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	err = ba.Create()
 	if err != nil {
 		log.Error("Could not create BlockAddress: %v", err, w.Context())
+	}
+
+	// There's a testnet id for every btc account I guess?
+	if a.TestNetAddress != "" {
+		// Create a blockaddress so we track this in the ethereum reader
+		tba := blockaddress.New(w.Db)
+		tba.Address = a.Address
+		tba.Type = typ
+		tba.WalletId = w.Id()
+
+		tba.WalletNamespace = ns
+		err = tba.Create()
+		if err != nil {
+			log.Error("Could not create BlockAddress: %v", err, w.Context())
+		}
 	}
 
 	// Only save if the wallet is created
