@@ -15,8 +15,8 @@ import (
 )
 
 var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gin.Context) {
-	transactionId := "9b78ff9235ca1d3b67bda4bce964cb664e6011f6adc640747833e63a9ea7c995"
-	transactionId2 := "14f8d758bcd324a3e4c9a85c46a45e156a57bff160bc2ff70a090af6dc3b44dd"
+	transactionId := "62e3949e3e143bfc2ce904a8fe68532962444870360320394c3d358666ce453d"
+	// transactionId2 := "14f8d758bcd324a3e4c9a85c46a45e156a57bff160bc2ff70a090af6dc3b44dd"
 	db := datastore.New(c)
 	ctx := db.Context
 
@@ -66,7 +66,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 
 	in := []bitcoin.Origin{
 		bitcoin.Origin{TxId: transactionId, OutputIndex: 2},
-		bitcoin.Origin{TxId: transactionId2, OutputIndex: 0},
+		// bitcoin.Origin{TxId: transactionId2, OutputIndex: 0},
 	}
 	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 500000, Address: receiver2.TestNetAddress}}
 	senderAccount := bitcoin.Sender{
