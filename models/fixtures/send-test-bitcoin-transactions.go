@@ -65,7 +65,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 	}
 
 	in := []bitcoin.Origin{
-		bitcoin.Origin{TxId: transactionId, OutputIndex: 2},
+		bitcoin.Origin{TxId: transactionId, OutputIndex: 0},
 		// bitcoin.Origin{TxId: transactionId2, OutputIndex: 0},
 	}
 	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 500000, Address: receiver2.TestNetAddress}}
