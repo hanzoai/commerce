@@ -11,6 +11,7 @@ type BitcoinTransaction struct {
 	BitcoinTransactionBlockHash   string `json:"bitcoinTransactionBlockHash"`
 	BitcoinTransactionBlockHeight string `json:"bitcoinTransactionBlockHeight"`
 
+	BitcoinTransactionTxId          string                 `json:"bitcoinTransactionTxId"`
 	BitcoinTransactionHash          string                 `json:"bitcoinTransactionHash"`
 	BitcoinTransactionVersion       int64                  `json:"bitcoinTransactionVersion"`
 	BitcoinTransactionSize          int64                  `json:"bitcoinTransactionSize"`
@@ -24,16 +25,14 @@ type BitcoinTransaction struct {
 }
 
 type BitcoinVIn struct {
-	BitcoinTransactionVInTransactionHash  string `json:"bitcoinTransactionVInTransactionHash"`
-	BitcoinTransactionVInTransacitonIndex string `json:"bitcoinTransactionVInTransactionIndex"`
+	BitcoinTransactionVInTransactionTxId  string `json:"bitcoinTransactionVInTransactionTxId"`
+	BitcoinTransactionVInTransactionIndex string `json:"bitcoinTransactionVInTransactionIndex"`
 	BitcoinTransactionVInIndex            string `json:"bitcoinTransactionVInIndex"`
-	BitcoinTransactionVInFrom             string `json:"bitcoinTransactionVInFrom"`
 	BitcoinTransactionVInValue            int64  `json:"bitcoinTransactionVInValue"`
 }
 
 type BitcoinVOut struct {
 	BitcoinTransactionVOutIndex string `json:"bitcoinTransactionVOutIndex"`
-	BitcoinTransactionVOutTo    string `json:"bitcoinTransactionVOutTo"`
 	BitcoinTransactionVOutValue int64  `json:"bitcoinTransactionVOutValue"`
 }
 
