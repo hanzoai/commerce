@@ -158,7 +158,7 @@ indexes:
   ancestor: no
   properties:
   - name: Type
-  - name: BitcoinTransactionBlockHash
+  - name: BitcoinTransactionBlockHeight
     direction: desc
 
 - kind: blocktransaction
