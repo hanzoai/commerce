@@ -52,10 +52,11 @@ var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context
 
 	j := json.Encode(ch)
 
+	log.Info("Sending To %s", "https://api.hanzo.io/checkout/authorize/", c)
 	log.Info("Sending Test Order: %s", j, c)
 
 	client := urlfetch.Client(ctx)
-	req, err := http.NewRequest("POST", "https://api.hanzo.io/authorize/", strings.NewReader(j))
+	req, err := http.NewRequest("POST", "https://api.hanzo.io/checkout/authorize/", strings.NewReader(j))
 	if err != nil {
 		panic(err)
 	}
