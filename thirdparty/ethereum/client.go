@@ -158,6 +158,9 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	}
 
 	ctx := c.ctx
+
+	log.Error("Sending Transaction on Chain '%s'", chainType, ctx)
+
 	// Setup defaults
 	if gasLimit.Cmp(big.NewInt(0)) <= 0 {
 		gasLimit = big.NewInt(DefaultGas)
