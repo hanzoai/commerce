@@ -312,13 +312,13 @@ func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
 	return big.NewInt(int64(egr.SafeLow + 1)), egr, nil
 }
 
-func (c Client) GetBalance(address string) (balanceInGWei *big.Int, err error) {
+func (c Client) GetBalance(address string) (balanceInGWei big.Int, err error) {
 	log.Info("Getting ethereum balance for address: %v", address)
 	id := rand.Int64()
 	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, "eth_getBalance", paramsToString(address), id)
 	jrr, err := c.Post(jsonRpcCommand, id)
 	if err != nil {
-		return big.NewInt(DefaultGasPrice), err
+		return *big.NewInt(DefaultGasPrice), err
 	}
 
 	priceHex := string(jrr.Result)
@@ -328,13 +328,13 @@ func (c Client) GetBalance(address string) (balanceInGWei *big.Int, err error) {
 
 	a, err := hexutil.DecodeBig(priceHex)
 	if err != nil {
-		return big.NewInt(DefaultGasPrice), err
+		return *big.NewInt(DefaultGasPrice), err
 	}
 
 	// 1 is the min price
 	if a.Cmp(big.NewInt(0)) == 0 {
-		return big.NewInt(1), nil
+		return *big.NewInt(1), nil
 	}
 
-	return a, nil
+	return *a, nil
 }
