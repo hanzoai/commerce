@@ -53,6 +53,7 @@ type Client struct {
 
 	IsTest   bool
 	Commands []string
+	Chain    ChainId
 }
 
 type JsonRpcError struct {
