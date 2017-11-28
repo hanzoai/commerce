@@ -9,6 +9,7 @@ import (
 	"math/big"
 
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
+	"hanzo.io/util/log"
 )
 
 type ChainId int64
@@ -45,12 +46,10 @@ func MakePayment(client Client, pk string, from string, to string, amount *big.I
 		return err
 	}
 	if balance.Cmp(amount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient funds for address %v. Requested to send %v, only %v available.", from, amount, balance))
-	}
-	gasPrice, _, err := client.GasPrice2()
-	if err != nil {
+		err = errors.New(fmt.Sprintf("Insufficient funds for address %v. Requested to send %v, only %v available.", from, amount, balance))
+		log.Error(err)
 		return err
 	}
-	_, err = client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), gasPrice, nil)
+	_, err = client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), big.NewInt(0), nil)
 	return err
 }
