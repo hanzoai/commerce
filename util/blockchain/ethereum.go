@@ -12,7 +12,7 @@ import (
 	"hanzo.io/thirdparty/ethereum"
 )
 
-func MakePayment(ctx appengine.Context, from wallet.Account, to wallet.Account, amount *big.Int, typ blockchains.Type) error {
+func MakePayment(ctx appengine.Context, from wallet.Account, to string, amount *big.Int, typ blockchains.Type, password []byte) error {
 	// Create needed client.
 
 	client := ethereum.Client{}
@@ -26,5 +26,13 @@ func MakePayment(ctx appengine.Context, from wallet.Account, to wallet.Account, 
 	default:
 		return errors.New(fmt.Sprintf("Unsupported blockchain type: %v", typ))
 	}
-	return ethereum.MakePayment(client, from.PrivateKey, from.Address, to.Address, amount, client.Chain)
+	// Decrypt private key if needed.
+	var err error
+	if from.Encrypted != "" && from.Salt != "" && from.PrivateKey == "" {
+		err = from.Decrypt(password)
+	}
+	if err != nil {
+		return err
+	}
+	return ethereum.MakePayment(client, from.PrivateKey, from.Address, to, amount, client.Chain)
 }
