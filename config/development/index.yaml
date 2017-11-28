@@ -167,3 +167,10 @@ indexes:
   - name: Type
   - name: BitcoinTransactionConfirmations
     direction: desc
+
+- kind: blocktransaction
+  ancestor: no
+  properties:
+  - name: Type
+  - name: BitcoinTransactionTxId
+    direction: desc
