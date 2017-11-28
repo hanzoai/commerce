@@ -91,7 +91,7 @@ func New(ctx appengine.Context, address string) Client {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return Client{ctx, httpClient, address, false, []string{}}
+	return Client{ctx: ctx, httpClient: httpClient, address: address, IsTest: false, Commands: []string{}}
 }
 
 func paramsToString(parts ...interface{}) string {
