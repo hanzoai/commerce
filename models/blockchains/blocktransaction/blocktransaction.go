@@ -22,6 +22,7 @@ type BitcoinTransaction struct {
 	BitcoinTransactionTime          int64                  `json:"bitcoinTransactionTime"`
 	BitcoinTransactionBlockTime     int64                  `json:"bitcoinTransactionBlockTime"`
 	BitcoinTransactionType          BitcoinTransactionType `json:"bitcoinTransactionType"`
+	BitcoinTransactionUsed          bool                   `json:"bitcoinTransactionUsed"`
 }
 
 type BitcoinVIn struct {
