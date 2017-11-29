@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/models/coupon"
+	"hanzo.io/models/product"
 )
 
 const Month = time.Hour * 24 * 30
@@ -43,6 +44,10 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	cpn.MustPut()
 
+	prod := product.New(db)
+	prod.Slug = "doge-shirt"
+	prod.GetOrCreate("Slug=", prod.Slug)
+
 	cpn = coupon.New(db)
 	cpn.Code_ = strings.ToUpper("FREE-DOGE")
 	cpn.GetOrCreate("Code=", cpn.Code_)
@@ -51,7 +56,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.EndDate = now.Add(Month)
 	cpn.Once = true
 	cpn.Enabled = true
-	cpn.FreeProductId = "doge-shirt"
+	cpn.FreeProductId = prod.Id()
 	cpn.FreeQuantity = 1
 
 	cpn.MustPut()
@@ -66,7 +71,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.EndDate = now.Add(Month)
 	cpn.Once = true
 	cpn.Enabled = true
-	cpn.FreeProductId = "doge-shirt"
+	cpn.FreeProductId = prod.Id()
 	cpn.FreeQuantity = 1
 
 	cpn.MustPut()
