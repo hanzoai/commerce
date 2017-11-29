@@ -79,14 +79,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if ok {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
-		log.Info("Using Store '%v'", stor.Id(), err, c)
+		log.Info("Using Store '%v'", stor.Id(), c)
 	} else if ord.StoreId != "" {
 		stor = store.New(ord.Db)
 		if err := stor.GetById(ord.StoreId); err != nil {
 			log.Warn("Store '%v' does not exist: %v", ord.StoreId, err, c)
 			stor = nil
 		}
-		log.Info("Using Store '%v'", ord.StoreId, err, c)
+		log.Info("Using Store '%v'", ord.StoreId, c)
 	}
 
 	log.Info("Order Before Tally: '%v'", json.Encode(ord), c)
