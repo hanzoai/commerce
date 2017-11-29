@@ -185,6 +185,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
+		if ord.Total > 500000 {
+			return nil, TransactionLimitReached
+		}
 		err = stripe.Authorize(org, ord, usr, pay)
 	default:
 		err = stripe.Authorize(org, ord, usr, pay)
@@ -197,7 +200,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		if pay != nil {
 			pay.Status = payment.Cancelled
 			pay.Account.Error = err.Error()
+			pay.MustCreate()
 		}
+		ord.MustCreate()
+		usr.MustCreate()
 		return nil, err
 	}
 
