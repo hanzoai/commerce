@@ -6,6 +6,7 @@ import (
 
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 )
 
@@ -39,14 +40,14 @@ func (o *Order) TallyTotal() {
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
+	ctx := o.Context()
+
 	// Taxless
 	useFallback := false
 	if stor == nil {
 		useFallback = true
-		log.Warn("Fallback: Using client tax and shipping values.", o.Context())
+		log.Warn("Fallback: Using client tax and shipping values.", ctx)
 	}
-
-	ctx := o.Context()
 
 	// Get coupons from datastore
 	log.Debug("Getting coupons for order")
@@ -66,7 +67,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	log.Debug("Add free items from coupons")
 	o.UpdateCouponItems()
 
-	log.Info("IsContribution? '%v'\nTokenSaleId: '%s'", o.Contribution, o.TokenSaleId, o.Context())
+	log.Info("IsContribution? '%v'\nTokenSaleId: '%s'", o.Contribution, o.TokenSaleId, ctx)
 	// Tokensales and contributions have no items
 	if !o.Contribution && o.TokenSaleId == "" {
 		// Get underlying product/variant entities
@@ -77,15 +78,21 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		}
 	}
 
+	log.Info("Order Before Updating Entities: '%v'", json.Encode(o.Items), ctx)
+
 	// Update against store listings
 	log.Debug("Updating items against store listing")
 	if stor != nil {
 		o.UpdateEntities(stor)
 	}
 
+	log.Info("Order Before Updating From Entities: '%v'", json.Encode(o.Items), ctx)
+
 	// Update line items using that information
 	log.Debug("Updating line items")
 	o.UpdateFromEntities()
+
+	log.Info("Order After Updating From Entities: '%v'", json.Encode(o.Items), ctx)
 
 	// Calculate applicable discount from discount rules
 	log.Debug("Calculating discount from discount rules")
@@ -111,12 +118,16 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 			o.Currency = stor.Currency
 		}
 
+		o.Shipping = 0
+
 		// Tax may depend on shipping so calcualte that first
 		if srs, err := stor.GetShippingRates(); srs == nil {
 			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
 		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
 			o.Shipping = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
 		}
+
+		o.Tax = 0
 
 		if trs, err := stor.GetTaxRates(); trs == nil {
 			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
