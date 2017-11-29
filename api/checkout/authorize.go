@@ -64,8 +64,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Decode authorization request
 	usr, pay, tsPass, err := decodeAuthorization(c, ord)
 	if err != nil {
+		log.Warn("Could not Decode '%v': '%v'", ord, err, c)
 		return nil, err
 	}
+
+	log.Info("Decoded:", c)
+	log.Info("User: '%v'", json.Encode(usr), c)
+	log.Info("Payment: '%v'", json.Encode(pay), c)
+	log.Info("Token Sale: '%v'", json.Encode(tsPass), c)
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -73,19 +79,25 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if ok {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
+		log.Info("Using Store '%v'", stor.Id(), err, c)
 	} else if ord.StoreId != "" {
 		stor = store.New(ord.Db)
 		if err := stor.GetById(ord.StoreId); err != nil {
 			log.Warn("Store '%v' does not exist: %v", ord.StoreId, err, c)
 			stor = nil
 		}
+		log.Info("Using Store '%v'", ord.StoreId, err, c)
 	}
+
+	log.Info("Order Before Tally: '%v'", json.Encode(ord), c)
 
 	// Update order with information from datastore, and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
 		log.Error("Invalid or incomplete order error: %v", err, c)
 		return nil, InvalidOrIncompleteOrder
 	}
+
+	log.Info("Order After Tally: '%v'", json.Encode(ord), c)
 
 	// Validate token sale only if both password and id are set
 	if (ord.TokenSaleId != "") && (tsPass != nil) {
