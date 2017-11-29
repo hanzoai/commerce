@@ -298,6 +298,10 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 // Get the current average gasprice via https://ethgasstation.info/json/ethgasAPI.json
 func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
+	if c.IsTest || IsTest {
+		return big.NewInt(1), nil, nil
+	}
+
 	log.Info("Getting prices from ethgasstation", c.ctx)
 	res, err := c.httpClient.Get("https://ethgasstation.info/json/ethgasAPI.json")
 	if err != nil {
