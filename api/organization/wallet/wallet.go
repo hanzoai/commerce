@@ -14,16 +14,20 @@ import (
 )
 
 type CreateWalletRequest struct {
-	Name       string
-	Blockchain string
-	Password   string
+	Name       string `json:"name"`
+	Blockchain string `json:"blockchain"`
+	Password   string `json:"password"`
 }
 
 type PayFromAccountRequest struct {
-	Name     string
-	To       string
-	Amount   big.Int
-	Password string
+	Name     string  `json:"name"`
+	To       string  `json:"to"`
+	Amount   big.Int `json:"amount"`
+	Password string  `json:"password"`
+}
+
+type PayFromAccountResponse struct {
+	TransactionId string `json:"transactionId"`
 }
 
 func Get(c *gin.Context) {
@@ -37,7 +41,7 @@ func GetAccount(c *gin.Context) {
 	orgWallet := org.Wallet
 	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
 	if !success {
-		http.Fail(c, 400, "Failed to retrieve requested account name.", errors.New("Failed to retrieve requestd account name."))
+		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
 	http.Render(c, 200, account)
@@ -48,12 +52,12 @@ func CreateAccount(c *gin.Context) {
 	orgWallet := org.Wallet
 	request := CreateWalletRequest{}
 	if err := json.Decode(c.Request.Body, &request); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
 	account, err := orgWallet.CreateAccount(request.Name, blockchains.Type(request.Blockchain), []byte(request.Password))
 	if err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed to create requested account", err)
 		return
 	}
 	http.Render(c, 200, account)
@@ -64,18 +68,18 @@ func Pay(c *gin.Context) {
 	orgWallet := org.Wallet
 	request := PayFromAccountRequest{}
 	if err := json.Decode(c.Request.Body, &request); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
 	account, success := orgWallet.GetAccountByName(request.Name)
 	if !success {
-		http.Fail(c, 400, "Failed to retrieve requested account name.", errors.New("Failed to retrieve requestd account name."))
+		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	err := blockchain.MakePayment(appengine.NewContext(c.Request), *account, request.To, &request.Amount, []byte(request.Password))
+	transactionId, err := blockchain.MakePayment(appengine.NewContext(c.Request), *account, request.To, &request.Amount, []byte(request.Password))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
 	}
-	http.Render(c, 200, orgWallet)
+	http.Render(c, 200, PayFromAccountResponse{transactionId})
 }
