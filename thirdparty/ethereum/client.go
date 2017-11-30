@@ -319,23 +319,17 @@ func (c Client) GetBalance(address string) (balanceInWei *big.Int, err error) {
 	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, "eth_getBalance", paramsToString(address), id)
 	jrr, err := c.Post(jsonRpcCommand, id)
 	if err != nil {
-		return big.NewInt(DefaultGasPrice), err
+		return big.NewInt(0), err
 	}
 
-	priceHex := string(jrr.Result)
-	priceHex = priceHex[1 : len(priceHex)-1]
+	balanceHex := string(jrr.Result)
+	balanceHex = balanceHex[1 : len(balanceHex)-1]
 
-	log.Info("Address balance is %v", priceHex)
+	log.Info("Address balance is %v", balanceHex)
 
-	a, err := hexutil.DecodeBig(priceHex)
+	a, err := hexutil.DecodeBig(balanceHex)
 	if err != nil {
-		return big.NewInt(DefaultGasPrice), err
+		return big.NewInt(0), err
 	}
-
-	// 1 is the min price
-	if a.Cmp(big.NewInt(0)) == 0 {
-		return big.NewInt(1), nil
-	}
-
 	return a, nil
 }

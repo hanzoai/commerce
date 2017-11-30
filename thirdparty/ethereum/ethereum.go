@@ -40,16 +40,16 @@ func PubkeyToAddress(p ecdsa.PublicKey) string {
 	return crypto.PubkeyToAddress(p).Hex()
 }
 
-func MakePayment(client Client, pk string, from string, to string, amount *big.Int, chainId ChainId) error {
+func MakePayment(client Client, pk string, from string, to string, amount *big.Int, chainId ChainId) (string, error) {
 	balance, err := client.GetBalance(from)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if balance.Cmp(amount) != 1 {
 		err = errors.New(fmt.Sprintf("Insufficient funds for address %v. Requested to send %v, only %v available.", from, amount, balance))
 		log.Error(err)
-		return err
+		return "", err
 	}
-	_, err = client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), big.NewInt(0), nil)
-	return err
+	transactionId, err := client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), big.NewInt(0), nil)
+	return transactionId, err
 }
