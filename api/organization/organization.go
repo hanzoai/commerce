@@ -33,7 +33,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.DELETE("/:organizationid/integrations/:integrationid", adminRequired, namespaced, integrations.Delete)
 
 	api.GET("/:organizationid/wallet/:walletid", adminRequired, namespaced, wallet.Get)
-	api.GET("/:organizationid/wallet/:walletid/pay/:address", adminRequired, namespaced, wallet.Pay)
+	api.GET("/:organizationid/wallet/createaccount", adminRequired, namespaced, wallet.Get)
+	api.GET("/:organizationid/wallet/from/:accountname/pay/:address", adminRequired, namespaced, wallet.Pay)
 	// I don't think these actually make sense.
 	//api.POST("/:organizationid/wallet/:id", adminRequired, namespaced, analytics.Set)
 	//api.PUT("/:organizationid//wallet/:id", adminRequired, namespaced, analytics.Set)
