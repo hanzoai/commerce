@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
@@ -98,6 +99,8 @@ type Organization struct {
 	Phone        string  `json:"phone,omitempty"`
 	Address      Address `json:"address,omitempty"`
 	Website      string  `json:"website,omitempty"`
+
+	Wallet wallet.Wallet `json:"wallet,omitempty"`
 
 	Timezone string `json:"timezone"`
 
