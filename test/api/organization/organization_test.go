@@ -6,6 +6,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
@@ -17,6 +18,8 @@ import (
 	"hanzo.io/util/test/ginclient"
 
 	. "hanzo.io/util/test/ginkgo"
+
+	"appengine"
 
 	organizationApi "hanzo.io/api/organization"
 )
@@ -32,6 +35,7 @@ var (
 	db          *datastore.Datastore
 	org         *organization.Organization
 	u           *user.User
+	bcDb        *datastore.Datastore
 )
 
 // Setup appengine context
@@ -47,6 +51,7 @@ var _ = BeforeSuite(func() {
 	// Run fixtures
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
+	fixtures.BlockchainNamespace(c)
 
 	// Setup client and add routes for account API tests.
 	cl = ginclient.New(ctx)
@@ -90,6 +95,10 @@ var _ = BeforeSuite(func() {
 	usr4.SetPassword("blackisthenewred")
 	usr4.Enabled = true
 	usr4.MustPut()
+
+	ctx := ae.NewContext()
+	nsCtx, _ := appengine.Namespace(ctx, "_blockchains")
+	bcDb = datastore.New(nsCtx)
 })
 
 // Tear-down appengine context
@@ -97,10 +106,17 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-type createRes struct {
+type retrieveWalletRes struct {
 	wallet.WalletHolder
 }
 
+type createAccountRes struct {
+	wallet.Account
+}
+
+type retrieveAccountRes struct {
+	wallet.Account
+}
 type loginRes struct {
 	Token string `json:"token"`
 }
@@ -108,9 +124,28 @@ type loginRes struct {
 var _ = Describe("organization", func() {
 	Context("Create", func() {
 		It("Should retrieve wallet", func() {
-			res := createRes{}
+			res := retrieveWalletRes{}
 
 			cl.Get("/c/organization/"+org.Id()+"/wallet", &res)
+		})
+		It("Should create wallet account", func() {
+			req := `{
+				"name": "test-wallet-account",
+				"blockchain": "ethereum",
+				"password": "shamma-lamma-ding-dong"
+			}`
+			res := createAccountRes{}
+
+			cl.Post("/c/organization/"+org.Id()+"/wallet/createaccount", req, &res)
+		})
+		It("Should retrieve created wallet account", func() {
+			orgWallet, _ := org.GetOrCreateWallet(db)
+			orgWallet.CreateAccount("test-wallet-account", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			orgWallet.Update()
+
+			resRetrieve := retrieveAccountRes{}
+
+			cl.Get("/c/organization/"+org.Id()+"/wallet/account/test-wallet-account", &resRetrieve)
 		})
 	})
 })
