@@ -35,7 +35,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:organizationid/wallet", adminRequired, namespaced, wallet.Get)
 	api.GET("/:organizationid/wallet/account/:name", adminRequired, namespaced, wallet.GetAccount)
 	api.POST("/:organizationid/wallet/createaccount", adminRequired, namespaced, wallet.CreateAccount)
-	api.POST("/:organizationid/wallet/from/:name/pay/:address", adminRequired, namespaced, wallet.Pay)
+	api.POST("/:organizationid/wallet/pay", adminRequired, namespaced, wallet.Pay)
 	// I don't think these actually make sense.
 	//api.POST("/:organizationid/wallet/:id", adminRequired, namespaced, analytics.Set)
 	//api.PUT("/:organizationid//wallet/:id", adminRequired, namespaced, analytics.Set)
