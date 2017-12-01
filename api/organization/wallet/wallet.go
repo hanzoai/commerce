@@ -12,9 +12,10 @@ import (
 	"hanzo.io/util/blockchain"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
-type CreateWalletRequest struct {
+type CreateAccountRequest struct {
 	Name       string `json:"name"`
 	Blockchain string `json:"blockchain"`
 	Password   string `json:"password"`
@@ -35,7 +36,7 @@ func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(c)
 	orgWallet, err := org.GetOrCreateWallet(db)
-	if err != nil {
+	if err != nil || orgWallet == nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
 	http.Render(c, 200, orgWallet)
@@ -48,6 +49,7 @@ func GetAccount(c *gin.Context) {
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
+	log.Debug("Requested account name: %v", c.Params.ByName("name"))
 	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
@@ -63,12 +65,14 @@ func CreateAccount(c *gin.Context) {
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
-	request := CreateWalletRequest{}
+	request := CreateAccountRequest{}
 	if err := json.Decode(c.Request.Body, &request); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
-	account, err := orgWallet.CreateAccount(request.Name, blockchains.Type(request.Blockchain), []byte(request.Password))
+	log.Debug("Blockchain requested for account creation: %v", request.Blockchain)
+	blockchainType := blockchains.Type(request.Blockchain)
+	account, err := orgWallet.CreateAccount(request.Name, blockchainType, []byte(request.Password))
 	if err != nil {
 		http.Fail(c, 400, "Failed to create requested account", err)
 		return
