@@ -39,6 +39,8 @@ func Get(c *gin.Context) {
 	if err != nil || orgWallet == nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
+	org.MustUpdate()
+
 	http.Render(c, 200, orgWallet)
 }
 
@@ -55,6 +57,8 @@ func GetAccount(c *gin.Context) {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
+	org.MustUpdate()
+
 	http.Render(c, 200, account)
 }
 
@@ -77,6 +81,8 @@ func CreateAccount(c *gin.Context) {
 		http.Fail(c, 400, "Failed to create requested account", err)
 		return
 	}
+	org.MustUpdate()
+
 	http.Render(c, 200, account)
 }
 
@@ -102,5 +108,7 @@ func Pay(c *gin.Context) {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
 	}
+	org.MustUpdate()
+
 	http.Render(c, 200, PayFromAccountResponse{transactionId})
 }
