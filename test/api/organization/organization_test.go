@@ -9,8 +9,9 @@ import (
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/gincontext"
-	//"hanzo.io/util/log"
+	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
@@ -97,9 +98,7 @@ var _ = AfterSuite(func() {
 })
 
 type createRes struct {
-	user.User
-
-	Token string `json:"token"`
+	wallet.Wallet
 }
 
 type loginRes struct {
@@ -111,7 +110,8 @@ var _ = Describe("organization", func() {
 		It("Should retrieve wallet", func() {
 			res := createRes{}
 
-			cl.Get("/organization/"+org.Id()+"/wallet", res)
+			log.Debug("/c/" + org.Id() + "/wallet")
+			cl.Get("/c/"+org.Id()+"/wallet", res)
 		})
 	})
 })
