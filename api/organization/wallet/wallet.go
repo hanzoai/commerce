@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"math/big"
 
+	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/util/blockchain"
@@ -32,13 +33,21 @@ type PayFromAccountResponse struct {
 
 func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	orgWallet := org.Wallet
+	db := datastore.New(c)
+	orgWallet, err := org.GetOrCreateWallet(db)
+	if err != nil {
+		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+	}
 	http.Render(c, 200, orgWallet)
 }
 
 func GetAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	orgWallet := org.Wallet
+	db := datastore.New(c)
+	orgWallet, err := org.GetOrCreateWallet(db)
+	if err != nil {
+		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+	}
 	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
@@ -49,7 +58,11 @@ func GetAccount(c *gin.Context) {
 
 func CreateAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	orgWallet := org.Wallet
+	db := datastore.New(c)
+	orgWallet, err := org.GetOrCreateWallet(db)
+	if err != nil {
+		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+	}
 	request := CreateWalletRequest{}
 	if err := json.Decode(c.Request.Body, &request); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
@@ -65,7 +78,11 @@ func CreateAccount(c *gin.Context) {
 
 func Pay(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	orgWallet := org.Wallet
+	db := datastore.New(c)
+	orgWallet, err := org.GetOrCreateWallet(db)
+	if err != nil {
+		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+	}
 	request := PayFromAccountRequest{}
 	if err := json.Decode(c.Request.Body, &request); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
