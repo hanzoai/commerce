@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	//"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
@@ -53,7 +53,7 @@ var _ = BeforeSuite(func() {
 	organizationApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
-	accessToken = org.AddToken("test-published-key", permission.Published)
+	accessToken = org.AddToken("test-published-key", permission.Admin)
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -98,7 +98,7 @@ var _ = AfterSuite(func() {
 })
 
 type createRes struct {
-	wallet.Wallet
+	wallet.WalletHolder
 }
 
 type loginRes struct {
@@ -110,8 +110,7 @@ var _ = Describe("organization", func() {
 		It("Should retrieve wallet", func() {
 			res := createRes{}
 
-			log.Debug("/c/" + org.Id() + "/wallet")
-			cl.Get("/c/"+org.Id()+"/wallet", res)
+			cl.Get("/c/organization/"+org.Id()+"/wallet", &res)
 		})
 	})
 })
