@@ -100,6 +100,7 @@ type Organization struct {
 	Phone        string  `json:"phone,omitempty"`
 	Address      Address `json:"address,omitempty"`
 	Website      string  `json:"website,omitempty"`
+	WalletKey    string  `json:"-"`
 
 	Timezone string `json:"timezone"`
 
