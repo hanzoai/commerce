@@ -311,7 +311,7 @@ func (i Integrations) FindById(id string) (*Integration, error) {
 // providers
 func (i Integrations) FindEmailProvider(id string) (*Integration, error) {
 	for _, in := range i {
-		if in.Type == MandrillType || in.Type == SMTPType {
+		if in.Type == MandrillType || in.Type == SmtpRelayType {
 			return &in, nil
 		}
 	}
