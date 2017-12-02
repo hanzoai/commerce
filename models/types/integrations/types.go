@@ -32,6 +32,7 @@ const (
 	SalesforceType IntegrationType = "salesforce"
 	ShipwireType   IntegrationType = "shipwire"
 	StripeType     IntegrationType = "stripe"
+	SMTPType       IntegrationType = "smtp"
 )
 
 // Analytics
@@ -164,6 +165,17 @@ type Shipwire struct {
 	Password string `json:"password,omitempty"`
 }
 
+// SMTP settings
+type SMTP struct {
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Host     string   `json:"host"`
+	Port     string   `json:"port"`
+	MailFrom string   `json:"mailFrom"`
+	MailTo   []string `json:"mailTo"`
+	Msg      string   `json:"msg"`
+}
+
 // Stripe connection
 type Stripe struct {
 	// For convenience duplicated
@@ -183,7 +195,7 @@ type Ethereum struct {
 	TestAddress string `json:"testAddress,omitempty"`
 }
 
-type BasicIntegration struct {
+type Base struct {
 	Enabled bool `json:"enabled,omitempty"`
 	Show    bool `json:"show,omitempty"`
 
@@ -196,7 +208,7 @@ type BasicIntegration struct {
 }
 
 type Integration struct {
-	BasicIntegration
+	Base
 
 	// Analytics
 	AnalyticsCustom              AnalyticsCustom              `json:"-"`
@@ -218,4 +230,5 @@ type Integration struct {
 	Salesforce Salesforce `json:"-"`
 	Shipwire   Shipwire   `json:"-"`
 	Stripe     Stripe     `json:"-"`
+	SMTP       SMTP       `json:"-"`
 }
