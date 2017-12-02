@@ -33,6 +33,7 @@ import (
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Email struct {
+	Provider  string `json:"provider`
 	Enabled   bool   `json:"enabled"`
 	FromEmail string `json:"fromEmail"`
 	FromName  string `json:"fromName"`
@@ -41,7 +42,7 @@ type Email struct {
 }
 
 func (e Email) Config(org *Organization) Email {
-	conf := Email{e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
+	conf := Email{"", e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
 
 	// Use organization defaults
 	if org != nil {
