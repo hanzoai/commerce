@@ -1,8 +1,8 @@
 package wallet
 
 import (
-	"appengine"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"math/big"
 
@@ -24,9 +24,9 @@ type CreateAccountRequest struct {
 }
 
 type PayFromAccountRequest struct {
-	Name   string  `json:"name"`
-	To     string  `json:"to"`
-	Amount big.Int `json:"amount"`
+	Name   string `json:"name"`
+	To     string `json:"to"`
+	Amount string `json:"amount"`
 }
 
 type PayFromAccountResponse struct {
@@ -52,6 +52,7 @@ func GetAccount(c *gin.Context) {
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
+
 	log.Debug("Requested account name: %v", c.Params.ByName("name"))
 	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
 	if !success {
@@ -99,12 +100,18 @@ func Pay(c *gin.Context) {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
+	value := new(big.Int)
+	_, success := value.SetString(request.Amount, 10)
+	if !success {
+		http.Fail(c, 400, "Failed to decode value. Must be parsable as base 10 string.", errors.New(fmt.Sprintf("Unable to decode value. Given value: %v", request.Amount)))
+	}
+
 	account, success := orgWallet.GetAccountByName(request.Name)
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(appengine.NewContext(c.Request), *account, request.To, &request.Amount, []byte(org.WalletKey))
+	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(org.WalletKey))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
