@@ -146,6 +146,13 @@ type Config struct {
 		Password string
 	}
 
+	// SMTP Relay
+	SmtpRelay struct {
+		Endpoint string
+		Username string
+		Password string
+	}
+
 	// Current working dir
 	WorkingDir string
 }
@@ -267,6 +274,7 @@ var SentryDSN = config.SentryDSN
 var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
+var SmtpRelay = config.SmtpRelay
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 
