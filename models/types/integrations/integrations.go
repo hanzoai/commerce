@@ -306,3 +306,15 @@ func (i Integrations) FindById(id string) (*Integration, error) {
 
 	return nil, ErrorNotFound
 }
+
+// TODO: Support finding enabled provider for some type of thing, i.e., email
+// providers
+func (i Integrations) FindEmailProvider(id string) (*Integration, error) {
+	for _, in := range i {
+		if in.Type == MandrillType || in.Type == SMTPType {
+			return &in, nil
+		}
+	}
+
+	return nil, ErrorNotFound
+}
