@@ -32,7 +32,7 @@ const (
 	SalesforceType IntegrationType = "salesforce"
 	ShipwireType   IntegrationType = "shipwire"
 	StripeType     IntegrationType = "stripe"
-	SMTPType       IntegrationType = "smtp"
+	SmtpRelayType  IntegrationType = "smtprelay"
 )
 
 // Analytics
@@ -166,7 +166,7 @@ type Shipwire struct {
 }
 
 // SMTP settings
-type SMTP struct {
+type SmtpRelay struct {
 	Username string   `json:"username"`
 	Password string   `json:"password"`
 	Host     string   `json:"host"`
@@ -230,5 +230,5 @@ type Integration struct {
 	Salesforce Salesforce `json:"-"`
 	Shipwire   Shipwire   `json:"-"`
 	Stripe     Stripe     `json:"-"`
-	SMTP       SMTP       `json:"-"`
+	SmtpRelay  SmtpRelay  `json:"-"`
 }
