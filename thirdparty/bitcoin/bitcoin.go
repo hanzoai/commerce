@@ -1,6 +1,8 @@
 package bitcoin
 
 import (
+	"appengine"
+
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
@@ -18,6 +20,11 @@ import (
 	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
+
+	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
+	"hanzo.io/models/blockchains/blocktransaction"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
@@ -464,6 +471,36 @@ func CalculateFee(inputs, outputs int) int {
 	// We're being pessimistic and adding always.
 	approximateTransactionLength := (inputs * 180) + (outputs * 34) + 10 + inputs
 	return approximateTransactionLength * SatoshiPerByte
+}
+
+func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWithAmount, error) {
+	nsCtx, err := appengine.Namespace(ctx, blockchains.BlockchainNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	db := datastore.New(nsCtx)
+
+	bts := make([]*blocktransaction.BlockTransaction, 0)
+
+	if _, err := blocktransaction.Query(db).Filter("BitcoinTransactionUsed=", false).Filter("Address=", address).GetAll(&bts); err != nil {
+		return nil, err
+	}
+
+	oris := make([]OriginWithAmount, len(bts))
+
+	for i, bt := range bts {
+		oris[i] = OriginWithAmount{
+			Origin: Origin{
+				TxId:        bt.BitcoinTransactionTxId,
+				OutputIndex: int(bt.BitcoinTransactionVOutIndex),
+			},
+			Amount:   currency.Cents(bt.BitcoinTransactionVInValue),
+			Currency: currency.BTC,
+		}
+	}
+
+	return oris, nil
 }
 
 /*func CreateTransactionBtcd(client BitcoinClient, inputs []Input, output []Output, sender Sender) {
