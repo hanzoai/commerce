@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/balance"
+	"hanzo.io/api/checkout/bitcoin"
 	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/paypal"
@@ -127,6 +128,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Override total if test email is used
 	if org.IsTestEmail(usr.Email) {
 		switch ord.Currency {
+		case currency.BTC, currency.XBT:
+			ord.Total = currency.Cents(1e4)
 		case currency.ETH:
 			ord.Total = currency.Cents(1e7)
 		default:
@@ -180,10 +183,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		}
 		err = ethereum.Authorize(org, ord, usr)
 	case payment.Bitcoin:
-		if ord.Currency != currency.BTC || ord.Currency != currency.XBT {
+		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
 			return nil, UnsupportedBitcoinCurrency
 		}
-		// err = bitcoin.Authorize(org, ord, usr)
+		err = bitcoin.Authorize(org, ord, usr)
 	case payment.Null:
 		err = null.Authorize(org, ord, usr, pay)
 	case payment.PayPal:

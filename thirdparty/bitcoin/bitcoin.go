@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"golang.org/x/crypto/ripemd160"
 	"math"
@@ -24,7 +25,6 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
@@ -34,6 +34,9 @@ import (
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
 var SatoshiPerByte = 200
+
+// Errors
+var WeRequireAdditionalFunds = errors.New("Wallet address contains insufficient funds")
 
 func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
 	ripe := ripemd160.New()
@@ -495,12 +498,47 @@ func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWith
 				TxId:        bt.BitcoinTransactionTxId,
 				OutputIndex: int(bt.BitcoinTransactionVOutIndex),
 			},
-			Amount:   currency.Cents(bt.BitcoinTransactionVInValue),
-			Currency: currency.BTC,
+			Amount: bt.BitcoinTransactionVInValue,
 		}
 	}
 
 	return oris, nil
+}
+
+func PruneOriginsWithAmount(oris []OriginWithAmount, amount int64) ([]OriginWithAmount, error) {
+	// TODO sort in 1.8
+	// sort.Slice(oris[:], func(i, j int) bool {
+	// 	return oris[i].Amount < oris[j].Amount
+	// })
+
+	origins := make([]OriginWithAmount, 0)
+
+	var a int64 = 0
+
+	for _, ori := range oris {
+		if a < amount {
+			a += int64(ori.Amount)
+			origins = append(origins, ori)
+		} else {
+			break
+		}
+	}
+
+	if a < amount {
+		return origins, WeRequireAdditionalFunds
+	}
+
+	return origins, nil
+}
+
+func OriginsWithAmountToOrigins(oris []OriginWithAmount) []Origin {
+	origins := make([]Origin, 0)
+
+	for _, ori := range oris {
+		origins = append(origins, ori.Origin)
+	}
+
+	return origins
 }
 
 /*func CreateTransactionBtcd(client BitcoinClient, inputs []Input, output []Output, sender Sender) {
