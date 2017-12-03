@@ -71,7 +71,7 @@ var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", fu
 		TestNetAddress: sender.TestNetAddress,
 	}
 
-	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
+	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 
 	log.Info("Created Bitcoin client.")
 
