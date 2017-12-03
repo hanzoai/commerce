@@ -173,11 +173,9 @@ indexes:
   properties:
   - name: Type
   - name: BitcoinTransactionTxId
-    direction: desc
 
 - kind: blocktransaction
   ancestor: no
   properties:
   - name: BitcoinTransactionUsed
   - name: Address
-    direction: desc
