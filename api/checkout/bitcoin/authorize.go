@@ -1,8 +1,7 @@
-package ethereum
+package bitcoin
 
 import (
 	"errors"
-	// "math/big"
 
 	"hanzo.io/config"
 	"hanzo.io/models/blockchains"
@@ -10,7 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
-	// "hanzo.io/thirdparty/bitcoin"
+	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 )
@@ -59,25 +58,44 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 			return err
 		}
 
-		// client := bitcoin.NewRPCClient(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
+		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
 
-		// in := []bitcoin.Origin{
-		// 	bitcoin.Origin{TxId: transactionId, OutputIndex: 0},
-		// 	// bitcoin.Origin{TxId: transactionId2, OutputIndex: 0},
-		// }
+		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
+		if err == nil {
+			return err
+		}
 
-		// if _, err := client.SendTransaction(
-		// 	bitcoin.TestNet,
-		// 	account.PrivateKey,
-		// 	account.Address,
-		// 	w.Accounts[0].Address,
-		// 	ord.Currency.ToMinimalUnits(ord.Total),
-		// 	big.NewInt(0),
-		// 	big.NewInt(0),
-		// 	[]byte{},
-		// ); err != nil {
-		// 	return err
-		// }
+		total := int64(ord.Total)
+
+		prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
+		if err == nil {
+			return err
+		}
+
+		in := bitcoin.OriginsWithAmountToOrigins(prunedOris)
+		out := []bitcoin.Destination{
+			bitcoin.Destination{
+				Value:   total,
+				Address: w.Accounts[0].Address,
+			},
+		}
+
+		rawTrx, err := bitcoin.CreateTransaction(client, in, out, bitcoin.Sender{
+			PrivateKey:     account.PrivateKey,
+			PublicKey:      account.PublicKey,
+			TestNetAddress: account.TestNetAddress,
+		})
+		if _, err := client.SendRawTransaction(rawTrx); err != nil {
+			return err
+		}
+		// bitcoin.TestNet,
+		// account.PrivateKey,
+		// account.Address,
+		// w.Accounts[0].Address,
+		// ord.Currency.ToMinimalUnits(ord.Total),
+		// big.NewInt(0),
+		// big.NewInt(0),
+		// []byte{},
 	} else {
 		log.Info("Bitcoin Production Mode", ctx)
 		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase)); err != nil {
