@@ -8,7 +8,6 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/models/fixtures"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
@@ -125,18 +124,43 @@ var _ = Describe("thirdparty.bitcoin", func() {
 		Expect(len(origins)).To(Equal(2))
 		Expect(origins[0].TxId).To(Equal("Should Be Returned"))
 		Expect(origins[0].OutputIndex).To(Equal(0))
-		Expect(origins[0].Amount).To(Equal(currency.Cents(1e8)))
-		Expect(origins[0].Currency).To(Equal(currency.BTC))
+		Expect(origins[0].Amount).To(Equal(int64(1e8)))
 
 		Expect(origins[1].TxId).To(Equal("Should Be Returned Too"))
 		Expect(origins[1].OutputIndex).To(Equal(1))
-		Expect(origins[1].Amount).To(Equal(currency.Cents(1e9)))
-		Expect(origins[1].Currency).To(Equal(currency.BTC))
+		Expect(origins[1].Amount).To(Equal(int64(1e9)))
 	})
 
 	It("should not get used transactions for an address", func() {
 		origins, err := bitcoin.GetBitcoinTransactions(ctx, "456")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(origins)).To(Equal(0))
+	})
+
+	It("should prune origins", func() {
+		origins, err := bitcoin.GetBitcoinTransactions(ctx, "123")
+		Expect(err).NotTo(HaveOccurred())
+
+		origins2, err := bitcoin.PruneOriginsWithAmount(origins, 1e9)
+		Expect(len(origins2)).To(Equal(2))
+	})
+
+	It("should prune origins but error is insufficient funds", func() {
+		origins, err := bitcoin.GetBitcoinTransactions(ctx, "123")
+		Expect(err).NotTo(HaveOccurred())
+
+		origins2, err := bitcoin.PruneOriginsWithAmount(origins, 2e9)
+		Expect(err).To(Equal(bitcoin.WeRequireAdditionalFunds))
+		Expect(len(origins2)).To(Equal(2))
+	})
+
+	It("should convert []OriginWithAmount to []Origin", func() {
+		origins, err := bitcoin.GetBitcoinTransactions(ctx, "123")
+		Expect(err).NotTo(HaveOccurred())
+
+		origins2 := bitcoin.OriginsWithAmountToOrigins(origins)
+		Expect(len(origins2)).To(Equal(2))
+		Expect(origins[0].Origin).To(Equal(origins2[0]))
+		Expect(origins[1].Origin).To(Equal(origins2[1]))
 	})
 })
