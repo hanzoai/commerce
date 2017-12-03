@@ -2,6 +2,8 @@ package bitcoin
 
 import (
 	"encoding/hex"
+
+	"hanzo.io/models/types/currency"
 )
 
 // A Destination is the boiled-back simplistic form of a Bitcoin Output,
@@ -17,6 +19,14 @@ type Destination struct {
 type Origin struct {
 	TxId        string
 	OutputIndex int
+}
+
+// An OriginWithAmount is the boiled-back simpistic form of a Bitcoin Input, denoting
+// where you want the money to come from and the amount.
+type OriginWithAmount struct {
+	Origin
+	Amount   currency.Cents
+	Currency currency.Type
 }
 
 // An Input is a slightly more complete form of a Bitcoin Input, denoting
