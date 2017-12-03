@@ -76,10 +76,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		TestNetAddress: sender.TestNetAddress,
 	}
 
-	client, err := bitcoin.NewRpcClient(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
-	if err != nil {
-		panic(err)
-	}
+	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
 	log.Info("Created Bitcoin client.")
 
 	rawTrx, err := bitcoin.CreateTransaction(client, in, out, senderAccount)
