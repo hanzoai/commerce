@@ -58,7 +58,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 			return err
 		}
 
-		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
+		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 
 		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
 		if err == nil {
