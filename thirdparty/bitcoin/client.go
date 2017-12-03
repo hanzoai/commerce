@@ -55,7 +55,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(ctx appengine.Context, host, username, password string, testMode bool) BitcoinClient {
+func New(ctx appengine.Context, host, username, password string) BitcoinClient {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,
@@ -63,7 +63,7 @@ func New(ctx appengine.Context, host, username, password string, testMode bool) 
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return BitcoinClient{ctx, httpClient, host, testMode, []string{}, username, password}
+	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}
 }
 
 func paramsToString(parts ...interface{}) string {
