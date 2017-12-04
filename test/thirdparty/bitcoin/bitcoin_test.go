@@ -38,7 +38,7 @@ var _ = BeforeSuite(func() {
 	bt0.BitcoinTransactionUsed = false
 	bt0.BitcoinTransactionTxId = "Should Be Returned"
 	bt0.BitcoinTransactionVOutIndex = 0
-	bt0.BitcoinTransactionVInValue = 1e8
+	bt0.BitcoinTransactionVOutValue = 1e8
 	bt0.MustCreate()
 
 	bt1 := blocktransaction.New(db)
@@ -46,7 +46,7 @@ var _ = BeforeSuite(func() {
 	bt1.BitcoinTransactionUsed = false
 	bt1.BitcoinTransactionTxId = "Should Be Returned Too"
 	bt1.BitcoinTransactionVOutIndex = 1
-	bt1.BitcoinTransactionVInValue = 1e9
+	bt1.BitcoinTransactionVOutValue = 1e9
 	bt1.MustCreate()
 
 	bt2 := blocktransaction.New(db)
@@ -54,7 +54,7 @@ var _ = BeforeSuite(func() {
 	bt2.BitcoinTransactionUsed = true
 	bt2.BitcoinTransactionTxId = "Should Not Be Returned Because Used"
 	bt1.BitcoinTransactionVOutIndex = 2
-	bt1.BitcoinTransactionVInValue = 2e9
+	bt1.BitcoinTransactionVOutValue = 2e9
 	bt2.MustCreate()
 
 	bt3 := blocktransaction.New(db)
@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	bt3.BitcoinTransactionUsed = false
 	bt3.BitcoinTransactionTxId = "Should Not Be Returned Because Address"
 	bt3.BitcoinTransactionVOutIndex = 3
-	bt3.BitcoinTransactionVInValue = 3e9
+	bt3.BitcoinTransactionVOutValue = 3e9
 	bt3.MustCreate()
 
 	bt4 := blocktransaction.New(db)
@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 	bt4.BitcoinTransactionUsed = true
 	bt4.BitcoinTransactionTxId = "Should Not Be Returned Because Address"
 	bt4.BitcoinTransactionVOutIndex = 4
-	bt4.BitcoinTransactionVInValue = 4e9
+	bt4.BitcoinTransactionVOutValue = 4e9
 	bt4.MustCreate()
 })
 
