@@ -498,7 +498,7 @@ func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWith
 				TxId:        bt.BitcoinTransactionTxId,
 				OutputIndex: int(bt.BitcoinTransactionVOutIndex),
 			},
-			Amount: bt.BitcoinTransactionVInValue,
+			Amount: bt.BitcoinTransactionVOutValue,
 		}
 	}
 
@@ -510,6 +510,10 @@ func PruneOriginsWithAmount(oris []OriginWithAmount, amount int64) ([]OriginWith
 	// sort.Slice(oris[:], func(i, j int) bool {
 	// 	return oris[i].Amount < oris[j].Amount
 	// })
+
+	if IsTest {
+		return oris, nil
+	}
 
 	origins := make([]OriginWithAmount, 0)
 
