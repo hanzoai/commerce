@@ -270,7 +270,7 @@ var _ = Describe("Order", func() {
 			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
 		})
 
-		FIt("Should UpdateAndTally Price Overrides", func() {
+		It("Should UpdateAndTally Price Overrides", func() {
 			ord.CouponCodes = []string{}
 			err := ord.UpdateAndTally(stor3)
 			Expect(err).ToNot(HaveOccurred())
@@ -280,6 +280,7 @@ var _ = Describe("Order", func() {
 			Expect(ord.Total).To(Equal(ord.Subtotal))
 
 		})
+
 		It("Should UpdateAndTally with Provided Subtotal for Contributions", func() {
 			ord.CouponCodes = []string{}
 			ord.Contribution = true
