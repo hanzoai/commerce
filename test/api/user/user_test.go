@@ -5,10 +5,25 @@ import (
 
 	"github.com/icrowley/fake"
 
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
+	"hanzo.io/util/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )
+
+type retrieveWalletRes struct {
+	wallet.WalletHolder
+}
+
+type createAccountRes struct {
+	wallet.Account
+}
+
+type retrieveAccountRes struct {
+	wallet.Account
+}
 
 var _ = Describe("user", func() {
 	var normalize = func(s string) string {
@@ -140,6 +155,38 @@ var _ = Describe("user", func() {
 			usr := user.New(db)
 			err := usr.GetById(res)
 			Expect(err).ToNot(BeNil())
+		})
+	})
+
+	Context("User wallet", func() {
+		req := new(user.User)
+		Before(func() {
+			req = user.Fake(db)
+			req.MustCreate()
+		})
+		It("Should retrieve wallet", func() {
+			res := retrieveWalletRes{}
+			log.Debug("User Id used in request %v", req.Id())
+
+			cl.Get("/user/"+req.Id()+"/wallet", &res)
+		})
+		It("Should create wallet account", func() {
+			walletReq := `{
+				"name": "test-wallet-account",
+				"blockchain": "ethereum"
+			}`
+			res := createAccountRes{}
+
+			cl.Post("/user/"+req.Id()+"/wallet/createaccount", walletReq, &res)
+		})
+		It("Should retrieve created wallet account", func() {
+			userWallet, _ := req.GetOrCreateWallet(db)
+			userWallet.CreateAccount("test-wallet-account", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			req.MustUpdate()
+
+			resRetrieve := retrieveAccountRes{}
+
+			cl.Get("/user/"+req.Id()+"/wallet/account/test-wallet-account", &resRetrieve)
 		})
 	})
 })
