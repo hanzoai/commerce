@@ -24,8 +24,8 @@ const (
 type BitcoinTransactionType string
 
 const (
-	BitcoinTransactionVIn  BitcoinTransactionType = "vin"
-	BitcoinTransactionVOut BitcoinTransactionType = "vout"
+	BitcoinTransactionTypeVIn  BitcoinTransactionType = "vin"
+	BitcoinTransactionTypeVOut BitcoinTransactionType = "vout"
 )
 
 type ProcessStatus string

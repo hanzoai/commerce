@@ -145,6 +145,14 @@ var _ = Describe("thirdparty.bitcoin", func() {
 		Expect(len(origins2)).To(Equal(2))
 	})
 
+	It("should prune origins if enough", func() {
+		origins, err := bitcoin.GetBitcoinTransactions(ctx, "123")
+		Expect(err).NotTo(HaveOccurred())
+
+		origins2, err := bitcoin.PruneOriginsWithAmount(origins, 1e3)
+		Expect(len(origins2)).To(Equal(1))
+	})
+
 	It("should prune origins but error is insufficient funds", func() {
 		origins, err := bitcoin.GetBitcoinTransactions(ctx, "123")
 		Expect(err).NotTo(HaveOccurred())

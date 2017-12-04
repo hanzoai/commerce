@@ -123,7 +123,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	if a.TestNetAddress != "" {
 		// Create a blockaddress so we track this in the ethereum reader
 		tba := blockaddress.New(w.Db)
-		tba.Address = a.Address
+		tba.Address = a.TestNetAddress
 		tba.Type = typ
 		tba.WalletId = w.Id()
 
