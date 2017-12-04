@@ -177,5 +177,6 @@ indexes:
 - kind: blocktransaction
   ancestor: no
   properties:
+  - name: BitcoinTransactionType
   - name: BitcoinTransactionUsed
   - name: Address
