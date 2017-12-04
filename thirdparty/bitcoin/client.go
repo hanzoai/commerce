@@ -9,6 +9,9 @@ import (
 
 	"errors"
 	"fmt"
+	// "hanzo.io/datastore"
+	// "hanzo.io/models/blockchains"
+	// "hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
@@ -80,6 +83,13 @@ func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcRe
 	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", paramsToString(hex.EncodeToString(rawTransaction)))
 
 	res, err := btcc.Post(jsonRpcCommand, id)
+	// TODO: Make it mark an input as used one
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// bt := blocktransaction.New(datastore.New(btcc.ctx))
+	// bt.Query().Filter("Type=", blockchains.BitcoinTestnetType).Filter("BitcoinTransactionTxId")
 
 	return res, err
 }
