@@ -88,9 +88,9 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "Bellabeat"
 	org.Email.Defaults.FromEmail = "hi@bellabeat.com"
 
-	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
+	org.Email.Order.Confirmation.Subject = "LEAF Order Confirmation"
 	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Enabled = true
 
 	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
 	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
