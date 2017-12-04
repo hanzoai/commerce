@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
+	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 )
@@ -62,6 +63,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
 		if err != nil {
+			log.Info("Address '%s' Transaction: %v", account.TestNetAddress, json.Encode(oris), ctx)
 			return err
 		}
 
@@ -69,6 +71,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 		prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
 		if err != nil {
+			log.Info("Address '%s' Transaction: %v", account.TestNetAddress, json.Encode(prunedOris), ctx)
 			return err
 		}
 
