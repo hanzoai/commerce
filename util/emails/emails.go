@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
 	"hanzo.io/util/log"
 
@@ -25,24 +26,9 @@ func init() {
 	gob.Register([]map[string]interface{}{})
 }
 
-func EmailEnabled(ctx appengine.Context, org *organization.Organization, conf organization.Email) bool {
-	if !conf.Enabled {
-		log.Debug("Email disabled", ctx)
-		return false
-	}
-
-	_, err := org.Integrations.FindEmailProvider()
-	if err != nil {
-		log.Debug("Error finding email provider: %v", err, ctx)
-		return false
-	}
-
-	return true
-}
-
 func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
-	conf := org.Email.User.PasswordReset.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.UserPasswordReset)
+	if !conf.Enabled {
 		return
 	}
 
@@ -77,8 +63,8 @@ func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organizatio
 }
 
 func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmation.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.UserEmailConfirmed)
+	if !conf.Enabled {
 		return
 	}
 
@@ -108,8 +94,8 @@ func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organizati
 }
 
 func SendSubscriberWelcome(ctx appengine.Context, org *organization.Organization, s *subscriber.Subscriber) {
-	conf := org.Email.Subscriber.Welcome.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.SubscriberWelcome)
+	if !conf.Enabled {
 		return
 	}
 
@@ -129,8 +115,8 @@ func SendSubscriberWelcome(ctx appengine.Context, org *organization.Organization
 }
 
 func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.Welcome.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.UserWelcome)
+	if !conf.Enabled {
 		return
 	}
 
@@ -160,8 +146,8 @@ func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr 
 }
 
 func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmed.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.UserEmailConfirmed)
+	if !conf.Enabled {
 		return
 	}
 
@@ -207,8 +193,8 @@ func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organizati
 }
 
 func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
-	conf := org.Email.OrderConfirmation.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.OrderConfirmation)
+	if !conf.Enabled {
 		return
 	}
 
@@ -336,8 +322,8 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 }
 
 func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.OrderConfirmation.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.OrderConfirmation)
+	if !conf.Enabled {
 		return
 	}
 
@@ -442,8 +428,8 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 }
 
 func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.OrderConfirmation.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.OrderConfirmation)
+	if !conf.Enabled {
 		return
 	}
 
@@ -548,8 +534,8 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 }
 
 func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.OrderConfirmation.Config(org)
-	if !EmailEnabled(ctx, org, conf) {
+	conf := org.Email.Config(email.OrderConfirmation)
+	if !conf.Enabled {
 		return
 	}
 

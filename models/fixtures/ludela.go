@@ -104,8 +104,8 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "LuDela"
 	org.Email.Defaults.FromEmail = "hi@ludela.com"
 
-	org.Email.OrderConfirmation.Subject = "LuDela Order Confirmation"
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Subject = "LuDela Order Confirmation"
+	org.Email.Order.Confirmation.Enabled = true
 
 	org.Email.User.PasswordReset.Subject = "Reset your LuDela password"
 	org.Email.User.PasswordReset.Enabled = true
