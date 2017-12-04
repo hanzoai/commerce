@@ -79,7 +79,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		out := []bitcoin.Destination{
 			bitcoin.Destination{
 				Value:   total,
-				Address: w.Accounts[0].Address,
+				Address: w.Accounts[0].TestNetAddress,
 			},
 		}
 
