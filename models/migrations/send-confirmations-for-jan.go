@@ -1,7 +1,6 @@
 package migrations
 
 import (
-	"encoding/gob"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,16 +8,13 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/log"
 
 	ds "hanzo.io/datastore"
 )
-
-func init() {
-	gob.Register(organization.Email{})
-}
 
 var _ = New("send-confirmations-for-jan",
 	func(c *gin.Context) []interface{} {
@@ -28,9 +24,9 @@ var _ = New("send-confirmations-for-jan",
 		org := organization.New(db)
 		org.GetById("kanoa")
 
-		return []interface{}{org.Mandrill.APIKey, org.Email.Defaults.Enabled, org.Email.Defaults.FromName, org.Email.Defaults.FromEmail, org.Email.OrderConfirmation}
+		return []interface{}{org.Mandrill.APIKey, org.Email.Defaults.Enabled, org.Email.Defaults.FromName, org.Email.Defaults.FromEmail, org.Email.Order.Confirmation}
 	},
-	func(db *ds.Datastore, ord *order.Order, apiKey string, defaultEnabled bool, defaultFromName, defaultFromEmail string, orderConfirmation organization.Email) {
+	func(db *ds.Datastore, ord *order.Order, apiKey string, defaultEnabled bool, defaultFromName, defaultFromEmail string, orderConfirmation email.Email) {
 		// Fix issue with improperly set up orders
 		sendMail := false
 		if ord.CreatedAt.IsZero() {
@@ -66,7 +62,7 @@ var _ = New("send-confirmations-for-jan",
 		org.Email.Defaults.Enabled = defaultEnabled
 		org.Email.Defaults.FromName = defaultFromName
 		org.Email.Defaults.FromEmail = defaultFromEmail
-		org.Email.OrderConfirmation = orderConfirmation
+		org.Email.Order.Confirmation = orderConfirmation
 		org.Mandrill.APIKey = apiKey
 
 		// log.Warn("API email config %v", org.Email, ord.Db.Context)

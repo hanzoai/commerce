@@ -66,9 +66,9 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "KANOA"
 	org.Email.Defaults.FromEmail = "hi@kanoa.com"
 
-	org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Subject = "KANOA Earphones Order Confirmation"
+	org.Email.Order.Confirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
+	org.Email.Order.Confirmation.Enabled = true
 
 	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
 	org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
