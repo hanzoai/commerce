@@ -18,6 +18,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/email"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
@@ -31,90 +32,6 @@ import (
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
-
-type Email struct {
-	Enabled       bool   `json:"enabled"`
-	IntegrationId string `json:"integrationId"`
-
-	FromEmail string `json:"fromEmail"`
-	FromName  string `json:"fromName"`
-
-	Cc  []string `json:"cc,omitempty"`
-	Bcc []string `json:"bcc,omitempty"`
-
-	Subject string `json:"subject"`
-
-	// HTML template to render email from (on our end)
-	Template string `json:"template" datastore:",noindex"`
-
-	// ID of remote HTML template (i.e., Mandrill, Sendgrid managed templates)
-	TemplateId string `json:"templateId"`
-
-	// HTML / Text body to use (will override any templating directives)
-	Html string `json:"html" datastore:",noindex"`
-	Text string `json:"text" datastore:",noindex"`
-}
-
-func (e Email) Config(org *Organization) Email {
-	conf := Email{
-		Enabled:    e.Enabled,
-		FromName:   e.FromName,
-		FromEmail:  e.FromEmail,
-		Cc:         e.Cc,
-		Bcc:        e.Bcc,
-		Subject:    e.Subject,
-		Template:   e.Template,
-		TemplateId: e.TemplateId,
-		Html:       e.Html,
-		Text:       e.Text,
-	}
-
-	// Use organization defaults
-	if org != nil {
-		if !org.Email.Defaults.Enabled {
-			conf.Enabled = false
-		}
-
-		if conf.FromEmail == "" {
-			conf.FromEmail = org.Email.Defaults.FromEmail
-		}
-
-		if conf.FromName == "" {
-			conf.FromName = org.Email.Defaults.FromName
-		}
-	}
-
-	// Set email provider to the first we find
-	provider, err := org.Integrations.FindEmailProvider()
-	if err == nil || conf.IntegrationId == "" {
-		conf.IntegrationId = provider.Id
-	}
-
-	return conf
-}
-
-type EmailConfig struct {
-	// Default email configuration
-	Defaults struct {
-		Enabled   bool   `json:"enabled"`
-		FromName  string `json:"fromName"`
-		FromEmail string `json:"fromEmail"`
-	} `json:"defaults"`
-
-	// Per-email configuration
-	OrderConfirmation Email `json:"orderConfirmation"`
-
-	User struct {
-		Welcome           Email `json:"welcome`
-		EmailConfirmation Email `json:"emailConfirmation"`
-		EmailConfirmed    Email `json:"emailConfirmed"`
-		PasswordReset     Email `json:"PasswordReset"`
-	} `json:"user"`
-
-	Subscriber struct {
-		Welcome Email `json:"welcome`
-	} `json:"subscriber"`
-}
 
 type Organization struct {
 	mixin.Model
@@ -145,8 +62,8 @@ type Organization struct {
 	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
-	// Email config
-	Email EmailConfig `json:"email" datastore:",noindex"`
+	// Email settings
+	Email email.Settings `json:"email" datastore:",noindex"`
 
 	// Default Store
 	DefaultStore string `json:"defaultStore"`

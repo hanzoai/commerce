@@ -1,8 +1,6 @@
 package migrations
 
 import (
-	"encoding/gob"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
@@ -13,10 +11,6 @@ import (
 
 	ds "hanzo.io/datastore"
 )
-
-func init() {
-	gob.Register(organization.Email{})
-}
 
 var _ = New("fix-zero-dates",
 	func(c *gin.Context) []interface{} {
