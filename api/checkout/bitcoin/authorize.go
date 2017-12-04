@@ -61,14 +61,14 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 
 		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
-		if err == nil {
+		if err != nil {
 			return err
 		}
 
 		total := int64(ord.Total)
 
 		prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
-		if err == nil {
+		if err != nil {
 			return err
 		}
 
