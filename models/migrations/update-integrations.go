@@ -61,7 +61,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&m)
 		} else {
 			m := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.MailchimpType,
 					Enabled: org.Mailchimp.APIKey != "",
 				},
@@ -76,7 +76,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&m)
 		} else {
 			m := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.MandrillType,
 					Enabled: org.Mandrill.APIKey != "",
 				},
@@ -91,7 +91,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&n)
 		} else {
 			n := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.NetlifyType,
 					Enabled: org.Netlify.AccessToken != "",
 				},
@@ -106,7 +106,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&r)
 		} else {
 			r := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.ReamazeType,
 					Enabled: org.Reamaze.Secret != "",
 				},
@@ -121,7 +121,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&r)
 		} else {
 			r := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.RecaptchaType,
 					Enabled: org.Recaptcha.Enabled,
 				},
@@ -136,7 +136,7 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&s)
 		} else {
 			s := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.ShipwireType,
 					Enabled: org.Shipwire.Username != "",
 				},
@@ -155,7 +155,7 @@ var _ = New("update-integrations",
 			// log.Warn("Updating Stripe2 '%s'", string(json.EncodeBytes(s.Stripe)), db.Context)
 		} else {
 			s := integrations.Integration{
-				BasicIntegration: integrations.BasicIntegration{
+				Base: integrations.Base{
 					Type:    integrations.StripeType,
 					Enabled: org.Stripe.AccessToken != "",
 					Data:    json.EncodeBytes(org.Stripe),
