@@ -414,10 +414,10 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 
 		// Add the change to our outputs, asking our Bitcoin Client if we're in
 		// test mode or not.
-		if client.IsTest {
+		if sender.TestNetAddress != "" {
 			outScript := CreateScriptPubKey(sender.TestNetAddress)
 			outputs = append(outputs, Output{totalChange, outScript})
-		} else {
+		} else if sender.Address != "" {
 			outScript := CreateScriptPubKey(sender.Address)
 			outputs = append(outputs, Output{totalChange, outScript})
 		}
@@ -486,7 +486,7 @@ func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWith
 
 	bts := make([]*blocktransaction.BlockTransaction, 0)
 
-	if _, err := blocktransaction.Query(db).Filter("BitcoinTransactionUsed=", false).Filter("Address=", address).GetAll(&bts); err != nil {
+	if _, err := blocktransaction.Query(db).Filter("BitcoinTransactionType=", blockchains.BitcoinTransactionTypeVOut).Filter("BitcoinTransactionUsed=", false).Filter("Address=", address).GetAll(&bts); err != nil {
 		return nil, err
 	}
 
