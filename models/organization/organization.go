@@ -33,16 +33,41 @@ import (
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Email struct {
-	Provider  string `json:"provider`
-	Enabled   bool   `json:"enabled"`
+	Enabled       bool   `json:"enabled"`
+	IntegrationId string `json:"integrationId"`
+
 	FromEmail string `json:"fromEmail"`
 	FromName  string `json:"fromName"`
-	Subject   string `json:"subject"`
-	Template  string `json:"template" datastore:",noindex"`
+
+	Cc  []string `json:"cc,omitempty"`
+	Bcc []string `json:"bcc,omitempty"`
+
+	Subject string `json:"subject"`
+
+	// HTML template to render email from (on our end)
+	Template string `json:"template" datastore:",noindex"`
+
+	// ID of remote HTML template (i.e., Mandrill, Sendgrid managed templates)
+	TemplateId string `json:"templateId"`
+
+	// HTML / Text body to use (will override any templating directives)
+	Html string `json:"html" datastore:",noindex"`
+	Text string `json:"text" datastore:",noindex"`
 }
 
 func (e Email) Config(org *Organization) Email {
-	conf := Email{"", e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
+	conf := Email{
+		Enabled:    e.Enabled,
+		FromName:   e.FromName,
+		FromEmail:  e.FromEmail,
+		Cc:         e.Cc,
+		Bcc:        e.Bcc,
+		Subject:    e.Subject,
+		Template:   e.Template,
+		TemplateId: e.TemplateId,
+		Html:       e.Html,
+		Text:       e.Text,
+	}
 
 	// Use organization defaults
 	if org != nil {
@@ -57,6 +82,12 @@ func (e Email) Config(org *Organization) Email {
 		if conf.FromName == "" {
 			conf.FromName = org.Email.Defaults.FromName
 		}
+	}
+
+	// Set email provider to the first we find
+	provider, err := org.Integrations.FindEmailProvider()
+	if err == nil || conf.IntegrationId == "" {
+		conf.IntegrationId = provider.Id
 	}
 
 	return conf
