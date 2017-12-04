@@ -60,6 +60,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		}
 
 		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
+		// client.Test(true)
 
 		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
 		if err != nil {

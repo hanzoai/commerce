@@ -43,7 +43,7 @@ var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
 	ord.Type = payment.Bitcoin
 
 	ord.Currency = currency.BTC
-	ord.Subtotal = currency.Cents(100000000)
+	ord.Subtotal = currency.Cents(1000)
 	ord.Contribution = true
 
 	ch := checkout.Authorization{
