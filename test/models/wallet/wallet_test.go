@@ -116,6 +116,11 @@ var _ = Describe("Wallet", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(wal.Accounts)).To(Equal(1))
 
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
 			// Simulate a deprecated TestNetAddress Account
 			wal.Accounts[0].TestNetAddress = "TestNetAddress"
 			wal.Accounts[0].Address = "Address"
@@ -149,6 +154,11 @@ var _ = Describe("Wallet", func() {
 			_, err := wal.CreateAccount("test", blockchains.BitcoinType, []byte(password))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
 
 			// Simulate a deprecated TestNetAddress Account
 			wal.Accounts[0].TestNetAddress = "TestNetAddress"
@@ -184,6 +194,11 @@ var _ = Describe("Wallet", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(wal.Accounts)).To(Equal(1))
 
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
 			// Simulate a deprecated TestNetAddress Account
 			wal.Accounts[0].TestNetAddress = "TestNetAddress"
 			wal.Accounts[0].Address = "Address"
@@ -217,6 +232,11 @@ var _ = Describe("Wallet", func() {
 			_, err := wal.CreateAccount("test", blockchains.EthereumRopstenType, []byte(password))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
 
 			// Simulate a deprecated TestNetAddress Account
 			wal.Accounts[0].TestNetAddress = "TestNetAddress"
