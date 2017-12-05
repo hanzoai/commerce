@@ -412,15 +412,9 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		approximateFee += int64(34 * SatoshiPerByte) // Update the fee to account for the extra length.
 		totalChange -= approximateFee                // pull down the change to account for the fee.
 
-		// Add the change to our outputs, asking our Bitcoin Client if we're in
-		// test mode or not.
-		if sender.TestNetAddress != "" {
-			outScript := CreateScriptPubKey(sender.TestNetAddress)
-			outputs = append(outputs, Output{totalChange, outScript})
-		} else if sender.Address != "" {
-			outScript := CreateScriptPubKey(sender.Address)
-			outputs = append(outputs, Output{totalChange, outScript})
-		}
+		// Add the change to our outputs
+		outScript := CreateScriptPubKey(sender.Address)
+		outputs = append(outputs, Output{totalChange, outScript})
 
 	}
 
