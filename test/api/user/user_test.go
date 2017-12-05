@@ -177,7 +177,7 @@ var _ = Describe("user", func() {
 			}`
 			res := createAccountRes{}
 
-			cl.Post("/user/"+req.Id()+"/wallet/createaccount", walletReq, &res)
+			cl.Post("/user/"+req.Id()+"/wallet/account", walletReq, &res)
 		})
 		It("Should retrieve created wallet account", func() {
 			userWallet, _ := req.GetOrCreateWallet(db)

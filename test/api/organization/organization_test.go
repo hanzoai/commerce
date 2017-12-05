@@ -138,7 +138,7 @@ var _ = Describe("organization", func() {
 			}`
 			res := createAccountRes{}
 
-			cl.Post("/c/organization/"+org.Id()+"/wallet/createaccount", req, &res)
+			cl.Post("/c/organization/"+org.Id()+"/wallet/account", req, &res)
 		})
 		It("Should retrieve created wallet account", func() {
 			orgWallet, _ := org.GetOrCreateWallet(db)
