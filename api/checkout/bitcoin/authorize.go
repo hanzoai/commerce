@@ -62,9 +62,9 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 		// client.Test(true)
 
-		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.TestNetAddress)
+		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.Address)
 		if err != nil {
-			log.Info("Address '%s' Transaction: %v", account.TestNetAddress, json.Encode(oris), ctx)
+			log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(oris), ctx)
 			return err
 		}
 
@@ -72,7 +72,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 		prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
 		if err != nil {
-			log.Info("Address '%s' Transaction: %v", account.TestNetAddress, json.Encode(prunedOris), ctx)
+			log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(prunedOris), ctx)
 			return err
 		}
 
@@ -80,14 +80,14 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		out := []bitcoin.Destination{
 			bitcoin.Destination{
 				Value:   total,
-				Address: w.Accounts[0].TestNetAddress,
+				Address: w.Accounts[0].Address,
 			},
 		}
 
 		rawTrx, err := bitcoin.CreateTransaction(client, in, out, bitcoin.Sender{
-			PrivateKey:     account.PrivateKey,
-			PublicKey:      account.PublicKey,
-			TestNetAddress: account.TestNetAddress,
+			PrivateKey: account.PrivateKey,
+			PublicKey:  account.PublicKey,
+			Address:    account.Address,
 		})
 		if _, err := client.SendRawTransaction(rawTrx); err != nil {
 			return err
