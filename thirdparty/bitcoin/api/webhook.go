@@ -4,7 +4,6 @@ import (
 	ej "encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,7 +12,7 @@ import (
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/blockchains/blocktransaction"
 	// "hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/ethereum/tasks"
+	//"hanzo.io/thirdparty/ethereum/tasks"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -69,7 +68,7 @@ func Webhook(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
-	ctx := db.Context
+	// ctx := db.Context
 
 	switch event.DataKind {
 	case BlockTransaction:
@@ -107,22 +106,22 @@ func Webhook(c *gin.Context) {
 				break
 			}
 
-			bi, ok := big.NewInt(0).SetString(string(bt.EthereumTransactionValue), 10)
-			if !ok {
-				http.Fail(c, 500, CouldNotConvertToBigInt.Error(), CouldNotConvertToBigInt)
-				panic(CouldNotConvertToBigInt)
-			}
+			// bi, ok := big.NewInt(0).SetString(string(bt.EthereumTransactionValue), 10)
+			// if !ok {
+			// 	http.Fail(c, 500, CouldNotConvertToBigInt.Error(), CouldNotConvertToBigInt)
+			// 	panic(CouldNotConvertToBigInt)
+			// }
 
-			if err := tasks.EthereumProcessPayment.Call(
-				ctx, ba.WalletNamespace,
-				ba.WalletId,
-				bt.EthereumTransactionHash,
-				string(bt.Type),
-				bi,
-			); err != nil {
-				http.Fail(c, 500, err.Error(), err)
-				panic(err)
-			}
+			// if err := tasks.EthereumProcessPayment.Call(
+			// 	ctx, ba.WalletNamespace,
+			// 	ba.WalletId,
+			// 	bt.EthereumTransactionHash,
+			// 	string(bt.Type),
+			// 	bi,
+			// ); err != nil {
+			// 	http.Fail(c, 500, err.Error(), err)
+			// 	panic(err)
+			// }
 
 		case "ping":
 			c.String(200, "pong")
@@ -130,6 +129,6 @@ func Webhook(c *gin.Context) {
 		}
 	}
 
-	log.Info("Received Ethereum Webhook: %v", event, c)
+	log.Info("Received Bitcoin Webhook: %v", event, c)
 	c.String(200, "ok")
 }
