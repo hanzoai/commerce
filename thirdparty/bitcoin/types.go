@@ -42,10 +42,9 @@ type Output struct {
 }
 
 type Sender struct {
-	PrivateKey     string
-	PublicKey      string
-	Address        string
-	TestNetAddress string
+	PrivateKey string
+	PublicKey  string
+	Address    string
 }
 
 type GetRawTransactionResponseResult struct {

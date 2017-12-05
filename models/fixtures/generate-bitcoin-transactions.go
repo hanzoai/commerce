@@ -49,9 +49,9 @@ var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", fu
 	}
 
 	log.Info("Accounts Found", ctx)
-	log.Info("Sender Address", sender.TestNetAddress)
-	log.Info("Receiver 1 Address", receiver1.TestNetAddress)
-	log.Info("Receiver 2 Address", receiver2.TestNetAddress)
+	log.Info("Sender Address", sender.Address)
+	log.Info("Receiver 1 Address", receiver1.Address)
+	log.Info("Receiver 2 Address", receiver2.Address)
 	if err := sender.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
 		panic(err)
 	}
@@ -63,12 +63,11 @@ var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", fu
 	}
 
 	in := []bitcoin.Origin{bitcoin.Origin{TxId: "5b60d0684a8201ddac20f713782a1f03682b508e90d99d0887b4114ad4ccfd2c", OutputIndex: 0}}
-	out := []bitcoin.Destination{bitcoin.Destination{Value: 1000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 5000, Address: receiver2.TestNetAddress}}
+	out := []bitcoin.Destination{bitcoin.Destination{Value: 1000, Address: receiver1.Address}, bitcoin.Destination{Value: 5000, Address: receiver2.Address}}
 	senderAccount := bitcoin.Sender{
-		PrivateKey:     sender.PrivateKey,
-		PublicKey:      sender.PublicKey,
-		Address:        sender.Address,
-		TestNetAddress: sender.TestNetAddress,
+		PrivateKey: sender.PrivateKey,
+		PublicKey:  sender.PublicKey,
+		Address:    sender.Address,
 	}
 
 	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
