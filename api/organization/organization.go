@@ -35,7 +35,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:organizationid/wallet", adminRequired, namespaced, wallet.Get)
 	api.GET("/:organizationid/wallet/account/:name", adminRequired, namespaced, wallet.GetAccount)
 	api.POST("/:organizationid/wallet/account", adminRequired, namespaced, wallet.CreateAccount)
-	api.POST("/:organizationid/wallet/pay", adminRequired, namespaced, wallet.Pay)
+	api.POST("/:organizationid/wallet/send", adminRequired, namespaced, wallet.Send)
 
 	api.Route(router, args...)
 }

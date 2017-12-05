@@ -110,7 +110,7 @@ func CreateAccount(c *gin.Context) {
 	http.Render(c, 200, account)
 }
 
-func Pay(c *gin.Context) {
+func Send(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
