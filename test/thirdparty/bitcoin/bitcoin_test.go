@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/thirdparty/bitcoin"
@@ -36,6 +37,7 @@ var _ = BeforeSuite(func() {
 	bt0 := blocktransaction.New(db)
 	bt0.Address = "123"
 	bt0.BitcoinTransactionUsed = false
+	bt0.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
 	bt0.BitcoinTransactionTxId = "Should Be Returned"
 	bt0.BitcoinTransactionVOutIndex = 0
 	bt0.BitcoinTransactionVOutValue = 1e8
@@ -44,6 +46,7 @@ var _ = BeforeSuite(func() {
 	bt1 := blocktransaction.New(db)
 	bt1.Address = "123"
 	bt1.BitcoinTransactionUsed = false
+	bt1.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
 	bt1.BitcoinTransactionTxId = "Should Be Returned Too"
 	bt1.BitcoinTransactionVOutIndex = 1
 	bt1.BitcoinTransactionVOutValue = 1e9
@@ -52,6 +55,7 @@ var _ = BeforeSuite(func() {
 	bt2 := blocktransaction.New(db)
 	bt2.Address = "123"
 	bt2.BitcoinTransactionUsed = true
+	bt2.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
 	bt2.BitcoinTransactionTxId = "Should Not Be Returned Because Used"
 	bt1.BitcoinTransactionVOutIndex = 2
 	bt1.BitcoinTransactionVOutValue = 2e9
@@ -60,6 +64,7 @@ var _ = BeforeSuite(func() {
 	bt3 := blocktransaction.New(db)
 	bt3.Address = "321"
 	bt3.BitcoinTransactionUsed = false
+	bt3.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
 	bt3.BitcoinTransactionTxId = "Should Not Be Returned Because Address"
 	bt3.BitcoinTransactionVOutIndex = 3
 	bt3.BitcoinTransactionVOutValue = 3e9
@@ -68,6 +73,7 @@ var _ = BeforeSuite(func() {
 	bt4 := blocktransaction.New(db)
 	bt4.Address = "456"
 	bt4.BitcoinTransactionUsed = true
+	bt4.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
 	bt4.BitcoinTransactionTxId = "Should Not Be Returned Because Address"
 	bt4.BitcoinTransactionVOutIndex = 4
 	bt4.BitcoinTransactionVOutValue = 4e9
