@@ -36,6 +36,7 @@ const (
 	Affirm   Type = "affirm"
 	Balance  Type = "balance"
 	Ethereum Type = "ethereum"
+	Bitcoin  Type = "bitcoin"
 	Null     Type = "null"
 	PayPal   Type = "paypal"
 	Stripe   Type = "stripe"
