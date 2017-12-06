@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
+	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
@@ -86,6 +87,7 @@ type EmailConfig struct {
 type Organization struct {
 	mixin.Model
 	mixin.AccessTokens
+	wallet.WalletHolder
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
@@ -98,6 +100,7 @@ type Organization struct {
 	Phone        string  `json:"phone,omitempty"`
 	Address      Address `json:"address,omitempty"`
 	Website      string  `json:"website,omitempty"`
+	WalletKey    string  `json:"-"`
 
 	Timezone string `json:"timezone"`
 
