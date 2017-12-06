@@ -46,6 +46,7 @@ type User struct {
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
 	Organizations   []string `json:"-" datastore:",noindex"`
 	StoreId         string   `json:"storeId,omitempty"`
+	WalletKey       string   `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
