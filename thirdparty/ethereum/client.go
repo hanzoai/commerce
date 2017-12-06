@@ -159,6 +159,9 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	}
 
 	ctx := c.ctx
+
+	log.Error("Sending Transaction on Chain '%s'", chainType, ctx)
+
 	// Setup defaults
 	if gasLimit.Cmp(big.NewInt(0)) <= 0 {
 		gasLimit = big.NewInt(DefaultGas)
@@ -296,6 +299,10 @@ func (c Client) GasPrice() (*big.Int, error) {
 
 // Get the current average gasprice via https://ethgasstation.info/json/ethgasAPI.json
 func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
+	if c.IsTest || IsTest {
+		return big.NewInt(1), nil, nil
+	}
+
 	log.Info("Getting prices from ethgasstation", c.ctx)
 	res, err := c.httpClient.Get("https://ethgasstation.info/json/ethgasAPI.json")
 	if err != nil {
