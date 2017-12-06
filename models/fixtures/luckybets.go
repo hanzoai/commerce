@@ -5,11 +5,8 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
-	"hanzo.io/models/webhook"
 )
 
 var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization {
