@@ -9,6 +9,9 @@ import (
 
 	"errors"
 	"fmt"
+	// "hanzo.io/datastore"
+	// "hanzo.io/models/blockchains"
+	// "hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
@@ -55,7 +58,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func NewRpcClient(ctx appengine.Context, host, username, password string, testMode bool) (BitcoinClient, error) {
+func New(ctx appengine.Context, host, username, password string) BitcoinClient {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,
@@ -63,7 +66,7 @@ func NewRpcClient(ctx appengine.Context, host, username, password string, testMo
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return BitcoinClient{ctx, httpClient, host, testMode, []string{}, username, password}, nil
+	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}
 }
 
 func paramsToString(parts ...interface{}) string {
@@ -80,6 +83,13 @@ func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcRe
 	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", paramsToString(hex.EncodeToString(rawTransaction)))
 
 	res, err := btcc.Post(jsonRpcCommand, id)
+	// TODO: Make it mark an input as used one
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// bt := blocktransaction.New(datastore.New(btcc.ctx))
+	// bt.Query().Filter("Type=", blockchains.BitcoinTestnetType).Filter("BitcoinTransactionTxId")
 
 	return res, err
 }
@@ -104,10 +114,10 @@ func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, 
 
 	// I dunno if this is appropriate for the bitcoin junk but it sure isn't
 	// right now
-	/*if c.IsTest || IsTest {
+	if c.IsTest || IsTest {
 		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
 		return jrr, nil
-	}*/
+	}
 
 	bodyReader := bytes.NewReader([]byte(jsonRpcCommand))
 	httpReq, err := http.NewRequest("POST", c.host, bodyReader)
