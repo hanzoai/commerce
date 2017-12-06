@@ -53,6 +53,7 @@ type Client struct {
 
 	IsTest   bool
 	Commands []string
+	Chain    ChainId
 }
 
 type JsonRpcError struct {
@@ -90,7 +91,7 @@ func New(ctx appengine.Context, address string) Client {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return Client{ctx, httpClient, address, false, []string{}}
+	return Client{ctx: ctx, httpClient: httpClient, address: address, IsTest: false, Commands: []string{}}
 }
 
 func paramsToString(parts ...interface{}) string {
@@ -317,4 +318,25 @@ func (c Client) GasPrice2() (*big.Int, *EthGasStationResponse, error) {
 	log.Info("Gas Price is %v", egr, c.ctx)
 
 	return big.NewInt(int64(egr.SafeLow + 1)), egr, nil
+}
+
+func (c Client) GetBalance(address string) (balanceInWei *big.Int, err error) {
+	log.Info("Getting ethereum balance for address: %v", address)
+	id := rand.Int64()
+	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, "eth_getBalance", paramsToString(address), id)
+	jrr, err := c.Post(jsonRpcCommand, id)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+
+	balanceHex := string(jrr.Result)
+	balanceHex = balanceHex[1 : len(balanceHex)-1]
+
+	log.Info("Address balance is %v", balanceHex)
+
+	a, err := hexutil.DecodeBig(balanceHex)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+	return a, nil
 }
