@@ -27,14 +27,14 @@ type BitcoinTransaction struct {
 
 type BitcoinVIn struct {
 	BitcoinTransactionVInTransactionTxId  string `json:"bitcoinTransactionVInTransactionTxId"`
-	BitcoinTransactionVInTransactionIndex string `json:"bitcoinTransactionVInTransactionIndex"`
-	BitcoinTransactionVInIndex            string `json:"bitcoinTransactionVInIndex"`
+	BitcoinTransactionVInTransactionIndex int64  `json:"bitcoinTransactionVInTransactionIndex"`
+	BitcoinTransactionVInIndex            int64  `json:"bitcoinTransactionVInIndex"`
 	BitcoinTransactionVInValue            int64  `json:"bitcoinTransactionVInValue"`
 }
 
 type BitcoinVOut struct {
-	BitcoinTransactionVOutIndex string `json:"bitcoinTransactionVOutIndex"`
-	BitcoinTransactionVOutValue int64  `json:"bitcoinTransactionVOutValue"`
+	BitcoinTransactionVOutIndex int64 `json:"bitcoinTransactionVOutIndex"`
+	BitcoinTransactionVOutValue int64 `json:"bitcoinTransactionVOutValue"`
 }
 
 // Datastructure for Ethereum Transaction

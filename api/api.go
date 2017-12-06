@@ -52,6 +52,7 @@ import (
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
 
+	bitcoinApi "hanzo.io/thirdparty/bitcoin/api"
 	ethereumApi "hanzo.io/thirdparty/ethereum/api"
 	paypalApi "hanzo.io/thirdparty/paypal/ipn"
 	reamazeApi "hanzo.io/thirdparty/reamaze"
@@ -183,6 +184,9 @@ func Route(api router.Router) {
 
 	// Marketing Api
 	marketingApi.Route(api)
+
+	// Bitcoin webhook
+	bitcoinApi.Route(api)
 
 	// Ethereum webhook
 	ethereumApi.Route(api)
