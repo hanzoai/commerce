@@ -13,6 +13,8 @@ var (
 	OrderDoesNotExist            = errors.New("Order does not exist")
 	PaymentCancelled             = errors.New("Payment was cancelled")
 	TokenSaleNotFound            = errors.New("Token sale not found")
+	TransactionLimitReached      = errors.New("Transaction Amount May Not Exceed Limit of 500000")
+	UnsupportedBitcoinCurrency   = errors.New("BTC/XBT is supported for 'bitcoin' payment method")
 	UnsupportedEthereumCurrency  = errors.New("Only ETH is supported for 'ethereum' payment method")
 	UnsupportedPaymentType       = errors.New("Unsupported payment type")
 	UnsupportedStripeCurrency    = errors.New("XBT(BTC), ETH not supported by 'stripe' payment method")

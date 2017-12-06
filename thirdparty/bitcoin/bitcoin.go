@@ -1,12 +1,15 @@
 package bitcoin
 
 import (
+	"appengine"
+
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"golang.org/x/crypto/ripemd160"
 	"math"
@@ -18,6 +21,10 @@ import (
 	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/base58"
+
+	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
+	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
@@ -27,6 +34,9 @@ import (
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
 var SatoshiPerByte = 200
+
+// Errors
+var WeRequireAdditionalFunds = errors.New("Wallet address contains insufficient funds")
 
 func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
 	ripe := ripemd160.New()
@@ -402,15 +412,9 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		approximateFee += int64(34 * SatoshiPerByte) // Update the fee to account for the extra length.
 		totalChange -= approximateFee                // pull down the change to account for the fee.
 
-		// Add the change to our outputs, asking our Bitcoin Client if we're in
-		// test mode or not.
-		if client.IsTest {
-			outScript := CreateScriptPubKey(sender.TestNetAddress)
-			outputs = append(outputs, Output{totalChange, outScript})
-		} else {
-			outScript := CreateScriptPubKey(sender.Address)
-			outputs = append(outputs, Output{totalChange, outScript})
-		}
+		// Add the change to our outputs
+		outScript := CreateScriptPubKey(sender.Address)
+		outputs = append(outputs, Output{totalChange, outScript})
 
 	}
 
@@ -464,6 +468,75 @@ func CalculateFee(inputs, outputs int) int {
 	// We're being pessimistic and adding always.
 	approximateTransactionLength := (inputs * 180) + (outputs * 34) + 10 + inputs
 	return approximateTransactionLength * SatoshiPerByte
+}
+
+func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWithAmount, error) {
+	nsCtx, err := appengine.Namespace(ctx, blockchains.BlockchainNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	db := datastore.New(nsCtx)
+
+	bts := make([]*blocktransaction.BlockTransaction, 0)
+
+	if _, err := blocktransaction.Query(db).Filter("BitcoinTransactionType=", blockchains.BitcoinTransactionTypeVOut).Filter("BitcoinTransactionUsed=", false).Filter("Address=", address).GetAll(&bts); err != nil {
+		return nil, err
+	}
+
+	oris := make([]OriginWithAmount, len(bts))
+
+	for i, bt := range bts {
+		oris[i] = OriginWithAmount{
+			Origin: Origin{
+				TxId:        bt.BitcoinTransactionTxId,
+				OutputIndex: int(bt.BitcoinTransactionVOutIndex),
+			},
+			Amount: bt.BitcoinTransactionVOutValue,
+		}
+	}
+
+	return oris, nil
+}
+
+func PruneOriginsWithAmount(oris []OriginWithAmount, amount int64) ([]OriginWithAmount, error) {
+	// TODO sort in 1.8
+	// sort.Slice(oris[:], func(i, j int) bool {
+	// 	return oris[i].Amount < oris[j].Amount
+	// })
+
+	if IsTest {
+		return oris, nil
+	}
+
+	origins := make([]OriginWithAmount, 0)
+
+	var a int64 = 0
+
+	for _, ori := range oris {
+		if a < amount {
+			a += int64(ori.Amount)
+			origins = append(origins, ori)
+		} else {
+			break
+		}
+	}
+
+	if a < amount {
+		return origins, WeRequireAdditionalFunds
+	}
+
+	return origins, nil
+}
+
+func OriginsWithAmountToOrigins(oris []OriginWithAmount) []Origin {
+	origins := make([]Origin, 0)
+
+	for _, ori := range oris {
+		origins = append(origins, ori.Origin)
+	}
+
+	return origins
 }
 
 /*func CreateTransactionBtcd(client BitcoinClient, inputs []Input, output []Output, sender Sender) {
