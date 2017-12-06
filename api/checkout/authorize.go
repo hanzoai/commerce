@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/balance"
+	"hanzo.io/api/checkout/bitcoin"
 	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/paypal"
@@ -127,6 +128,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Override total if test email is used
 	if org.IsTestEmail(usr.Email) {
 		switch ord.Currency {
+		case currency.BTC, currency.XBT:
+			ord.Total = currency.Cents(1e4)
 		case currency.ETH:
 			ord.Total = currency.Cents(1e7)
 		default:
@@ -146,8 +149,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		}
 	}
 
+	usingFiat := payment.IsFiatProcessorType(ord.Type)
+
 	// Ethereum payments are handles in the webhook
-	if ord.Type != payment.Ethereum {
+	if usingFiat {
 		// Use updated order total
 		pay.Amount = ord.Total
 
@@ -177,6 +182,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, UnsupportedEthereumCurrency
 		}
 		err = ethereum.Authorize(org, ord, usr)
+	case payment.Bitcoin:
+		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
+			return nil, UnsupportedBitcoinCurrency
+		}
+		err = bitcoin.Authorize(org, ord, usr)
 	case payment.Null:
 		err = null.Authorize(org, ord, usr, pay)
 	case payment.PayPal:
@@ -210,7 +220,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Batch save user, order, payment, fees
 	entities := []interface{}{usr, ord, pay}
 
-	if ord.Type == payment.Ethereum {
+	if !usingFiat {
 		entities = []interface{}{usr, ord}
 	} else {
 		// If the charge is not live or test flag is set, then it is a test charge
