@@ -18,7 +18,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {
+var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 
@@ -40,10 +40,10 @@ var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context)
 	ord.ShippingAddress.State = sd.Code
 	ord.ShippingAddress.Country = ctr.Codes.Alpha2
 	ord.ShippingAddress.PostalCode = "66212"
-	ord.Type = payment.Ethereum
+	ord.Type = payment.Bitcoin
 
-	ord.Currency = currency.ETH
-	ord.Subtotal = currency.Cents(100000000)
+	ord.Currency = currency.BTC
+	ord.Subtotal = currency.Cents(1000)
 	ord.Contribution = true
 
 	ch := checkout.Authorization{

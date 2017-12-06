@@ -29,6 +29,7 @@ var (
 	ord   *order.Order
 	stor  *store.Store
 	stor2 *store.Store
+	stor3 *store.Store
 )
 
 // Setup appengine context and datastore before tests
@@ -114,6 +115,15 @@ var _ = BeforeSuite(func() {
 
 	tr2, err := stor2.GetTaxRates()
 	Expect(err).NotTo(HaveOccurred())
+
+	stor3 = store.New(ord.Db)
+	stor3.MustCreate()
+	stor3.Currency = currency.ETH
+
+	price := currency.Cents(1234)
+
+	stor3.Listings = make(map[string]store.Listing)
+	stor3.Listings[ord.Items[0].ProductId] = store.Listing{Price: &price}
 
 	tr2.MustDelete()
 })
@@ -258,6 +268,17 @@ var _ = Describe("Order", func() {
 			Expect(ord.Tax).To(Equal(tax))
 			Expect(ord.Shipping).To(Equal(shipping))
 			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
+		})
+
+		It("Should UpdateAndTally Price Overrides", func() {
+			ord.CouponCodes = []string{}
+			err := ord.UpdateAndTally(stor3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(currency.Cents(24680)))
+			Expect(ord.Currency).To(Equal(currency.ETH))
+
+			Expect(ord.Total).To(Equal(ord.Subtotal))
+
 		})
 
 		It("Should UpdateAndTally with Provided Subtotal for Contributions", func() {
