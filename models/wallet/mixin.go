@@ -30,6 +30,10 @@ func (w *WalletHolder) GetOrCreateWallet(db *datastore.Datastore) (*Wallet, erro
 }
 
 func (w *WalletHolder) LoadWallet(db *datastore.Datastore) error {
+	if w.Wallet != nil {
+		return nil
+	}
+
 	wal, err := w.GetOrCreateWallet(db)
 
 	if err != nil {

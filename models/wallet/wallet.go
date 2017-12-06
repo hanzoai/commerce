@@ -80,9 +80,11 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		return Account{}, err
 	}
 
+	log.Debug("Attempting append to w.Accounts. Current state: %v", w.Accounts)
+	log.Debug("Appending a. Current state: %v", a)
 	w.Accounts = append(w.Accounts, a)
 
-	// Create a blockaddress so we track this in the ethereum reader
+	// Create a blockaddress so we track this in the readers
 	ba := blockaddress.New(w.Db)
 	ba.Address = a.Address
 	ba.Type = typ

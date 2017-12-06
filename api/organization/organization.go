@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/api/organization/analytics"
 	"hanzo.io/api/organization/integrations"
+	"hanzo.io/api/organization/wallet"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/permission"
@@ -30,6 +31,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.PUT("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
 	api.PATCH("/:organizationid/integrations", adminRequired, namespaced, integrations.Upsert)
 	api.DELETE("/:organizationid/integrations/:integrationid", adminRequired, namespaced, integrations.Delete)
+
+	api.GET("/:organizationid/wallet", adminRequired, namespaced, wallet.Get)
+	api.GET("/:organizationid/wallet/account/:name", adminRequired, namespaced, wallet.GetAccount)
+	api.POST("/:organizationid/wallet/account", adminRequired, namespaced, wallet.CreateAccount)
+	api.POST("/:organizationid/wallet/send", adminRequired, namespaced, wallet.Send)
 
 	api.Route(router, args...)
 }
