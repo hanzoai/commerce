@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/blockchains/blocktransaction"
 	// "hanzo.io/models/wallet"
-	//"hanzo.io/thirdparty/ethereum/tasks"
+	// "hanzo.io/thirdparty/bitcoin/tasks"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
