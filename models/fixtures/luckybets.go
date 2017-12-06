@@ -30,7 +30,7 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 
 	org.FullName = "Lucky Bets"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://luckybets.com"
+	org.Website = "http://www.luckybets.co"
 	org.SecretKey = []byte("iBuGZ6krwUvMItvTX7Rl6OevF23Yl40T")
 
 	org.Fees.Card.Flat = 0
@@ -43,64 +43,43 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 	org.Fees.Bitcoin.Percent = 0.0
 
 	// Email configuration
-	// org.Mandrill.APIKey = ""
+	org.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
 	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Crypto Underground"
-	org.Email.Defaults.FromEmail = "hi@cryptounderground.com"
+	org.Email.Defaults.FromName = "Admin"
+	org.Email.Defaults.FromEmail = "noreply@hanzo.io"
 
-	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
-	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
-	// org.Email.OrderConfirmation.Enabled = true
+	org.Email.OrderConfirmation.Subject = "Deposit confirmation"
+	org.Email.OrderConfirmation.Enabled = true
 
-	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
-	// org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
-	// org.Email.User.PasswordReset.Enabled = true
+	org.Email.User.PasswordReset.Subject = "Reset your password"
+	org.Email.User.PasswordReset.Enabled = true
 
-	// org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
-	// org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	// org.Email.User.EmailConfirmation.Enabled = true
+	// org.Email.User.EmailConfirmation.Subject = ""
+	org.Email.User.EmailConfirmation.Enabled = false
 
-	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
-	// org.Email.User.EmailConfirmed.Enabled = false
+	org.Email.User.EmailConfirmed.Subject = "Complete registration"
+	org.Email.User.EmailConfirmed.Enabled = true
 
 	// Save org into default namespace
 	org.MustUpdate()
 
-	w := wallet.New(db)
-	w.Id_ = "customer-wallet"
-	w.UseStringKey = true
-	w.GetOrCreate("Id_=", "customer-wallet")
+	// w := wallet.New(db)
+	// w.Id_ = "customer-wallet"
+	// w.UseStringKey = true
+	// w.GetOrCreate("Id_=", "customer-wallet")
 
-	if a, _ := w.GetAccountByName("cryptounderground-test"); a == nil {
-		if _, err := w.CreateAccount("cryptounderground-test", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
-			panic(err)
-		}
-	}
+	// if a, _ := w.GetAccountByName("cryptounderground-test"); a == nil {
+	// 	if _, err := w.CreateAccount("cryptounderground-test", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 
-	if a, _ := w.GetAccountByName("cryptounderground"); a == nil {
-		if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
-			panic(err)
-		}
-	}
-
-	nsDb := datastore.New(org.Namespaced(c))
-
-	wh := webhook.New(nsDb)
-	wh.Name = "picatic-proxy"
-	wh.GetOrCreate("Name=", "picatic-proxy")
-
-	if wh.AccessToken == "" {
-		wh.AccessToken = ""
-		wh.Live = true
-		wh.Url = "http://35.188.46.251/webhook"
-		wh.Events = webhook.Events{
-			"order.paid": true,
-		}
-		wh.Enabled = true
-		wh.MustUpdate()
-	}
+	// if a, _ := w.GetAccountByName("cryptounderground"); a == nil {
+	// 	if _, err := w.CreateAccount("cryptounderground", blockchains.EthereumType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 
 	return org
 })
