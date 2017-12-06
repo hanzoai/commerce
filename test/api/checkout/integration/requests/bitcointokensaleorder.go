@@ -1,6 +1,6 @@
 package requests
 
-var ValidEthereumTokenSaleOrder = `
+var ValidBitcoinTokenSaleOrder = `
 {
   "tokenSale": {
   	"passphrase": "123456"
@@ -18,13 +18,13 @@ var ValidEthereumTokenSaleOrder = `
     }
   },
   "order": {
-    "currency": "eth",
-	"type": "ethereum",
+    "currency": "btc",
+	"type": "bitcoin",
 	"tokenSaleId": "%s"
   }
 }`
 
-var InvalidEthereumNoTokenSaleIdTokenSaleOrder = `
+var InvalidBitcoinNoTokenSaleIdTokenSaleOrder = `
 {
   "tokenSale": {
   	"passphrase": "123456"
@@ -42,12 +42,12 @@ var InvalidEthereumNoTokenSaleIdTokenSaleOrder = `
     }
   },
   "order": {
-    "currency": "eth",
-	"type": "ethereum"
+    "currency": "btc",
+	"type": "bitcoin"
   }
 }`
 
-var InvalidEthereumPassphraseTokenSaleOrder = `
+var InvalidBitcoinPassphraseTokenSaleOrder = `
 {
   "user": {
     "email": "dev@hanzo.ai",
@@ -62,8 +62,8 @@ var InvalidEthereumPassphraseTokenSaleOrder = `
     }
   },
   "order": {
-    "currency": "eth",
-	"type": "ethereum",
+    "currency": "btc",
+	"type": "bitcoin",
 	"tokenSaleId": "%s"
   }
 }`

@@ -481,7 +481,7 @@ func (o *Order) GetItemEntities() error {
 	db := o.Datastore()
 	ctx := o.Context()
 
-	log.JSON("Getting underlying entities for:", o.Items)
+	log.Debug("Getting underlying entities for: %v", json.Encode(o.Items))
 
 	nItems := len(o.Items)
 
@@ -495,7 +495,9 @@ func (o *Order) GetItemEntities() error {
 			return err
 		}
 		keys[i] = key
+		log.Debug("key %v", key)
 		vals[i] = dst
+		log.Debug("dst %v", json.Encode(dst))
 	}
 
 	return db.GetMulti(keys, vals)
