@@ -15,17 +15,20 @@ type Type string
 
 const (
 	Deposit  Type = "deposit"
+	Transfer      = "transfer"
 	Withdraw      = "withdraw"
 )
 
 type Transaction struct {
 	mixin.Model
 
-	UserId   string         `json:"userId"`
-	Type     Type           `json:"type"`
-	Currency currency.Type  `json:"currency"`
-	Amount   currency.Cents `json:"amount"`
-	Test     bool           `json:"test"`
+	UserId          string         `json:"userId"`
+	DestinationId   string         `json:"destinationId"`
+	DestinationKind string         `json:"destinationKind"`
+	Type            Type           `json:"type"`
+	Currency        currency.Type  `json:"currency"`
+	Amount          currency.Cents `json:"amount"`
+	Test            bool           `json:"test"`
 
 	// Short text human readable description
 	Notes string `json:"notes"`

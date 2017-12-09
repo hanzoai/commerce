@@ -261,18 +261,32 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	trans := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
+	fromTransactions := make([]*transaction.Transaction, 0)
+	toTransactions := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(u.Db).Filter("SourceId=", u.Id()).Filter("Test=", false).GetAll(&fromTransactions); err != nil {
+		return err
+	}
+	if _, err := transaction.Query(u.Db).Filter("DestinationId=", u.Id()).Filter("Test=", false).GetAll(&toTransactions); err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range trans {
+	for _, t := range fromTransactions {
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {
 			u.Balances[t.Currency] = cents - t.Amount
+		} else if t.Type == transaction.Deposit {
+			u.Balances[t.Currency] = cents + t.Amount
 		} else {
+			// it's a transfer
+			u.Balances[t.Currency] = cents - t.Amount
+		}
+	}
+	for _, t := range toTransactions {
+		cents := u.Balances[t.Currency]
+
+		if t.Type == transaction.Transfer {
 			u.Balances[t.Currency] = cents + t.Amount
 		}
 	}
