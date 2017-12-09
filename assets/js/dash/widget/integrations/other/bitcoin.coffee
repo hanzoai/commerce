@@ -6,7 +6,7 @@ class BitcoinIntegrationForm extends Integration
   tag: 'bitcoin-integration'
   type: 'bitcoin'
   html: require '../../../templates/dash/widget/integrations/other/bitcoin.html'
-  img: '/img/integrations/bitcoin.svg'
+  img: '/img/integrations/bitcoin.png'
   text: 'Bitcoin'
   alt: 'Bitcoin'
 
