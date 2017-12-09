@@ -111,9 +111,15 @@ func OriginToInput(o Origin) Input {
 }
 
 func DestinationToOutput(d Destination) Output {
+	pubKey, err := CreateScriptPubKey(d.Address)
+
+	if err != nil {
+		panic(err)
+	}
+
 	return Output{
 		Value:  d.Value,
-		Script: CreateScriptPubKey(d.Address),
+		Script: pubKey,
 	}
 }
 
