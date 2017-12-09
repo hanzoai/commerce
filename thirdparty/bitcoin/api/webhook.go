@@ -9,10 +9,10 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blockaddress"
 	"hanzo.io/models/blockchains/blocktransaction"
-	// "hanzo.io/models/wallet"
-	// "hanzo.io/thirdparty/bitcoin/tasks"
+	"hanzo.io/thirdparty/bitcoin/tasks"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
@@ -53,6 +53,7 @@ func decodeEvent(c *gin.Context) (*Event, error) {
 var AccessDeniedError = errors.New("Access Denied")
 var BlockTransactionNotFound = errors.New("BlockTransaction not found, it should exist for this webhook to be received")
 var CouldNotConvertToBigInt = errors.New("BlockTransaction Value could not be converted")
+var ReceiverBlockShouldBeVOutBlock = errors.New("BlockTransaction marked as 'receiver' Usage should also be of 'vin' BitcoinTransactionType")
 
 // Handle stripe webhook POSTs
 func Webhook(c *gin.Context) {
@@ -88,6 +89,12 @@ func Webhook(c *gin.Context) {
 				break
 			}
 
+			// Receivers should all be VIns
+			if bt.BitcoinTransactionType != blockchains.BitcoinTransactionTypeVOut {
+				http.Fail(c, 500, ReceiverBlockShouldBeVOutBlock.Error(), ReceiverBlockShouldBeVOutBlock)
+				panic(ReceiverBlockShouldBeVOutBlock)
+			}
+
 			// Get block address
 			ba := blockaddress.New(db)
 			if ok, err := ba.Query().Filter("Type=", bt.Type).Filter("Address=", bt.Address).Get(); !ok {
@@ -106,22 +113,17 @@ func Webhook(c *gin.Context) {
 				break
 			}
 
-			// bi, ok := big.NewInt(0).SetString(string(bt.EthereumTransactionValue), 10)
-			// if !ok {
-			// 	http.Fail(c, 500, CouldNotConvertToBigInt.Error(), CouldNotConvertToBigInt)
-			// 	panic(CouldNotConvertToBigInt)
-			// }
-
-			// if err := tasks.EthereumProcessPayment.Call(
-			// 	ctx, ba.WalletNamespace,
-			// 	ba.WalletId,
-			// 	bt.EthereumTransactionHash,
-			// 	string(bt.Type),
-			// 	bi,
-			// ); err != nil {
-			// 	http.Fail(c, 500, err.Error(), err)
-			// 	panic(err)
-			// }
+			if err := tasks.BitcoinProcessPayment.Call(
+				db.Context,
+				ba.WalletNamespace,
+				ba.WalletId,
+				bt.BitcoinTransactionTxId,
+				string(bt.Type),
+				bt.BitcoinTransactionVOutValue,
+			); err != nil {
+				http.Fail(c, 500, err.Error(), err)
+				panic(err)
+			}
 
 		case "ping":
 			c.String(200, "pong")
