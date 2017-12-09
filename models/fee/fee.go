@@ -26,6 +26,13 @@ const (
 	Refunded    Status = "refunded"
 )
 
+type Bitcoin struct {
+	FinalTransactionTxId string         `json:"finalTransactionTxId,omitempty"`
+	FinalAddress         string         `json:"finalAddress,omitempty"`
+	FinalAmount          currency.Cents `json:"finalAmount,omitempty"`
+	FinalVOut            int64          `json:"vout,omitempty"`
+}
+
 type Ethereum struct {
 	FinalTransactionHash string                `json:"finalTransactionHash,omitempty"`
 	FinalTransactionCost blockchains.BigNumber `json:"finalTransactionCost,omitempty"`
@@ -54,6 +61,7 @@ type Fee struct {
 	Status Status `json:"status"`
 
 	Ethereum Ethereum `json:"ethereum"`
+	Bitcoin  Bitcoin  `json:"bitcoin"`
 
 	// Stripe livemode
 	Live bool `json:"live"`
