@@ -84,8 +84,11 @@ func BitcoinProcessPaymentImpl(
 		// Make sure payment with TransactionHash does not exist (transaction
 		// already processed)
 		if ok, err := pay.Query().Filter("Account.BitcoinTransactionTxId=", txId).Get(); ok {
-			log.Warn("Payment already created for Wallet '%s', TxId '%s'", w.Id(), txId, ctx)
-			return nil
+			if pay.Account.BitcoinTransferred {
+				log.Warn("Payment already created for Wallet '%s', TxId '%s'", w.Id(), txId, ctx)
+				return nil
+			}
+			log.Warn("Retrying payment for Wallet '%s', TxId '%s'", w.Id(), txId, ctx)
 		} else if err != nil {
 			log.Warn("No payment expected for Wallet '%s', TxId '%s' but error encountered: %v", w.Id(), txId, err, ctx)
 			return err
@@ -157,7 +160,7 @@ func BitcoinProcessPaymentImpl(
 					return PlatformAccountNotFound
 				}
 			case blockchains.BitcoinTestnetType:
-				address = config.Ethereum.TestNetNodes[0]
+				address = config.Bitcoin.TestNetNodes[0]
 				authUsername = config.Bitcoin.TestNetUsernames[0]
 				authPassword = config.Bitcoin.TestNetPasswords[0]
 				password = config.Bitcoin.TestPassword
@@ -311,6 +314,8 @@ func BitcoinProcessPaymentImpl(
 
 		ord.Paid += pay.Amount
 		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
+
+		pay.Account.BitcoinTransferred = true
 
 		if err := pay.Update(); err != nil {
 			log.Warn("Could not save payment for Order '%s', Wallet '%s', TxId '%s'", ord.Id(), w.Id(), txId, ctx)
