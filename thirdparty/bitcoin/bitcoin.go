@@ -199,21 +199,22 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	//Return the final transaction signature
 	return scriptSig, nil
 }
-func CreateScriptPubKey(publicKeyBase58 string) []byte {
+func CreateScriptPubKey(publicKeyBase58 string) ([]byte, error) {
 	address, err := btcutil.DecodeAddress(publicKeyBase58, &chaincfg.MainNetParams)
 	if err != nil {
-		log.Error(err)
-		return nil
+		log.Error("DecodeAddress '%s' Error: %v", publicKeyBase58, err)
+		panic(err)
+		return nil, err
 	}
 
 	// Create a public key script that pays to the address.
 	script, err := txscript.PayToAddrScript(address)
 	if err != nil {
-		log.Error(err)
-		return nil
+		log.Error("PayToAddrScript '%s' Error: %v", address, err)
+		return nil, err
 	}
 	log.Debug("CreateScriptPubKey: Script Hex: %x\n", script)
-	return script
+	return script, nil
 }
 
 func generateNonce() [32]byte {
@@ -413,7 +414,10 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		totalChange -= approximateFee                // pull down the change to account for the fee.
 
 		// Add the change to our outputs
-		outScript := CreateScriptPubKey(sender.Address)
+		outScript, err := CreateScriptPubKey(sender.Address)
+		if err != nil {
+			return nil, err
+		}
 		outputs = append(outputs, Output{totalChange, outScript})
 
 	}
