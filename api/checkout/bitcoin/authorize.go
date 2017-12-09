@@ -102,7 +102,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 		// []byte{},
 	} else {
 		log.Info("Bitcoin Production Mode", ctx)
-		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase)); err != nil {
+		if _, err = w.CreateAccount("Receiver Account", blockchains.BitcoinType, []byte(ord.WalletPassphrase)); err != nil {
 			return err
 		}
 	}
