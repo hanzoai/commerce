@@ -34,6 +34,8 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
 	case AnalyticsSentryType:
 		dst.Data = json.EncodeBytes(src.AnalyticsSentry)
+	case BitcoinType:
+		dst.Data = json.EncodeBytes(src.Bitcoin)
 	case EthereumType:
 		dst.Data = json.EncodeBytes(src.Ethereum)
 	case MailchimpType:
@@ -85,6 +87,8 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.AnalyticsHeap = src.AnalyticsHeap
 	case AnalyticsSentryType:
 		dst.AnalyticsSentry = src.AnalyticsSentry
+	case BitcoinType:
+		dst.Bitcoin = src.Bitcoin
 	case EthereumType:
 		dst.Ethereum = src.Ethereum
 	case MailchimpType:
@@ -126,6 +130,8 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.AnalyticsHeap)
 		case AnalyticsSentryType:
 			json.DecodeBytes(src.Data, &dst.AnalyticsSentry)
+		case BitcoinType:
+			json.DecodeBytes(src.Data, &dst.Bitcoin)
 		case EthereumType:
 			json.DecodeBytes(src.Data, &dst.Ethereum)
 		case MailchimpType:

@@ -103,6 +103,17 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	return true
 }
 
+type BitcoinTransaction struct {
+	BitcoinTransactionTxId string           `json:"bitcoinTransactionTxId,omitempty"`
+	BitcoinChainType       blockchains.Type `json:"bitcoinChainType,omitempty"`
+	BitcoinAmount          currency.Cents   `json:"bitcoinAmount,omitempty"`
+
+	BitcoinFinalTransactionTxId string         `json:"finalbitcoinTransactionTxId,omitempty"`
+	BitcoinFinalTransactionCost currency.Cents `json:"finalbitcoinTransactionCost,omitempty"`
+	BitcoinFinalAddress         string         `json:"finalbitcoinAddress,omitempty"`
+	BitcoinFinalAmount          currency.Cents `json:"finalbitcoinAmount,omitempty"`
+}
+
 type EthereumTransaction struct {
 	EthereumTransactionHash string                `json:"ethereumTransactionHash,omitempty"`
 	EthereumChainType       blockchains.Type      `json:"ethereumChainType,omitempty"`
@@ -119,6 +130,7 @@ type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
+	BitcoinTransaction
 	EthereumTransaction
 
 	Error string `json:"error,omitempty"`

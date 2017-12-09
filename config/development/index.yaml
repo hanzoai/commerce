@@ -171,8 +171,8 @@ indexes:
 - kind: blocktransaction
   ancestor: no
   properties:
-  - name: Type
   - name: BitcoinTransactionTxId
+  - name: BitcoinTransactionVOutIndex
 
 - kind: blocktransaction
   ancestor: no

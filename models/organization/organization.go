@@ -160,7 +160,10 @@ type Organization struct {
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
-	// Mailchimp settings
+	// Bitcoi settings
+	Bitcoin integrations.Bitcoin `json:"-"`
+
+	// Ethereum settings
 	Ethereum integrations.Ethereum `json:"-"`
 
 	// Mailchimp settings
