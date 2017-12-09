@@ -9,7 +9,7 @@ import (
 // Datastructure for Bitcoin Transaction
 type BitcoinTransaction struct {
 	BitcoinTransactionBlockHash   string `json:"bitcoinTransactionBlockHash"`
-	BitcoinTransactionBlockHeight string `json:"bitcoinTransactionBlockHeight"`
+	BitcoinTransactionBlockHeight int64  `json:"bitcoinTransactionBlockHeight"`
 
 	BitcoinTransactionTxId          string                 `json:"bitcoinTransactionTxId"`
 	BitcoinTransactionHash          string                 `json:"bitcoinTransactionHash"`
