@@ -7,13 +7,14 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains"
+	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/ethereum"
+	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/rand"
 	"hanzo.io/util/test/ae"
@@ -34,7 +35,7 @@ var (
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/ethereum/tasks", t)
+	Setup("thirdparty/bitcoin/tasks", t)
 }
 
 var _ = BeforeSuite(func() {
@@ -64,11 +65,25 @@ var _ = BeforeSuite(func() {
 	ord.UserId = usr.Id()
 
 	w, _ = ord.GetOrCreateWallet(ord.Db)
-	w.CreateAccount("Receiver Account", blockchains.EthereumRopstenType, []byte(ord.WalletPassphrase))
 
 	ord.MustCreate()
 
-	ethereum.Test(true)
+	bitcoin.Test(true)
+
+	// Create Receiver
+	ra, err := w.CreateAccount("Receiver Account", blockchains.BitcoinTestnetType, []byte(ord.WalletPassphrase))
+	Expect(err).NotTo(HaveOccurred())
+
+	// Create a Blocktransaction
+	bt := blocktransaction.New(db)
+	bt.Type = blockchains.BitcoinTestnetType
+	bt.BitcoinTransactionType = blockchains.BitcoinTransactionTypeVOut
+	bt.BitcoinTransactionUsed = false
+	bt.BitcoinTransactionVOutValue = int64(123e6)
+	bt.BitcoinTransactionTxId = "0"
+	bt.BitcoinTransactionVOutIndex = 0
+	bt.Address = ra.Address
+	bt.MustCreate()
 })
 
 var _ = AfterSuite(func() {
