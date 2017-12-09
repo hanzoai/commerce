@@ -22,7 +22,6 @@ const (
 type Transaction struct {
 	mixin.Model
 
-	UserId          string         `json:"userId"`
 	DestinationId   string         `json:"destinationId"`
 	DestinationKind string         `json:"destinationKind"`
 	Type            Type           `json:"type"`
