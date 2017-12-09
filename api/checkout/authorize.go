@@ -129,7 +129,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if org.IsTestEmail(usr.Email) {
 		switch ord.Currency {
 		case currency.BTC, currency.XBT:
-			ord.Total = currency.Cents(1e4)
+			ord.Total = currency.Cents(1e5)
 		case currency.ETH:
 			ord.Total = currency.Cents(1e7)
 		default:
