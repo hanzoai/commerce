@@ -89,8 +89,11 @@ func EthereumProcessPaymentImpl(
 		// Make sure payment with TransactionHash does not exist (transaction
 		// already processed)
 		if ok, err := pay.Query().Filter("Account.EthereumTransactionHash=", txHash).Get(); ok {
-			log.Warn("Payment already created for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
-			return nil
+			if pay.Account.EthereumTransferred {
+				log.Warn("Payment already created for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
+				return nil
+			}
+			log.Warn("Retrying payment for Wallet '%s', TxHash '%s'", w.Id(), txHash, ctx)
 		} else if err != nil {
 			log.Warn("No payment expected for Wallet '%s', TxHash '%s' but error encountered: %v", w.Id(), txHash, err, ctx)
 			return err
@@ -313,6 +316,8 @@ func EthereumProcessPaymentImpl(
 
 		ord.Paid += pay.Amount
 		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
+
+		pay.Account.EthereumTransferred = true
 
 		if err := pay.Update(); err != nil {
 			log.Warn("Could not save payment for Order '%s', Wallet '%s', TxHash '%s'", ord.Id(), w.Id(), txHash, ctx)

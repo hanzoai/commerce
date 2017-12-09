@@ -108,6 +108,9 @@ type BitcoinTransaction struct {
 	BitcoinChainType       blockchains.Type `json:"bitcoinChainType,omitempty"`
 	BitcoinAmount          currency.Cents   `json:"bitcoinAmount,omitempty"`
 
+	// Denotes whether or not a successful transfer occurred
+	BitcoinTransferred bool `json:"bitcoinTransfered"`
+
 	BitcoinFinalTransactionTxId string         `json:"finalbitcoinTransactionTxId,omitempty"`
 	BitcoinFinalTransactionCost currency.Cents `json:"finalbitcoinTransactionCost,omitempty"`
 	BitcoinFinalAddress         string         `json:"finalbitcoinAddress,omitempty"`
@@ -118,6 +121,9 @@ type EthereumTransaction struct {
 	EthereumTransactionHash string                `json:"ethereumTransactionHash,omitempty"`
 	EthereumChainType       blockchains.Type      `json:"ethereumChainType,omitempty"`
 	EthereumAmount          blockchains.BigNumber `json:"ethereumAmount,omitempty"`
+
+	// Denotes whether or not a successful transfer occurred
+	EthereumTransferred bool `json:"ethereumTransfered"`
 
 	EthereumFinalTransactionHash string                `json:"finalEthereumTransactionHash,omitempty"`
 	EthereumFinalTransactionCost blockchains.BigNumber `json:"finalEthereumTransactionCost,omitempty"`
