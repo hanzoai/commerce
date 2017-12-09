@@ -95,7 +95,14 @@ func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (string, er
 	// Decode the result
 	var tx GetRawTransactionResponseResult
 
-	if err := json.Unmarshal([]byte(res.Result), &tx); err != nil {
+	txId := string(res.Result)
+
+	res2, err := btcc.GetRawTransaction(txId)
+	if err != nil {
+		return "", err
+	}
+
+	if err := json.Unmarshal([]byte(res2.Result), &tx); err != nil {
 		log.Error("Could not unmarshal SendRawTransaction result '%s'", res.Result)
 		return "", err
 	}
