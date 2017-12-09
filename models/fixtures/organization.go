@@ -39,6 +39,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	// Ethereum
 	org.Ethereum.Address = "0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"
+	org.Bitcoin.Address = ""
+	org.Bitcoin.TestAddress = "mrPFGX5ViUZk2s8i5soBCkrFVzRwngK8DQ"
 
 	// You can only have one set of test credentials, so live/test are the same.
 	org.Stripe.Live.UserId = org.Stripe.Test.UserId

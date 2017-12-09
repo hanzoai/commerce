@@ -12,12 +12,11 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains"
-	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
+	eutil "hanzo.io/thirdparty/ethereum/util"
 	"hanzo.io/util/delay"
 	"hanzo.io/util/log"
 	"hanzo.io/util/webhook"
@@ -77,28 +76,10 @@ func EthereumProcessPaymentImpl(
 	// Namespace the datastore
 	nsDb := datastore.New(nsCtx)
 
-	w := wallet.New(nsDb)
-	if err := w.GetById(walletId); err != nil {
-		log.Warn("Could not find Wallet '%s': %v", walletId, err, ctx)
-		return err
-	}
-
-	// Check if there's an order with this wallet
-	ord := order.New(nsDb)
-	if ok, err := ord.Query().Filter("WalletId=", w.Id()).Get(); !ok {
-		if err != nil {
-			log.Warn("No order found for Wallet '%s': %v", w.Id(), err, ctx)
-			return err
-		}
-
-		log.Warn("No order found for Wallet '%s'", w.Id(), ctx)
-		return nil
-	}
-
-	// Get user so we can get a buyer
-	usr := user.New(nsDb)
-	if err := usr.GetById(ord.UserId); err != nil {
-		log.Warn("User not found for Order '%s', Wallet '%s'", ord.Id(), w.Id(), ctx)
+	// Get the basic order info
+	usr, ord, w, err := eutil.GetUserOrderByWallet(nsDb, walletId)
+	if err != nil {
+		log.Error("GetUserOrderAndWallet error: %v", err, ctx)
 		return err
 	}
 
@@ -137,7 +118,8 @@ func EthereumProcessPaymentImpl(
 		}
 
 		// Update order status
-		if pay.Amount >= ord.Total && ord.PaymentStatus != payment.Paid {
+		log.Info("Pay.Amount %v >=? Order.Total - Order.Paid %v", pay.Amount, ord.Total, ctx)
+		if pay.Amount >= ord.Total-ord.Paid && ord.PaymentStatus != payment.Paid {
 			ord.PaymentStatus = payment.Paid
 
 			// Fees
@@ -236,6 +218,7 @@ func EthereumProcessPaymentImpl(
 
 			gasPrice := big.NewInt(0).Set(GasPrice)
 
+			// Set the remaining transfer amount to the order total
 			transferAmount := ord.Currency.ToMinimalUnits(ord.Total)
 
 			// Link payments/fees
@@ -259,7 +242,7 @@ func EthereumProcessPaymentImpl(
 					if platformAmount.Cmp(big.NewInt(0)) > 0 {
 						// Only deal with sending the platform fee for now
 						log.Info("Transfering Platform Fee '%s' to '%s'", platformAmount.String(), address, ctx)
-						if txHash, err := client.SendTransaction(
+						if finalTxHash, err := client.SendTransaction(
 							chainId,
 							fromAccount.PrivateKey,
 							fromAccount.Address,
@@ -271,7 +254,7 @@ func EthereumProcessPaymentImpl(
 						); err != nil {
 							return err
 						} else {
-							fe.Ethereum.FinalTransactionHash = txHash
+							fe.Ethereum.FinalTransactionHash = finalTxHash
 						}
 					} else {
 						log.Warn("Insufficient Fee To Cover Platform Fee Transaction, After Transaction Value is '%s'", platformAmount.String(), ctx)
@@ -281,7 +264,7 @@ func EthereumProcessPaymentImpl(
 					fe.Ethereum.FinalAmount = blockchains.BigNumber(platformAmount.String())
 				}
 
-				fe.Create()
+				fe.MustCreate()
 			}
 
 			finalCost := big.NewInt(0).Set(SimpleTransactionGasUsed)
@@ -319,7 +302,11 @@ func EthereumProcessPaymentImpl(
 				log.Error("Insufficient Transfer To Cover Transaction, After Transaction Value is '%s'", transferAmount.String(), ctx)
 				return InsufficientTransfer
 			}
-			pay.Account.EthereumFinalAddress = org.Ethereum.Address
+
+			pay.Account.EthereumFinalAddress = org.Ethereum.TestAddress
+			if pay.Account.EthereumFinalAddress == "" {
+				pay.Account.EthereumFinalAddress = org.Ethereum.Address
+			}
 			pay.Account.EthereumFinalTransactionCost = blockchains.BigNumber(finalCost.String())
 			pay.Account.EthereumFinalAmount = blockchains.BigNumber(transferAmount.String())
 		}
@@ -327,7 +314,7 @@ func EthereumProcessPaymentImpl(
 		ord.Paid += pay.Amount
 		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
-		if err := pay.Create(); err != nil {
+		if err := pay.Update(); err != nil {
 			log.Warn("Could not save payment for Order '%s', Wallet '%s', TxHash '%s'", ord.Id(), w.Id(), txHash, ctx)
 			return err
 		}
