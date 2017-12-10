@@ -24,6 +24,7 @@ import (
 )
 
 var UnsupportedChainType = errors.New("Chain type is unsupported.")
+var IntegrationNotInitialized = errors.New("Bitcoin Integration has no address.")
 var PlatformWalletNotFound = errors.New("Platform Wallet Not Found.")
 var PlatformAccountNotFound = errors.New("Platform Account Not Found.")
 var PlatformAccountDecryptionFailed = errors.New("Platform Account Decryption Failed.")
@@ -149,6 +150,9 @@ func BitcoinProcessPaymentImpl(
 			// Get the right account and credentials
 			switch chainType {
 			case blockchains.BitcoinType:
+				if org.Bitcoin.Address == "" {
+					return IntegrationNotInitialized
+				}
 				address = config.Bitcoin.MainNetNodes[0]
 				authUsername = config.Bitcoin.MainNetUsernames[0]
 				authPassword = config.Bitcoin.MainNetPasswords[0]
@@ -160,6 +164,9 @@ func BitcoinProcessPaymentImpl(
 					return PlatformAccountNotFound
 				}
 			case blockchains.BitcoinTestnetType:
+				if org.Bitcoin.TestAddress == "" {
+					return IntegrationNotInitialized
+				}
 				address = config.Bitcoin.TestNetNodes[0]
 				authUsername = config.Bitcoin.TestNetUsernames[0]
 				authPassword = config.Bitcoin.TestNetPasswords[0]

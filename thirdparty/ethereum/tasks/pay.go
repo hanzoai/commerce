@@ -24,6 +24,7 @@ import (
 
 var SimpleTransactionGasUsed = big.NewInt(21000)
 var UnsupportedChainType = errors.New("Chain type is unsupported.")
+var IntegrationNotInitialized = errors.New("Ethereum Integration has no address.")
 var PlatformWalletNotFound = errors.New("Platform Wallet Not Found.")
 var PlatformAccountNotFound = errors.New("Platform Account Not Found.")
 var PlatformAccountDecryptionFailed = errors.New("Platform Account Decryption Failed.")
@@ -152,6 +153,9 @@ func EthereumProcessPaymentImpl(
 			// Get the right account and credentials
 			switch chainType {
 			case blockchains.EthereumType:
+				if org.Ethereum.Address == "" {
+					return IntegrationNotInitialized
+				}
 				address = config.Ethereum.MainNetNodes[0]
 				password = config.Ethereum.DepositPassword
 				chainId = ethereum.MainNet
@@ -161,6 +165,9 @@ func EthereumProcessPaymentImpl(
 					return PlatformAccountNotFound
 				}
 			case blockchains.EthereumRopstenType:
+				if org.Ethereum.Address == "" && org.Ethereum.TestAddress == "" {
+					return IntegrationNotInitialized
+				}
 				address = config.Ethereum.TestNetNodes[0]
 				password = config.Ethereum.TestPassword
 				chainId = ethereum.Ropsten
