@@ -18,7 +18,7 @@ func (o *Order) Tally() {
 
 func (o *Order) TallySubtotal() {
 	// Contributions do not have items
-	if o.Deposit || o.Contribution || o.TokenSaleId != "" {
+	if o.Mode == DepositMode || o.Mode == ContributionMode || o.TokenSaleId != "" {
 		return
 	}
 
@@ -67,9 +67,9 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	log.Debug("Add free items from coupons")
 	o.UpdateCouponItems()
 
-	log.Info("Is Deposit? '%v'\nIs Contribution? '%v'\nTokenSaleId: '%s'", o.Deposit, o.Contribution, o.TokenSaleId, ctx)
+	log.Info("Order Mode: '%v'\nTokenSaleId: '%s'", o.Mode, o.TokenSaleId, ctx)
 	// Tokensales and contributions have no items
-	if !o.Contribution && o.TokenSaleId == "" {
+	if o.Mode != DepositMode && o.Mode != ContributionMode && o.TokenSaleId == "" {
 		// Get underlying product/variant entities
 		log.Debug("Fetching underlying line items")
 		if err := o.GetItemEntities(); err != nil {

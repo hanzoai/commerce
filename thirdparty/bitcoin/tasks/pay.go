@@ -341,6 +341,7 @@ func BitcoinProcessPaymentImpl(
 		util.UpdateReferral(org, ord)
 		util.UpdateCart(ctx, ord)
 		util.UpdateStats(ctx, org, ord, []*payment.Payment{pay})
+		util.HandleDeposit(ord)
 
 		buyer := pay.Buyer
 

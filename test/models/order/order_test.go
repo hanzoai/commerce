@@ -156,7 +156,7 @@ var _ = Describe("Order", func() {
 			ord.TokenSaleId = ""
 			ord.WalletId = ""
 			ord.WalletPassphrase = ""
-			ord.Contribution = false
+			ord.Mode = order.DefaultMode
 		})
 
 		It("Should UpdateAndTally", func() {
@@ -253,8 +253,7 @@ var _ = Describe("Order", func() {
 			ord.TokenSaleId = ""
 			ord.WalletId = ""
 			ord.WalletPassphrase = ""
-			ord.Contribution = false
-			ord.Deposit = false
+			ord.Mode = order.DefaultMode
 		})
 
 		It("Should UpdateAndTally", func() {
@@ -284,7 +283,7 @@ var _ = Describe("Order", func() {
 
 		It("Should UpdateAndTally with Provided Subtotal for Contributions", func() {
 			ord.CouponCodes = []string{}
-			ord.Contribution = true
+			ord.Mode = order.ContributionMode
 			subTotal := ord.Subtotal
 			err := ord.UpdateAndTally(stor)
 			Expect(err).ToNot(HaveOccurred())
@@ -300,7 +299,7 @@ var _ = Describe("Order", func() {
 
 		It("Should UpdateAndTally with Provided Subtotal for Deposit", func() {
 			ord.CouponCodes = []string{}
-			ord.Deposit = true
+			ord.Mode = order.ContributionMode
 			subTotal := ord.Subtotal
 			err := ord.UpdateAndTally(stor)
 			Expect(err).ToNot(HaveOccurred())

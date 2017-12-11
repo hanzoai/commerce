@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
+	"hanzo.io/models/transaction"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
@@ -207,5 +208,19 @@ func UpdateMailchimp(ctx appengine.Context, org *organization.Organization, ord 
 			log.Warn("Failed to create Mailchimp order - unknown error: %v", err.Unknown, ctx)
 			log.Warn("Failed to create Mailchimp order - mailchimp error: %v", err.Mailchimp, ctx)
 		}
+	}
+}
+
+func HandleDeposit(ord *order.Order) {
+	// Handle Deposit Logic
+	if ord.Mode == order.DepositMode {
+		trans := transaction.New(ord.Db)
+		trans.UserId = ord.UserId
+		trans.Type = transaction.Deposit
+		trans.Currency = ord.Currency
+		trans.Amount = ord.Subtotal
+		trans.Test = ord.Test
+		trans.Notes = "Deposit from Order '" + ord.Id() + "'"
+		trans.MustCreate()
 	}
 }
