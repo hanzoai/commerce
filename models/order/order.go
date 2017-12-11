@@ -46,6 +46,20 @@ const (
 	Open      Status = "open"
 )
 
+type Mode string
+
+const (
+	// Default mode is a simple purchase of product
+	DefaultMode Mode = ""
+
+	// Deposit mode is a transfer of funds for platform credit based
+	// on subtotal
+	DepositMode = "deposit"
+
+	// Contribution mode is a simple transfer of funds
+	ContributionMode = "contribution"
+)
+
 func init() {
 	// This type must match exactly what youre going to be using,
 	// down to whether or not its a pointer
@@ -91,6 +105,9 @@ type Order struct {
 
 	// Payment processor type - paypal, stripe, etc
 	Type payment.Type `json:"type,omitempty"`
+
+	// Payment mode
+	Mode Mode `json:"mode,omitempty"`
 
 	// Shipping method
 	ShippingMethod string `json:"shippingMethod,omitempty"`
@@ -157,12 +174,6 @@ type Order struct {
 	Gift        bool   `json:"gift,omitempty"`                             // Is this a gift?
 	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
-
-	// Contribution are orders without items
-	Contribution bool `json:"contribution"`
-
-	// Deposit are orders without items that generate a genesis transaciton
-	Deposit bool `json:"deposit"`
 
 	// Token sales are processed differently, similar to contribution
 	TokenSaleId string `json:"tokenSaleId,omitempty"`
