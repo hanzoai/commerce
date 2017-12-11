@@ -179,7 +179,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	case referralprogram.CreditGreaterThanOrEquals:
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Db).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
 			return false, err
 		}
 
