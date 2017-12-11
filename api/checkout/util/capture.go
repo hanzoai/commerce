@@ -215,7 +215,8 @@ func HandleDeposit(ord *order.Order) {
 	// Handle Deposit Logic
 	if ord.Mode == order.DepositMode {
 		trans := transaction.New(ord.Db)
-		trans.UserId = ord.UserId
+		trans.DestinationId = ord.UserId
+		trans.DestinationKind = "user"
 		trans.Type = transaction.Deposit
 		trans.Currency = ord.Currency
 		trans.Amount = ord.Subtotal
