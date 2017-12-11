@@ -297,7 +297,7 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) erro
 	trans.Currency = cur
 	trans.SourceId = r.Id()
 	trans.SourceKind = r.Kind()
-	trans.UserId = r.UserId
+	trans.DestinationId = r.UserId
 	trans.Notes = "Deposit due to referral"
 	trans.Tags = "referral"
 	return trans.Create()
