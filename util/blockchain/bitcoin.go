@@ -2,28 +2,16 @@ package blockchain
 
 import (
 	"appengine"
-	"errors"
-	"fmt"
 	"math/big"
 
-	"hanzo.io/config"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 )
 
-func MakeBitcoinPayment(ctx appengine.Context, from wallet.Account, to string, amount *big.Int, password []byte) (string, error) {
+func MakeBitcoinPayment(ctx appengine.Context, client bitcoin.BitcoinClient, from wallet.Account, to string, amount *big.Int, password []byte) (string, error) {
 	// Create needed client.
 
-	client := bitcoin.BitcoinClient{}
-	switch from.Type {
-	case blockchains.BitcoinType:
-		client = bitcoin.New(ctx, config.Bitcoin.MainNetNodes[0], config.Bitcoin.MainNetUsernames[0], config.Bitcoin.MainNetPasswords[0])
-	case blockchains.BitcoinTestnetType:
-		client = bitcoin.New(ctx, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
-	default:
-		return "", errors.New(fmt.Sprintf("Unsupported blockchain type: %v", from.Type))
-	}
 	amountAvailable := big.NewInt(0)
 	transactionsToUse := make([]bitcoin.Origin, 0)
 	addressToAudit := ""
