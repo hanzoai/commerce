@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/transaction"
 	"hanzo.io/util/webhook"
 )
 
@@ -52,6 +53,17 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateStats(ctx, org, ord, payments)
 
 	buyer := payments[0].Buyer
+
+	if ord.Deposit {
+		trans := transaction.New(ord.Db)
+		trans.UserId = ord.UserId
+		trans.Type = transaction.Deposit
+		trans.Currency = ord.Currency
+		trans.Amount = ord.Subtotal
+		trans.Test = ord.Test
+		trans.Notes = "Deposit from Order '" + ord.Id() + "'"
+		trans.MustCreate()
+	}
 
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
 	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
