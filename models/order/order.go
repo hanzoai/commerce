@@ -161,6 +161,9 @@ type Order struct {
 	// Contribution are orders without items
 	Contribution bool `json:"contribution"`
 
+	// Deposit are orders without items that generate a genesis transaciton
+	Deposit bool `json:"deposit"`
+
 	// Token sales are processed differently, similar to contribution
 	TokenSaleId string `json:"tokenSaleId,omitempty"`
 

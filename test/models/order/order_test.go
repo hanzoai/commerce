@@ -254,6 +254,7 @@ var _ = Describe("Order", func() {
 			ord.WalletId = ""
 			ord.WalletPassphrase = ""
 			ord.Contribution = false
+			ord.Deposit = false
 		})
 
 		It("Should UpdateAndTally", func() {
@@ -284,6 +285,22 @@ var _ = Describe("Order", func() {
 		It("Should UpdateAndTally with Provided Subtotal for Contributions", func() {
 			ord.CouponCodes = []string{}
 			ord.Contribution = true
+			subTotal := ord.Subtotal
+			err := ord.UpdateAndTally(stor)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ord.Subtotal).To(Equal(subTotal))
+
+			tax := 1 + currency.Cents(float64(ord.Subtotal)*0.0885)
+			shipping := 499 + currency.Cents(float64(ord.Subtotal)*0.1)
+
+			Expect(ord.Tax).To(Equal(tax))
+			Expect(ord.Shipping).To(Equal(shipping))
+			Expect(ord.Total).To(Equal(ord.Subtotal + tax + shipping))
+		})
+
+		It("Should UpdateAndTally with Provided Subtotal for Deposit", func() {
+			ord.CouponCodes = []string{}
+			ord.Deposit = true
 			subTotal := ord.Subtotal
 			err := ord.UpdateAndTally(stor)
 			Expect(err).ToNot(HaveOccurred())
