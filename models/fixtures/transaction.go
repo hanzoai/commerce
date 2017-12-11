@@ -14,8 +14,8 @@ var Transaction = New("transaction", func(c *gin.Context) *transaction.Transacti
 	u := User(c)
 
 	tran := transaction.New(db)
-	tran.UserId = u.Id()
-	tran.GetOrCreate("UserId=", tran.UserId)
+	tran.DestinationId = u.Id()
+	tran.GetOrCreate("DestinationId=", tran.DestinationId)
 	tran.Type = "deposit"
 	tran.Currency = currency.USD
 	tran.Amount = 1000

@@ -28,7 +28,7 @@ var _ = New("grant-bonus-referral-points",
 		trans := transaction.New(db)
 		if ok, _ := trans.Query().Filter("UserId=", id).Get(); ok {
 			trans := transaction.New(db)
-			trans.UserId = id
+			trans.DestinationId = id
 			trans.Type = transaction.Deposit
 			trans.Currency = currency.USD
 			trans.Amount = currency.Cents(3000)
