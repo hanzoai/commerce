@@ -18,7 +18,7 @@ func (o *Order) Tally() {
 
 func (o *Order) TallySubtotal() {
 	// Contributions do not have items
-	if o.Contribution || o.TokenSaleId != "" {
+	if o.Deposit || o.Contribution || o.TokenSaleId != "" {
 		return
 	}
 
@@ -67,7 +67,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	log.Debug("Add free items from coupons")
 	o.UpdateCouponItems()
 
-	log.Info("IsContribution? '%v'\nTokenSaleId: '%s'", o.Contribution, o.TokenSaleId, ctx)
+	log.Info("Is Deposit? '%v'\nIs Contribution? '%v'\nTokenSaleId: '%s'", o.Deposit, o.Contribution, o.TokenSaleId, ctx)
 	// Tokensales and contributions have no items
 	if !o.Contribution && o.TokenSaleId == "" {
 		// Get underlying product/variant entities
