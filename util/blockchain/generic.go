@@ -14,6 +14,8 @@ func MakePayment(ctx appengine.Context, from wallet.Account, to string, amount *
 	switch from.Type {
 	case blockchains.EthereumType, blockchains.EthereumRopstenType:
 		return MakeEthereumPayment(ctx, from, to, amount, password)
+	case blockchains.BitcoinType, blockchains.BitcoinTestnetType:
+		return MakeBitcoinPayment(ctx, from, to, amount, password)
 	default:
 		return "", errors.New(fmt.Sprintf("Unsupported blockchain type: %v", from.Type))
 	}
