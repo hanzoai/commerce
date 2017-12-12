@@ -92,7 +92,7 @@ func getTransactions(c *gin.Context) {
 	id := c.Params.ByName("userid")
 
 	trans := make([]transaction.Transaction, 0)
-	if _, err := transaction.Query(db).Filter("Test=", false).Filter("UserId=", id).GetAll(&trans); err != nil {
+	if _, err := transaction.Query(db).Filter("Test=", false).Filter("DestinationId=", id).GetAll(&trans); err != nil {
 		http.Fail(c, 400, "Could not query transaction", err)
 		return
 	}
