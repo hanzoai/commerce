@@ -179,7 +179,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	case referralprogram.CreditGreaterThanOrEquals:
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Db).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
 			return false, err
 		}
 
@@ -259,11 +259,13 @@ func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event refer
 
 		switch action.Type {
 		case referralprogram.StoreCredit:
+			log.Debug("Applying store credit.")
 			if !done && action.Once {
 				r.State[action.Name+"_done"] = true
 				r.MustUpdate()
 			}
 
+			log.Debug("Saving store credit.")
 			if err := saveStoreCredit(r, action.Amount, action.Currency); err != nil {
 				return err
 			}
@@ -300,5 +302,8 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) erro
 	trans.DestinationId = r.UserId
 	trans.Notes = "Deposit due to referral"
 	trans.Tags = "referral"
+	log.Debug("Deposit type: %v", trans.Currency)
+	log.Debug("Currency amount: %v", trans.Amount)
+	log.Debug("Destination ID: %v", trans.DestinationId)
 	return trans.Create()
 }
