@@ -41,12 +41,21 @@ type Transaction struct {
 	// We store Kind even though it is encoded in id for easier reference
 	SourceId   string `json:"sourceId"`
 	SourceKind string `json:"sourceKind"`
+
+	// Deprecated
+	UserId string `json:"-"`
 }
 
 func (t *Transaction) Load(c <-chan aeds.Property) (err error) {
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(t, c)); err != nil {
 		return err
+	}
+
+	if t.UserId != "" {
+		t.DestinationId = t.UserId
+		t.DestinationKind = "user"
+		t.UserId = ""
 	}
 
 	return err
