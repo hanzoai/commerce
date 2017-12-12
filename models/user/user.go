@@ -269,24 +269,30 @@ func (u *User) CalculateBalances() error {
 	if _, err := transaction.Query(u.Db).Filter("DestinationId=", u.Id()).Filter("Test=", false).GetAll(&toTransactions); err != nil {
 		return err
 	}
+	log.Debug("Found from transactions: %v", len(fromTransactions))
+	log.Debug("Found to transactions: %v", len(toTransactions))
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range fromTransactions {
+	for _, t := range toTransactions {
 		cents := u.Balances[t.Currency]
-
+		log.Debug("Handling from transaction, type: %v", t.Type)
 		if t.Type == transaction.Withdraw {
+			log.Debug("Applying withdraw action, value: %v", cents)
 			u.Balances[t.Currency] = cents - t.Amount
 		} else if t.Type == transaction.Deposit {
+			log.Debug("Applying deposit action, value: %v", cents)
 			u.Balances[t.Currency] = cents + t.Amount
 		} else {
 			// it's a transfer
+			log.Debug("Applying transfer out action, value: %v", cents)
 			u.Balances[t.Currency] = cents - t.Amount
 		}
 	}
-	for _, t := range toTransactions {
+	for _, t := range fromTransactions {
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Transfer {
+			log.Debug("Applying transfer in action, value: %v", cents)
 			u.Balances[t.Currency] = cents + t.Amount
 		}
 	}
