@@ -25,7 +25,7 @@ type TransactionDatas struct {
 func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
-	rootKey := db.NewKey("transaction", "", 1, nil)
+	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	transs := make([]*transaction.Transaction, 0)
 	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("SourceKind=", kind).Filter("SourceId=", id).GetAll(&transs); err != nil {
@@ -44,7 +44,7 @@ func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas,
 func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur currency.Type) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
-	rootKey := db.NewKey("transaction", "", 1, nil)
+	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	transs := make([]*transaction.Transaction, 0)
 	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("SourceKind=", kind).Filter("SourceId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
