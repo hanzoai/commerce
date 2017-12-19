@@ -17,6 +17,13 @@ import (
 	. "hanzo.io/util/test/ginkgo"
 )
 
+type ApiError struct {
+	Error struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
 type defaultsFunc func(c *http.Request)
 
 func defaultStatus(code int) func([]interface{}) []interface{} {
@@ -176,7 +183,7 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 	if res != nil {
 		// TODO: Do we need to close this?
 		err := json.DecodeBuffer(w.Body, res)
-		msg := fmt.Sprintf("Unable to decode body, %v:\n%v", err, w.Body)
+		msg := fmt.Sprintf("Unable to decode body, %v:\n'%v'", err, w.Body)
 		if !cl.ignoreErrors {
 			Expect2(err == nil).To(BeTrue(), msg)
 		}

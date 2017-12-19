@@ -11,10 +11,10 @@ import (
 func Fake(db *datastore.Datastore) *Transaction {
 	t := New(db)
 	t.DestinationId = fake.Id()
-	t.DestinationKind = "User"
+	t.DestinationKind = "user"
 	t.SourceId = fake.Id()
 	t.Test = true
-	t.Type = "deposit"
+	t.Type = Deposit
 	t.Amount = currency.Cents(rand.Intn(10000))
 	t.Currency = currency.Fake()
 	return t

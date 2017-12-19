@@ -19,7 +19,7 @@ import (
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
-	"hanzo.io/models/transaction"
+	// "hanzo.io/models/transaction"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
@@ -49,6 +49,7 @@ import (
 	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
 	storeApi "hanzo.io/api/store"
+	transactionApi "hanzo.io/api/transaction"
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
 
@@ -103,7 +104,7 @@ func Route(api router.Router) {
 	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
-	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
+	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
@@ -123,6 +124,7 @@ func Route(api router.Router) {
 	referrerApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
+	transactionApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
 
 	// Hanzo APIs, using default namespace (internal use only)
