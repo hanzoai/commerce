@@ -7,7 +7,6 @@ import (
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
 	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
