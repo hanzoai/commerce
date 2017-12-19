@@ -180,3 +180,29 @@ indexes:
   - name: BitcoinTransactionType
   - name: BitcoinTransactionUsed
   - name: Address
+
+- kind: transaction
+  ancestor: no
+  properties:
+  - name: SourceKind
+  - name: SourceId
+
+- kind: transaction
+  ancestor: no
+  properties:
+  - name: DestinationKind
+  - name: DestinationId
+
+- kind: transaction
+  ancestor: no
+  properties:
+  - name: SourceKind
+  - name: SourceId
+  - name: Currency
+
+- kind: transaction
+  properties:
+  - name: DestinationKind
+  - name: DestinationId
+  - name: Currency
+
