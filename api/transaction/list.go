@@ -1,0 +1,37 @@
+package transaction
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"hanzo.io/middleware"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/transaction/util"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
+)
+
+type ListResponse struct {
+	Id           string                                     `json:"id"`
+	Kind         string                                     `json:"kind"`
+	Balances     map[currency.Type]currency.Cents           `json:"balances"`
+	Transactions map[currency.Type]*transaction.Transaction `json:"transactions"`
+}
+
+func List(c *gin.Context) {
+	id := c.Params.ByName("id")
+	kind := c.Params.ByName("kind")
+
+	org := middleware.GetOrganization(c)
+	ctx := org.Namespaced(c)
+
+	res, err := util.GetTransactions(ctx, id, kind)
+
+	if err != nil {
+		log.Error("transaction/%v/%v error: '%v'", id, kind, err, c)
+		http.Fail(c, 400, err.Error(), err)
+		return
+	}
+
+	http.Render(c, 200, res)
+}

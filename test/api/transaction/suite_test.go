@@ -17,7 +17,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	Setup("api/coupon", t)
+	Setup("api/transaction", t)
 }
 
 var (
@@ -50,6 +50,8 @@ var _ = BeforeSuite(func() {
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
+
+	cl.IgnoreErrors(true)
 
 	// Add API routes to client
 	api.Route(cl.Router)
