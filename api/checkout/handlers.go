@@ -138,9 +138,6 @@ func route(router router.Router, prefix string) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := router.Group(prefix)
-	api.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	})
 
 	// Auth and Capture Flow (Two-step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
