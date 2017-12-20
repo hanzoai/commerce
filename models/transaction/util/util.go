@@ -38,7 +38,7 @@ func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas,
 		return nil, err
 	}
 
-	log.Info("GetTransactions '%v/%v', '%v': %v", kind, id, json.Encode(transs), ctx)
+	log.Info("GetTransactions '%v/%v': %v", kind, id, json.Encode(transs), ctx)
 
 	return TallyTransactions(ctx, id, kind, transs)
 }
