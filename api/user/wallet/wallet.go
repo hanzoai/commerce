@@ -100,7 +100,7 @@ func CreateAccount(c *gin.Context) {
 	}
 	log.Debug("Blockchain requested for account creation: %v", request.Blockchain)
 	blockchainType := blockchains.Type(request.Blockchain)
-	account, err := userWallet.CreateAccount(request.Name, blockchainType, []byte(u.WalletKey))
+	account, err := userWallet.CreateAccount(request.Name, blockchainType, []byte(u.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to create requested account", err)
 		return
@@ -141,7 +141,7 @@ func Send(c *gin.Context) {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(u.WalletKey))
+	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(u.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
@@ -156,8 +156,8 @@ func returnWallet(u *user.User, db *datastore.Datastore) (*wallet.Wallet, error)
 	if err != nil {
 		return nil, err
 	}
-	if u.WalletKey == "" {
-		u.WalletKey = rand.SecretKey()
+	if u.WalletPassphrase == "" {
+		u.WalletPassphrase = rand.SecretKey()
 	}
 
 	return ret, nil

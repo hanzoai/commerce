@@ -34,19 +34,19 @@ type User struct {
 	// Crowdstart Id, found in default namespace
 	Cid string `json:"-"`
 
-	Username        string   `json:"username,omitempty"`
-	FirstName       string   `json:"firstName"`
-	LastName        string   `json:"lastName"`
-	Company         string   `json:"company,omitempty"`
-	Phone           string   `json:"phone,omitempty"`
-	BillingAddress  Address  `json:"billingAddress,omitempty"`
-	ShippingAddress Address  `json:"shippingAddress,omitempty"`
-	Email           string   `json:"email"`
-	PaypalEmail     string   `json:"paypalEmail,omitempty"`
-	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"-" datastore:",noindex"`
-	StoreId         string   `json:"storeId,omitempty"`
-	WalletKey       string   `json:"-"`
+	Username         string   `json:"username,omitempty"`
+	FirstName        string   `json:"firstName"`
+	LastName         string   `json:"lastName"`
+	Company          string   `json:"company,omitempty"`
+	Phone            string   `json:"phone,omitempty"`
+	BillingAddress   Address  `json:"billingAddress,omitempty"`
+	ShippingAddress  Address  `json:"shippingAddress,omitempty"`
+	Email            string   `json:"email"`
+	PaypalEmail      string   `json:"paypalEmail,omitempty"`
+	PasswordHash     []byte   `schema:"-" datastore:",noindex" json:"-"`
+	Organizations    []string `json:"-" datastore:",noindex"`
+	StoreId          string   `json:"storeId,omitempty"`
+	WalletPassphrase string   `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
