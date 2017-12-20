@@ -96,11 +96,11 @@ type Organization struct {
 	Moderators []string `json:"moderators,omitempty" datastore:",noindex"`
 	Enabled    bool     `json:"enabled"`
 
-	BillingEmail string  `json:"billingEmail,omitempty"`
-	Phone        string  `json:"phone,omitempty"`
-	Address      Address `json:"address,omitempty"`
-	Website      string  `json:"website,omitempty"`
-	WalletKey    string  `json:"-"`
+	BillingEmail     string  `json:"billingEmail,omitempty"`
+	Phone            string  `json:"phone,omitempty"`
+	Address          Address `json:"address,omitempty"`
+	Website          string  `json:"website,omitempty"`
+	WalletPassphrase string  `json:"-"`
 
 	Timezone string `json:"timezone"`
 

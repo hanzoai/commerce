@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 )
@@ -61,10 +62,29 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 	// Save org into default namespace
 	org.MustUpdate()
 
-	// w := wallet.New(db)
-	// w.Id_ = "customer-wallet"
-	// w.UseStringKey = true
-	// w.GetOrCreate("Id_=", "customer-wallet")
+	org.WalletPassphrase = "wsnwN6aBysgUGD55WugaJzpMFJRrqFfcxnWPELEsd7aP7abQNK7byMebf5nD9JJpgGytykBamThQVKpXuBKRKVRWU3GTUAHAmvAq8gFypJ2aAbVcU569NYbFRpR7b8zH"
+
+	wal, err := org.GetOrCreateWallet(org.Db)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = wal.CreateAccount("ethereum", blockchains.EthereumType, []byte(org.WalletPassphrase))
+	if err != nil {
+		panic(err)
+	}
+	_, err = wal.CreateAccount("ethereum-ropsten", blockchains.EthereumRopstenType, []byte(org.WalletPassphrase))
+	if err != nil {
+		panic(err)
+	}
+	_, err = wal.CreateAccount("bitcoin", blockchains.BitcoinType, []byte(org.WalletPassphrase))
+	if err != nil {
+		panic(err)
+	}
+	_, err = wal.CreateAccount("bitcoin-testnet", blockchains.BitcoinTestnetType, []byte(org.WalletPassphrase))
+	if err != nil {
+		panic(err)
+	}
 
 	// if a, _ := w.GetAccountByName("cryptounderground-test"); a == nil {
 	// 	if _, err := w.CreateAccount("cryptounderground-test", blockchains.EthereumRopstenType, []byte("7MdTrG3jzZD2h6T9src25r5aaC29MCyZ")); err != nil {
