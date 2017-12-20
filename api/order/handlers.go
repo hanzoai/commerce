@@ -19,13 +19,13 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(order.Order{})
 
 	api.POST("/:orderid/authorize", publishedRequired, namespaced, checkoutApi.Authorize)
-	api.POST("/:orderid/status", publishedRequired, namespaced, checkoutApi.Charge)
 	api.POST("/:orderid/capture", publishedRequired, namespaced, checkoutApi.Capture)
 	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
 
 	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
 	api.GET("/:orderid/payments", adminRequired, namespaced, Payments)
 	api.GET("/:orderid/returns", adminRequired, namespaced, Returns)
+	api.GET("/:orderid/status", publishedRequired, namespaced, Status)
 
 	api.Create = Create
 	api.Update = Update
