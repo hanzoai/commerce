@@ -38,6 +38,8 @@ func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas,
 		return nil, err
 	}
 
+	log.Info("GetTransactions '%v/%v', '%v': %v", kind, id, json.Encode(transs), ctx)
+
 	return TallyTransactions(ctx, id, kind, transs)
 }
 
@@ -56,6 +58,8 @@ func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur curre
 		log.Error("ListDestination Transaction Query Error '%v'", err, ctx)
 		return nil, err
 	}
+
+	log.Info("GetTransactionsByCurrency '%v/%v', '%v': %v", kind, id, cur, json.Encode(transs), ctx)
 
 	return TallyTransactions(ctx, id, kind, transs)
 }
