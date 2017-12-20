@@ -3,14 +3,14 @@ package bitcoin
 import (
 	"errors"
 
-	"hanzo.io/config"
+	// "hanzo.io/config"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/util/json"
+	// "hanzo.io/models/wallet"
+	// "hanzo.io/thirdparty/bitcoin"
+	// "hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 )
@@ -31,75 +31,75 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 	ord.WalletPassphrase = rand.SecretKey()
 
 	if ord.Test {
-		pw := wallet.New(org.Db)
-		if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
-			if err != nil {
-				return err
-			}
-			return PlatformWalletNotFound
-		}
+		// pw := wallet.New(org.Db)
+		// if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	return PlatformWalletNotFound
+		// }
 
-		// Find The Test Account
-		account, ok := pw.GetAccountByName("Bitcoin Test Account")
-		if !ok {
-			return PlatformAccountNotFound
-		}
+		// // Find The Test Account
+		// account, ok := pw.GetAccountByName("Bitcoin Test Account")
+		// if !ok {
+		// 	return PlatformAccountNotFound
+		// }
 
-		log.Info("Account Found", ctx)
-		if err := account.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
-			return err
-		}
+		// log.Info("Account Found", ctx)
+		// if err := account.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
+		// 	return err
+		// }
 
-		if account.PrivateKey == "" {
-			return PlatformAccountDecryptionFailed
-		}
+		// if account.PrivateKey == "" {
+		// 	return PlatformAccountDecryptionFailed
+		// }
 
-		log.Info("Bitcoin Test Mode", ctx)
-		if _, err = w.CreateAccount("Receiver Account", blockchains.BitcoinTestnetType, []byte(ord.WalletPassphrase)); err != nil {
-			return err
-		}
+		// log.Info("Bitcoin Test Mode", ctx)
+		// if _, err = w.CreateAccount("Receiver Account", blockchains.BitcoinTestnetType, []byte(ord.WalletPassphrase)); err != nil {
+		// 	return err
+		// }
 
-		client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
-		// client.Test(true)
+		// client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
+		// // client.Test(true)
 
-		oris, err := bitcoin.GetBitcoinTransactions(ctx, account.Address)
-		if err != nil {
-			log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(oris), ctx)
-			return err
-		}
+		// oris, err := bitcoin.GetBitcoinTransactions(ctx, account.Address)
+		// if err != nil {
+		// 	log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(oris), ctx)
+		// 	return err
+		// }
 
-		total := int64(ord.Total)
+		// total := int64(ord.Total)
 
-		prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
-		if err != nil {
-			log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(prunedOris), ctx)
-			return err
-		}
+		// prunedOris, err := bitcoin.PruneOriginsWithAmount(oris, total)
+		// if err != nil {
+		// 	log.Info("Address '%s' Transaction: %v", account.Address, json.Encode(prunedOris), ctx)
+		// 	return err
+		// }
 
-		in := bitcoin.OriginsWithAmountToOrigins(prunedOris)
-		out := []bitcoin.Destination{
-			bitcoin.Destination{
-				Value:   total,
-				Address: w.Accounts[0].Address,
-			},
-		}
+		// in := bitcoin.OriginsWithAmountToOrigins(prunedOris)
+		// out := []bitcoin.Destination{
+		// 	bitcoin.Destination{
+		// 		Value:   total,
+		// 		Address: w.Accounts[0].Address,
+		// 	},
+		// }
 
-		rawTrx, err := bitcoin.CreateTransaction(client, in, out, bitcoin.Sender{
-			PrivateKey: account.PrivateKey,
-			PublicKey:  account.PublicKey,
-			Address:    account.Address,
-		})
-		if _, err := client.SendRawTransaction(rawTrx); err != nil {
-			return err
-		}
-		// bitcoin.TestNet,
-		// account.PrivateKey,
-		// account.Address,
-		// w.Accounts[0].Address,
-		// ord.Currency.ToMinimalUnits(ord.Total),
-		// big.NewInt(0),
-		// big.NewInt(0),
-		// []byte{},
+		// rawTrx, err := bitcoin.CreateTransaction(client, in, out, bitcoin.Sender{
+		// 	PrivateKey: account.PrivateKey,
+		// 	PublicKey:  account.PublicKey,
+		// 	Address:    account.Address,
+		// })
+		// if _, err := client.SendRawTransaction(rawTrx); err != nil {
+		// 	return err
+		// }
+		// // bitcoin.TestNet,
+		// // account.PrivateKey,
+		// // account.Address,
+		// // w.Accounts[0].Address,
+		// // ord.Currency.ToMinimalUnits(ord.Total),
+		// // big.NewInt(0),
+		// // big.NewInt(0),
+		// // []byte{},
 	} else {
 		log.Info("Bitcoin Production Mode", ctx)
 		if _, err = w.CreateAccount("Receiver Account", blockchains.BitcoinType, []byte(ord.WalletPassphrase)); err != nil {
