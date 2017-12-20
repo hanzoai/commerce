@@ -4,19 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
-	"hanzo.io/models/transaction"
 	"hanzo.io/models/transaction/util"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 )
-
-type ListResponse struct {
-	Id           string                                     `json:"id"`
-	Kind         string                                     `json:"kind"`
-	Balances     map[currency.Type]currency.Cents           `json:"balances"`
-	Transactions map[currency.Type]*transaction.Transaction `json:"transactions"`
-}
 
 func List(c *gin.Context) {
 	id := c.Params.ByName("id")
