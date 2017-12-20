@@ -318,6 +318,13 @@ deploy-dash: assets-min rollback
 	$(appcfg.py) update dash
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
+deploy-api: assets-min rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+
+	$(appcfg.py) update api
+	$(appcfg.py) update_indexes $(firstword $(gae_config))
+
 update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
 
