@@ -83,7 +83,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -95,7 +95,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
 
 		It("should work with multiple referral triggers", func() {
@@ -143,7 +143,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
 
 		It("should not fire everytime for referral triggers", func() {
@@ -183,7 +183,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(0)))
+			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -195,7 +195,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
 
 		It("should work with referral triggers once", func() {
@@ -236,7 +236,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -250,7 +250,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
 
 		It("should work with balance triggers", func() {
@@ -291,7 +291,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -303,7 +303,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
 
 		It("should not fire everytime for balance triggers", func() {
@@ -344,7 +344,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(0)))
+			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -356,7 +356,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(0)))
+			Expect(usr.Transactions[currency.USD]).To(BeNil())
 		})
 
 		It("should work with balance triggers once", func() {
@@ -398,7 +398,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -412,7 +412,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
 
 		// FIt("Really?", func() {
@@ -462,7 +462,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(7)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
 			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
 			Expect(err).ToNot(HaveOccurred())
@@ -474,7 +474,7 @@ var _ = Describe("Referrer", func() {
 
 			err = usr.CalculateBalances()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.Balances[currency.USD]).To(Equal(currency.Cents(14)))
+			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
 
 	})

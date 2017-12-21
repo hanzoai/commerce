@@ -281,7 +281,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	res, err := util.GetTransactions(u.Context(), u.Id(), kind, true)
+	res, err := util.GetTransactions(u.Context(), u.Id(), kind, false)
 
 	u.Transactions = res.Data
 

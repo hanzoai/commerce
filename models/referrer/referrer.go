@@ -300,6 +300,7 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) erro
 	trans.SourceId = r.Id()
 	trans.SourceKind = r.Kind()
 	trans.DestinationId = r.UserId
+	trans.DestinationKind = "user"
 	trans.Notes = "Deposit due to referral"
 	trans.Tags = "referral"
 	log.Debug("Deposit type: %v", trans.Currency)
