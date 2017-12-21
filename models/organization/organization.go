@@ -143,6 +143,8 @@ type Organization struct {
 		// Requires password set on create confirmation
 		TwoStageEnabled bool `json:"twoStageEnabled"`
 		ImmediateLogin  bool `json:"immediateLogin"`
+
+		UsernameRequired bool `json:"usernameRequired"`
 	} `json:"signUpOptions" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
