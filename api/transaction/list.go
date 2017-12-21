@@ -16,7 +16,7 @@ func List(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
 
-	res, err := util.GetTransactions(ctx, id, kind)
+	res, err := util.GetTransactions(ctx, id, kind, !org.Live)
 
 	if err != nil {
 		log.Error("transaction/%v/%v error: '%v'", id, kind, err, c)

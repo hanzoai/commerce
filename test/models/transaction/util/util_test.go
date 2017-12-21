@@ -121,7 +121,7 @@ func Test(t *testing.T) {
 var _ = Describe("util", func() {
 	Context("GetTransactions", func() {
 		It("Should work", func() {
-			datas, err := util.GetTransactions(ctx, id, kind)
+			datas, err := util.GetTransactions(ctx, id, kind, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(datas.Id).To(Equal(id))
@@ -137,7 +137,7 @@ var _ = Describe("util", func() {
 
 	Context("GetTransactionsByCurrency", func() {
 		It("Should work", func() {
-			datas, err := util.GetTransactionsByCurrency(ctx, id, kind, currency.USD)
+			datas, err := util.GetTransactionsByCurrency(ctx, id, kind, currency.USD, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(datas.Id).To(Equal(id))

@@ -194,14 +194,15 @@ indexes:
   - name: DestinationId
 
 - kind: transaction
-  ancestor: no
   properties:
+  - name: Test
   - name: SourceKind
   - name: SourceId
   - name: Currency
 
 - kind: transaction
   properties:
+  - name: Test
   - name: DestinationKind
   - name: DestinationId
   - name: Currency
