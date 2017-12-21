@@ -22,18 +22,18 @@ type TransactionDatas struct {
 	Data map[currency.Type]*TransactionData `json:"data"`
 }
 
-func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas, error) {
+func GetTransactions(ctx appengine.Context, id, kind string, test bool) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	transs := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("SourceKind=", kind).Filter("SourceId=", id).GetAll(&transs); err != nil {
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("SourceKind=", kind).Filter("SourceId=", id).GetAll(&transs); err != nil {
 		log.Error("ListSource Transaction Query Error '%v'", err, ctx)
 		return nil, err
 	}
 
-	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("DestinationKind=", kind).Filter("DestinationId=", id).GetAll(&transs); err != nil {
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("DestinationKind=", kind).Filter("DestinationId=", id).GetAll(&transs); err != nil {
 		log.Error("ListDestination Transaction Query Error '%v'", err, ctx)
 		return nil, err
 	}
@@ -43,18 +43,18 @@ func GetTransactions(ctx appengine.Context, id, kind string) (*TransactionDatas,
 	return TallyTransactions(ctx, id, kind, transs)
 }
 
-func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur currency.Type) (*TransactionDatas, error) {
+func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur currency.Type, test bool) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	transs := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("SourceKind=", kind).Filter("SourceId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("SourceKind=", kind).Filter("SourceId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
 		log.Error("ListSource Transaction Query Error '%v'", err, ctx)
 		return nil, err
 	}
 
-	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("DestinationKind=", kind).Filter("DestinationId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("DestinationKind=", kind).Filter("DestinationId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
 		log.Error("ListDestination Transaction Query Error '%v'", err, ctx)
 		return nil, err
 	}
