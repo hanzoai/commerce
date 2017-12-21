@@ -66,7 +66,7 @@ func Create(c *gin.Context) {
 
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {
 		if trans.Type == transaction.Transfer || trans.Type == transaction.Withdraw {
-			datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency)
+			datas, err := util.GetTransactionsByCurrency(db.Context, trans.SourceId, trans.SourceKind, trans.Currency, !org.Live)
 			if err != nil {
 				return err
 			}
