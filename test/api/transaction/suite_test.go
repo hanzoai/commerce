@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api"
+	transactionApi "hanzo.io/api/transaction"
 	"hanzo.io/datastore"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
@@ -21,10 +21,12 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
-	org *organization.Organization
-	cl  *ginclient.Client
+	ctx          ae.Context
+	db           *datastore.Datastore
+	org          *organization.Organization
+	cl           *ginclient.Client
+	accessToken  string
+	pAccessToken string
 )
 
 // Setup appengine context
@@ -37,7 +39,8 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
-	accessToken := org.AddToken("test-published-key", permission.Admin)
+	accessToken = org.AddToken("test-admin-key", permission.Admin)
+	pAccessToken = org.AddToken("test-published-key", permission.Published)
 	org.MustUpdate()
 
 	// Save namespaced db
@@ -54,7 +57,7 @@ var _ = BeforeSuite(func() {
 	cl.IgnoreErrors(true)
 
 	// Add API routes to client
-	api.Route(cl.Router)
+	transactionApi.Route(cl.Router)
 })
 
 // Tear-down appengine context
