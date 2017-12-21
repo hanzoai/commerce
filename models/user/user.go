@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
-	"hanzo.io/models/transaction"
+	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
@@ -78,7 +78,7 @@ type User struct {
 	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
 	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
-	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
+	Transactions map[currency.Type]*util.TransactionData `json:"transactions" datastore:"-"`
 
 	ReferrerId string `json:"referrerId,omitempty"`
 
@@ -281,43 +281,11 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	fromTransactions := make([]*transaction.Transaction, 0)
-	toTransactions := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(u.Db).Filter("SourceId=", u.Id()).Filter("Test=", false).GetAll(&fromTransactions); err != nil {
-		return err
-	}
-	if _, err := transaction.Query(u.Db).Filter("DestinationId=", u.Id()).Filter("Test=", false).GetAll(&toTransactions); err != nil {
-		return err
-	}
-	log.Debug("Found from transactions: %v", len(fromTransactions))
-	log.Debug("Found to transactions: %v", len(toTransactions))
+	res, err := util.GetTransactions(u.Context(), u.Id(), kind, true)
 
-	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range toTransactions {
-		cents := u.Balances[t.Currency]
-		log.Debug("Handling from transaction, type: %v", t.Type)
-		if t.Type == transaction.Withdraw {
-			log.Debug("Applying withdraw action, value: %v", cents)
-			u.Balances[t.Currency] = cents - t.Amount
-		} else if t.Type == transaction.Deposit {
-			log.Debug("Applying deposit action, value: %v", cents)
-			u.Balances[t.Currency] = cents + t.Amount
-		} else {
-			// it's a transfer
-			log.Debug("Applying transfer out action, value: %v", cents)
-			u.Balances[t.Currency] = cents - t.Amount
-		}
-	}
-	for _, t := range fromTransactions {
-		cents := u.Balances[t.Currency]
+	u.Transactions = res.Data
 
-		if t.Type == transaction.Transfer {
-			log.Debug("Applying transfer in action, value: %v", cents)
-			u.Balances[t.Currency] = cents + t.Amount
-		}
-	}
-
-	return nil
+	return err
 }
 
 func (u *User) SetPassword(newPassword string) error {
