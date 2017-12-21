@@ -12,11 +12,13 @@ import (
 func exists(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	email := c.Params.ByName("email")
+	emailorusername := c.Params.ByName("emailorusername")
 
 	usr := user.New(db)
 
-	if err := usr.GetByEmail(email); err == nil {
+	if err := usr.GetByEmail(emailorusername); err == nil {
+		http.Render(c, 200, gin.H{"exists": true})
+	} else if err := usr.GetByUsername(emailorusername); err == nil {
 		http.Render(c, 200, gin.H{"exists": true})
 	} else {
 		http.Render(c, 200, gin.H{"exists": false})

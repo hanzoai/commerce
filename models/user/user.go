@@ -214,6 +214,26 @@ func (u *User) GetByEmail(email string) error {
 	return nil
 }
 
+// Populates current entity from datastore by Email.
+func (u *User) GetByUsername(un string) error {
+	un = strings.ToLower(strings.TrimSpace(un))
+	log.Debug("Searching for user '%v'", un)
+
+	ok, err := u.Query().Filter("Username=", un).Get()
+
+	if err != nil {
+		log.Warn("Unable to find user by username: '%v'", err)
+		return err
+	}
+
+	// Return error if no user found.
+	if !ok {
+		return UserNotFound
+	}
+
+	return nil
+}
+
 func (u *User) LoadReferrals() error {
 	u.Referrers = make([]referrer.Referrer, 0)
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
