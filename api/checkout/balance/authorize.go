@@ -19,7 +19,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 		return err
 	}
 
-	if usr.Balances[ord.Currency] < ord.Total {
+	if val, ok := usr.Transactions[ord.Currency]; !ok || val.Balance < ord.Total {
 		return InsufficientCredit
 	}
 
