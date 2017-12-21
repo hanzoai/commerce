@@ -12,6 +12,48 @@ import (
 )
 
 var _ = Describe("transaction", func() {
+	Context("Permissions", func() {
+		It("Should fail without token", func() {
+			at := accessToken
+			accessToken = "123"
+
+			req := &transaction.Transaction{
+				DestinationId:   "1",
+				DestinationKind: "test-permission",
+				Amount:          currency.Cents(100),
+				Currency:        currency.USD,
+				Type:            transaction.Deposit,
+			}
+			res := &ApiError{}
+			cl.Post("/transaction", req, res)
+
+			Expect(res.Error.Type).To(Equal("api-error"))
+			Expect(res.Error.Message).To(Equal("Unable to retrieve organization associated with access token: Token contains an invalid number of segments"))
+
+			accessToken = at
+		})
+
+		It("Should fail with token", func() {
+			at := accessToken
+			accessToken = pAccessToken
+
+			req := &transaction.Transaction{
+				DestinationId:   "2",
+				DestinationKind: "test-permission",
+				Amount:          currency.Cents(100),
+				Currency:        currency.USD,
+				Type:            transaction.Deposit,
+			}
+			res := &ApiError{}
+			cl.Post("/transaction", req, res)
+
+			Expect(res.Error.Type).To(Equal("api-error"))
+			Expect(res.Error.Message).To(Equal("Token doesn't support this scope"))
+
+			accessToken = at
+		})
+	})
+
 	Context("Create", func() {
 		It("Should work for Deposit", func() {
 			req := &transaction.Transaction{
