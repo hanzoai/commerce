@@ -24,6 +24,7 @@ import (
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
+var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
 
 type createReq struct {
 	*user.User
@@ -46,6 +47,7 @@ func create(c *gin.Context) {
 	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
+	req.Username = "\u263A"
 	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
@@ -72,7 +74,16 @@ func create(c *gin.Context) {
 		return
 	}
 
+	// If the username is purposely blank or username is required by the
+	// organization...
+	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "\u263A") {
+		http.Fail(c, 400, "Username is required", errors.New("Username is required"))
+		return
+	}
+
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
+	un := usr.Username
 
 	usr2 := user.New(db)
 	// Email can't already exist or if it does, can't have a password
@@ -88,6 +99,10 @@ func create(c *gin.Context) {
 			}
 			if usr.LastName != "" && usr.FirstName != "\u263A" {
 				usr2.LastName = usr.LastName
+			}
+			// Username isn't set in stone until actually registered
+			if un != "" && un != "\u263A" {
+				usr2.Username = un
 			}
 
 			usr = usr2
@@ -107,6 +122,26 @@ func create(c *gin.Context) {
 		}
 	} else {
 		log.Info("Sign up does not require Name", c)
+	}
+
+	if un == "\u263A" {
+		usr.Username = ""
+	} else {
+		usr3 := user.New(db)
+		// Username can't exist on another user
+		if err := usr3.GetByUsername(usr.Username); err == nil {
+			if usr2.Id() != usr3.Id() {
+				http.Fail(c, 400, "Username is in use", errors.New("Username is in use"))
+				return
+			}
+		}
+
+		// Username must be valid if it exists
+		log.Info("Checking if Username is valid", c)
+		if ok := usernameRegex.MatchString(usr.Username); !ok {
+			http.Fail(c, 400, "Username '"+usr.Username+"' is not valid", errors.New("Username '"+usr.Username+"' is not valid"))
+			return
+		}
 	}
 
 	if usr.Email == "\u263A" {
