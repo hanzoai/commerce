@@ -13,9 +13,9 @@ var InsufficientCredit = errors.New("Insufficient credit")
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	pay.Type = payment.Balance
-	pay.Live = true
+	pay.Live = org.Live
 
-	if err := usr.CalculateBalances(); err != nil {
+	if err := usr.CalculateBalances(!org.Live); err != nil {
 		return err
 	}
 
