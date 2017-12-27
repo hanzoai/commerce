@@ -81,7 +81,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
@@ -93,7 +93,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(2))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
@@ -141,7 +141,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
@@ -181,7 +181,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
@@ -193,7 +193,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(2))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
@@ -234,7 +234,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
@@ -248,7 +248,7 @@ var _ = Describe("Referrer", func() {
 
 			Expect(usr.Referrers[0].State["test_done"].(bool)).To(Equal(true))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
@@ -289,7 +289,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
@@ -301,7 +301,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(2))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
@@ -342,7 +342,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
@@ -354,7 +354,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(2))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD]).To(BeNil())
 		})
@@ -396,7 +396,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
@@ -410,7 +410,7 @@ var _ = Describe("Referrer", func() {
 
 			Expect(usr.Referrers[0].State["test_done"].(bool)).To(Equal(true))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 		})
@@ -460,7 +460,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(1))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
@@ -472,7 +472,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(usr.Referrals)).To(Equal(2))
 
-			err = usr.CalculateBalances()
+			err = usr.CalculateBalances(false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(14)))
 		})
