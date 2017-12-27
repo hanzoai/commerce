@@ -280,8 +280,8 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 	return nil
 }
 
-func (u *User) CalculateBalances() error {
-	res, err := util.GetTransactions(u.Context(), u.Id(), kind, false)
+func (u *User) CalculateBalances(test bool) error {
+	res, err := util.GetTransactions(u.Context(), u.Id(), kind, test)
 
 	u.Transactions = res.Data
 
