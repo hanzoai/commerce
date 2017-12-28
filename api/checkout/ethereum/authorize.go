@@ -30,54 +30,54 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 
 	ord.WalletPassphrase = rand.SecretKey()
 
-	// if ord.Test {
-	// 	pw := wallet.New(org.Db)
-	// 	if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 		return PlatformWalletNotFound
-	// 	}
+	if ord.Test {
+		// 	pw := wallet.New(org.Db)
+		// 	if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 		return PlatformWalletNotFound
+		// 	}
 
-	// 	// Find The Test Account
-	// 	account, ok := pw.GetAccountByName("Ethereum Ropsten Test Account")
-	// 	if !ok {
-	// 		return PlatformAccountNotFound
-	// 	}
+		// 	// Find The Test Account
+		// 	account, ok := pw.GetAccountByName("Ethereum Ropsten Test Account")
+		// 	if !ok {
+		// 		return PlatformAccountNotFound
+		// 	}
 
-	// 	log.Info("Account Found", ctx)
-	// 	if err := account.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
-	// 		return err
-	// 	}
+		// 	log.Info("Account Found", ctx)
+		// 	if err := account.Decrypt([]byte(config.Ethereum.TestPassword)); err != nil {
+		// 		return err
+		// 	}
 
-	// 	if account.PrivateKey == "" {
-	// 		return PlatformAccountDecryptionFailed
-	// 	}
+		// 	if account.PrivateKey == "" {
+		// 		return PlatformAccountDecryptionFailed
+		// 	}
 
-	// 	log.Info("Ethereum Test Mode", ctx)
-	// 	if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumRopstenType, []byte(ord.WalletPassphrase)); err != nil {
-	// 		return err
-	// 	}
+		log.Info("Ethereum Test Mode", ctx)
+		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumRopstenType, []byte(ord.WalletPassphrase)); err != nil {
+			return err
+		}
 
-	// 	client := ethereum.New(org.Db.Context, config.Ethereum.TestNetNodes[0])
+		// 	client := ethereum.New(org.Db.Context, config.Ethereum.TestNetNodes[0])
 
-	// 	if _, err := client.SendTransaction(
-	// 		ethereum.Ropsten,
-	// 		account.PrivateKey,
-	// 		account.Address,
-	// 		w.Accounts[0].Address,
-	// 		ord.Currency.ToMinimalUnits(ord.Total),
-	// 		big.NewInt(0),
-	// 		big.NewInt(0),
-	// 		[]byte{},
-	// 	); err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	log.Info("Ethereum Production Mode", ctx)
-	if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase)); err != nil {
-		return err
+		// 	if _, err := client.SendTransaction(
+		// 		ethereum.Ropsten,
+		// 		account.PrivateKey,
+		// 		account.Address,
+		// 		w.Accounts[0].Address,
+		// 		ord.Currency.ToMinimalUnits(ord.Total),
+		// 		big.NewInt(0),
+		// 		big.NewInt(0),
+		// 		[]byte{},
+		// 	); err != nil {
+		// 		return err
+		// 	}
+	} else {
+		log.Info("Ethereum Production Mode", ctx)
+		if _, err = w.CreateAccount("Receiver Account", blockchains.EthereumType, []byte(ord.WalletPassphrase)); err != nil {
+			return err
+		}
 	}
-	// }
 	return err
 }
