@@ -1,6 +1,7 @@
 package test
 
 import (
+	"appengine"
 	"net/http"
 	"testing"
 
@@ -21,10 +22,11 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
-	org *organization.Organization
-	cl  *ginclient.Client
+	ctx  ae.Context
+	db   *datastore.Datastore
+	bcDb *datastore.Datastore
+	org  *organization.Organization
+	cl   *ginclient.Client
 )
 
 // Setup appengine context
@@ -40,6 +42,8 @@ var _ = BeforeSuite(func() {
 	accessToken := org.AddToken("test-published-key", permission.Admin)
 	org.MustUpdate()
 
+	// We need to create the blockchain namespace
+	fixtures.BlockchainNamespace(c)
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
 
@@ -51,6 +55,8 @@ var _ = BeforeSuite(func() {
 		r.Header.Set("Authorization", accessToken)
 	})
 
+	nsCtx, _ := appengine.Namespace(ctx, "_blockchains")
+	bcDb = datastore.New(nsCtx)
 	// Add API routes to client
 	api.Route(cl.Router)
 })

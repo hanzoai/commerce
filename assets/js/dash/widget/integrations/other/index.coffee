@@ -1,4 +1,5 @@
 module.exports =
+  Bitcoin:      require './bitcoin'
   Ethereum:     require './ethereum'
   Mailchimp:    require './mailchimp'
   Mandrill:     require './mandrill'

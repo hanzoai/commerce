@@ -10,10 +10,11 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
-	"hanzo.io/models/transaction"
+	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 )
 
@@ -88,16 +89,17 @@ func getOrders(c *gin.Context) {
 
 func getTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	ctx := org.Namespaced(c)
 	id := c.Params.ByName("userid")
 
-	trans := make([]transaction.Transaction, 0)
-	if _, err := transaction.Query(db).Filter("Test=", false).Filter("UserId=", id).GetAll(&trans); err != nil {
-		http.Fail(c, 400, "Could not query transaction", err)
+	res, err := util.GetTransactions(ctx, id, "user", !org.Live)
+	if err != nil {
+		log.Error("transaction/%v/%v error: '%v'", id, "user", err, c)
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
-	http.Render(c, 200, trans)
+	http.Render(c, 200, res)
 }
 
 func getTransfers(c *gin.Context) {
