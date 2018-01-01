@@ -45,11 +45,11 @@ type Organization struct {
 	Moderators []string `json:"moderators,omitempty" datastore:",noindex"`
 	Enabled    bool     `json:"enabled"`
 
-	BillingEmail string  `json:"billingEmail,omitempty"`
-	Phone        string  `json:"phone,omitempty"`
-	Address      Address `json:"address,omitempty"`
-	Website      string  `json:"website,omitempty"`
-	WalletKey    string  `json:"-"`
+	BillingEmail     string  `json:"billingEmail,omitempty"`
+	Phone            string  `json:"phone,omitempty"`
+	Address          Address `json:"address,omitempty"`
+	Website          string  `json:"website,omitempty"`
+	WalletPassphrase string  `json:"-"`
 
 	Timezone string `json:"timezone"`
 
@@ -92,6 +92,8 @@ type Organization struct {
 		// Requires password set on create confirmation
 		TwoStageEnabled bool `json:"twoStageEnabled"`
 		ImmediateLogin  bool `json:"immediateLogin"`
+
+		UsernameRequired bool `json:"usernameRequired"`
 	} `json:"signUpOptions" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
@@ -109,7 +111,10 @@ type Organization struct {
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
-	// Mailchimp settings
+	// Bitcoi settings
+	Bitcoin integrations.Bitcoin `json:"-"`
+
+	// Ethereum settings
 	Ethereum integrations.Ethereum `json:"-"`
 
 	// Mailchimp settings
