@@ -155,6 +155,8 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 		return
 	}
 
+	log.Info("Listing Found %s", entity.Id(), s.Context())
+
 	ev := reflect.Indirect(reflect.ValueOf(entity))
 	lv := reflect.ValueOf(listing)
 
@@ -164,6 +166,7 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 		val := reflect.Indirect(lv.FieldByName(name))
 		if val.IsValid() && field.IsValid() {
 			field.Set(val)
+			log.Info("Name %v, Field %v", name, field, s.Context())
 		}
 	}
 

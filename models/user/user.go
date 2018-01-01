@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
-	"hanzo.io/models/transaction"
+	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
@@ -34,18 +34,19 @@ type User struct {
 	// Crowdstart Id, found in default namespace
 	Cid string `json:"-"`
 
-	Username        string   `json:"username,omitempty"`
-	FirstName       string   `json:"firstName"`
-	LastName        string   `json:"lastName"`
-	Company         string   `json:"company,omitempty"`
-	Phone           string   `json:"phone,omitempty"`
-	BillingAddress  Address  `json:"billingAddress,omitempty"`
-	ShippingAddress Address  `json:"shippingAddress,omitempty"`
-	Email           string   `json:"email"`
-	PaypalEmail     string   `json:"paypalEmail,omitempty"`
-	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"-" datastore:",noindex"`
-	StoreId         string   `json:"storeId,omitempty"`
+	Username         string   `json:"username,omitempty"`
+	FirstName        string   `json:"firstName"`
+	LastName         string   `json:"lastName"`
+	Company          string   `json:"company,omitempty"`
+	Phone            string   `json:"phone,omitempty"`
+	BillingAddress   Address  `json:"billingAddress,omitempty"`
+	ShippingAddress  Address  `json:"shippingAddress,omitempty"`
+	Email            string   `json:"email"`
+	PaypalEmail      string   `json:"paypalEmail,omitempty"`
+	PasswordHash     []byte   `schema:"-" datastore:",noindex" json:"-"`
+	Organizations    []string `json:"-" datastore:",noindex"`
+	StoreId          string   `json:"storeId,omitempty"`
+	WalletPassphrase string   `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
@@ -77,7 +78,7 @@ type User struct {
 	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
 	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
-	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
+	Transactions map[currency.Type]*util.TransactionData `json:"transactions" datastore:"-"`
 
 	ReferrerId string `json:"referrerId,omitempty"`
 
@@ -213,6 +214,26 @@ func (u *User) GetByEmail(email string) error {
 	return nil
 }
 
+// Populates current entity from datastore by Email.
+func (u *User) GetByUsername(un string) error {
+	un = strings.ToLower(strings.TrimSpace(un))
+	log.Debug("Searching for user '%v'", un)
+
+	ok, err := u.Query().Filter("Username=", un).Get()
+
+	if err != nil {
+		log.Warn("Unable to find user by username: '%v'", err)
+		return err
+	}
+
+	// Return error if no user found.
+	if !ok {
+		return UserNotFound
+	}
+
+	return nil
+}
+
 func (u *User) LoadReferrals() error {
 	u.Referrers = make([]referrer.Referrer, 0)
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
@@ -259,24 +280,12 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 	return nil
 }
 
-func (u *User) CalculateBalances() error {
-	trans := make([]*transaction.Transaction, 0)
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
-		return err
-	}
+func (u *User) CalculateBalances(test bool) error {
+	res, err := util.GetTransactions(u.Context(), u.Id(), kind, test)
 
-	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range trans {
-		cents := u.Balances[t.Currency]
+	u.Transactions = res.Data
 
-		if t.Type == transaction.Withdraw {
-			u.Balances[t.Currency] = cents - t.Amount
-		} else {
-			u.Balances[t.Currency] = cents + t.Amount
-		}
-	}
-
-	return nil
+	return err
 }
 
 func (u *User) SetPassword(newPassword string) error {

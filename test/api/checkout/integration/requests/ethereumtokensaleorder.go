@@ -1,6 +1,6 @@
 package requests
 
-var ValidTokenSaleOrder = `
+var ValidEthereumTokenSaleOrder = `
 {
   "tokenSale": {
   	"passphrase": "123456"
@@ -24,7 +24,7 @@ var ValidTokenSaleOrder = `
   }
 }`
 
-var InvalidNoTokenSaleIdTokenSaleOrder = `
+var InvalidEthereumNoTokenSaleIdTokenSaleOrder = `
 {
   "tokenSale": {
   	"passphrase": "123456"
@@ -47,7 +47,7 @@ var InvalidNoTokenSaleIdTokenSaleOrder = `
   }
 }`
 
-var InvalidPassphraseTokenSaleOrder = `
+var InvalidEthereumPassphraseTokenSaleOrder = `
 {
   "user": {
     "email": "dev@hanzo.ai",

@@ -34,11 +34,13 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			p.Put()
 
 			trans := transaction.New(db)
-			trans.UserId = ord.UserId
+			trans.DestinationId = ord.UserId
 			trans.Amount = p.Amount
 			trans.Currency = p.Currency
 			trans.Type = transaction.Withdraw
 			trans.Test = ord.Test
+			trans.SourceId = ord.Id()
+			trans.SourceKind = "order"
 			trans.Put()
 		}
 	}
