@@ -19,6 +19,13 @@ type Origin struct {
 	OutputIndex int
 }
 
+// An OriginWithAmount is the boiled-back simpistic form of a Bitcoin Input, denoting
+// where you want the money to come from and the amount.
+type OriginWithAmount struct {
+	Origin
+	Amount int64
+}
+
 // An Input is a slightly more complete form of a Bitcoin Input, denoting
 // everything the base algorithms need to do their job.
 type Input struct {
@@ -35,10 +42,9 @@ type Output struct {
 }
 
 type Sender struct {
-	PrivateKey     string
-	PublicKey      string
-	Address        string
-	TestNetAddress string
+	PrivateKey string
+	PublicKey  string
+	Address    string
 }
 
 type GetRawTransactionResponseResult struct {
@@ -105,9 +111,15 @@ func OriginToInput(o Origin) Input {
 }
 
 func DestinationToOutput(d Destination) Output {
+	pubKey, err := CreateScriptPubKey(d.Address)
+
+	if err != nil {
+		panic(err)
+	}
+
 	return Output{
 		Value:  d.Value,
-		Script: CreateScriptPubKey(d.Address),
+		Script: pubKey,
 	}
 }
 

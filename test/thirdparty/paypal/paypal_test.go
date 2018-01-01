@@ -20,7 +20,7 @@ import (
 
 func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
-	Setup("thirdparty/paypal", t)
+	// Setup("thirdparty/paypal", t)
 }
 
 var (

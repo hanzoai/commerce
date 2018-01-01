@@ -51,9 +51,9 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 	}
 
 	log.Info("Accounts Found", ctx)
-	log.Info("Sender Address", sender.TestNetAddress)
-	log.Info("Receiver 1 Address", receiver1.TestNetAddress)
-	log.Info("Receiver 2 Address", receiver2.TestNetAddress)
+	log.Info("Sender Address", sender.Address)
+	log.Info("Receiver 1 Address", receiver1.Address)
+	log.Info("Receiver 2 Address", receiver2.Address)
 	if err := sender.Decrypt([]byte(config.Bitcoin.TestPassword)); err != nil {
 		panic(err)
 	}
@@ -68,18 +68,14 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 		bitcoin.Origin{TxId: transactionId, OutputIndex: 0},
 		// bitcoin.Origin{TxId: transactionId2, OutputIndex: 0},
 	}
-	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.TestNetAddress}, bitcoin.Destination{Value: 500000, Address: receiver2.TestNetAddress}}
+	out := []bitcoin.Destination{bitcoin.Destination{Value: 100000, Address: receiver1.Address}, bitcoin.Destination{Value: 500000, Address: receiver2.Address}}
 	senderAccount := bitcoin.Sender{
-		PrivateKey:     sender.PrivateKey,
-		PublicKey:      sender.PublicKey,
-		Address:        sender.Address,
-		TestNetAddress: sender.TestNetAddress,
+		PrivateKey: sender.PrivateKey,
+		PublicKey:  sender.PublicKey,
+		Address:    sender.Address,
 	}
 
-	client, err := bitcoin.NewRpcClient(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0], true)
-	if err != nil {
-		panic(err)
-	}
+	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 	log.Info("Created Bitcoin client.")
 
 	rawTrx, err := bitcoin.CreateTransaction(client, in, out, senderAccount)

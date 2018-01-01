@@ -24,6 +24,7 @@ import (
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
+var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
 
 type createReq struct {
 	*user.User
@@ -46,10 +47,12 @@ func create(c *gin.Context) {
 	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
+	req.Username = "\u263A"
 	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
 
+	log.Info("Decoding User Creation Request", c)
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -64,13 +67,23 @@ func create(c *gin.Context) {
 	// Pull out user
 	usr := req.User
 
+	log.Info("Fetching User Request: %v", usr, c)
 	// Email is required
 	if usr.Email == "" || usr.Email == "\u263A" {
 		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
 		return
 	}
 
+	// If the username is purposely blank or username is required by the
+	// organization...
+	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "\u263A") {
+		http.Fail(c, 400, "Username is required", errors.New("Username is required"))
+		return
+	}
+
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
+	un := usr.Username
 
 	usr2 := user.New(db)
 	// Email can't already exist or if it does, can't have a password
@@ -87,12 +100,17 @@ func create(c *gin.Context) {
 			if usr.LastName != "" && usr.FirstName != "\u263A" {
 				usr2.LastName = usr.LastName
 			}
+			// Username isn't set in stone until actually registered
+			if un != "" && un != "\u263A" {
+				usr2.Username = un
+			}
 
 			usr = usr2
 		}
 	}
 
 	if !org.SignUpOptions.NoNameRequired {
+		log.Info("Sign up does require Name: %s/%s", usr.FirstName, usr.LastName, c)
 		if usr.FirstName == "" || usr.FirstName == "\u263A" {
 			http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
 			return
@@ -100,6 +118,28 @@ func create(c *gin.Context) {
 
 		if usr.LastName == "" || usr.LastName == "\u263A" {
 			http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
+			return
+		}
+	} else {
+		log.Info("Sign up does not require Name", c)
+	}
+
+	if un == "\u263A" {
+		usr.Username = ""
+	} else {
+		usr3 := user.New(db)
+		// Username can't exist on another user
+		if err := usr3.GetByUsername(usr.Username); err == nil {
+			if usr2.Id() != usr3.Id() {
+				http.Fail(c, 400, "Username is in use", errors.New("Username is in use"))
+				return
+			}
+		}
+
+		// Username must be valid if it exists
+		log.Info("Checking if Username is valid", c)
+		if ok := usernameRegex.MatchString(usr.Username); !ok {
+			http.Fail(c, 400, "Username '"+usr.Username+"' is not valid", errors.New("Username '"+usr.Username+"' is not valid"))
 			return
 		}
 	}
@@ -117,12 +157,14 @@ func create(c *gin.Context) {
 	}
 
 	// Email must be valid
+	log.Info("Checking if User email is valid", c)
 	if ok := emailRegex.MatchString(usr.Email); !ok {
 		http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("Email '"+usr.Email+"' is not valid"))
 		return
 	}
 
 	if !org.SignUpOptions.NoPasswordRequired {
+		log.Info("Sign up requires password", c)
 		// Password should be at least 6 characters long
 		if len(req.Password) < 6 {
 			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
@@ -141,6 +183,8 @@ func create(c *gin.Context) {
 		} else {
 			usr.PasswordHash = hash
 		}
+	} else {
+		log.Info("Sign up does not require password", c)
 	}
 
 	ctx := org.Db.Context
@@ -153,6 +197,7 @@ func create(c *gin.Context) {
 		usr.Enabled = true
 	}
 
+	log.Info("User is enabled? %v", usr.Enabled, c)
 	usr.Enabled = org.SignUpOptions.AccountsEnabledByDefault
 
 	// Determine store to use
@@ -164,6 +209,7 @@ func create(c *gin.Context) {
 	usr.StoreId = storeId
 
 	// Save new user
+	log.Info("User is attributed to store: %v", storeId, c)
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
@@ -172,6 +218,7 @@ func create(c *gin.Context) {
 
 	// if ReferrerId refers to non-existing token, then remove from order
 	if usr.ReferrerId != "" {
+		log.Info("User is attributed to Referrer %s: %v", usr.ReferrerId, c)
 		if err := ref.GetById(usr.ReferrerId); err != nil {
 			usr.ReferrerId = ""
 		} else {
@@ -185,6 +232,7 @@ func create(c *gin.Context) {
 	tokStr := ""
 
 	if org.SignUpOptions.ImmediateLogin {
+		log.Info("User is being immediately logged in", c)
 		loginTok := middleware.GetToken(c)
 		loginTok.Set("user-id", usr.Id())
 		loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
@@ -196,15 +244,18 @@ func create(c *gin.Context) {
 	http.Render(c, 201, createRes{User: usr, Token: tokStr})
 
 	// Don't send email confirmation if test key is used
-	if org.Live {
-		// Send welcome, email confirmation emails
-		ctx := middleware.GetAppEngine(c)
-		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
-		emails.SendUserWelcome(ctx, org, usr)
-	}
+	// if org.Live {
+	log.Info("Sending Emails", c)
+	// Send welcome, email confirmation emails
+	emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
+	emails.SendUserWelcome(ctx, org, usr)
+	// } else {
+	// 	log.Info("Organization %v is not live.  No emails sent.", org.Name, c)
+	// }
 
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
+		log.Info("Saving User to Mailchimp: %s", usr, c)
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
@@ -212,5 +263,7 @@ func create(c *gin.Context) {
 		if err := client.CreateCustomer(storeId, usr); err != nil {
 			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
 		}
+	} else {
+		log.Info("Skip saving User to Mailchimp: %s", usr, c)
 	}
 }

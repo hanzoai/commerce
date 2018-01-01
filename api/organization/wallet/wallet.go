@@ -1,8 +1,8 @@
 package wallet
 
 import (
-	"appengine"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"math/big"
 
@@ -24,9 +24,9 @@ type CreateAccountRequest struct {
 }
 
 type PayFromAccountRequest struct {
-	Name   string  `json:"name"`
-	To     string  `json:"to"`
-	Amount big.Int `json:"amount"`
+	Name   string `json:"name"`
+	To     string `json:"to"`
+	Amount string `json:"amount"`
 }
 
 type PayFromAccountResponse struct {
@@ -52,6 +52,7 @@ func GetAccount(c *gin.Context) {
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
+
 	log.Debug("Requested account name: %v", c.Params.ByName("name"))
 	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
 	if !success {
@@ -77,7 +78,7 @@ func CreateAccount(c *gin.Context) {
 	}
 	log.Debug("Blockchain requested for account creation: %v", request.Blockchain)
 	blockchainType := blockchains.Type(request.Blockchain)
-	account, err := orgWallet.CreateAccount(request.Name, blockchainType, []byte(org.WalletKey))
+	account, err := orgWallet.CreateAccount(request.Name, blockchainType, []byte(org.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to create requested account", err)
 		return
@@ -87,7 +88,7 @@ func CreateAccount(c *gin.Context) {
 	http.Render(c, 200, account)
 }
 
-func Pay(c *gin.Context) {
+func Send(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(c)
 	orgWallet, err := ReturnWallet(org, db)
@@ -99,12 +100,18 @@ func Pay(c *gin.Context) {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
+	value := new(big.Int)
+	_, success := value.SetString(request.Amount, 10)
+	if !success {
+		http.Fail(c, 400, "Failed to decode value. Must be parsable as base 10 string.", errors.New(fmt.Sprintf("Unable to decode value. Given value: %v", request.Amount)))
+	}
+
 	account, success := orgWallet.GetAccountByName(request.Name)
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(appengine.NewContext(c.Request), *account, request.To, &request.Amount, []byte(org.WalletKey))
+	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(org.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
@@ -119,8 +126,8 @@ func ReturnWallet(o *organization.Organization, db *datastore.Datastore) (*walle
 	if err != nil {
 		return nil, err
 	}
-	if o.WalletKey == "" {
-		o.WalletKey = rand.SecretKey()
+	if o.WalletPassphrase == "" {
+		o.WalletPassphrase = rand.SecretKey()
 	}
 
 	return ret, nil

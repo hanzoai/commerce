@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
-	"hanzo.io/middleware"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
@@ -35,8 +34,6 @@ var (
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	adminRequired := middleware.TokenRequired(permission.Admin)
-
 	// Create a new app engine context
 	ctx = ae.NewContext()
 
@@ -49,7 +46,7 @@ var _ = BeforeSuite(func() {
 
 	// Setup client and add routes for account API tests.
 	cl = ginclient.New(ctx)
-	accountApi.Route(cl.Router, adminRequired)
+	accountApi.Route(cl.Router)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Published)
@@ -64,6 +61,7 @@ var _ = BeforeSuite(func() {
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
 	usr := user.New(db)
+	usr.Username = "redranger"
 	usr.Email = "dev@hanzo.ai"
 	usr.SetPassword("Z0rd0N")
 	usr.Enabled = true
@@ -89,6 +87,15 @@ var _ = BeforeSuite(func() {
 	usr4.SetPassword("blackisthenewred")
 	usr4.Enabled = true
 	usr4.MustPut()
+
+	usr5 := user.New(db)
+	usr5.FirstName = "Z"
+	usr5.LastName = "T"
+	usr5.Username = "zack"
+	usr5.Email = "dev@hanzo.ai"
+	usr5.SetPassword("blackisthenewred")
+	usr5.Enabled = true
+	usr5.MustPut()
 })
 
 // Tear-down appengine context
@@ -107,7 +114,26 @@ type loginRes struct {
 }
 
 var _ = Describe("account", func() {
-	Context("Create", func() {
+	Context("Create without Username", func() {
+		It("Should fail without token", func() {
+			at := accessToken
+			accessToken = "123"
+
+			req := `{
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res, 401))
+			accessToken = at
+		})
+	})
+	Context("Create without Username", func() {
 		It("Should create an account", func() {
 			req := `{
 				"firstName": "Zack",
@@ -155,12 +181,114 @@ var _ = Describe("account", func() {
 
 			log.Debug("Response %s", cl.Post("/account/create", req, &res, 400))
 		})
+
+		It("Should fail if org requires username", func() {
+			org.SignUpOptions.UsernameRequired = true
+			org.MustUpdate()
+
+			req := `{
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "zack@taylor.ninja",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res, 400))
+
+			org.SignUpOptions.UsernameRequired = false
+			org.MustUpdate()
+		})
+	})
+
+	Context("Create with Username", func() {
+		It("Should create an account", func() {
+			req := `{
+				"username": "ZackShouldCreateAccount",
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res))
+			Expect(res.User.FirstName).To(Equal("Zack"))
+			Expect(res.User.LastName).To(Equal("Taylor"))
+			Expect(res.User.Email).To(Equal("dev@hanzo.ai"))
+			Expect(res.User.Username).To(Equal("zackshouldcreateaccount"))
+		})
+
+		It("Should create an account if it already exists but has no password", func() {
+			req := `{
+				"username": "ZackNoPass",
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "zack2@taylor.edu",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res))
+			Expect(res.FirstName).To(Equal("Zack"))
+			Expect(res.LastName).To(Equal("Taylor"))
+			Expect(res.Email).To(Equal("zack2@taylor.edu"))
+			Expect(res.User.Username).To(Equal("zacknopass"))
+		})
+
+		It("Should create not create account if it already exists and has a password", func() {
+			req := `{
+				"username": "Zack",
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res, 400))
+		})
+
+		It("Should create not create account if the username already exists", func() {
+			req := `{
+				"username": "Zack",
+				"firstName": "Zack",
+				"lastName": "Taylor",
+				"email": "zack2@taylor.gov",
+				"password": "Z0rd0N",
+				"passwordConfirm": "Z0rd0N"
+			}`
+
+			res := createRes{}
+
+			log.Debug("Response %s", cl.Post("/account/create", req, &res, 400))
+		})
 	})
 
 	Context("Login", func() {
-		It("Should allow login with proper credentials", func() {
+		It("Should allow login with email", func() {
 			req := `{
 				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+			Expect(res.Token).ToNot(Equal(""))
+		})
+
+		It("Should allow login with username", func() {
+			req := `{
+				"username": "redranger",
 				"password": "Z0rd0N"
 			}`
 

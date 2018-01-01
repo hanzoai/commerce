@@ -50,6 +50,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateReferral(org, ord)
 	util.UpdateCart(ctx, ord)
 	util.UpdateStats(ctx, org, ord, payments)
+	util.HandleDeposit(ord)
 
 	buyer := payments[0].Buyer
 

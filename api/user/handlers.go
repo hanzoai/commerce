@@ -3,6 +3,7 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/api/user/wallet"
 	"hanzo.io/middleware"
 	"hanzo.io/models/user"
 	"hanzo.io/util/permission"
@@ -25,6 +26,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:userid/transactions", readUserRequired, getTransactions)
 	api.GET("/:userid/transfer", readUserRequired, getTransfers)
 	api.GET("/:userid/affiliate", readUserRequired, getAffiliate)
+
+	api.GET("/:userid/wallet", writeUserRequired, wallet.Get)
+	api.GET("/:userid/wallet/account/:name", writeUserRequired, wallet.GetAccount)
+	api.POST("/:userid/wallet/account", writeUserRequired, wallet.CreateAccount)
+	api.POST("/:userid/wallet/pay", writeUserRequired, wallet.Send)
 
 	api.Route(router, args...)
 }

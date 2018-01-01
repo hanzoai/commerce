@@ -12,25 +12,24 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	accountRequired := middleware.AccountRequired()
 	namespaced := middleware.Namespace()
-	origin := middleware.AccessControl("*")
 
 	api := router.Group("account")
-	api.Use(publishedRequired, origin)
+	api.Use(publishedRequired)
 
-	api.GET("", publishedRequired, accountRequired, namespaced, get)
-	api.PUT("", publishedRequired, accountRequired, namespaced, update)
-	api.PATCH("", publishedRequired, accountRequired, namespaced, patch)
+	api.GET("", accountRequired, namespaced, get)
+	api.PUT("", accountRequired, namespaced, update)
+	api.PATCH("", accountRequired, namespaced, patch)
 
-	api.GET("/order/:orderid", publishedRequired, accountRequired, namespaced, getOrder)
-	api.PATCH("/order/:orderid", publishedRequired, accountRequired, namespaced, patchOrder)
+	api.GET("/order/:orderid", accountRequired, namespaced, getOrder)
+	api.PATCH("/order/:orderid", accountRequired, namespaced, patchOrder)
 
-	api.GET("/exists/:email", publishedRequired, namespaced, exists)
+	api.GET("/exists/:emailorusername", namespaced, exists)
 
-	api.POST("/login", publishedRequired, namespaced, login)
+	api.POST("/login", namespaced, login)
 
-	api.POST("/create", publishedRequired, namespaced, create)
-	api.POST("/enable/:tokenid", publishedRequired, namespaced, enable)
+	api.POST("/create", namespaced, create)
+	api.POST("/enable/:tokenid", namespaced, enable)
 
-	api.POST("/reset", publishedRequired, namespaced, reset)
-	api.POST("/confirm/:tokenid", publishedRequired, namespaced, confirm)
+	api.POST("/reset", namespaced, reset)
+	api.POST("/confirm/:tokenid", namespaced, confirm)
 }

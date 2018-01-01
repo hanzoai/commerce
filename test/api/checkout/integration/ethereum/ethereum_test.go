@@ -57,7 +57,7 @@ var _ = Describe("/checkout/authorize", func() {
 		// User
 		//   User Wallet w/1 Account
 		It("Should work with Ethereum TokenSale", func() {
-			w := cl.Post(path, fmt.Sprintf(requests.ValidTokenSaleOrder, ts.Id()), nil)
+			w := cl.Post(path, fmt.Sprintf(requests.ValidEthereumTokenSaleOrder, ts.Id()), nil)
 
 			Expect(w.Code).To(Equal(200))
 
@@ -119,12 +119,12 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should not work with Missing TokenSaleId", func() {
-			w := cl.Post(path, requests.InvalidNoTokenSaleIdTokenSaleOrder, nil)
+			w := cl.Post(path, requests.InvalidEthereumNoTokenSaleIdTokenSaleOrder, nil)
 			Expect(w.Code).To(Equal(400))
 		})
 
 		It("Should not work with Missing TokenSale Passphrase", func() {
-			w := cl.Post(path, fmt.Sprintf(requests.InvalidPassphraseTokenSaleOrder, ts.Id()), nil)
+			w := cl.Post(path, fmt.Sprintf(requests.InvalidEthereumPassphraseTokenSaleOrder, ts.Id()), nil)
 			Expect(w.Code).To(Equal(400))
 		})
 	})

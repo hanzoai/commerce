@@ -117,6 +117,9 @@ type createAccountRes struct {
 type retrieveAccountRes struct {
 	wallet.Account
 }
+type payFromAccountRes struct {
+	TransactionId string
+}
 type loginRes struct {
 	Token string `json:"token"`
 }
@@ -131,21 +134,36 @@ var _ = Describe("organization", func() {
 		It("Should create wallet account", func() {
 			req := `{
 				"name": "test-wallet-account",
-				"blockchain": "ethereum",
-				"password": "shamma-lamma-ding-dong"
+				"blockchain": "ethereum"
 			}`
 			res := createAccountRes{}
 
-			cl.Post("/c/organization/"+org.Id()+"/wallet/createaccount", req, &res)
+			cl.Post("/c/organization/"+org.Id()+"/wallet/account", req, &res)
 		})
 		It("Should retrieve created wallet account", func() {
 			orgWallet, _ := org.GetOrCreateWallet(db)
 			orgWallet.CreateAccount("test-wallet-account", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
-			orgWallet.Update()
+			org.MustUpdate()
 
 			resRetrieve := retrieveAccountRes{}
 
 			cl.Get("/c/organization/"+org.Id()+"/wallet/account/test-wallet-account", &resRetrieve)
 		})
+		/*It("Should make ordered payment", func() {
+			req := `{
+				"name": "test-wallet-account",
+				"blockchain": "ethereum-ropsten"
+			}`
+			req2 := `{
+				"name": "test-wallet-account",
+				"to": "0x123f681646d4a755815f9cb19e1acc8565a0c2ac",
+				"amount": "234923838"
+			}`
+			res := createAccountRes{}
+			res2 := payFromAccountRes{}
+
+			cl.Post("/c/organization/"+org.Id()+"/wallet/createaccount", req, &res)
+			cl.Post("/c/organization/"+org.Id()+"/wallet/pay", req2, &res2)
+		})*/
 	})
 })

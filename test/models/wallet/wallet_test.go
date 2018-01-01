@@ -80,6 +80,7 @@ var _ = Describe("Wallet", func() {
 
 		Before(func() {
 			wal = wallet.New(db)
+			wal.MustCreate()
 		})
 
 		It("should find an account by name", func() {
@@ -107,6 +108,162 @@ var _ = Describe("Wallet", func() {
 			acc2, ok := wal.GetAccountByName("test2")
 			Expect(ok).To(BeFalse())
 			Expect(acc2).To(BeNil())
+		})
+
+		It("should phase out and deprecate TestNetAddress", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.BitcoinTestnetType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Simulate a deprecated TestNetAddress Account
+			wal.Accounts[0].TestNetAddress = "TestNetAddress"
+			wal.Accounts[0].Address = "Address"
+			wal.MustUpdate()
+
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(wal.Accounts[0].Address).To(Equal("Address"))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Test to see if the Account has been updated to the new format
+			a, ok := wal.GetAccountByName("test")
+			Expect(ok).To(BeTrue())
+			Expect(a.TestNetAddress).To(Equal(""))
+			Expect(a.Address).To(Equal("TestNetAddress"))
+			Expect(a.AddressBackup).To(Equal("Address"))
+
+			// Make sure it was automagically saved
+			wal2 := wallet.New(db)
+			err = wal2.GetById(wal.Id())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal2.Accounts)).To(Equal(1))
+
+			a2 := wal2.Accounts[0]
+			Expect(a2.TestNetAddress).To(Equal(""))
+			Expect(a2.Address).To(Equal("TestNetAddress"))
+			Expect(a2.AddressBackup).To(Equal("Address"))
+		})
+
+		It("should not do anything with regards to TestNetAddress for Bitcoin Type", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.BitcoinType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Simulate a deprecated TestNetAddress Account
+			wal.Accounts[0].TestNetAddress = "TestNetAddress"
+			wal.Accounts[0].Address = "Address"
+			wal.MustUpdate()
+
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(wal.Accounts[0].Address).To(Equal("Address"))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Test to see if the Account has been updated to the new format
+			a, ok := wal.GetAccountByName("test")
+			Expect(ok).To(BeTrue())
+			Expect(a.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a.Address).To(Equal("Address"))
+			Expect(a.AddressBackup).To(Equal(""))
+
+			// Make sure it was automagically saved
+			wal2 := wallet.New(db)
+			err = wal2.GetById(wal.Id())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal2.Accounts)).To(Equal(1))
+
+			a2 := wal2.Accounts[0]
+			Expect(a2.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a2.Address).To(Equal("Address"))
+			Expect(a2.AddressBackup).To(Equal(""))
+		})
+
+		It("should not do anything with regards to TestNetAddress for Ethereum Type", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.EthereumType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Simulate a deprecated TestNetAddress Account
+			wal.Accounts[0].TestNetAddress = "TestNetAddress"
+			wal.Accounts[0].Address = "Address"
+			wal.MustUpdate()
+
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(wal.Accounts[0].Address).To(Equal("Address"))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Test to see if the Account has been updated to the new format
+			a, ok := wal.GetAccountByName("test")
+			Expect(ok).To(BeTrue())
+			Expect(a.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a.Address).To(Equal("Address"))
+			Expect(a.AddressBackup).To(Equal(""))
+
+			// Make sure it was automagically saved
+			wal2 := wallet.New(db)
+			err = wal2.GetById(wal.Id())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal2.Accounts)).To(Equal(1))
+
+			a2 := wal2.Accounts[0]
+			Expect(a2.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a2.Address).To(Equal("Address"))
+			Expect(a2.AddressBackup).To(Equal(""))
+		})
+
+		It("should not do anything with regards to TestNetAddress for Ethereum Ropsten Type", func() {
+			password := "Th1$1s@b@dp@$$w0rd"
+			_, err := wal.CreateAccount("test", blockchains.EthereumRopstenType, []byte(password))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal.Accounts)).To(Equal(1))
+
+			// Test Defaults
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal(""))
+			Expect(wal.Accounts[0].Address).NotTo(Equal(""))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Simulate a deprecated TestNetAddress Account
+			wal.Accounts[0].TestNetAddress = "TestNetAddress"
+			wal.Accounts[0].Address = "Address"
+			wal.MustUpdate()
+
+			Expect(wal.Accounts[0].TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(wal.Accounts[0].Address).To(Equal("Address"))
+			Expect(wal.Accounts[0].AddressBackup).To(Equal(""))
+
+			// Test to see if the Account has been updated to the new format
+			a, ok := wal.GetAccountByName("test")
+			Expect(ok).To(BeTrue())
+			Expect(a.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a.Address).To(Equal("Address"))
+			Expect(a.AddressBackup).To(Equal(""))
+
+			// Make sure it was automagically saved
+			wal2 := wallet.New(db)
+			err = wal2.GetById(wal.Id())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(wal2.Accounts)).To(Equal(1))
+
+			a2 := wal2.Accounts[0]
+			Expect(a2.TestNetAddress).To(Equal("TestNetAddress"))
+			Expect(a2.Address).To(Equal("Address"))
+			Expect(a2.AddressBackup).To(Equal(""))
 		})
 	})
 })
