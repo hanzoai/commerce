@@ -15,6 +15,7 @@ import (
 )
 
 func get(c *gin.Context) {
+	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 
 	if err := usr.LoadReferrals(); err != nil {
@@ -32,7 +33,7 @@ func get(c *gin.Context) {
 		return
 	}
 
-	if err := usr.CalculateBalances(); err != nil {
+	if err := usr.CalculateBalances(!org.Live); err != nil {
 		http.Fail(c, 500, "User balance data could get be queried", err)
 		return
 	}

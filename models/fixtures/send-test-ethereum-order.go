@@ -18,7 +18,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context) {
+var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 
@@ -44,7 +44,7 @@ var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context
 
 	ord.Currency = currency.ETH
 	ord.Subtotal = currency.Cents(100000000)
-	ord.Contribution = true
+	ord.Mode = order.ContributionMode
 
 	ch := checkout.Authorization{
 		Order: ord,
@@ -52,10 +52,11 @@ var SendTestEthereumOrder = New("send-test-ethererum-order", func(c *gin.Context
 
 	j := json.Encode(ch)
 
+	log.Info("Sending To %s", "https://api.hanzo.io/checkout/authorize/", c)
 	log.Info("Sending Test Order: %s", j, c)
 
 	client := urlfetch.Client(ctx)
-	req, err := http.NewRequest("POST", "https://api.hanzo.io/authorize/", strings.NewReader(j))
+	req, err := http.NewRequest("POST", "https://api.hanzo.io/checkout/authorize/", strings.NewReader(j))
 	if err != nil {
 		panic(err)
 	}
