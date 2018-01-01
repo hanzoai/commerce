@@ -13,16 +13,19 @@ type Account struct {
 	Encrypted string `json:"encrypted"`
 	Salt      string `json:"salt"`
 
-	Name           string `json:"name"`
-	PrivateKey     string `json:"-" datastore:"-"`
-	PublicKey      string `json:"-"`
-	Address        string `json:"address,omitempty"`
-	TestNetAddress string `json:"testnetaddress,omitempty"`
+	Name       string `json:"name"`
+	PrivateKey string `json:"-" datastore:"-"`
+	PublicKey  string `json:"-"`
+	Address    string `json:"address,omitempty"`
 
 	Deleted bool             `json:"-"`
 	Type    blockchains.Type `json:"type"`
 
 	CreatedAt time.Time `json:"createdAt,omitempty"`
+
+	// Ignore these, this is deprecated
+	TestNetAddress string `json:"-"`
+	AddressBackup  string `json:"-"`
 }
 
 // Encrypt the Account's Private Key

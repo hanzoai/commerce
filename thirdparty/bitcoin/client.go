@@ -9,6 +9,8 @@ import (
 
 	"errors"
 	"fmt"
+	"hanzo.io/datastore"
+	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
@@ -55,7 +57,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func NewRpcClient(ctx appengine.Context, host, username, password string, testMode bool) (BitcoinClient, error) {
+func New(ctx appengine.Context, host, username, password string) BitcoinClient {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,
@@ -63,7 +65,7 @@ func NewRpcClient(ctx appengine.Context, host, username, password string, testMo
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return BitcoinClient{ctx, httpClient, host, testMode, []string{}, username, password}, nil
+	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}
 }
 
 func paramsToString(parts ...interface{}) string {
@@ -75,13 +77,60 @@ func paramsToString(parts ...interface{}) string {
 	return string(str)
 }
 
-func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (*JsonRpcResponse, error) {
+func (btcc *BitcoinClient) SendRawTransaction(rawTransaction []byte) (string, error) {
+	ctx := btcc.ctx
+
 	id := rand.Int64()
 	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, id, "sendrawtransaction", paramsToString(hex.EncodeToString(rawTransaction)))
 
-	res, err := btcc.Post(jsonRpcCommand, id)
+	if btcc.IsTest || IsTest {
+		return "0", nil
+	}
 
-	return res, err
+	res, err := btcc.Post(jsonRpcCommand, id)
+	if err != nil {
+		return "", err
+	}
+
+	// Decode the result
+	var tx GetRawTransactionResponseResult
+
+	txId := ""
+	if err := json.Unmarshal([]byte(res.Result), &txId); err != nil {
+		log.Error("Could not unmarshal SendRawTransaction result '%s'", res.Result)
+		return "", err
+	}
+
+	res2, err := btcc.GetRawTransaction(txId)
+	if err != nil {
+		return "", err
+	}
+
+	if err := json.Unmarshal([]byte(res2.Result), &tx); err != nil {
+		log.Error("Could not unmarshal GetRawTransaction result '%s'", res.Result)
+		return "", err
+	}
+
+	db := datastore.New(ctx)
+
+	// Fetch and update VIN Values
+	for _, vin := range tx.Vin {
+		bt := blocktransaction.New(db)
+		if ok, err := bt.Query().Filter("BitcoinTransactionTxId=", vin.Txid).Filter("BitcoinTransactionVOutIndex=", vin.Vout).Get(); !ok {
+			if err != nil {
+				log.Error("Could not find BlockTransaction with BitcoinTransactionTxId '%s', and BitcoinTransactionVOutIndex '%v': %v", vin.Txid, vin.Vout, err, ctx)
+				return "", err
+			}
+
+			log.Info("Could not find BlockTransaction with BitcoinTransactionTxId '%s', and BitcoinTransactionVOutIndex '%v'", vin.Txid, vin.Vout, ctx)
+			continue
+		}
+
+		bt.BitcoinTransactionUsed = true
+		bt.MustUpdate()
+	}
+
+	return tx.Txid, err
 }
 
 func (btcc *BitcoinClient) GetRawTransaction(txId string) (*JsonRpcResponse, error) {
@@ -104,10 +153,10 @@ func (c BitcoinClient) Post(jsonRpcCommand string, id int64) (*JsonRpcResponse, 
 
 	// I dunno if this is appropriate for the bitcoin junk but it sure isn't
 	// right now
-	/*if c.IsTest || IsTest {
-		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0x0"`))}
+	if c.IsTest || IsTest {
+		jrr := &JsonRpcResponse{Result: ej.RawMessage([]byte(`"0"`))}
 		return jrr, nil
-	}*/
+	}
 
 	bodyReader := bytes.NewReader([]byte(jsonRpcCommand))
 	httpReq, err := http.NewRequest("POST", c.host, bodyReader)

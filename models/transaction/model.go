@@ -13,6 +13,7 @@ func (t *Transaction) Init(db *datastore.Datastore) {
 }
 
 func (t *Transaction) Defaults() {
+	t.Parent = t.Db.NewKey("synckey", "", 1, nil)
 }
 
 func New(db *datastore.Datastore) *Transaction {
