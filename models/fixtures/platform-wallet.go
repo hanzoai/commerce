@@ -11,6 +11,8 @@ import (
 
 // This wallet stores special platform level Addresses
 var PlatformWallet = New("platform-wallet", func(c *gin.Context) *wallet.Wallet {
+	BlockchainNamespace(c)
+
 	db := datastore.New(c)
 
 	w := wallet.New(db)
