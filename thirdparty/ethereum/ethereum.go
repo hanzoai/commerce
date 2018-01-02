@@ -45,7 +45,7 @@ func MakePayment(client Client, pk string, from string, to string, amount, gasPr
 	if err != nil {
 		return "", err
 	}
-	if balance.Cmp(amount) != 1 {
+	if balance.Cmp(amount) != 1 && !IsTest {
 		err = errors.New(fmt.Sprintf("Insufficient funds for address %v. Requested to send %v, only %v available.", from, amount, balance))
 		log.Error(err)
 		return "", err

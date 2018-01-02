@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
@@ -36,8 +35,7 @@ type PayFromAccountResponse struct {
 
 func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil || orgWallet == nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -48,8 +46,7 @@ func Get(c *gin.Context) {
 
 func GetAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -67,8 +64,7 @@ func GetAccount(c *gin.Context) {
 
 func CreateAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -91,8 +87,7 @@ func CreateAccount(c *gin.Context) {
 
 func Send(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -116,8 +111,8 @@ func Send(c *gin.Context) {
 	http.Render(c, 200, PayFromAccountResponse{transactionId})
 }
 
-func ReturnWallet(o *organization.Organization, db *datastore.Datastore) (*wallet.Wallet, error) {
-	ret, err := o.GetOrCreateWallet(db)
+func ReturnWallet(o *organization.Organization) (*wallet.Wallet, error) {
+	ret, err := o.GetOrCreateWallet(o.Db)
 	if err != nil {
 		return nil, err
 	}

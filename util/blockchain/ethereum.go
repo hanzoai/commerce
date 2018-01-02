@@ -28,7 +28,7 @@ func MakeEthereumPayment(ctx appengine.Context, from wallet.Account, to string, 
 	}
 	// Decrypt private key if needed.
 	var err error
-	if from.Encrypted != "" && from.Salt != "" && from.PrivateKey == "" {
+	if from.PrivateKey == "" {
 		err = from.Decrypt(password)
 	}
 	if err != nil {
