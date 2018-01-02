@@ -40,7 +40,7 @@ func PubkeyToAddress(p ecdsa.PublicKey) string {
 	return crypto.PubkeyToAddress(p).Hex()
 }
 
-func MakePayment(client Client, pk string, from string, to string, amount *big.Int, chainId ChainId) (string, error) {
+func MakePayment(client Client, pk string, from string, to string, amount, gasPrice *big.Int, chainId ChainId) (string, error) {
 	balance, err := client.GetBalance(from)
 	if err != nil {
 		return "", err
@@ -50,6 +50,6 @@ func MakePayment(client Client, pk string, from string, to string, amount *big.I
 		log.Error(err)
 		return "", err
 	}
-	transactionId, err := client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), big.NewInt(0), nil)
+	transactionId, err := client.SendTransaction(chainId, pk, from, to, amount, big.NewInt(0), gasPrice, nil)
 	return transactionId, err
 }
