@@ -18,8 +18,10 @@ type Account struct {
 	PublicKey  string `json:"-"`
 	Address    string `json:"address,omitempty"`
 
-	Deleted bool             `json:"-"`
-	Type    blockchains.Type `json:"type"`
+	// Can this account be withdrawn from?  This is on the org.
+	Withdrawable bool             `json:"-"`
+	Deleted      bool             `json:"-"`
+	Type         blockchains.Type `json:"type"`
 
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 

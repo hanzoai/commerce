@@ -2,13 +2,12 @@ package wallet
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"math/big"
 
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/blockchain"
@@ -24,9 +23,10 @@ type CreateAccountRequest struct {
 }
 
 type PayFromAccountRequest struct {
-	Name   string `json:"name"`
-	To     string `json:"to"`
-	Amount string `json:"amount"`
+	Name   string         `json:"name"`
+	To     string         `json:"to"`
+	Amount currency.Cents `json:"amount"`
+	Fee    currency.Cents `json:"fee"`
 }
 
 type PayFromAccountResponse struct {
@@ -130,18 +130,13 @@ func Send(c *gin.Context) {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
-	value := new(big.Int)
-	_, success := value.SetString(request.Amount, 10)
-	if !success {
-		http.Fail(c, 400, "Failed to decode value. Must be parsable as base 10 string.", errors.New(fmt.Sprintf("Unable to decode value. Given value: %v", request.Amount)))
-	}
 
 	account, success := userWallet.GetAccountByName(request.Name)
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(u.WalletPassphrase))
+	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, request.Amount, request.Fee, []byte(u.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return

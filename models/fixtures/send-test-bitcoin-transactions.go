@@ -78,7 +78,7 @@ var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gi
 	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 	log.Info("Created Bitcoin client.")
 
-	rawTrx, err := bitcoin.CreateTransaction(client, in, out, senderAccount)
+	rawTrx, err := bitcoin.CreateTransaction(client, in, out, senderAccount, 0)
 	if err != nil {
 		panic(err)
 	}
