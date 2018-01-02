@@ -20,20 +20,26 @@ type Wallet struct {
 }
 
 // Create a new Account, saves if wallet is created
-func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (Account, error) {
-	var a Account
+func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (*Account, error) {
+	_, found := w.GetAccountByName(name)
+
+	if found {
+		return nil, ErrorNameCollision
+	}
+
+	var a *Account
 
 	switch typ {
 	case blockchains.EthereumType, blockchains.EthereumRopstenType:
 		priv, pub, add, err := ethereum.GenerateKeyPair()
 
 		if err != nil {
-			return Account{}, err
+			return nil, err
 		}
 
 		add = strings.ToLower(add)
 
-		a = Account{
+		a = &Account{
 			Name:       name,
 			PrivateKey: priv,
 			PublicKey:  pub,
@@ -45,7 +51,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	case blockchains.BitcoinType, blockchains.BitcoinTestnetType:
 		priv, pub, err := bitcoin.GenerateKeyPair()
 		if err != nil {
-			return Account{}, err
+			return nil, err
 		}
 
 		var add string
@@ -54,16 +60,16 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		case blockchains.BitcoinType:
 			add, _, err = bitcoin.PubKeyToAddress(pub, false)
 			if err != nil {
-				return Account{}, err
+				return nil, err
 			}
 		case blockchains.BitcoinTestnetType:
 			add, _, err = bitcoin.PubKeyToAddress(pub, true)
 			if err != nil {
-				return Account{}, err
+				return nil, err
 			}
 		}
 
-		a = Account{
+		a = &Account{
 			Name:       name,
 			PrivateKey: priv,
 			PublicKey:  pub,
@@ -73,16 +79,16 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		}
 
 	default:
-		return Account{}, InvalidTypeSpecified
+		return nil, ErrorInvalidTypeSpecified
 	}
 
 	if err := a.Encrypt(withPassword); err != nil {
-		return Account{}, err
+		return nil, err
 	}
 
 	log.Debug("Attempting append to w.Accounts. Current state: %v", w.Accounts)
 	log.Debug("Appending a. Current state: %v", a)
-	w.Accounts = append(w.Accounts, a)
+	w.Accounts = append(w.Accounts, *a)
 
 	// Create a blockaddress so we track this in the readers
 	ba := blockaddress.New(w.Db)
@@ -105,11 +111,11 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	// Otherwise let the user manage that
 	if w.Created() {
 		if err := w.Update(); err != nil {
-			return Account{}, err
+			return nil, err
 		}
 	}
 
-	return a, err
+	return &w.Accounts[len(w.Accounts)-1], err
 }
 
 func (w *Wallet) GetAccountByName(name string) (*Account, bool) {

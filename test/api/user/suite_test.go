@@ -42,8 +42,6 @@ var _ = BeforeSuite(func() {
 	accessToken := org.AddToken("test-published-key", permission.Admin)
 	org.MustUpdate()
 
-	// We need to create the blockchain namespace
-	fixtures.BlockchainNamespace(c)
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
 
