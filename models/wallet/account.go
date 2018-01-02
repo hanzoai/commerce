@@ -33,7 +33,7 @@ type Account struct {
 // Encrypt the Account's Private Key
 func (a *Account) Encrypt(withPassword []byte) error {
 	if a.PrivateKey == "" {
-		return NoPrivateKeySetError
+		return ErrorNoPrivateKeySet
 	}
 
 	// generate salt
@@ -60,11 +60,11 @@ func (a *Account) Encrypt(withPassword []byte) error {
 // Decrypt the Account's Private Key
 func (a *Account) Decrypt(withPassword []byte) error {
 	if a.Encrypted == "" {
-		return NoEncryptedKeyFound
+		return ErrorNoEncryptedKeyFound
 	}
 
 	if a.Salt == "" {
-		return NoSaltSetError
+		return ErrorNoSaltSetError
 	}
 
 	key, err := aes.AES128KeyFromPassword(withPassword, []byte(a.Salt))
