@@ -6,12 +6,15 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+	"hanzo.io/util/log"
 )
 
 type AccountNameRes struct {
-	Name     string        `json:"name"`
-	Currency currency.Type `json:"currency"`
+	Name     string           `json:"name"`
+	Type     blockchains.Type `json:"type"`
+	Currency currency.Type    `json:"currency"`
 }
 
 type GetWithdrawableAccountsRes struct {
@@ -39,8 +42,10 @@ func GetWithdrawableAccounts(c *gin.Context) {
 	// Loop over accounts
 	for _, a := range w.Accounts {
 		if a.Withdrawable {
+			log.Error("account %v withdrawable", a)
 			anr := AccountNameRes{
 				Name: a.Name,
+				Type: a.Type,
 			}
 
 			switch a.Type {
@@ -55,8 +60,12 @@ func GetWithdrawableAccounts(c *gin.Context) {
 				continue
 			}
 			res.Accounts = append(res.Accounts, anr)
+		} else {
+			log.Error("account %v not withdrawable", a)
 		}
 	}
+
+	log.Error("res %v", json.Encode(res))
 
 	http.Render(c, 200, res)
 }

@@ -20,11 +20,10 @@ func withdraw(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 
-	db := datastore.New(c)
-
 	// Get hte wallet
-	orgWallet, err := wallet.ReturnWallet(org, db)
+	orgWallet, err := wallet.ReturnWallet(org)
 	if err != nil {
+		log.Error("Unable to retrieve wallet: %v", err, c)
 		http.Fail(c, 400, "Unable to retrieve wallet", err)
 		return
 	}
@@ -38,12 +37,12 @@ func withdraw(c *gin.Context) {
 
 	// Account on the org should be publically avaiable and withdrawable
 	account, success := orgWallet.GetAccountByName(request.Name)
-	if !account.Withdrawable || !success {
+	if !success || (success && !account.Withdrawable) {
 		if !success {
-			log.Error("Account %s does not exist", request.Name)
+			log.Error("Account %s does not exist", request.Name, c)
 		}
 		if !account.Withdrawable {
-			log.Error("Account %s does is not withdrawable", request.Name)
+			log.Error("Account %s does is not withdrawable", request.Name, c)
 		}
 		http.Fail(c, 400, "Account not withdrawable", ErrorAccountNotWithdrawable)
 		return
@@ -66,14 +65,15 @@ func withdraw(c *gin.Context) {
 
 	// Check against the balance
 	err = nsDb.RunInTransaction(func(db *datastore.Datastore) error {
-		datas, err := util.GetTransactionsByCurrency(nsDb.Context, usr.Id(), "user", cur, !org.Live)
+		test := !org.Live
+		datas, err := util.GetTransactionsByCurrency(nsDb.Context, usr.Id(), "user", cur, test)
 		if err != nil {
 			return err
 		}
 
 		data, ok := datas.Data[cur]
 		if !ok {
-			log.Error("Source has no funds'%v'", c)
+			log.Error("Source has no funds %v, %v", json.Encode(datas), !org.Live, c)
 			return ErrorInsufficientFunds
 		}
 
@@ -84,7 +84,7 @@ func withdraw(c *gin.Context) {
 
 		transactionId, err = blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 		if err != nil {
-			log.Error("Failed to create transaction %v", err)
+			log.Error("Failed to create transaction %v", err, c)
 			return err
 		}
 
@@ -94,6 +94,9 @@ func withdraw(c *gin.Context) {
 		trans.Amount = request.Amount
 		trans.Currency = cur
 		trans.Type = transaction.Withdraw
+		trans.Test = test
+
+		// log.Warn("... %v", json.Encode(trans))
 
 		return trans.Create()
 	})

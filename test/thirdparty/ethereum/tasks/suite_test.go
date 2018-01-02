@@ -42,8 +42,6 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 	db = datastore.New(ctx)
 
-	fixtures.BlockchainNamespace(c)
-
 	org = fixtures.Organization(c).(*organization.Organization)
 	pw = fixtures.PlatformWallet(c).(*wallet.Wallet)
 

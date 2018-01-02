@@ -51,7 +51,6 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	fixtures.BlockchainNamespace(c)
 	fixtures.PlatformWallet(c)
 
 	// Save namespaced db
