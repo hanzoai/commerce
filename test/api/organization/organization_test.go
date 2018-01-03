@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"testing"
 
+	"hanzo.io/api/organization/newRoutes"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/gincontext"
@@ -51,7 +53,6 @@ var _ = BeforeSuite(func() {
 	// Run fixtures
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	fixtures.BlockchainNamespace(c)
 
 	// Setup client and add routes for account API tests.
 	cl = ginclient.New(ctx)
@@ -123,31 +124,71 @@ type payFromAccountRes struct {
 type loginRes struct {
 	Token string `json:"token"`
 }
+type getWithdrawableAccountsRes struct {
+	newroutes.GetWithdrawableAccountsRes
+}
 
 var _ = Describe("organization", func() {
 	Context("Create", func() {
-		It("Should retrieve wallet", func() {
-			res := retrieveWalletRes{}
-
-			cl.Get("/c/organization/"+org.Id()+"/wallet", &res)
-		})
 		It("Should create wallet account", func() {
 			req := `{
-				"name": "test-wallet-account",
+				"name": "test-wallet-account-1",
 				"blockchain": "ethereum"
 			}`
 			res := createAccountRes{}
 
 			cl.Post("/c/organization/"+org.Id()+"/wallet/account", req, &res)
 		})
+	})
+
+	Context("Get", func() {
+		It("Should retrieve wallet", func() {
+			res := retrieveWalletRes{}
+
+			cl.Get("/c/organization/"+org.Id()+"/wallet", &res)
+		})
 		It("Should retrieve created wallet account", func() {
-			orgWallet, _ := org.GetOrCreateWallet(db)
-			orgWallet.CreateAccount("test-wallet-account", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			orgWallet, _ := org.GetOrCreateWallet(org.Db)
+			_, err := orgWallet.CreateAccount("test-wallet-account-2", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			Expect(err).ToNot(HaveOccurred())
 			org.MustUpdate()
 
 			resRetrieve := retrieveAccountRes{}
 
-			cl.Get("/c/organization/"+org.Id()+"/wallet/account/test-wallet-account", &resRetrieve)
+			cl.Get("/c/organization/"+org.Id()+"/wallet/account/test-wallet-account-2", &resRetrieve)
+		})
+		It("Should retrieve withdrawable wallet accounts", func() {
+			orgWallet, _ := org.GetOrCreateWallet(org.Db)
+			_, err := orgWallet.CreateAccount("test-wallet-account-3", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			Expect(err).ToNot(HaveOccurred())
+
+			a, err := orgWallet.CreateAccount("test-wallet-account-4", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
+			a.Withdrawable = true
+			Expect(err).ToNot(HaveOccurred())
+
+			a, err = orgWallet.CreateAccount("test-wallet-account-5", blockchains.EthereumRopstenType, []byte("shamma-lamma-ding-dong"))
+			a.Withdrawable = true
+			Expect(err).ToNot(HaveOccurred())
+
+			a, err = orgWallet.CreateAccount("test-wallet-account-6", blockchains.BitcoinType, []byte("shamma-lamma-ding-dong"))
+			a.Withdrawable = true
+			Expect(err).ToNot(HaveOccurred())
+
+			a, err = orgWallet.CreateAccount("test-wallet-account-7", blockchains.BitcoinTestnetType, []byte("shamma-lamma-ding-dong"))
+			a.Withdrawable = true
+			Expect(err).ToNot(HaveOccurred())
+
+			orgWallet.MustUpdate()
+			org.MustUpdate()
+
+			resRetrieve := getWithdrawableAccountsRes{}
+			cl.Get("/organization/publicwithdrawableaccounts", &resRetrieve)
+			Expect(len(resRetrieve.Accounts)).To(Equal(6))
+			// It starts with 2 accounts
+			Expect(resRetrieve.Accounts[2]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-4", blockchains.EthereumType, currency.ETH}))
+			Expect(resRetrieve.Accounts[3]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-5", blockchains.EthereumRopstenType, currency.ETH}))
+			Expect(resRetrieve.Accounts[4]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-6", blockchains.BitcoinType, currency.BTC}))
+			Expect(resRetrieve.Accounts[5]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-7", blockchains.BitcoinTestnetType, currency.BTC}))
 		})
 		/*It("Should make ordered payment", func() {
 			req := `{

@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("Account", func() {
-	var acc wallet.Account
+	var acc *wallet.Account
 	var password string
 
 	BeforeEach(func() {
@@ -48,14 +48,14 @@ var _ = Describe("Account", func() {
 			acc.PrivateKey = ""
 
 			err := acc.Encrypt([]byte(password))
-			Expect(err).To(Equal(wallet.NoPrivateKeySetError))
+			Expect(err).To(Equal(wallet.ErrorNoPrivateKeySet))
 		})
 
 		It("should error with NoEncryptedKeyFound", func() {
 			acc.Encrypted = ""
 
 			err := acc.Decrypt([]byte(password))
-			Expect(err).To(Equal(wallet.NoEncryptedKeyFound))
+			Expect(err).To(Equal(wallet.ErrorNoEncryptedKeyFound))
 		})
 
 		It("should never serialize the privatekey", func() {
