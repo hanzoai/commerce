@@ -262,7 +262,7 @@ func BitcoinProcessPaymentImpl(
 				// fe.MustCreate()
 			}
 
-			finalCost := bitcoin.CalculateFee(len(in), vout+1)
+			finalCost := bitcoin.CalculateFee(len(in), vout+1, 0)
 			transferAmount = transferAmount - currency.Cents(finalCost)
 
 			// Use the ethereum address, alternatively use the test address
@@ -290,7 +290,7 @@ func BitcoinProcessPaymentImpl(
 					PrivateKey: fromAccount.PrivateKey,
 					PublicKey:  fromAccount.PublicKey,
 					Address:    fromAccount.Address,
-				})
+				}, 0)
 
 				finalTxId, err := client.SendRawTransaction(rawTrx)
 				if err != nil {
