@@ -11,14 +11,18 @@ import (
 	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
+
+	. "hanzo.io/api/organization/newroutes"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
 
 	api := rest.New(organization.Organization{})
 	api.DefaultNamespace = true
+	// Older stuff
 	api.Prefix = "/c/"
 
 	api.GET("/:organizationid/analytics", adminRequired, namespaced, analytics.Get)
@@ -38,4 +42,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:organizationid/wallet/send", adminRequired, namespaced, wallet.Send)
 
 	api.Route(router, args...)
+
+	// Newer stuff
+	api2 := router.Group("organization")
+	api2.GET("/publicwithdrawableaccounts", publishedRequired, GetWithdrawableAccounts)
 }

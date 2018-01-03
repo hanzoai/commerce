@@ -24,7 +24,7 @@ var _ = Describe("thirdparty/bitcoin/tasks/pay.go", func() {
 
 		It("Should Create a Payment", func() {
 			totalInt1 := totalCents
-			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2))
+			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2, 0))
 			txId := "testHash123"
 
 			chainType := blockchains.BitcoinTestnetType
@@ -94,7 +94,7 @@ var _ = Describe("thirdparty/bitcoin/tasks/pay.go", func() {
 			totalInt1 := currency.Cents(123e6)
 			totalInt2 := currency.Cents(321e6)
 			totalInt3 := totalInt1 + totalInt2
-			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2))
+			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2, 0))
 
 			chainType := blockchains.BitcoinTestnetType
 			err := BitcoinProcessPaymentImpl(
@@ -200,7 +200,7 @@ var _ = Describe("thirdparty/bitcoin/tasks/pay.go", func() {
 			txId2 := "testHash023u"
 			totalInt1 := currency.Cents(100e6)
 			totalInt2 := currency.Cents(23e6)
-			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2))
+			totalCost := currency.Cents(bitcoin.CalculateFee(1, 2, 0))
 
 			chainType := blockchains.BitcoinTestnetType
 			err := BitcoinProcessPaymentImpl(

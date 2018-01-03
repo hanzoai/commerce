@@ -166,7 +166,7 @@ var _ = Describe("transaction", func() {
 			Expect(res2.Error.Message).To(Equal("Source is required"))
 		})
 
-		It("Should work for Withdraw", func() {
+		It("Should error on Insufficient funds for Withdraw", func() {
 			req := &transaction.Transaction{
 				DestinationId:   "3",
 				DestinationKind: "test-withdraw",

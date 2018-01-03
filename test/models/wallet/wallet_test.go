@@ -27,7 +27,7 @@ var _ = Describe("Wallet", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(len(wal.Accounts)).To(Equal(1))
-			Expect(wal.Accounts[0]).To(Equal(acc))
+			Expect(wal.Accounts[0]).To(Equal(*acc))
 
 			enc := acc.Encrypted
 			priv := acc.PrivateKey
@@ -70,8 +70,8 @@ var _ = Describe("Wallet", func() {
 			password := "Th1$1s@b@dp@$$w0rd"
 			acc, err := wal.CreateAccount("nope", blockchains.Type("nopecoin"), []byte(password))
 
-			Expect(err).To(Equal(wallet.InvalidTypeSpecified))
-			Expect(acc).To(Equal(wallet.Account{}))
+			Expect(err).To(Equal(wallet.ErrorInvalidTypeSpecified))
+			Expect(acc).To(BeNil())
 		})
 	})
 
@@ -95,7 +95,7 @@ var _ = Describe("Wallet", func() {
 
 			acc2, ok := wal.GetAccountByName("test2")
 			Expect(ok).To(BeTrue())
-			Expect(*acc2).To(Equal(acc))
+			Expect(*acc2).To(Equal(*acc))
 		})
 
 		It("should not find an account by name", func() {

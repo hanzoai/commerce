@@ -33,7 +33,7 @@ import (
 
 // The steps notated in the variable names here relate to the steps outlined in
 // https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-var SatoshiPerByte = 200
+var SatoshiPerByte = int64(200)
 
 // Errors
 var WeRequireAdditionalFunds = errors.New("Wallet address contains insufficient funds")
@@ -350,7 +350,10 @@ func CreateRawTransaction(inputs []Input, outputs []Output) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func CreateTransaction(client BitcoinClient, origins []Origin, destinations []Destination, sender Sender) ([]byte, error) {
+func CreateTransaction(client BitcoinClient, origins []Origin, destinations []Destination, sender Sender, feePerByte int64) ([]byte, error) {
+	if feePerByte == 0 {
+		feePerByte = SatoshiPerByte
+	}
 
 	// There will be a need to keep track of change.
 	totalChange := int64(0)
@@ -404,14 +407,14 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 		totalChange -= output.Value
 	}
 
-	approximateFee := int64(CalculateFee(len(inputs), len(outputs)))
+	approximateFee := int64(CalculateFee(len(inputs), len(outputs), feePerByte))
 	// Check to see if it's worth taking change - algo here is "is there more
 	// change than twice what it costs to add another output"
-	if totalChange > (approximateFee + (2 * 34 * int64(SatoshiPerByte))) {
+	if totalChange > (approximateFee + (2 * 34 * feePerByte)) {
 		// If we're in here, it's worth taking change and we should add the
 		// sender onto the outputs.
-		approximateFee += int64(34 * SatoshiPerByte) // Update the fee to account for the extra length.
-		totalChange -= approximateFee                // pull down the change to account for the fee.
+		approximateFee += int64(34 * feePerByte) // Update the fee to account for the extra length.
+		totalChange -= approximateFee            // pull down the change to account for the fee.
 
 		// Add the change to our outputs
 		outScript, err := CreateScriptPubKey(sender.Address)
@@ -462,7 +465,10 @@ func CreateTransaction(client BitcoinClient, origins []Origin, destinations []De
 	return rawTrx, nil
 }
 
-func CalculateFee(inputs, outputs int) int {
+func CalculateFee(inputs, outputs int, feePerByte int64) int64 {
+	if feePerByte == 0 {
+		feePerByte = SatoshiPerByte
+	}
 	// Now compute the probable fee and be pessimistic about the size of the
 	// transaction
 	// 180 is the length (in bytes) of each input.
@@ -471,7 +477,7 @@ func CalculateFee(inputs, outputs int) int {
 	// The final +len(inputs) is padding. Certain inputs are 11, others are 9.
 	// We're being pessimistic and adding always.
 	approximateTransactionLength := (inputs * 180) + (outputs * 34) + 10 + inputs
-	return approximateTransactionLength * SatoshiPerByte
+	return int64(approximateTransactionLength) * feePerByte
 }
 
 func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWithAmount, error) {
