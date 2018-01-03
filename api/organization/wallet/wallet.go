@@ -2,14 +2,12 @@ package wallet
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"math/big"
 
-	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/blockchain"
 	"hanzo.io/util/json"
@@ -24,9 +22,11 @@ type CreateAccountRequest struct {
 }
 
 type PayFromAccountRequest struct {
-	Name   string `json:"name"`
-	To     string `json:"to"`
-	Amount string `json:"amount"`
+	Name   string         `json:"name"`
+	To     string         `json:"to"`
+	Amount currency.Cents `json:"amount"`
+	// GasPrice of Fee Per Byte
+	Fee currency.Cents `json:"fee"`
 }
 
 type PayFromAccountResponse struct {
@@ -35,8 +35,7 @@ type PayFromAccountResponse struct {
 
 func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil || orgWallet == nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -47,8 +46,7 @@ func Get(c *gin.Context) {
 
 func GetAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -66,8 +64,7 @@ func GetAccount(c *gin.Context) {
 
 func CreateAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -90,8 +87,7 @@ func CreateAccount(c *gin.Context) {
 
 func Send(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	orgWallet, err := ReturnWallet(org, db)
+	orgWallet, err := ReturnWallet(org)
 	if err != nil {
 		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
@@ -100,18 +96,12 @@ func Send(c *gin.Context) {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
 	}
-	value := new(big.Int)
-	_, success := value.SetString(request.Amount, 10)
-	if !success {
-		http.Fail(c, 400, "Failed to decode value. Must be parsable as base 10 string.", errors.New(fmt.Sprintf("Unable to decode value. Given value: %v", request.Amount)))
-	}
-
 	account, success := orgWallet.GetAccountByName(request.Name)
 	if !success {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, value, []byte(org.WalletPassphrase))
+	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return
@@ -121,8 +111,8 @@ func Send(c *gin.Context) {
 	http.Render(c, 200, PayFromAccountResponse{transactionId})
 }
 
-func ReturnWallet(o *organization.Organization, db *datastore.Datastore) (*wallet.Wallet, error) {
-	ret, err := o.GetOrCreateWallet(db)
+func ReturnWallet(o *organization.Organization) (*wallet.Wallet, error) {
+	ret, err := o.GetOrCreateWallet(o.Db)
 	if err != nil {
 		return nil, err
 	}
