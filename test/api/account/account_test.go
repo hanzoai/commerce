@@ -7,13 +7,18 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/transaction"
+	"hanzo.io/models/transaction/util"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/bitcoin"
+	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
 
+	. "hanzo.io/util/test/ginclient"
 	. "hanzo.io/util/test/ginkgo"
 
 	accountApi "hanzo.io/api/account"
@@ -25,11 +30,12 @@ func Test(t *testing.T) {
 
 var (
 	ctx         ae.Context
-	cl          *ginclient.Client
+	cl          *Client
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
 	u           *user.User
+	usr         *user.User
 )
 
 // Setup appengine context
@@ -45,7 +51,7 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 
 	// Setup client and add routes for account API tests.
-	cl = ginclient.New(ctx)
+	cl = New(ctx)
 	accountApi.Route(cl.Router)
 
 	// Create organization for tests, accessToken
@@ -60,7 +66,7 @@ var _ = BeforeSuite(func() {
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
-	usr := user.New(db)
+	usr = user.New(db)
 	usr.Username = "redranger"
 	usr.Email = "dev@hanzo.ai"
 	usr.SetPassword("Z0rd0N")
@@ -96,6 +102,10 @@ var _ = BeforeSuite(func() {
 	usr5.SetPassword("blackisthenewred")
 	usr5.Enabled = true
 	usr5.MustPut()
+
+	ethereum.Test(true)
+	bitcoin.Test(true)
+	cl.IgnoreErrors(true)
 })
 
 // Tear-down appengine context
@@ -111,6 +121,10 @@ type createRes struct {
 
 type loginRes struct {
 	Token string `json:"token"`
+}
+
+type withdrawRes struct {
+	TransactionId string `json:"transactionId"`
 }
 
 var _ = Describe("account", func() {
@@ -323,6 +337,295 @@ var _ = Describe("account", func() {
 			}`
 
 			cl.Post("/account/login", req, nil, 401)
+		})
+
+	})
+
+	Context("Withdraw", func() {
+		It("Should withdraw ethereum", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.ETH
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			req2 := `{
+				"to": "0x0",
+				"name": "Test Ethereum",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := withdrawRes{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.TransactionId).To(Equal("0x0"))
+
+			datas, err := util.GetTransactionsByCurrency(db.Context, usr.Id(), "user", currency.ETH, true)
+			Expect(err).ToNot(HaveOccurred())
+
+			data := datas.Data[currency.ETH]
+			Expect(data.Balance - data.Holds).To(Equal(currency.Cents(0)))
+
+			accessToken = oat
+		})
+
+		It("Shouldn't withdraw held ethereum", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.ETH
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			tr2 := transaction.New(db)
+			tr2.SourceId = usr.Id()
+			tr2.SourceKind = "user"
+			tr2.Currency = currency.ETH
+			tr2.Amount = currency.Cents(100)
+			tr2.Type = transaction.Hold
+			tr2.Test = true
+			tr2.MustCreate()
+
+			req2 := `{
+				"to": "0x0",
+				"name": "Test Ethereum",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := &ApiError{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.Error.Type).To(Equal("api-error"))
+			Expect(res2.Error.Message).To(Equal("Source has insufficient funds"))
+
+			accessToken = oat
+		})
+
+		It("Shouldn't withdraw held withdrawn ethereum", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.ETH
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			tr2 := transaction.New(db)
+			tr2.SourceId = usr.Id()
+			tr2.SourceKind = "user"
+			tr2.Currency = currency.ETH
+			tr2.Amount = currency.Cents(100)
+			tr2.Type = transaction.Withdraw
+			tr2.Test = true
+			tr2.MustCreate()
+
+			req2 := `{
+				"to": "0x0",
+				"name": "Test Ethereum",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := &ApiError{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.Error.Type).To(Equal("api-error"))
+			Expect(res2.Error.Message).To(Equal("Source has insufficient funds"))
+
+			accessToken = oat
+		})
+
+		It("Should withdraw bitcoin", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.BTC
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			req2 := `{
+				"to": "mwazxpfoUPnVXjBLqTMPvVESuKgonxySBU",
+				"name": "Test Bitcoin",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := withdrawRes{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.TransactionId).To(Equal("0"))
+
+			datas, err := util.GetTransactionsByCurrency(db.Context, usr.Id(), "user", currency.BTC, true)
+			Expect(err).ToNot(HaveOccurred())
+
+			data := datas.Data[currency.BTC]
+			Expect(data.Balance - data.Holds).To(Equal(currency.Cents(0)))
+
+			accessToken = oat
+		})
+
+		It("Shouldn't withdraw held bitcoin", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.BTC
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			tr2 := transaction.New(db)
+			tr2.SourceId = usr.Id()
+			tr2.SourceKind = "user"
+			tr2.Currency = currency.BTC
+			tr2.Amount = currency.Cents(100)
+			tr2.Type = transaction.Hold
+			tr2.Test = true
+			tr2.MustCreate()
+
+			req2 := `{
+				"to": "0x0",
+				"name": "Test Bitcoin",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := &ApiError{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.Error.Type).To(Equal("api-error"))
+			Expect(res2.Error.Message).To(Equal("Source has insufficient funds"))
+
+			accessToken = oat
+		})
+
+		It("Shouldn't withdraw held withdrawn bitcoin", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "Z0rd0N"
+			}`
+
+			res := loginRes{}
+
+			cl.Post("/account/login", req, &res)
+
+			oat := accessToken
+			accessToken = res.Token
+
+			// Deposit
+			tr1 := transaction.New(db)
+			tr1.DestinationId = usr.Id()
+			tr1.DestinationKind = "user"
+			tr1.Currency = currency.BTC
+			tr1.Amount = currency.Cents(100)
+			tr1.Type = transaction.Deposit
+			tr1.Test = true
+			tr1.MustCreate()
+
+			tr2 := transaction.New(db)
+			tr2.SourceId = usr.Id()
+			tr2.SourceKind = "user"
+			tr2.Currency = currency.BTC
+			tr2.Amount = currency.Cents(100)
+			tr2.Type = transaction.Withdraw
+			tr2.Test = true
+			tr2.MustCreate()
+
+			req2 := `{
+				"to": "0x0",
+				"name": "Test Bitcoin",
+				"amount": 100,
+				"fee": 0
+			}`
+
+			res2 := &ApiError{}
+
+			cl.Post("/account/withdraw", req2, &res2)
+
+			Expect(res2.Error.Type).To(Equal("api-error"))
+			Expect(res2.Error.Message).To(Equal("Source has insufficient funds"))
+
+			accessToken = oat
 		})
 	})
 })

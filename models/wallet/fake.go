@@ -6,7 +6,7 @@ import (
 	"hanzo.io/util/rand"
 )
 
-func Fake(db *datastore.Datastore) (*Wallet, Account, string) {
+func Fake(db *datastore.Datastore) (*Wallet, *Account, string) {
 	w := New(db)
 	password := rand.ShortPassword()
 	a, _ := w.CreateAccount("Fake Account", blockchains.EthereumRopstenType, []byte(password))
