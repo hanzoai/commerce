@@ -74,7 +74,7 @@ var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", fu
 
 	log.Info("Created Bitcoin client.")
 
-	rawTrx, _ := bitcoin.CreateTransaction(client, in, out, senderAccount)
+	rawTrx, _ := bitcoin.CreateTransaction(client, in, out, senderAccount, 0)
 
 	log.Info("Raw transaction hex: %v", rawTrx)
 

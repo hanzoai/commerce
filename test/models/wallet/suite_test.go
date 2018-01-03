@@ -27,9 +27,6 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c := gincontext.New(ctx)
 
-	// We need to create the blockchain namespace
-	fixtures.BlockchainNamespace(c)
-
 	// Create the suchtees org and namespace for realism
 	fixtures.Organization(c)
 

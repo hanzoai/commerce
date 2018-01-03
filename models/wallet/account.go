@@ -18,8 +18,10 @@ type Account struct {
 	PublicKey  string `json:"-"`
 	Address    string `json:"address,omitempty"`
 
-	Deleted bool             `json:"-"`
-	Type    blockchains.Type `json:"type"`
+	// Can this account be withdrawn from?  This is on the org.
+	Withdrawable bool             `json:"-"`
+	Deleted      bool             `json:"-"`
+	Type         blockchains.Type `json:"type"`
 
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 
@@ -31,7 +33,7 @@ type Account struct {
 // Encrypt the Account's Private Key
 func (a *Account) Encrypt(withPassword []byte) error {
 	if a.PrivateKey == "" {
-		return NoPrivateKeySetError
+		return ErrorNoPrivateKeySet
 	}
 
 	// generate salt
@@ -58,11 +60,11 @@ func (a *Account) Encrypt(withPassword []byte) error {
 // Decrypt the Account's Private Key
 func (a *Account) Decrypt(withPassword []byte) error {
 	if a.Encrypted == "" {
-		return NoEncryptedKeyFound
+		return ErrorNoEncryptedKeyFound
 	}
 
 	if a.Salt == "" {
-		return NoSaltSetError
+		return ErrorNoSaltSetError
 	}
 
 	key, err := aes.AES128KeyFromPassword(withPassword, []byte(a.Salt))
