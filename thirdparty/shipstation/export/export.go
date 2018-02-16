@@ -307,7 +307,7 @@ type Response struct {
 	Pages   int `xml:"pages,attr"`
 }
 
-func Export(c *gin.Context) {
+func Export(c *context.Context) {
 	query := c.Request.URL.Query()
 
 	limit := 50

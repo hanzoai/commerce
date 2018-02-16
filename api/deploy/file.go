@@ -11,13 +11,13 @@ import (
 	"hanzo.io/util/log"
 )
 
-func listFiles(c *gin.Context) {
+func listFiles(c *context.Context) {
 }
 
-func getFile(c *gin.Context) {
+func getFile(c *context.Context) {
 }
 
-func putFile(c *gin.Context) {
+func putFile(c *context.Context) {
 	// siteid := c.Param("siteid") // oursiteid
 	deployid := c.Param("deployid")
 	filepath := c.Param("filepath")

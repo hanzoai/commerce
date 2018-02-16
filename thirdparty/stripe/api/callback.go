@@ -17,7 +17,7 @@ import (
 )
 
 // Handle stripe Connect callbacks
-func Callback(c *gin.Context) {
+func Callback(c *context.Context) {
 	url := c.Request.URL
 	state := url.Query().Get("state")
 
@@ -31,7 +31,7 @@ func Callback(c *gin.Context) {
 }
 
 // Connect callback for affiliates
-func affiliateCallback(c *gin.Context) {
+func affiliateCallback(c *context.Context) {
 	url := c.Request.URL
 	code := url.Query().Get("code")
 	state := url.Query().Get("state")

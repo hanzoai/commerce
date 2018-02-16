@@ -22,7 +22,7 @@ type Payload struct {
 }
 
 type Client struct {
-	ctx    appengine.Context
+	ctx    context.Context
 	client *http.Client
 }
 
@@ -48,7 +48,7 @@ func (c *Client) Post(url string, data interface{}) error {
 	return nil
 }
 
-func createClient(ctx appengine.Context) *Client {
+func createClient(ctx context.Context) *Client {
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
 		Context:  ctx,
@@ -59,7 +59,7 @@ func createClient(ctx appengine.Context) *Client {
 }
 
 // Fire webhooks
-var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, event string, data interface{}) {
+var Emit = delay.Func("webhook-emit", func(ctx context.Context, org string, event string, data interface{}) {
 	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
 
 	db := datastore.New(ctx)

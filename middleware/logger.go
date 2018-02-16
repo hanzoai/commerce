@@ -25,7 +25,7 @@ func ErrorLogger() gin.HandlerFunc {
 }
 
 func ErrorLoggerT(typ gin.ErrorType) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		c.Next()
 
 		errs := c.Errors.ByType(typ)
@@ -36,7 +36,7 @@ func ErrorLoggerT(typ gin.ErrorType) gin.HandlerFunc {
 	}
 }
 
-func Log(c *gin.Context) {
+func Log(c *context.Context) {
 	// Start timer
 	start := time.Now()
 

@@ -372,13 +372,13 @@ func (o *Organization) AddOwner(userOrId string) {
 }
 
 // Get namespaced context for this organization
-func (o Organization) Namespaced(ctx interface{}) appengine.Context {
-	var _ctx appengine.Context
+func (o Organization) Namespaced(ctx interface{}) context.Context {
+	var _ctx context.Context
 
 	switch v := ctx.(type) {
-	case *gin.Context:
-		_ctx = v.MustGet("appengine").(appengine.Context)
-	case appengine.Context:
+	case *context.Context:
+		_ctx = v.MustGet("appengine").(context.Context)
+	case context.Context:
 		_ctx = v
 	}
 

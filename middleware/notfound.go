@@ -11,7 +11,7 @@ import (
 
 // Serve custom 404 page.
 func NotFoundHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		c.Next()
 
 		if !c.Writer.Written() && c.Writer.Status() == 404 {

@@ -6,7 +6,7 @@ import (
 )
 
 type Context interface {
-	// Standard appengine.Context methods
+	// Standard context.Context methods
 	Call(service, method string, in, out appengine_internal.ProtoMessage, opts *appengine_internal.CallOptions) error
 	FullyQualifiedAppID() string
 	Request() interface{}

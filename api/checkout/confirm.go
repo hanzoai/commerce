@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-func confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
+func confirm(c *context.Context, org *organization.Organization, ord *order.Order) (err error) {
 	// Handle payment confirmation
 	switch ord.Type {
 	case "paypal":

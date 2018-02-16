@@ -8,7 +8,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func Returns(c *gin.Context) {
+func Returns(c *context.Context) {
 	id := c.Params.ByName("orderid")
 	db := datastore.New(c)
 

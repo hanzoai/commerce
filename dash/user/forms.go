@@ -14,7 +14,7 @@ type ContactForm struct {
 	User user.User
 }
 
-func (f *ContactForm) Parse(c *gin.Context) error {
+func (f *ContactForm) Parse(c *context.Context) error {
 	return json.Decode(c.Request.Body, &f.User)
 }
 
@@ -31,7 +31,7 @@ type ChangePasswordForm struct {
 	ConfirmPassword string `json:"confirmPassword"`
 }
 
-func (f *ChangePasswordForm) Parse(c *gin.Context) error {
+func (f *ChangePasswordForm) Parse(c *context.Context) error {
 	return json.Decode(c.Request.Body, f)
 }
 
@@ -46,7 +46,7 @@ type ResetPasswordForm struct {
 	Email string
 }
 
-func (f *ResetPasswordForm) Parse(c *gin.Context) error {
+func (f *ResetPasswordForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -56,6 +56,6 @@ type ResetPasswordConfirmForm struct {
 	ConfirmPassword string
 }
 
-func (f *ResetPasswordConfirmForm) Parse(c *gin.Context) error {
+func (f *ResetPasswordConfirmForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }

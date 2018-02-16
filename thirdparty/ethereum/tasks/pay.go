@@ -40,7 +40,7 @@ var LastGasPriceCheck = time.Time{}
 var EthereumProcessPayment = delay.Func(
 	"ethereum-process-payment",
 	func(
-		ctx appengine.Context,
+		ctx context.Context,
 		orgName,
 		walletId,
 		txHash,
@@ -53,7 +53,7 @@ var EthereumProcessPayment = delay.Func(
 	})
 
 func EthereumProcessPaymentImpl(
-	ctx appengine.Context,
+	ctx context.Context,
 	orgName,
 	walletId,
 	txHash,

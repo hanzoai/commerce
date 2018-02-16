@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("add-search-documents",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "cryptounderground")
 
 		return NoArgs

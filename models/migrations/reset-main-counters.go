@@ -33,7 +33,7 @@ func MustNukeCounter(db *ds.Datastore, tag string) {
 }
 
 var _ = New("reset-main-counters",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		orgName := "kanoa"
 
 		c.Set("namespace", orgName)

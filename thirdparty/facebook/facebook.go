@@ -31,7 +31,7 @@ var _redirectUri string
 
 // Sets _redirectUri as necessary for dev machines
 // Uses config.UrlFor in production and staging.
-func redirectUri(c *gin.Context) string {
+func redirectUri(c *context.Context) string {
 	// if config.IsDevelopment && _redirectUri == "" {
 	// 	client := urlfetch.Client(middleware.GetAppEngine(c))
 	// 	req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
@@ -52,7 +52,7 @@ var graphVersion = config.Facebook.GraphVersion
 
 var app *fb.App
 
-func newSession(c *gin.Context, accessToken string) *fb.Session {
+func newSession(c *context.Context, accessToken string) *fb.Session {
 	if app == nil {
 		app = fb.New(appId, appSecret)
 		app.RedirectUri = redirectUri(c)
@@ -63,7 +63,7 @@ func newSession(c *gin.Context, accessToken string) *fb.Session {
 }
 
 // GET /auth/facebook_callback
-func Callback(c *gin.Context) {
+func Callback(c *context.Context) {
 	// req := c.Request
 	// e := req.URL.Query().Get("error")
 	// if e != "" {
@@ -139,7 +139,7 @@ func Callback(c *gin.Context) {
 // The token has a TTL of 3 minutes
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func CSRFToken(c *gin.Context) string {
+func CSRFToken(c *context.Context) string {
 	size := 16
 	b := make([]rune, size)
 	for i := range b {
@@ -159,7 +159,7 @@ func CSRFToken(c *gin.Context) string {
 }
 
 // GET /auth/facebook
-func LoginUser(c *gin.Context) {
+func LoginUser(c *context.Context) {
 	// state := CSRFToken(c)
 	// log.Debug(state)
 	// url := fmt.Sprintf(
@@ -187,7 +187,7 @@ func LoginUser(c *gin.Context) {
 	// c.Redirect(302, url)
 }
 
-func exchangeCode(c *gin.Context, code string) (token string, err error) {
+func exchangeCode(c *context.Context, code string) (token string, err error) {
 	endpoint := fmt.Sprintf(
 		"https://graph.facebook.com/oauth/access_token?client_id=%s&redirect_uri=%s&client_secret=%s&code=%s",
 		appId, redirectUri(c), appSecret, code,

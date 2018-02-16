@@ -12,7 +12,7 @@ func init() {
 
 	// Use permissive CORS policy for all API routes.
 	analytics.Use(middleware.AccessControl("*"))
-	analytics.OPTIONS("*wildcard", func(c *gin.Context) {
+	analytics.OPTIONS("*wildcard", func(c *context.Context) {
 		c.Next()
 	})
 

@@ -11,7 +11,7 @@ import (
 )
 
 func AcquireUser(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		if u, err := auth.GetCurrentUser(c); err != nil {
 			log.Warn("Unable to acquire user.", c)
 			session.Clear(c)
@@ -23,6 +23,6 @@ func AcquireUser(moduleName string) gin.HandlerFunc {
 	}
 }
 
-func GetCurrentUser(c *gin.Context) *user.User {
+func GetCurrentUser(c *context.Context) *user.User {
 	return c.MustGet("user").(*user.User)
 }

@@ -10,7 +10,7 @@ import (
 	. "hanzo.io/models/lineitem"
 )
 
-var Order = New("order", func(c *gin.Context) *order.Order {
+var Order = New("order", func(c *context.Context) *order.Order {
 	db := getNamespaceDb(c)
 
 	u := UserCustomer(c)

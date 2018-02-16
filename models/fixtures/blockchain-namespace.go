@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/blockchains"
 )
 
-var BlockchainNamespace = New("blockchain-namespace", func(c *gin.Context) *namespace.Namespace {
+var BlockchainNamespace = New("blockchain-namespace", func(c *context.Context) *namespace.Namespace {
 	db := datastore.New(c)
 	ns := namespace.New(db)
 	ns.Id_ = blockchains.BlockchainNamespace

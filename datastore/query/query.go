@@ -23,12 +23,12 @@ type Id struct {
 }
 
 type Query struct {
-	ctx   appengine.Context
+	ctx   context.Context
 	aedsq *aeds.Query
 	kind  string
 }
 
-func New(ctx appengine.Context, kind string) iface.Query {
+func New(ctx context.Context, kind string) iface.Query {
 	q := new(Query)
 	q.ctx = ctx
 	q.kind = kind

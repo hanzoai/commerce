@@ -15,7 +15,7 @@ import (
 )
 
 var _ = New("mailchimp-store",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, org *organization.Organization) {

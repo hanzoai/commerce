@@ -14,7 +14,7 @@ import (
 	"hanzo.io/util/router"
 )
 
-func getCoupon(c *gin.Context) {
+func getCoupon(c *context.Context) {
 	couponid := c.Params.ByName("couponid")
 
 	db := datastore.New(c)
@@ -36,7 +36,7 @@ func getCoupon(c *gin.Context) {
 	http.Render(c, 200, cpn)
 }
 
-func codeFromId(c *gin.Context) {
+func codeFromId(c *context.Context) {
 	couponid := c.Params.ByName("couponid")
 	uniqueid := c.Params.ByName("uniqueid")
 
@@ -57,7 +57,7 @@ func codeFromId(c *gin.Context) {
 	http.Render(c, 200, cpn)
 }
 
-func codeFromList(c *gin.Context) {
+func codeFromList(c *context.Context) {
 	couponid := c.Params.ByName("couponid")
 
 	db := datastore.New(c)

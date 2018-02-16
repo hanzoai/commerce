@@ -19,7 +19,7 @@ import (
 
 type Client struct {
 	*client.API
-	ctx appengine.Context
+	ctx context.Context
 }
 
 // Covert a payment model into a card card we can use for authorization

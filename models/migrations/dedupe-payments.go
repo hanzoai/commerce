@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("dedupe-payments",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
