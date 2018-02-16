@@ -1,7 +1,7 @@
 package order
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/models/discount"
 	"hanzo.io/models/discount/scope"

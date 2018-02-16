@@ -3,7 +3,7 @@ package paypal
 import (
 	"github.com/gin-gonic/gin"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"

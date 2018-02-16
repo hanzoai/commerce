@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
 	"google.golang.org/appengine"
 

@@ -3,7 +3,7 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
 
 	ds "hanzo.io/datastore"
 	"hanzo.io/models/order"

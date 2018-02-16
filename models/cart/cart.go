@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/dustin/go-humanize"
 

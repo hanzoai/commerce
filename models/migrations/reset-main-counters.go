@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/counter"
 	"hanzo.io/util/log"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 	ds "hanzo.io/datastore"
 )
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"google.golang.org/appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"

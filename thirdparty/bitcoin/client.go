@@ -2,7 +2,7 @@ package bitcoin
 
 import (
 	"google.golang.org/appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 	"bytes"
 	"encoding/hex"
 	ej "encoding/json"

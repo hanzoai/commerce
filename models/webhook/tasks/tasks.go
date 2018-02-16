@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"appengine/delay"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/webhook"
