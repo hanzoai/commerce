@@ -42,11 +42,11 @@ func idOrEmail(id, email string) string {
 }
 
 type API struct {
-	ctx    appengine.Context
+	ctx    context.Context
 	client *gochimp3.API
 }
 
-func New(ctx appengine.Context, apiKey string) *API {
+func New(ctx context.Context, apiKey string) *API {
 	api := new(API)
 	api.ctx = ctx
 	api.client = gochimp3.New(apiKey)

@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *gin.Context) {
+var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *context.Context) {
 	db := datastore.New(c)
 
 	client := bitcoin.New(db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])

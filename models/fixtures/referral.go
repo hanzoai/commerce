@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/referral"
 )
 
-var Referral = New("referral", func(c *gin.Context) *referral.Referral {
+var Referral = New("referral", func(c *context.Context) *referral.Referral {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

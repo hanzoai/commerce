@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var Discount = New("discount", func(c *gin.Context) *discount.Discount {
+var Discount = New("discount", func(c *context.Context) *discount.Discount {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

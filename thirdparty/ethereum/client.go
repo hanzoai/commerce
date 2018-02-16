@@ -46,7 +46,7 @@ type EthGasStationResponse struct {
 }
 
 type Client struct {
-	ctx        appengine.Context
+	ctx        context.Context
 	httpClient *http.Client
 
 	address string
@@ -83,7 +83,7 @@ func Test(b bool) bool {
 }
 
 // Create a new Ethereum JSON-RPC client
-func New(ctx appengine.Context, address string) Client {
+func New(ctx context.Context, address string) Client {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,

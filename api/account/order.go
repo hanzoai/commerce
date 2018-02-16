@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func getOrder(c *gin.Context) {
+func getOrder(c *context.Context) {
 	usr := middleware.GetUser(c)
 	id := c.Params.ByName("orderid")
 
@@ -33,7 +33,7 @@ func getOrder(c *gin.Context) {
 	http.Render(c, 200, ord)
 }
 
-func patchOrder(c *gin.Context) {
+func patchOrder(c *context.Context) {
 	usr := middleware.GetUser(c)
 	id := c.Params.ByName("orderid")
 

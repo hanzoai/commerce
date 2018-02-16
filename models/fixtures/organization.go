@@ -16,7 +16,7 @@ import (
 	. "hanzo.io/models/types/analytics"
 )
 
-var Organization = New("organization", func(c *gin.Context) *organization.Organization {
+var Organization = New("organization", func(c *context.Context) *organization.Organization {
 	BlockchainNamespace(c)
 
 	db := datastore.New(c)

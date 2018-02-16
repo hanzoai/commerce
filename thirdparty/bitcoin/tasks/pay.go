@@ -35,7 +35,7 @@ var InsufficientTransfer = errors.New("Not Enough Transfer Balance To Cover Tran
 var BitcoinProcessPayment = delay.Func(
 	"bitcon-process-payment",
 	func(
-		ctx appengine.Context,
+		ctx context.Context,
 		orgName,
 		walletId,
 		txId,
@@ -48,7 +48,7 @@ var BitcoinProcessPayment = delay.Func(
 	})
 
 func BitcoinProcessPaymentImpl(
-	ctx appengine.Context,
+	ctx context.Context,
 	orgName,
 	walletId,
 	txId,

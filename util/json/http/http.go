@@ -10,7 +10,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func Render(c *gin.Context, status int, src interface{}) {
+func Render(c *context.Context, status int, src interface{}) {
 	// Write headers
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(status)
@@ -19,7 +19,7 @@ func Render(c *gin.Context, status int, src interface{}) {
 	c.Writer.Write(json.EncodeBytes(src))
 }
 
-func Fail(c *gin.Context, status int, message interface{}, err error) {
+func Fail(c *context.Context, status int, message interface{}, err error) {
 	// Default response
 	res := Error{"api-error", "", "", ""}
 

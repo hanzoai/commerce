@@ -19,7 +19,7 @@ type RecaptchaResponse struct {
 	ErrorCodes  []string  `json:"error-codes"`
 }
 
-func Challenge(ctx appengine.Context, privateKey, response string) bool {
+func Challenge(ctx context.Context, privateKey, response string) bool {
 	// log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
 	client := urlfetch.Client(ctx)
 	r := RecaptchaResponse{}

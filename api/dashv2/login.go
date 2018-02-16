@@ -42,7 +42,7 @@ type loginRes struct {
 	Organizations []organizationRes `json:"organizations"`
 }
 
-func login(c *gin.Context) {
+func login(c *context.Context) {
 	req := &loginReq{}
 
 	// Decode response body to create new user

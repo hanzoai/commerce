@@ -22,10 +22,10 @@ import (
 )
 
 type Client struct {
-	ctx appengine.Context
+	ctx context.Context
 }
 
-func New(ctx appengine.Context) *Client {
+func New(ctx context.Context) *Client {
 	return &Client{ctx: ctx}
 }
 

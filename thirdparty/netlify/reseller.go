@@ -65,7 +65,7 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 }
 
 // Get access token from memcache
-func getAccessToken(ctx appengine.Context, orgName string) string {
+func getAccessToken(ctx context.Context, orgName string) string {
 	if item, err := memcache.Get(ctx, "netlify-access-token"); err == memcache.ErrCacheMiss {
 		log.Debug("Token not cached", ctx)
 		return ""
@@ -79,7 +79,7 @@ func getAccessToken(ctx appengine.Context, orgName string) string {
 }
 
 // Create new access token
-func createAccessToken(ctx appengine.Context, orgName string) string {
+func createAccessToken(ctx context.Context, orgName string) string {
 	client := New(ctx, config.Netlify.AccessToken)
 	user, err := client.AccessToken(orgName, orgName+"@hanzo.io")
 
@@ -92,7 +92,7 @@ func createAccessToken(ctx appengine.Context, orgName string) string {
 }
 
 // Cache access token in memcache
-func setAccessToken(ctx appengine.Context, accessToken string) {
+func setAccessToken(ctx context.Context, accessToken string) {
 	item := &memcache.Item{
 		Key:   "netlify-access-token",
 		Value: []byte(accessToken),
@@ -107,7 +107,7 @@ func setAccessToken(ctx appengine.Context, accessToken string) {
 }
 
 // Get a client for netlify
-func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
+func NewFromNamespace(ctx context.Context, orgName string) *Client {
 	ctx, _ = appengine.Namespace(ctx, orgName)
 
 	// Get user-level token for organization
@@ -117,7 +117,7 @@ func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
 }
 
 // Get access token
-func GetAccessToken(ctx appengine.Context, orgName string) string {
+func GetAccessToken(ctx context.Context, orgName string) string {
 	ctx, _ = appengine.Namespace(ctx, orgName)
 
 	accessToken := getAccessToken(ctx, orgName)

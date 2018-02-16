@@ -14,7 +14,7 @@ import (
 )
 
 type Client struct {
-	context    appengine.Context
+	context    context.Context
 	moduleName string
 	baseURL    string
 }

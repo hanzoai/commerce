@@ -13,11 +13,11 @@ import (
 
 type Row parallel.BigQueryRow
 
-type SetupFn func(*gin.Context) []interface{}
+type SetupFn func(*context.Context) []interface{}
 
 var NoArgs = []interface{}{}
 
-func NoSetup(c *gin.Context) []interface{} {
+func NoSetup(c *context.Context) []interface{} {
 	return NoArgs
 }
 
@@ -29,7 +29,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 		tasks[i] = parallel.New(name+"-task-"+strconv.Itoa(i), fn)
 	}
 
-	return task.Func(name, func(c *gin.Context) {
+	return task.Func(name, func(c *context.Context) {
 		// Call setup fn
 		args := setupFn(c)
 
@@ -48,7 +48,7 @@ func NewBigQuery(name string, setupFn SetupFn, fns ...interface{}) *delay.Functi
 		tasks[i] = parallel.NewBigQuery(name+"-task-"+strconv.Itoa(i), fn)
 	}
 
-	return task.Func(name, func(c *gin.Context) {
+	return task.Func(name, func(c *context.Context) {
 		// Call setup fn
 		args := setupFn(c)
 

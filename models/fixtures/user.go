@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var User = New("user", func(c *gin.Context) *user.User {
+var User = New("user", func(c *context.Context) *user.User {
 	db := datastore.New(c)
 
 	// Such tees owner & operator

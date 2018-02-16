@@ -19,7 +19,7 @@ func init() {
 }
 
 var _ = New("fix-zero-dates",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		db := datastore.New(c)

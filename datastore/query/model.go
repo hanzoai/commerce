@@ -23,7 +23,7 @@ type Model interface {
 }
 
 // Initialize model
-func initModel(ctx appengine.Context, key iface.Key, value reflect.Value) {
+func initModel(ctx context.Context, key iface.Key, value reflect.Value) {
 	entity := value.Interface().(Kind)
 	model := entity.(Model)
 	model.SetContext(ctx)
@@ -69,7 +69,7 @@ func (q *Query) GetModels(dst interface{}) error {
 
 	for i := 0; i < nkeys; i++ {
 		wg.Add(1)
-		go func(ctx appengine.Context, key iface.Key, value reflect.Value) {
+		go func(ctx context.Context, key iface.Key, value reflect.Value) {
 			initModel(ctx, key, value)
 			wg.Done()
 		}(q.ctx, keys[i], slice.Index(i))

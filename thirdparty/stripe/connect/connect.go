@@ -25,7 +25,7 @@ type Token struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-func GetToken(ctx appengine.Context, code string) (*Token, error) {
+func GetToken(ctx context.Context, code string) (*Token, error) {
 	client := urlfetch.Client(ctx)
 
 	data := url.Values{}
@@ -59,7 +59,7 @@ func GetToken(ctx appengine.Context, code string) (*Token, error) {
 	return token, nil
 }
 
-func GetTestToken(ctx appengine.Context, refreshToken string) (*Token, error) {
+func GetTestToken(ctx context.Context, refreshToken string) (*Token, error) {
 	client := urlfetch.Client(ctx)
 
 	data := url.Values{}
@@ -93,7 +93,7 @@ func GetTestToken(ctx appengine.Context, refreshToken string) (*Token, error) {
 	return token, nil
 }
 
-func GetTokens(ctx appengine.Context, code string) (*Token, *Token, error) {
+func GetTokens(ctx context.Context, code string) (*Token, *Token, error) {
 	liveToken, err := GetToken(ctx, code)
 	if err != nil {
 		return nil, nil, err

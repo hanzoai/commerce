@@ -14,7 +14,7 @@ import (
 var oldestDate = time.Date(2015, time.April, 30, 0, 0, 0, 0, time.UTC)
 
 var _ = New("nuke-old-test-orders",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "cycliq")
 		return NoArgs
 	},

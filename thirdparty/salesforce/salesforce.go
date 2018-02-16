@@ -32,7 +32,7 @@ func (e *ErrorUnexpectedStatusCode) Error() string {
 type SalesforceClient interface {
 	GetBody() []byte
 	GetStatusCode() int
-	GetContext() appengine.Context
+	GetContext() context.Context
 	Request(string, string, string, *map[string]string, bool) error
 }
 
@@ -42,7 +42,7 @@ type Api struct {
 
 	LastStatusCode int
 	LastBody       []byte
-	Context        appengine.Context
+	Context        context.Context
 
 	Campaign *campaign.Campaign
 
@@ -50,7 +50,7 @@ type Api struct {
 }
 
 // Get the HttpClient from the Gin context
-func getClient(c appengine.Context) *http.Client {
+func getClient(c context.Context) *http.Client {
 	client := urlfetch.Client(c)
 
 	return client
@@ -64,7 +64,7 @@ func (a *Api) GetStatusCode() int {
 	return a.LastStatusCode
 }
 
-func (a *Api) GetContext() appengine.Context {
+func (a *Api) GetContext() context.Context {
 	return a.Context
 }
 
@@ -143,7 +143,7 @@ func (a *Api) Request(method, path, data string, headers *map[string]string, ret
 }
 
 // New creates an API from a Context and Campaign
-func New(c appengine.Context, campaign *campaign.Campaign, update bool) *Api {
+func New(c context.Context, campaign *campaign.Campaign, update bool) *Api {
 	return &Api{
 		Campaign: campaign,
 		Context:  c,
