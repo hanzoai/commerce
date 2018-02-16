@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 	"appengine/search"
 
 	"github.com/gin-gonic/gin"

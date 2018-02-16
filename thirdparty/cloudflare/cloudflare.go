@@ -11,7 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {

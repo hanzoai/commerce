@@ -18,7 +18,7 @@ import (
 	"hanzo.io/util/log"
 
 	"google.golang.org/appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {

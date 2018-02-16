@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"

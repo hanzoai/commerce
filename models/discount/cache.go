@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"google.golang.org/appengine"
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/discount/scope"
