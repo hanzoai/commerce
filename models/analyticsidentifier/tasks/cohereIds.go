@@ -8,7 +8,7 @@ import (
 	"hanzo.io/util/delay"
 	"hanzo.io/util/log"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 func init() {

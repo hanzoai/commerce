@@ -17,7 +17,7 @@ import (
 	"hanzo.io/thirdparty/paypal/responses"
 	"hanzo.io/util/log"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 )
 

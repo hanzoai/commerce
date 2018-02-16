@@ -6,7 +6,7 @@ import (
 
 	"appengine/memcache"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"

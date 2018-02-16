@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"sync"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore/iface"
 	. "hanzo.io/datastore/utils"

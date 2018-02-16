@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 
 	"hanzo.io/datastore"

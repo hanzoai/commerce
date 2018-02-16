@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 	"errors"
 	"fmt"
 	"math/big"

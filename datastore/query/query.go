@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 
 	"github.com/qedus/nds"

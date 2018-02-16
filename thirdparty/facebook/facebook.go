@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/memcache"
 	"appengine/urlfetch"
 

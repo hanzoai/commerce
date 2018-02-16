@@ -4,7 +4,7 @@ import
 
 // "google.golang.org/api/bigquery/v2"
 
-"appengine"
+"google.golang.org/appengine"
 
 type Row map[string]interface{}
 type Fields map[string]string

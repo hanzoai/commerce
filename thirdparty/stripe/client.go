@@ -3,7 +3,7 @@ package stripe
 import (
 	"strconv"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"

@@ -3,7 +3,7 @@ package stripe
 import (
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"github.com/stripe/stripe-go"
