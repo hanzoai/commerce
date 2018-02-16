@@ -30,7 +30,7 @@ func Render(org *organization.Organization) string {
 	return fmt.Sprintf(jsTemplate, org.Analytics.SnippetJSON())
 }
 
-func Js(c *gin.Context) {
+func Js(c *context.Context) {
 	id := c.Params.ByName("organizationid")
 
 	// Passed organizationid as part of organization.js, strip extension.

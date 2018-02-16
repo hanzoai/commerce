@@ -13,7 +13,7 @@ import (
 	. "hanzo.io/models"
 )
 
-var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
+var _ = New("kanoa-mailchimp", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

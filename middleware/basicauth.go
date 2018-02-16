@@ -27,7 +27,7 @@ func parseAuthHeader(fieldValue string) (string, string) {
 func BasicAuth() gin.HandlerFunc {
 	realm := "Basic realm=" + strconv.Quote("Authorization Required")
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		email, password := parseAuthHeader(c.Request.Header.Get("Authorization"))
 
 		db := datastore.New(c)

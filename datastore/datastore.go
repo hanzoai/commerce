@@ -27,7 +27,7 @@ var (
 )
 
 type Datastore struct {
-	Context             appengine.Context
+	Context             context.Context
 	IgnoreFieldMismatch bool
 	Warn                bool
 }
@@ -58,10 +58,10 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 // Set context for datastore
 func (d *Datastore) SetContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
-	case appengine.Context:
+	case context.Context:
 		d.Context = ctx
-	case *gin.Context:
-		d.Context = ctx.MustGet("appengine").(appengine.Context)
+	case *context.Context:
+		d.Context = ctx.MustGet("appengine").(context.Context)
 	}
 }
 
@@ -89,7 +89,7 @@ func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
 
 type TransactionOptions aeds.TransactionOptions
 
-func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts ...TransactionOptions) error {
+func RunInTransaction(ctx context.Context, fn func(db *Datastore) error, opts ...TransactionOptions) error {
 	aeopts := new(aeds.TransactionOptions)
 
 	if len(opts) > 0 {
@@ -97,7 +97,7 @@ func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts 
 		aeopts.Attempts = opts[0].Attempts
 	}
 
-	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		return fn(New(ctx))
 	}, aeopts)
 }

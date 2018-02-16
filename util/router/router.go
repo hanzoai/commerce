@@ -45,14 +45,14 @@ func New(moduleName string) *gin.RouterGroup {
 	return router.Group(prefix)
 }
 
-func Ok(c *gin.Context) {
+func Ok(c *context.Context) {
 	c.String(200, "ok\n")
 }
 
-func Empty(c *gin.Context) {
+func Empty(c *context.Context) {
 	c.AbortWithStatus(200)
 }
 
-func Robots(c *gin.Context) {
+func Robots(c *context.Context) {
 	c.String(200, "User-agent: *\nDisallow: /\n")
 }

@@ -40,7 +40,7 @@ type Event struct {
 }
 
 // Decode Ethereum payload
-func decodeEvent(c *gin.Context) (*Event, error) {
+func decodeEvent(c *context.Context) (*Event, error) {
 	event := new(Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
 		log.Error("Could not Decode:\n%s", c.Request.Body, c)
@@ -56,7 +56,7 @@ var BlockTransactionNotFound = errors.New("BlockTransaction not found, it should
 var CouldNotConvertToBigInt = errors.New("BlockTransaction Value could not be converted")
 
 // Handle stripe webhook POSTs
-func Webhook(c *gin.Context) {
+func Webhook(c *context.Context) {
 	event, err := decodeEvent(c)
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)

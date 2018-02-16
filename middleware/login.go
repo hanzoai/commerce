@@ -10,7 +10,7 @@ import (
 
 // Updates session with login information, does not require it
 func CheckLogin() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		loggedIn := auth.IsLoggedIn(c)
 		if loggedIn {
 			u, err := auth.GetCurrentUser(c)
@@ -24,7 +24,7 @@ func CheckLogin() gin.HandlerFunc {
 
 // Require login to view route
 func LoginRequired(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		if auth.IsLoggedIn(c) {
 			return
 		}
@@ -37,7 +37,7 @@ func LoginRequired(moduleName string) gin.HandlerFunc {
 
 // Required to be logged out to view
 func LogoutRequired(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		if !auth.IsLoggedIn(c) {
 			return
 		}

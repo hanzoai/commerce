@@ -83,7 +83,7 @@ func Route(api router.Router) {
 
 	// Use permissive CORS policy for all API routes.
 	api.Use(middleware.AccessControl("*"))
-	api.OPTIONS("*wildcard", func(c *gin.Context) {
+	api.OPTIONS("*wildcard", func(c *context.Context) {
 		c.Next()
 	})
 

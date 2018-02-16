@@ -8,7 +8,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var _ = New("add-missing-namespace", func(c *gin.Context) []interface{} {
+var _ = New("add-missing-namespace", func(c *context.Context) []interface{} {
 	db := datastore.New(c)
 	ns := namespace.New(db)
 	ns.Name = "4050001"

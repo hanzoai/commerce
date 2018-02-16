@@ -18,7 +18,7 @@ import (
 	"hanzo.io/util/session"
 )
 
-func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
+func getAccessToken(c *context.Context, id, email, pass string, test bool) {
 	db := datastore.New(c)
 	u := user.New(db)
 
@@ -71,7 +71,7 @@ func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
 	http.Render(c, 200, gin.H{"status": "ok", "token": accessToken})
 }
 
-func deleteAccessToken(c *gin.Context) {
+func deleteAccessToken(c *context.Context) {
 	accessToken := session.GetString(c, "access-token")
 
 	// Save access token in cookie for ease of use during development

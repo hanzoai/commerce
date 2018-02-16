@@ -31,7 +31,7 @@ type Entity interface {
 	Init(db *datastore.Datastore)
 
 	// Get, Set context/namespace
-	Context() appengine.Context
+	Context() context.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
 	Namespace() string
@@ -124,8 +124,8 @@ func (m *Model) Init(db *datastore.Datastore, entity Kind) {
 	m.Entity = entity
 }
 
-// Get appengine.Context
-func (m *Model) Context() appengine.Context {
+// Get context.Context
+func (m *Model) Context() context.Context {
 	return m.Db.Context
 }
 
@@ -134,7 +134,7 @@ func (m *Model) SetEntity(entity interface{}) {
 	m.Entity = entity.(Kind)
 }
 
-// Set appengine.Context
+// Set context.Context
 func (m *Model) SetContext(ctx interface{}) {
 	if m.Db == nil {
 		m.Db = datastore.New(ctx)
@@ -143,7 +143,7 @@ func (m *Model) SetContext(ctx interface{}) {
 	}
 }
 
-// Set appengine.Context namespace
+// Set context.Context namespace
 func (m *Model) SetNamespace(namespace string) {
 	ctx, err := appengine.Namespace(m.Context(), namespace)
 	if err != nil {

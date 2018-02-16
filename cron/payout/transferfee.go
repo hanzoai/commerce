@@ -45,7 +45,7 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 }
 
 // Create transfer for single fee
-var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeToken, namespace, id string) {
+var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeToken, namespace, id string) {
 	var fe *fee.Fee
 	var tr *transfer.Transfer
 

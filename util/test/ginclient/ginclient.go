@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/util/gincontext"
@@ -43,15 +45,15 @@ func defaultStatus(code int) func([]interface{}) []interface{} {
 
 type Client struct {
 	Router       *gin.Engine
-	Context      *gin.Context
+	Context      *context.Context
 	defaultsFn   defaultsFunc
 	ignoreErrors bool
 }
 
-func newRouter(ctx ae.Context) *gin.Engine {
+func newRouter(ctx context.Context) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(func(c *gin.Context) {
+	router.Use(func(c *context.Context) {
 		gincontext.SetDefaults(c, ctx)
 	})
 	return router
@@ -71,7 +73,7 @@ func (cl *Client) IgnoreErrors(ignore bool) {
 
 // Add a new handler to router
 func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
-	wrapper := func(c *gin.Context) {
+	wrapper := func(c *context.Context) {
 		handler(c)
 		cl.Context = c
 	}
@@ -82,7 +84,7 @@ func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
 // Add middleware to router
 func (cl *Client) Use(mw ...gin.HandlerFunc) {
 	for _, m := range mw {
-		cl.Router.Use(func(c *gin.Context) {
+		cl.Router.Use(func(c *context.Context) {
 			c.Next()
 			cl.Context = c
 		})

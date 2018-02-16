@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("payment-fee-status-update",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
@@ -23,7 +23,7 @@ var _ = New("payment-fee-status-update",
 )
 
 var _ = New("fee-status-update",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, fe *fee.Fee) {

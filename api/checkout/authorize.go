@@ -29,7 +29,7 @@ import (
 )
 
 // Decode authorization request, grab user and payment information off it
-func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
+func decodeAuthorization(c *context.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
 	a := new(Authorization)
 	db := ord.Db
 
@@ -59,7 +59,7 @@ func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment
 	return a.User, a.Payment, a.TokenSale, nil
 }
 
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
+func authorize(c *context.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
 	var fees []*fee.Fee
 
 	// Decode authorization request

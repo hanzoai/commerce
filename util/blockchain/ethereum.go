@@ -12,7 +12,7 @@ import (
 	"hanzo.io/thirdparty/ethereum"
 )
 
-func MakeEthereumPayment(ctx appengine.Context, from wallet.Account, to string, amount, gasPrice *big.Int, password []byte) (string, error) {
+func MakeEthereumPayment(ctx context.Context, from wallet.Account, to string, amount, gasPrice *big.Int, password []byte) (string, error) {
 	// Create needed client.
 
 	client := ethereum.Client{}

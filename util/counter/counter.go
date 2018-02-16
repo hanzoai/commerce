@@ -81,7 +81,7 @@ func memcacheKey(name string) string {
 	return ShardKind + ":" + name
 }
 
-func MemberExists(c appengine.Context, name string, value string) bool {
+func MemberExists(c context.Context, name string, value string) bool {
 	members, err := Members(c, name)
 	if err != nil {
 		return false
@@ -95,7 +95,7 @@ func MemberExists(c appengine.Context, name string, value string) bool {
 	return false
 }
 
-func Members(c appengine.Context, name string) ([]string, error) {
+func Members(c context.Context, name string) ([]string, error) {
 	set := make(map[string]bool)
 	members := make([]string, 0)
 	mkey := memcacheKey(name)
@@ -135,7 +135,7 @@ func Members(c appengine.Context, name string) ([]string, error) {
 }
 
 // Count retrieves the value of the named counter.
-func Count(c appengine.Context, name string) (int, error) {
+func Count(c context.Context, name string) (int, error) {
 	total := 0
 	mkey := memcacheKey(name)
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
@@ -161,7 +161,7 @@ func Count(c appengine.Context, name string) (int, error) {
 	return total, nil
 }
 
-// func CountByTag(c appengine.Context, tag, storeId string, p Period, start, end time.Time) (int, error) {
+// func CountByTag(c context.Context, tag, storeId string, p Period, start, end time.Time) (int, error) {
 // 	total := 0
 // 	q := aeds.NewQuery(ShardKind).Filter("Tag =", tag).Filter("CreatedAt>=", start).Filter("CreatedAt<=", end)
 // 	for t := q.Run(c); ; {
@@ -179,7 +179,7 @@ func Count(c appengine.Context, name string) (int, error) {
 // }
 
 // Adds a member to the array if it does not exist
-func AddSetMember(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
+func AddSetMember(c context.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
 	if MemberExists(c, name, value) {
 		return nil
 	}
@@ -187,27 +187,27 @@ func AddSetMember(c appengine.Context, name, tag, storeId, geo string, p Period,
 }
 
 // Adds a member to the array on the Shard
-func AddMember(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
+func AddMember(c context.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) error {
 	AddMemberTask.Call(c, name, tag, storeId, geo, p, value, t)
 	return nil
 }
 
 // Increment increments the named counter by 1
-func Increment(c appengine.Context, name, tag, storeId, geo string, p Period, t time.Time) error {
+func Increment(c context.Context, name, tag, storeId, geo string, p Period, t time.Time) error {
 	return IncrementBy(c, name, tag, storeId, geo, p, 1, t)
 }
 
 // Increment increments the named counter by amount
-func IncrementBy(c appengine.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) error {
+func IncrementBy(c context.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) error {
 	IncrementByTask.Call(c, name, tag, storeId, geo, p, amount, t)
 	return nil
 }
 
 // IncreaseShards increases the number of Shards for the named counter to n.
 // It will never decrease the number of Shards.
-func IncreaseShards(c appengine.Context, name string, n int) error {
+func IncreaseShards(c context.Context, name string, n int) error {
 	ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-	return aeds.RunInTransaction(c, func(c appengine.Context) error {
+	return aeds.RunInTransaction(c, func(c context.Context) error {
 		var cfg counterConfig
 		mod := false
 		err := aeds.Get(c, ckey, &cfg)
@@ -232,12 +232,12 @@ var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
 func init() {
-	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) {
+	IncrementByTask = delay.Func("IncrementByTask", func(c context.Context, name, tag, storeId, geo string, p Period, amount int, t time.Time) {
 		log.Debug("INCREMENT %s BY %d", name, amount, c)
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
+		err := aeds.RunInTransaction(c, func(c context.Context) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = DefaultShards
@@ -250,7 +250,7 @@ func init() {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
 		var s Shard
-		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
+		err = aeds.RunInTransaction(c, func(c context.Context) error {
 			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
 			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)
@@ -290,12 +290,12 @@ func init() {
 		memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
 	})
 
-	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) {
+	AddMemberTask = delay.Func("AddMember", func(c context.Context, name, tag, storeId, geo string, p Period, value string, t time.Time) {
 		log.Debug("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
+		err := aeds.RunInTransaction(c, func(c context.Context) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = DefaultShards
@@ -308,7 +308,7 @@ func init() {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
 		var s Shard
-		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
+		err = aeds.RunInTransaction(c, func(c context.Context) error {
 			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
 			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)

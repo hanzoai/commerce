@@ -17,7 +17,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func searchOrder(c *gin.Context) {
+func searchOrder(c *context.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	opts := &search.SearchOptions{}

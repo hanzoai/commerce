@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var FeeSync = delay.Func("stripe-fee-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+var FeeSync = delay.Func("stripe-fee-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	log.Debug("Fee Sync %s", ch, ctx)
 
 	ctx = getNamespacedContext(ctx, ns)

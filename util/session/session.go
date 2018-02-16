@@ -19,11 +19,11 @@ func init() {
 	}
 }
 
-func saveSession(c *gin.Context, session *sessions.Session) error {
+func saveSession(c *context.Context, session *sessions.Session) error {
 	return session.Save(c.Request, c.Writer)
 }
 
-func Get(c *gin.Context, key string) (interface{}, error) {
+func Get(c *context.Context, key string) (interface{}, error) {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func Get(c *gin.Context, key string) (interface{}, error) {
 	return value, nil
 }
 
-func GetString(c *gin.Context, key string) string {
+func GetString(c *context.Context, key string) string {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
 		log.Warn(err)
@@ -55,7 +55,7 @@ func GetString(c *gin.Context, key string) string {
 	return str
 }
 
-func MustGet(c *gin.Context, key string) interface{} {
+func MustGet(c *context.Context, key string) interface{} {
 	value, err := Get(c, key)
 	if err != nil {
 		panic(err)
@@ -64,7 +64,7 @@ func MustGet(c *gin.Context, key string) interface{} {
 	return value
 }
 
-func Set(c *gin.Context, key, value string) error {
+func Set(c *context.Context, key, value string) error {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
 		return err
@@ -73,7 +73,7 @@ func Set(c *gin.Context, key, value string) error {
 	return saveSession(c, session)
 }
 
-func Delete(c *gin.Context, key string) error {
+func Delete(c *context.Context, key string) error {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func Delete(c *gin.Context, key string) error {
 	return saveSession(c, session)
 }
 
-func Clear(c *gin.Context) error {
+func Clear(c *context.Context) error {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
 		return err
