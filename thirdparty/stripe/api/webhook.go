@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 

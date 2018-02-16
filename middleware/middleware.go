@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/memcache"
 
 	"hanzo.io/datastore"

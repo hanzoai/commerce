@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"hanzo.io/config"

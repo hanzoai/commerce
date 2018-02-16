@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 
 	"github.com/qedus/nds"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stripe/stripe-go/charge"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"

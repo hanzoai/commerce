@@ -4,7 +4,7 @@ package tasks
 import (
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"

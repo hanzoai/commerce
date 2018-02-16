@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"

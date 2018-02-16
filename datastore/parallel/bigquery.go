@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/delay"
 
 	"hanzo.io/datastore"

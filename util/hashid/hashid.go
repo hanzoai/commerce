@@ -3,7 +3,7 @@ package hashid
 import (
 	"errors"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/speps/go-hashids"
 

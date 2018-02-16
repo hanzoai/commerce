@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
@@ -57,7 +57,7 @@ func Namespace() gin.HandlerFunc {
 		ctx := GetAppEngine(c)
 		org := GetOrganization(c)
 		ctx = org.Namespaced(ctx)
-		c.Set("appengine", ctx)
+		c.Set("google.golang.org/appengine", ctx)
 	}
 }
 
