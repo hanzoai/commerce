@@ -37,5 +37,5 @@ github.com/pariz/gountries master
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
 golang.org/x/text/encoding master
-golang.org/x/tools/cmd/cover master
+golang.org/x/tools/cover master
 gopkg.in/yaml.v2
