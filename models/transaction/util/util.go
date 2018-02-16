@@ -1,7 +1,7 @@
 package util
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/transaction"

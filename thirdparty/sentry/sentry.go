@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/delay"
 	"appengine/urlfetch"
 

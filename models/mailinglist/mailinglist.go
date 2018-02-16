@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"

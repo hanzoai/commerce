@@ -3,8 +3,8 @@ package tasks
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
 	"appengine/memcache"
+	"google.golang.org/appengine"
 
 	"hanzo.io/util/log"
 	"hanzo.io/util/task"

@@ -1,7 +1,7 @@
 package pricing
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 
 	"hanzo.io/models/types/commission"
