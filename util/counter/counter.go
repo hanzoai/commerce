@@ -8,7 +8,7 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 	"google.golang.org/appengine/memcache"
-	"appengine/taskqueue"
+	"google.golang.org/appengine/taskqueue"
 
 	"hanzo.io/datastore"
 	"hanzo.io/util/json"
