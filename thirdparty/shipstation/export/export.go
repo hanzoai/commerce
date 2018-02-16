@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 

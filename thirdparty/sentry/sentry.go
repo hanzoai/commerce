@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"google.golang.org/appengine"
-	"appengine/delay"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/getsentry/raven-go"
 

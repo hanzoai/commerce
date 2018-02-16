@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/affiliate"

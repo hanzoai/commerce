@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/campaign"
 	"hanzo.io/util/log"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 var ErrorInvalidType = errors.New("Invalid Type")

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"
 
