@@ -15,7 +15,7 @@ import (
 	"hanzo.io/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
-	_ "appengine/remote_api"
+	_ "google.golang.org/appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"

@@ -13,7 +13,7 @@ import (
 	"hanzo.io/util/log"
 
 	"google.golang.org/appengine"
-	"appengine/taskqueue"
+	"google.golang.org/appengine/taskqueue"
 )
 
 const (
