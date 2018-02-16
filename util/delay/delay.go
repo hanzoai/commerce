@@ -12,7 +12,7 @@ import (
 
 	"hanzo.io/util/log"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/taskqueue"
 )
 

@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/delay"
 
 	"hanzo.io/config"

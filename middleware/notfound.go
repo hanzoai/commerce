@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"hanzo.io/util/template"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 // Serve custom 404 page.

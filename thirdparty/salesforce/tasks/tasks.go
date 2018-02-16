@@ -3,7 +3,7 @@ package tasks
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/delay"
 
 	"hanzo.io/datastore"

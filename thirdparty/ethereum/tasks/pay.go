@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/api/checkout/tasks"
 	"hanzo.io/api/checkout/util"

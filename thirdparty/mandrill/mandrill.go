@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"hanzo.io/config"

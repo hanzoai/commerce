@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 
@@ -94,7 +94,7 @@ type Context struct {
 func (c *Context) cloneKeys(keys map[string]interface{}) {
 	for k, v := range keys {
 		// Skip app engine
-		if k == "appengine" {
+		if k == "google.golang.org/appengine" {
 			continue
 		}
 
@@ -125,7 +125,7 @@ func (c Context) Context(aectx *context.Context) (ctx *context.Context, err erro
 	}
 
 	// ...otherwise use appengine context to update gin context
-	ctx.Set("appengine", *aectx)
+	ctx.Set("google.golang.org/appengine", *aectx)
 
 	// Fetch organization if organization-id is set
 	if value, ok := ctx.Get("organization-id"); !ok {

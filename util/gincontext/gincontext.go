@@ -29,7 +29,7 @@ func New(ctx ...context.Context) *context.Context {
 }
 
 func SetDefaults(c *context.Context, ctx context.Context) {
-	c.Set("appengine", ctx)
+	c.Set("google.golang.org/appengine", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)
 	db := datastore.New(ctx)

@@ -7,7 +7,7 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"

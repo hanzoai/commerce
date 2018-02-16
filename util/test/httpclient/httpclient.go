@@ -1,6 +1,6 @@
 package httpclient
 
-import "appengine"
+import "google.golang.org/appengine"
 
 func getModuleHost(ctx context.Context, moduleName string) (host string, err error) {
 	return appengine.ModuleHostname(ctx, moduleName, "", "")

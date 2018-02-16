@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
 	// "hanzo.io/models"

@@ -3,7 +3,7 @@ package webhook
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/webhook/tasks"

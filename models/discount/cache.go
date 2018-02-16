@@ -3,7 +3,7 @@ package discount
 import (
 	"fmt"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/memcache"
 
 	aeds "appengine/datastore"

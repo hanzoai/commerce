@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"

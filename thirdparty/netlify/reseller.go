@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/memcache"
 	"appengine/urlfetch"
 

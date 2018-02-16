@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 	"appengine/search"
 

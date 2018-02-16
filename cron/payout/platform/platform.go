@@ -1,7 +1,7 @@
 package platform
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/cron/payout"
