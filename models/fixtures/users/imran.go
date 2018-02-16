@@ -11,7 +11,7 @@ import (
 	. "hanzo.io/models/fixtures"
 )
 
-var ImranForLuckyBets = New("imran-for-luckybets", func(c *gin.Context) {
+var ImranForLuckyBets = New("imran-for-luckybets", func(c *context.Context) {
 	db := datastore.New(c)
 
 	org := organization.New(db)

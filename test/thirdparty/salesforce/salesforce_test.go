@@ -120,7 +120,7 @@ func (a *MockSalesforceClient) GetStatusCode() int {
 	return 204
 }
 
-func (a *MockSalesforceClient) GetContext() appengine.Context {
+func (a *MockSalesforceClient) GetContext() context.Context {
 	return ctx
 }
 

@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("grant-bonus-referral-points",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 
 		db := ds.New(c)

@@ -21,7 +21,7 @@ type GetWithdrawableAccountsRes struct {
 	Accounts []AccountNameRes `json:"accounts"`
 }
 
-func GetWithdrawableAccounts(c *gin.Context) {
+func GetWithdrawableAccounts(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	// Create the response object

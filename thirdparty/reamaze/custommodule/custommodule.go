@@ -16,7 +16,7 @@ import (
 	"hanzo.io/util/template"
 )
 
-func Serve(c *gin.Context) {
+func Serve(c *context.Context) {
 	query := c.Request.URL.Query()
 	email := query.Get("email")
 

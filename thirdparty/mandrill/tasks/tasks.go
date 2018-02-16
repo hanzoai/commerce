@@ -11,7 +11,7 @@ import (
 )
 
 // Helper that will render a template and uses it for complete email
-var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, toEmail, toName, fromEmail, fromName, subject, html string) {
+var Send = delay.Func("send-email", func(ctx context.Context, apiKey, toEmail, toName, fromEmail, fromName, subject, html string) {
 	req := mandrill.NewSendReq()
 	req.AddRecipient(toEmail, toName)
 	req.Key = apiKey
@@ -31,11 +31,11 @@ var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, toEmail,
 	}
 })
 
-func SendTemplate(ctx appengine.Context, template, apiKey, toEmail, toName, fromEmail, fromName, subject string, vars map[string]interface{}) {
+func SendTemplate(ctx context.Context, template, apiKey, toEmail, toName, fromEmail, fromName, subject string, vars map[string]interface{}) {
 	sendTemplate.Call(ctx, template, apiKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-var sendTemplate = delay.Func("send-email-template", func(ctx appengine.Context, template, apiKey, toEmail, toName, fromEmail, fromName, subject string, vars map[string]interface{}) {
+var sendTemplate = delay.Func("send-email-template", func(ctx context.Context, template, apiKey, toEmail, toName, fromEmail, fromName, subject string, vars map[string]interface{}) {
 	req := mandrill.NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 	req.Key = apiKey
@@ -59,7 +59,7 @@ var sendTemplate = delay.Func("send-email-template", func(ctx appengine.Context,
 
 // Helper that will render a template and send it as body for
 // transactional-template email.
-var SendTransactional = delay.Func("send-email-transactional", func(ctx appengine.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
+var SendTransactional = delay.Func("send-email-transactional", func(ctx context.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
 	req := mandrill.NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 
@@ -82,7 +82,7 @@ var SendTransactional = delay.Func("send-email-transactional", func(ctx appengin
 })
 
 // Helper to forward emails using custom reply-to address
-var Forward = delay.Func("forward-email", func(ctx appengine.Context, apiKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html string) {
+var Forward = delay.Func("forward-email", func(ctx context.Context, apiKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html string) {
 	req := mandrill.NewSendReq()
 	req.AddRecipient(toEmail, toName)
 	req.Key = apiKey

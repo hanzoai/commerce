@@ -21,7 +21,7 @@ type ProgressRes struct {
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(campaign.Campaign{})
 
-	api.GET("/:campaignid/progress", func(c *gin.Context) {
+	api.GET("/:campaignid/progress", func(c *context.Context) {
 		// hardcoded for Stoned
 		now := time.Now()
 		startDate := time.Date(2016, time.November, 21, 0, 0, 0, 0, time.UTC)

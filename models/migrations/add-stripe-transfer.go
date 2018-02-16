@@ -13,7 +13,7 @@ import (
 )
 
 var _ = New("add-stripe-transfer",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "cycliq")
 
 		db := ds.New(c)

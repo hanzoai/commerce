@@ -14,7 +14,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {
+var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *context.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 

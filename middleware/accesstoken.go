@@ -35,7 +35,7 @@ func accessTokenFromHeader(fieldValue string) string {
 	return accessToken
 }
 
-func ParseToken(c *gin.Context) {
+func ParseToken(c *context.Context) {
 	query := c.Request.URL.Query()
 
 	// Check for `key` query param by default
@@ -75,7 +75,7 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		// Verify permissions
 		if !GetPermissions(c).Has(permissions) {
 			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
@@ -96,7 +96,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		// Parse token
 		ParseToken(c)
 
@@ -142,7 +142,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 }
 
-func GetAccessToken(c *gin.Context) string {
+func GetAccessToken(c *context.Context) string {
 	tok, ok := c.Get("access-token")
 	if !ok {
 		return ""
@@ -151,6 +151,6 @@ func GetAccessToken(c *gin.Context) string {
 	return tok.(string)
 }
 
-func GetPermissions(c *gin.Context) bit.Field {
+func GetPermissions(c *context.Context) bit.Field {
 	return c.MustGet("permissions").(bit.Field)
 }

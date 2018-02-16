@@ -1,10 +1,10 @@
 package ae
 
 import (
+	"golang.org/x/net/context"
+
 	"hanzo.io/util/log"
 	"hanzo.io/util/test/ae/aetest"
-	"hanzo.io/util/test/ae/appenginetesting"
-	"hanzo.io/util/test/ae/context"
 	"hanzo.io/util/test/ae/options"
 )
 
@@ -29,12 +29,7 @@ func NewContext(args ...Options) Context {
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	// Detect backend to use and create context
-	if opts.PreferAppengineTesting || len(opts.TaskQueues) > 0 {
-		ctx, err = appenginetesting.New(opts)
-	} else {
-		ctx, err = aetest.New(opts)
-	}
+	ctx, err = aetest.New(opts)
 
 	// Blow up if we couldn't get a context.
 	if err != nil {

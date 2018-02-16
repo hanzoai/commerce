@@ -22,7 +22,7 @@ type Password struct {
 	Password string `json:"password"`
 }
 
-func resetPassword(c *gin.Context) {
+func resetPassword(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -45,7 +45,7 @@ func resetPassword(c *gin.Context) {
 	http.Render(c, 200, Password{Password: newPassword})
 }
 
-func getReferrals(c *gin.Context) {
+func getReferrals(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -59,7 +59,7 @@ func getReferrals(c *gin.Context) {
 	http.Render(c, 200, referrals)
 }
 
-func getReferrers(c *gin.Context) {
+func getReferrers(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -73,7 +73,7 @@ func getReferrers(c *gin.Context) {
 	http.Render(c, 200, referrers)
 }
 
-func getOrders(c *gin.Context) {
+func getOrders(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -87,7 +87,7 @@ func getOrders(c *gin.Context) {
 	http.Render(c, 200, orders)
 }
 
-func getTransactions(c *gin.Context) {
+func getTransactions(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
 	id := c.Params.ByName("userid")
@@ -102,7 +102,7 @@ func getTransactions(c *gin.Context) {
 	http.Render(c, 200, res)
 }
 
-func getTransfers(c *gin.Context) {
+func getTransfers(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -122,7 +122,7 @@ func getTransfers(c *gin.Context) {
 	http.Render(c, 200, trans)
 }
 
-func getAffiliate(c *gin.Context) {
+func getAffiliate(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")

@@ -123,7 +123,7 @@ func dedupeOrders(db *ds.Datastore, ord *order.Order, currentUsr, masterUsr *use
 }
 
 var _ = New("dedupe-users-orders-payments",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},

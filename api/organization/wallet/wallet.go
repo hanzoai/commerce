@@ -33,7 +33,7 @@ type PayFromAccountResponse struct {
 	TransactionId string `json:"transactionId"`
 }
 
-func Get(c *gin.Context) {
+func Get(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil || orgWallet == nil {
@@ -44,7 +44,7 @@ func Get(c *gin.Context) {
 	http.Render(c, 200, orgWallet)
 }
 
-func GetAccount(c *gin.Context) {
+func GetAccount(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {
@@ -62,7 +62,7 @@ func GetAccount(c *gin.Context) {
 	http.Render(c, 200, account)
 }
 
-func CreateAccount(c *gin.Context) {
+func CreateAccount(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {
@@ -85,7 +85,7 @@ func CreateAccount(c *gin.Context) {
 	http.Render(c, 200, account)
 }
 
-func Send(c *gin.Context) {
+func Send(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {

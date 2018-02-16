@@ -23,13 +23,13 @@ import (
 )
 
 // Index
-func Index(c *gin.Context) {
+func Index(c *context.Context) {
 	url := config.UrlFor("dash")
 	log.Debug("Redirecting to %s", url)
 	c.Redirect(302, url)
 }
 
-func Dashboard(c *gin.Context) {
+func Dashboard(c *context.Context) {
 	db := datastore.New(c)
 
 	usr := middleware.GetCurrentUser(c)
@@ -73,7 +73,7 @@ type SearchResults struct {
 	Orders []*order.Order `json:"orders"`
 }
 
-func Search(c *gin.Context) {
+func Search(c *context.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	// Detect order numbers
@@ -144,7 +144,7 @@ func Search(c *gin.Context) {
 	http.Render(c, 200, SearchResults{users, orders})
 }
 
-func SendOrderConfirmation(c *gin.Context) {
+func SendOrderConfirmation(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
@@ -160,7 +160,7 @@ func SendOrderConfirmation(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func SendFulfillmentConfirmation(c *gin.Context) {
+func SendFulfillmentConfirmation(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
@@ -179,7 +179,7 @@ func SendFulfillmentConfirmation(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func SendRefundConfirmation(c *gin.Context) {
+func SendRefundConfirmation(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
@@ -202,7 +202,7 @@ func SendRefundConfirmation(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Keys(c *gin.Context) {
+func Keys(c *context.Context) {
 	// Think about rendering a json of all keys after reading in
 	// login credentials like Stripe and literally everyone else
 
@@ -211,7 +211,7 @@ func Keys(c *gin.Context) {
 	// We REALLY need a Hanzo domain restricted master key for dashboard
 }
 
-func NewKeys(c *gin.Context) {
+func NewKeys(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	org.AddDefaultTokens()
@@ -223,7 +223,7 @@ func NewKeys(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Render(c *gin.Context, name string, args ...interface{}) {
+func Render(c *context.Context, name string, args ...interface{}) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	if err := org.GetById("crowdstart"); err == nil {

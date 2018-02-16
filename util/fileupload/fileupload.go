@@ -15,7 +15,7 @@ import (
 	// "hanzo.io/util/log"
 )
 
-func UploadFile(ctx *appengine.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
+func UploadFile(ctx *context.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
 	return "", errors.New("Disabled")
 	// client, err := google.DefaultClient(context.Background(), storage.DevstorageFullControlScope)
 	// if err != nil {

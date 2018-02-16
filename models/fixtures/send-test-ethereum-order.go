@@ -18,7 +18,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {
+var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *context.Context) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 

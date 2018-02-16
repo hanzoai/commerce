@@ -16,12 +16,12 @@ import (
 	"hanzo.io/util/router"
 )
 
-func forced404(c *gin.Context) {
+func forced404(c *context.Context) {
 	http.Fail(c, 404, "Review does not exist", nil)
 }
 
-func get(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func get(r *rest.Rest) func(c *context.Context) {
+	return func(c *context.Context) {
 		if !r.CheckPermissions(c, "get") {
 			return
 		}
@@ -46,8 +46,8 @@ func get(r *rest.Rest) func(c *gin.Context) {
 	}
 }
 
-func list(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func list(r *rest.Rest) func(c *context.Context) {
+	return func(c *context.Context) {
 		if !r.CheckPermissions(c, "list") {
 			return
 		}
@@ -124,8 +124,8 @@ type createReq struct {
 	Captcha string `json:"g-recaptcha-response"`
 }
 
-func post(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func post(r *rest.Rest) func(c *context.Context) {
+	return func(c *context.Context) {
 		if !r.CheckPermissions(c, "create") {
 			return
 		}

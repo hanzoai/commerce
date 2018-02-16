@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var UserCustomer = New("user-customer", func(c *gin.Context) *user.User {
+var UserCustomer = New("user-customer", func(c *context.Context) *user.User {
 	db := getNamespaceDb(c)
 
 	// Such tees owner & operator

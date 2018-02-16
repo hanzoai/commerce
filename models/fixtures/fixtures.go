@@ -17,7 +17,7 @@ type Fixture struct {
 	entity mixin.Entity
 }
 
-func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
+func New(name string, fn interface{}) func(c *context.Context) mixin.Entity {
 	fix := new(Fixture)
 
 	// Prefix all fixture tasks
@@ -27,13 +27,13 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 	fix.fnv = reflect.ValueOf(fn)
 
 	// Register task
-	task.Func(name, func(c2 *gin.Context) {
+	task.Func(name, func(c2 *context.Context) {
 		log.Debug("Running %s", name)
 		fix.fnv.Call([]reflect.Value{reflect.ValueOf(c2)})
 	})
 
 	// Return wrapper that memoizes result for safe chaining
-	return func(c3 *gin.Context) mixin.Entity {
+	return func(c3 *context.Context) mixin.Entity {
 		if fix.entity == nil {
 			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c3)})
 			fix.entity = res[0].Interface().(mixin.Entity)
@@ -44,7 +44,7 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 }
 
 // Get db namespaced for our fixtures org
-func getNamespaceDb(c *gin.Context) *datastore.Datastore {
+func getNamespaceDb(c *context.Context) *datastore.Datastore {
 	org := Organization(c).(*organization.Organization)
 	ctx := org.Namespaced(org.Db.Context)
 	db := datastore.New(ctx)
@@ -53,7 +53,7 @@ func getNamespaceDb(c *gin.Context) *datastore.Datastore {
 
 func init() {
 	// Setup default fixtures
-	task.Func("fixtures-all", func(c *gin.Context) {
+	task.Func("fixtures-all", func(c *context.Context) {
 		User(c)
 		Organization(c)
 		Product(c)

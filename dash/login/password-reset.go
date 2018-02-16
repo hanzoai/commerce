@@ -17,12 +17,12 @@ import (
 )
 
 // GET /password-reset
-func PasswordReset(c *gin.Context) {
+func PasswordReset(c *context.Context) {
 	template.Render(c, "login/password-reset.html")
 }
 
 // POST /password-reset
-func PasswordResetSubmit(c *gin.Context) {
+func PasswordResetSubmit(c *context.Context) {
 	form := new(PasswordResetForm)
 	if err := form.Parse(c); err != nil {
 		template.Render(c, "login/password-reset.html", "error", "Please enter your new password.")
@@ -60,7 +60,7 @@ func PasswordResetSubmit(c *gin.Context) {
 }
 
 // GET /password-reset/:token
-func PasswordResetConfirm(c *gin.Context) {
+func PasswordResetConfirm(c *context.Context) {
 	db := datastore.New(c)
 	tokenId := c.Params.ByName("token")
 
@@ -83,7 +83,7 @@ func PasswordResetConfirm(c *gin.Context) {
 }
 
 // POST /password-reset/:token
-func PasswordResetConfirmSubmit(c *gin.Context) {
+func PasswordResetConfirmSubmit(c *context.Context) {
 	tokenId := c.Params.ByName("token")
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)

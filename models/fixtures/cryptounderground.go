@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/webhook"
 )
 
-var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
+var CryptoUnderground = New("cryptounderground", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

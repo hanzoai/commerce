@@ -12,7 +12,7 @@ import (
 
 // Custom logger backend that knows about AppEngine
 type Backend struct {
-	context    appengine.Context
+	context    context.Context
 	error      error
 	requestURI string
 	verbose    bool

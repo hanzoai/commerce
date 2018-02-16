@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("mailinglist-enabled",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, ml *mailinglist.MailingList) {

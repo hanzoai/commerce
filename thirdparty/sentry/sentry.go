@@ -56,7 +56,7 @@ func serializedPacket(packet *raven.Packet) (r io.Reader, contentType string) {
 
 // App Engine transport, uses appengine/urlfetch to deliver packets
 type AppEngineTransport struct {
-	ctx appengine.Context
+	ctx context.Context
 }
 
 // Send a packet
@@ -84,7 +84,7 @@ func (t *AppEngineTransport) Send(url, authHeader string, packet *raven.Packet) 
 	return nil
 }
 
-func NewClient(ctx appengine.Context) (client *raven.Client, err error) {
+func NewClient(ctx context.Context) (client *raven.Client, err error) {
 	// NOTE: Creates a weird worker thread processing buffer of requests, we'll close
 	// immediately after capturing this packet.
 	client, err = raven.NewClient(config.SentryDSN, map[string]string{})
@@ -142,7 +142,7 @@ func deserializeException(exception SerializedException) *raven.Exception {
 	return exc
 }
 
-var CaptureException = delay.Func("sentry-capture-exception", func(ctx appengine.Context, requestURI string, serialized SerializedException) {
+var CaptureException = delay.Func("sentry-capture-exception", func(ctx context.Context, requestURI string, serialized SerializedException) {
 	client, err := NewClient(ctx)
 	if err != nil {
 		return

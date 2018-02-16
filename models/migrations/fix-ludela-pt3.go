@@ -9,7 +9,7 @@ import (
 )
 
 var _ = New("fix-ludela-pt3",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "ludela")
 		return NoArgs
 	},

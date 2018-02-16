@@ -14,7 +14,7 @@ import (
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		u := GetCurrentUser(c)
 
 		// How did you get this far without an organization, bruh?
@@ -53,7 +53,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 
 // Automatically use namespace of organization set in context.
 func Namespace() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		ctx := GetAppEngine(c)
 		org := GetOrganization(c)
 		ctx = org.Namespaced(ctx)
@@ -61,15 +61,15 @@ func Namespace() gin.HandlerFunc {
 	}
 }
 
-func GetOrganization(c *gin.Context) *organization.Organization {
+func GetOrganization(c *context.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
 }
 
-func GetToken(c *gin.Context) *token.Token {
+func GetToken(c *context.Context) *token.Token {
 	return c.MustGet("token").(*token.Token)
 }
 
-func GetNamespace(c *gin.Context) appengine.Context {
+func GetNamespace(c *context.Context) context.Context {
 	ctx := GetAppEngine(c)
 	return GetOrganization(c).Namespaced(ctx)
 }

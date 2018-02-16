@@ -16,7 +16,7 @@ import (
 var transferFee = payout.TransferFee.Queue("transfer-platform-fee")
 
 // Create transfers for all un-transferred fees for associated organization
-var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Context, orgId string) {
+var transferFees = delay.Func("transfer-platform-fees", func(ctx context.Context, orgId string) {
 	db := datastore.New(ctx)
 
 	// Fetch organization
@@ -55,7 +55,7 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Conte
 })
 
 // Payout fees for all transfers
-func Payout(ctx appengine.Context) error {
+func Payout(ctx context.Context) error {
 	db := datastore.New(ctx)
 
 	// FIXME: Use iteration instead

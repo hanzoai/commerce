@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/submission"
 )
 
-var Submission = New("submission", func(c *gin.Context) *submission.Submission {
+var Submission = New("submission", func(c *context.Context) *submission.Submission {
 	db := getNamespaceDb(c)
 
 	sub := submission.New(db)

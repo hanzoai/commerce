@@ -19,7 +19,7 @@ func Static(urlRoot string) gin.HandlerFunc {
 	}
 	dir := http.Dir(directory)
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		if c.Request.Method != "GET" && c.Request.Method != "HEAD" {
 			return
 		}
