@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"appengine/delay"
+	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"

@@ -6,15 +6,15 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"appengine/delay"
-	"appengine/memcache"
+	"google.golang.org/appengine/delay"
+	"google.golang.org/appengine/memcache"
 	"appengine/taskqueue"
 
 	"hanzo.io/datastore"
 	"hanzo.io/util/json"
 	"hanzo.io/util/log"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 )
 
 type counterConfig struct {

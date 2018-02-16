@@ -2,7 +2,7 @@ package tasks
 
 import (
 	"google.golang.org/appengine"
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/fee"

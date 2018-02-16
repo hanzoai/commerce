@@ -3,7 +3,7 @@ package user
 import (
 	"strings"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"

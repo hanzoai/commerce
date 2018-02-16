@@ -12,7 +12,7 @@ import (
 
 	"google.golang.org/appengine"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 

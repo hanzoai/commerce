@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"testing"
 
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/httpclient"
