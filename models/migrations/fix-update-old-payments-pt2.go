@@ -3,7 +3,7 @@ package migrations
 import (
 	"strings"
 
-	"appengine/delay"
+	"google.golang.org/appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
