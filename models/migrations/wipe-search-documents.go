@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 
