@@ -3,7 +3,7 @@ package user
 import (
 	"strings"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
