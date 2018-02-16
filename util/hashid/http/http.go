@@ -9,7 +9,7 @@ import (
 	"hanzo.io/util/template"
 )
 
-func decodeKey(c *gin.Context) {
+func decodeKey(c *context.Context) {
 	ctx := middleware.GetAppEngine(c)
 	id := c.Params.ByName("id")
 	key, err := hashid.DecodeKey(ctx, id)
@@ -28,7 +28,7 @@ func decodeKey(c *gin.Context) {
 // Setup handlers for HTTP registered tasks
 func SetupRoutes(router router.Router) {
 	// Redirects
-	router.GET("/hashid", func(c *gin.Context) {
+	router.GET("/hashid", func(c *context.Context) {
 		template.Render(c, "hashid.html")
 	})
 

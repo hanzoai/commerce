@@ -8,7 +8,7 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("/xd")
 
-	api.GET("/:domain/proxy.html", func(c *gin.Context) {
+	api.GET("/:domain/proxy.html", func(c *context.Context) {
 		c.Writer.WriteHeader(200)
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")

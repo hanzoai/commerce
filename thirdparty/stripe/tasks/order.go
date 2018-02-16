@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
+var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)

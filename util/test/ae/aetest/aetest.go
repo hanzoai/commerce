@@ -1,10 +1,10 @@
 package aetest
 
 import (
-	"github.com/zeekay/aetest"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine/aetest"
 
 	"hanzo.io/util/log"
-	"hanzo.io/util/test/ae/context"
 	"hanzo.io/util/test/ae/options"
 )
 
@@ -13,17 +13,18 @@ func New(opts options.Options) (context.Context, error) {
 	opts.SetDefaults()
 
 	aeopts := &aetest.Options{
+		AppID: opts.AppId,
+		// StartupTimeout: time.Duration
 		StronglyConsistentDatastore: !opts.DisableStrongConsistency,
 	}
 
 	log.Debug("Creating new aetest context: %#v", aeopts)
 
-	if aectx, err := aetest.NewContext(aeopts); err != nil {
+	ctx, done, err := aetest.NewContext()
+	if err != nil {
 		return nil, err
-	} else {
-		ctx := new(shimContext)
-		ctx.Context = aectx
-		return ctx, err
 	}
+	defer done()
 
+	return ctx, nil
 }

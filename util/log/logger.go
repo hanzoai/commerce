@@ -28,16 +28,16 @@ func (l *Logger) detectContext(ctx interface{}) {
 	l.verboseRequested = false
 
 	switch ctx := ctx.(type) {
-	case *gin.Context:
+	case *context.Context:
 		// Get App Engine from session
-		l.backend.context = ctx.MustGet("appengine").(appengine.Context)
+		l.backend.context = ctx.MustGet("appengine").(context.Context)
 		l.verboseRequested = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
 			l.backend.requestURI = ctx.Request.RequestURI
 		}
-	case appengine.Context:
+	case context.Context:
 		l.backend.context = ctx
 	default:
 		l.backend.context = nil

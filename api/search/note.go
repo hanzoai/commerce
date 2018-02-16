@@ -17,7 +17,7 @@ type searchReq struct {
 	Before time.Time `json:"before"`
 }
 
-func searchNote(c *gin.Context) {
+func searchNote(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

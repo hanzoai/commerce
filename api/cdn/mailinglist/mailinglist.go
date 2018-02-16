@@ -10,7 +10,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func Js(c *gin.Context) {
+func Js(c *context.Context) {
 	id := c.Params.ByName("mailinglistid")
 	db := datastore.New(c)
 

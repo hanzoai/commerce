@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/mailinglist"
 )
 
-var _ = New("kanoa-forms", func(c *gin.Context) *mailinglist.MailingList {
+var _ = New("kanoa-forms", func(c *context.Context) *mailinglist.MailingList {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)

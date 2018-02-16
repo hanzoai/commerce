@@ -35,7 +35,7 @@ func DetectTest(query *url.Values) bool {
 
 // Check query for special config override params and update session.
 func DetectOverrides() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		query := c.Request.URL.Query()
 		c.Set("verbose", DetectVerbose(&query))
 		c.Set("test", DetectTest(&query))

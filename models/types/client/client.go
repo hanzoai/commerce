@@ -19,7 +19,7 @@ type Client struct {
 	GeoPoint  appengine.GeoPoint `json:"geoPoint,omitempty"`
 }
 
-func New(c *gin.Context) Client {
+func New(c *context.Context) Client {
 	req := c.Request
 
 	client := Client{

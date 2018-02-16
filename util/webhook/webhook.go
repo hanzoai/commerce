@@ -10,12 +10,12 @@ import (
 )
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {
-	var aectx appengine.Context
+	var aectx context.Context
 
 	switch v := ctx.(type) {
-	case *gin.Context:
-		aectx = v.MustGet("appengine").(appengine.Context)
-	case appengine.Context:
+	case *context.Context:
+		aectx = v.MustGet("appengine").(context.Context)
+	case context.Context:
 		aectx = v
 	}
 

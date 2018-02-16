@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var Aura = New("aura", func(c *gin.Context) *organization.Organization {
+var Aura = New("aura", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

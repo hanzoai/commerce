@@ -23,7 +23,7 @@ func Test(t *testing.T) {
 }
 
 var (
-	c   *gin.Context
+	c   *context.Context
 	ctx ae.Context
 	db  *datastore.Datastore
 )

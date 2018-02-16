@@ -31,7 +31,7 @@ type DashboardData struct {
 	// DailyStoreOrders [](map[currency.Type]int64)
 }
 
-func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
+func GetDashboardData(ctx context.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
 	ctx = org.Namespaced(ctx)
 
 	loc := time.FixedZone("utc +"+strconv.Itoa(tzOffset), tzOffset)

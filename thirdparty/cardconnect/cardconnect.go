@@ -83,7 +83,7 @@ type AuthorizationRes struct { // {
 	Token    string `json:"token"`    // "token":    "9419786452781111",
 } // }
 
-func Authorize(ctx appengine.Context, order *order.Order, user *user.User) (ares AuthorizationRes, err error) {
+func Authorize(ctx context.Context, order *order.Order, user *user.User) (ares AuthorizationRes, err error) {
 	// Convert models.LineItem to our CardConnect specialized LineItem that
 	// will serialize properly.
 	items := make([]LineItem, len(order.Items))

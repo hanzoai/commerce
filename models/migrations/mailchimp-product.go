@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("mailchimp-products",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "cover")
 
 		db := ds.New(c)

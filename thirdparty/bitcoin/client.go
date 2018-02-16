@@ -22,7 +22,7 @@ var JsonRpcVersion = "1.0"
 var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":%s}`
 
 type BitcoinClient struct {
-	ctx        appengine.Context
+	ctx        context.Context
 	httpClient *http.Client
 	host       string
 	IsTest     bool
@@ -57,7 +57,7 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(ctx appengine.Context, host, username, password string) BitcoinClient {
+func New(ctx context.Context, host, username, password string) BitcoinClient {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:                       ctx,

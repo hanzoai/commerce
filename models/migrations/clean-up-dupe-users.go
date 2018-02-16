@@ -8,7 +8,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var _ = New("clean-up-dupe-users", func(c *gin.Context) []interface{} {
+var _ = New("clean-up-dupe-users", func(c *context.Context) []interface{} {
 	db := datastore.New(c)
 	db.SetNamespace("kanoa")
 

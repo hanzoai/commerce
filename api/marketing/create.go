@@ -12,7 +12,7 @@ import (
 	. "hanzo.io/marketing/types"
 )
 
-func create(c *gin.Context) {
+func create(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

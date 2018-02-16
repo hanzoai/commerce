@@ -25,10 +25,10 @@ type Client struct {
 	Endpoint string
 
 	client *http.Client
-	ctx    appengine.Context
+	ctx    context.Context
 }
 
-func New(c *gin.Context, username, password string) *Client {
+func New(c *context.Context, username, password string) *Client {
 	ctx := middleware.GetAppEngine(c)
 
 	client := urlfetch.Client(ctx)

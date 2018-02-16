@@ -199,7 +199,7 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io
+deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io update-env
 	$(gpm) install
 
 .sdk:

@@ -41,7 +41,7 @@ func readBody(res *http.Response) (string, error) {
 	return string(bytes), nil
 }
 
-func respond(ctx appengine.Context, message url.Values) (string, error) {
+func respond(ctx context.Context, message url.Values) (string, error) {
 	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, bytes.NewBufferString(message.Encode()))
 	if err != nil {
 		log.Panic("Could create request: %s", err, ctx)
@@ -66,7 +66,7 @@ func respond(ctx appengine.Context, message url.Values) (string, error) {
 	return readBody(res)
 }
 
-func Webhook(c *gin.Context) {
+func Webhook(c *context.Context) {
 	orgName := c.Params.ByName("organization")
 	if orgName == "" {
 		log.Panic("Organization not specified", c)

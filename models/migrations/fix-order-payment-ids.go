@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("flag-order-payment-ids",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

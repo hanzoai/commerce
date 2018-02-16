@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/router"
 )
 
-func setOrg(c *gin.Context) {
+func setOrg(c *context.Context) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	if err := org.GetById(c.Params.ByName("organization")); err != nil {

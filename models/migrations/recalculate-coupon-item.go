@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("recalculate-coupon-items",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},

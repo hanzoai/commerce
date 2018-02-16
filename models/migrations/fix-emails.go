@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("fix-emails",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, tok *token.Token) {

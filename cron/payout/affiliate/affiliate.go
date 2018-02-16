@@ -19,7 +19,7 @@ import (
 var transferFee = payout.TransferFee.Queue("transfer-affiliate-fee")
 
 // Create transfers for all un-transferred fees for associated organization
-var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, namespace, affKey string, cutoff time.Time) {
+var transferFees = delay.Func("transfer-affiliate-fees", func(ctx context.Context, namespace, affKey string, cutoff time.Time) {
 	db := datastore.New(ctx)
 
 	// Switch namespace
@@ -55,7 +55,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Cont
 })
 
 // Payout fees for all transfers
-func Payout(ctx appengine.Context) error {
+func Payout(ctx context.Context) error {
 	db := datastore.New(ctx)
 
 	log.Debug("Fetching all organizations", ctx)

@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
+var MoveOrderToNewUser = New("move-order-to-new-user", func(c *context.Context) {
 	oldEmail := "marktwellsa@mac.com"
 	newEmail := "marktwells@mac.com"
 

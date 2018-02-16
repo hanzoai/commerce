@@ -16,7 +16,7 @@ import (
 )
 
 var _ = New("collapse-orders-by-user",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},

@@ -13,7 +13,7 @@ import (
 )
 
 var _ = New("collapse-transactions-by-user",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},

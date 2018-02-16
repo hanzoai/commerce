@@ -9,7 +9,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func List(c *gin.Context) {
+func List(c *context.Context) {
 	id := c.Params.ByName("id")
 	kind := c.Params.ByName("kind")
 

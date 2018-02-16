@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {
+var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, mlJSON []byte, sJSON []byte) error {
 	db := datastore.New(ctx)
 	ml := mailinglist.FromJSON(db, mlJSON)
 	s := subscriber.FromJSON(db, sJSON)

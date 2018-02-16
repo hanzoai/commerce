@@ -14,7 +14,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
+func refund(c *context.Context, org *organization.Organization, ord *order.Order) error {
 	type Refund struct {
 		Amount currency.Cents `json:"amount"`
 	}

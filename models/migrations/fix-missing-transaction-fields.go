@@ -8,7 +8,7 @@ import (
 )
 
 var _ = New("fix-missing-transaction-fields",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, t *transaction.Transaction) {

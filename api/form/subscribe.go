@@ -22,7 +22,7 @@ import (
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
-func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, ml *mailinglist.MailingList) {
+func subscribe(c *context.Context, db *datastore.Datastore, org *organization.Organization, ml *mailinglist.MailingList) {
 	ctx := db.Context
 
 	// Make sure Subscriber is created with the right context

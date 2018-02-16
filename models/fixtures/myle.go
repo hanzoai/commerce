@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var Myle = New("myle", func(c *gin.Context) *organization.Organization {
+var Myle = New("myle", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

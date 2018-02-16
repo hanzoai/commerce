@@ -21,7 +21,7 @@ import (
 )
 
 // Decode Stripe payload
-func decodeEvent(c *gin.Context) (*stripe.Event, error) {
+func decodeEvent(c *context.Context) (*stripe.Event, error) {
 	event := new(stripe.Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
 		log.Error("Could not Decode:\n%s", c.Request.Body, c)
@@ -33,7 +33,7 @@ func decodeEvent(c *gin.Context) (*stripe.Event, error) {
 }
 
 // Get organization and token for event
-func getToken(ctx appengine.Context, event *stripe.Event) (*organization.Organization, string, error) {
+func getToken(ctx context.Context, event *stripe.Event) (*organization.Organization, string, error) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 
@@ -58,7 +58,7 @@ func getToken(ctx appengine.Context, event *stripe.Event) (*organization.Organiz
 }
 
 // Unmarshal raw stripe event object
-func unmarshal(ctx appengine.Context, event *stripe.Event, dst interface{}) interface{} {
+func unmarshal(ctx context.Context, event *stripe.Event, dst interface{}) interface{} {
 	if err := json.Unmarshal(event.Data.Raw, dst); err != nil {
 		log.Error("Failed to unmarshal stripe event %v: %#v", err, event, ctx)
 		return nil
@@ -67,7 +67,7 @@ func unmarshal(ctx appengine.Context, event *stripe.Event, dst interface{}) inte
 }
 
 // Add task to taskqueue to process this event
-func addTask(fn *delay.Function, ctx appengine.Context, event *stripe.Event, org *organization.Organization, token string, obj interface{}) {
+func addTask(fn *delay.Function, ctx context.Context, event *stripe.Event, org *organization.Organization, token string, obj interface{}) {
 	val := reflect.ValueOf(obj).Elem().Interface()
 	args := []interface{}{org.Name, token, val, time.Now()}
 	if err := fn.Call(ctx, args...); err != nil {
@@ -76,7 +76,7 @@ func addTask(fn *delay.Function, ctx appengine.Context, event *stripe.Event, org
 }
 
 // Handle stripe webhook POSTs
-func Webhook(c *gin.Context) {
+func Webhook(c *context.Context) {
 	// Decode webhook event
 	event, err := decodeEvent(c)
 	if err != nil {

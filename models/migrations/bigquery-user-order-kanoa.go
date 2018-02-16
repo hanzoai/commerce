@@ -59,7 +59,7 @@ var OrderFields = bigquery.Fields{
 }
 
 var _ = NewBigQuery("bigquery-export-kanoa-user-order",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		t := time.Now()

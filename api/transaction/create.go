@@ -13,7 +13,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func Create(c *gin.Context) {
+func Create(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	trans := transaction.New(db)

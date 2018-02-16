@@ -16,7 +16,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func searchUser(c *gin.Context) {
+func searchUser(c *context.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	u := user.User{}

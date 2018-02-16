@@ -39,7 +39,7 @@ func Decode(hashid string) ([]int, error) {
 	return h.DecodeWithError(hashid)
 }
 
-func GetNamespace(ctx appengine.Context, hashid string) (string, error) {
+func GetNamespace(ctx context.Context, hashid string) (string, error) {
 	ids, err := Decode(hashid)
 	if err != nil {
 		return "", err

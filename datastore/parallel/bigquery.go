@@ -64,7 +64,7 @@ type BigQueryRow struct {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createBigQueryDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-bigquery-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-bigquery-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx := ctx
 		if namespace != "" {

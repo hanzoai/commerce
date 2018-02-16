@@ -69,7 +69,7 @@ func New(name string, fn interface{}) *ParallelFn {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx := ctx
 		if namespace != "" {
@@ -131,18 +131,18 @@ func (fn *ParallelFn) createDelayFn(name string) {
 }
 
 // Call underlying delay function
-func (fn *ParallelFn) Call(ctx appengine.Context, args ...interface{}) {
+func (fn *ParallelFn) Call(ctx context.Context, args ...interface{}) {
 	fn.DelayFn.Call(ctx, args...)
 }
 
 // Run fn in parallel across all entities
-func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) error {
+func (fn *ParallelFn) Run(c *context.Context, batchSize int, args ...interface{}) error {
 	// Limit results in test mode
 	if c.MustGet("test").(bool) {
 		batchSize = 1
 	}
 
-	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx := c.MustGet("appengine").(context.Context)
 
 	namespaces := make([]string, 0)
 
@@ -172,7 +172,7 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 }
 
 // Start individual runs in a given namespace
-var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
+var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
 	// Set namespace explicitly
 	nsCtx := ctx
 	if namespace != "" {

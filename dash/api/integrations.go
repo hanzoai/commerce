@@ -8,13 +8,13 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func Mailchimp(c *gin.Context) {
+func Mailchimp(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Mailchimp)
 }
 
-func UpdateMailchimp(c *gin.Context) {
+func UpdateMailchimp(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Mailchimp); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -26,13 +26,13 @@ func UpdateMailchimp(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Mandrill(c *gin.Context) {
+func Mandrill(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Mandrill)
 }
 
-func UpdateMandrill(c *gin.Context) {
+func UpdateMandrill(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Mandrill); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -44,13 +44,13 @@ func UpdateMandrill(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Netlify(c *gin.Context) {
+func Netlify(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Netlify)
 }
 
-func UpdateNetlify(c *gin.Context) {
+func UpdateNetlify(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Netlify); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -62,13 +62,13 @@ func UpdateNetlify(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Affiliate(c *gin.Context) {
+func Affiliate(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Affiliate)
 }
 
-func UpdateAffiliate(c *gin.Context) {
+func UpdateAffiliate(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Affiliate); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -80,13 +80,13 @@ func UpdateAffiliate(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Reamaze(c *gin.Context) {
+func Reamaze(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Reamaze)
 }
 
-func UpdateReamaze(c *gin.Context) {
+func UpdateReamaze(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Reamaze); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -98,13 +98,13 @@ func UpdateReamaze(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Shipwire(c *gin.Context) {
+func Shipwire(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Shipwire)
 }
 
-func UpdateShipwire(c *gin.Context) {
+func UpdateShipwire(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Shipwire); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -116,13 +116,13 @@ func UpdateShipwire(c *gin.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func Recaptcha(c *gin.Context) {
+func Recaptcha(c *context.Context) {
 	org := middleware.GetOrganization(c)
 
 	http.Render(c, 200, org.Recaptcha)
 }
 
-func UpdateRecaptcha(c *gin.Context) {
+func UpdateRecaptcha(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	if err := json.Decode(c.Request.Body, &org.Recaptcha); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)

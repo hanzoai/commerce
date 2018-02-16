@@ -12,17 +12,17 @@ import (
 
 // Register tasks
 func init() {
-	task.New("payout-affiliate", func(c *gin.Context) {
+	task.New("payout-affiliate", func(c *context.Context) {
 		ctx := middleware.GetAppEngine(c)
 		affiliate.Payout(ctx)
 	})
 
-	task.New("payout-partner", func(c *gin.Context) {
+	task.New("payout-partner", func(c *context.Context) {
 		ctx := middleware.GetAppEngine(c)
 		partner.Payout(ctx)
 	})
 
-	task.New("payout-platform", func(c *gin.Context) {
+	task.New("payout-platform", func(c *context.Context) {
 		ctx := middleware.GetAppEngine(c)
 		platform.Payout(ctx)
 	})

@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/emails"
 )
 
-var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId string, ordId string) {
+var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId string, ordId string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	org.MustGetById(orgId)
@@ -39,7 +39,7 @@ var CaptureAsync = delay.Func("capture-async", func(ctx appengine.Context, orgId
 	// updateMailchimp(ctx, org, ord)
 })
 
-var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx appengine.Context, orgId, ordId, email, firstName, lastName string) {
+var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx context.Context, orgId, ordId, email, firstName, lastName string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	org.MustGetById(orgId)

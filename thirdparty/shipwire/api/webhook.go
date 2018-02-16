@@ -12,7 +12,7 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func getList(c *gin.Context, data []byte, dst interface{}) error {
+func getList(c *context.Context, data []byte, dst interface{}) error {
 	// Decode resource
 	var rsrc Resource
 	if err := json.Unmarshal(data, &rsrc); err != nil {
@@ -36,7 +36,7 @@ func getList(c *gin.Context, data []byte, dst interface{}) error {
 }
 
 // Process individual webhooks
-func webhook(c *gin.Context) {
+func webhook(c *context.Context) {
 	dump, _ := httputil.DumpRequest(c.Request, true)
 	log.Info("Webhook request:\n%s", dump, c)
 

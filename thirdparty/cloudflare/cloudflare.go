@@ -22,7 +22,7 @@ type Client struct {
 	client *http.Client
 }
 
-func New(c *gin.Context) *Client {
+func New(c *context.Context) *Client {
 	ctx := middleware.GetAppEngine(c)
 
 	client := urlfetch.Client(ctx)

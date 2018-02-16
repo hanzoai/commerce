@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
+var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
 	freq := aggregate.Frequency(f)
 
 	nsctx, err := appengine.Namespace(ctx, namespace)
@@ -62,6 +62,6 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 	}
 })
 
-func UpsertAggregate(ctx appengine.Context, namespace, name, typ string, t time.Time, f aggregate.Frequency, deltaValue int, deltaVectorValue []int64) {
+func UpsertAggregate(ctx context.Context, namespace, name, typ string, t time.Time, f aggregate.Frequency, deltaValue int, deltaVectorValue []int64) {
 	upsertAggregate.Call(ctx, namespace, name, typ, t, string(f), deltaValue, deltaVectorValue)
 }

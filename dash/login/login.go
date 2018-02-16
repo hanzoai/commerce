@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/template"
 )
 
-func loginUser(c *gin.Context) (*user.User, error) {
+func loginUser(c *context.Context) (*user.User, error) {
 	// Parse login form
 	f := new(LoginForm)
 	if err := f.Parse(c); err != nil {
@@ -39,12 +39,12 @@ func loginUser(c *gin.Context) (*user.User, error) {
 }
 
 // GET /login
-func Login(c *gin.Context) {
+func Login(c *context.Context) {
 	template.Render(c, "login/login.html")
 }
 
 // POST /login
-func LoginSubmit(c *gin.Context) {
+func LoginSubmit(c *context.Context) {
 	if _, err := loginUser(c); err == nil {
 		log.Debug("Success")
 		c.Redirect(302, config.UrlFor("dash"))
@@ -56,7 +56,7 @@ func LoginSubmit(c *gin.Context) {
 }
 
 // GET /logout
-func Logout(c *gin.Context) {
+func Logout(c *context.Context) {
 	err := auth.Logout(c)
 	if err != nil {
 		log.Panic("Error while logging out \n%v", err)

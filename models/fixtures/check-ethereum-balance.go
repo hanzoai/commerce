@@ -13,7 +13,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var CheckEthereumBalance = New("check-ethereum-balance", func(c *gin.Context) {
+var CheckEthereumBalance = New("check-ethereum-balance", func(c *context.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 

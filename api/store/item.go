@@ -31,7 +31,7 @@ func getItem(itemType string) gin.HandlerFunc {
 		panic("Unable to get listing with item of that type.")
 	}
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		ctx := middleware.GetAppEngine(c)
 		db := datastore.New(ctx)
 		id := c.Params.ByName("storeid")

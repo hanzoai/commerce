@@ -480,7 +480,7 @@ func CalculateFee(inputs, outputs int, feePerByte int64) int64 {
 	return int64(approximateTransactionLength) * feePerByte
 }
 
-func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWithAmount, error) {
+func GetBitcoinTransactions(ctx context.Context, address string) ([]OriginWithAmount, error) {
 	nsCtx, err := appengine.Namespace(ctx, blockchains.BlockchainNamespace)
 	if err != nil {
 		return nil, err

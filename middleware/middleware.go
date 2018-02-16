@@ -8,7 +8,7 @@ import (
 
 // Automatically get App Engine context.
 func AppEngine() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		ctx := appengine.NewContext(c.Request)
 		c.Set("appengine", ctx)
 	}
@@ -17,13 +17,13 @@ func AppEngine() gin.HandlerFunc {
 // Automatically get the Host header so we can decide what to do with a given
 // request.
 func AddHost() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		c.Set("host", c.Request.Header.Get("Host"))
 	}
 }
 
 func LiveReload() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		c.Next()
 		// If 200 and text/html content-type inject bebop script for live reload
 		if c.Writer.Status() == 200 && c.Writer.Header().Get("Content-Type") == "text/html; charset=utf-8" {
@@ -35,6 +35,6 @@ func LiveReload() gin.HandlerFunc {
 	}
 }
 
-func GetAppEngine(c *gin.Context) appengine.Context {
-	return c.MustGet("appengine").(appengine.Context)
+func GetAppEngine(c *context.Context) context.Context {
+	return c.MustGet("appengine").(context.Context)
 }

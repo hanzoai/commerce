@@ -25,7 +25,7 @@ func testModeError(err error) bool {
 }
 
 // Update charge in case order/pay id is missing in metadata
-var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx appengine.Context, payId string) {
+var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx context.Context, payId string) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 	if err := pay.GetById(payId); err != nil {
@@ -63,7 +63,7 @@ var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", f
 })
 
 var _ = New("fix-update-old-payments-pt-2",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

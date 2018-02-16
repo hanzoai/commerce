@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("sync-carts",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		db := ds.New(c)
 		org := organization.New(db)
 		org.GetById("ludela")

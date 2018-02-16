@@ -20,7 +20,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-func setupNamespaceDelete(c *gin.Context) []interface{} {
+func setupNamespaceDelete(c *context.Context) []interface{} {
 	q := c.Request.URL.Query()
 	ns := q.Get("namespace")
 	if ns == "" {

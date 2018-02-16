@@ -26,7 +26,7 @@ func (f LoginForm) PasswordHash() ([]byte, error) {
 	return password.Hash(f.Password)
 }
 
-func (f *LoginForm) Parse(c *gin.Context) error {
+func (f *LoginForm) Parse(c *context.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ type ContactForm struct {
 	User *user.User
 }
 
-func (f *ContactForm) Parse(c *gin.Context) error {
+func (f *ContactForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -56,7 +56,7 @@ type BillingForm struct {
 	BillingAddress models.Address
 }
 
-func (f *BillingForm) Parse(c *gin.Context) error {
+func (f *BillingForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -73,7 +73,7 @@ type ChangePasswordForm struct {
 	ConfirmPassword string
 }
 
-func (f *ChangePasswordForm) Parse(c *gin.Context) error {
+func (f *ChangePasswordForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -88,7 +88,7 @@ type PasswordResetForm struct {
 	Email string
 }
 
-func (f *PasswordResetForm) Parse(c *gin.Context) error {
+func (f *PasswordResetForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -98,7 +98,7 @@ type PasswordResetConfirmForm struct {
 	ConfirmPassword string
 }
 
-func (f *PasswordResetConfirmForm) Parse(c *gin.Context) error {
+func (f *PasswordResetConfirmForm) Parse(c *context.Context) error {
 	return form.Parse(c, f)
 }
 
@@ -109,7 +109,7 @@ type SignupForm struct {
 	ConfirmPassword string
 }
 
-func (f *SignupForm) Parse(c *gin.Context) error {
+func (f *SignupForm) Parse(c *context.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}

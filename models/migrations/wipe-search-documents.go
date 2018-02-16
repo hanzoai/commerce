@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("wipe-search-documents",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		db := datastore.New(c)
 		db.SetNamespace("kanoa")
 		ctx := db.Context

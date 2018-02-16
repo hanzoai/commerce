@@ -15,7 +15,7 @@ import (
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
+func capture(c *context.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
 

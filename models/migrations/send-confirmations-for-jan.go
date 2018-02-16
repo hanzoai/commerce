@@ -21,7 +21,7 @@ func init() {
 }
 
 var _ = New("send-confirmations-for-jan",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		db := datastore.New(c)

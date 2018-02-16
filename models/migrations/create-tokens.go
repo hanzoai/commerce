@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("create-tokens",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

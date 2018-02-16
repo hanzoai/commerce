@@ -39,7 +39,7 @@ func accessTokenFromHeader(fieldValue string) string {
 	return accessToken
 }
 
-func ParseToken(c *gin.Context) {
+func ParseToken(c *context.Context) {
 	query := c.Request.URL.Query()
 
 	// Check for `key` query param by default
@@ -79,7 +79,7 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		// Verify permissions
 		if !GetPermissions(c).Has(permissions) {
 			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
@@ -87,7 +87,7 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 	}
 }
 
-func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.Claims) error) (*organization.Organization, *app.App, *oauthtoken.Claims, bool) {
+func DecodeToken(c *context.Context, tokString string, validationFn func(oauthtoken.Claims) error) (*organization.Organization, *app.App, *oauthtoken.Claims, bool) {
 	// Peek at claims to get the org so we can use secret to verify the key
 	claims := oauthtoken.Claims{}
 	if err := jwt.Peek(tokString, &claims); err != nil {
@@ -139,7 +139,7 @@ func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.
 	return org, ap, &claims, true
 }
 
-func IsAccessIssuerRevoked(c *gin.Context, claims *oauthtoken.Claims) bool {
+func IsAccessIssuerRevoked(c *context.Context, claims *oauthtoken.Claims) bool {
 	// No issuer
 	if claims.Type != oauthtoken.Access {
 		return false
@@ -160,7 +160,7 @@ func IsAccessIssuerRevoked(c *gin.Context, claims *oauthtoken.Claims) bool {
 	return false
 }
 
-func IsCustomerIssuerRevoked(c *gin.Context, org *organization.Organization, claims *oauthtoken.Claims) bool {
+func IsCustomerIssuerRevoked(c *context.Context, org *organization.Organization, claims *oauthtoken.Claims) bool {
 	// No issuer
 	if claims.Type != oauthtoken.Customer {
 		return false
@@ -194,7 +194,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *context.Context) {
 		// Parse token
 		ParseToken(c)
 
@@ -253,11 +253,11 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 }
 
-func GetClaims(c *gin.Context) *oauthtoken.Claims {
+func GetClaims(c *context.Context) *oauthtoken.Claims {
 	return c.MustGet("claims").(*oauthtoken.Claims)
 }
 
-func GetAccessToken(c *gin.Context) string {
+func GetAccessToken(c *context.Context) string {
 	tok, ok := c.Get("access-token")
 	if !ok {
 		return ""
@@ -266,16 +266,16 @@ func GetAccessToken(c *gin.Context) string {
 	return tok.(string)
 }
 
-func GetPermissions(c *gin.Context) bit.Field {
+func GetPermissions(c *context.Context) bit.Field {
 	return c.MustGet("permissions").(bit.Field)
 }
 
-func GetStore(c *gin.Context) *app.App {
+func GetStore(c *context.Context) *app.App {
 	return c.MustGet("app").(*app.App)
 }
 
 // Site Tokens require no user id and a organization name and app name with Claims
-func ApiKeyOrAccessTokenOnly(c *gin.Context) {
+func ApiKeyOrAccessTokenOnly(c *context.Context) {
 	claims := GetClaims(c)
 	if !oauthtoken.IsApi(*claims) && !oauthtoken.IsAccess(*claims) {
 		http.Fail(c, 401, "Access Denied", nil)
@@ -283,7 +283,7 @@ func ApiKeyOrAccessTokenOnly(c *gin.Context) {
 	}
 }
 
-func AccessTokenOnly(c *gin.Context) {
+func AccessTokenOnly(c *context.Context) {
 	claims := GetClaims(c)
 	if !oauthtoken.IsAccess(*claims) {
 		http.Fail(c, 401, "Access Denied", nil)
@@ -292,7 +292,7 @@ func AccessTokenOnly(c *gin.Context) {
 }
 
 // Site Tokens require no user id and a organization name and app name with Claims
-func ApiKeyOnly(c *gin.Context) {
+func ApiKeyOnly(c *context.Context) {
 	claims := GetClaims(c)
 	if !oauthtoken.IsApi(*claims) {
 		http.Fail(c, 401, "Access Denied", nil)
@@ -301,7 +301,7 @@ func ApiKeyOnly(c *gin.Context) {
 }
 
 // Customer Tokens require a user id and a organization name and app name with AccessClaims
-func CustomerTokenOnly(c *gin.Context) {
+func CustomerTokenOnly(c *context.Context) {
 	claims := GetClaims(c)
 	if !oauthtoken.IsCustomer(*claims) {
 		http.Fail(c, 401, "Access Denied", nil)
@@ -320,6 +320,6 @@ func CustomerTokenOnly(c *gin.Context) {
 	c.Set("user", u)
 }
 
-func GetUser(c *gin.Context) *user.User {
+func GetUser(c *context.Context) *user.User {
 	return c.MustGet("user").(*user.User)
 }

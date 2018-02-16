@@ -18,7 +18,7 @@ type PayKeyResponse struct {
 	PayKey string `json:"payKey"`
 }
 
-func Confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
+func Confirm(c *context.Context, org *organization.Organization, ord *order.Order) (err error) {
 	db := datastore.New(c)
 
 	payments := make([]*payment.Payment, 0)
@@ -45,7 +45,7 @@ func Confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	return nil
 }
 
-func Cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
+func Cancel(c *context.Context, org *organization.Organization, ord *order.Order) (err error) {
 	db := datastore.New(c)
 
 	var keys []*aeds.Key

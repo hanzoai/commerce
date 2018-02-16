@@ -11,7 +11,7 @@ import (
 )
 
 // Synchronize payment using transfer
-var TransferSync = delay.Func("stripe-transfer-sync", func(ctx appengine.Context, ns string, token string, str stripe.Transfer, start time.Time) {
+var TransferSync = delay.Func("stripe-transfer-sync", func(ctx context.Context, ns string, token string, str stripe.Transfer, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using transfer

@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("set-userid-for-referrals",
-	func(c *gin.Context) []interface{} {
+	func(c *context.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

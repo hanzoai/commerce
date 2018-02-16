@@ -28,7 +28,7 @@ var (
 	Funcs = make(map[string]*Function)
 
 	// precomputed types
-	contextType = reflect.TypeOf((*appengine.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 
 	// errors
@@ -104,7 +104,7 @@ func Func(key string, i interface{}) *Function {
 // is equivalent to
 //   t, _ := f.Task(...)
 //   _, err := taskqueue.Add(c, t, "")
-func (f *Function) Call(c appengine.Context, args ...interface{}) error {
+func (f *Function) Call(c context.Context, args ...interface{}) error {
 	t, err := f.Task(args...)
 	if err != nil {
 		log.Warn(err)
@@ -204,7 +204,7 @@ func (f *Function) Queue(queue string) *Function {
 }
 
 // Add a task only once by using a unique name
-func (f *Function) Once(ctx appengine.Context, name string, delay time.Duration, args ...interface{}) error {
+func (f *Function) Once(ctx context.Context, name string, delay time.Duration, args ...interface{}) error {
 	f2 := *f
 	f2.queue = f.queue
 	f2.name = name
@@ -231,7 +231,7 @@ func init() {
 	})
 }
 
-func runFunc(c appengine.Context, w http.ResponseWriter, req *http.Request) {
+func runFunc(c context.Context, w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	var inv invocation
