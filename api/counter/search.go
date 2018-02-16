@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/log"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 )
 
 type searchReq struct {

@@ -7,7 +7,7 @@ import (
 	"github.com/qedus/nds"
 
 	"google.golang.org/appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/util/log"
 )

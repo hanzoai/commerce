@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
