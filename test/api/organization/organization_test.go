@@ -21,7 +21,7 @@ import (
 
 	. "hanzo.io/util/test/ginkgo"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	organizationApi "hanzo.io/api/organization"
 )

@@ -16,7 +16,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/log"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )

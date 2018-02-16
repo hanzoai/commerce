@@ -1,7 +1,7 @@
 package netlify
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/util/log"
 

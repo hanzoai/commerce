@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"hanzo.io/util/json"

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 
 	"hanzo.io/datastore"

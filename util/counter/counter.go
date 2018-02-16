@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/delay"
 	"appengine/memcache"
 	"appengine/taskqueue"
