@@ -3,7 +3,7 @@ package affiliate
 import (
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/cron/payout"

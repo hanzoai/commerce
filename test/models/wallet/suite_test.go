@@ -1,7 +1,7 @@
 package test
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 	"testing"
 
 	"hanzo.io/datastore"

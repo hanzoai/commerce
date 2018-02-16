@@ -3,7 +3,7 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"

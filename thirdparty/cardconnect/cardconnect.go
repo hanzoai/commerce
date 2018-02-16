@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 
-	"appengine"
+	"google.golang.org/appengine"
 	"appengine/urlfetch"
 )
 

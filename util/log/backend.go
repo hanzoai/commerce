@@ -3,7 +3,7 @@ package log
 import (
 	"log"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/op/go-logging"
 

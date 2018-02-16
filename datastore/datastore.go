@@ -1,9 +1,9 @@
 package datastore
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"

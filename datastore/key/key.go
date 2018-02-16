@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"appengine"
+	"google.golang.org/appengine"
 	aeds "appengine/datastore"
 
 	"github.com/qedus/nds"

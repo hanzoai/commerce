@@ -4,12 +4,12 @@ import (
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/app"

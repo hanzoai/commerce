@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 var demoMode = true
