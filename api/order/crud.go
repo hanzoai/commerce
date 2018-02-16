@@ -10,7 +10,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func Create(c *gin.Context) {
+func Create(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	ord := order.New(db)
@@ -35,7 +35,7 @@ func Create(c *gin.Context) {
 	}
 }
 
-func Update(c *gin.Context) {
+func Update(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	ord := order.New(db)
@@ -71,7 +71,7 @@ func Update(c *gin.Context) {
 	}
 }
 
-func Patch(c *gin.Context) {
+func Patch(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	ord := order.New(db)

@@ -14,7 +14,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-func MakeBitcoinPayment(ctx appengine.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {
+func MakeBitcoinPayment(ctx context.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {
 	// Create needed client.
 
 	client := bitcoin.BitcoinClient{}

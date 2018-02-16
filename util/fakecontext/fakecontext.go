@@ -84,7 +84,7 @@ func NewRequest(r *http.Request) *Request {
 	}
 }
 
-// gin.Context replacement that can be almost completely be serialized to/from a gin.Context
+// context.Context replacement that can be almost completely be serialized to/from a context.Context
 type Context struct {
 	Keys    map[string]interface{}
 	Params  gin.Params
@@ -108,8 +108,8 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error) {
-	ctx = new(gin.Context)
+func (c Context) Context(aectx *context.Context) (ctx *context.Context, err error) {
+	ctx = new(context.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
 	ctx.Params = c.Params
@@ -139,7 +139,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 	return ctx, err
 }
 
-func NewContext(c *gin.Context) *Context {
+func NewContext(c *context.Context) *Context {
 	ctx := new(Context)
 
 	ctx.Keys = make(map[string]interface{}, 0)

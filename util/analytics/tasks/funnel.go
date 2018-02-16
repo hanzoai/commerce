@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, namespace, eventId string) {
+var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {
 	nsctx, err := appengine.Namespace(ctx, namespace)
 	if err != nil {
 		log.Error("Could not namespace %v, %v", namespace, err, ctx)
@@ -106,6 +106,6 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 	}
 })
 
-func UpdateFunnels(ctx appengine.Context, namespace, eventId string) {
+func UpdateFunnels(ctx context.Context, namespace, eventId string) {
 	updateFunnels.Call(ctx, namespace, eventId)
 }

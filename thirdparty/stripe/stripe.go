@@ -10,7 +10,7 @@ import (
 	"github.com/stripe/stripe-go/client"
 )
 
-func New(ctx appengine.Context, accessToken string) *Client {
+func New(ctx context.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{

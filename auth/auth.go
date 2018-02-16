@@ -11,7 +11,7 @@ import (
 
 const loginKey = "loggedIn"
 
-func GetCurrentUserId(c *gin.Context) (string, error) {
+func GetCurrentUserId(c *context.Context) (string, error) {
 	log.Debug("Retrieving current id from session")
 	value, err := session.Get(c, loginKey)
 	if err != nil {
@@ -25,7 +25,7 @@ func GetCurrentUserId(c *gin.Context) (string, error) {
 	return value.(string), nil
 }
 
-func GetCurrentUser(c *gin.Context) (*user.User, error) {
+func GetCurrentUser(c *context.Context) (*user.User, error) {
 	log.Debug("Retrieving current user from session")
 	id, err := GetCurrentUserId(c)
 	if err != nil {
@@ -47,7 +47,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 
 // // Validates a form and inserts a new user into the datastore
 // // Checks if the Email and Id are unique, and calculates a hash for the password
-// func RegisterNewUser(c *gin.Context) (*user.User, error) {
+// func RegisterNewUser(c *context.Context) (*user.User, error) {
 // 	// Parse register form
 // 	f := new(RegistrationForm)
 // 	if err := f.Parse(c); err != nil {
@@ -84,7 +84,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 // 	return &m, nil
 // }
 
-func IsLoggedIn(c *gin.Context) bool {
+func IsLoggedIn(c *context.Context) bool {
 	value, err := session.Get(c, loginKey)
 	if err != nil {
 		return false
@@ -98,10 +98,10 @@ func IsLoggedIn(c *gin.Context) bool {
 	return true
 }
 
-func Login(c *gin.Context, u *user.User) error {
+func Login(c *context.Context, u *user.User) error {
 	return session.Set(c, loginKey, u.Id())
 }
 
-func Logout(c *gin.Context) error {
+func Logout(c *context.Context) error {
 	return session.Clear(c)
 }

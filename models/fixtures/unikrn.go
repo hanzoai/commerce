@@ -10,7 +10,7 @@ import (
 	"hanzo.io/util/log"
 )
 
-var Unikrn = New("unikrn", func(c *gin.Context) *organization.Organization {
+var Unikrn = New("unikrn", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization

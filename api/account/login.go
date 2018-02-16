@@ -28,7 +28,7 @@ type loginRes struct {
 	Token string `json:"token"`
 }
 
-func login(c *gin.Context) {
+func login(c *context.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

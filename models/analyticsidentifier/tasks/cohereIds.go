@@ -15,7 +15,7 @@ func init() {
 	gob.Register(&analyticsidentifier.AnalyticsIdentifier{})
 }
 
-var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyticsidentifier.AnalyticsIdentifier) {
+var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analyticsidentifier.AnalyticsIdentifier) {
 	db := datastore.New(ctx)
 
 	id.Db = db

@@ -22,7 +22,7 @@ func convertHold(h Hold) fulfillment.Hold {
 	}
 }
 
-func updateHolds(c *gin.Context, topic string, holds []Hold) {
+func updateHolds(c *context.Context, topic string, holds []Hold) {
 	log.Info("Holds:\n%v", holds, c)
 
 	org := middleware.GetOrganization(c)

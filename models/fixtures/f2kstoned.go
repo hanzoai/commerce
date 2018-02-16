@@ -14,7 +14,7 @@ import (
 	. "hanzo.io/models"
 )
 
-var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
+var _ = New("sa-f2k", func(c *context.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

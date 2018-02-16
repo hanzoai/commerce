@@ -13,7 +13,7 @@ import (
 )
 
 // Fire webhooks
-var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Context, orgId string, templateName string, usrId string) {
+var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx context.Context, orgId string, templateName string, usrId string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	if err := org.GetById(orgId); err != nil {

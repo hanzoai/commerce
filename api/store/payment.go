@@ -13,7 +13,7 @@ import (
 	checkoutApi "hanzo.io/api/checkout"
 )
 
-func setStore(c *gin.Context) error {
+func setStore(c *context.Context) error {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
 	id := c.Params.ByName("storeid")
@@ -30,31 +30,31 @@ func setStore(c *gin.Context) error {
 	return nil
 }
 
-func authorize(c *gin.Context) {
+func authorize(c *context.Context) {
 	if err := setStore(c); err == nil {
 		checkoutApi.Authorize(c)
 	}
 }
 
-func capture(c *gin.Context) {
+func capture(c *context.Context) {
 	if err := setStore(c); err == nil {
 		checkoutApi.Capture(c)
 	}
 }
 
-func charge(c *gin.Context) {
+func charge(c *context.Context) {
 	if err := setStore(c); err == nil {
 		checkoutApi.Charge(c)
 	}
 }
 
-func confirm(c *gin.Context) {
+func confirm(c *context.Context) {
 	if err := setStore(c); err == nil {
 		checkoutApi.Confirm(c)
 	}
 }
 
-func cancel(c *gin.Context) {
+func cancel(c *context.Context) {
 	if err := setStore(c); err == nil {
 		checkoutApi.Cancel(c)
 	}

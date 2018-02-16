@@ -177,7 +177,7 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	}
 }
 
-func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
+func (r Rest) CheckPermissions(c *context.Context, method string) bool {
 	// Get permissions of current token
 	tok := middleware.GetPermissions(c)
 
@@ -287,7 +287,7 @@ func (r Rest) newKind() mixin.Kind {
 }
 
 // Returns a new interface of this entity type
-func (r Rest) newEntity(c *gin.Context) mixin.Entity {
+func (r Rest) newEntity(c *context.Context) mixin.Entity {
 	// Increase timeout
 	ctx := middleware.GetAppEngine(c)
 	ctx = appengine.Timeout(ctx, 15*time.Second)
@@ -325,15 +325,15 @@ func (r Rest) newEntitySlice(length, capacity int) interface{} {
 	return ptr.Interface()
 }
 
-func (r Rest) Render(c *gin.Context, status int, data interface{}) {
+func (r Rest) Render(c *context.Context, status int, data interface{}) {
 	http.Render(c, status, data)
 }
 
-func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
+func (r Rest) Fail(c *context.Context, status int, message interface{}, err error) {
 	http.Fail(c, status, message, err)
 }
 
-func (r Rest) get(c *gin.Context) {
+func (r Rest) get(c *context.Context) {
 	if !r.CheckPermissions(c, "get") {
 		return
 	}
@@ -350,7 +350,7 @@ func (r Rest) get(c *gin.Context) {
 	}
 }
 
-func (r Rest) list(c *gin.Context) {
+func (r Rest) list(c *context.Context) {
 	log.Warn("list %v", r.Kind, c)
 	if !r.CheckPermissions(c, "list") {
 		return
@@ -380,7 +380,7 @@ func (r Rest) list(c *gin.Context) {
 	}
 }
 
-func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
+func (r Rest) listBasic(c *context.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
 	// Create query
 	q := entity.Query().All().Order(sortField)
 
@@ -432,7 +432,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 	})
 }
 
-func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageStr, displayStr, limitStr, sortField string) {
+func (r Rest) listSearch(c *context.Context, entity mixin.Entity, qStr, fStr, pageStr, displayStr, limitStr, sortField string) {
 	var display int
 	var err error
 
@@ -601,7 +601,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 	})
 }
 
-func (r Rest) create(c *gin.Context) {
+func (r Rest) create(c *context.Context) {
 	if !r.CheckPermissions(c, "create") {
 		return
 	}
@@ -622,7 +622,7 @@ func (r Rest) create(c *gin.Context) {
 }
 
 // Completely replaces an entity for given `id`.
-func (r Rest) update(c *gin.Context) {
+func (r Rest) update(c *context.Context) {
 	if !r.CheckPermissions(c, "update") {
 		return
 	}
@@ -661,7 +661,7 @@ func (r Rest) update(c *gin.Context) {
 }
 
 // Partially updates pre-existing entity by given `id`.
-func (r Rest) patch(c *gin.Context) {
+func (r Rest) patch(c *context.Context) {
 	if !r.CheckPermissions(c, "patch") {
 		return
 	}
@@ -688,7 +688,7 @@ func (r Rest) patch(c *gin.Context) {
 }
 
 // Deletes an entity by given `id`
-func (r Rest) delete(c *gin.Context) {
+func (r Rest) delete(c *context.Context) {
 	if !r.CheckPermissions(c, "delete") {
 		return
 	}
@@ -718,7 +718,7 @@ func (r Rest) delete(c *gin.Context) {
 var methodOverride = middleware.MethodOverride()
 
 // This should be handled by middleware
-func (r Rest) methodOverride(c *gin.Context) {
+func (r Rest) methodOverride(c *context.Context) {
 
 	// Override request method
 	methodOverride(c)

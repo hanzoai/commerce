@@ -18,7 +18,7 @@ func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err e
 	return t.Transport.RoundTrip(req)
 }
 
-func newOauthClient(ctx appengine.Context, accessToken string) *http.Client {
+func newOauthClient(ctx context.Context, accessToken string) *http.Client {
 	client := urlfetch.Client(ctx)
 	client.Transport = &OauthTransport{
 		AccessToken: accessToken,

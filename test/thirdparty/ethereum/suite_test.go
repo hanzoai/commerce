@@ -18,7 +18,7 @@ import (
 
 var (
 	ctx    ae.Context
-	c      *gin.Context
+	c      *context.Context
 	db     *datastore.Datastore
 	client ethereum.Client
 	w      *wallet.Wallet

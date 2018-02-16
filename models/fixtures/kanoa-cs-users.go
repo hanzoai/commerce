@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var KanoaCSUsers = New("kanoa-cs-users", func(c *gin.Context) {
+var KanoaCSUsers = New("kanoa-cs-users", func(c *context.Context) {
 	db := datastore.New(c)
 
 	org := organization.New(db)
