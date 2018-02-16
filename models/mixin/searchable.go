@@ -1,7 +1,7 @@
 package mixin
 
 import (
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"hanzo.io/util/log"
 )

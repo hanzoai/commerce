@@ -10,7 +10,7 @@ import (
 
 	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 

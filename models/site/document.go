@@ -1,7 +1,7 @@
 package site
 
 import (
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"hanzo.io/models/mixin"
 )
