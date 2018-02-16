@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strconv"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 
