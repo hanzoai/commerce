@@ -3,9 +3,9 @@ package client
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
-
 	"google.golang.org/appengine"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Client struct {
@@ -19,7 +19,7 @@ type Client struct {
 	GeoPoint  appengine.GeoPoint `json:"geoPoint,omitempty"`
 }
 
-func New(c *context.Context) Client {
+func New(c *gin.Context) Client {
 	req := c.Request
 
 	client := Client{
