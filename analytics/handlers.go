@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
