@@ -1,9 +1,10 @@
 package log
 
 import (
+	"context"
 	"log"
 
-	"google.golang.org/appengine"
+	aelog "google.golang.org/appengine/log"
 
 	"github.com/op/go-logging"
 
@@ -32,15 +33,15 @@ func (b Backend) logToDevServer(level logging.Level, formatted string) error {
 func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
 	switch level {
 	case logging.WARNING:
-		b.context.Warningf(formatted)
+		aelog.Warningf(b.context, formatted)
 	case logging.ERROR:
-		b.context.Errorf(formatted)
+		aelog.Errorf(b.context, formatted)
 	case logging.CRITICAL:
-		b.context.Criticalf(formatted)
+		aelog.Criticalf(b.context, formatted)
 	case logging.INFO:
-		b.context.Infof(formatted)
+		aelog.Infof(b.context, formatted)
 	default:
-		b.context.Debugf(formatted)
+		aelog.Debugf(b.context, formatted)
 	}
 
 	return nil

@@ -1,10 +1,10 @@
 package log
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
-
-	"google.golang.org/appengine"
 )
 
 // Custom logger
@@ -28,7 +28,7 @@ func (l *Logger) detectContext(ctx interface{}) {
 	l.verboseRequested = false
 
 	switch ctx := ctx.(type) {
-	case *context.Context:
+	case *gin.Context:
 		// Get App Engine from session
 		l.backend.context = ctx.MustGet("appengine").(context.Context)
 		l.verboseRequested = ctx.MustGet("verbose").(bool)

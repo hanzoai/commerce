@@ -1,10 +1,8 @@
 package bigquery
 
-import
+import "context"
 
 // "google.golang.org/api/bigquery/v2"
-
-"google.golang.org/appengine"
 
 type Row map[string]interface{}
 type Fields map[string]string
