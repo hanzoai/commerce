@@ -3,6 +3,7 @@ package sentry
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/base64"
 	"encoding/gob"
 	"errors"
@@ -12,13 +13,13 @@ import (
 	"net/http"
 	"strings"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/getsentry/raven-go"
 
 	"hanzo.io/config"
+	"hanzo.io/util/log"
 )
 
 const userAgent = "appengine-go-raven/1.0"
@@ -79,7 +80,7 @@ func (t *AppEngineTransport) Send(url, authHeader string, packet *raven.Packet) 
 	io.Copy(ioutil.Discard, res.Body)
 	res.Body.Close()
 	if res.StatusCode != 200 {
-		return fmt.Errorf("raven: got http status %d", res.StatusCode)
+		return log.Error("raven: got http status %d", res.StatusCode)
 	}
 	return nil
 }

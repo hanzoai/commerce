@@ -80,14 +80,16 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 	}
 }
 
-func Error(formatOrError interface{}, args ...interface{}) {
+func Error(formatOrError interface{}, args ...interface{}) error {
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
 	case error:
 		std.Errorf(errAndStack(v))
+		return v
 	case string:
 		std.Errorf(v, args...)
+		return
 	}
 }
 
