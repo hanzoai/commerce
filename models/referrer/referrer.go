@@ -18,7 +18,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/timeutil"
 
 	. "hanzo.io/models"

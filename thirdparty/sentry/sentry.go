@@ -19,7 +19,7 @@ import (
 	"github.com/getsentry/raven-go"
 
 	"hanzo.io/config"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 const userAgent = "appengine-go-raven/1.0"

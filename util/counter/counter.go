@@ -12,7 +12,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	aeds "google.golang.org/appengine/datastore"
 )

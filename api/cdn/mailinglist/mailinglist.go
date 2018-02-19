@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mailinglist"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Js(c *context.Context) {

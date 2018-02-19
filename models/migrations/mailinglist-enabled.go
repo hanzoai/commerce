@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/models/mailinglist"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

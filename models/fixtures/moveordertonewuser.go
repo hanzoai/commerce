@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var MoveOrderToNewUser = New("move-order-to-new-user", func(c *context.Context) {

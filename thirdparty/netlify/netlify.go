@@ -3,7 +3,7 @@ package netlify
 import (
 	"google.golang.org/appengine"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"github.com/netlify/netlify-go"
 )

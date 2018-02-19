@@ -4,7 +4,7 @@ import (
 	"regexp"
 
 	. "hanzo.io/models/types/integrations"
-	// "hanzo.io/util/log"
+	// "hanzo.io/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

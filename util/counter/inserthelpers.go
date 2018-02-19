@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var (

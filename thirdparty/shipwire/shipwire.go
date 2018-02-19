@@ -14,7 +14,7 @@ import (
 
 	"hanzo.io/middleware"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )

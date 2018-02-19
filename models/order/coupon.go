@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"hanzo.io/models/lineitem"
 )

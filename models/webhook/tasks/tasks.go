@@ -13,7 +13,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Payload struct {

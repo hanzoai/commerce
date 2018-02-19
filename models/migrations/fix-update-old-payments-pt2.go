@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

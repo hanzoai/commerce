@@ -3,7 +3,7 @@ package ae
 import (
 	"golang.org/x/net/context"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae/aetest"
 	"hanzo.io/util/test/ae/options"
 )

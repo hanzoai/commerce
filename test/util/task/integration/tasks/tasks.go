@@ -6,7 +6,7 @@ import (
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/task"
 )
 

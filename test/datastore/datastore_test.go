@@ -12,7 +12,7 @@ import (
 	"github.com/zeekay/aetest"
 
 	"hanzo.io/datastore"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Test(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *context.Context) {

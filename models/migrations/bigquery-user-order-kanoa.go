@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/bigquery"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

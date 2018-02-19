@@ -15,7 +15,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 const root = "http://mandrillapp.com/api/1.0"

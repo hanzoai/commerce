@@ -8,7 +8,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/middleware"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func New(moduleName string) *gin.RouterGroup {

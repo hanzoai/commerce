@@ -20,7 +20,7 @@ import (
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/router"

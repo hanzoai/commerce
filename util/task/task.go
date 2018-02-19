@@ -14,7 +14,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/util/fakecontext"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var (

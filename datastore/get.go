@@ -9,7 +9,7 @@ import (
 	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Gets an entity using datastore.Key or encoded Key
