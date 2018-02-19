@@ -1,5 +1,9 @@
 github.com/Machiel/slugify master
 github.com/Sirupsen/logrus 95002bc71734b797b2dc8ffb20ffc725c9f543ed
+github.com/btcsuite/btcd/btcjson master
+github.com/btcsuite/btclog master
+github.com/btcsuite/btcutil/base58 master
+github.com/btcsuite/go-socks/socks master
 github.com/cenkalti/backoff b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
@@ -24,18 +28,15 @@ github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/op/go-logging master
-github.com/btcsuite/btcd/btcjson master
-github.com/btcsuite/btclog master
-github.com/btcsuite/btcutil/base58 master
-github.com/btcsuite/go-socks/socks master
-github.com/qedus/nds classic
+github.com/pariz/gountries master
+github.com/qedus/nds master
 github.com/ryanuber/go-glob master
 github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go v25.0.0
 github.com/vanng822/go-premailer/premailer master
-github.com/pariz/gountries master
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
 golang.org/x/text/encoding master
 golang.org/x/tools/cover master
+google.golang.org/appengine master
 gopkg.in/yaml.v2

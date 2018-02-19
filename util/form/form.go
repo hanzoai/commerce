@@ -9,7 +9,7 @@ import (
 
 var decoder = schema.NewDecoder()
 
-func Parse(c *context.Context, form interface{}) error {
+func Parse(c *gin.Context, form interface{}) error {
 	decoder.IgnoreUnknownKeys(true)
 	c.Request.ParseForm()
 	err := decoder.Decode(form, c.Request.PostForm)

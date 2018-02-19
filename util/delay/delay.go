@@ -3,6 +3,7 @@ package delay
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -10,10 +11,11 @@ import (
 	"reflect"
 	"time"
 
-	"hanzo.io/log"
-
+	"github.com/gin-gonic/gin"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/taskqueue"
+
+	"hanzo.io/log"
 )
 
 const (
@@ -28,11 +30,11 @@ var (
 	Funcs = make(map[string]*Function)
 
 	// precomputed types
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((*gin.Context)(nil)).Elem()
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 
 	// errors
-	errFirstArg = errors.New("first argument must be context.Context")
+	errFirstArg = errors.New("first argument must be gin.Context")
 )
 
 // Simple wrapper around delay.Func which allows queue to be customized

@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/thankyou"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 var cwd, _ = os.Getwd()
@@ -57,7 +57,7 @@ func TemplateSet() *pongo2.TemplateSet {
 
 var templateSet = TemplateSet()
 
-func createContext(c *context.Context, pairs ...interface{}) pongo2.Context {
+func createContext(c *gin.Context, pairs ...interface{}) pongo2.Context {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
@@ -73,7 +73,7 @@ func createContext(c *context.Context, pairs ...interface{}) pongo2.Context {
 	return ctx
 }
 
-func Render(c *context.Context, path string, pairs ...interface{}) (err error) {
+func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
 
@@ -97,7 +97,7 @@ func Render(c *context.Context, path string, pairs ...interface{}) (err error) {
 	return
 }
 
-func RenderString(c *context.Context, path string, pairs ...interface{}) string {
+func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
 

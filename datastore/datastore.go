@@ -1,18 +1,16 @@
 package datastore
 
 import (
+	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-
 	aeds "google.golang.org/appengine/datastore"
 
-	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
 	"hanzo.io/config"
-	"hanzo.io/log"
-
 	"hanzo.io/datastore/query"
 	"hanzo.io/datastore/utils"
+	"hanzo.io/log"
 )
 
 var (
@@ -32,7 +30,7 @@ type Datastore struct {
 	Warn                bool
 }
 
-func New(ctx interface{}) *Datastore {
+func New(ctx context.Context) *Datastore {
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
@@ -56,13 +54,8 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 }
 
 // Set context for datastore
-func (d *Datastore) SetContext(ctx interface{}) {
-	switch ctx := ctx.(type) {
-	case context.Context:
-		d.Context = ctx
-	case *context.Context:
-		d.Context = ctx.MustGet("appengine").(context.Context)
-	}
+func (d *Datastore) SetContext(ctx context.Context) {
+	d.Context = ctx
 }
 
 // Set context for datastore

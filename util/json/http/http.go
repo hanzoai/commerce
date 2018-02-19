@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
-func Render(c *context.Context, status int, src interface{}) {
+func Render(c *gin.Context, status int, src interface{}) {
 	// Write headers
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(status)
@@ -19,7 +19,7 @@ func Render(c *context.Context, status int, src interface{}) {
 	c.Writer.Write(json.EncodeBytes(src))
 }
 
-func Fail(c *context.Context, status int, message interface{}, err error) {
+func Fail(c *gin.Context, status int, message interface{}, err error) {
 	// Default response
 	res := Error{"api-error", "", "", ""}
 

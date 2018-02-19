@@ -1,16 +1,15 @@
 package httpclient
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"google.golang.org/appengine"
-
 	"hanzo.io/config"
-	"hanzo.io/util/json"
 	"hanzo.io/log"
+	"hanzo.io/util/json"
 )
 
 type Client struct {

@@ -1,9 +1,8 @@
 package hashid
 
 import (
+	"context"
 	"errors"
-
-	"google.golang.org/appengine"
 
 	"github.com/speps/go-hashids"
 

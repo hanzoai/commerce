@@ -89,8 +89,9 @@ func Error(formatOrError interface{}, args ...interface{}) error {
 		return v
 	case string:
 		std.Errorf(v, args...)
-		return
+		return fmt.Errorf(v, args...)
 	}
+	return nil
 }
 
 func Fatal(formatOrError interface{}, args ...interface{}) {
@@ -151,49 +152,52 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 	}
 }
 
-func Request(req *http.Request, args ...interface{}) {
+func Request(req *http.Request, args ...interface{}) error {
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
-		return
+		return nil
 	}
 
 	dump, err := httputil.DumpRequest(req, true)
 	if err != nil {
 		std.Errorf("Failed to dump request: %v", err)
-		return
+		return fmt.Errorf("Failed to dump request: %v", err)
 	}
 	std.Debug(string(dump))
+	return nil
 }
 
-func RequestOut(req *http.Request, args ...interface{}) {
+func RequestOut(req *http.Request, args ...interface{}) error {
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
-		return
+		return nil
 	}
 
 	dump, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
 		std.Errorf("Failed to dump request: %v", err)
-		return
+		return fmt.Errorf("Failed to dump request: %v", err)
 	}
 	std.Debug(string(dump))
+	return nil
 }
 
-func Response(res *http.Response, args ...interface{}) {
+func Response(res *http.Response, args ...interface{}) error {
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
-		return
+		return nil
 	}
 
 	dump, err := httputil.DumpResponse(res, true)
 	if err != nil {
 		std.Errorf("Failed to dump request: %v", err)
-		return
+		return fmt.Errorf("Failed to dump request: %v", err)
 	}
 	std.Debug(string(dump))
+	return nil
 }
 
 func Stack(args ...interface{}) {
