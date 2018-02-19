@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

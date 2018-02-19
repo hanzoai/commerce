@@ -3,7 +3,7 @@ package mixin
 import (
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var DefaultIndex = "everything"

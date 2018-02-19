@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/paypal/responses"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"

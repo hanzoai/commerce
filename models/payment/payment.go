@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/models"
 )

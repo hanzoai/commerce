@@ -12,7 +12,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 	"net/http"
 	"time"

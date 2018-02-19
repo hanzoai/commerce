@@ -4,7 +4,7 @@ import (
 	"io"
 	"net/url"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	stripeGo "github.com/stripe/stripe-go"
 )

@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("soltrackr", func(c *context.Context) *organization.Organization {

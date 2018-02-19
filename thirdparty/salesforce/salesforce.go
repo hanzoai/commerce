@@ -12,7 +12,7 @@ import (
 	"hanzo.io/datastore"
 	// "hanzo.io/models"
 	"hanzo.io/models/campaign"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"google.golang.org/appengine/urlfetch"
 )

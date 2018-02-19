@@ -9,7 +9,7 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/retry"
 )
 

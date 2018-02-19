@@ -21,7 +21,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/router"
 )
 

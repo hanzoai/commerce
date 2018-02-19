@@ -10,7 +10,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Client struct {

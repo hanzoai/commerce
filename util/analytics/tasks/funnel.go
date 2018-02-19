@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/analyticsevent"
 	"hanzo.io/models/funnel"
 	. "hanzo.io/util/aggregate/tasks"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {

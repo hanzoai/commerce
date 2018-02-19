@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/media"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"

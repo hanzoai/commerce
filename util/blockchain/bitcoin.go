@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func MakeBitcoinPayment(ctx context.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {

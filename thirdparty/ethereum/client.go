@@ -20,7 +20,7 @@ import (
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/rlp"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 
 	. "hanzo.io/models/blockchains"

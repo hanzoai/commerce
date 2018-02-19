@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/types/form"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

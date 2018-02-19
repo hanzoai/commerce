@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func refund(c *context.Context, org *organization.Organization, ord *order.Order) error {

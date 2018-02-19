@@ -10,7 +10,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"

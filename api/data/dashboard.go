@@ -9,7 +9,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func dashboard(c *context.Context) {

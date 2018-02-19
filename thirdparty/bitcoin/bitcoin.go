@@ -28,7 +28,7 @@ import (
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in

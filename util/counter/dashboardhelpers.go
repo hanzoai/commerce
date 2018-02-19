@@ -10,7 +10,7 @@ import (
 
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type currencyValue map[currency.Type]int

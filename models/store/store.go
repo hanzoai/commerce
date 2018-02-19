@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/shipping"
 	"hanzo.io/models/types/weight"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/val"
 

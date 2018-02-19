@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *context.Context) {

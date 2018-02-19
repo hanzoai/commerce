@@ -10,7 +10,7 @@ import (
 	"hanzo.io/auth"
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func parseAuthHeader(fieldValue string) (string, string) {

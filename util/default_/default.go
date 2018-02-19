@@ -9,7 +9,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/util/exec"
 	hashid "hanzo.io/util/hashid/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/router"
 	"hanzo.io/util/task"
 	"hanzo.io/util/template"

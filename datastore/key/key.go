@@ -11,7 +11,7 @@ import (
 
 	"hanzo.io/datastore/iface"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Key iface.Key

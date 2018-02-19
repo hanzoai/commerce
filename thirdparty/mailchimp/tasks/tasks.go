@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, mlJSON []byte, sJSON []byte) error {

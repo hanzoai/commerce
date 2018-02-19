@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/util/bit"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/session"
 )

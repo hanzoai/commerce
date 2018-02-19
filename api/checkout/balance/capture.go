@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transaction"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

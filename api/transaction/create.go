@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Create(c *context.Context) {

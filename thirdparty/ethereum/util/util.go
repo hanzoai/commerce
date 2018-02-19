@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func GetUserOrderByWallet(db *datastore.Datastore, walletId string) (*user.User, *order.Order, *wallet.Wallet, error) {

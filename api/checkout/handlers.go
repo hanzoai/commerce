@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/router"
 )

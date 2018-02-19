@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Record struct {

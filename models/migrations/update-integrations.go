@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

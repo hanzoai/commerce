@@ -4,7 +4,7 @@ package test
 // 	"hanzo.io/models/transaction"
 // 	"hanzo.io/models/types/currency"
 // 	"hanzo.io/util/fake"
-// 	"hanzo.io/util/log"
+// 	"hanzo.io/log"
 // 	"math/rand"
 
 // 	. "hanzo.io/util/test/ginkgo"

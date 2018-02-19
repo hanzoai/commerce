@@ -13,7 +13,7 @@ import (
 
 	"hanzo.io/datastore/iface"
 	"hanzo.io/datastore/key"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/datastore/utils"
 )

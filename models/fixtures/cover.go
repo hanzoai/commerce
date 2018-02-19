@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var Cover = New("cover", func(c *context.Context) *organization.Organization {

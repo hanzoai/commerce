@@ -9,7 +9,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {

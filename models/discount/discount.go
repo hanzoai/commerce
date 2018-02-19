@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/discount/scope"
 	"hanzo.io/models/discount/target"
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/timeutil"
 )
 

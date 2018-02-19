@@ -11,7 +11,7 @@ import (
 
 	"hanzo.io/datastore/utils"
 	"hanzo.io/models/namespace/consts"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"hanzo.io/datastore/iface"
 )

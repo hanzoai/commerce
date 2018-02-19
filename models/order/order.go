@@ -27,7 +27,7 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"

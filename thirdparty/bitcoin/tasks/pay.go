@@ -19,7 +19,7 @@ import (
 	eutil "hanzo.io/thirdparty/ethereum/util"
 	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/webhook"
 )
 

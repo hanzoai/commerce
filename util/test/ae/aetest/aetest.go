@@ -4,7 +4,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/appengine/aetest"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae/options"
 )
 
