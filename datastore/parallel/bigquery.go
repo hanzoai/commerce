@@ -1,6 +1,7 @@
 package parallel
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -8,9 +9,9 @@ import (
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/thirdparty/bigquery"
-	"hanzo.io/log"
 )
 
 func NewBigQuery(name string, fn interface{}) *ParallelFn {
@@ -76,7 +77,8 @@ func (fn *ParallelFn) createBigQueryDelayFn(name string) {
 		}
 
 		// Increase Timeout
-		nsCtx = appengine.Timeout(nsCtx, 30*time.Second)
+		d := time.Now().Add(time.Second * 30)
+		nsCtx, _ = context.WithDeadline(nsCtx, d)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)

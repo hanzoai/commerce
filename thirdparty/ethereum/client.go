@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"context"
 	ej "encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/common"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/common/hexutil"
@@ -20,7 +22,6 @@ import (
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/rlp"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 
 	. "hanzo.io/models/blockchains"
@@ -84,10 +85,13 @@ func Test(b bool) bool {
 
 // Create a new Ethereum JSON-RPC client
 func New(ctx context.Context, address string) Client {
+	// Set deadline
+	d := time.Now().Add(time.Second * 55)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
+		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 

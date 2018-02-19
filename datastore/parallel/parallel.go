@@ -1,6 +1,7 @@
 package parallel
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -10,9 +11,9 @@ import (
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models"
 	"hanzo.io/models/mixin"
-	"hanzo.io/log"
 )
 
 type ParallelFn struct {
@@ -81,7 +82,10 @@ func (fn *ParallelFn) createDelayFn(name string) {
 		}
 
 		// Increase Timeout
-		nsCtx = appengine.Timeout(nsCtx, 30*time.Second)
+
+		// Set deadline
+		d := time.Now().Add(time.Second * 30)
+		nsCtx, _ = context.WithDeadline(nsCtx, d)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
@@ -136,7 +140,7 @@ func (fn *ParallelFn) Call(ctx context.Context, args ...interface{}) {
 }
 
 // Run fn in parallel across all entities
-func (fn *ParallelFn) Run(c *context.Context, batchSize int, args ...interface{}) error {
+func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) error {
 	// Limit results in test mode
 	if c.MustGet("test").(bool) {
 		batchSize = 1

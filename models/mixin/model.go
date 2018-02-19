@@ -1,6 +1,7 @@
 package mixin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -135,7 +136,7 @@ func (m *Model) SetEntity(entity interface{}) {
 }
 
 // Set context.Context
-func (m *Model) SetContext(ctx interface{}) {
+func (m *Model) SetContext(ctx context.Context) {
 	if m.Db == nil {
 		m.Db = datastore.New(ctx)
 	} else {
