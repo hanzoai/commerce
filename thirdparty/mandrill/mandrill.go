@@ -2,6 +2,7 @@ package mandrill
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -10,12 +11,11 @@ import (
 	"os"
 	"time"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
-	"hanzo.io/util/json"
 	"hanzo.io/log"
+	"hanzo.io/util/json"
 )
 
 const root = "http://mandrillapp.com/api/1.0"
@@ -188,11 +188,13 @@ func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 		return err
 	}
 
+	// Set deadline
+	d := time.Now().Add(time.Second * 60)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(60) * time.Second,
-	}
+	client.Transport = &urlfetch.Transport{Context: ctx}
+
 	res, err := client.Do(hreq)
 	if err != nil {
 		return err

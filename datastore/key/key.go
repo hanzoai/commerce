@@ -1,17 +1,17 @@
 package key
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
-	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"
 
 	"hanzo.io/datastore/iface"
-	"hanzo.io/util/hashid"
 	"hanzo.io/log"
+	"hanzo.io/util/hashid"
 )
 
 type Key iface.Key
