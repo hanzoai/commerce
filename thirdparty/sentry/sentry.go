@@ -7,16 +7,14 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/getsentry/raven-go"
 	"google.golang.org/appengine/delay"
 	"google.golang.org/appengine/urlfetch"
-
-	"github.com/getsentry/raven-go"
 
 	"hanzo.io/config"
 	"hanzo.io/log"
@@ -90,8 +88,7 @@ func NewClient(ctx context.Context) (client *raven.Client, err error) {
 	// immediately after capturing this packet.
 	client, err = raven.NewClient(config.SentryDSN, map[string]string{})
 	if err != nil {
-		ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
-		return client, err
+		return client, log.Error("Unable to create Sentry client: %v, %v", client, err)
 	}
 
 	// Replace default net/http transport with our app engine transport.

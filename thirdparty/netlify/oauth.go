@@ -1,10 +1,10 @@
 package netlify
 
 import (
+	"context"
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 )
 
@@ -19,13 +19,14 @@ func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err e
 }
 
 func newOauthClient(ctx context.Context, accessToken string) *http.Client {
+	// Set deadline
+	d := time.Now().Add(time.Second * 30)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	client := urlfetch.Client(ctx)
 	client.Transport = &OauthTransport{
 		AccessToken: accessToken,
-		Transport: &urlfetch.Transport{
-			Context:  ctx,
-			Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
-		},
+		Transport:   &urlfetch.Transport{Context: ctx},
 	}
 	return client
 }

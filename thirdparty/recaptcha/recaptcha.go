@@ -1,15 +1,15 @@
 package recaptcha
 
 import (
+	"context"
 	"io/ioutil"
 	"net/url"
 	"time"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/util/json"
 	"hanzo.io/log"
+	"hanzo.io/util/json"
 )
 
 type RecaptchaResponse struct {

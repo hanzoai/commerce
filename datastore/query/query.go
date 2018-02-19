@@ -1,12 +1,12 @@
 package query
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"

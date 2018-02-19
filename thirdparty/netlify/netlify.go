@@ -1,11 +1,11 @@
 package netlify
 
 import (
-	"google.golang.org/appengine"
-
-	"hanzo.io/log"
+	"context"
 
 	"github.com/netlify/netlify-go"
+
+	"hanzo.io/log"
 )
 
 type Client struct {
