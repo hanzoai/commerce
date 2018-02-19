@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/auth"
 	"hanzo.io/config"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Updates session with login information, does not require it

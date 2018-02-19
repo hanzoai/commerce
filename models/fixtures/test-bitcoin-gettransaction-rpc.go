@@ -8,7 +8,7 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *context.Context) {

@@ -2,7 +2,7 @@ package mixin
 
 import (
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/reflect"
 )
 

@@ -11,7 +11,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/discount/scope"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Computes memcache key, using format:

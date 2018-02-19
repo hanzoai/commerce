@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *context.Context) {

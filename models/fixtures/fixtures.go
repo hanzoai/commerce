@@ -8,7 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/task"
 )
 

@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/product"
 	"hanzo.io/models/return"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var incrementSep = "."

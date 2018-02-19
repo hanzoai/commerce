@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Synchronize payment using transfer

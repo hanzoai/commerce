@@ -3,7 +3,7 @@ package tasks
 import (
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/parallel"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Define a new worker with parallel.Task

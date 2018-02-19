@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"google.golang.org/appengine"
 

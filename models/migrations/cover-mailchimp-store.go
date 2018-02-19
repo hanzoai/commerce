@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/store"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

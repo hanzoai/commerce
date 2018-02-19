@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/test/api/checkout/integration/requests"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

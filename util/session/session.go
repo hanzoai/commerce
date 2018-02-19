@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/sessions"
 
 	"hanzo.io/config"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var store = sessions.NewCookieStore([]byte(config.Secret))

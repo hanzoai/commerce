@@ -10,7 +10,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/thirdparty/bigquery"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func NewBigQuery(name string, fn interface{}) *ParallelFn {

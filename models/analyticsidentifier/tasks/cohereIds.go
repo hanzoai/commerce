@@ -6,7 +6,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/analyticsidentifier"
 	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"google.golang.org/appengine"
 )

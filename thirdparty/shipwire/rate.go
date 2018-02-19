@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"hanzo.io/models/order"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )

@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var Cove = New("cove", func(c *context.Context) *organization.Organization {

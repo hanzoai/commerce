@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/app"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/store"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 

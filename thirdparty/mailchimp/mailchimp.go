@@ -20,7 +20,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/models"
 )

@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Client struct {
