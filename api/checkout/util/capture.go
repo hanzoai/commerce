@@ -16,7 +16,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/models"
 )

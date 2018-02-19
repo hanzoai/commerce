@@ -7,7 +7,7 @@ import (
 	"github.com/davidtai/appenginetesting"
 	. "github.com/onsi/ginkgo"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae/options"
 )
 

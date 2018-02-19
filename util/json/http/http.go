@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Render(c *context.Context, status int, src interface{}) {

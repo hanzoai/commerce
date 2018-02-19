@@ -12,7 +12,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models"
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type ParallelFn struct {

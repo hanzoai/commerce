@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("wipe-search-documents",

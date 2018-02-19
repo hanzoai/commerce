@@ -17,7 +17,7 @@ import (
 	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Decode Stripe payload

@@ -3,7 +3,7 @@ package utils
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Helper to ignore tedious field mismatch errors (but warn appropriately

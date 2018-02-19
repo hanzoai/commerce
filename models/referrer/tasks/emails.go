@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"google.golang.org/appengine"
 

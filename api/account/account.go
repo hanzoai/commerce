@@ -11,7 +11,7 @@ import (
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func get(c *context.Context) {

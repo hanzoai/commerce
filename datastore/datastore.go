@@ -9,7 +9,7 @@ import (
 	"github.com/qedus/nds"
 
 	"hanzo.io/config"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"hanzo.io/datastore/query"
 	"hanzo.io/datastore/utils"

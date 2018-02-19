@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/test/datastore/integration/tasks"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"

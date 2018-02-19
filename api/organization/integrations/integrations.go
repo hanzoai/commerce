@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 
