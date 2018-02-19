@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	aeds "google.golang.org/appengine/datastore"
 	ds "hanzo.io/datastore"

@@ -8,7 +8,7 @@ import (
 	ds "hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("mark-dangling-payments-for-deletion",

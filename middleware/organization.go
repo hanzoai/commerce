@@ -8,7 +8,7 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	token "hanzo.io/util/oldjwt"
 	"hanzo.io/util/session"
 )

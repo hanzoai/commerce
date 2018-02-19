@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/paypal"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/models/lineitem"
 	. "hanzo.io/util/test/ginkgo"

@@ -6,7 +6,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/router"
 )

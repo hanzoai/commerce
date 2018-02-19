@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // HeaderMethodOverride is a commonly used

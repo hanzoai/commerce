@@ -12,7 +12,7 @@ import (
 	// storage "google.golang.org/api/storage/v1"
 
 	"hanzo.io/models/organization"
-	// "hanzo.io/util/log"
+	// "hanzo.io/log"
 )
 
 func UploadFile(ctx *context.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {

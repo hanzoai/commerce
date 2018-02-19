@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var CelebCoins = New("celebcoins", func(c *context.Context) *organization.Organization {

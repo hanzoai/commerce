@@ -12,7 +12,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Request that can be almost completely be serialized to/from a real Request

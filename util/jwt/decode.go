@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Call to get verification, claims need to be decoded either way so there's not point in just running the validation in isolation

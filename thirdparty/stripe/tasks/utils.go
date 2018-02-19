@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Get namespaced appengine context for given namespace

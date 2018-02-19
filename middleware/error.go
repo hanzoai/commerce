@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 

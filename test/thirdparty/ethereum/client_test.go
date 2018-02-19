@@ -4,7 +4,7 @@ import (
 	. "hanzo.io/util/test/ginkgo"
 
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"math/big"
 )
 

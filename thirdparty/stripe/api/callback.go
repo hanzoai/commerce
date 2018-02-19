@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/stripe/connect"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Handle stripe Connect callbacks

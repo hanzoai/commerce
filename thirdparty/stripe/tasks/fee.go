@@ -8,7 +8,7 @@ import (
 
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var FeeSync = delay.Func("stripe-fee-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {

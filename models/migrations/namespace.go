@@ -19,7 +19,7 @@ import (
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

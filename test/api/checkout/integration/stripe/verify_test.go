@@ -3,7 +3,7 @@ package stripe_test
 import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

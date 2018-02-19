@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/thankyou"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var cwd, _ = os.Getwd()

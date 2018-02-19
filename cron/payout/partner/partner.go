@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/partner"
 	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue

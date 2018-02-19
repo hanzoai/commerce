@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/shipstation/export"
 	"hanzo.io/thirdparty/shipstation/shipnotify"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/router"
 )
 
