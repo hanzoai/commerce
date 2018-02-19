@@ -9,9 +9,9 @@ import (
 	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/util/cache"
 	"hanzo.io/util/hashid"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/timeutil"
@@ -32,7 +32,7 @@ type Entity interface {
 
 	// Get, Set context/namespace
 	Context() context.Context
-	SetContext(ctx interface{})
+	SetContext(ctx context.Context)
 	SetNamespace(namespace string)
 	Namespace() string
 

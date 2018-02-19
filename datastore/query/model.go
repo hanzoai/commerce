@@ -1,11 +1,10 @@
 package query
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
-
-	"google.golang.org/appengine"
 
 	"hanzo.io/datastore/iface"
 	. "hanzo.io/datastore/utils"
@@ -17,7 +16,7 @@ type Kind interface {
 
 // Subset of model API needed to initialize a model correctly.
 type Model interface {
-	SetContext(ctx interface{})
+	SetContext(ctx context.Context)
 	SetEntity(entity interface{})
 	SetKey(key interface{}) error
 }

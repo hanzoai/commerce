@@ -1,6 +1,7 @@
 package netlify
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -10,8 +11,8 @@ import (
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
-	"hanzo.io/util/json"
 	"hanzo.io/log"
+	"hanzo.io/util/json"
 )
 
 // This is really a token response, but for our purposes acts as a copy of
