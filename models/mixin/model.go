@@ -11,7 +11,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/util/cache"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/timeutil"

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/models/token"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

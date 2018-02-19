@@ -8,7 +8,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/aggregate"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {

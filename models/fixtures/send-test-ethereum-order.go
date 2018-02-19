@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *context.Context) {

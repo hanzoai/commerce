@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"hanzo.io/util/crypto/aes"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 
 	. "hanzo.io/util/test/ginkgo"
