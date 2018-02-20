@@ -1,15 +1,17 @@
 package tasks
 
 import (
+	"context"
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/aggregate"
 	"hanzo.io/models/analyticsevent"
 	"hanzo.io/models/funnel"
 	. "hanzo.io/util/aggregate/tasks"
-	"hanzo.io/log"
 )
 
 var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {

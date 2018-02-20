@@ -1,19 +1,19 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 type Payload struct {
@@ -50,9 +50,13 @@ func (c *Client) Post(url string, data interface{}) error {
 
 func createClient(ctx context.Context) *Client {
 	client := urlfetch.Client(ctx)
+
+	// Set deadline
+	d := time.Now().Add(time.Second * 30)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	return &Client{ctx: ctx, client: client}

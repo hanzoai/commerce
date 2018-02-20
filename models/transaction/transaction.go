@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
@@ -11,8 +9,6 @@ import (
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 
@@ -56,11 +52,9 @@ type Transaction struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (t *Transaction) Load(c <-chan aeds.Property) error {
-	var err error
-
+func (t *Transaction) Load(ps datastore.PropertyList) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(t, c)); err != nil {
+	if err = datastore.LoadStruct(t, ps); err != nil {
 		return err
 	}
 
@@ -77,12 +71,12 @@ func (t *Transaction) Load(c <-chan aeds.Property) error {
 	return err
 }
 
-func (t *Transaction) Save(c chan<- aeds.Property) error {
+func (t *Transaction) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	t.Metadata_ = string(json.EncodeBytes(&t.Metadata))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(t, c))
+	return datastore.SaveStruct(t)
 }
 
 func (t *Transaction) Validator() *val.Validator {
