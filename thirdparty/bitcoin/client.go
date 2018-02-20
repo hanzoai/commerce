@@ -1,18 +1,20 @@
 package bitcoin
 
 import (
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 	"bytes"
+	"context"
 	"encoding/hex"
 	ej "encoding/json"
-
 	"errors"
 	"fmt"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
+
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 	"net/http"
 	"time"
@@ -58,10 +60,13 @@ var IdMismatch = errors.New("Ids do not match!")
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
 func New(ctx context.Context, host, username, password string) BitcoinClient {
+	// Set deadline
+	d := time.Now().Add(time.Second * 55)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
+		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
