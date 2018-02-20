@@ -6,15 +6,14 @@ import (
 	"strconv"
 
 	"golang.org/x/net/context"
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/fakecontext"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/log"
 )
 
 var (
@@ -113,7 +112,7 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
-		if c, err := fakectx.Context(&ctx); err == nil {
+		if c, err := fakectx.Context(ctx); err == nil {
 			return c
 		}
 	}

@@ -112,7 +112,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 		}
 
 		return s.Create()
-	})
+	}, nil)
 }
 
 func (m *MailingList) Js() string {
