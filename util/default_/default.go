@@ -6,10 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/exec"
 	hashid "hanzo.io/util/hashid/http"
-	"hanzo.io/log"
 	"hanzo.io/util/router"
 	"hanzo.io/util/task"
 	"hanzo.io/util/template"
@@ -20,6 +20,7 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"
 	_ "hanzo.io/cron/tasks"
+	_ "hanzo.io/delay"
 	_ "hanzo.io/models/analyticsidentifier/tasks"
 	_ "hanzo.io/models/fixtures"
 	_ "hanzo.io/models/fixtures/users"
