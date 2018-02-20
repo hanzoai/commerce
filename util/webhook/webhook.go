@@ -1,9 +1,8 @@
 package webhook
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
-
-	"google.golang.org/appengine"
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/webhook/tasks"
@@ -13,7 +12,7 @@ func Emit(ctx interface{}, org string, event string, data interface{}) {
 	var aectx context.Context
 
 	switch v := ctx.(type) {
-	case *context.Context:
+	case *gin.Context:
 		aectx = v.MustGet("appengine").(context.Context)
 	case context.Context:
 		aectx = v
