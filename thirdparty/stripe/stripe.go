@@ -1,6 +1,7 @@
 package stripe
 
 import (
+	"context"
 	"time"
 
 	"google.golang.org/appengine"
@@ -13,9 +14,13 @@ import (
 func New(ctx context.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
+
+	// Set deadline
+	d := time.Now().Add(time.Second * 60)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
+		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 	stripe.SetBackend(stripe.APIBackend, nil)

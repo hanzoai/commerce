@@ -49,9 +49,9 @@ type Shard struct {
 	Time time.Time `json:"time"`
 }
 
-func (s *Shard) Load(c <-chan aeds.Property) (err error) {
+func (s *Shard) Load(ps datastore.PropertyList) (err error) {
 	// Load supported properties
-	if err = datastore.IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
 
@@ -63,12 +63,12 @@ func (s *Shard) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Shard) Save(c chan<- aeds.Property) (err error) {
+func (s *Shard) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	s.Set_ = string(json.EncodeBytes(&s.Set))
 
 	// Save properties
-	return datastore.IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }
 
 const (
@@ -207,7 +207,7 @@ func IncrementBy(c context.Context, name, tag, storeId, geo string, p Period, am
 // It will never decrease the number of Shards.
 func IncreaseShards(c context.Context, name string, n int) error {
 	ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-	return aeds.RunInTransaction(c, func(c context.Context) error {
+	return datastore.RunInTransaction(c, func(c context.Context) error {
 		var cfg counterConfig
 		mod := false
 		err := aeds.Get(c, ckey, &cfg)
@@ -295,7 +295,7 @@ func init() {
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-		err := aeds.RunInTransaction(c, func(c context.Context) error {
+		err := datastore.RunInTransaction(c, func(c context.Context) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = DefaultShards
@@ -308,7 +308,7 @@ func init() {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
 		var s Shard
-		err = aeds.RunInTransaction(c, func(c context.Context) error {
+		err = datastore.RunInTransaction(c, func(c context.Context) error {
 			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
 			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)

@@ -1,20 +1,19 @@
 package stripe
 
 import (
+	"context"
 	"strconv"
-
-	"google.golang.org/appengine"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 type Client struct {

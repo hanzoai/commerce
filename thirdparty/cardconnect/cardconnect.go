@@ -2,6 +2,7 @@ package cardconnect
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -9,10 +10,10 @@ import (
 	"net/http"
 
 	// "hanzo.io/models"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 )
 
@@ -124,7 +125,7 @@ func Authorize(ctx context.Context, order *order.Order, user *user.User) (ares A
 
 	jsonreq, _ := json.Marshal(areq)
 	reqbuf := bytes.NewBuffer(jsonreq)
-	ctx.Debugf("%#v", areq)
+	log.Debug("%#v", areq)
 
 	req, err := http.NewRequest("PUT", baseUrl+"/auth", reqbuf)
 	req.Header.Add("Authorization", "Basic "+authCode)
@@ -144,7 +145,7 @@ func Authorize(ctx context.Context, order *order.Order, user *user.User) (ares A
 		defer res.Body.Close()
 		body, _ := ioutil.ReadAll(res.Body)
 		json.Unmarshal(body, &ares)
-		ctx.Errorf("%v %v", res.StatusCode, ares)
+		log.Error("%v %v", res.StatusCode, ares)
 		return ares, errors.New("Invalid response from CardConnect.")
 	}
 }

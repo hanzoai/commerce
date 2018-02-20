@@ -1,12 +1,14 @@
 package payout
 
 import (
+	"context"
 	"fmt"
 
 	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/multi"
@@ -14,7 +16,6 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"
-	"hanzo.io/log"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
@@ -84,7 +85,7 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 		// Save models
 		models := []interface{}{tr, fe}
 		return multi.Update(models)
-	})
+	}, nil)
 
 	// Bail out if error happened creating transactions, any changes in
 	// transaction will have been rolled back.
