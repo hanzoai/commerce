@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/types/thankyou"
 )
 
-var Mailinglist = New("mailinglist", func(c *context.Context) *mailinglist.MailingList {
+var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingList {
 	db := getNamespaceDb(c)
 
 	mailingList := mailinglist.New(db)

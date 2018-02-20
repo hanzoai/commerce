@@ -55,7 +55,7 @@ func deletePayment(ctx context.Context, pay *payment.Payment) error {
 }
 
 var _ = New("update-old-payments",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

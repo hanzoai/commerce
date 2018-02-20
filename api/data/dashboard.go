@@ -12,7 +12,7 @@ import (
 	"hanzo.io/log"
 )
 
-func dashboard(c *context.Context) {
+func dashboard(c *gin.Context) {
 	period := counter.Period(c.Params.ByName("period"))
 	year, _ := strconv.Atoi(c.Params.ByName("year"))
 	month, _ := strconv.Atoi(c.Params.ByName("month"))

@@ -35,7 +35,7 @@ func validOrganization(u *user.User, orgId string) bool {
 	return false
 }
 
-func Organization(c *context.Context) {
+func Organization(c *gin.Context) {
 	o := middleware.GetOrganization(c)
 
 	org := new(organization.Organization)
@@ -47,7 +47,7 @@ func Organization(c *context.Context) {
 	http.Render(c, 200, org)
 }
 
-func UpdateOrganization(c *context.Context) {
+func UpdateOrganization(c *gin.Context) {
 	o := new(organization.Organization)
 	if err := json.Decode(c.Request.Body, o); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -65,7 +65,7 @@ func UpdateOrganization(c *context.Context) {
 	c.Writer.WriteHeader(204)
 }
 
-func SetActiveOrganization(c *context.Context) {
+func SetActiveOrganization(c *gin.Context) {
 	orgId := c.Params.ByName("organizationid")
 
 	db := datastore.New(c)

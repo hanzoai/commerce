@@ -10,7 +10,7 @@ import (
 	"hanzo.io/log"
 )
 
-var MakeupFit = New("makeupfit", func(c *context.Context) *organization.Organization {
+var MakeupFit = New("makeupfit", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization

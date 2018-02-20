@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	c      *context.Context
+	c      *gin.Context
 	ctx    ae.Context
 	db     *datastore.Datastore
 	client *stripe.Client

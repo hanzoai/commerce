@@ -27,7 +27,7 @@ type searchRes struct {
 	Count int `json:"count"`
 }
 
-func search(c *context.Context) {
+func search(c *gin.Context) {
 	req := searchReq{}
 	if err := json.Decode(c.Request.Body, &req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)

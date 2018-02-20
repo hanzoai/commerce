@@ -19,7 +19,7 @@ import (
 
 var (
 	Registry    = make(map[string][]*Task)
-	contextType = reflect.TypeOf((**context.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((**gin.Context)(nil)).Elem()
 )
 
 // A Task which can be invoked later by name or HTTP handler
@@ -83,7 +83,7 @@ func Names() []string {
 }
 
 // Run task(s) associated with a given name
-func Run(ctx *context.Context, name string, args ...interface{}) {
+func Run(ctx *gin.Context, name string, args ...interface{}) {
 	tasks, ok := Registry[name]
 
 	if !ok {
@@ -98,9 +98,9 @@ func Run(ctx *context.Context, name string, args ...interface{}) {
 			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
 		case func(context.Context, ...interface{}):
 			v(middleware.GetAppEngine(ctx), args...)
-		case func(*context.Context):
+		case func(*gin.Context):
 			v(ctx)
-		case func(*context.Context, ...interface{}):
+		case func(*gin.Context, ...interface{}):
 			v(ctx, args...)
 		case *Delay:
 			v.Function.Call(middleware.GetAppEngine(ctx), fakecontext.NewContext(ctx))
@@ -110,7 +110,7 @@ func Run(ctx *context.Context, name string, args ...interface{}) {
 	}
 }
 
-func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *context.Context {
+func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
 		if c, err := fakectx.Context(&ctx); err == nil {
@@ -139,7 +139,7 @@ func checkFunc(fn interface{}) {
 
 	// First argument fn should be context.Context
 	if t.In(0) != contextType {
-		log.Panic("First argument must be *context.Context: %v", t)
+		log.Panic("First argument must be *gin.Context: %v", t)
 	}
 }
 
