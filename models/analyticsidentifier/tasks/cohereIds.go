@@ -1,14 +1,13 @@
 package tasks
 
 import (
+	"context"
 	"encoding/gob"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/analyticsidentifier"
 	"hanzo.io/util/delay"
-	"hanzo.io/log"
-
-	"google.golang.org/appengine"
 )
 
 func init() {

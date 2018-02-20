@@ -4,6 +4,7 @@ import (
 	"google.golang.org/appengine"
 
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -23,12 +24,12 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in
