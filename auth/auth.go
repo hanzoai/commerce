@@ -4,14 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/user"
 	"hanzo.io/log"
+	"hanzo.io/models/user"
 	"hanzo.io/util/session"
 )
 
 const loginKey = "loggedIn"
 
-func GetCurrentUserId(c *context.Context) (string, error) {
+func GetCurrentUserId(c *gin.Context) (string, error) {
 	log.Debug("Retrieving current id from session")
 	value, err := session.Get(c, loginKey)
 	if err != nil {
@@ -25,7 +25,7 @@ func GetCurrentUserId(c *context.Context) (string, error) {
 	return value.(string), nil
 }
 
-func GetCurrentUser(c *context.Context) (*user.User, error) {
+func GetCurrentUser(c *gin.Context) (*user.User, error) {
 	log.Debug("Retrieving current user from session")
 	id, err := GetCurrentUserId(c)
 	if err != nil {
@@ -84,7 +84,7 @@ func GetCurrentUser(c *context.Context) (*user.User, error) {
 // 	return &m, nil
 // }
 
-func IsLoggedIn(c *context.Context) bool {
+func IsLoggedIn(c *gin.Context) bool {
 	value, err := session.Get(c, loginKey)
 	if err != nil {
 		return false
@@ -98,10 +98,10 @@ func IsLoggedIn(c *context.Context) bool {
 	return true
 }
 
-func Login(c *context.Context, u *user.User) error {
+func Login(c *gin.Context, u *user.User) error {
 	return session.Set(c, loginKey, u.Id())
 }
 
-func Logout(c *context.Context) error {
+func Logout(c *gin.Context) error {
 	return session.Clear(c)
 }
