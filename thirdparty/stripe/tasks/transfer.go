@@ -1,13 +1,12 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"google.golang.org/appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"
-	"hanzo.io/log"
 )
 
 // Synchronize payment using transfer
@@ -38,7 +37,7 @@ var TransferSync = delay.Func("stripe-transfer-sync", func(ctx context.Context, 
 		log.Debug("Transfer after: %+v", tr, ctx)
 
 		return tr.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update transfer '%s' from Stripe transfer %v: ", tr.Id(), str, err, ctx)

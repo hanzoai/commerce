@@ -1,13 +1,12 @@
 package tasks
 
 import (
+	"context"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/delay"
-	"hanzo.io/log"
-
-	"google.golang.org/appengine"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )

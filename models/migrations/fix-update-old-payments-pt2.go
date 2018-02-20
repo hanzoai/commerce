@@ -1,19 +1,18 @@
 package migrations
 
 import (
+	"context"
 	"strings"
 
 	"google.golang.org/appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

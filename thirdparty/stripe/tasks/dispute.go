@@ -1,14 +1,13 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"google.golang.org/appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/delay"
-	"hanzo.io/log"
 )
 
 // Update payment from dispute
@@ -68,7 +67,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx context.
 		log.Debug("Fees after: %+v", fees, ctx)
 
 		return pay.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update payment '%s' from charge %v: ", pay.Id(), ch, err, ctx)

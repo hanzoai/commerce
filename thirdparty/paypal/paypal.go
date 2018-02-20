@@ -1,6 +1,7 @@
 package paypal
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -11,13 +12,12 @@ import (
 	"strings"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/paypal/responses"
-	"hanzo.io/log"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 )
 

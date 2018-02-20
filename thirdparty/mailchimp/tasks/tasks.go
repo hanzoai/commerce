@@ -1,14 +1,15 @@
 package tasks
 
 import (
-	"google.golang.org/appengine"
+	"context"
+
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/log"
 )
 
 var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, mlJSON []byte, sJSON []byte) error {

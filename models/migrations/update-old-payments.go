@@ -1,16 +1,14 @@
 package migrations
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
+	ds "hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/log"
-
-	ds "hanzo.io/datastore"
-
 	"hanzo.io/thirdparty/stripe"
 )
 
