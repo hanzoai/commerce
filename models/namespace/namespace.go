@@ -17,7 +17,7 @@ func (n *Namespace) NameExists(name string) (ok bool, err error) {
 	n.RunInTransaction(func() error {
 		_, ok, err = n.IdExists(name)
 		return err
-	})
+	}, nil)
 	return ok, err
 }
 
@@ -41,5 +41,5 @@ func (n *Namespace) Put() (err error) {
 		} else {
 			return n.Model.Put()
 		}
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 }

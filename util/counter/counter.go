@@ -207,7 +207,7 @@ func IncrementBy(c context.Context, name, tag, storeId, geo string, p Period, am
 // It will never decrease the number of Shards.
 func IncreaseShards(c context.Context, name string, n int) error {
 	ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-	return datastore.RunInTransaction(c, func(c context.Context) error {
+	return datastore.RunInTransaction(c, func(db *datastore.Datastore) error {
 		var cfg counterConfig
 		mod := false
 		err := aeds.Get(c, ckey, &cfg)
@@ -237,7 +237,7 @@ func init() {
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-		err := aeds.RunInTransaction(c, func(c context.Context) error {
+		err := datastore.RunInTransaction(c, func(db *datastore.Datastore) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = DefaultShards
@@ -250,7 +250,7 @@ func init() {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
 		var s Shard
-		err = aeds.RunInTransaction(c, func(c context.Context) error {
+		err = datastore.RunInTransaction(c, func(db *datastore.Datastore) error {
 			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
 			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)
@@ -295,7 +295,7 @@ func init() {
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, ConfigKind, name, 0, nil)
-		err := datastore.RunInTransaction(c, func(c context.Context) error {
+		err := datastore.RunInTransaction(c, func(db *datastore.Datastore) error {
 			err := aeds.Get(c, ckey, &cfg)
 			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = DefaultShards
@@ -308,7 +308,7 @@ func init() {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
 		var s Shard
-		err = datastore.RunInTransaction(c, func(c context.Context) error {
+		err = datastore.RunInTransaction(c, func(db *datastore.Datastore) error {
 			ShardName := fmt.Sprintf("%s-Shard%d", name, rand.Intn(cfg.Shards))
 			key := aeds.NewKey(c, ShardKind, ShardName, 0, nil)
 			err := aeds.Get(c, key, &s)
