@@ -1,17 +1,17 @@
 package blockchain
 
 import (
-	"google.golang.org/appengine"
+	"context"
 	"errors"
 	"fmt"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 func MakeBitcoinPayment(ctx context.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {
