@@ -1,15 +1,10 @@
-service: default
 version: v1
 
 runtime: go
 api_version: go1.8
 threadsafe: true
 
-manual_scaling:
-  instances: 1
-
 handlers:
-
 - url: /_/queue/delay
   script: _go_app
   login: admin
