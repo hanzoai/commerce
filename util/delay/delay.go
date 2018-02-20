@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/taskqueue"
 
@@ -25,16 +24,21 @@ const (
 	queue = ""
 )
 
+type contextKey int
+
 var (
 	// registry of all delayed functions
 	Funcs = make(map[string]*Function)
 
 	// precomputed types
-	contextType = reflect.TypeOf((*gin.Context)(nil)).Elem()
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+	errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 	// errors
-	errFirstArg = errors.New("first argument must be gin.Context")
+	errFirstArg         = errors.New("first argument must be context.Context")
+	errOutsideDelayFunc = errors.New("request headers are only available inside a delay.Func")
+
+	// context keys
+	headersContextKey contextKey = 0
 )
 
 // Simple wrapper around delay.Func which allows queue to be customized
@@ -65,13 +69,16 @@ func Func(key string, i interface{}) *Function {
 	f := &Function{fv: reflect.ValueOf(i)}
 
 	f.key = key
+	f.queue = "" // Use default queue
+	f.name = ""  // Use taskqueue-generated name
+	f.delay = 0
 
 	t := f.fv.Type()
 	if t.Kind() != reflect.Func {
 		f.err = errors.New("not a function")
 		return f
 	}
-	if t.NumIn() == 0 || t.In(0) != contextType {
+	if t.NumIn() == 0 || !isContext(t.In(0)) {
 		f.err = errFirstArg
 		return f
 	}
@@ -93,11 +100,9 @@ func Func(key string, i interface{}) *Function {
 	if old := Funcs[f.key]; old != nil {
 		old.err = fmt.Errorf("multiple functions registered for %s", key)
 	}
+
 	Funcs[f.key] = f
 
-	f.queue = "" // Use default queue
-	f.name = ""  // Use taskqueue-generated name
-	f.delay = 0
 	return f
 }
 
@@ -138,12 +143,15 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 	nArgs := len(args) + 1 // +1 for the context.Context
 	ft := f.fv.Type()
 	minArgs := ft.NumIn()
+
 	if ft.IsVariadic() {
 		minArgs--
 	}
+
 	if nArgs < minArgs {
 		return nil, fmt.Errorf("delay: too few arguments to func: %d < %d", nArgs, minArgs)
 	}
+
 	if !ft.IsVariadic() && nArgs > minArgs {
 		return nil, fmt.Errorf("delay: too many arguments to func: %d > %d", nArgs, minArgs)
 	}
@@ -152,6 +160,7 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 	for i := 1; i < nArgs; i++ {
 		at := reflect.TypeOf(args[i-1])
 		var dt reflect.Type
+
 		if i < minArgs {
 			// not a variadic arg
 			dt = ft.In(i)
@@ -159,6 +168,7 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 			// a variadic arg
 			dt = ft.In(minArgs).Elem()
 		}
+
 		// nil arguments won't have a type, so they need special handling.
 		if at == nil {
 			// nil interface
@@ -168,6 +178,7 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 			}
 			return nil, fmt.Errorf("delay: argument %d has wrong type: %v is not nilable", i, dt)
 		}
+
 		switch at.Kind() {
 		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Ptr, reflect.Slice:
 			av := reflect.ValueOf(args[i-1])
@@ -177,6 +188,7 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 				args[i-1] = nil
 			}
 		}
+
 		if !at.AssignableTo(dt) {
 			return nil, fmt.Errorf("delay: argument %d has wrong type: %v is not assignable to %v", i, at, dt)
 		}
@@ -235,6 +247,8 @@ func init() {
 
 func runFunc(c context.Context, w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+
+	c = context.WithValue(c, headersContextKey, taskqueue.ParseRequestHeaders(req.Header))
 
 	var inv invocation
 	if err := gob.NewDecoder(req.Body).Decode(&inv); err != nil {

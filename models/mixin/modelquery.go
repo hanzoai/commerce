@@ -3,6 +3,7 @@ package mixin
 import (
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/query"
+	"hanzo.io/log"
 )
 
 // This is a simple Query helper for individual models. Allows you to query for
@@ -116,6 +117,7 @@ func (q *ModelQuery) ById(id string) (bool, error) {
 func (m *Model) Query() *ModelQuery {
 	q := new(ModelQuery)
 	q.entity = m.Entity.(Entity)
+	log.Debug(m.Context())
 	q.dsq = query.New(m.Context(), m.Kind())
 	return q
 }
