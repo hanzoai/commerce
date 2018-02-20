@@ -159,7 +159,7 @@ endif
 
 export GOROOT := $(goroot)
 export GOPATH := $(gopath)
-export APPENGINE_DEV_APPSERVER := $(sdk_path)/dev_appserver_shim.py
+export APPENGINE_DEV_APPSERVER := $(pwd)/scripts/dev_appserver.py
 
 all: deps test install
 
