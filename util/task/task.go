@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"golang.org/x/net/context"
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 
 	"github.com/gin-gonic/gin"
 
