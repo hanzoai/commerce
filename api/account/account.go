@@ -14,7 +14,7 @@ import (
 	"hanzo.io/log"
 )
 
-func get(c *context.Context) {
+func get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 
@@ -41,7 +41,7 @@ func get(c *context.Context) {
 	http.Render(c, 200, usr)
 }
 
-func update(c *context.Context) {
+func update(c *gin.Context) {
 	// org := middleware.GetOrganization(c)
 	// db := datastore.New(org.Namespaced(c))
 	// usr := middleware.GetUser(c)
@@ -59,7 +59,7 @@ func update(c *context.Context) {
 	// }
 }
 
-func patch(c *context.Context) {
+func patch(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 	ctx := org.Db.Context

@@ -9,7 +9,7 @@ import (
 )
 
 // Access token routes
-func Get(c *context.Context) {
+func Get(c *gin.Context) {
 	id := c.Params.ByName("id")
 	mode := c.Params.ByName("mode")
 	test := false
@@ -24,7 +24,7 @@ func Get(c *context.Context) {
 	getAccessToken(c, id, email, password, test)
 }
 
-func Post(c *context.Context) {
+func Post(c *gin.Context) {
 	// If method override is used
 	if c.Request.Method == "DELETE" {
 		Delete(c)
@@ -43,7 +43,7 @@ func Post(c *context.Context) {
 	getAccessToken(c, id, email, password, test)
 }
 
-func Delete(c *context.Context) {
+func Delete(c *gin.Context) {
 	deleteAccessToken(c)
 }
 

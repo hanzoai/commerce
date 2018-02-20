@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var CoverReferralProgram = New("cover-referralprogram", func(c *context.Context) *referralprogram.ReferralProgram {
+var CoverReferralProgram = New("cover-referralprogram", func(c *gin.Context) *referralprogram.ReferralProgram {
 	db := datastore.New(c)
 
 	org := organization.New(db)

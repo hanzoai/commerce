@@ -15,10 +15,10 @@ import (
 	"hanzo.io/util/template"
 )
 
-type ErrorDisplayer func(c *context.Context, message string, err error)
+type ErrorDisplayer func(c *gin.Context, message string, err error)
 
 // Display errors in JSON
-func ErrorJSON(c *context.Context, stack string, err error) {
+func ErrorJSON(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.AbortWithStatus(500)
 	jsonErr := gin.H{
@@ -31,7 +31,7 @@ func ErrorJSON(c *context.Context, stack string, err error) {
 	log.Error(stack, c)
 }
 
-func ErrorJSONDev(c *context.Context, stack string, err error) {
+func ErrorJSONDev(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.AbortWithStatus(500)
 	jsonErr := gin.H{
@@ -45,14 +45,14 @@ func ErrorJSONDev(c *context.Context, stack string, err error) {
 }
 
 // Display errors in HTML
-func ErrorHTML(c *context.Context, stack string, err error) {
+func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.AbortWithStatus(500)
 	template.Render(c, "error/500.html")
 	log.Error(stack, c)
 }
 
-func ErrorHTMLDev(c *context.Context, stack string, err error) {
+func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.AbortWithStatus(500)
 	c.Writer.Write([]byte(`<html>
@@ -75,7 +75,7 @@ func ErrorHTMLDev(c *context.Context, stack string, err error) {
 
 // Handle errors with appropriate ErrorDisplayer
 func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
-	return func(c *context.Context) {
+	return func(c *gin.Context) {
 		// On panic
 		defer func() {
 			if r := recover(); r != nil {

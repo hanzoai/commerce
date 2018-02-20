@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("reset-refund-counters",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "stoned")
 		return NoArgs
 	},

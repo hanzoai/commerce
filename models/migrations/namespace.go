@@ -26,7 +26,7 @@ import (
 
 var newNamespace = ""
 
-func setupNamespaceRename(c *context.Context) []interface{} {
+func setupNamespaceRename(c *gin.Context) []interface{} {
 	panic("Unable to pass configuration info back to migration funcs yet")
 
 	// TODO: we SHOULD be able to do this

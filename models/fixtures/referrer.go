@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var Referrer = New("referrer", func(c *context.Context) *referrer.Referrer {
+var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

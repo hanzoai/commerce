@@ -14,7 +14,7 @@ type Organization struct {
 }
 
 // Get id from namespace
-func idFromNamespace(c *context.Context) {
+func idFromNamespace(c *gin.Context) {
 	namespace := c.Params.ByName("namespace")
 	db := datastore.New(c)
 	key, ok, err := db.Query("organization").Filter("Name=", namespace).KeysOnly().First(nil)
@@ -33,7 +33,7 @@ func idFromNamespace(c *context.Context) {
 }
 
 // Get namespace from id
-func namespaceFromId(c *context.Context) {
+func namespaceFromId(c *gin.Context) {
 	v, err := strconv.Atoi(c.Params.ByName("id"))
 	if err != nil {
 		log.Panic("Unable to convert id to int", err, c)

@@ -13,7 +13,7 @@ import (
 )
 
 // handle form submissions
-func handleForm(c *context.Context) {
+func handleForm(c *gin.Context) {
 	db := datastore.New(c)
 	id := c.Params.ByName("mailinglistid")
 	org := organization.New(db)

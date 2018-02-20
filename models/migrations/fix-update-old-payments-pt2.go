@@ -63,7 +63,7 @@ var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", f
 })
 
 var _ = New("fix-update-old-payments-pt-2",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

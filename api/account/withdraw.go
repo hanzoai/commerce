@@ -16,7 +16,7 @@ import (
 	"hanzo.io/log"
 )
 
-func withdraw(c *context.Context) {
+func withdraw(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 

@@ -39,7 +39,7 @@ type createRes struct {
 	Token string `json:"token,omitempty"`
 }
 
-func create(c *context.Context) {
+func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

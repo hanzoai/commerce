@@ -67,7 +67,7 @@ func resetPassword(usr *user.User, req resetPasswordReq) error {
 	return nil
 }
 
-func confirm(c *context.Context) {
+func confirm(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

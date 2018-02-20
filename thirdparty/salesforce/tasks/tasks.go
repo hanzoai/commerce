@@ -59,7 +59,7 @@ var ImportUsersTask = parallel.New("sf-import-user-task", func(db *datastore.Dat
 })
 
 // ImportUsers upserts all users into salesforce
-func ImportUsers(c *context.Context) {
+func ImportUsers(c *gin.Context) {
 	// db := datastore.New(c)
 	// campaign := campaign.Campaign{}
 
@@ -90,7 +90,7 @@ var ImportMissingUsersTask = parallel.New("sf-import-missing-user-task", func(db
 })
 
 // ImportMissingUsers upserts all users not synchronized into salesforce
-func ImportMissingUsers(c *context.Context) {
+func ImportMissingUsers(c *gin.Context) {
 	// db := datastore.New(c)
 	// campaign := campaign.Campaign{}
 
@@ -116,7 +116,7 @@ var ImportOrdersTask = parallel.New("sf-import-order-task", func(db *datastore.D
 })
 
 // ImportOrders upserts all orders into salesforce
-func ImportOrders(c *context.Context) {
+func ImportOrders(c *gin.Context) {
 	// db := datastore.New(c)
 	// campaign := campaign.Campaign{}
 
@@ -147,7 +147,7 @@ var ImportMissingOrdersTask = parallel.New("sf-import-missing-order-task", func(
 })
 
 // ImportMissingOrders upserts all orders not synchronized into salesforce
-func ImportMissingOrders(c *context.Context) {
+func ImportMissingOrders(c *gin.Context) {
 	// db := datastore.New(c)
 	// campaign := campaign.Campaign{}
 
@@ -173,7 +173,7 @@ var ImportProductVariantsTask = parallel.New("sf-import-product-task", func(db *
 })
 
 // ImportOrders upserts all orders into salesforce
-func ImportProductVariant(c *context.Context) {
+func ImportProductVariant(c *gin.Context) {
 	// db := datastore.New(c)
 	// var campaign models.Campaign
 
@@ -331,7 +331,7 @@ var PopulateMissingUserSFIdsTask = parallel.New("sf-populate-user-ids", func(db 
 })
 
 // PopulateMissingUserSFIds ensures all users have salesforce ids
-func PopulateMissingUserSFIds(c *context.Context) {
+func PopulateMissingUserSFIds(c *gin.Context) {
 	// db := datastore.New(c)
 	// campaign := campaign.Campaign{}
 

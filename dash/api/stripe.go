@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/template"
 )
 
-func StripeSync(c *context.Context) {
+func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	tasks.SyncCharges.Call(ctx, org.Id())
@@ -27,7 +27,7 @@ type StripeData struct {
 }
 
 // Admin Payment Connectors
-func Stripe(c *context.Context) {
+func Stripe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
 	sd := new(StripeData)
@@ -44,7 +44,7 @@ func Stripe(c *context.Context) {
 }
 
 // Connect callback for platform
-func StripeCallback(c *context.Context) {
+func StripeCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
 	errStr := req.URL.Query().Get("error")

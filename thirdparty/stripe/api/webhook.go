@@ -21,7 +21,7 @@ import (
 )
 
 // Decode Stripe payload
-func decodeEvent(c *context.Context) (*stripe.Event, error) {
+func decodeEvent(c *gin.Context) (*stripe.Event, error) {
 	event := new(stripe.Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
 		log.Error("Could not Decode:\n%s", c.Request.Body, c)
@@ -76,7 +76,7 @@ func addTask(fn *delay.Function, ctx context.Context, event *stripe.Event, org *
 }
 
 // Handle stripe webhook POSTs
-func Webhook(c *context.Context) {
+func Webhook(c *gin.Context) {
 	// Decode webhook event
 	event, err := decodeEvent(c)
 	if err != nil {

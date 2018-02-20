@@ -24,7 +24,7 @@ import (
 
 var (
 	ctx  ae.Context
-	c    *context.Context
+	c    *gin.Context
 	db   *datastore.Datastore
 	nsDb *datastore.Datastore
 	ord  *order.Order

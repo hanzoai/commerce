@@ -21,7 +21,7 @@ import (
 	token "hanzo.io/util/oldjwt"
 )
 
-var Ludela = New("ludela", func(c *context.Context) *organization.Organization {
+var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create user

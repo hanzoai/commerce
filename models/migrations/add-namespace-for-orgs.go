@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("add-namespace-for-orgs",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "")
 		return NoArgs
 	},

@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("flag-orders-as-test",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "cycliq")
 		return NoArgs
 	},

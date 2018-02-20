@@ -9,7 +9,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func exists(c *context.Context) {
+func exists(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	emailorusername := c.Params.ByName("emailorusername")

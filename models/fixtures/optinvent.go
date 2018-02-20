@@ -12,7 +12,7 @@ import (
 	"hanzo.io/log"
 )
 
-var Optinvent = New("optinvent", func(c *context.Context) *organization.Organization {
+var Optinvent = New("optinvent", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

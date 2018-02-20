@@ -14,7 +14,7 @@ import (
 )
 
 // Return all listings
-func listListing(c *context.Context) {
+func listListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	db := datastore.New(c)
 
@@ -28,7 +28,7 @@ func listListing(c *context.Context) {
 }
 
 // Get single store listing for given product/variant
-func getListing(c *context.Context) {
+func getListing(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
 	id := c.Params.ByName("storeid")
@@ -64,7 +64,7 @@ func getListing(c *context.Context) {
 	http.Render(c, 200, listing)
 }
 
-func createListing(c *context.Context) {
+func createListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
@@ -104,7 +104,7 @@ func createListing(c *context.Context) {
 	}
 }
 
-func updateListing(c *context.Context) {
+func updateListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
@@ -139,7 +139,7 @@ func updateListing(c *context.Context) {
 	}
 }
 
-func patchListing(c *context.Context) {
+func patchListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
@@ -172,7 +172,7 @@ func patchListing(c *context.Context) {
 	}
 }
 
-func deleteListing(c *context.Context) {
+func deleteListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)

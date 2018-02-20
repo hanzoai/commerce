@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-func New(ctx ...context.Context) *context.Context {
+func New(ctx ...context.Context) *gin.Context {
 	var _ctx context.Context
 
 	switch len(ctx) {
@@ -28,7 +28,7 @@ func New(ctx ...context.Context) *context.Context {
 	return c
 }
 
-func SetDefaults(c *context.Context, ctx context.Context) {
+func SetDefaults(c *gin.Context, ctx context.Context) {
 	c.Set("google.golang.org/appengine", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)

@@ -16,7 +16,7 @@ import (
 	"hanzo.io/util/rand"
 )
 
-func Get(c *context.Context) {
+func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 
@@ -51,7 +51,7 @@ func Get(c *context.Context) {
 	http.Render(c, 200, ins)
 }
 
-func Delete(c *context.Context) {
+func Delete(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 
@@ -72,7 +72,7 @@ func Delete(c *context.Context) {
 	}
 }
 
-func Upsert(c *context.Context) {
+func Upsert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 

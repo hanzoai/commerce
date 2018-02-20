@@ -12,7 +12,7 @@ import (
 
 const Month = time.Hour * 24 * 30
 
-var Coupon = New("coupon", func(c *context.Context) *coupon.Coupon {
+var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	db := getNamespaceDb(c)
 
 	now := time.Now()

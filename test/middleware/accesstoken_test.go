@@ -75,7 +75,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			// Setup client router to check for token required
 			client.Use(middleware.TokenRequired())
 			// Return ok if token is valid
-			client.Handle("GET", "/", func(c *context.Context) {
+			client.Handle("GET", "/", func(c *gin.Context) {
 				c.String(200, "ok")
 			})
 			// Set access token on client

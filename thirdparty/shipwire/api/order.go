@@ -52,7 +52,7 @@ func updateFromHolds(ord *order.Order, rsrc Resource) {
 	ord.Fulfillment.Holds = holds
 }
 
-func updateOrder(c *context.Context, topic string, o Order) {
+func updateOrder(c *gin.Context, topic string, o Order) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
@@ -111,7 +111,7 @@ func updateOrder(c *context.Context, topic string, o Order) {
 	c.String(200, "ok\n")
 }
 
-func createOrder(c *context.Context) {
+func createOrder(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

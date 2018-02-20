@@ -18,7 +18,7 @@ import (
 )
 
 // Salesforce End Points
-func SalesforceCallback(c *context.Context) {
+func SalesforceCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
 
@@ -88,7 +88,7 @@ func SalesforceCallback(c *context.Context) {
 	template.Render(c, "admin/salesforce/success.html", "token", token.AccessToken)
 }
 
-func SalesforcePullLatest(c *context.Context) {
+func SalesforcePullLatest(c *gin.Context) {
 	// org := middleware.GetOrganization(c)
 
 	// client := salesforce.New(ctx, org, true)
@@ -115,7 +115,7 @@ func SalesforcePullLatest(c *context.Context) {
 	// c.String(200, "Success!")
 }
 
-func TestSalesforceConnection(c *context.Context) {
+func TestSalesforceConnection(c *gin.Context) {
 	// // Get user
 	// email, err := auth.GetEmail(c)
 	// if err != nil {

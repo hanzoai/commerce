@@ -29,7 +29,7 @@ func GetProduct(db *ds.Datastore, id string) string {
 }
 
 var _ = New("update-skus-on-orders",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 
 		return NoArgs

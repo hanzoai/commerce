@@ -39,7 +39,7 @@ type Event struct {
 }
 
 // Decode Bitcoin payload
-func decodeEvent(c *context.Context) (*Event, error) {
+func decodeEvent(c *gin.Context) (*Event, error) {
 	event := new(Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
 		log.Error("Could not Decode:\n%s", c.Request.Body, c)
@@ -56,7 +56,7 @@ var CouldNotConvertToBigInt = errors.New("BlockTransaction Value could not be co
 var ReceiverBlockShouldBeVOutBlock = errors.New("BlockTransaction marked as 'receiver' Usage should also be of 'vin' BitcoinTransactionType")
 
 // Handle stripe webhook POSTs
-func Webhook(c *context.Context) {
+func Webhook(c *gin.Context) {
 	event, err := decodeEvent(c)
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)

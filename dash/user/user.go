@@ -16,13 +16,13 @@ var ErrorPasswordIncorrect = errors.New("Password Incorrect")
 var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters long")
 
 // Renders the profile page
-func Profile(c *context.Context) {
+func Profile(c *gin.Context) {
 	u := middleware.GetCurrentUser(c)
 	http.Render(c, 200, u)
 }
 
 // Handles submission on profile page
-func ContactSubmit(c *context.Context) {
+func ContactSubmit(c *gin.Context) {
 	form := new(ContactForm)
 	if err := form.Parse(c); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -42,7 +42,7 @@ func ContactSubmit(c *context.Context) {
 	http.Render(c, 200, u)
 }
 
-func PasswordSubmit(c *context.Context) {
+func PasswordSubmit(c *gin.Context) {
 	form := new(ChangePasswordForm)
 	if err := form.Parse(c); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)

@@ -26,7 +26,7 @@ type CartResponse struct {
 	Id string `json:"id"`
 }
 
-func Set(c *context.Context) {
+func Set(c *gin.Context) {
 	db := datastore.New(c)
 
 	id := c.Params.ByName("cartid")
@@ -101,7 +101,7 @@ func Set(c *context.Context) {
 	}
 }
 
-func Discard(c *context.Context) {
+func Discard(c *gin.Context) {
 	db := datastore.New(c)
 
 	id := c.Params.ByName("cartid")
@@ -137,8 +137,8 @@ func Discard(c *context.Context) {
 	}
 }
 
-func create(r *rest.Rest) func(*context.Context) {
-	return func(c *context.Context) {
+func create(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "create") {
 			return
 		}
@@ -180,8 +180,8 @@ func create(r *rest.Rest) func(*context.Context) {
 }
 
 // Completely replaces an cart for given `id`.
-func update(r *rest.Rest) func(*context.Context) {
-	return func(c *context.Context) {
+func update(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "update") {
 			return
 		}
@@ -240,8 +240,8 @@ func update(r *rest.Rest) func(*context.Context) {
 }
 
 // Partially updates pre-existing cart by given `id`.
-func patch(r *rest.Rest) func(*context.Context) {
-	return func(c *context.Context) {
+func patch(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "patch") {
 			return
 		}

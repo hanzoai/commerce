@@ -17,7 +17,7 @@ import (
 
 var jsTemplate string
 
-func Js(c *context.Context) {
+func Js(c *gin.Context) {
 	db := datastore.New(c)
 
 	id := c.Params.ByName("organizationid")

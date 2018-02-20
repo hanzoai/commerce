@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-var CoverEnableWelcome = New("cover-enable-welcome", func(c *context.Context) *organization.Organization {
+var CoverEnableWelcome = New("cover-enable-welcome", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

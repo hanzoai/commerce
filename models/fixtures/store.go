@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var Store = New("store", func(c *context.Context) *store.Store {
+var Store = New("store", func(c *gin.Context) *store.Store {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

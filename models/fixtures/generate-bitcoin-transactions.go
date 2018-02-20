@@ -14,7 +14,7 @@ import (
 	"hanzo.io/log"
 )
 
-var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", func(c *context.Context) {
+var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", func(c *gin.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 
