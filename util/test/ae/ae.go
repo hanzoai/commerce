@@ -34,7 +34,7 @@ func NewContext(args ...Options) Context {
 		// Create new dev server instance
 		inst, err = aetest.NewInstance(opts)
 		if err != nil {
-			log.Panic("Failed to create context: %v", err)
+			log.Panic("Failed to create instance: %v", err)
 		}
 	}
 
