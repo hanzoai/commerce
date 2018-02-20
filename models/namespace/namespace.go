@@ -2,8 +2,8 @@ package namespace
 
 import (
 	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
 	"hanzo.io/log"
+	"hanzo.io/models/mixin"
 )
 
 type Namespace struct {

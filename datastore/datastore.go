@@ -72,8 +72,8 @@ func (d *Datastore) Query(kind string) Query {
 	return query.New(d.Context, kind)
 }
 
-func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts ...TransactionOptions) error {
-	return RunInTransaction(d.Context, fn, opts...)
+func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
+	return RunInTransaction(d.Context, fn, opts)
 }
 
 func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
@@ -82,14 +82,8 @@ func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
 
 type TransactionOptions aeds.TransactionOptions
 
-func RunInTransaction(ctx context.Context, fn func(db *Datastore) error, opts ...TransactionOptions) error {
-	aeopts := new(aeds.TransactionOptions)
-
-	if len(opts) > 0 {
-		aeopts.XG = opts[0].XG
-		aeopts.Attempts = opts[0].Attempts
-	}
-
+func RunInTransaction(ctx context.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
+	aeopts := (*aeds.TransactionOptions)(opts)
 	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		return fn(New(ctx))
 	}, aeopts)
