@@ -72,5 +72,5 @@ var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analytics
 		}
 
 		return nil
-	})
+	}, nil)
 })
