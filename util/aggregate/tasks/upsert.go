@@ -1,14 +1,15 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/aggregate"
 	"hanzo.io/log"
+	"hanzo.io/models/aggregate"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {

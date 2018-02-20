@@ -9,6 +9,6 @@ func LoadStruct(dst interface{}, properties []aeds.Property) error {
 
 // src should be a pointer
 func SaveStruct(src interface{}) ([]aeds.Property, error) {
-	properties, err := aeds.SaveStruct(src)
-	return properties, IgnoreFieldMismatch(err)
+	props, err := aeds.SaveStruct(src)
+	return props, IgnoreFieldMismatch(err)
 }
