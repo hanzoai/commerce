@@ -7,12 +7,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 
@@ -220,5 +220,5 @@ func Upsert(c *gin.Context) {
 			http.Render(c, 201, org.Integrations)
 		}
 		return nil
-	})
+	}, nil)
 }

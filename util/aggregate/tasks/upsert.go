@@ -55,7 +55,7 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, na
 		}
 
 		return nil
-	})
+	}, nil)
 
 	if err != nil {
 		// Poor man's retry

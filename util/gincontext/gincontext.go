@@ -23,7 +23,7 @@ func New(ctx ...context.Context) *gin.Context {
 	}
 
 	// Setup default context.Context for tests
-	c := new(context.Context)
+	c := new(gin.Context)
 	SetDefaults(c, _ctx)
 	return c
 }
