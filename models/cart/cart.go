@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/dustin/go-humanize"
 
 	"hanzo.io/datastore"
@@ -108,7 +106,7 @@ func (c *Cart) Validator() *val.Validator {
 	return val.New()
 }
 
-func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
+func (c *Cart) Load(ps datastore.PropertyList) (err error) {
 	// Prevent duplicate deserialization
 	if c.Loaded() {
 		return nil
@@ -118,7 +116,7 @@ func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
 	c.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(c, ch)); err != nil {
+	if err = datastore.LoadStruct(c, ps); err != nil {
 		return err
 	}
 
@@ -140,13 +138,13 @@ func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (c *Cart) Save(ch chan<- aeds.Property) (err error) {
+func (c *Cart) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
 	c.Items_ = string(json.EncodeBytes(c.Items))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(c, ch))
+	return datastore.SaveStruct(c)
 }
 
 func (c *Cart) SetItem(db *datastore.Datastore, id string, typ string, quantity int) (err error) {
