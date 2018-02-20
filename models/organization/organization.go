@@ -1,17 +1,16 @@
 package organization
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
-	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
 	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/app"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/oauthtoken"
@@ -23,14 +22,11 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Email struct {
 	Enabled   bool   `json:"enabled"`
@@ -196,12 +192,12 @@ type Organization struct {
 	Currency currency.Type `json:"currency"`
 }
 
-func (o *Organization) Load(c <-chan aeds.Property) (err error) {
+func (o *Organization) Load(ps datastore.PropertyList) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+	if err = datastore.LoadStruct(o, c)); err != nil {
 		return err
 	}
 
@@ -372,21 +368,12 @@ func (o *Organization) AddOwner(userOrId string) {
 }
 
 // Get namespaced context for this organization
-func (o Organization) Namespaced(ctx interface{}) context.Context {
-	var _ctx context.Context
-
-	switch v := ctx.(type) {
-	case *context.Context:
-		_ctx = v.MustGet("appengine").(context.Context)
-	case context.Context:
-		_ctx = v
-	}
-
-	_ctx, err := appengine.Namespace(_ctx, o.Name)
+func (o Organization) Namespaced(ctx context.Context) context.Context {
+	ctx, err = appengine.Namespace(ctx, o.Name)
 	if err != nil {
 		panic(err)
 	}
-	return _ctx
+	return ctx
 }
 
 func (o Organization) StripeToken() string {
