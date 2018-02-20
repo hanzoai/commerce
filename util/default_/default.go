@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/exec"
@@ -20,7 +21,6 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"
 	_ "hanzo.io/cron/tasks"
-	_ "hanzo.io/delay"
 	_ "hanzo.io/models/analyticsidentifier/tasks"
 	_ "hanzo.io/models/fixtures"
 	_ "hanzo.io/models/fixtures/users"
@@ -56,8 +56,16 @@ func Init() {
 		log.Panic("I think I heard, I think I heard a shot.")
 	})
 
+	// Setup routes for delay funcs
+	router.POST(delay.Path, func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		delay.RunFunc(ctx, c.Writer, c.Request)
+	})
+
 	// Setup routes for tasks
 	task.SetupRoutes(router)
+
+	// Setup hashid routes
 	hashid.SetupRoutes(router)
 
 	// Development-only routes below

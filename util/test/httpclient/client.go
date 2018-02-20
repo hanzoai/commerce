@@ -7,10 +7,19 @@ import (
 	"net/url"
 	"strings"
 
-	"hanzo.io/config"
+	// "google.golang.org/appengine"
+
+	// "hanzo.io/config"
 	"hanzo.io/log"
 	"hanzo.io/util/json"
 )
+
+func getModuleHost(ctx context.Context, moduleName string) (host string, err error) {
+	// id := appengine.InstanceID()
+	// log.Warn(moduleName, id)
+	// return appengine.ModuleHostname(ctx, moduleName, "", id)
+	return "localhost:8003", nil
+}
 
 type Client struct {
 	context    context.Context
@@ -30,12 +39,9 @@ func (c *Client) determineBaseURL() {
 	}
 
 	url := "http://" + strings.Trim(moduleHost, "/")
-
-	if config.IsDevelopment && c.moduleName != "default" {
-		url = strings.Trim(url, "/") + "/" + c.moduleName
-	}
-
 	c.baseURL = strings.Trim(url, "/")
+
+	log.Warn("baseURL %s", c.baseURL)
 }
 
 func (c *Client) getURL(path string) string {
