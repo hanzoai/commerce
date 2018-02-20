@@ -11,7 +11,7 @@ import (
 	"hanzo.io/log"
 )
 
-var Kpak = New("kpak", func(c *context.Context) *organization.Organization {
+var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

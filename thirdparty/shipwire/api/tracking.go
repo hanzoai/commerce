@@ -40,7 +40,7 @@ func convertTracking(t Tracking) fulfillment.Tracking {
 	return trk
 }
 
-func getOrderFromShipwire(c *context.Context, org *organization.Organization, ord *order.Order, id int) error {
+func getOrderFromShipwire(c *gin.Context, org *organization.Organization, ord *order.Order, id int) error {
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	o, res, err := client.GetOrder(id)
 	if res.Status < 300 && err != nil {
@@ -53,7 +53,7 @@ func getOrderFromShipwire(c *context.Context, org *organization.Organization, or
 	return fmt.Errorf("No matching order found for Shipwire order %s", id)
 }
 
-func getOrderForTracking(c *context.Context, t Tracking) (*order.Order, error) {
+func getOrderForTracking(c *gin.Context, t Tracking) (*order.Order, error) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	ord := order.New(db)
@@ -84,7 +84,7 @@ func updateOrderTracking(ord *order.Order, t Tracking) {
 	ord.Fulfillment.Trackings = append(ord.Fulfillment.Trackings, convertTracking(t))
 }
 
-func updateTracking(c *context.Context, topic string, t Tracking) {
+func updateTracking(c *gin.Context, topic string, t Tracking) {
 	log.Info("Fetching order associated with tracking %s", t.ID, c)
 	ord, err := getOrderForTracking(c, t)
 	if err != nil {

@@ -18,7 +18,7 @@ import (
 	"hanzo.io/log"
 )
 
-var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *context.Context) {
+var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 

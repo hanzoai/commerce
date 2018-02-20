@@ -7,7 +7,7 @@ import (
 	"hanzo.io/util/category"
 )
 
-var Campaign = New("campaign", func(c *context.Context) *campaign.Campaign {
+var Campaign = New("campaign", func(c *gin.Context) *campaign.Campaign {
 	db := getNamespaceDb(c)
 	org := Organization(c)
 

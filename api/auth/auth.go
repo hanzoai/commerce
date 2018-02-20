@@ -39,7 +39,7 @@ type OAuthResponse struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
-func credentials(c *context.Context) {
+func credentials(c *gin.Context) {
 	req := OAuthRequest{}
 	grantType := ""
 
@@ -66,7 +66,7 @@ func credentials(c *context.Context) {
 	}
 }
 
-func passwordCredentials(c *context.Context, req OAuthRequest) {
+func passwordCredentials(c *gin.Context, req OAuthRequest) {
 	var username, pw, orgId string
 
 	if req.GrantType == "" {
@@ -145,7 +145,7 @@ func passwordCredentials(c *context.Context, req OAuthRequest) {
 	http.Render(c, 200, resp)
 }
 
-func refreshCredentials(c *context.Context, req OAuthRequest) {
+func refreshCredentials(c *gin.Context, req OAuthRequest) {
 	var refreshToken string
 
 	if req.GrantType == "" {

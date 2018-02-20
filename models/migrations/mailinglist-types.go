@@ -11,7 +11,7 @@ import (
 )
 
 var _ = New("mailinglist-types",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, ml *mailinglist.MailingList) {

@@ -32,7 +32,7 @@ func (r twoStageEnableReq) GetPasswordConfirm() string {
 	return r.PasswordConfirm
 }
 
-func enable(c *context.Context) {
+func enable(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

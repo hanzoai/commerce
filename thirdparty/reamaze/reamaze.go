@@ -22,7 +22,7 @@ func checkMAC(message, messageMAC, key []byte) bool {
 	return hmac.Equal(messageMAC, expectedMAC)
 }
 
-func verifyHMAC(c *context.Context) {
+func verifyHMAC(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
 	q := c.Request.URL.Query()
@@ -36,7 +36,7 @@ func verifyHMAC(c *context.Context) {
 	}
 }
 
-func setOrg(c *context.Context) {
+func setOrg(c *gin.Context) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	brand := c.Request.URL.Query().Get("brand")

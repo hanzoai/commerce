@@ -16,7 +16,7 @@ import (
 )
 
 var _ = New("fix-currency-set",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		return NoArgs
@@ -40,7 +40,7 @@ var _ = New("fix-currency-set",
 )
 
 var _ = New("load-counter-orders",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		return NoArgs
@@ -94,7 +94,7 @@ var _ = New("load-counter-orders",
 )
 
 var _ = New("load-counter-product-orders",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		return NoArgs
@@ -129,7 +129,7 @@ var _ = New("load-counter-product-orders",
 )
 
 var _ = New("load-counter-users",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		return NoArgs
@@ -154,7 +154,7 @@ var _ = New("load-counter-users",
 )
 
 var _ = New("load-counter-subscribers",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		return NoArgs

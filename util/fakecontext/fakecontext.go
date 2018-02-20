@@ -108,7 +108,7 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx *context.Context) (ctx *context.Context, err error) {
+func (c Context) Context(aectx *gin.Context) (ctx *gin.Context, err error) {
 	ctx = new(context.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
@@ -139,7 +139,7 @@ func (c Context) Context(aectx *context.Context) (ctx *context.Context, err erro
 	return ctx, err
 }
 
-func NewContext(c *context.Context) *Context {
+func NewContext(c *gin.Context) *Context {
 	ctx := new(Context)
 
 	ctx.Keys = make(map[string]interface{}, 0)

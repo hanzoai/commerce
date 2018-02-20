@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-var Bellabeat = New("bellabeat", func(c *context.Context) *organization.Organization {
+var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

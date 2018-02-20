@@ -9,7 +9,7 @@ import (
 )
 
 var _ = New("save-order-numbers",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "stoned")
 		return NoArgs
 	},

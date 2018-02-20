@@ -25,7 +25,7 @@ type CreateHoldReq struct {
 	Metadata   models.Map     `json:"metadata"`
 }
 
-func CreateHold(c *context.Context) {
+func CreateHold(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	req := &CreateHoldReq{}
@@ -93,7 +93,7 @@ func CreateHold(c *context.Context) {
 	}
 }
 
-func RemoveHold(c *context.Context) {
+func RemoveHold(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	org := middleware.GetOrganization(c)

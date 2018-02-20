@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var LuckyBets = New("luckybets", func(c *context.Context) *organization.Organization {
+var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

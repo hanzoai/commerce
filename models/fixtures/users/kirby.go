@@ -11,7 +11,7 @@ import (
 	. "hanzo.io/models/fixtures"
 )
 
-var KirbyForStonedAndSuchTees = New("kirby-for-stoned-and-suchtees", func(c *context.Context) {
+var KirbyForStonedAndSuchTees = New("kirby-for-stoned-and-suchtees", func(c *gin.Context) {
 	db := datastore.New(c)
 
 	org := organization.New(db)

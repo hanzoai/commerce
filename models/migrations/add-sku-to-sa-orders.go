@@ -9,7 +9,7 @@ import (
 )
 
 var _ = New("add-sku-to-sa-orders",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "stoned")
 		return NoArgs
 	},

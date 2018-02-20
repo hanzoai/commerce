@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("add-batch-data-for-kanoa",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
