@@ -1,17 +1,15 @@
 package discount
 
 import (
+	"context"
 	"fmt"
 
-	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/memcache"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/datastore"
-	"hanzo.io/models/discount/scope"
-
 	"hanzo.io/log"
+	"hanzo.io/models/discount/scope"
 )
 
 // Computes memcache key, using format:
