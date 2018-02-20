@@ -14,6 +14,6 @@ func defaults() Options {
 	return &aetest.Options{
 		AppID: "development",
 		StronglyConsistentDatastore: true,
-		StartupTimeout:              time.Second * 30,
+		StartupTimeout:              time.Second * 120,
 	}
 }
