@@ -3,11 +3,10 @@ package migrations
 import (
 	"strconv"
 
-	"google.golang.org/appengine/delay"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore/parallel"
+	"hanzo.io/delay"
 	"hanzo.io/util/task"
 )
 
