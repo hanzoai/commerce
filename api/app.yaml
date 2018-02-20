@@ -1,9 +1,9 @@
 application: crowdstart-us
-module: api
+service: api
 version: v1
 
 runtime: go
-api_version: go1
+api_version: go1.8
 threadsafe: true
 
 instance_class: F1
