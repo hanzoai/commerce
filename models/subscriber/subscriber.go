@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/client"
@@ -18,8 +16,6 @@ import (
 	. "hanzo.io/models"
 	. "hanzo.io/util/strings"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 var mailchimpReserved = map[string]bool{
 	"INTERESTS":  true,
@@ -146,12 +142,12 @@ func (s Subscriber) MergeFields() map[string]interface{} {
 	return fields
 }
 
-func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
+func (s *Subscriber) Load(ps datastore.PropertyList) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
 
@@ -163,12 +159,12 @@ func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
+func (s *Subscriber) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }
 
 func (s *Subscriber) Normalize() {

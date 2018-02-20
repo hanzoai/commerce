@@ -2,6 +2,7 @@ package ipn
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,18 +11,16 @@ import (
 	"net/url"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/log"
 	"hanzo.io/util/router"
 )
 
@@ -50,11 +49,14 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("IPN response: %s", string(dump), ctx)
 
+	// Set deadline
+	d := time.Now().Add(time.Second * 30)
+	ctx, _ = context.WithDeadline(ctx, d)
+
 	// Create client
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	// Make Post request
