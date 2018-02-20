@@ -31,9 +31,9 @@ type Review struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (r *Review) Load(c <-chan aeds.Property) (err error) {
+func (r *Review) Load(p []aeds.Property) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(r, c)); err != nil {
+	if err = datastore.LoadStruct(r, p); err != nil {
 		return err
 	}
 
@@ -45,10 +45,10 @@ func (r *Review) Load(c <-chan aeds.Property) (err error) {
 	return
 }
 
-func (r *Review) Save(c chan<- aeds.Property) (err error) {
+func (r *Review) Save() (p []aeds.Property, err error) {
 	// Serialize unsupported properties
 	r.Metadata_ = string(json.EncodeBytes(&r.Metadata))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(r, c))
+	return datastore.SaveStruct(r)
 }
