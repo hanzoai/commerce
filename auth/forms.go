@@ -22,7 +22,7 @@ func (f LoginForm) PasswordHash() ([]byte, error) {
 	return password.Hash(f.Password)
 }
 
-func (f *LoginForm) Parse(c *context.Context) error {
+func (f *LoginForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}
