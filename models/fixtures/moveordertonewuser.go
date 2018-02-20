@@ -4,11 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 )
 
 var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
@@ -85,5 +85,5 @@ var MoveOrderToNewUser = New("move-order-to-new-user", func(c *gin.Context) {
 			}
 		}
 		return nil
-	})
+	}, nil)
 })
