@@ -197,7 +197,7 @@ func (o *Organization) Load(ps datastore.PropertyList) (err error) {
 	o.Defaults()
 
 	// Load supported properties
-	if err = datastore.LoadStruct(o, c)); err != nil {
+	if err = datastore.LoadStruct(o, ps); err != nil {
 		return err
 	}
 
@@ -216,12 +216,12 @@ func (o *Organization) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (o *Organization) Save(c chan<- aeds.Property) (err error) {
+func (o *Organization) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
+	return datastore.SaveStruct(o)
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
@@ -369,6 +369,7 @@ func (o *Organization) AddOwner(userOrId string) {
 
 // Get namespaced context for this organization
 func (o Organization) Namespaced(ctx context.Context) context.Context {
+	var err error
 	ctx, err = appengine.Namespace(ctx, o.Name)
 	if err != nil {
 		panic(err)
