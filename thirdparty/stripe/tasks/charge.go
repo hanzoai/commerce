@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 )
 
 // Update payment from charge

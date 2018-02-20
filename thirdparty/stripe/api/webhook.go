@@ -14,7 +14,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/thirdparty/stripe/tasks"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 )
