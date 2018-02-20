@@ -1,18 +1,17 @@
 package counter
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
 )
 
 var (
