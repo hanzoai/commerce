@@ -56,7 +56,7 @@ func Namespace() gin.HandlerFunc {
 		ctx := GetAppEngine(c)
 		org := GetOrganization(c)
 		ctx = org.Namespaced(ctx)
-		c.Set("google.golang.org/appengine", ctx)
+		c.Set("appengine", ctx)
 	}
 }
 
