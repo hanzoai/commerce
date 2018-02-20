@@ -41,17 +41,17 @@ func Init() {
 
 	// Index, development has nice index with links
 	if appengine.IsDevAppServer() {
-		router.GET("/", func(c *context.Context) {
+		router.GET("/", func(c *gin.Context) {
 			template.Render(c, "index.html")
 		})
 	} else {
-		router.GET("/", func(c *context.Context) {
+		router.GET("/", func(c *gin.Context) {
 			c.String(200, "ok")
 		})
 	}
 
 	// Monitoring test
-	router.GET("/wake-up", func(c *context.Context) {
+	router.GET("/wake-up", func(c *gin.Context) {
 		log.Panic("I think I heard, I think I heard a shot.")
 	})
 
@@ -69,7 +69,7 @@ func Init() {
 	router.GET("/assets/*file", middleware.Static("assets/"))
 
 	// Warmup: automatically install fixtures, etc.
-	router.GET("/_ah/warmup", func(c *context.Context) {
+	router.GET("/_ah/warmup", func(c *gin.Context) {
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
 			task.Run(c, "fixtures-all")

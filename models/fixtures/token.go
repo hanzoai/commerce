@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/token"
 )
 
-var Token = New("token", func(c *context.Context) *token.Token {
+var Token = New("token", func(c *gin.Context) *token.Token {
 	db := getNamespaceDb(c)
 
 	token := token.New(db)

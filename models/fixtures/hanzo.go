@@ -11,7 +11,7 @@ import (
 	"hanzo.io/log"
 )
 
-var Hanzo = New("hanzo", func(c *context.Context) *organization.Organization {
+var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization

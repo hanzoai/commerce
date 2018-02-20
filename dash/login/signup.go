@@ -10,14 +10,14 @@ import (
 	"hanzo.io/util/template"
 )
 
-func Signup(c *context.Context) {
+func Signup(c *gin.Context) {
 	// Redirect to mailchimp for now.
 	c.Redirect(302, "http://eepurl.com/bhWUC1")
 
 	// template.Render(c, "login/signup.html")
 }
 
-func SignupSubmit(c *context.Context) {
+func SignupSubmit(c *gin.Context) {
 	form := new(SignupForm)
 	err := form.Parse(c)
 	if err != nil {

@@ -11,13 +11,13 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func Get(c *context.Context) {
+func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	integrations := org.Analytics.UpdateShownDisabledStatus()
 	http.Render(c, 200, integrations)
 }
 
-func Set(c *context.Context) {
+func Set(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")
 
@@ -48,7 +48,7 @@ func Set(c *context.Context) {
 	}
 }
 
-func Update(c *context.Context) {
+func Update(c *gin.Context) {
 	// Get organization
 	org := middleware.GetOrganization(c)
 	id := c.Params.ByName("organizationid")

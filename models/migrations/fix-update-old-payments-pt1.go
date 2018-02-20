@@ -49,7 +49,7 @@ import (
 // }
 
 var _ = New("fix-update-old-payments-pt-1",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},

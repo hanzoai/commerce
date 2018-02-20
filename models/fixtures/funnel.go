@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/funnel"
 )
 
-var Funnel = New("espy-test-funnel", func(c *context.Context) *funnel.Funnel {
+var Funnel = New("espy-test-funnel", func(c *gin.Context) *funnel.Funnel {
 	db := getNamespaceDb(c)
 
 	f := funnel.New(db)
