@@ -1,12 +1,16 @@
 package task_integration_test
 
 import (
+	"context"
 	"net/url"
 	"testing"
 
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/util/test/ae"
+	// "hanzo.io/util/test/ae"
+	"hanzo.io/log"
 	"hanzo.io/util/test/httpclient"
 
 	. "hanzo.io/util/test/ginkgo"
@@ -16,24 +20,35 @@ func Test(t *testing.T) {
 	Setup("util/task/integration", t)
 }
 
-var ctx ae.Context
+var ctx context.Context
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default"},
-		TaskQueues: []string{"default"},
-		Noisy:      true,
-	})
+	// ctx, _, _ = aetest.NewContext()
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	// ctx.Close()
 })
 
 var _ = Describe("Run", func() {
-	It("Should call task successfully", func() {
+	FIt("Should call task successfully", func() {
+		inst, err := aetest.NewInstance(nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		req, err := inst.NewRequest("GET", "/", nil)
+		if err != nil {
+			log.Error("Failed to create NewRequest")
+			inst.Close()
+		}
+
+		log.Warn("DevelopmentServer: %s", appengine.IsDevAppServer())
+
+		ctx := appengine.NewContext(req)
+
 		// Start task
 		client := httpclient.New(ctx, "default")
 

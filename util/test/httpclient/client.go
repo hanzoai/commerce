@@ -25,6 +25,7 @@ func (c *Client) URL(path string) string {
 func (c *Client) determineBaseURL() {
 	moduleHost, err := getModuleHost(c.context, c.moduleName)
 	if err != nil {
+		log.Stack(err)
 		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
 	}
 
