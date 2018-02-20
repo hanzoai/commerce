@@ -19,12 +19,11 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= hanzo.io/analytics \
-		  hanzo.io/api \
+modules	= hanzo.io/config \
+	      hanzo.io/api \
 		  hanzo.io/dash
 
 gae_development = config/development \
-				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
 				  dash/app.dev.yaml
 
@@ -83,9 +82,11 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/dash.css
 
 dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --dev_appserver_log_level=error
+											 --dev_appserver_log_level=debug \
 											 --datastore_path=$(sdk_path)/.datastore.bin \
-
+    										 --enable_task_running=true \
+											 --admin_port=8000 \
+											 --port=8080
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
 
@@ -107,9 +108,9 @@ else
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
-	# sdk_install_extra := $(sdk_install_extra) && \
-	# 					 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-	# 					 pip2 install macfsevents --upgrade
+	sdk_install_extra := $(sdk_install_extra) && \
+						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+						 pip2 install macfsevents --upgrade
 	sed = @sed -i .bak -e
 endif
 
@@ -119,6 +120,9 @@ ifeq ($(v), 1)
 else
 	test_verbose =
 endif
+
+project_env = development
+project_id  = development
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
@@ -237,9 +241,6 @@ install-deps:
 	$(goapp) install $(deps)
 
 # DEV SERVER
-update-env:
-	@echo 'package config\n\nvar Env = "development"' > config/env.go
-
 serve: assets update-env
 	$(bebop) &
 	$(dev_appserver) $(gae_development)
@@ -297,38 +298,30 @@ deploy: assets-min deploy-app
 
 deploy-debug: assets deploy-app
 
-deploy-app: rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-app: update-env rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-default: rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-default: update-env rollback
 	$(appcfg.py) update config/production
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-dash: assets-min rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-dash: update-env assets-min rollback
 	$(appcfg.py) update dash
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-api: assets-min rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-api: update-env assets-min rollback
 	$(appcfg.py) update api
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
+
+update-env:
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \

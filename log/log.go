@@ -203,11 +203,18 @@ func Response(res *http.Response, args ...interface{}) error {
 func Stack(args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if len(args) > 0 {
-		format := args[0].(string)
-		msg := fmt.Sprintf(format, args[1:]...)
-		std.Debugf(msg + stack(4))
-	} else {
+	if len(args) == 0 {
 		std.Debugf(stack(4))
+		return
+	}
+
+	formatOrError := args[0]
+
+	switch v := formatOrError.(type) {
+	case error:
+		std.Debugf(errAndStack(v))
+	case string:
+		msg := fmt.Sprintf(v, args[1:]...)
+		std.Debugf(msg + stack(4))
 	}
 }
