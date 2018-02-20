@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("fix-coupons-in-cart",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, car *cart.Cart) {

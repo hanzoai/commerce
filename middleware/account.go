@@ -11,7 +11,7 @@ import (
 )
 
 func AccountRequired() gin.HandlerFunc {
-	return func(c *context.Context) {
+	return func(c *gin.Context) {
 		tok := GetToken(c)
 
 		id, ok := tok.Get("user-id").(string)
@@ -33,6 +33,6 @@ func AccountRequired() gin.HandlerFunc {
 	}
 }
 
-func GetUser(c *context.Context) *user.User {
+func GetUser(c *gin.Context) *user.User {
 	return c.MustGet("user").(*user.User)
 }

@@ -47,7 +47,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 
 // // Validates a form and inserts a new user into the datastore
 // // Checks if the Email and Id are unique, and calculates a hash for the password
-// func RegisterNewUser(c *context.Context) (*user.User, error) {
+// func RegisterNewUser(c *gin.Context) (*user.User, error) {
 // 	// Parse register form
 // 	f := new(RegistrationForm)
 // 	if err := f.Parse(c); err != nil {

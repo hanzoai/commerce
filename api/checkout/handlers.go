@@ -16,7 +16,7 @@ import (
 
 var orderEndpoint = config.UrlFor("api", "/order/")
 
-func getOrganizationAndOrder(c *context.Context) (*organization.Organization, *order.Order, error) {
+func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
 
@@ -38,7 +38,7 @@ func getOrganizationAndOrder(c *context.Context) (*organization.Organization, *o
 	return org, ord, nil
 }
 
-func Authorize(c *context.Context) {
+func Authorize(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return
@@ -55,7 +55,7 @@ func Authorize(c *context.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Capture(c *context.Context) {
+func Capture(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return
@@ -70,7 +70,7 @@ func Capture(c *context.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Charge(c *context.Context) {
+func Charge(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return
@@ -92,7 +92,7 @@ func Charge(c *context.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Refund(c *context.Context) {
+func Refund(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return
@@ -106,7 +106,7 @@ func Refund(c *context.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Cancel(c *context.Context) {
+func Cancel(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return
@@ -120,7 +120,7 @@ func Cancel(c *context.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Confirm(c *context.Context) {
+func Confirm(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		return

@@ -27,7 +27,7 @@ const (
 
 //<a href="api.hanzo.io/affiliate/:id/connect"></a>
 
-func connect(c *context.Context) {
+func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
 	org := middleware.GetOrganization(c)
 	state := org.Id() + ":" + id
@@ -35,7 +35,7 @@ func connect(c *context.Context) {
 	c.Redirect(302, url)
 }
 
-func getReferrals(c *context.Context) {
+func getReferrals(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -49,7 +49,7 @@ func getReferrals(c *context.Context) {
 	http.Render(c, 200, referrals)
 }
 
-func getReferrers(c *context.Context) {
+func getReferrers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -63,7 +63,7 @@ func getReferrers(c *context.Context) {
 	http.Render(c, 200, referrers)
 }
 
-func getOrders(c *context.Context) {
+func getOrders(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -77,7 +77,7 @@ func getOrders(c *context.Context) {
 	http.Render(c, 200, orders)
 }
 
-func getTransactions(c *context.Context) {
+func getTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -91,8 +91,8 @@ func getTransactions(c *context.Context) {
 	http.Render(c, 200, trans)
 }
 
-func create(r *rest.Rest) func(*context.Context) {
-	return func(c *context.Context) {
+func create(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "create") {
 			return
 		}

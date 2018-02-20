@@ -13,7 +13,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func createDeploy(c *context.Context) {
+func createDeploy(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	siteid := c.Params.ByName("siteid")
@@ -53,11 +53,11 @@ func createDeploy(c *context.Context) {
 	http.Render(c, 201, deploy)
 }
 
-func getDeploy(c *context.Context) {
+func getDeploy(c *gin.Context) {
 }
 
-func listDeploys(c *context.Context) {
+func listDeploys(c *gin.Context) {
 }
 
-func restoreDeploy(c *context.Context) {
+func restoreDeploy(c *gin.Context) {
 }

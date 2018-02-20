@@ -8,7 +8,7 @@ import (
 	"hanzo.io/log"
 )
 
-var _ = New("dedupe-payments-3", func(c *context.Context) []interface{} {
+var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {
 	db := datastore.New(c)
 	db.SetNamespace("kanoa")
 

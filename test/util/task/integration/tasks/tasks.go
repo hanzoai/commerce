@@ -16,7 +16,7 @@ import (
 // 	task.Register("orders")
 // })
 
-var Foo = task.Func("foo", func(c *context.Context) {
+var Foo = task.Func("foo", func(c *gin.Context) {
 	foo := &memcache.Item{
 		Key:   "foo",
 		Value: []byte("bar"),
@@ -28,7 +28,7 @@ var Foo = task.Func("foo", func(c *context.Context) {
 	}
 })
 
-var Baz = task.Func("baz", func(c *context.Context) {
+var Baz = task.Func("baz", func(c *gin.Context) {
 	baz := &memcache.Item{
 		Key:   "baz",
 		Value: []byte("qux"),
@@ -40,7 +40,7 @@ var Baz = task.Func("baz", func(c *context.Context) {
 	}
 })
 
-var NestedBaz = task.Func("nested-baz", func(c *context.Context) {
+var NestedBaz = task.Func("nested-baz", func(c *gin.Context) {
 	ctx := c.MustGet("appengine").(context.Context)
 	Baz.Call(ctx)
 })

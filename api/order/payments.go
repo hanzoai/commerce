@@ -11,7 +11,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func Payments(c *context.Context) {
+func Payments(c *gin.Context) {
 	id := c.Params.ByName("orderid")
 	db := datastore.New(c)
 	ord := order.New(db)

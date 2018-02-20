@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-func cancel(c *context.Context, org *organization.Organization, ord *order.Order) (err error) {
+func cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
 	// Handle payment cancellation
 	switch ord.Type {
 	case "paypal":

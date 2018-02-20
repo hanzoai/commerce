@@ -19,7 +19,7 @@ import (
 )
 
 var _ = New("add-stripe-fix-mysterious",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
 
 		db := ds.New(c)
