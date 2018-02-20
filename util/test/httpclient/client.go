@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	// "google.golang.org/appengine"
+	"google.golang.org/appengine"
 
 	// "hanzo.io/config"
 	"hanzo.io/log"
@@ -15,10 +15,11 @@ import (
 )
 
 func getModuleHost(ctx context.Context, moduleName string) (host string, err error) {
-	// id := appengine.InstanceID()
-	// log.Warn(moduleName, id)
-	// return appengine.ModuleHostname(ctx, moduleName, "", id)
-	return "localhost:8003", nil
+	id := appengine.InstanceID()
+	version := "v1"
+	log.Warn(moduleName, version, id)
+	return appengine.ModuleHostname(ctx, moduleName, "v1", id)
+	// return "localhost:8003", nil
 }
 
 type Client struct {
