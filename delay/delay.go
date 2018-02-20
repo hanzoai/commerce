@@ -19,7 +19,7 @@ import (
 
 const (
 	// The HTTP path for invocations.
-	path = "/hanzo_task/queue/go/delay"
+	path = "/_/queue/go/delay"
 	// Use the default queue.
 	queue = ""
 )

@@ -7,7 +7,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/analyticsidentifier"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 )
 
 func init() {

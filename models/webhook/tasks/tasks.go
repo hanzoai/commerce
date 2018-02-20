@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine/delay"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/json"
