@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/log"

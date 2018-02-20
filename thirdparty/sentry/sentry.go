@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/getsentry/raven-go"
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"

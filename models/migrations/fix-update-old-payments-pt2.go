@@ -4,11 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"google.golang.org/appengine/delay"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"

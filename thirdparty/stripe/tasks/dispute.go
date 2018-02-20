@@ -7,7 +7,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 )
 
 // Update payment from dispute

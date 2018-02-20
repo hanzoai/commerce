@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/partner"
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {

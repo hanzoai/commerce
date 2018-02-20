@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/taskqueue"
 

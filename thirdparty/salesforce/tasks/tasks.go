@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/parallel"
