@@ -20,7 +20,7 @@ import (
 	// . "hanzo.io/util/analytics/tasks"
 )
 
-func create(c *context.Context) {
+func create(c *gin.Context) {
 	receivedTime := time.Now()
 
 	ctx := middleware.GetAppEngine(c)

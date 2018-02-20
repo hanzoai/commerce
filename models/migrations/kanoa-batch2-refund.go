@@ -16,7 +16,7 @@ var oldPrice = currency.Cents(17900)
 var discount = currency.Cents(2000)
 
 var _ = New("kanoa-batch2-refund",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
 		db := ds.New(c)

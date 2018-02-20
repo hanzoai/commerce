@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/collection"
 )
 
-var Collection = New("collection", func(c *context.Context) *collection.Collection {
+var Collection = New("collection", func(c *gin.Context) *collection.Collection {
 	db := getNamespaceDb(c)
 
 	collection := collection.New(db)

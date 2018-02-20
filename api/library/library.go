@@ -76,7 +76,7 @@ type LoadShopJSRes struct {
 	Currency      currency.Type                `json:"currency,omitempty"`
 }
 
-func LoadShopJS(c *context.Context) {
+func LoadShopJS(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 

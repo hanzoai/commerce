@@ -76,7 +76,7 @@ func (e byKind) Less(i, j int) bool { return e[i].Kind < e[j].Kind }
 func ListRoutes() gin.HandlerFunc {
 	sort.Sort(byKind(restApis))
 
-	return func(c *context.Context) {
+	return func(c *gin.Context) {
 		if !appengine.IsDevAppServer() {
 			c.Next()
 		}

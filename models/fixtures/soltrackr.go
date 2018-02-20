@@ -11,7 +11,7 @@ import (
 	"hanzo.io/log"
 )
 
-var _ = New("soltrackr", func(c *context.Context) *organization.Organization {
+var _ = New("soltrackr", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

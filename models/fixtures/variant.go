@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/variant"
 )
 
-var Variant = New("variant", func(c *context.Context) *variant.Variant {
+var Variant = New("variant", func(c *gin.Context) *variant.Variant {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

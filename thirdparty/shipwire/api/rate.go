@@ -14,7 +14,7 @@ import (
 	"hanzo.io/log"
 )
 
-func rate(c *context.Context) {
+func rate(c *gin.Context) {
 	dump, _ := httputil.DumpRequest(c.Request, true)
 	log.Info("Rate request:\n%s", dump, c)
 

@@ -33,7 +33,7 @@ type PayFromAccountResponse struct {
 	TransactionId string `json:"transactionId"`
 }
 
-func Get(c *context.Context) {
+func Get(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -53,7 +53,7 @@ func Get(c *context.Context) {
 	http.Render(c, 200, userWallet)
 }
 
-func GetAccount(c *context.Context) {
+func GetAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -78,7 +78,7 @@ func GetAccount(c *context.Context) {
 	http.Render(c, 200, account)
 }
 
-func CreateAccount(c *context.Context) {
+func CreateAccount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
@@ -110,7 +110,7 @@ func CreateAccount(c *context.Context) {
 	http.Render(c, 200, account)
 }
 
-func Send(c *context.Context) {
+func Send(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")

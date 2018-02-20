@@ -33,14 +33,14 @@ func IsValidMethodOverride(method string) bool {
 
 // OverrideRequestMethod overrides the http
 // request's method with the specified method.
-func OverrideRequestMethod(c *context.Context, method string) error {
+func OverrideRequestMethod(c *gin.Context, method string) error {
 	c.Request.Header.Set(HeaderMethodOverride, method)
 	c.Request.Method = method
 	return nil
 }
 
 func MethodOverride() gin.HandlerFunc {
-	return func(c *context.Context) {
+	return func(c *gin.Context) {
 		// Only override POST methods
 		if c.Request.Method != "POST" {
 			return

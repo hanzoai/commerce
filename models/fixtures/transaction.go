@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var Transaction = New("transaction", func(c *context.Context) *transaction.Transaction {
+var Transaction = New("transaction", func(c *gin.Context) *transaction.Transaction {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

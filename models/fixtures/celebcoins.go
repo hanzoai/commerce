@@ -10,7 +10,7 @@ import (
 	"hanzo.io/log"
 )
 
-var CelebCoins = New("celebcoins", func(c *context.Context) *organization.Organization {
+var CelebCoins = New("celebcoins", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization

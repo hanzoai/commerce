@@ -14,7 +14,7 @@ import (
 	"hanzo.io/log"
 )
 
-var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *context.Context) {
+var SendTestBitcoinTransaction = New("send-test-bitcoin-transaction", func(c *gin.Context) {
 	transactionId := "62e3949e3e143bfc2ce904a8fe68532962444870360320394c3d358666ce453d"
 	// transactionId2 := "14f8d758bcd324a3e4c9a85c46a45e156a57bff160bc2ff70a090af6dc3b44dd"
 	db := datastore.New(c)

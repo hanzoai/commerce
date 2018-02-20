@@ -92,7 +92,7 @@ type Request struct {
 	}
 }
 
-func ShipNotify(c *context.Context) {
+func ShipNotify(c *gin.Context) {
 	query := c.Request.URL.Query()
 
 	// Only support export action

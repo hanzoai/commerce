@@ -45,7 +45,7 @@ func defaultStatus(code int) func([]interface{}) []interface{} {
 
 type Client struct {
 	Router       *gin.Engine
-	Context      *context.Context
+	Context      *gin.Context
 	defaultsFn   defaultsFunc
 	ignoreErrors bool
 }
@@ -53,7 +53,7 @@ type Client struct {
 func newRouter(ctx context.Context) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(func(c *context.Context) {
+	router.Use(func(c *gin.Context) {
 		gincontext.SetDefaults(c, ctx)
 	})
 	return router
@@ -73,7 +73,7 @@ func (cl *Client) IgnoreErrors(ignore bool) {
 
 // Add a new handler to router
 func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
-	wrapper := func(c *context.Context) {
+	wrapper := func(c *gin.Context) {
 		handler(c)
 		cl.Context = c
 	}
@@ -84,7 +84,7 @@ func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
 // Add middleware to router
 func (cl *Client) Use(mw ...gin.HandlerFunc) {
 	for _, m := range mw {
-		cl.Router.Use(func(c *context.Context) {
+		cl.Router.Use(func(c *gin.Context) {
 			c.Next()
 			cl.Context = c
 		})

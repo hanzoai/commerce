@@ -22,7 +22,7 @@ type StatusResponse struct {
 	Wallet        *wallet.Wallet `json:"wallet,omitempty"`
 }
 
-func Status(c *context.Context) {
+func Status(c *gin.Context) {
 	id := c.Params.ByName("orderid")
 	db := datastore.New(c)
 	ord := order.New(db)

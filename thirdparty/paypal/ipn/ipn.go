@@ -66,7 +66,7 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	return readBody(res)
 }
 
-func Webhook(c *context.Context) {
+func Webhook(c *gin.Context) {
 	orgName := c.Params.ByName("organization")
 	if orgName == "" {
 		log.Panic("Organization not specified", c)

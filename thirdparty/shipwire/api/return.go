@@ -20,7 +20,7 @@ import (
 	. "hanzo.io/thirdparty/shipwire/types"
 )
 
-func createReturn(c *context.Context) {
+func createReturn(c *gin.Context) {
 	id := c.Params.ByName("orderid")
 
 	org := middleware.GetOrganization(c)
@@ -99,7 +99,7 @@ func createReturn(c *context.Context) {
 	http.Render(c, 200, rtn)
 }
 
-func updateReturn(c *context.Context, topic string, r Return) {
+func updateReturn(c *gin.Context, topic string, r Return) {
 	log.Info("Update order information:\n%v", r, c)
 
 	org := middleware.GetOrganization(c)

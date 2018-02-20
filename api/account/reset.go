@@ -21,7 +21,7 @@ type resetReq struct {
 	Id       string `json:"id"`
 }
 
-func reset(c *context.Context) {
+func reset(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	usr := user.New(db)

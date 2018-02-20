@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-var Seaval = New("seaval", func(c *context.Context) *organization.Organization {
+var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

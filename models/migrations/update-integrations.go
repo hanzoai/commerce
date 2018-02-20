@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("update-integrations",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "")
 		return NoArgs
 	},

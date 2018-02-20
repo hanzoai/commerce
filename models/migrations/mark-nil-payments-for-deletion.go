@@ -9,7 +9,7 @@ import (
 )
 
 var _ = New("mark-nil-payments-for-deletion",
-	func(c *context.Context) []interface{} {
+	func(c *gin.Context) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {

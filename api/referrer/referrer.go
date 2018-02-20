@@ -16,7 +16,7 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(referrer.Referrer{})
 
-	api.Create = func(c *context.Context) {
+	api.Create = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespaced(c))
 		ref := referrer.New(db)
@@ -46,7 +46,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 	}
 
-	api.Get = func(c *context.Context) {
+	api.Get = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespaced(c))
 		ref := referrer.New(db)
