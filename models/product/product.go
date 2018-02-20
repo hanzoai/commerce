@@ -131,12 +131,12 @@ func (p *Product) Validator() *val.Validator {
 	// 	return errs
 }
 
-func (p *Product) Load(c <-chan aeds.Property) (err error) {
+func (p *Product) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
 
@@ -152,13 +152,13 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (p *Product) Save(c chan<- aeds.Property) (err error) {
+func (p *Product) Save() ([]aeds.Property, error) {
 	// Serialize unsupported properties
 	p.Variants_ = string(json.EncodeBytes(&p.Variants))
 	p.Options_ = string(json.Encode(&p.Options))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+	return datastore.SaveStruct(p)
 }
 
 func (p Product) DisplayName() string {
