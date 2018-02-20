@@ -1,14 +1,10 @@
 package funnel
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/json"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Funnel struct {
 	mixin.Model
@@ -18,12 +14,12 @@ type Funnel struct {
 	Events_ string     `json:"-"`
 }
 
-func (f *Funnel) Load(c <-chan aeds.Property) (err error) {
+func (f *Funnel) Load(ps datastore.PropertyList) (err error) {
 	// Ensure we're initialized
 	f.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(f, c)); err != nil {
+	if err = datastore.LoadStruct(f, ps); err != nil {
 		return err
 	}
 
@@ -35,10 +31,10 @@ func (f *Funnel) Load(c <-chan aeds.Property) (err error) {
 	return
 }
 
-func (f *Funnel) Save(c chan<- aeds.Property) (err error) {
+func (f *Funnel) Save() (ps datastore.PropertyList, err error) {
 	// Serialize unsupported properties
 	f.Events_ = string(json.EncodeBytes(&f.Events))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(f, c))
+	return datastore.SaveStruct(f)
 }
