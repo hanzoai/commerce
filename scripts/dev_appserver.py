@@ -20,11 +20,10 @@ for i, a in enumerate(sys.argv):
 sys.argv.pop()
 
 sys.argv.extend([
-    '--dev_appserver_log_level=warning',
+    '--dev_appserver_log_level=debug',
     '--enable_task_running=true',
     os.path.join(PLATFORM_PATH, 'config/test/app.yaml'),
-    os.path.join(PLATFORM_PATH, 'api/app.dev.yaml'),
-    # os.path.join(PLATFORM_PATH, 'dash/app.dev.yaml'),
+    os.path.join(PLATFORM_PATH, 'api/app.dev.yaml')
 ])
 
 argv = 'python2 {} {}'.format(SERVER_PATH, ' '.join(sys.argv[1:]))
