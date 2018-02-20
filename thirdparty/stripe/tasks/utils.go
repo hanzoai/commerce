@@ -1,17 +1,19 @@
 package tasks
 
 import (
+	"context"
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 // Get namespaced appengine context for given namespace
