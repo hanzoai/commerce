@@ -56,12 +56,10 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 
 // Set context for datastore
 func (d *Datastore) SetContext(ctx context.Context) {
-	switch ctx := ctx.(type) {
-	case *gin.Context:
-		d.Context = ctx.MustGet("appengine").(context.Context)
-	case context.Context:
-		d.Context = ctx
+	if c, ok := ctx.(*gin.Context); ok {
+		ctx = c.MustGet("appengine").(context.Context)
 	}
+	d.Context = ctx
 }
 
 // Set context for datastore

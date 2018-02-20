@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ryanuber/go-glob"
-
 	"google.golang.org/appengine"
+
+	"github.com/gin-gonic/gin"
+	"github.com/ryanuber/go-glob"
 
 	"hanzo.io/datastore"
 	"hanzo.io/log"
@@ -369,6 +370,10 @@ func (o *Organization) AddOwner(userOrId string) {
 
 // Get namespaced context for this organization
 func (o Organization) Namespaced(ctx context.Context) context.Context {
+	if c, ok := ctx.(*gin.Context); ok {
+		ctx = c.MustGet("appengine").(context.Context)
+	}
+
 	var err error
 	ctx, err = appengine.Namespace(ctx, o.Name)
 	if err != nil {

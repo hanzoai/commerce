@@ -1,7 +1,6 @@
 package gincontext
 
 import (
-	"log"
 	"testing"
 
 	"golang.org/x/net/context"
@@ -12,19 +11,10 @@ import (
 	"hanzo.io/models/organization"
 )
 
-func New(ctx ...context.Context) *gin.Context {
-	var _ctx context.Context
-
-	switch len(ctx) {
-	case 1:
-		_ctx = ctx[0]
-	default:
-		log.Panic("At most one context.Context argument may be specified.")
-	}
-
+func New(ctx context.Context) *gin.Context {
 	// Setup default context.Context for tests
 	c := new(gin.Context)
-	SetDefaults(c, _ctx)
+	SetDefaults(c, ctx)
 	return c
 }
 
