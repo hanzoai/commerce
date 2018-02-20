@@ -1,11 +1,13 @@
 package emails
 
 import (
+	"context"
 	"encoding/gob"
 	"strconv"
 	"strings"
 	"time"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -14,9 +16,6 @@ import (
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
-
-	"google.golang.org/appengine"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
