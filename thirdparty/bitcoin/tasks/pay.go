@@ -16,7 +16,7 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	eutil "hanzo.io/thirdparty/ethereum/util"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/webhook"
 )

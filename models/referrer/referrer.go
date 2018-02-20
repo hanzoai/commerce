@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/mixin"
@@ -15,7 +16,6 @@ import (
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/timeutil"
 

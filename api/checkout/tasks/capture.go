@@ -5,10 +5,10 @@ import (
 
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/delay"
 	"hanzo.io/util/emails"
 )
 

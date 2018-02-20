@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/thirdparty/bigquery"
