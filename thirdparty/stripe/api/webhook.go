@@ -1,15 +1,15 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/stripe"
@@ -17,7 +17,6 @@ import (
 	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 // Decode Stripe payload

@@ -1,18 +1,17 @@
 package fakecontext
 
 import (
+	"context"
 	"encoding/gob"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
 	"hanzo.io/log"
+	"hanzo.io/models/organization"
 )
 
 // Request that can be almost completely be serialized to/from a real Request
@@ -84,7 +83,8 @@ func NewRequest(r *http.Request) *Request {
 	}
 }
 
-// context.Context replacement that can be almost completely be serialized to/from a context.Context
+// gin.Context replacement that can be almost completely be serialized to/from
+// a gin.Context
 type Context struct {
 	Keys    map[string]interface{}
 	Params  gin.Params
@@ -108,8 +108,8 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx *gin.Context) (ctx *gin.Context, err error) {
-	ctx = new(context.Context)
+func (c Context) Context(aectx context.Context) (ctx *gin.Context, err error) {
+	ctx = new(gin.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
 	ctx.Params = c.Params
@@ -125,12 +125,12 @@ func (c Context) Context(aectx *gin.Context) (ctx *gin.Context, err error) {
 	}
 
 	// ...otherwise use appengine context to update gin context
-	ctx.Set("google.golang.org/appengine", *aectx)
+	ctx.Set("appengine", aectx)
 
 	// Fetch organization if organization-id is set
 	if value, ok := ctx.Get("organization-id"); !ok {
 		if id, ok := value.(string); ok {
-			db := datastore.New(*aectx)
+			db := datastore.New(aectx)
 			org := organization.New(db)
 			org.GetById(id)
 			ctx.Set("organization", org)

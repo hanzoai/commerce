@@ -1,15 +1,15 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"google.golang.org/appengine"
 	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
@@ -36,7 +36,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 		log.Debug("Order after: %+v", ord, ctx)
 
 		return ord.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update order '%s': %v", orderId, err, ctx)

@@ -1,8 +1,9 @@
 package util
 
 import (
-	"google.golang.org/appengine"
+	"context"
 
+	"hanzo.io/log"
 	"hanzo.io/models/cart"
 	"hanzo.io/models/multi"
 	"hanzo.io/models/order"
@@ -16,7 +17,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
-	"hanzo.io/log"
 
 	. "hanzo.io/models"
 )
