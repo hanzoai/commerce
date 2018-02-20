@@ -4,13 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 func Create(c *gin.Context) {
@@ -106,7 +106,7 @@ func Create(c *gin.Context) {
 			}
 		}
 		return trans.Create()
-	})
+	}, nil)
 
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)
