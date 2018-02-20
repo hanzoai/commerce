@@ -9,8 +9,6 @@ import (
 	"hanzo.io/models/mixin"
 )
 
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
-
 type Redemption struct {
 	mixin.Model
 
@@ -18,19 +16,14 @@ type Redemption struct {
 	Code string `json:"code"`
 }
 
-func (r *Redemption) Load(c <-chan aeds.Property) (err error) {
+func (r *Redemption) Load(props []aeds.Property) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(r, c)); err != nil {
-		return err
-	}
-
-	return err
+	return datastore.LoadStruct(r, props)
 }
 
-func (r *Redemption) Save(c chan<- aeds.Property) (err error) {
-
+func (r *Redemption) Save() (props []aeds.Property, err error) {
 	r.Code = strings.ToUpper(r.Code)
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(r, c))
+	return datastore.SaveStruct(r)
 }
