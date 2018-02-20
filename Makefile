@@ -9,8 +9,8 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date	= $(shell date +"%Y-%m-%d")
 
-appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
-bulkloader.py   = $(sdk_path)/bulkloader.py
+appcfg.py 		= python2 $(sdk_path)/appcfg.py --skip_sdk_update_check
+bulkloader.py   = python2 $(sdk_path)/bulkloader.py
 goapp			= $(sdk_path)/goapp
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
@@ -82,7 +82,7 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/theme.css \
 					static/css/dash.css
 
-dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
+dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --dev_appserver_log_level=error
 											 --datastore_path=$(sdk_path)/.datastore.bin \
 
@@ -289,7 +289,7 @@ coverage:
 
 auth:
 	gcloud auth login
-	appcfg.py list_versions config/staging
+	$(appcfg.py) list_versions config/staging
 
 deploy: assets-min deploy-app
 
