@@ -5,6 +5,7 @@ import (
 	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
+	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
 	"hanzo.io/config"
@@ -55,7 +56,12 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 
 // Set context for datastore
 func (d *Datastore) SetContext(ctx context.Context) {
-	d.Context = ctx
+	switch ctx := ctx.(type) {
+	case *gin.Context:
+		d.Context = ctx.MustGet("appengine").(context.Context)
+	case context.Context:
+		d.Context = ctx
+	}
 }
 
 // Set context for datastore
