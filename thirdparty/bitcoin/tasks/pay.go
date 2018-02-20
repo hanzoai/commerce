@@ -1,15 +1,14 @@
 package tasks
 
 import (
+	"context"
 	"errors"
-	// "time"
-
-	"google.golang.org/appengine"
 
 	"hanzo.io/api/checkout/tasks"
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -19,7 +18,6 @@ import (
 	eutil "hanzo.io/thirdparty/ethereum/util"
 	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/webhook"
 )
 
@@ -351,7 +349,7 @@ func BitcoinProcessPaymentImpl(
 		webhook.Emit(ctx, orgName, "order.paid", ord)
 
 		return nil
-	}); err != nil {
+	}, nil); err != nil {
 		return err
 	}
 
