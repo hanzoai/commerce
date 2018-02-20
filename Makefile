@@ -86,6 +86,7 @@ dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --dev_appserver_log_level=error
 											 --datastore_path=$(sdk_path)/.datastore.bin \
 
+
 sdk_install_extra = rm -rf $(sdk_path)/demos
 
 # find command differs between bsd/linux thus the two versions
@@ -154,6 +155,7 @@ endif
 
 export GOROOT := $(goroot)
 export GOPATH := $(gopath)
+export APPENGINE_DEV_APPSERVER := $(sdk_path)/dev_appserver_shim.py
 
 all: deps test install
 
