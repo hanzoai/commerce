@@ -104,7 +104,7 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod5.MustUpdate()
 
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 
 	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
 		// Create earphone product
@@ -192,7 +192,7 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod5.MustUpdate()
 
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 
 	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
 		// Create earphone product
@@ -280,7 +280,7 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod5.MustUpdate()
 
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 
 	datastore.RunInTransaction(nsdb.Context, func(nsdb *datastore.Datastore) error {
 		// Create earphone product
@@ -368,7 +368,7 @@ var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organ
 		prod5.MustUpdate()
 
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 	// datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
 	// 	// Create earphone product
 	// 	prod2 := product.New(nsdb)
