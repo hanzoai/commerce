@@ -31,7 +31,8 @@ if __name__ == '__main__':
 
     # Update dev_appserver ports with randomized port numbers
     for i, argv in enumerate(sys.argv):
-        sys.argv[i] = PORTS[argv]
+        if argv in PORTS:
+            sys.argv[i] = PORTS[argv]
 
     # Remove generated app.yaml from arg stack
     sys.argv.pop()
