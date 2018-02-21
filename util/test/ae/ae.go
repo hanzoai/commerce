@@ -13,15 +13,6 @@ import (
 	"hanzo.io/util/retry"
 )
 
-var (
-	inst  aetest.Instance
-	ports = []string{
-		"DEV_APP_SERVER_ADMIN_PORT",
-		"DEV_APP_SERVER_API_PORT",
-		"DEV_APP_SERVER_PORT",
-	}
-)
-
 func NewContext(args ...Options) Context {
 	var (
 		opts Options
@@ -38,43 +29,48 @@ func NewContext(args ...Options) Context {
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	// Share instance across NewContext requests
-	if inst == nil {
-		aetest.PrepareDevAppserver = func() error {
-			// Loop over services and find available ports
-			for _, service := range ports {
-				// Get free port
-				port, err := freeport.GetFreePort()
-				if err != nil {
-					return err
-				}
+	ports := []string{
+		"DEV_APP_SERVER_ADMIN_PORT",
+		"DEV_APP_SERVER_API_PORT",
+		"DEV_APP_SERVER_PORT",
+	}
 
-				// Convert port into a string and update environment for
-				// dev_appserver wrapper
-				s := strconv.Itoa(port)
-				os.Setenv(service, s)
+	aetest.PrepareDevAppserver = func() error {
+		// Loop over services and find available ports
+		for _, service := range ports {
+			// Get free port
+			port, err := freeport.GetFreePort()
+			if err != nil {
+				return err
 			}
 
-			// Derive project path from GOPATH
-			projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
-
-			// Ensure our wrapper is used
-			os.Setenv("APPENGINE_DEV_APPSERVER", projectDir+"/scripts/dev_appserver.py")
-			return nil
+			// Convert port into a string and update environment for
+			// dev_appserver wrapper
+			s := strconv.Itoa(port)
+			os.Setenv(service, s)
 		}
 
-		// Create new dev server instance
-		err := retry.Retry(3, func() error {
-			inst, err = aetest.NewInstance(&aetest.Options{
-				AppID: opts.AppID,
-				StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
-			})
-			return err
+		// Derive project path from GOPATH
+		projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
+
+		// Ensure our wrapper is used
+		os.Setenv("APPENGINE_DEV_APPSERVER", projectDir+"/scripts/dev_appserver.py")
+		return nil
+	}
+
+	// Create new dev server instance
+	var inst aetest.Instance
+
+	err = retry.Retry(3, func() error {
+		inst, err = aetest.NewInstance(&aetest.Options{
+			AppID: opts.AppID,
+			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
+		return err
+	})
 
-		if err != nil {
-			log.Panic("Failed to create instance: %v", err)
-		}
+	if err != nil {
+		log.Panic("Failed to create instance: %v", err)
 	}
 
 	// Create new request
@@ -87,19 +83,5 @@ func NewContext(args ...Options) Context {
 	ctx := appengine.NewContext(req)
 
 	// Return context lookalike with instance embedded
-	return &context{ctx}
-}
-
-func Close() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Warn("Recovered from panic in instance.Close()")
-		}
-	}()
-
-	retry.Retry(3, func() error {
-		err := inst.Close()
-		inst = nil
-		return err
-	})
+	return &context{ctx, inst}
 }
