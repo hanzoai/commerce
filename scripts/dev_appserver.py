@@ -20,7 +20,7 @@ for i, a in enumerate(sys.argv):
 sys.argv.pop()
 
 sys.argv.extend([
-    '--dev_appserver_log_level=debug',
+    '--dev_appserver_log_level=info',
     '--enable_task_running=true',
     os.path.join(PLATFORM_PATH, 'config/test/app.yaml'),
     os.path.join(PLATFORM_PATH, 'api/app.dev.yaml'),
