@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
-	"hanzo.io/middleware"
 	"hanzo.io/log"
+	"hanzo.io/middleware"
 )
 
 func New(moduleName string) *gin.RouterGroup {
@@ -41,6 +41,10 @@ func New(moduleName string) *gin.RouterGroup {
 	}
 
 	http.Handle(prefix, router)
+
+	// Needed for basic / manual scaling to notify AppEngine we're ready
+	router.GET("/_ah/start", Ok)
+	router.GET("/_ah/stop", Ok)
 
 	return router.Group(prefix)
 }
