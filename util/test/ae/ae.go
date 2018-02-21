@@ -90,8 +90,14 @@ func NewContext(args ...Options) Context {
 	return &context{ctx}
 }
 
-func Close() error {
-	return retry.Retry(3, func() error {
+func Close() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warn("Recovered from panic in instance.Close()")
+		}
+	}()
+
+	retry.Retry(3, func() error {
 		err := inst.Close()
 		inst = nil
 		return err
