@@ -1,14 +1,17 @@
 package stripe_test
 
 import (
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
+	"hanzo.io/thirdparty/stripe"
 
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func stripeVerifyCharge(pay *payment.Payment) {
+	sc := stripe.New(ctx, org.Stripe.Test.AccessToken)
+
 	ch, err := sc.Charges.Get(pay.Account.ChargeId, nil)
 	Expect1(ch).ToNot(BeNil())
 	Expect1(err).ToNot(HaveOccurred())
@@ -17,6 +20,8 @@ func stripeVerifyCharge(pay *payment.Payment) {
 }
 
 func stripeVerifyAuth(pay *payment.Payment) {
+	sc := stripe.New(ctx, org.Stripe.Test.AccessToken)
+
 	ch, err := sc.Charges.Get(pay.Account.ChargeId, nil)
 	Expect1(ch).ToNot(BeNil())
 	Expect1(err).ToNot(HaveOccurred())
@@ -26,6 +31,8 @@ func stripeVerifyAuth(pay *payment.Payment) {
 }
 
 func stripeVerifyUser(usr *user.User) {
+	sc := stripe.New(ctx, org.Stripe.Test.AccessToken)
+
 	cust, err := sc.Customers.Get(usr.Accounts.Stripe.CustomerId, nil)
 	log.Debug("StripeVerifyUser Results:\n%v\n%v", cust, err)
 	Expect1(cust).ToNot(BeNil())
@@ -33,6 +40,8 @@ func stripeVerifyUser(usr *user.User) {
 }
 
 func stripeVerifyCards(usr *user.User, cardIds []string) {
+	sc := stripe.New(ctx, org.Stripe.Test.AccessToken)
+
 	cust, err := sc.Customers.Get(usr.Accounts.Stripe.CustomerId, nil)
 	Expect1(cust).ToNot(BeNil())
 	Expect1(err).ToNot(HaveOccurred())
