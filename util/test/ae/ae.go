@@ -1,6 +1,10 @@
 package ae
 
 import (
+	"os"
+	"strconv"
+
+	"github.com/phayes/freeport"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 
@@ -14,6 +18,11 @@ func Close() error {
 }
 
 var inst aetest.Instance
+var PORTS = []string{
+	"DEV_APP_SERVER_ADMIN_PORT",
+	"DEV_APP_SERVER_API_PORT",
+	"DEV_APP_SERVER_PORT",
+}
 
 func NewContext(args ...Options) Context {
 	var (
@@ -33,11 +42,33 @@ func NewContext(args ...Options) Context {
 
 	// Share instance across NewContext requests
 	if inst == nil {
+
+		aetest.PrepareDevAppserver = func() error {
+			// Loop over services and find available ports
+			for _, service := range PORTS {
+				// Get free port
+				port, err := freeport.GetFreePort()
+				if err != nil {
+					return err
+				}
+
+				// Convert port into a string and update environment for
+				// dev_appserver wrapper
+				s := strconv.Itoa(port)
+				os.Setenv(service, s)
+			}
+
+			// Ensure our wrapper is used
+			os.Setenv("APPENGINE_DEV_APPSERVER", "scripts/dev_appserver.py")
+			return nil
+		}
+
 		// Create new dev server instance
 		inst, err = aetest.NewInstance(&aetest.Options{
 			AppID: opts.AppID,
 			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
+
 		if err != nil {
 			log.Panic("Failed to create instance: %v", err)
 		}
