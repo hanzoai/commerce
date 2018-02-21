@@ -29,6 +29,7 @@ github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/op/go-logging master
 github.com/pariz/gountries master
+github.com/phayes/freeport master
 github.com/qedus/nds master
 github.com/ryanuber/go-glob master
 github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
