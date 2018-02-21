@@ -38,6 +38,7 @@ github.com/vanng822/go-premailer/premailer master
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
 golang.org/x/net/context master
+golang.org/x/net/html  master
 golang.org/x/text/encoding master
 golang.org/x/tools/cover master
 google.golang.org/appengine master
