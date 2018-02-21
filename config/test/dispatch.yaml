@@ -2,8 +2,8 @@ dispatch:
   - url: "*/api/*"
     service: api
 
-  - url: "*/dash/*"
-    service: dash
+  # - url: "*/dash/*"
+  #   service: dash
 
   - url: "*/default/*"
     service: default

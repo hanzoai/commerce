@@ -42,6 +42,10 @@ func New(moduleName string) *gin.RouterGroup {
 
 	http.Handle(prefix, router)
 
+	router.GET("/_ah/warmup", Ok)
+	router.GET("/_ah/start", Ok)
+	router.GET("/_ah/stop", Ok)
+
 	return router.Group(prefix)
 }
 

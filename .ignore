@@ -8,3 +8,4 @@ static/js
 thirdparty/ethereum/go-ethereum/crypto/btcec/secp256k1.go
 static/backend/skin/default_skin/css/theme.min.css
 static/frontend/css/plugins.css
+static/appui/js/plugins.js
