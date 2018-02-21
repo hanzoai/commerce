@@ -52,7 +52,7 @@ func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record)
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	if config.IsDevelopment {
+	if config.IsDevelopment || config.IsTest {
 		// Logging for local server
 		return b.logToDevServer(level, formatted)
 	} else {
