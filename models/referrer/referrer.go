@@ -49,7 +49,7 @@ type Referrent interface {
 	Kind() string
 }
 
-func (r *Referrer) Save() (ps datastore.PropertyList, err error) {
+func (r *Referrer) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	r.State_ = string(json.EncodeBytes(&r.State))
 
@@ -57,7 +57,7 @@ func (r *Referrer) Save() (ps datastore.PropertyList, err error) {
 	return datastore.SaveStruct(r)
 }
 
-func (r *Referrer) Load(ps datastore.PropertyList) (err error) {
+func (r *Referrer) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	r.Defaults()
 

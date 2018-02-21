@@ -6,15 +6,14 @@ import (
 	"math/rand"
 	"time"
 
-	"hanzo.io/delay"
+	aeds "google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/taskqueue"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/util/json"
-
-	aeds "google.golang.org/appengine/datastore"
 )
 
 type counterConfig struct {
@@ -49,7 +48,7 @@ type Shard struct {
 	Time time.Time `json:"time"`
 }
 
-func (s *Shard) Load(ps datastore.PropertyList) (err error) {
+func (s *Shard) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
@@ -63,7 +62,7 @@ func (s *Shard) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (s *Shard) Save() (ps datastore.PropertyList, err error) {
+func (s *Shard) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Set_ = string(json.EncodeBytes(&s.Set))
 

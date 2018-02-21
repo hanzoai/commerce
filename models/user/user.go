@@ -88,7 +88,7 @@ type User struct {
 	AffiliateId string `json:"affiliateId,omitempty"`
 }
 
-func (u *User) Load(ps datastore.PropertyList) (err error) {
+func (u *User) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(u, ps); err != nil {
 		return err
@@ -120,7 +120,7 @@ func (u *User) Load(ps datastore.PropertyList) (err error) {
 	return
 }
 
-func (u *User) Save() (ps datastore.PropertyList, err error) {
+func (u *User) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
 
