@@ -14,7 +14,7 @@ type Funnel struct {
 	Events_ string     `json:"-"`
 }
 
-func (f *Funnel) Load(ps datastore.PropertyList) (err error) {
+func (f *Funnel) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	f.Defaults()
 
@@ -31,7 +31,7 @@ func (f *Funnel) Load(ps datastore.PropertyList) (err error) {
 	return
 }
 
-func (f *Funnel) Save() (ps datastore.PropertyList, err error) {
+func (f *Funnel) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	f.Events_ = string(json.EncodeBytes(&f.Events))
 

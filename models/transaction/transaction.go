@@ -52,7 +52,7 @@ type Transaction struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (t *Transaction) Load(ps datastore.PropertyList) (err error) {
+func (t *Transaction) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(t, ps); err != nil {
 		return err
@@ -71,7 +71,7 @@ func (t *Transaction) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (t *Transaction) Save() (ps datastore.PropertyList, err error) {
+func (t *Transaction) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	t.Metadata_ = string(json.EncodeBytes(&t.Metadata))
 
