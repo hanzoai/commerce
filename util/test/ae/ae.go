@@ -10,20 +10,25 @@ import (
 	"google.golang.org/appengine/aetest"
 
 	"hanzo.io/log"
+	"hanzo.io/util/retry"
 )
 
 func Close() error {
-	err := inst.Close()
+	err := retry.Retry(5, func() error {
+		return inst.Close()
+	})
 	inst = nil
 	return err
 }
 
-var inst aetest.Instance
-var PORTS = []string{
-	"DEV_APP_SERVER_ADMIN_PORT",
-	"DEV_APP_SERVER_API_PORT",
-	"DEV_APP_SERVER_PORT",
-}
+var (
+	inst  aetest.Instance
+	ports = []string{
+		"DEV_APP_SERVER_ADMIN_PORT",
+		"DEV_APP_SERVER_API_PORT",
+		"DEV_APP_SERVER_PORT",
+	}
+)
 
 func NewContext(args ...Options) Context {
 	var (
@@ -43,10 +48,9 @@ func NewContext(args ...Options) Context {
 
 	// Share instance across NewContext requests
 	if inst == nil {
-
 		aetest.PrepareDevAppserver = func() error {
 			// Loop over services and find available ports
-			for _, service := range PORTS {
+			for _, service := range ports {
 				// Get free port
 				port, err := freeport.GetFreePort()
 				if err != nil {
@@ -68,9 +72,12 @@ func NewContext(args ...Options) Context {
 		}
 
 		// Create new dev server instance
-		inst, err = aetest.NewInstance(&aetest.Options{
-			AppID: opts.AppID,
-			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
+		err := retry.Retry(5, func() error {
+			inst, err = aetest.NewInstance(&aetest.Options{
+				AppID: opts.AppID,
+				StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
+			})
+			return err
 		})
 
 		if err != nil {
