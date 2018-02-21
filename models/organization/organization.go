@@ -193,7 +193,7 @@ type Organization struct {
 	Currency currency.Type `json:"currency"`
 }
 
-func (o *Organization) Load(ps datastore.PropertyList) (err error) {
+func (o *Organization) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
@@ -217,7 +217,7 @@ func (o *Organization) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (o *Organization) Save() (ps datastore.PropertyList, err error) {
+func (o *Organization) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
 
