@@ -1,6 +1,8 @@
 package coupon
 
 import (
+	aeds "google.golang.org/appengine/datastore"
+
 	"strings"
 	"time"
 
