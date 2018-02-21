@@ -9,7 +9,7 @@ import (
 	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
-	"hanzo.io/util/exec"
+	// "hanzo.io/util/exec"
 	hashid "hanzo.io/util/hashid/http"
 	"hanzo.io/util/router"
 	"hanzo.io/util/task"
@@ -78,15 +78,15 @@ func Init() {
 	router.GET("/assets/*file", middleware.Static("assets/"))
 
 	// Warmup: automatically install fixtures, etc.
-	router.GET("/_ah/warmup", func(c *gin.Context) {
-		// Automatically load fixtures
-		if config.AutoLoadFixtures {
-			task.Run(c, "fixtures-all")
-		}
+	// router.GET("/_ah/warmup", func(c *gin.Context) {
+	// 	// Automatically load fixtures
+	// 	if config.AutoLoadFixtures {
+	// 		task.Run(c, "fixtures-all")
+	// 	}
 
-		// Recompile static assets
-		if config.AutoCompileAssets {
-			exec.Run("make assets")
-		}
-	})
+	// 	// Recompile static assets
+	// 	if config.AutoCompileAssets {
+	// 		exec.Run("make assets")
+	// 	}
+	// })
 }
