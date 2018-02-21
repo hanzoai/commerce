@@ -161,12 +161,16 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		namespaces = models.GetNamespaces(ctx)
 	}
 
-	log.Debug("Initializing namespaces: %v", namespaces)
-
-	// Iterate through namespaces and initialize workers to run in each
-	for _, ns := range namespaces {
-		args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+	log.Debug("executing across namespaces: %v", namespaces)
+	if len(namespaces) == 0 {
+		args := append([]interface{}{fn.Name, "", batchSize}, args...)
 		initNamespace.Call(ctx, args...)
+	} else {
+		// Iterate through namespaces and initialize workers to run in each
+		for _, ns := range namespaces {
+			args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+			initNamespace.Call(ctx, args...)
+		}
 	}
 
 	return nil

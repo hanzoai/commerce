@@ -20,22 +20,16 @@ gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/config \
-	      hanzo.io/api \
-		  hanzo.io/dash
+	      hanzo.io/api
 
 gae_development = config/development \
-				  api/app.dev.yaml \
-				  dash/app.dev.yaml
+				  api/app.dev.yaml
 
 gae_staging = config/staging \
-			  analytics/app.staging.yaml \
-			  api/app.staging.yaml \
-			  dash/app.staging.yaml
+			  api/app.staging.yaml
 
 gae_production = config/production \
-				 analytics \
-				 api \
-				 dash
+				 api
 
 gae_sandbox = config/sandbox \
 			  api/app.sandbox.yaml
@@ -122,7 +116,7 @@ else
 endif
 
 project_env = development
-project_id  = dev
+project_id  = None
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
