@@ -1,6 +1,8 @@
 package store
 
 import (
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/mixin"

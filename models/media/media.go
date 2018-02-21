@@ -1,6 +1,8 @@
 package media
 
 import (
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 
