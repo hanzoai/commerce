@@ -142,7 +142,7 @@ func (s Subscriber) MergeFields() map[string]interface{} {
 	return fields
 }
 
-func (s *Subscriber) Load(ps datastore.PropertyList) (err error) {
+func (s *Subscriber) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -159,7 +159,7 @@ func (s *Subscriber) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (s *Subscriber) Save() (ps datastore.PropertyList, err error) {
+func (s *Subscriber) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

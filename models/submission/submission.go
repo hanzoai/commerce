@@ -22,7 +22,7 @@ type Submission struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Submission) Load(ps datastore.PropertyList) (err error) {
+func (s *Submission) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -39,7 +39,7 @@ func (s *Submission) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (s *Submission) Save() (ps datastore.PropertyList, err error) {
+func (s *Submission) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

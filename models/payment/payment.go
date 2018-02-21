@@ -195,7 +195,7 @@ func (p *Payment) GetFees() ([]*fee.Fee, error) {
 	return fees, nil
 }
 
-func (p *Payment) Load(ps datastore.PropertyList) (err error) {
+func (p *Payment) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
@@ -212,7 +212,7 @@ func (p *Payment) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (p *Payment) Save() (ps datastore.PropertyList, err error) {
+func (p *Payment) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 

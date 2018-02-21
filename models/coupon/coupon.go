@@ -75,7 +75,7 @@ type Coupon struct {
 	// Buyers []string `json:"buyers"`
 }
 
-func (co *Coupon) Load(ps datastore.PropertyList) (err error) {
+func (co *Coupon) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(co, ps); err != nil {
 		return err
@@ -84,7 +84,7 @@ func (co *Coupon) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (co *Coupon) Save() (ps datastore.PropertyList, err error) {
+func (co *Coupon) Save() (ps []aeds.Property, err error) {
 
 	co.Code_ = strings.ToUpper(co.Code_)
 
