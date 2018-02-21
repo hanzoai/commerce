@@ -2,7 +2,7 @@ dependencies:
   cache_directories:
     - ".sdk"
   override:
-    - make deps:
+    - make deps-go:
         timeout: 300
 test:
   override:
