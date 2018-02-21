@@ -202,7 +202,7 @@ deps: deps-assets deps-go
 
 # DEPS JS/CSS
 deps-assets:
-	npm update
+	npm update --no-optional
 
 # DEPS GO
 deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io update-env
