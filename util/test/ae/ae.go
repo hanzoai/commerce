@@ -16,15 +16,17 @@ func Close() error {
 var inst aetest.Instance
 
 func NewContext(args ...Options) Context {
-	var opts Options
-	var err error
+	var (
+		opts Options
+		err  error
+	)
 
 	// Parse options
 	switch len(args) {
 	case 0:
 		opts = defaults()
 	case 1:
-		opts = (Options)(args[0])
+		opts = defaults(args[0])
 	default:
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
