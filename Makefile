@@ -267,17 +267,17 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
-test: update-env-test install
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
+test: update-env-test
+	@$(ginkgo) $(test_target) -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-watch: update-env-test
-	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
+	@$(ginkgo) watch -r=true -progress --failFast --trace $(test_verbose)
 
-bench: update-env-test install
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
+bench: update-env-test
+	@$(ginkgo) $(test_target) -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci: update-env-test
-	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
+	$(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
 
 coverage: update-env-test
 	# $(gover) test/ coverage.out
