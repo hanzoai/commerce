@@ -218,7 +218,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io u
 	chmod +x .sdk/gpm
 
 .sdk/gopath/bin/ginkgo:
-	$(gpm) install
+	$(goapp) get github.com/onsi/ginkgo
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
 .sdk/gopath/src/hanzo.io:
