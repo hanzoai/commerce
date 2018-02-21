@@ -3,6 +3,8 @@ package analyticsevent
 import (
 	"time"
 
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/analyticsidentifier"
 	"hanzo.io/models/mixin"
