@@ -212,6 +212,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io u
 	unzip $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
+	sed -i.bak 's/15/60/g' .sdk/goroot-1.8/src/appengine/aetest/instance.go
 	$(sdk_install_extra)
 
 .sdk/go:
