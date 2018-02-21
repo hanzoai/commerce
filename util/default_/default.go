@@ -40,12 +40,6 @@ func Init() {
 
 	router := router.New("default")
 
-	// Setup routes for delay funcs
-	router.POST(delay.Path, func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
-		delay.RunFunc(ctx, c.Writer, c.Request)
-	})
-
 	// Index, development has nice index with links
 	if appengine.IsDevAppServer() {
 		router.GET("/", func(c *gin.Context) {
@@ -60,6 +54,12 @@ func Init() {
 	// Monitoring test
 	router.GET("/wake-up", func(c *gin.Context) {
 		log.Panic("I think I heard, I think I heard a shot.")
+	})
+
+	// Setup routes for delay funcs
+	router.POST(delay.Path, func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
 	// Setup routes for tasks
