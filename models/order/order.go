@@ -205,7 +205,7 @@ func (o *Order) Validator() *val.Validator {
 	return val.New()
 }
 
-func (o *Order) Load(ps datastore.PropertyList) (err error) {
+func (o *Order) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
@@ -243,7 +243,7 @@ func (o *Order) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (o *Order) Save() (ps datastore.PropertyList, err error) {
+func (o *Order) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
 	o.Items_ = string(json.EncodeBytes(o.Items))

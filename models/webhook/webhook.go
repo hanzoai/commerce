@@ -34,7 +34,7 @@ type Webhook struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (s *Webhook) Load(ps datastore.PropertyList) (err error) {
+func (s *Webhook) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -51,7 +51,7 @@ func (s *Webhook) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (s *Webhook) Save() (ps datastore.PropertyList, err error) {
+func (s *Webhook) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Events_ = string(json.EncodeBytes(&s.Events))
 
