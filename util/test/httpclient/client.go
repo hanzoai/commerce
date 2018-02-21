@@ -5,21 +5,29 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
-
-	// "google.golang.org/appengine"
 
 	// "hanzo.io/config"
 	"hanzo.io/log"
 	"hanzo.io/util/json"
 )
 
-func getModuleHost(ctx context.Context, moduleName string) (host string, err error) {
-	// id := appengine.InstanceID()
-	// version := "v1"
-	// log.Warn(moduleName, version, id)
-	// return appengine.ModuleHostname(ctx, moduleName, "", "")
-	return "localhost:8002", nil
+func getModuleHost(ctx context.Context, moduleName string) string {
+	host := "localhost"
+	port := os.Getenv("DEV_APP_SERVER_PORT")
+
+	switch moduleName {
+	case "default":
+		return host + ":" + port
+	case "api":
+		n, _ := strconv.Atoi(port)
+		return host + ":" + strconv.Itoa(n+1)
+	}
+
+	return host + ":" + port
+
 }
 
 type Client struct {
@@ -32,17 +40,11 @@ func (c *Client) URL(path string) string {
 	return c.baseURL + path
 }
 
-func (c *Client) determineBaseURL() {
-	moduleHost, err := getModuleHost(c.context, c.moduleName)
-	if err != nil {
-		log.Stack(err)
-		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
-	}
-
+func (c *Client) setBaseUrl() {
+	moduleHost := getModuleHost(c.context, c.moduleName)
 	url := "http://" + strings.Trim(moduleHost, "/")
 	c.baseURL = strings.Trim(url, "/")
-
-	log.Warn("baseURL %s", c.baseURL)
+	log.Warn("%s baseURL %s", c.moduleName, c.baseURL)
 }
 
 func (c *Client) getURL(path string) string {
