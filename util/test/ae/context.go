@@ -6,13 +6,13 @@ import (
 
 type Context interface {
 	ctx.Context
-	Close() error
+	Close()
 }
 
 type context struct {
 	ctx.Context
 }
 
-func (c *context) Close() error {
-	return Close()
+func (c *context) Close() {
+	Close()
 }
