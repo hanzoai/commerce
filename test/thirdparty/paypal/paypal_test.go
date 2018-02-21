@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
-	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -18,8 +17,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	// Setup("thirdparty/paypal", t)
+	Setup("thirdparty/paypal", t)
 }
 
 var (
@@ -32,9 +30,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	var err error
 	ctx = ae.NewContext()
-	Expect(err).ToNot(HaveOccurred())
 
 	db := datastore.New(ctx)
 
@@ -71,14 +67,15 @@ var _ = BeforeSuite(func() {
 	pay.Currency = currency.USD
 	pay.Client.Ip = "64.136.209.186"
 	platformFees, partnerFees := org.Pricing()
+
+	var err error
 	pay.Fee, _, err = ord.CalculateFees(platformFees, partnerFees)
 	Expect(err).ToNot(HaveOccurred())
 	client = paypal.New(ctx)
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("paypal.GetPayKey", func() {
