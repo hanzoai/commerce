@@ -12,12 +12,11 @@ import (
 )
 
 func New(ctx context.Context, accessToken string) *Client {
+	// Set deadline
+	ctx, _ = context.WithTimeout(ctx, time.Second*58)
+
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
-
-	// Set deadline
-	d := time.Now().Add(time.Second * 60)
-	ctx, _ = context.WithDeadline(ctx, d)
 
 	httpClient.Transport = &urlfetch.Transport{
 		Context: ctx,
