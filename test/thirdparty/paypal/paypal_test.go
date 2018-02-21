@@ -3,16 +3,15 @@ package test
 import (
 	"testing"
 
-	"github.com/zeekay/aetest"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/paypal"
-	"hanzo.io/log"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/models/lineitem"
 	. "hanzo.io/util/test/ginkgo"
@@ -24,7 +23,7 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx    aetest.Context
+	ctx    ae.Context
 	org    *organization.Organization
 	usr    *user.User
 	ord    *order.Order
@@ -34,7 +33,7 @@ var (
 
 var _ = BeforeSuite(func() {
 	var err error
-	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	ctx = ae.NewContext()
 	Expect(err).ToNot(HaveOccurred())
 
 	db := datastore.New(ctx)

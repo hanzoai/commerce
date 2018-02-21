@@ -9,10 +9,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/zeekay/aetest"
-
 	"hanzo.io/datastore"
 	"hanzo.io/log"
+	"hanzo.io/util/test/ae"
 )
 
 func Test(t *testing.T) {
@@ -22,14 +21,14 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	db  *datastore.Datastore
 )
 
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
 	var err error
-	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 	db = datastore.New(ctx)
 })
