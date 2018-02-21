@@ -149,7 +149,7 @@ datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/
 test_target = -r=true
 test_focus := $(focus)
 ifdef test_focus
-	test_target=test/$(focus)
+	test_target=$(focus)
 endif
 
 test_batch := $(batch)
