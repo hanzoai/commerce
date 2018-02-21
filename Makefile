@@ -210,8 +210,8 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io u
 	$(sdk_install_extra)
 
 .sdk/go:
-	echo '#!/usr/bin/env bash' > $(sdk_path)/go
-	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go
+	printf '#!/usr/bin/env bash' > $(sdk_path)/go
+	printf '$(sdk_path)/goapp $$@' >> $(sdk_path)/go
 	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
@@ -314,10 +314,10 @@ update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
 
 update-env:
-	@echo 'package config\n\nvar Env = "$(project_env)"' > config/env.go
+	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
 
 update-env-test:
-	@echo 'package config\n\nvar Env = "test"' > config/env.go
+	@printf 'package config\n\nvar Env = "test"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
