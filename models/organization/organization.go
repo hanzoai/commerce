@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
