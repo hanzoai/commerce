@@ -10,13 +10,10 @@ import (
 	"google.golang.org/appengine/aetest"
 
 	"hanzo.io/log"
-	"hanzo.io/util/retry"
 )
 
 func Close() error {
-	err := retry.Retry(5, func() error {
-		return inst.Close()
-	})
+	err := inst.Close()
 	inst = nil
 	return err
 }
@@ -72,12 +69,9 @@ func NewContext(args ...Options) Context {
 		}
 
 		// Create new dev server instance
-		err := retry.Retry(5, func() error {
-			inst, err = aetest.NewInstance(&aetest.Options{
-				AppID: opts.AppID,
-				StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
-			})
-			return err
+		inst, err = aetest.NewInstance(&aetest.Options{
+			AppID: opts.AppID,
+			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
 
 		if err != nil {
