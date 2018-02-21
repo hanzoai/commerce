@@ -3,12 +3,10 @@ package mandrill_integration_test
 import (
 	"testing"
 
-	"github.com/zeekay/aetest"
-
 	"hanzo.io/config"
-	"hanzo.io/thirdparty/mandrill"
 	"hanzo.io/log"
-
+	"hanzo.io/thirdparty/mandrill"
+	"hanzo.io/util/test/ae"
 	. "hanzo.io/util/test/ginkgo"
 )
 
@@ -18,7 +16,7 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 )
 
 var _ = BeforeSuite(func() {
@@ -27,7 +25,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	ctx, err = aetest.NewContext(nil)
+	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 })
 
