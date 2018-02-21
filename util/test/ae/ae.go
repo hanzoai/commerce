@@ -2,6 +2,7 @@ package ae
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/phayes/freeport"
@@ -58,8 +59,11 @@ func NewContext(args ...Options) Context {
 				os.Setenv(service, s)
 			}
 
+			// Derive project path from GOPATH
+			projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
+
 			// Ensure our wrapper is used
-			os.Setenv("APPENGINE_DEV_APPSERVER", "scripts/dev_appserver.py")
+			os.Setenv("APPENGINE_DEV_APPSERVER", projectDir+"/scripts/dev_appserver.py")
 			return nil
 		}
 
