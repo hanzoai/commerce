@@ -12,7 +12,7 @@ SERVER_PATH   = os.path.join(SDK_PATH, 'dev_appserver.py')
 PORTS = {
     '--admin_port=0': int(os.environ['DEV_APP_SERVER_ADMIN_PORT']),
     '--api_port=0':   int(os.environ['DEV_APP_SERVER_API_PORT']),
-    '--port=0':       int(os.environ['DEV_APP_SEVER_PORT']),
+    '--port=0':       int(os.environ['DEV_APP_SERVER_PORT']),
 }
 
 
