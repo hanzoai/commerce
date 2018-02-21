@@ -14,6 +14,7 @@ import (
 )
 
 func Setup(suiteName string, t *testing.T) {
+	log.Error("testing.Verbose", testing.Verbose())
 	log.SetVerbose(testing.Verbose())
 	gomega.RegisterFailHandler(ginkgo.Fail)
 
