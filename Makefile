@@ -210,8 +210,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io u
 	$(sdk_install_extra)
 
 .sdk/go:
-	printf '#!/usr/bin/env bash' > $(sdk_path)/go
-	printf '$(sdk_path)/goapp $$@' >> $(sdk_path)/go
+	printf '#!/usr/bin/env bash\n$(sdk_path)/goapp $$@' > $(sdk_path)/go
 	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
