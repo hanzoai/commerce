@@ -23,12 +23,15 @@ func New() *Logger {
 
 	// Use plain formatter for production logging, color for dev server
 	backend := logging.NewBackendFormatter(log.backend, plainFormatter)
-	if config.IsDevelopment {
+	if !config.IsProduction && !config.IsTest {
 		backend = logging.NewBackendFormatter(backend, colorFormatter)
 	}
 
 	log.SetBackend(logging.SetBackend(backend))
-	log.SetVerbose(!config.IsProduction)
+
+	if config.IsDevelopment {
+		log.SetVerbose(true)
+	}
 
 	return log
 }
