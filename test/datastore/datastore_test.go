@@ -35,8 +35,7 @@ var _ = BeforeSuite(func() {
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).NotTo(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("Key", func() {

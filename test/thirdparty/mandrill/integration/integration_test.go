@@ -34,8 +34,7 @@ var _ = AfterSuite(func() {
 		return
 	}
 
-	err := ctx.Close()
-	Expect(err).NotTo(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("Ping", func() {

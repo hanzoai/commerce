@@ -165,8 +165,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("User (de)serialization", func() {
