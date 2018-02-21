@@ -1,13 +1,12 @@
 package test
 
 import (
-	"google.golang.org/appengine"
-
-	"github.com/zeekay/aetest"
+	"context"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/salesforce"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -125,7 +124,7 @@ func (a *MockSalesforceClient) GetContext() context.Context {
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	// user   models.User
 	params *ClientParams
 )
