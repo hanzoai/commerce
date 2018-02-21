@@ -29,12 +29,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default"},
-		TaskQueues: []string{"default"},
-		Noisy:      true,
-	})
-
+	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(ctx)
 })
