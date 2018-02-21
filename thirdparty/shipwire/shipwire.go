@@ -31,10 +31,7 @@ type Client struct {
 func New(c *gin.Context, username, password string) *Client {
 	ctx := middleware.GetAppEngine(c)
 
-	// Set deadline
-	d := time.Now().Add(time.Second * 30)
-	ctx, _ = context.WithDeadline(ctx, d)
-
+	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
 		Context: ctx,

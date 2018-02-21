@@ -60,9 +60,8 @@ var IdMismatch = errors.New("Ids do not match!")
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
 func New(ctx context.Context, host, username, password string) BitcoinClient {
-	// Set deadline
-	d := time.Now().Add(time.Second * 55)
-	ctx, _ = context.WithDeadline(ctx, d)
+	// Update timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
