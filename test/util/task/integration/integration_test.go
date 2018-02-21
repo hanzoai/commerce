@@ -10,6 +10,7 @@ import (
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/httpclient"
 
+	_ "hanzo.io/test/util/task/integration/tasks"
 	. "hanzo.io/util/test/ginkgo"
 )
 
