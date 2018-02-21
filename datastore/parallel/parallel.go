@@ -81,11 +81,8 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			}
 		}
 
-		// Increase Timeout
-
-		// Set deadline
-		d := time.Now().Add(time.Second * 30)
-		nsCtx, _ = context.WithDeadline(nsCtx, d)
+		// Set timeout
+		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)

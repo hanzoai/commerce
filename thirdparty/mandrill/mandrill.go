@@ -188,9 +188,8 @@ func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 		return err
 	}
 
-	// Set deadline
-	d := time.Now().Add(time.Second * 60)
-	ctx, _ = context.WithDeadline(ctx, d)
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{Context: ctx}
