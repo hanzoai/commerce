@@ -6,6 +6,6 @@ func New(ctx context.Context, moduleName string) *Client {
 	client := new(Client)
 	client.context = ctx
 	client.moduleName = moduleName
-	client.determineBaseURL()
+	client.setBaseUrl()
 	return client
 }
