@@ -1,4 +1,5 @@
 github.com/Machiel/slugify master
+github.com/PuerkitoBio/goquery master
 github.com/Sirupsen/logrus 95002bc71734b797b2dc8ffb20ffc725c9f543ed
 github.com/btcsuite/btcd/btcjson master
 github.com/btcsuite/btclog master
@@ -6,8 +7,6 @@ github.com/btcsuite/btcutil/base58 master
 github.com/btcsuite/go-socks/socks master
 github.com/cenkalti/backoff b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3
 github.com/davecgh/go-spew/spew master
-github.com/davidtai/appenginetesting master
-github.com/davidtai/goauth2old/appengine/serviceaccount master
 github.com/dgrijalva/jwt-go v2.7.0
 github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
@@ -42,4 +41,4 @@ golang.org/x/net/html  master
 golang.org/x/text/encoding master
 golang.org/x/tools/cover master
 google.golang.org/appengine master
-gopkg.in/yaml.v2
+gopkg.in/yaml.v2 master
