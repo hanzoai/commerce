@@ -42,10 +42,6 @@ func New(moduleName string) *gin.RouterGroup {
 
 	http.Handle(prefix, router)
 
-	// Needed for basic / manual scaling to notify AppEngine we're ready
-	router.GET("/_ah/start", Ok)
-	router.GET("/_ah/stop", Ok)
-
 	return router.Group(prefix)
 }
 
