@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api/organization/newRoutes"
+	"hanzo.io/api/organization/newroutes"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
