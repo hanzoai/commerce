@@ -44,12 +44,15 @@ func SplitParagraph(text string) []string {
 
 func GetNamespaces(ctx context.Context) []string {
 	namespaces := make([]string, 0)
+
+	// Fetch namespaces from special __namespace__ table
 	db := datastore.New(ctx)
 	keys, err := db.Query("__namespace__").GetKeys()
 	if err != nil {
 		panic(err)
 	}
 
+	// Append stringID's
 	for _, k := range keys {
 		namespaces = append(namespaces, k.StringID())
 	}

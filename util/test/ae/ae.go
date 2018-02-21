@@ -3,6 +3,7 @@ package ae
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 
 	"github.com/phayes/freeport"
@@ -29,29 +30,32 @@ func NewContext(args ...Options) Context {
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	ports := []string{
-		"DEV_APP_SERVER_ADMIN_PORT",
-		"DEV_APP_SERVER_API_PORT",
-		"DEV_APP_SERVER_PORT",
+	services := []string{
+		"DEV_APPSERVER_ADMIN_PORT",
+		"DEV_APPSERVER_API_PORT",
+		"DEV_APPSERVER_PORT",
 	}
 
-	aetest.PrepareDevAppserver = func() error {
-		// Loop over services and find available ports
-		for _, service := range ports {
-			// Get free port
-			port, err := freeport.GetFreePort()
-			if err != nil {
-				return err
-			}
+	// Find available ports
+	ports := make([]int, 3)
+	ports[0], _ = freeport.GetFreePort()
+	ports[1], _ = freeport.GetFreePort()
+	ports[2], _ = freeport.GetFreePort()
 
-			// Convert port into a string and update environment for
-			// dev_appserver wrapper
-			s := strconv.Itoa(port)
+	// Sort least to highest, each service port is incremented up from
+	// api_port, so ensure it has the highest port number
+	sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
+
+	// Derive project path from GOPATH
+	projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
+
+	aetest.PrepareDevAppserver = func() error {
+		// Convert port into a string and update environment for dev_appserver
+		// wrapper
+		for i, service := range services {
+			s := strconv.Itoa(ports[i])
 			os.Setenv(service, s)
 		}
-
-		// Derive project path from GOPATH
-		projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
 
 		// Ensure our wrapper is used
 		os.Setenv("APPENGINE_DEV_APPSERVER", projectDir+"/scripts/dev_appserver.py")
@@ -60,13 +64,15 @@ func NewContext(args ...Options) Context {
 
 	// Create new dev server instance
 	var inst aetest.Instance
-
 	err = retry.Retry(3, func() error {
 		inst, err = aetest.NewInstance(&aetest.Options{
 			AppID: opts.AppID,
 			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
-		return err
+		if err != nil {
+			inst.Close()
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -76,7 +82,7 @@ func NewContext(args ...Options) Context {
 	// Create new request
 	req, err := inst.NewRequest("GET", "/", nil)
 	if err != nil {
-		return nil
+		log.Panic("Failed to create request")
 	}
 
 	// Create new appengine context

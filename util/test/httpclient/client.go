@@ -16,7 +16,7 @@ import (
 
 func getModuleHost(ctx context.Context, moduleName string) string {
 	host := "localhost"
-	port := os.Getenv("DEV_APP_SERVER_PORT")
+	port := os.Getenv("DEV_APPSERVER_PORT")
 
 	switch moduleName {
 	case "default":
@@ -24,9 +24,9 @@ func getModuleHost(ctx context.Context, moduleName string) string {
 	case "api":
 		n, _ := strconv.Atoi(port)
 		return host + ":" + strconv.Itoa(n+1)
+	default:
+		return host + ":" + port
 	}
-
-	return host + ":" + port
 
 }
 
