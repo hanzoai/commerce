@@ -50,9 +50,8 @@ var _ = BeforeSuite(func() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default"},
-		TaskQueues: []string{"default"},
-		Noisy:      true,
+		Modules: []string{"default"},
+		Debug:   true,
 	})
 
 	// Mock gin context that we can use with fixtures

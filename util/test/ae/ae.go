@@ -16,7 +16,7 @@ func Close() error {
 var inst aetest.Instance
 
 func NewContext(args ...Options) Context {
-	var opts *aetest.Options
+	var opts Options
 	var err error
 
 	// Parse options
@@ -24,7 +24,7 @@ func NewContext(args ...Options) Context {
 	case 0:
 		opts = defaults()
 	case 1:
-		opts = (*aetest.Options)(args[0])
+		opts = (Options)(args[0])
 	default:
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
@@ -32,7 +32,10 @@ func NewContext(args ...Options) Context {
 	// Share instance across NewContext requests
 	if inst == nil {
 		// Create new dev server instance
-		inst, err = aetest.NewInstance(opts)
+		inst, err = aetest.NewInstance(&aetest.Options{
+			AppID: opts.AppID,
+			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
+		})
 		if err != nil {
 			log.Panic("Failed to create instance: %v", err)
 		}
