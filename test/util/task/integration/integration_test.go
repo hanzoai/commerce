@@ -30,7 +30,7 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Run", func() {
-	FIt("Should call task successfully", func() {
+	It("Should call task successfully", func() {
 		// Start task
 		client := httpclient.New(ctx, "default")
 
