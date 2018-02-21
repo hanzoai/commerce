@@ -102,7 +102,7 @@ type Store struct {
 	} `json:"mailchimp,omitempty`
 }
 
-func (s *Store) Load(ps datastore.PropertyList) (err error) {
+func (s *Store) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -123,7 +123,7 @@ func (s *Store) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (s *Store) Save() (ps datastore.PropertyList, err error) {
+func (s *Store) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Listings_ = string(json.EncodeBytes(&s.Listings))
 	// s.ShippingRateTable_ = string(json.EncodeBytes(&s.ShippingRateTable))

@@ -62,7 +62,7 @@ func (c *Return) Validator() *val.Validator {
 	return val.New()
 }
 
-func (c *Return) Load(ps datastore.PropertyList) (err error) {
+func (c *Return) Load(ps []aeds.Property) (err error) {
 	// Prevent duplicate deserialization
 	if c.Loaded() {
 		return nil
@@ -88,7 +88,7 @@ func (c *Return) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (c *Return) Save() (ps datastore.PropertyList, err error) {
+func (c *Return) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
 	c.Items_ = string(json.EncodeBytes(c.Items))

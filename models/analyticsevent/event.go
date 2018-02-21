@@ -31,7 +31,7 @@ type AnalyticsEvent struct {
 	RequestMetadata client.Client `json:"requestMetadata"`
 }
 
-func (e *AnalyticsEvent) Load(ps datastore.PropertyList) (err error) {
+func (e *AnalyticsEvent) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	e.Defaults()
 
@@ -48,7 +48,7 @@ func (e *AnalyticsEvent) Load(ps datastore.PropertyList) (err error) {
 	return err
 }
 
-func (e *AnalyticsEvent) Save() (ps datastore.PropertyList, err error) {
+func (e *AnalyticsEvent) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	e.Data_ = string(json.EncodeBytes(&e.Data))
 

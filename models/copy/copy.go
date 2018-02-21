@@ -40,7 +40,7 @@ func (m Copy) Fork() *Copy {
 	return m2
 }
 
-func (m *Copy) Load(ps datastore.PropertyList) (err error) {
+func (m *Copy) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
@@ -48,7 +48,7 @@ func (m *Copy) Load(ps datastore.PropertyList) (err error) {
 	return datastore.LoadStruct(m, ps)
 }
 
-func (m *Copy) Save() (ps datastore.PropertyList, err error) {
+func (m *Copy) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	m.IsParent = m.ParentCopyId != ""
 
