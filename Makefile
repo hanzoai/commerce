@@ -122,7 +122,7 @@ else
 endif
 
 project_env = development
-project_id  = development
+project_id  = dev
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
@@ -267,19 +267,19 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
-test: install
+test: update-env-test install
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
-test-watch:
+test-watch: update-env-test
 	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
 
-bench: install
+bench: update-env-test install
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
-test-ci:
+test-ci: update-env-test
 	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
 
-coverage:
+coverage: update-env-test
 	# $(gover) test/ coverage.out
 	# $(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
 
@@ -319,8 +319,10 @@ update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
 
 update-env:
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+	@echo 'package config\n\nvar Env = "$(project_env)"' > config/env.go
+
+update-env-test:
+	@echo 'package config\n\nvar Env = "test"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \

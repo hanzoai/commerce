@@ -32,9 +32,10 @@ type Config struct {
 	DatastoreWarn     bool
 	DemoMode          bool
 	IsDevelopment     bool
+	IsTest            bool
 	IsProduction      bool
-	IsStaging         bool
 	IsSandbox         bool
+	IsStaging         bool
 	Protocol          string
 	RootDir           string
 	SentryDSN         string
@@ -211,20 +212,22 @@ func Get() *Config {
 		return cachedConfig
 	}
 
+	// Default to development environment
 	cachedConfig = Development()
 
-	if !appengine.IsDevAppServer() {
+	if Env == "test" {
+		cachedConfig = Test()
+	} else if !appengine.IsDevAppServer() {
 		switch Env {
-		case "crowdstart-staging":
-			cachedConfig = Staging()
 		case "crowdstart-sandbox":
 			cachedConfig = Sandbox()
+		case "crowdstart-staging":
+			cachedConfig = Staging()
 		case "crowdstart-us":
 			cachedConfig = Production()
 		}
 	}
 
-	// Allow local config file to override settings
 	for _, configFile := range configFileLocations {
 		if _, err := os.Stat(configFile); err == nil {
 			cachedConfig.Load(configFile)
@@ -252,6 +255,7 @@ var Facebook = config.Facebook
 var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
+var IsTest = config.IsTest
 var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
