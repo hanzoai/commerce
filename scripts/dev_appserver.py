@@ -38,7 +38,7 @@ if __name__ == '__main__':
     sys.argv.pop()
 
     sys.argv.extend([
-        '--dev_appserver_log_level=info',
+        '--dev_appserver_log_level=error',
         '--enable_task_running=true',
         os.path.join(PLATFORM_PATH, 'config/test/app.yaml'),
         os.path.join(PLATFORM_PATH, 'api/app.dev.yaml'),
