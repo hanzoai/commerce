@@ -49,9 +49,8 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("IPN response: %s", string(dump), ctx)
 
-	// Set deadline
-	d := time.Now().Add(time.Second * 30)
-	ctx, _ = context.WithDeadline(ctx, d)
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 
 	// Create client
 	client := urlfetch.Client(ctx)

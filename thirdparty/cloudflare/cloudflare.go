@@ -27,8 +27,7 @@ func New(c *gin.Context) *Client {
 	ctx := middleware.GetAppEngine(c)
 
 	// Set deadline
-	d := time.Now().Add(time.Second * 30)
-	ctx, _ = context.WithDeadline(ctx, d)
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{

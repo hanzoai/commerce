@@ -49,12 +49,10 @@ func (c *Client) Post(url string, data interface{}) error {
 }
 
 func createClient(ctx context.Context) *Client {
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+
 	client := urlfetch.Client(ctx)
-
-	// Set deadline
-	d := time.Now().Add(time.Second * 30)
-	ctx, _ = context.WithDeadline(ctx, d)
-
 	client.Transport = &urlfetch.Transport{
 		Context: ctx,
 	}

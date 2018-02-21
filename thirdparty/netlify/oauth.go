@@ -19,9 +19,8 @@ func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err e
 }
 
 func newOauthClient(ctx context.Context, accessToken string) *http.Client {
-	// Set deadline
-	d := time.Now().Add(time.Second * 30)
-	ctx, _ = context.WithDeadline(ctx, d)
+	// Update timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 
 	client := urlfetch.Client(ctx)
 	client.Transport = &OauthTransport{

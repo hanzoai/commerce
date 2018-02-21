@@ -13,7 +13,7 @@ import (
 
 func New(ctx context.Context, accessToken string) *Client {
 	// Set deadline
-	ctx, _ = context.WithTimeout(ctx, time.Second*58)
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)

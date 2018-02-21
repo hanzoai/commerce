@@ -47,9 +47,8 @@ type API struct {
 }
 
 func New(ctx context.Context, apiKey string) *API {
-	// Set deadline
-	d := time.Now().Add(time.Second * 60)
-	ctx, _ = context.WithDeadline(ctx, d)
+	// Update timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	api := new(API)
 	api.ctx = ctx
