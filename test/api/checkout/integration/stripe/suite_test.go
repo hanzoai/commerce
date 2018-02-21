@@ -12,7 +12,6 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
 	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
@@ -40,7 +39,6 @@ var (
 	org         *organization.Organization
 	prod        *product.Product
 	refIn       *referrer.Referrer
-	sc          *stripe.Client
 	stor        *store.Store
 	u           *user.User
 )
@@ -83,9 +81,6 @@ var _ = BeforeSuite(func() {
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
-
-	// Stripe client
-	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))
