@@ -1,5 +1,4 @@
 github.com/Machiel/slugify master
-github.com/PuerkitoBio/goquery master
 github.com/Sirupsen/logrus 95002bc71734b797b2dc8ffb20ffc725c9f543ed
 github.com/btcsuite/btcd/btcjson master
 github.com/btcsuite/btclog master
@@ -37,8 +36,9 @@ github.com/vanng822/go-premailer/premailer master
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
 golang.org/x/net/context master
-golang.org/x/net/html  master
+golang.org/x/net/html master
 golang.org/x/text/encoding master
 golang.org/x/tools/cover master
 google.golang.org/appengine master
 gopkg.in/yaml.v2 master
+github.com/PuerkitoBio/goquery master
