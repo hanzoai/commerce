@@ -368,7 +368,8 @@ datastore-replicate:
 	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
-.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
-	datastore-import datastore-export datastore-config deploy deploy-staging \
-	deploy-production deps deps-assets deps-go live-reload serve serve-clear-datastore \
-	serve-public test test-integration test-watch tools
+.PHONY: all auth bench build compile-js compile-js-min compile-css \
+	compile-css-min datastore-import datastore-export datastore-config deploy \
+	deploy-staging deploy-production deps deps-assets deps-go live-reload \
+	serve serve-clear-datastore serve-public test test-integration test-watch \
+	tools
