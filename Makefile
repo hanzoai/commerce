@@ -190,6 +190,10 @@ compile-css-min:
 build: deps assets
 	$(goapp) build $(modules)
 
+# CLEAN
+clean:
+	rm -rf sdk
+
 # DEPS
 deps: deps-assets deps-go
 
