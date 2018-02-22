@@ -19,16 +19,13 @@ github.com/dgrijalva/jwt-go v2.7.0
 github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
 github.com/gin-gonic/gin master
-github.com/go-errors/errors master
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
 github.com/hashicorp/golang-lru
 github.com/huandu/facebook v1.8.1
 github.com/icrowley/fake master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
-github.com/mattn/goveralls master
 github.com/mholt/binding 5594cf7a0fc126359d4ba7094fa65e9bf666e429
-github.com/modocache/gover master
 github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
@@ -41,4 +38,3 @@ github.com/speps/go-hashids 2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go v25.0.0
 github.com/vanng822/go-premailer/premailer master
 github.com/zeekay/gochimp3 master
-github.com/PuerkitoBio/goquery master
