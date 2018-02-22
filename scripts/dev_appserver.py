@@ -5,7 +5,7 @@ import sys
 
 
 PLATFORM_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SDK_PATH      = os.path.join(PLATFORM_PATH, '.sdk')
+SDK_PATH      = os.path.join(PLATFORM_PATH, 'sdk')
 SERVER_PATH   = os.path.join(SDK_PATH, 'dev_appserver.py')
 
 PORTS = {
