@@ -2,7 +2,7 @@ os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 platform		= $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.62
-sdk_path		= $(pwd)/.sdk
+sdk_path		= $(pwd)/sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
@@ -87,7 +87,7 @@ sdk_install_extra = rm -rf $(sdk_path)/demos
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
-			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
@@ -96,7 +96,7 @@ ifeq ($(os), linux)
 	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
-			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
@@ -198,30 +198,30 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io update-env
+deps-go: sdk sdk/go sdk/gpm sdk/gopath/bin/ginkgo sdk/gopath/src/hanzo.io update-env
 	$(gpm) install
 
-.sdk:
+sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
 	unzip $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
-	sed -i.bak 's/15/120/g' .sdk/goroot-1.8/src/appengine/aetest/instance.go
+	sed -i.bak 's/15/120/g' sdk/goroot-1.8/src/appengine/aetest/instance.go
 	$(sdk_install_extra)
 
-.sdk/go:
+sdk/go:
 	printf '#!/usr/bin/env bash\n$(sdk_path)/goapp $$@' > $(sdk_path)/go
 	chmod +x $(sdk_path)/go
 
-.sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > .sdk/gpm
-	chmod +x .sdk/gpm
+sdk/gpm:
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > sdk/gpm
+	chmod +x sdk/gpm
 
-.sdk/gopath/bin/ginkgo:
+sdk/gopath/bin/ginkgo:
 	$(goapp) get github.com/onsi/ginkgo
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
-.sdk/gopath/src/hanzo.io:
+sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/hanzo.io
@@ -252,8 +252,8 @@ serve-no-reload: assets update-env
 # GOLANG TOOLS
 tools:
 	@echo If you have issues building:
-	@echo "  rm .sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
-	@echo "  rm .sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
+	@echo "  rm sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
+	@echo "  rm sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
 	@echo
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
