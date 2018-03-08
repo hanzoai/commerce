@@ -9,7 +9,7 @@ import (
 	"math/big"
 
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type ChainId int64

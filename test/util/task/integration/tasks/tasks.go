@@ -1,12 +1,13 @@
 package tasks
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/task"
 )
 
@@ -22,7 +23,7 @@ var Foo = task.Func("foo", func(c *gin.Context) {
 		Value: []byte("bar"),
 	}
 
-	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx := c.MustGet("appengine").(context.Context)
 	if err := memcache.Set(ctx, foo); err != nil {
 		log.Error(err, c)
 	}
@@ -34,13 +35,13 @@ var Baz = task.Func("baz", func(c *gin.Context) {
 		Value: []byte("qux"),
 	}
 
-	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx := c.MustGet("appengine").(context.Context)
 	if err := memcache.Set(ctx, baz); err != nil {
 		log.Error(err, c)
 	}
 })
 
 var NestedBaz = task.Func("nested-baz", func(c *gin.Context) {
-	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx := c.MustGet("appengine").(context.Context)
 	Baz.Call(ctx)
 })
