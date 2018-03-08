@@ -5,3 +5,4 @@
 --ignore-dir=static/appui/js/plugins
 --ignore-dir=static/appui/js/vendor
 --ignore-dir=static/js
+--ignore-dir=thirdparty/ethereum/go-ethereum/crypto/btcec

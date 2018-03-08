@@ -2,23 +2,32 @@ package store
 
 import (
 	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
 )
 
+var kind = "store"
+
 func (s Store) Kind() string {
-	return "store"
+	return kind
 }
 
 func (s *Store) Init(db *datastore.Datastore) {
 	s.Model.Init(db, s)
 }
 
+func (s *Store) Defaults() {
+	s.Listings = make(Listings)
+	// s.ShippingRateTable = make(ShippingRateTable)
+	s.Currency = currency.USD
+}
+
 func New(db *datastore.Datastore) *Store {
 	s := new(Store)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

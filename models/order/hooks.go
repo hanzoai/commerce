@@ -3,6 +3,7 @@ package order
 import (
 	"hanzo.io/util/counter"
 	"hanzo.io/util/event"
+	"strings"
 )
 
 // Hooks

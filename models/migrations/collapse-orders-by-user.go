@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

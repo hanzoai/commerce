@@ -2,6 +2,7 @@ package ipn
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,19 +11,16 @@ import (
 	"net/url"
 	"time"
 
-	"golang.org/x/net/context"
-
-	aeds "google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
 	"hanzo.io/util/router"
 
 	checkoutApi "hanzo.io/api/checkout"
@@ -52,6 +50,9 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("IPN response: %s", string(dump), ctx)
+
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 
 	// Create client
 	ctx, _ = context.WithTimeout(ctx, 20*time.Second)

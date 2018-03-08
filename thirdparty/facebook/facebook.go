@@ -20,7 +20,7 @@ import (
 	"hanzo.io/middleware"
 	// "hanzo.io/models"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var appId = config.Facebook.AppId

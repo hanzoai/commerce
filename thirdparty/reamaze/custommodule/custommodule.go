@@ -5,14 +5,15 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"strings"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/order"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json/http"
+	"hanzo.io/log"
+	"hanzo.io/util/template"
 )
 
 func Serve(c *gin.Context) {
@@ -24,6 +25,8 @@ func Serve(c *gin.Context) {
 		http.Fail(c, 400, "No email provided", errors.New("No email provided"))
 		return
 	}
+
+	email = strings.ToLower(email)
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

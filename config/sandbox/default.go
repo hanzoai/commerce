@@ -3,17 +3,17 @@ package hanzo
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/_default"
+	"hanzo.io/util/default_"
 )
 
 func init() {
-	_default.Init()
+	default_.Init()
 
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
 
 	router.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://hanzo.io/docs")
+		c.Redirect(302, "https://docs.hanzo.ai")
 	})
 }

@@ -3,88 +3,60 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/api/checkout/balance"
+	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/api/checkout/tasks"
+	"hanzo.io/api/checkout/util"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/util/webhook"
 )
 
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+// Make the context less ambiguous, saveReferral needs org context for example
+func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
-	var keys []*aeds.Key
 
-	// We could actually capture different types of things here...
 	switch ord.Type {
-	case "paypal":
+	case "null":
+		ord, payments, err = null.Capture(org, ord)
 	case "balance":
-		ord, keys, payments, err = balance.Capture(org, ord)
-		if err != nil {
-			return nil, err
-		}
+		ord, payments, err = balance.Capture(org, ord)
+	case "stripe":
+		ord, payments, err = stripe.Capture(org, ord)
+	case "paypal":
+		payments = ord.Payments
 	default:
-		ord, keys, payments, err = stripe.Capture(org, ord)
-		if err != nil {
-			return nil, err
-		}
+		// TODO: return nil, errors.New("Invalid order type")
+		ord, payments, err = stripe.Capture(org, ord)
 	}
 
-	return CompleteCapture(c, org, ord, keys, payments)
-}
-
-func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
-	var err error
-
-	db := ord.Db
-
-	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
-
-	// Referral
-	if ord.ReferrerId != "" {
-		ref := referrer.New(ord.Db)
-
-		// if ReferrerId refers to non-existing token, then remove from order
-		if err = ref.GetById(ord.ReferrerId); err != nil {
-			ord.ReferrerId = ""
-		} else {
-			// Try to save referral, save updated referrer
-			if _, err := ref.SaveReferral(ord); err != nil {
-				log.Warn("Unable to save referral: %v", err, c)
-			}
-		}
+	if err != nil {
+		return err
 	}
 
-	// Update amount paid
-	totalPaid := 0
-	for _, pay := range payments {
-		totalPaid += int(pay.Amount)
+	ctx := ord.Context()
+
+	util.UpdateOrder(ctx, ord, payments)
+
+	if err := util.UpdateOrderPayments(ctx, ord, payments); err != nil {
+		return err
 	}
 
-	ord.Paid = currency.Cents(int(ord.Paid) + totalPaid)
-	if ord.Paid == ord.Total {
-		ord.PaymentStatus = payment.Paid
-	}
+	// TODO: Run in task(CaptureAsync), no need to block call on rest of this
+	util.SaveRedemptions(ctx, ord)
+	util.UpdateReferral(org, ord)
+	util.UpdateCart(ctx, ord)
+	util.UpdateStats(ctx, org, ord, payments)
+	util.HandleDeposit(ord)
 
-	// Save order and payments
-	vals := make([]interface{}, len(payments))
-	for i := range payments {
-		vals[i] = payments[i]
-	}
+	buyer := payments[0].Buyer
 
-	akey, _ := ord.Key().(*aeds.Key)
-	keys = append(keys, akey)
-	vals = append(vals, ord)
+	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
+	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
 
-	if _, err = db.PutMulti(keys, vals); err != nil {
-		return nil, err
-	}
-
-	// Need to figure out a way to count coupon uses
-	return ord, nil
+	webhook.Emit(ctx, org.Name, "order.paid", ord)
+	return nil
 }

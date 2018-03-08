@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"hanzo.io/util/template"
 	"github.com/gin-gonic/gin"
+	"hanzo.io/util/template"
 
 	"google.golang.org/appengine"
 )

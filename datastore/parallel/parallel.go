@@ -1,19 +1,19 @@
 package parallel
 
 import (
+	"context"
 	"reflect"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models"
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/log"
 )
 
 type ParallelFn struct {
@@ -22,17 +22,11 @@ type ParallelFn struct {
 	EntityType reflect.Type
 	Value      reflect.Value
 	DelayFn    *delay.Function
-	Filters    []Filter
-}
-
-type Filter struct {
-	FilterStr string
-	Value     interface{}
 }
 
 var parallelFns = make(map[string]*ParallelFn)
 
-func New(name string, fn interface{}, filters ...Filter) *ParallelFn {
+func New(name string, fn interface{}) *ParallelFn {
 	// Check type of worker func to ensure it matches required signature.
 	typ := reflect.TypeOf(fn)
 
@@ -63,7 +57,6 @@ func New(name string, fn interface{}, filters ...Filter) *ParallelFn {
 		Kind:       kind,
 		EntityType: entityType,
 		Value:      reflect.ValueOf(fn),
-		Filters:    filters,
 	}
 
 	// Create delay function
@@ -77,7 +70,7 @@ func New(name string, fn interface{}, filters ...Filter) *ParallelFn {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, filters []Filter, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx := ctx
 		if namespace != "" {
@@ -88,20 +81,14 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			}
 		}
 
-		// Increase Timeout
-		nsCtx, _ = context.WithTimeout(nsCtx, 30*time.Second)
+		// Set timeout
+		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
 
 		// Construct query
-		q := db.Query(fn.Kind)
-
-		for _, f := range filters {
-			q = q.Filter(f.FilterStr, f.Value)
-		}
-
-		q = q.Offset(offset).Limit(batchSize)
+		q := db.Query(fn.Kind).Offset(offset).Limit(batchSize)
 
 		// Run query
 		t := q.Run()
@@ -117,7 +104,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			}
 
 			// Skip field mismatch errors
-			if err := db.SkipFieldMismatch(err); err != nil {
+			if err := datastore.IgnoreFieldMismatch(err); err != nil {
 				log.Error("Failed to fetch next entity: %v", err, ctx)
 				break
 			}
@@ -174,19 +161,23 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		namespaces = models.GetNamespaces(ctx)
 	}
 
-	log.Debug("Migrating namespaces: %v", namespaces)
-
-	// Iterate through namespaces and initialize workers to run in each
-	for _, ns := range namespaces {
-		args := append([]interface{}{fn.Name, ns, batchSize, fn.Filters}, args...)
+	log.Debug("executing across namespaces: %v", namespaces)
+	if len(namespaces) == 0 {
+		args := append([]interface{}{fn.Name, "", batchSize}, args...)
 		initNamespace.Call(ctx, args...)
+	} else {
+		// Iterate through namespaces and initialize workers to run in each
+		for _, ns := range namespaces {
+			args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+			initNamespace.Call(ctx, args...)
+		}
 	}
 
 	return nil
 }
 
 // Start individual runs in a given namespace
-var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName string, namespace string, batchSize int, filters []Filter, args ...interface{}) {
+var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
 	// Set namespace explicitly
 	nsCtx := ctx
 	if namespace != "" {
@@ -202,18 +193,12 @@ var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName
 	// Get relevant ParallelFn
 	fn := parallelFns[fnName]
 
-	q := db.Query(fn.Kind)
-
-	for _, f := range filters {
-		q = q.Filter(f.FilterStr, f.Value)
-	}
-
-	total, _ := q.Count()
+	total, _ := db.Query(fn.Kind).Count()
 
 	// Start all workers
 	for offset := 0; offset < total; offset += batchSize {
 		// Append variadic arguments after required args
-		args := append([]interface{}{namespace, offset, batchSize, filters}, args...)
+		args := append([]interface{}{namespace, offset, batchSize}, args...)
 
 		// Call delay.Function
 		fn.DelayFn.Call(ctx, args...)

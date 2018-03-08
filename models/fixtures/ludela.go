@@ -1,0 +1,206 @@
+package fixtures
+
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"hanzo.io/auth/password"
+	"hanzo.io/datastore"
+	"hanzo.io/models/discount"
+	"hanzo.io/models/discount/rule"
+	"hanzo.io/models/discount/scope"
+	"hanzo.io/models/discount/target"
+	"hanzo.io/models/namespace"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/product"
+	"hanzo.io/models/store"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/models/user"
+	"hanzo.io/thirdparty/mailchimp"
+	token "hanzo.io/util/oldjwt"
+)
+
+var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
+	db := datastore.New(c)
+
+	// Create user
+	usr := user.New(db)
+	usr.Email = "jamie@ludela.com"
+	usr.GetOrCreate("Email=", usr.Email)
+	usr.FirstName = "Jamie"
+	usr.LastName = "Bianchini"
+	usr.PasswordHash, _ = password.Hash("1Ludela23")
+
+	// Create organization
+	org := organization.New(db)
+	org.Name = "ludela"
+	org.GetOrCreate("Name=", org.Name)
+	org.SetKey("V9OT22mI0a")
+
+	// Set organization on user
+	usr.Organizations = []string{org.Id()}
+
+	org.FullName = "Ludela Inc"
+	org.Owners = []string{usr.Id()}
+	org.Website = "https://ludela.com"
+	org.SecretKey = []byte("EU8E011iX2Bp5lv481N2STd1d999cU58")
+	org.AddDefaultTokens()
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
+
+	// Email configuration
+	org.Mailchimp.APIKey = ""
+	org.Mailchimp.ListId = "262350bdb1"
+	org.Mandrill.APIKey = "40gP4DdLRLHo1QX_A8mfHw"
+
+	// Enable accounts by default
+	org.SignUpOptions.AccountsEnabledByDefault = true
+	org.SignUpOptions.NoNameRequired = true
+	org.SignUpOptions.NoPasswordRequired = true
+	org.SignUpOptions.TwoStageEnabled = true
+	org.SignUpOptions.ImmediateLogin = true
+
+	// API Tokens
+	org.Tokens = []token.Token{
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "XodGra0dirg",
+			IssuedAt:    time.Now(),
+			Name:        "live-secret-key",
+			Permissions: 20,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "z2ZCUCxkfhE",
+			IssuedAt:    time.Now(),
+			Name:        "live-published-key",
+			Permissions: 4503617075675172,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "hwsF9-4etJ4",
+			IssuedAt:    time.Now(),
+			Name:        "test-secret-key",
+			Permissions: 24,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "GjpBDnTuDUk",
+			IssuedAt:    time.Now(),
+			Name:        "test-published-key",
+			Permissions: 4503617075675176,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+	}
+
+	org.Email.Defaults.Enabled = true
+	org.Email.Defaults.FromName = "LuDela"
+	org.Email.Defaults.FromEmail = "hi@ludela.com"
+
+	org.Email.OrderConfirmation.Subject = "LuDela Order Confirmation"
+	org.Email.OrderConfirmation.Enabled = true
+
+	org.Email.User.PasswordReset.Subject = "Reset your LuDela password"
+	org.Email.User.PasswordReset.Enabled = true
+
+	// org.Email.User.EmailConfirmation.Subject = ""
+	org.Email.User.EmailConfirmation.Enabled = false
+
+	org.Email.User.EmailConfirmed.Subject = "Complete LuDela Registration"
+	org.Email.User.EmailConfirmed.Enabled = true
+
+	// Save org into default namespace
+	org.Put()
+
+	// Save namespace so we can decode keys for this organization later
+	ns := namespace.New(db)
+	ns.Name = org.Name
+	ns.GetOrCreate("Name=", ns.Name)
+	ns.IntId = org.Key().IntID()
+	ns.Update()
+
+	// Create namespaced context
+	nsdb := datastore.New(org.Namespaced(db.Context))
+
+	// Create new store
+	stor := store.New(nsdb)
+	stor.Name = "default"
+	stor.GetOrCreate("Name=", stor.Name)
+	stor.SetKey("ldt6eeKINN5")
+	stor.Prefix = "/"
+	stor.Currency = currency.USD
+	stor.Mailchimp.APIKey = ""
+	stor.Mailchimp.ListId = "262350bdb1"
+	stor.MustUpdate()
+
+	// Set default store on org
+	org.DefaultStore = stor.Id()
+
+	// Create smart candle
+	prod := product.New(nsdb)
+	prod.Slug = "ludela"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.SetKey("Knc9wlZJUOOG")
+	prod.Name = "LuDela Candle"
+	prod.Description = "Includes: One (1) LuDela Smart Candle, Ivory Color, One (1) 100% Natural Soy-Beeswax Refill (30-hour burn time). Special Offer: One-month trial subscription to LuDela’s EssentialRefill Program of two (2) 30-hour refills per month, per LuDela ordered. $9.99 per month per LuDela thereafter. Modify or cancel anytime."
+	prod.Currency = currency.USD
+	prod.ListPrice = currency.Cents(19900)
+	prod.Price = currency.Cents(9900)
+	prod.Preorder = true
+	prod.Hidden = false
+	prod.EstimatedDelivery = "Early 2017"
+	prod.Update()
+
+	// Create discount rules for ludela
+	dis := discount.New(db)
+	dis.Name = "LuDela Bulk Discount"
+	dis.GetOrCreate("Name=", dis.Name)
+	dis.Scope.Type = scope.Product
+	dis.Scope.ProductId = prod.Id()
+	dis.Target.Type = target.Product
+	dis.Target.ProductId = prod.Id()
+
+	// Create Jamie's rules
+	rule1 := discount.Rule{
+		rule.Trigger{
+			Quantity: rule.Quantity{
+				Start: 2,
+			},
+		},
+		rule.Action{
+			Discount: rule.Discount{
+				Flat: 5,
+			},
+		},
+	}
+	// aka...
+	rule1.Trigger.Quantity.Start = 2
+	rule1.Action.Discount.Flat = 5
+
+	rule2 := discount.Rule{}
+	rule2.Trigger.Quantity.Start = 3
+	rule2.Action.Discount.Flat = 16
+
+	dis.Rules = []discount.Rule{rule1, rule2}
+	dis.Update()
+
+	// Save entities
+	usr.MustUpdate()
+	org.MustUpdate()
+	stor.MustUpdate()
+	prod.MustUpdate()
+
+	// Create corresponding Mailchimp entities
+	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client.CreateStore(stor)
+	client.CreateProduct(stor.Id(), prod)
+
+	return org
+})

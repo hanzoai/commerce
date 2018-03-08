@@ -1,7 +1,7 @@
 package hanzo
 
-import "hanzo.io/_default"
+import "hanzo.io/util/default_"
 
 func init() {
-	_default.Init()
+	default_.Init()
 }

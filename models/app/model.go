@@ -2,11 +2,12 @@ package app
 
 import (
 	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
 )
 
+var kind = "app"
+
 func (a App) Kind() string {
-	return "app"
+	return kind
 }
 
 func (a *App) Init(db *datastore.Datastore) {
@@ -19,6 +20,6 @@ func New(db *datastore.Datastore) *App {
 	return a
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

@@ -2,20 +2,24 @@ package organization
 
 import (
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/app"
 	"hanzo.io/models/namespace"
-	"hanzo.io/util/event"
-	"hanzo.io/util/log"
+	"hanzo.io/models/store"
 	"hanzo.io/util/rand"
 )
 
 const (
-	DefaultAppName = "Store"
+	DefaultAppName   = "Hanzo App"
+	DefaultStoreName = "Default"
 )
 
 // Hooks
 func (o *Organization) BeforeCreate() error {
+	o.Fees.Id = o.Id()
 	o.SecretKey = []byte(rand.SecretKey())
+	// Generate Tokens
+	o.AddDefaultTokens()
 
 	return nil
 }
@@ -25,9 +29,11 @@ func (o *Organization) AfterCreate() error {
 	db := datastore.New(o.Context())
 	ns := namespace.New(db)
 	err := ns.GetOrCreate("Name=", o.Name)
+
 	if err != nil {
 		log.Warn("Failed to put namespace: %v", err)
 	}
+
 	ns.Name = o.Name
 	ns.IntId = o.Key().IntID()
 	ns.MustUpdate()
@@ -39,27 +45,15 @@ func (o *Organization) AfterCreate() error {
 	ap.Name = DefaultAppName
 	ap.MustCreate()
 
+	stor := store.New(nsDb)
+	stor.Name = DefaultStoreName
+	stor.Currency = o.Currency
+	stor.MustCreate()
+
+	o.DefaultApp = ap.Id()
+	o.DefaultStore = stor.Id()
+
+	o.MustUpdate()
+
 	return nil
 }
-
-// Emit on update, as an organization may care about when it's updated.
-func (o *Organization) AfterUpdate(previous *Organization) error {
-	// url := config.UrlFor("api", "/organization/", o.Id(), "a", "js")
-	// if err := cloudflare.Purge(o.Context(), url); err != nil {
-	// 	log.Error("Failed to purge site %v", err, o.Context())
-	// }
-	// url = config.UrlFor("api", "/organization/", o.Id(), "n", "js")
-	// if err := cloudflare.Purge(o.Context(), url); err != nil {
-	// 	log.Error("Failed to purge organization %v", err, o.Context())
-	// }
-	return event.Emit(o.Context(), o.Name, "organization.updated", o)
-}
-
-// Doesn't make sense to emit these
-// func (o *Organization) AfterCreate() error {
-// 	return event.Emit(o.Context(), o.Name, "organization.created", o)
-// }
-
-// func (o *Organization) AfterDelete() error {
-// 	return event.Emit(o.Context(), o.Name, "organization.deleted", o)
-// }

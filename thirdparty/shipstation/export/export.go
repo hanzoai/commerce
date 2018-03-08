@@ -8,21 +8,19 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
-
-	. "hanzo.io/models"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -86,8 +84,9 @@ import (
 // 		</Items>
 // 	</Order>
 // </Orders>
-func removeCommas(s string) string {
-	return strings.Replace(s, ",", "", -1)
+
+func formatFloat(s string) string {
+	return strings.Replace(s, ",", "", -1)[1:]
 }
 
 func parseDate(s string) time.Time {
@@ -147,7 +146,7 @@ type Item struct {
 	}
 }
 
-func newItem(item lineitem.LineItem) Item {
+func newItem(ord *order.Order, item lineitem.LineItem) Item {
 	si := Item{}
 	si.SKU = CDATA(item.ProductSlug)
 	si.Name = CDATA(item.ProductName)
@@ -160,10 +159,10 @@ func newItem(item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = removeCommas(item.DisplayPrice())
+	si.UnitPrice = formatFloat(item.DisplayPrice(ord.Currency))
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
-	si.WeightUnits = string(item.WeightUnit)
+	si.WeightUnits = item.WeightUnit.Name()
 
 	return si
 }
@@ -201,7 +200,7 @@ func newCustomer(ord *order.Order, usr *user.User) *Customer {
 	sc.BillTo.Email = CDATA(usr.Email)
 	sc.BillTo.Phone = CDATA(usr.Phone)
 
-	sc.ShipTo.Name = CDATA(usr.Name())
+	sc.ShipTo.Name = CDATA(ord.ShippingAddress.Name)
 	sc.ShipTo.Phone = CDATA(usr.Phone)
 	sc.ShipTo.Address1 = CDATA(ord.ShippingAddress.Line1)
 	sc.ShipTo.Address2 = CDATA(ord.ShippingAddress.Line2)
@@ -258,12 +257,12 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderTotal = removeCommas(ord.DisplayTotal())
-	so.TaxAmount = removeCommas(ord.DisplayTax())
-	so.ShippingAmount = removeCommas(ord.DisplayShipping())
+	so.OrderTotal = formatFloat(ord.DisplayTotal())
+	so.TaxAmount = formatFloat(ord.DisplayTax())
+	so.ShippingAmount = formatFloat(ord.DisplayShipping())
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
-		so.Items.Items[i] = newItem(item)
+		so.Items.Items[i] = newItem(ord, item)
 	}
 
 	// Try to figure out order status
@@ -275,7 +274,7 @@ func newOrder(ord *order.Order) *Order {
 		so.OrderStatus = CDATA("paid")
 	}
 
-	if ord.FulfillmentStatus == FulfillmentShipped {
+	if ord.Fulfillment.Status == fulfillment.Tracked {
 		so.OrderStatus = CDATA("shipped")
 	}
 
@@ -293,7 +292,7 @@ Payment Status: %s
 Fullfillment Status: %s
 Order Id: %s
 Payment Ids: %s
-User Id: %s`, ord.Status, ord.PaymentStatus, ord.FulfillmentStatus, ord.Id(), strings.Join(ord.PaymentIds, ", "), ord.UserId))
+User Id: %s`, ord.Status, ord.PaymentStatus, ord.Fulfillment.Status, ord.Id(), strings.Join(ord.PaymentIds, ", "), ord.UserId))
 
 	so.CustomField1 = ord.Id()
 	so.CustomField2 = ord.PaymentIds[0]
@@ -348,7 +347,7 @@ func Export(c *gin.Context) {
 
 	// Get current page of orders
 	orders := make([]*order.Order, 0, 0)
-	_, err = q.Limit(limit).Offset(offset).LoadAll(&orders)
+	_, err = q.Limit(limit).Offset(offset).GetAll(&orders)
 	if err != nil {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
 	}
@@ -391,16 +390,10 @@ func Export(c *gin.Context) {
 	}
 
 	// Fetch users
-	users := make([]*user.User, len(keys))
-	if err := aeds.GetMulti(ctx, keys, users); err != nil {
+
+	users := make([]user.User, len(keys))
+	if err := db.GetMulti(keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
-
-		if me, ok := err.(appengine.MultiError); ok {
-			for _, merr := range me {
-				log.Warn(merr, c)
-			}
-		}
-
 		log.Warn("Found users: %v", users, c)
 	}
 
@@ -408,14 +401,7 @@ func Export(c *gin.Context) {
 	for i, ord := range validOrders {
 		usr := users[i]
 
-		// How does this even happen?
-		if usr == nil {
-			res.Orders[i] = nil
-			log.Error("User should exist for order %v", ord, c)
-			continue
-		}
-
-		customer := newCustomer(ord, usr)
+		customer := newCustomer(ord, &usr)
 		res.Orders[i].Customer = customer
 
 		// Can't ship to someone without a country

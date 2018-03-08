@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {

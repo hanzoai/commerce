@@ -1,7 +1,0 @@
-dependencies:
-  cache_directories:
-    - .sdk
-test:
-  override:
-    - util/test/test-runner:
-        parallel: true

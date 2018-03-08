@@ -78,6 +78,10 @@ const (
 	WriteSubscriber
 	WriteUser
 	WriteVariant
+
+	Return
+	ReadReturn
+	WriteReturn
 )
 
 // Composite permissions, (both required)

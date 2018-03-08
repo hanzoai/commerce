@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
-	"hanzo.io/util/log"
 	"hanzo.io/util/timeutil"
 
 	ds "hanzo.io/datastore"

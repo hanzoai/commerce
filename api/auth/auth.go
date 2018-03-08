@@ -7,13 +7,13 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/middleware"
+	"hanzo.io/log"
+	"hanzo.io/middleware/oauthmiddleware"
+	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/token2"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 )
 
 // {
@@ -117,6 +117,7 @@ func passwordCredentials(c *gin.Context, req OAuthRequest) {
 
 	tok, ok, err := org.GetReferenceToken(usr)
 	if !ok {
+		// log.Warn("Reference token may have been revoked: %v", err, c)
 		http.Fail(c, 403, "Reference token may have been revoked", err)
 		return
 	}
@@ -158,8 +159,8 @@ func refreshCredentials(c *gin.Context, req OAuthRequest) {
 		return
 	}
 
-	org, _, claims, ok := middleware.DecodeToken(c, refreshToken, func(claims token.Claims) error {
-		if claims.Type != token.Refresh {
+	org, _, claims, ok := oauthmiddleware.DecodeToken(c, refreshToken, func(claims oauthtoken.Claims) error {
+		if claims.Type != oauthtoken.Refresh {
 			return errors.New("Token must be type refresh")
 		}
 		return nil

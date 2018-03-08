@@ -3,22 +3,20 @@ package mandrill_integration_test
 import (
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/thirdparty/mandrill"
 	"hanzo.io/util/test/ae"
-
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	Setup("thirdparty/mandrill/integration", t)
 }
 
 var (
-	ctx  context.Context
-	inst ae.Instance
+	ctx ae.Context
 )
 
 var _ = BeforeSuite(func() {
@@ -27,7 +25,7 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	ctx, inst, err = ae.NewContext()
+	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 })
 
@@ -36,8 +34,7 @@ var _ = AfterSuite(func() {
 		return
 	}
 
-	err := inst.Close()
-	Expect(err).NotTo(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("Ping", func() {

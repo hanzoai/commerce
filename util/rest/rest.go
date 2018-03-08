@@ -1,21 +1,29 @@
 package rest
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
+	"time"
+
+	aeds "google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/mixin"
+	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/reflect"
 	"hanzo.io/util/router"
-	"hanzo.io/util/structs"
 )
 
 var restApis = make([]*Rest, 0)
@@ -48,17 +56,38 @@ type Rest struct {
 	Delete           gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
-	entity mixin.Entity
-
 	middleware []gin.HandlerFunc
 	routes     routeMap
+
+	entityType reflect.Type
+	sliceType  reflect.Type
 }
 
 type Pagination struct {
-	Page    string      `json:"page,omitempty"`
-	Display string      `json:"display,omitempty"`
-	Count   int         `json:"count"`
-	Models  interface{} `json:"models"`
+	Page    string                 `json:"page,omitempty"`
+	Display string                 `json:"display,omitempty"`
+	Count   int                    `json:"count"`
+	Models  interface{}            `json:"models"`
+	Facets  [][]search.FacetResult `json:"facets"`
+}
+
+// These 3 facet structs are used for deserialization
+type StringFacet struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type RangeFacet struct {
+	Name  string `json:"name"`
+	Value struct {
+		Start float64 `json:"start"`
+		End   float64 `json:"end"`
+	} `json:"value"`
+}
+
+type Facets struct {
+	StringFacets []StringFacet `json:"string"`
+	RangeFacets  []RangeFacet  `json:"range"`
 }
 
 func (r *Rest) Init(prefix string) {
@@ -66,9 +95,12 @@ func (r *Rest) Init(prefix string) {
 	r.routes = make(routeMap)
 }
 
-func (r *Rest) InitModel(kind mixin.Kind) {
-	r.entity = mixin.EntityFromKind(kind)
-	r.Kind = kind.Kind()
+func (r *Rest) InitModel(entity mixin.Kind) {
+	// Get type of entity
+	r.entityType = reflect.ValueOf(entity).Type()
+	ptrType := reflect.ValueOf(r.newKind()).Type()
+	r.sliceType = reflect.SliceOf(ptrType)
+	r.Kind = r.newKind().Kind()
 	r.ParamId = r.Kind + "id"
 	r.routes = make(routeMap)
 
@@ -77,8 +109,7 @@ func (r *Rest) InitModel(kind mixin.Kind) {
 	}
 
 	// Introspect model to determine default sort field
-	fields := structs.FieldNames(kind)
-	for _, name := range fields {
+	for _, name := range reflect.FieldNames(entity) {
 		if name == "Slug" || name == "SKU" {
 			r.DefaultSortField = name
 			return
@@ -87,7 +118,7 @@ func (r *Rest) InitModel(kind mixin.Kind) {
 
 	// Use Id_ as default sort field if nothing is specified.
 	if r.DefaultSortField == "" {
-		r.DefaultSortField = "Id_"
+		r.DefaultSortField = "UpdatedAt"
 	}
 }
 
@@ -251,6 +282,50 @@ func (r Rest) defaultRoutes() []route {
 	}
 }
 
+func (r Rest) newKind() mixin.Kind {
+	return reflect.New(r.entityType).Interface().(mixin.Kind)
+}
+
+// Returns a new interface of this entity type
+func (r Rest) newEntity(c *gin.Context) mixin.Entity {
+	ctx := middleware.GetAppEngine(c)
+
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+
+	// Create a new entity
+	db := datastore.New(ctx)
+	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
+	model := mixin.Model{Db: db, Entity: entity}
+
+	// Disable Put/Delete if in test mode
+	if middleware.GetPermissions(c).Has(permission.Test) {
+		model.Mock = false // force mock off due to testing issues
+	}
+
+	// Set model on entity
+	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+	field.Set(reflect.ValueOf(model))
+
+	// Initialize entity
+	entity.Init(db)
+
+	return entity
+}
+
+// helper which returns a slice which is compatible with this entity
+func (r Rest) newEntitySlice(length, capacity int) interface{} {
+	// Create pointer to a slice value and set it to the slice
+	slice := reflect.MakeSlice(r.sliceType, length, capacity)
+	for i := 0; i < length; i++ {
+		slice.Index(i).Set(reflect.New(r.entityType))
+	}
+
+	ptr := reflect.New(slice.Type())
+	ptr.Elem().Set(slice)
+	return ptr.Interface()
+}
+
 func (r Rest) Render(c *gin.Context, status int, data interface{}) {
 	http.Render(c, status, data)
 }
@@ -259,23 +334,17 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 	http.Fail(c, status, message, err)
 }
 
-func (r Rest) zeroEntity(c *gin.Context) mixin.Entity {
-	db := datastore.New(c)
-	entity := r.entity.Zero()
-	entity.Init(db)
-	return entity
-}
-
 func (r Rest) get(c *gin.Context) {
 	if !r.CheckPermissions(c, "get") {
 		return
 	}
 
 	id := c.Params.ByName(r.ParamId)
-	entity := r.zeroEntity(c)
+
+	entity := r.newEntity(c)
 
 	if err := entity.GetById(id); err != nil {
-		// TODO: When is this not a 404?
+		// TODO: When is this a 404?
 		r.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -288,10 +357,6 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	// Create entity so we can create new Queries
-	entity := r.zeroEntity(c)
-
-	// Parse query
 	query := c.Request.URL.Query()
 
 	// Determine deafult sort order
@@ -300,14 +365,28 @@ func (r Rest) list(c *gin.Context) {
 		sortField = r.DefaultSortField
 	}
 
-	// Create query
-	q := entity.Query().Order(sortField)
-
 	// Update query with page/display params
-	var display int
-	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
+	limitStr := query.Get("limit")
+
+	entity := r.newEntity(c)
+
+	if _, ok := entity.(mixin.Searchable); ok {
+		qStr := query.Get("q")
+		fStr := query.Get("facets")
+		r.listSearch(c, entity, qStr, fStr, pageStr, displayStr, limitStr, sortField)
+	} else {
+		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+	}
+}
+
+func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
+	// Create query
+	q := entity.Query().All().Order(sortField)
+
+	var display int
+	var err error
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -328,16 +407,22 @@ func (r Rest) list(c *gin.Context) {
 		}
 	}
 
-	entities, err := q.GetAll()
-	if err != nil {
+	entities := r.newEntitySlice(0, 0)
+	if _, err := q.GetAll(entities); err != nil {
 		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
 
-	count, err := entity.Query().Count()
+	count, err := entity.Query().All().Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
+	}
+
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
 	}
 
 	r.Render(c, 200, Pagination{
@@ -348,14 +433,181 @@ func (r Rest) list(c *gin.Context) {
 	})
 }
 
-func (r Rest) create(c *gin.Context) {
-	if !r.CheckPermissions(c, "create") {
-		log.Warn("No permission to create '%s'", r.Kind)
+func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageStr, displayStr, limitStr, sortField string) {
+	var display int
+	var err error
+
+	sortExpr := sortField
+	sortReverse := sortExpr[0:1] == "-"
+	if sortReverse {
+		sortExpr = sortExpr[1:]
+	}
+
+	// should have already checked this
+	opts := search.SearchOptions{}
+	opts.Facets = []search.FacetSearchOption{
+		search.AutoFacetDiscovery(100, 20),
+	}
+	opts.Sort = &search.SortOptions{
+		Expressions: []search.SortExpression{
+			search.SortExpression{
+				Expr:    sortExpr,
+				Reverse: sortReverse,
+			},
+		},
+	}
+
+	opts.Limit = 100
+
+	// if we have pagination values, then trigger pagination calculations
+	if displayStr != "" {
+		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
+			opts.Limit = display
+		} else {
+			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	if pageStr != "" && displayStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			opts.Offset = display * (page - 1)
+		} else {
+			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
+			return
+		}
+	}
+
+	// open index
+	index, err := search.Open(mixin.DefaultIndex)
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to open index for '"+r.Kind+"'"), err)
 		return
 	}
 
-	// Create new entity
-	entity := r.zeroEntity(c)
+	keys := make([]*aeds.Key, 0)
+	opts.IDsOnly = true
+	opts.Refinements = []search.Facet{
+		search.Facet{
+			Name:  "Kind",
+			Value: search.Atom(r.Kind),
+		},
+	}
+
+	if fStr != "" {
+		f := Facets{}
+		if err := json.DecodeBytes([]byte(fStr), &f); err != nil {
+			log.Warn("Unable to decode: %v", err, c)
+		} else {
+			for _, facet := range f.StringFacets {
+				opts.Refinements = append(opts.Refinements, search.Facet{
+					Name:  facet.Name,
+					Value: search.Atom(facet.Value),
+				})
+			}
+			for _, facet := range f.RangeFacets {
+				opts.Refinements = append(opts.Refinements, search.Facet{
+					Name: facet.Name,
+					Value: search.Range{
+						Start: facet.Value.Start,
+						End:   facet.Value.End,
+					},
+				})
+			}
+		}
+	}
+
+	t := index.Search(entity.Context(), qStr, &opts)
+	for {
+		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			http.Fail(c, 500, fmt.Sprintf("Failed to search index for '"+r.Kind+"'"), err)
+			return
+		}
+
+		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
+	}
+
+	facets, err := t.Facets()
+	if err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"' options"), err)
+		return
+	}
+
+	// Ignore this for now, use more accurate Kind facet count
+	// t = index.Search(entity.Context(), qStr, &search.SearchOptions{
+	// 	IDsOnly: true,
+	// 	Refinements: []search.Facet{
+	// 		search.Facet{
+	// 			Name:  "Kind",
+	// 			Value: search.Atom(r.Kind),
+	// 		},
+	// 	},
+	// 	// CountAccuracy: 10000,
+	// })
+	// t.Next(entity.Context())
+	// count := t.Count()
+	count := 0
+
+	entities := r.newEntitySlice(len(keys), len(keys))
+	db := entity.Datastore()
+	if err := db.GetMulti(keys, entities); err != nil {
+		log.Error(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
+	}
+
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
+	}
+
+	if facets == nil {
+		facets = [][]search.FacetResult{}
+	}
+
+	// Prevent +/-inf json 'unfortunate' serialization
+	for i, facet := range facets {
+		log.Error("Facet... %v", facet, c)
+		for j, facetResult := range facet {
+			if facetResult.Name == "Kind" {
+				count = facetResult.Count
+			}
+
+			if r, ok := facetResult.Value.(search.Range); ok {
+				s := r.Start
+				if math.IsInf(s, -1) {
+					s = -math.MaxFloat64
+				}
+				e := r.End
+				if math.IsInf(e, 1) {
+					e = math.MaxFloat64
+				}
+				facets[i][j].Value = search.Range{
+					Start: s,
+					End:   e,
+				}
+			}
+		}
+	}
+
+	r.Render(c, 200, Pagination{
+		Page:    pageStr,
+		Display: displayStr,
+		Models:  entities,
+		Count:   count,
+		Facets:  facets,
+	})
+}
+
+func (r Rest) create(c *gin.Context) {
+	if !r.CheckPermissions(c, "create") {
+		return
+	}
+
+	entity := r.newEntity(c)
 
 	if err := json.Decode(c.Request.Body, entity); err != nil {
 		r.Fail(c, 400, "Failed decode request body", err)
@@ -378,20 +630,22 @@ func (r Rest) update(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 
-	// Create new entity
-	entity := r.zeroEntity(c)
+	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	ok, err := entity.IdExists(id)
+	key, ok, err := entity.IdExists(id)
 	if !ok {
+		if err != nil {
+			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
+			return
+		}
+
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
-	if err != nil {
-		r.Fail(c, 500, "Failed to retrieve key for "+id, err)
-		return
-	}
+	// Preserve original key
+	entity.SetKey(key)
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {
@@ -415,9 +669,7 @@ func (r Rest) patch(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 
-	// Create new entity
-	entity := r.zeroEntity(c)
-
+	entity := r.newEntity(c)
 	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
@@ -443,10 +695,7 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	id := c.Params.ByName(r.ParamId)
-
-	// Create new entity
-	entity := r.zeroEntity(c)
-
+	entity := r.newEntity(c)
 	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
@@ -454,7 +703,8 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	db := entity.Datastore()
-	if _, err := db.Put("deleted", entity); err != nil {
+	key := db.NewIncompleteKey("deleted", nil)
+	if _, err := db.Put(key, entity); err != nil {
 		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
 		return
 	}

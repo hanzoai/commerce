@@ -9,11 +9,11 @@ import (
 
 	"hanzo.io/datastore"
 	// "hanzo.io/models"
+	"hanzo.io/log"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/util/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
@@ -151,8 +151,8 @@ func (s *ModelSecondaryReference) LastSync() time.Time {
 
 // SObject foreign key reference so we can use Hanzo Id instead of Salesforce ID to reference an object
 type ForeignKey struct {
-	Attributes    *Attribute `json:"attributes,omitempty"`
-	HanzoIdC string     `json:"HanzoId__c,omitempty"`
+	Attributes *Attribute `json:"attributes,omitempty"`
+	HanzoIdC   string     `json:"HanzoId__c,omitempty"`
 }
 
 //SObject Definitions
@@ -302,7 +302,7 @@ func (c *Contact) ExternalId() string {
 
 func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
 	c.Ref = user.New(db)
-	db.Get(c.ExternalId(), c.Ref)
+	db.GetById(c.ExternalId(), c.Ref)
 	return c.Ref
 }
 
@@ -500,7 +500,7 @@ func (a *Account) ExternalId() string {
 
 func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
 	a.Ref = user.New(db)
-	db.Get(a.ExternalId(), a.Ref)
+	db.GetById(a.ExternalId(), a.Ref)
 	return a.Ref
 }
 
@@ -786,7 +786,7 @@ func (o *Order) ExternalId() string {
 
 func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
 	o.Ref = order.New(db)
-	db.Get(o.ExternalId(), o.Ref)
+	db.GetById(o.ExternalId(), o.Ref)
 	return o.Ref
 }
 

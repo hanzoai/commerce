@@ -1,63 +1,78 @@
 package checkout
 
 import (
-	"errors"
-	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/balance"
+	"hanzo.io/api/checkout/bitcoin"
+	"hanzo.io/api/checkout/ethereum"
+	"hanzo.io/api/checkout/null"
+	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/log"
+	"hanzo.io/models/blockchains"
+	"hanzo.io/models/fee"
 	"hanzo.io/models/multi"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/store"
+	"hanzo.io/models/tokensale"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/util/reflect"
 )
 
-func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, error) {
-	// Create AuthReq properly by calling order.New
-	ar := new(AuthorizationReq)
-	ar.Order = ord
+// Decode authorization request, grab user and payment information off it
+func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
+	a := new(Authorization)
+	db := ord.Db
 
-	// Try decode request body
-	if err := json.Decode(c.Request.Body, &ar); err != nil {
+	// Decode request
+	if err := json.Decode(c.Request.Body, a); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
-		return nil, FailedToDecodeRequestBody
+		return nil, nil, nil, FailedToDecodeRequestBody
 	}
 
-	// This is kind of terrible to do here but oh well...
-	if ar.Order.ShippingAddress.Empty() {
-		ar.Order.ShippingAddress = ar.User_.ShippingAddress
+	log.JSON("Authorization:", a)
+
+	// Copy request order into order used everywhere
+	if a.Order != nil {
+		reflect.Copy(a.Order, ord)
 	}
 
-	if ar.Order.BillingAddress.Empty() {
-		ar.Order.BillingAddress = ar.User_.BillingAddress
+	// Use provided order rather than initialize another order and break references
+	a.Order = ord
+
+	// Initialize and normalize models in authorization request
+	if err := a.Init(db); err != nil {
+		return nil, nil, nil, err
 	}
 
-	return ar, nil
+	log.JSON("Order after initalization:", ord)
+
+	return a.User, a.Payment, a.TokenSale, nil
 }
 
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, *user.User, error) {
-	// Process authorization request
-	ar, err := authorizationRequest(c, ord)
+func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
+	var fees []*fee.Fee
+
+	// Decode authorization request
+	usr, pay, tsPass, err := decodeAuthorization(c, ord)
 	if err != nil {
-		return nil, nil, err
+		log.Warn("Could not Decode '%v': '%v'", ord, err, c)
+		return nil, err
 	}
 
-	log.Debug("AuthorizationReq.User_: %#v", ar.User_, c)
-	log.Debug("AuthorizationReq.Order: %#v", ar.Order, c)
-	log.Debug("AuthorizationReq.Payment_: %#v", ar.Payment_, c)
-
-	// Peel off order for convience
-	ord = ar.Order
-	db := ord.Db
-	ctx := db.Context
+	log.Info("Decoded:", c)
+	log.Info("User: '%v'", json.Encode(usr), c)
+	log.Info("Payment: '%v'", json.Encode(pay), c)
+	log.Info("Token Sale: '%v'", json.Encode(tsPass), c)
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -65,93 +80,167 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if ok {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
+		log.Info("Using Store '%v'", stor.Id(), c)
+	} else if ord.StoreId != "" {
+		stor = store.New(ord.Db)
+		if err := stor.GetById(ord.StoreId); err != nil {
+			log.Warn("Store '%v' does not exist: %v", ord.StoreId, err, c)
+			stor = nil
+		}
+		log.Info("Using Store '%v'", ord.StoreId, c)
 	}
 
-	// Update order with information from datastore, store and tally
+	log.Info("Order Before Tally: '%v'", json.Encode(ord), c)
+
+	// Update order with information from datastore, and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
-		log.Error(err, ctx)
-		return nil, nil, errors.New("Invalid or incomplete order")
+		log.Error("Invalid or incomplete order error: %v", err, c)
+		return nil, InvalidOrIncompleteOrder
 	}
 
-	log.Debug("Order: %#v", ord, c)
+	log.Info("Order After Tally: '%v'", json.Encode(ord), c)
 
-	// Get user from request
-	usr, err := ar.User()
-	if err != nil {
-		return nil, nil, err
+	// Validate token sale only if both password and id are set
+	if (ord.TokenSaleId != "") && (tsPass != nil) {
+		ts := tokensale.New(ord.Db)
+		if err := ts.GetById(ord.TokenSaleId); err != nil {
+			log.Error("Token sale not found error: %v", err, c)
+			return nil, TokenSaleNotFound
+		}
+
+		// Create ethereum block chain wallets for funding
+		w, err := usr.GetOrCreateWallet(usr.Db)
+		if err != nil {
+			log.Error("Wallet creation error: %v", err, c)
+			return nil, WalletCreationError
+		}
+
+		_, err = w.CreateAccount("Account for Order "+ord.Id(), blockchains.EthereumType, []byte(tsPass.Passphrase))
+		if err != nil {
+			log.Error("Funding account creation error: %v", err, c)
+			return nil, FundingAccountCreationError
+		}
+	} else if (ord.TokenSaleId != "") || (tsPass != nil) {
+		log.Error("TokensSaleId '%s' or TokenSalePassphrase '%s' is missing", ord.TokenSaleId, tsPass, c)
+		return nil, MissingTokenSaleOrPassphrase
 	}
 
-	log.Debug("User: %#v", usr, c)
+	// Override total if test email is used
+	if org.IsTestEmail(usr.Email) {
+		switch ord.Currency {
+		case currency.BTC, currency.XBT:
+			ord.Total = currency.Cents(1e5)
+		case currency.ETH:
+			ord.Total = currency.Cents(1e7)
+		default:
+			ord.Total = currency.Cents(50)
+		}
 
-	// Get payment from request, update order
-	pay, err := ar.Payment()
-	if err != nil {
-		return nil, nil, err
+		if pay != nil {
+			pay.Test = true
+		}
 	}
 
-	// Use user as buyer
-	pay.Buyer = usr.Buyer()
-	log.Debug("Buyer: %#v", pay.Buyer, c)
-
-	// Override total to $0.50 is test email is used
-	if org.IsTestEmail(pay.Buyer.Email) {
-		ord.Total = currency.Cents(50)
-		pay.Test = true
+	// Set test mode based on org live status
+	if !org.Live {
+		ord.Test = true
+		if pay != nil {
+			pay.Test = true
+		}
 	}
 
-	// Fill with debug information about user's browser
-	pay.Client = client.New(c)
+	usingFiat := payment.IsFiatProcessorType(ord.Type)
 
-	// Update payment with order information
-	pay.Amount = ord.Total
+	// Ethereum payments are handles in the webhook
+	if usingFiat {
+		// Use updated order total
+		pay.Amount = ord.Total
 
-	// Fee defaults to 2%, override with organization fee if customized.
-	pay.Fee = ord.CalculateFee(org.Fee)
+		// Capture client information to retain information about user at time of checkout
+		pay.Client = client.New(c)
 
-	pay.Currency = ord.Currency
-	pay.Description = ord.Description()
+		// Calculate affiliate, partner and platform fees
+		platformFees, partnerFees := org.Pricing()
+		fee, fes, err := ord.CalculateFees(platformFees, partnerFees)
+		if err != nil {
+			log.Error("Fee calculation error: %v", err, c)
+			return nil, FeeCalculationError
+		}
+		fees = fes
+		pay.Fee = fee
 
-	log.Debug("Payment: %#v", pay, c)
+		// Save payment Id on order
+		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
+	}
 
-	// Setup all relationships before we try to authorize to ensure that keys
-	// that get created are actually valid.
-
-	// User -> order
-	ord.Parent = usr.Key()
-	ord.UserId = usr.Id()
-
-	// Order -> payment
-	pay.Parent = ord.Key()
-	pay.OrderId = ord.Id()
-
-	// Save payment Id on order
-	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
-
-	// Have stripe handle authorization
+	// Handle authorization
 	switch ord.Type {
-	case "paypal":
-	case "balance":
-		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Balance: %v", err, ctx)
-			return nil, nil, err
+	case payment.Balance:
+		err = balance.Authorize(org, ord, usr, pay)
+	case payment.Ethereum:
+		if ord.Currency != currency.ETH {
+			return nil, UnsupportedEthereumCurrency
 		}
+		err = ethereum.Authorize(org, ord, usr)
+	case payment.Bitcoin:
+		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
+			return nil, UnsupportedBitcoinCurrency
+		}
+		err = bitcoin.Authorize(org, ord, usr)
+	case payment.Null:
+		err = null.Authorize(org, ord, usr, pay)
+	case payment.PayPal:
+		err = paypal.Authorize(org, ord, usr, pay)
+	case payment.Stripe:
+		if ord.Currency.IsCrypto() {
+			return nil, UnsupportedStripeCurrency
+		}
+		if ord.Total > 500000 {
+			return nil, TransactionLimitReached
+		}
+		err = stripe.Authorize(org, ord, usr, pay)
 	default:
-		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Stripe: %v", err, ctx)
-			return nil, nil, err
+		err = stripe.Authorize(org, ord, usr, pay)
+	}
+
+	// Bail on authorization failure
+	if err != nil {
+		// Update payment status accordingly
+		ord.Status = order.Cancelled
+		if pay != nil {
+			pay.Status = payment.Cancelled
+			pay.Account.Error = err.Error()
+			pay.MustCreate()
+		}
+		ord.MustCreate()
+		usr.MustCreate()
+		return nil, err
+	}
+
+	// Batch save user, order, payment, fees
+	entities := []interface{}{usr, ord, pay}
+
+	if !usingFiat {
+		entities = []interface{}{usr, ord}
+	} else {
+		// If the charge is not live or test flag is set, then it is a test charge
+		ord.Test = pay.Test || !pay.Live
+
+		// Link payments/fees
+		for _, fe := range fees {
+			fe.PaymentId = pay.Id()
+			pay.FeeIds = append(pay.FeeIds, fe.Id())
+			entities = append(entities, fe)
 		}
 	}
 
-	// If the charge is not live or test flag is set, then it is a test charge
-	ord.Test = pay.Test || !pay.Live
+	if usr.CreatedAt.IsZero() && !ord.Test {
+		if err := counter.IncrUser(usr.Context(), time.Now()); err != nil {
+			log.Error("IncrUser Error %v", err, c)
+		}
+	}
 
-	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
-	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
+	multi.MustCreate(entities)
 
-	// Save user, order, payment
-	multi.MustCreateOrUpdate([]interface{}{usr, ord, pay})
-
-	log.Info("New authorization for order: %+v", ord, ctx)
-
-	return pay, usr, nil
+	return pay, nil
 }

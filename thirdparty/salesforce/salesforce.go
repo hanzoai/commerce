@@ -1,20 +1,18 @@
 package salesforce
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/urlfetch"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/campaign"
-	"hanzo.io/util/log"
 
-	// "hanzo.io/models"
+	"google.golang.org/appengine/urlfetch"
 )
 
 var ErrorInvalidType = errors.New("Invalid Type")

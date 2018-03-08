@@ -32,14 +32,39 @@ type Config struct {
 	DatastoreWarn     bool
 	DemoMode          bool
 	IsDevelopment     bool
+	IsTest            bool
 	IsProduction      bool
-	IsStaging         bool
 	IsSandbox         bool
+	IsStaging         bool
 	Protocol          string
 	RootDir           string
 	SentryDSN         string
 	SiteTitle         string
 	StaticUrl         string
+
+	Ethereum struct {
+		TestPassword    string
+		DepositPassword string
+		MainNetNodes    []string
+		TestNetNodes    []string
+
+		WebhookPassword string
+	}
+
+	Bitcoin struct {
+		TestPassword    string
+		DepositPassword string
+
+		MainNetNodes     []string
+		MainNetUsernames []string
+		MainNetPasswords []string
+
+		TestNetNodes     []string
+		TestNetUsernames []string
+		TestNetPasswords []string
+
+		WebhookPassword string
+	}
 
 	Secret      string
 	SessionName string
@@ -63,6 +88,8 @@ type Config struct {
 	}
 
 	Stripe struct {
+		BankAccount string
+
 		// Current id/keys based on development mode
 		ClientId       string
 		SecretKey      string
@@ -109,9 +136,15 @@ type Config struct {
 
 	// Cloudflare {
 	Cloudflare struct {
-		Email  string
-		Key    string
-		ZoneId string
+		Email string
+		Key   string
+		Zone  string
+	}
+
+	// Redis
+	Redis struct {
+		Url      string
+		Password string
 	}
 
 	// Current working dir
@@ -179,20 +212,22 @@ func Get() *Config {
 		return cachedConfig
 	}
 
+	// Default to development environment
 	cachedConfig = Development()
 
-	if !appengine.IsDevAppServer() {
+	if Env == "test" {
+		cachedConfig = Test()
+	} else if !appengine.IsDevAppServer() {
 		switch Env {
-		case "hanzo-staging":
-			cachedConfig = Staging()
-		case "hanzo-sandbox":
+		case "crowdstart-sandbox":
 			cachedConfig = Sandbox()
-		case "hanzo-production":
+		case "crowdstart-staging":
+			cachedConfig = Staging()
+		case "crowdstart-us":
 			cachedConfig = Production()
 		}
 	}
 
-	// Allow local config file to override settings
 	for _, configFile := range configFileLocations {
 		if _, err := os.Stat(configFile); err == nil {
 			cachedConfig.Load(configFile)
@@ -210,14 +245,17 @@ var config = Get()
 // Expose global config.
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
+var Bitcoin = config.Bitcoin
 var CookieDomain = config.CookieDomain
 var Cloudflare = config.Cloudflare
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
+var Ethereum = config.Ethereum
 var Facebook = config.Facebook
 var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
+var IsTest = config.IsTest
 var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
@@ -225,6 +263,7 @@ var Mandrill = config.Mandrill
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes
+var Redis = config.Redis
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
 var Secret = config.Secret

@@ -5,20 +5,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"golang.org/x/net/context"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
+	"hanzo.io/thirdparty/stripe"
 	. "hanzo.io/util/test/ginkgo"
 )
 
 var (
-	c    *gin.Context
-	ctx  context.Context
-	inst ae.Instance
-	db   *datastore.Datastore
+	c      *gin.Context
+	ctx    ae.Context
+	db     *datastore.Datastore
+	client *stripe.Client
 )
 
 func Test(t *testing.T) {
@@ -26,11 +26,13 @@ func Test(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	ctx, inst, _ = ae.NewContext()
+	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
+	log.Warn("Before Suite")
+	client = stripe.New(ctx, "sk_test_REDACTED")
 })
 
 var _ = AfterSuite(func() {
-	inst.Close()
+	ctx.Close()
 })

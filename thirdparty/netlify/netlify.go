@@ -1,11 +1,11 @@
 package netlify
 
 import (
-	"golang.org/x/net/context"
-
-	"hanzo.io/util/log"
+	"context"
 
 	"github.com/netlify/netlify-go"
+
+	"hanzo.io/log"
 )
 
 type Client struct {

@@ -8,6 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/dimensions"
 	"hanzo.io/models/types/weight"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
@@ -31,21 +32,24 @@ type Product struct {
 
 	// Unique human readable id
 	Slug string `json:"slug"`
-	SKU  string `json:"sku"`
+	SKU  string `json:"sku,omitempty"`
+	UPC  string `json:"upc,omitempty"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency  currency.Type  `json:"currency"`
-	Price     currency.Cents `json:"price"`
-	ListPrice currency.Cents `json:"listPrice"`
+	Currency      currency.Type  `json:"currency"`
+	Price         currency.Cents `json:"price"`
+	ListPrice     currency.Cents `json:"listPrice,omitempty"`
+	InventoryCost currency.Cents `json:"-"`
 
 	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`
 
 	Inventory int `json:"inventory"`
 
-	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit"`
-	Dimensions string      `json:"dimensions"`
+	Weight         weight.Mass     `json:"weight"`
+	WeightUnit     weight.Unit     `json:"weightUnit"`
+	Dimensions     dimensions.Size `json:"dimensions"`
+	DimensionsUnit dimensions.Unit `json:"dimensionsUnit"`
 
 	Taxable bool `json:"taxable"`
 
@@ -62,8 +66,9 @@ type Product struct {
 	Description string `json:"description", datastore:",noindex"`
 
 	// Product Media
-	HeaderImage Media   `json:"headerImage"`
-	Media       []Media `json:"media"`
+	Header Media   `json:"header"`
+	Image  Media   `json:"image"`
+	Media  []Media `json:"media"`
 
 	// Is the product available
 	Available bool `json:"available"`
@@ -126,13 +131,12 @@ func (p *Product) Validator() *val.Validator {
 	// 	return errs
 }
 
-func (p *Product) Load(properties []aeds.Property) (err error) {
+func (p *Product) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
 	// Load supported properties
-	err = datastore.LoadStruct(p, properties)
-	if err != nil {
+	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
 
@@ -171,7 +175,7 @@ func (p Product) DisplayImage() Media {
 }
 
 func (p Product) DisplayPrice() string {
-	return DisplayPrice(p.MinPrice())
+	return DisplayPrice(p.Currency, p.MinPrice())
 }
 
 func (p Product) MinPrice() currency.Cents {

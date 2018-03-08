@@ -1,15 +1,16 @@
 package tasks
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"golang.org/x/net/context"
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/parallel"
 	// "hanzo.io/models"
-	"hanzo.io/util/log"
+
 	// "hanzo.io/util/queries"
 	"hanzo.io/util/task"
 
@@ -17,7 +18,6 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-
 	// . "hanzo.io/thirdparty/salesforce"
 )
 
@@ -61,13 +61,13 @@ var ImportUsersTask = parallel.New("sf-import-user-task", func(db *datastore.Dat
 
 // ImportUsers upserts all users into salesforce
 func ImportUsers(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportUsersTask.Run(c, 100, campaign)
@@ -92,13 +92,13 @@ var ImportMissingUsersTask = parallel.New("sf-import-missing-user-task", func(db
 
 // ImportMissingUsers upserts all users not synchronized into salesforce
 func ImportMissingUsers(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportMissingUsersTask.Run(c, 100, campaign)
@@ -118,13 +118,13 @@ var ImportOrdersTask = parallel.New("sf-import-order-task", func(db *datastore.D
 
 // ImportOrders upserts all orders into salesforce
 func ImportOrders(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get order instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportOrdersTask.Run(c, 100, campaign)
@@ -149,13 +149,13 @@ var ImportMissingOrdersTask = parallel.New("sf-import-missing-order-task", func(
 
 // ImportMissingOrders upserts all orders not synchronized into salesforce
 func ImportMissingOrders(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get order instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportMissingOrdersTask.Run(c, 100, campaign)
@@ -333,13 +333,13 @@ var PopulateMissingUserSFIdsTask = parallel.New("sf-populate-user-ids", func(db 
 
 // PopulateMissingUserSFIds ensures all users have salesforce ids
 func PopulateMissingUserSFIds(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	PopulateMissingUserSFIdsTask.Run(c, 100, campaign)
@@ -347,13 +347,13 @@ func PopulateMissingUserSFIds(c *gin.Context) {
 }
 
 func init() {
-	task.Register("salesforce-sync-users", ImportUsers)
-	task.Register("salesforce-sync-orders", ImportOrders)
-	task.Register("salesforce-sync-missing-users", ImportMissingUsers)
-	task.Register("salesforce-sync-missing-orders", ImportMissingOrders)
-	task.Register("salesforce-sync-product-variants", ImportProductVariant)
-	task.Register("salesforce-sync-updated-users", PullUpdatedUsersTask)
-	task.Register("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
-	task.Register("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
-	task.Register("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
+	task.New("salesforce-sync-users", ImportUsers)
+	task.New("salesforce-sync-orders", ImportOrders)
+	task.New("salesforce-sync-missing-users", ImportMissingUsers)
+	task.New("salesforce-sync-missing-orders", ImportMissingOrders)
+	task.New("salesforce-sync-product-variants", ImportProductVariant)
+	task.New("salesforce-sync-updated-users", PullUpdatedUsersTask)
+	task.New("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
+	task.New("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
+	task.New("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
 }

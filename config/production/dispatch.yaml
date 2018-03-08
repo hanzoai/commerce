@@ -1,14 +1,21 @@
-application: hanzo-production
-
 dispatch:
   - url: "default.hanzo.io/*"
     module: default
 
-  - url: "api.hanzo.io/*"
-    module: api
+  - url: "js.hanzo.io/*"
+    module: default
+
+  - url: "static.hanzo.io/*"
+    module: default
+
+  - url: "a.hanzo.io/*"
+    module: analytics
 
   - url: "cdn.hanzo.io/*"
     module: api
 
-  - url: "native.hanzo.io/*"
-    module: analytics
+  - url: "api.hanzo.io/*"
+    module: api
+
+  - url: "dash.hanzo.io/*"
+    module: dash

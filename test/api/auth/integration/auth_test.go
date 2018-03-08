@@ -4,17 +4,15 @@ import (
 	"net/url"
 	"testing"
 
-	"golang.org/x/net/context"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fixtures"
+	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/token2"
 	"hanzo.io/models/user"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/json"
 	"hanzo.io/util/jwt"
-	"hanzo.io/util/log"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 
@@ -28,12 +26,11 @@ func Test(t *testing.T) {
 }
 
 var (
-	client   *ginclient.Client
-	ctx      context.Context
-	inst     ae.Instance
+	ctx      ae.Context
+	cl       *ginclient.Client
 	db       *datastore.Datastore
 	org      *organization.Organization
-	refToken *token.Token
+	refToken *oauthtoken.Token
 	usr      *user.User
 	usr2     *user.User
 )
@@ -42,7 +39,7 @@ var (
 var _ = BeforeSuite(func() {
 	// Don't need this but switching to it to avoid long timeout.
 	var err error
-	ctx, inst, err = ae.NewContext()
+	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Create mock gin context that we can use with fixtures
@@ -52,8 +49,8 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 
 	// Setup client and add routes for account API tests.
-	client = ginclient.New(ctx)
-	authApi.Route(client.Router)
+	cl = ginclient.New(ctx)
+	authApi.Route(cl.Router)
 
 	// Create organization for tests, apiKey
 	db = datastore.New(ctx)
@@ -70,13 +67,13 @@ var _ = BeforeSuite(func() {
 	usr2.Enabled = false
 	usr2.MustCreate()
 
-	refToken, err = org.ResetReferenceToken(usr, token.Claims{})
+	refToken, err = org.ResetReferenceToken(usr, oauthtoken.Claims{})
 	Expect(err).NotTo(HaveOccurred())
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	inst.Close()
+	ctx.Close()
 })
 
 var _ = Describe("auth", func() {
@@ -92,7 +89,7 @@ var _ = Describe("auth", func() {
 			j := json.Encode(req)
 			log.Debug("Json %v", j)
 
-			w := client.PostRawJSON("/auth", j)
+			w := cl.PostRawJSON("/auth", j)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -102,21 +99,21 @@ var _ = Describe("auth", func() {
 			Expect(w.Code).To(Equal(200))
 			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.AccessToken).ToNot(Equal(""))
-			aClaims := token.Claims{}
-			err := jwt.Decode(res.AccessToken, org.SecretKey, token.Algorithm, &aClaims)
+			aClaims := oauthtoken.Claims{}
+			err := jwt.Decode(res.AccessToken, org.SecretKey, oauthtoken.Algorithm, &aClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(aClaims.Type)).To(Equal(token.Access))
+			Expect(string(aClaims.Type)).To(Equal(oauthtoken.Access))
 			Expect(aClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(aClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(aClaims.Issuer).To(Equal(refToken.Id()))
 
 			Expect(res.RefreshToken).ToNot(Equal(""))
-			rClaims := token.Claims{}
-			err = jwt.Decode(res.RefreshToken, org.SecretKey, token.Algorithm, &rClaims)
+			rClaims := oauthtoken.Claims{}
+			err = jwt.Decode(res.RefreshToken, org.SecretKey, oauthtoken.Algorithm, &rClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(rClaims.Type)).To(Equal(token.Refresh))
+			Expect(string(rClaims.Type)).To(Equal(oauthtoken.Refresh))
 			Expect(rClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(rClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(rClaims.Issuer).To(Equal(refToken.Id()))
@@ -136,7 +133,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -146,21 +143,21 @@ var _ = Describe("auth", func() {
 			Expect(w.Code).To(Equal(200))
 			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.AccessToken).ToNot(Equal(""))
-			aClaims := token.Claims{}
-			err := jwt.Decode(res.AccessToken, org.SecretKey, token.Algorithm, &aClaims)
+			aClaims := oauthtoken.Claims{}
+			err := jwt.Decode(res.AccessToken, org.SecretKey, oauthtoken.Algorithm, &aClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(aClaims.Type)).To(Equal(token.Access))
+			Expect(string(aClaims.Type)).To(Equal(oauthtoken.Access))
 			Expect(aClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(aClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(aClaims.Issuer).To(Equal(refToken.Id()))
 
 			Expect(res.RefreshToken).ToNot(Equal(""))
-			rClaims := token.Claims{}
-			err = jwt.Decode(res.RefreshToken, org.SecretKey, token.Algorithm, &rClaims)
+			rClaims := oauthtoken.Claims{}
+			err = jwt.Decode(res.RefreshToken, org.SecretKey, oauthtoken.Algorithm, &rClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(rClaims.Type)).To(Equal(token.Refresh))
+			Expect(string(rClaims.Type)).To(Equal(oauthtoken.Refresh))
 			Expect(rClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(rClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(rClaims.Issuer).To(Equal(refToken.Id()))
@@ -178,7 +175,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -196,7 +193,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -214,7 +211,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -232,7 +229,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"not grant"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -255,7 +252,7 @@ var _ = Describe("auth", func() {
 			j := json.Encode(req)
 			log.Debug("Json %v", j)
 
-			w := client.PostRawJSON("/auth", j)
+			w := cl.PostRawJSON("/auth", j)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -273,7 +270,7 @@ var _ = Describe("auth", func() {
 			j = json.Encode(req2)
 			log.Debug("Json %v", j)
 
-			w = client.PostRawJSON("/auth", j)
+			w = cl.PostRawJSON("/auth", j)
 			res = authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -284,21 +281,21 @@ var _ = Describe("auth", func() {
 
 			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.AccessToken).ToNot(Equal(""))
-			aClaims := token.Claims{}
-			err := jwt.Decode(res.AccessToken, org.SecretKey, token.Algorithm, &aClaims)
+			aClaims := oauthtoken.Claims{}
+			err := jwt.Decode(res.AccessToken, org.SecretKey, oauthtoken.Algorithm, &aClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(aClaims.Type)).To(Equal(token.Access))
+			Expect(string(aClaims.Type)).To(Equal(oauthtoken.Access))
 			Expect(aClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(aClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(aClaims.Issuer).To(Equal(refToken.Id()))
 
 			Expect(res.RefreshToken).ToNot(Equal(""))
-			rClaims := token.Claims{}
-			err = jwt.Decode(res.RefreshToken, org.SecretKey, token.Algorithm, &rClaims)
+			rClaims := oauthtoken.Claims{}
+			err = jwt.Decode(res.RefreshToken, org.SecretKey, oauthtoken.Algorithm, &rClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(rClaims.Type)).To(Equal(token.Refresh))
+			Expect(string(rClaims.Type)).To(Equal(oauthtoken.Refresh))
 			Expect(rClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(rClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(rClaims.Issuer).To(Equal(refToken.Id()))
@@ -318,7 +315,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -333,7 +330,7 @@ var _ = Describe("auth", func() {
 				"grant_type":    {"refresh_token"},
 			}
 
-			w = client.PostForm("/auth", data)
+			w = cl.PostForm("/auth", data)
 			res = authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -344,21 +341,21 @@ var _ = Describe("auth", func() {
 
 			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.AccessToken).ToNot(Equal(""))
-			aClaims := token.Claims{}
-			err := jwt.Decode(res.AccessToken, org.SecretKey, token.Algorithm, &aClaims)
+			aClaims := oauthtoken.Claims{}
+			err := jwt.Decode(res.AccessToken, org.SecretKey, oauthtoken.Algorithm, &aClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(aClaims.Type)).To(Equal(token.Access))
+			Expect(string(aClaims.Type)).To(Equal(oauthtoken.Access))
 			Expect(aClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(aClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(aClaims.Issuer).To(Equal(refToken.Id()))
 
 			Expect(res.RefreshToken).ToNot(Equal(""))
-			rClaims := token.Claims{}
-			err = jwt.Decode(res.RefreshToken, org.SecretKey, token.Algorithm, &rClaims)
+			rClaims := oauthtoken.Claims{}
+			err = jwt.Decode(res.RefreshToken, org.SecretKey, oauthtoken.Algorithm, &rClaims)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(string(rClaims.Type)).To(Equal(token.Refresh))
+			Expect(string(rClaims.Type)).To(Equal(oauthtoken.Refresh))
 			Expect(rClaims.UserId).To(Equal(refToken.Claims.UserId))
 			Expect(rClaims.OrganizationName).To(Equal(refToken.Claims.OrganizationName))
 			Expect(rClaims.Issuer).To(Equal(refToken.Id()))
@@ -374,7 +371,7 @@ var _ = Describe("auth", func() {
 				"refresh_token": {refToken.String},
 				"grant_type":    {"refresh_token"},
 			}
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -395,7 +392,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w := client.PostForm("/auth", data)
+			w := cl.PostForm("/auth", data)
 			res := authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -412,7 +409,7 @@ var _ = Describe("auth", func() {
 				"grant_type":    {"refresh_token"},
 			}
 
-			w = client.PostForm("/auth", data)
+			w = cl.PostForm("/auth", data)
 			res = authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -428,7 +425,7 @@ var _ = Describe("auth", func() {
 				"grant_type": {"password"},
 			}
 
-			w = client.PostForm("/auth", data)
+			w = cl.PostForm("/auth", data)
 			res = authApi.OAuthResponse{}
 
 			log.Debug("Res %v", w.Body)
@@ -437,7 +434,7 @@ var _ = Describe("auth", func() {
 
 			Expect(w.Code).To(Equal(403))
 
-			refToken, err = org.ResetReferenceToken(usr, token.Claims{})
+			refToken, err = org.ResetReferenceToken(usr, oauthtoken.Claims{})
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

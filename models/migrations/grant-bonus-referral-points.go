@@ -17,7 +17,7 @@ var _ = New("grant-bonus-referral-points",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "bellabeat").First(); err != nil {
+		if _, err := org.Query().Filter("Name=", "bellabeat").Get(); err != nil {
 			panic(err)
 		}
 		return NoArgs
@@ -25,9 +25,10 @@ var _ = New("grant-bonus-referral-points",
 	func(db *ds.Datastore, usr *user.User) {
 		id := usr.Id()
 
-		if ok, _ := transaction.Query(db).Filter("UserId=", id).First(); ok {
+		trans := transaction.New(db)
+		if ok, _ := trans.Query().Filter("DestinationId=", id).Get(); ok {
 			trans := transaction.New(db)
-			trans.UserId = id
+			trans.DestinationId = id
 			trans.Type = transaction.Deposit
 			trans.Currency = currency.USD
 			trans.Amount = currency.Cents(3000)

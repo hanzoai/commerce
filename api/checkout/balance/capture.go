@@ -3,8 +3,7 @@ package balance
 import (
 	"errors"
 
-	aeds "google.golang.org/appengine/datastore"
-
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -13,14 +12,16 @@ import (
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*aeds.Key, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	db := ord.Db
 
+	// Get payments for this order
 	payments := make([]*payment.Payment, 0)
-	keys, err := payment.Query(db).Ancestor(ord.Key()).LoadAll(&payments)
-	if err != nil {
-		return nil, nil, nil, err
+	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments); err != nil {
+		return nil, payments, err
 	}
+
+	log.Debug("payments %v", payments)
 
 	// Capture any uncaptured payments
 	for _, p := range payments {
@@ -33,14 +34,16 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			p.Put()
 
 			trans := transaction.New(db)
-			trans.UserId = ord.UserId
+			trans.DestinationId = ord.UserId
 			trans.Amount = p.Amount
 			trans.Currency = p.Currency
 			trans.Type = transaction.Withdraw
 			trans.Test = ord.Test
+			trans.SourceId = ord.Id()
+			trans.SourceKind = "order"
 			trans.Put()
 		}
 	}
 
-	return ord, keys, payments, nil
+	return ord, payments, nil
 }

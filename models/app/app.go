@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"hanzo.io/models/mixin"
-	"hanzo.io/models/token2"
+	"hanzo.io/models/oauthtoken"
 	"hanzo.io/util/bit"
 	"hanzo.io/util/permission"
 )
@@ -21,20 +21,20 @@ type App struct {
 
 	Name string `json:"name"`
 
-	ApiKeys []*token.Token `json:"apiKeys,omitempty" datastore:"-"`
+	ApiKeys []*oauthtoken.Token `json:"apiKeys,omitempty" datastore:"-"`
 
 	SecretKey []byte `json:"-"`
 }
 
-func (a *App) NewApiKey(name string, claims token.Claims) (*token.Token, error) {
+func (a *App) NewApiKey(name string, claims oauthtoken.Claims) (*oauthtoken.Token, error) {
 	a.RevokeApiKeyByName(name)
 
-	tok := token.New(a.Db)
+	tok := oauthtoken.New(a.Db)
 	tok.Name = name
 
-	claims.AppName = a.Name
+	claims.AppId = a.Id()
 	claims.OrganizationName = a.Key().Namespace()
-	claims.Type = token.Api
+	claims.Type = oauthtoken.Api
 	claims.JTI = tok.Id()
 	claims.IssuedAt = time.Now().Unix()
 
@@ -50,17 +50,17 @@ func (a *App) NewApiKey(name string, claims token.Claims) (*token.Token, error) 
 	return tok, nil
 }
 
-func (a *App) GetApiKeyByName(name string) (*token.Token, bool, error) {
-	tok := token.New(a.Db)
+func (a *App) GetApiKeyByName(name string) (*oauthtoken.Token, bool, error) {
+	tok := oauthtoken.New(a.Db)
 
-	if ok, err := tok.Query().Filter("Claims.AppName=", a.Name).Filter("Claims.Type=", token.Api).Filter("Revoked=", false).Filter("Name=", name).First(); !ok {
+	if ok, err := tok.Query().Filter("Claims.AppId=", a.Id()).Filter("Claims.Type=", oauthtoken.Api).Filter("Revoked=", false).Filter("Name=", name).Get(); !ok {
 		return nil, false, err
 	}
 
 	return tok, true, nil
 }
 
-func (a *App) RevokeApiKeyByName(name string) (*token.Token, bool, error) {
+func (a *App) RevokeApiKeyByName(name string) (*oauthtoken.Token, bool, error) {
 	if tok, ok, err := a.GetApiKeyByName(name); !ok {
 		return nil, false, err
 	} else {
@@ -70,33 +70,35 @@ func (a *App) RevokeApiKeyByName(name string) (*token.Token, bool, error) {
 }
 
 func (a *App) LoadApiKeys() error {
-	slice, err := token.Query(a.Db).
-		Filter("Claims.AppName=", a.Name).
-		Filter("Claims.Type=", token.Api).
-		Filter("Revoked=", false).
-		GetAll()
+	slice := make([]*oauthtoken.Token, 0)
 
-	a.ApiKeys = slice.([]*token.Token)
+	_, err := oauthtoken.Query(a.Db).
+		Filter("Claims.AppName=", a.Name).
+		Filter("Claims.Type=", oauthtoken.Api).
+		Filter("Revoked=", false).
+		GetAll(&slice)
+
+	a.ApiKeys = slice
 
 	return err
 }
 
 func (a *App) ResetDefaultKeys() {
-	pubClaims := token.Claims{
-		AppName:          a.Name,
+	pubClaims := oauthtoken.Claims{
+		AppId:            a.Id(),
 		OrganizationName: a.Key().Namespace(),
-		Type:             token.Api,
+		Type:             oauthtoken.Api,
 		Permissions:      bit.Field(permission.Published | permission.Live | permission.ReadCoupon | permission.ReadProduct | permission.WriteReferrer),
 	}
 
-	secretClaims := pubClaims.Clone().(token.Claims)
+	secretClaims := pubClaims.Clone().(oauthtoken.Claims)
 	secretClaims.Permissions = bit.Field(permission.Admin | permission.Live)
 
-	testPubClaims := pubClaims.Clone().(token.Claims)
+	testPubClaims := pubClaims.Clone().(oauthtoken.Claims)
 	testPubClaims.Test = true
 	testPubClaims.Permissions = bit.Field(permission.Published | permission.Test | permission.ReadCoupon | permission.ReadProduct | permission.WriteReferrer)
 
-	testSecretClaims := testPubClaims.Clone().(token.Claims)
+	testSecretClaims := testPubClaims.Clone().(oauthtoken.Claims)
 	testSecretClaims.Permissions = bit.Field(permission.Admin | permission.Test)
 
 	var err error
@@ -121,7 +123,7 @@ func (a *App) ResetDefaultKeys() {
 		panic(err)
 	}
 
-	a.ApiKeys = []*token.Token{
+	a.ApiKeys = []*oauthtoken.Token{
 		pubKey,
 		secretKey,
 		testPubKey,
