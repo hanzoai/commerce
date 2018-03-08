@@ -10,7 +10,7 @@ import (
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Wallet struct {

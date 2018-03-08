@@ -1,18 +1,17 @@
 package counter
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"appengine"
-
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
 )
 
 var (
@@ -129,7 +128,7 @@ func productKeyId(productId string) string {
 	return soldKey + sep + productId
 }
 
-func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays []*payment.Payment, t time.Time) error {
+func IncrTotalSales(ctx context.Context, org *organization.Organization, pays []*payment.Payment, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	var total currency.Cents
@@ -189,7 +188,7 @@ func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays 
 	return IncrementBy(ctx, key, key, "", "", Total, int(total), time.Now())
 }
 
-func IncrStoreSales(ctx appengine.Context, org *organization.Organization, storeId string, pays []*payment.Payment, t time.Time) error {
+func IncrStoreSales(ctx context.Context, org *organization.Organization, storeId string, pays []*payment.Payment, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	var total currency.Cents
@@ -240,12 +239,12 @@ func IncrStoreSales(ctx appengine.Context, org *organization.Organization, store
 	return IncrementBy(ctx, key, key, storeId, "", Total, int(total), t)
 }
 
-func AddCurrency(ctx appengine.Context, org *organization.Organization, cur currency.Type) error {
+func AddCurrency(ctx context.Context, org *organization.Organization, cur currency.Type) error {
 	currencySet := setName(org, currencySetKey)
 	return AddSetMember(ctx, currencySet, currencySet, "", "", Total, string(cur), time.Now())
 }
 
-func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t time.Time) error {
+func IncrTotalOrders(ctx context.Context, org *organization.Organization, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	key := totalKey(org, ordersKey, hourly(t))
@@ -272,7 +271,7 @@ func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t ti
 	return Increment(ctx, key, key, "", "", Total, t)
 }
 
-func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, storeId string, t time.Time) error {
+func IncrStoreOrders(ctx context.Context, org *organization.Organization, storeId string, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	key := storeKey(org, storeId, ordersKey, hourly(t))
@@ -298,7 +297,7 @@ func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, stor
 	return Increment(ctx, key, key, storeId, "", Total, t)
 }
 
-func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mailinglistId string, t time.Time) error {
+func IncrSubscribers(ctx context.Context, org *organization.Organization, mailinglistId string, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	key := subKey(org, mailinglistId, hourly(t))
@@ -346,7 +345,7 @@ func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mail
 	return Increment(ctx, key, key, "", "", Total, t)
 }
 
-func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Time) error {
+func IncrUsers(ctx context.Context, org *organization.Organization, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	key := userKey(org, hourly(t))
@@ -372,7 +371,7 @@ func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Tim
 	return Increment(ctx, key, key, "", "", Total, t)
 }
 
-func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organization, ord *order.Order, t time.Time) error {
+func IncrTotalProductOrders(ctx context.Context, org *organization.Organization, ord *order.Order, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	for _, item := range ord.Items {
@@ -406,7 +405,7 @@ func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organizatio
 	return nil
 }
 
-func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organization, storeId string, ord *order.Order, t time.Time) error {
+func IncrStoreProductOrders(ctx context.Context, org *organization.Organization, storeId string, ord *order.Order, t time.Time) error {
 	ctx = org.Namespaced(ctx)
 
 	for _, item := range ord.Items {
@@ -440,7 +439,7 @@ func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organizatio
 	return nil
 }
 
-func IncrAffiliateFees(ctx appengine.Context, org *organization.Organization, affId string, rfl *referral.Referral) error {
+func IncrAffiliateFees(ctx context.Context, org *organization.Organization, affId string, rfl *referral.Referral) error {
 	ctx = org.Namespaced(ctx)
 
 	fee := rfl.Fee
@@ -451,7 +450,7 @@ func IncrAffiliateFees(ctx appengine.Context, org *organization.Organization, af
 	return IncrementBy(ctx, key, key, "", "", Total, int(fee.Amount), time.Now())
 }
 
-func IncrReferrerFees(ctx appengine.Context, org *organization.Organization, refId string, rfl *referral.Referral) error {
+func IncrReferrerFees(ctx context.Context, org *organization.Organization, refId string, rfl *referral.Referral) error {
 	ctx = org.Namespaced(ctx)
 
 	fee := rfl.Fee

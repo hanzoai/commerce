@@ -3,8 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/zeekay/aetest"
-
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -12,19 +10,18 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/paypal"
-	"hanzo.io/util/log"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/models/lineitem"
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	// Setup("thirdparty/paypal", t)
+	Setup("thirdparty/paypal", t)
 }
 
 var (
-	ctx    aetest.Context
+	ctx    ae.Context
 	org    *organization.Organization
 	usr    *user.User
 	ord    *order.Order
@@ -33,9 +30,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	var err error
-	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
-	Expect(err).ToNot(HaveOccurred())
+	ctx = ae.NewContext()
 
 	db := datastore.New(ctx)
 
@@ -72,14 +67,15 @@ var _ = BeforeSuite(func() {
 	pay.Currency = currency.USD
 	pay.Client.Ip = "64.136.209.186"
 	platformFees, partnerFees := org.Pricing()
+
+	var err error
 	pay.Fee, _, err = ord.CalculateFees(platformFees, partnerFees)
 	Expect(err).ToNot(HaveOccurred())
 	client = paypal.New(ctx)
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("paypal.GetPayKey", func() {

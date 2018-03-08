@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
 )
 
 var (

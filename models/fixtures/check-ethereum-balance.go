@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var CheckEthereumBalance = New("check-ethereum-balance", func(c *gin.Context) {

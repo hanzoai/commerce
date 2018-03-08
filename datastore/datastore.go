@@ -1,18 +1,17 @@
 package datastore
 
 import (
-	"appengine"
-
-	aeds "appengine/datastore"
+	"golang.org/x/net/context"
+	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
 	"hanzo.io/config"
-	"hanzo.io/util/log"
-
 	"hanzo.io/datastore/query"
 	"hanzo.io/datastore/utils"
+	"hanzo.io/log"
 )
 
 var (
@@ -27,12 +26,12 @@ var (
 )
 
 type Datastore struct {
-	Context             appengine.Context
+	Context             context.Context
 	IgnoreFieldMismatch bool
 	Warn                bool
 }
 
-func New(ctx interface{}) *Datastore {
+func New(ctx context.Context) *Datastore {
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
@@ -56,13 +55,11 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 }
 
 // Set context for datastore
-func (d *Datastore) SetContext(ctx interface{}) {
-	switch ctx := ctx.(type) {
-	case appengine.Context:
-		d.Context = ctx
-	case *gin.Context:
-		d.Context = ctx.MustGet("appengine").(appengine.Context)
+func (d *Datastore) SetContext(ctx context.Context) {
+	if c, ok := ctx.(*gin.Context); ok {
+		ctx = c.MustGet("appengine").(context.Context)
 	}
+	d.Context = ctx
 }
 
 // Set context for datastore
@@ -79,8 +76,8 @@ func (d *Datastore) Query(kind string) Query {
 	return query.New(d.Context, kind)
 }
 
-func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts ...TransactionOptions) error {
-	return RunInTransaction(d.Context, fn, opts...)
+func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
+	return RunInTransaction(d.Context, fn, opts)
 }
 
 func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
@@ -89,15 +86,9 @@ func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
 
 type TransactionOptions aeds.TransactionOptions
 
-func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts ...TransactionOptions) error {
-	aeopts := new(aeds.TransactionOptions)
-
-	if len(opts) > 0 {
-		aeopts.XG = opts[0].XG
-		aeopts.Attempts = opts[0].Attempts
-	}
-
-	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
+func RunInTransaction(ctx context.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
+	aeopts := (*aeds.TransactionOptions)(opts)
+	return nds.RunInTransaction(ctx, func(ctx context.Context) error {
 		return fn(New(ctx))
 	}, aeopts)
 }

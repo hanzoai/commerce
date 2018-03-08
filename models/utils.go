@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"math"
 	"regexp"
 	"strconv"
@@ -41,14 +42,17 @@ func SplitParagraph(text string) []string {
 	return regexp.MustCompile("\\n\\s*\\n").Split(text, -1)
 }
 
-func GetNamespaces(c interface{}) []string {
+func GetNamespaces(ctx context.Context) []string {
 	namespaces := make([]string, 0)
-	db := datastore.New(c)
+
+	// Fetch namespaces from special __namespace__ table
+	db := datastore.New(ctx)
 	keys, err := db.Query("__namespace__").GetKeys()
 	if err != nil {
 		panic(err)
 	}
 
+	// Append stringID's
 	for _, k := range keys {
 		namespaces = append(namespaces, k.StringID())
 	}
@@ -56,9 +60,9 @@ func GetNamespaces(c interface{}) []string {
 	return namespaces
 }
 
-func GetKinds(c interface{}) []string {
+func GetKinds(ctx context.Context) []string {
 	kinds := make([]string, 0)
-	db := datastore.New(c)
+	db := datastore.New(ctx)
 	keys, err := db.Query("__kind__").GetKeys()
 	if err != nil {
 		panic(err)

@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/test/datastore/integration/tasks"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
 	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
@@ -29,12 +29,7 @@ var (
 )
 
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default"},
-		TaskQueues: []string{"default"},
-		Noisy:      true,
-	})
-
+	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
 	db = datastore.New(ctx)
 })
@@ -44,7 +39,7 @@ var _ = AfterSuite(func() {
 })
 
 func checkCountValue(entity mixin.Entity, numModels int, expected int) {
-	err := Retry(10, func() error {
+	err := Retry(30, func() error {
 		models := entity.Slice()
 		_, err := entity.Query().All().GetAll(models)
 		if err != nil {

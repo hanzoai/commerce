@@ -5,15 +5,15 @@ import (
 	"sort"
 	"strconv"
 
-	"appengine"
-	"appengine/delay"
+	"golang.org/x/net/context"
+	"hanzo.io/delay"
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/fakecontext"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
 )
 
 var (
@@ -93,9 +93,9 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 		switch v := tasks[i].Function.(type) {
 		case *delay.Function:
 			v.Call(middleware.GetAppEngine(ctx), args...)
-		case func(appengine.Context):
+		case func(context.Context):
 			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
-		case func(appengine.Context, ...interface{}):
+		case func(context.Context, ...interface{}):
 			v(middleware.GetAppEngine(ctx), args...)
 		case func(*gin.Context):
 			v(ctx)
@@ -109,10 +109,10 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	}
 }
 
-func getGinContext(ctx appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
+func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
-		if c, err := fakectx.Context(&ctx); err == nil {
+		if c, err := fakectx.Context(ctx); err == nil {
 			return c
 		}
 	}
@@ -136,13 +136,13 @@ func checkFunc(fn interface{}) {
 		log.Panic("Function requires at least one argument")
 	}
 
-	// First argument fn should be gin.Context
+	// First argument fn should be context.Context
 	if t.In(0) != contextType {
 		log.Panic("First argument must be *gin.Context: %v", t)
 	}
 }
 
-// Creates a new delay.Func which will call our fn with gin.Context, etc.
+// Creates a new delay.Func which will call our fn with context.Context, etc.
 func Func(name string, fn interface{}) *delay.Function {
 	// Make sure this is a valid func
 	checkFunc(fn)
@@ -158,7 +158,7 @@ func Func(name string, fn interface{}) *delay.Function {
 	}
 
 	// Create actual delay.Func
-	dfunc := delay.Func(dname, func(c appengine.Context, args ...interface{}) {
+	dfunc := delay.Func(dname, func(c context.Context, args ...interface{}) {
 		// Try to retrieve fake context from args
 		var fakectx *fakecontext.Context
 		var ok bool

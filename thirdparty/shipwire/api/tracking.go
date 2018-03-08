@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/thirdparty/shipwire"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )

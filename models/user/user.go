@@ -3,10 +3,11 @@ package user
 import (
 	"strings"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
@@ -18,7 +19,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
@@ -90,9 +90,9 @@ type User struct {
 	AffiliateId string `json:"affiliateId,omitempty"`
 }
 
-func (u *User) Load(c <-chan aeds.Property) (err error) {
+func (u *User) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
+	if err = datastore.LoadStruct(u, ps); err != nil {
 		return err
 	}
 
@@ -122,7 +122,7 @@ func (u *User) Load(c <-chan aeds.Property) (err error) {
 	return
 }
 
-func (u *User) Save(c chan<- aeds.Property) (err error) {
+func (u *User) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
 
@@ -130,7 +130,7 @@ func (u *User) Save(c chan<- aeds.Property) (err error) {
 	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(u, c))
+	return datastore.SaveStruct(u)
 }
 
 func (u User) Name() string {

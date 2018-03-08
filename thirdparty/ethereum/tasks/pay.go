@@ -1,24 +1,23 @@
 package tasks
 
 import (
+	"context"
 	"errors"
 	"math/big"
 	"time"
-
-	"appengine"
 
 	"hanzo.io/api/checkout/tasks"
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
 	eutil "hanzo.io/thirdparty/ethereum/util"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/delay"
 	"hanzo.io/util/webhook"
 )
 
@@ -40,7 +39,7 @@ var LastGasPriceCheck = time.Time{}
 var EthereumProcessPayment = delay.Func(
 	"ethereum-process-payment",
 	func(
-		ctx appengine.Context,
+		ctx context.Context,
 		orgName,
 		walletId,
 		txHash,
@@ -53,7 +52,7 @@ var EthereumProcessPayment = delay.Func(
 	})
 
 func EthereumProcessPaymentImpl(
-	ctx appengine.Context,
+	ctx context.Context,
 	orgName,
 	walletId,
 	txHash,
@@ -353,7 +352,7 @@ func EthereumProcessPaymentImpl(
 		webhook.Emit(ctx, orgName, "order.paid", ord)
 
 		return nil
-	}); err != nil {
+	}, nil); err != nil {
 		return err
 	}
 

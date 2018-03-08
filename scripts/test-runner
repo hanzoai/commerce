@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 files=()
 for file in $(find ./test -name "*_test.go"); do
     file=$(echo $(dirname $file) | cut -c 3-)
@@ -9,7 +11,7 @@ done
 i=0
 pkgs=()
 for file in $(echo "${files[@]}" | tr ' ' '\n' | sort -u); do
-  if [ $(($i % $CIRCLE_NODE_TOTAL)) -eq $CIRCLE_NODE_INDEX ]; then
+  if [ $(($i % $BUILDKITE_PARALLEL_JOB_COUNT)) -eq $BUILDKITE_PARALLEL_JOB ]; then
     pkgs+=" $file"
   fi
   ((i=i+1))
