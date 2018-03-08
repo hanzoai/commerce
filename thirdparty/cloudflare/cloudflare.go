@@ -2,6 +2,7 @@ package cloudflare
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {
@@ -25,10 +26,12 @@ type Client struct {
 func New(c *gin.Context) *Client {
 	ctx := middleware.GetAppEngine(c)
 
+	// Set deadline
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	return &Client{

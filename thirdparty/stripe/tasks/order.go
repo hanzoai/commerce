@@ -1,18 +1,18 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"appengine"
-	"appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
+var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
@@ -36,7 +36,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 		log.Debug("Order after: %+v", ord, ctx)
 
 		return ord.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update order '%s': %v", orderId, err, ctx)

@@ -1,15 +1,13 @@
 package media
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 
 	. "hanzo.io/models/ads"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 type Usage string
@@ -75,21 +73,21 @@ func (m *Media) DetermineUsage() Usage {
 	return u
 }
 
-func (m *Media) Load(c <-chan aeds.Property) (err error) {
+func (m *Media) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
 	// Load supported properties
-	return IgnoreFieldMismatch(aeds.LoadStruct(m, c))
+	return datastore.LoadStruct(m, ps)
 }
 
-func (m *Media) Save(c chan<- aeds.Property) (err error) {
+func (m *Media) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	m.DetermineUsage()
 	m.IsParent = m.ParentMediaId != ""
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(m, c))
+	return datastore.SaveStruct(m)
 }
 
 func (m Media) GetParentMediaId() string {

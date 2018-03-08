@@ -3,7 +3,7 @@ package datastore
 import (
 	"fmt"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"
 )

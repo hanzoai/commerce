@@ -1,20 +1,18 @@
 package bigquery
 
-import
+import "context"
 
 // "google.golang.org/api/bigquery/v2"
-
-"appengine"
 
 type Row map[string]interface{}
 type Fields map[string]string
 
 type Client struct {
 	// Service *bigquery.Service
-	Context appengine.Context
+	Context context.Context
 }
 
-// func connect(c appengine.Context) (s *bigquery.Service, e error) {
+// func connect(c context.Context) (s *bigquery.Service, e error) {
 // 	if client, err := serviceaccount.NewClient(c, bigquery.BigqueryScope); err != nil {
 // 		return nil, fmt.Errorf("%s", err.Error())
 // 	} else {
@@ -26,7 +24,7 @@ type Client struct {
 // 	}
 // }
 
-func NewClient(c appengine.Context) (*Client, error) {
+func NewClient(c context.Context) (*Client, error) {
 	return &Client{}, nil
 	// if s, err := connect(c); err != nil {
 	// 	return nil, err

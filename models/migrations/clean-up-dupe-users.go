@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("clean-up-dupe-users", func(c *gin.Context) []interface{} {

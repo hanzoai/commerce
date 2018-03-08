@@ -1,20 +1,20 @@
 package blockchain
 
 import (
-	"appengine"
+	"context"
 	"errors"
 	"fmt"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
-func MakeBitcoinPayment(ctx appengine.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {
+func MakeBitcoinPayment(ctx context.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {
 	// Create needed client.
 
 	client := bitcoin.BitcoinClient{}

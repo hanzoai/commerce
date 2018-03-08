@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/product"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

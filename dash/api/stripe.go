@@ -8,7 +8,7 @@ import (
 	"hanzo.io/thirdparty/stripe/connect"
 	"hanzo.io/thirdparty/stripe/tasks"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 

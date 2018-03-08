@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
@@ -43,19 +43,15 @@ type Aggregate struct {
 	VectorValue  []int64   `json:"vectorValue,omitempty"`
 }
 
-func (a *Aggregate) Load(c <-chan aeds.Property) (err error) {
+func (a *Aggregate) Load(p []aeds.Property) (err error) {
 	// Ensure we're initialized
 	a.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(a, c)); err != nil {
-		return err
-	}
-
-	return
+	return datastore.LoadStruct(a, p)
 }
 
-func (a *Aggregate) Save(c chan<- aeds.Property) (err error) {
+func (a *Aggregate) Save() (p []aeds.Property, err error) {
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(a, c))
+	return datastore.SaveStruct(a)
 }

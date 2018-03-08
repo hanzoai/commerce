@@ -1,4 +1,4 @@
-package crowdstart
+package config
 
 import "hanzo.io/util/default_"
 

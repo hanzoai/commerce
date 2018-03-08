@@ -16,7 +16,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/georate"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"

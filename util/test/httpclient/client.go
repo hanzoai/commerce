@@ -1,20 +1,37 @@
 package httpclient
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
-	"appengine"
-
-	"hanzo.io/config"
+	// "hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
+func getModuleHost(ctx context.Context, moduleName string) string {
+	host := "localhost"
+	port := os.Getenv("DEV_APPSERVER_PORT")
+
+	switch moduleName {
+	case "default":
+		return host + ":" + port
+	case "api":
+		n, _ := strconv.Atoi(port)
+		return host + ":" + strconv.Itoa(n+1)
+	default:
+		return host + ":" + port
+	}
+
+}
+
 type Client struct {
-	context    appengine.Context
+	context    context.Context
 	moduleName string
 	baseURL    string
 }
@@ -23,19 +40,11 @@ func (c *Client) URL(path string) string {
 	return c.baseURL + path
 }
 
-func (c *Client) determineBaseURL() {
-	moduleHost, err := getModuleHost(c.context, c.moduleName)
-	if err != nil {
-		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
-	}
-
+func (c *Client) setBaseUrl() {
+	moduleHost := getModuleHost(c.context, c.moduleName)
 	url := "http://" + strings.Trim(moduleHost, "/")
-
-	if config.IsDevelopment && c.moduleName != "default" {
-		url = strings.Trim(url, "/") + "/" + c.moduleName
-	}
-
 	c.baseURL = strings.Trim(url, "/")
+	log.Warn("%s baseURL %s", c.moduleName, c.baseURL)
 }
 
 func (c *Client) getURL(path string) string {
