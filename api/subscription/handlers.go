@@ -27,7 +27,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 
 	// Get order if an existing order was referenced
 	if id := c.Params.ByName("subscriptionid"); id != "" {
-		if err := sub.Get(id); err != nil {
+		if err := sub.GetById(id); err != nil {
 			return nil, err
 		}
 	}

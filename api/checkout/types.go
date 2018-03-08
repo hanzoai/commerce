@@ -21,7 +21,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 	// If id is set, this is a pre-existing user, use data from datastore
 	if id != "" {
 		ar.User_ = user.New(ar.Order.Db)
-		if err := ar.User_.Get(id); err != nil {
+		if err := ar.User_.GetById(id); err != nil {
 			// Try to load using email
 			email := ar.User_.Email
 			if email != "" {

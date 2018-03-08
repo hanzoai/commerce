@@ -36,7 +36,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 	db := datastore.New(c)
 	u := user.New(db)
 
-	if err := u.Get(id); err != nil {
+	if err := u.GetById(id); err != nil {
 		log.Warn("Failed to retrieve current user from session")
 		return nil, err
 	}
