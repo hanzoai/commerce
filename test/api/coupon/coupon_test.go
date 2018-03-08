@@ -8,7 +8,7 @@ import (
 	"github.com/icrowley/fake"
 
 	"hanzo.io/models/coupon"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

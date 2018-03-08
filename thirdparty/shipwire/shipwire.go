@@ -2,19 +2,19 @@ package shipwire
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/thirdparty/shipwire/types"
 )
@@ -25,16 +25,16 @@ type Client struct {
 	Endpoint string
 
 	client *http.Client
-	ctx    appengine.Context
+	ctx    context.Context
 }
 
 func New(c *gin.Context, username, password string) *Client {
 	ctx := middleware.GetAppEngine(c)
 
+	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	return &Client{

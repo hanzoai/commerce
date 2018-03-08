@@ -1,6 +1,7 @@
 package ethereum
 
 import (
+	"context"
 	ej "encoding/json"
 	"errors"
 	"fmt"
@@ -9,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/common"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/common/hexutil"
@@ -20,7 +22,6 @@ import (
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/rlp"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 
 	. "hanzo.io/models/blockchains"
@@ -46,7 +47,7 @@ type EthGasStationResponse struct {
 }
 
 type Client struct {
-	ctx        appengine.Context
+	ctx        context.Context
 	httpClient *http.Client
 
 	address string
@@ -83,11 +84,13 @@ func Test(b bool) bool {
 }
 
 // Create a new Ethereum JSON-RPC client
-func New(ctx appengine.Context, address string) Client {
+func New(ctx context.Context, address string) Client {
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
+		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 

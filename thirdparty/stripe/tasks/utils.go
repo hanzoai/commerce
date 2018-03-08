@@ -1,21 +1,23 @@
 package tasks
 
 import (
-	"appengine"
-	"appengine/memcache"
+	"context"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 // Get namespaced appengine context for given namespace
-func getNamespacedContext(ctx appengine.Context, ns string) appengine.Context {
+func getNamespacedContext(ctx context.Context, ns string) context.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
 	ctx, err := appengine.Namespace(ctx, ns)
 	if err != nil {
@@ -25,7 +27,7 @@ func getNamespacedContext(ctx appengine.Context, ns string) appengine.Context {
 }
 
 // Grab organization out of memcache
-func getOrganization(ctx appengine.Context) *organization.Organization {
+func getOrganization(ctx context.Context) *organization.Organization {
 	org := &organization.Organization{}
 	item, err := memcache.Get(ctx, "organization")
 	if err != nil {
@@ -42,7 +44,7 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, bool, error) {
+func getPaymentFromCharge(ctx context.Context, ch *stripe.Charge) (*payment.Payment, bool, error) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 
@@ -63,7 +65,7 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 }
 
 // Get our transfer from a stripe transfer
-func getTransfer(ctx appengine.Context, str *stripe.Transfer) (*transfer.Transfer, bool, error) {
+func getTransfer(ctx context.Context, str *stripe.Transfer) (*transfer.Transfer, bool, error) {
 	db := datastore.New(ctx)
 	tr := transfer.New(db)
 
@@ -84,7 +86,7 @@ func getTransfer(ctx appengine.Context, str *stripe.Transfer) (*transfer.Transfe
 }
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment(ctx appengine.Context, token string, pay *payment.Payment, ch *stripe.Charge) {
+func updateChargeFromPayment(ctx context.Context, token string, pay *payment.Payment, ch *stripe.Charge) {
 	if ch != nil {
 		// Check if we need to sync back changes to charge
 		payId, _ := ch.Meta["payment"]

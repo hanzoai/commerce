@@ -1,18 +1,19 @@
 package parallel
 
 import (
+	"context"
 	"reflect"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-	"appengine/delay"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models"
 	"hanzo.io/models/mixin"
-	"hanzo.io/util/log"
 )
 
 type ParallelFn struct {
@@ -69,7 +70,7 @@ func New(name string, fn interface{}) *ParallelFn {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx := ctx
 		if namespace != "" {
@@ -80,8 +81,8 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			}
 		}
 
-		// Increase Timeout
-		nsCtx = appengine.Timeout(nsCtx, 30*time.Second)
+		// Set timeout
+		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
@@ -131,7 +132,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 }
 
 // Call underlying delay function
-func (fn *ParallelFn) Call(ctx appengine.Context, args ...interface{}) {
+func (fn *ParallelFn) Call(ctx context.Context, args ...interface{}) {
 	fn.DelayFn.Call(ctx, args...)
 }
 
@@ -142,7 +143,7 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		batchSize = 1
 	}
 
-	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx := c.MustGet("appengine").(context.Context)
 
 	namespaces := make([]string, 0)
 
@@ -160,19 +161,23 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		namespaces = models.GetNamespaces(ctx)
 	}
 
-	log.Debug("Migrating namespaces: %v", namespaces)
-
-	// Iterate through namespaces and initialize workers to run in each
-	for _, ns := range namespaces {
-		args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+	log.Debug("executing across namespaces: %v", namespaces)
+	if len(namespaces) == 0 {
+		args := append([]interface{}{fn.Name, "", batchSize}, args...)
 		initNamespace.Call(ctx, args...)
+	} else {
+		// Iterate through namespaces and initialize workers to run in each
+		for _, ns := range namespaces {
+			args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+			initNamespace.Call(ctx, args...)
+		}
 	}
 
 	return nil
 }
 
 // Start individual runs in a given namespace
-var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
+var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
 	// Set namespace explicitly
 	nsCtx := ctx
 	if namespace != "" {

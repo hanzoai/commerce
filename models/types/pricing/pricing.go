@@ -1,8 +1,9 @@
 package pricing
 
 import (
-	"appengine"
-	aeds "appengine/datastore"
+	"context"
+
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/models/types/commission"
 	"hanzo.io/models/types/currency"
@@ -27,7 +28,7 @@ type Partner struct {
 	} `json:"ethereum"`
 }
 
-func (p Partner) Key(ctx appengine.Context) *aeds.Key {
+func (p Partner) Key(ctx context.Context) *aeds.Key {
 	key, err := hashid.DecodeKey(ctx, p.Id)
 	if err != nil {
 		panic(err)
@@ -64,7 +65,7 @@ type Fees struct {
 	} `json:"affiliate"`
 }
 
-func (f Fees) Key(ctx appengine.Context) *aeds.Key {
+func (f Fees) Key(ctx context.Context) *aeds.Key {
 	key, err := hashid.DecodeKey(ctx, f.Id)
 	if err != nil {
 		panic(err)

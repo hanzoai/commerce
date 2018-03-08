@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var EightyNineRobotics = New("89r", func(c *gin.Context) *organization.Organization {

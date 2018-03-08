@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae"
 
 	"hanzo.io/thirdparty/stripe"

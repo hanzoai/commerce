@@ -2,7 +2,7 @@ package test
 
 import (
 	"hanzo.io/models/site"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

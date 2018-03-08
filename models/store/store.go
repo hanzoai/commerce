@@ -1,9 +1,10 @@
 package store
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/shippingrates"
 	"hanzo.io/models/taxrates"
@@ -11,14 +12,11 @@ import (
 	"hanzo.io/models/types/shipping"
 	"hanzo.io/models/types/weight"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Everything is a pointer, which allows fields to be nil. This way when we
 // serialize to/from JSON we know what has and has not been set.
@@ -106,12 +104,12 @@ type Store struct {
 	} `json:"mailchimp,omitempty`
 }
 
-func (s *Store) Load(c <-chan aeds.Property) (err error) {
+func (s *Store) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
 
@@ -127,13 +125,13 @@ func (s *Store) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Store) Save(c chan<- aeds.Property) (err error) {
+func (s *Store) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Listings_ = string(json.EncodeBytes(&s.Listings))
 	// s.ShippingRateTable_ = string(json.EncodeBytes(&s.ShippingRateTable))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }
 
 func (s *Store) Validator() *val.Validator {
