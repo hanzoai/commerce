@@ -8,7 +8,7 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 

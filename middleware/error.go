@@ -6,12 +6,12 @@ import (
 	"runtime"
 	"strings"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 

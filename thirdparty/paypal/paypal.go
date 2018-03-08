@@ -1,6 +1,7 @@
 package paypal
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -11,21 +12,20 @@ import (
 	"strings"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/paypal/responses"
-	"hanzo.io/util/log"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {
-	ctx appengine.Context
+	ctx context.Context
 }
 
-func New(ctx appengine.Context) *Client {
+func New(ctx context.Context) *Client {
 	return &Client{ctx: ctx}
 }
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
@@ -112,7 +112,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 		}
 
 		return s.Create()
-	})
+	}, nil)
 }
 
 func (m *MailingList) Js() string {

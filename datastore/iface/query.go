@@ -1,7 +1,7 @@
 package iface
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 )
 
 type Query interface {

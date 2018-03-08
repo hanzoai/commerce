@@ -1,14 +1,15 @@
 package fixtures
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
 	"hanzo.io/util/task"
 )
 
@@ -17,7 +18,7 @@ type Fixture struct {
 	entity mixin.Entity
 }
 
-func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
+func New(name string, fn interface{}) func(c context.Context) mixin.Entity {
 	fix := new(Fixture)
 
 	// Prefix all fixture tasks
@@ -33,7 +34,7 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 	})
 
 	// Return wrapper that memoizes result for safe chaining
-	return func(c3 *gin.Context) mixin.Entity {
+	return func(c3 context.Context) mixin.Entity {
 		if fix.entity == nil {
 			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c3)})
 			fix.entity = res[0].Interface().(mixin.Entity)
@@ -44,7 +45,7 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 }
 
 // Get db namespaced for our fixtures org
-func getNamespaceDb(c *gin.Context) *datastore.Datastore {
+func getNamespaceDb(c context.Context) *datastore.Datastore {
 	org := Organization(c).(*organization.Organization)
 	ctx := org.Namespaced(org.Db.Context)
 	db := datastore.New(ctx)

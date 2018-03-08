@@ -1,6 +1,6 @@
 node_modules
 /.cake_task_cache
-.sdk
+sdk
 npm-debug.log
 .datastore.bin
 _export

@@ -1,19 +1,19 @@
 package hashid
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"appengine"
-	aeds "appengine/datastore"
+	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"
 
-	"hanzo.io/datastore/utils"
-	"hanzo.io/models/namespace/consts"
-	"hanzo.io/util/log"
-
 	"hanzo.io/datastore/iface"
+	"hanzo.io/datastore/utils"
+	"hanzo.io/log"
+	"hanzo.io/models/namespace/consts"
 )
 
 var (
@@ -51,12 +51,12 @@ func fmtNs(ns string) string {
 }
 
 // Get root key for namespaces
-func getRoot(ctx appengine.Context) *aeds.Key {
+func getRoot(ctx context.Context) *aeds.Key {
 	return aeds.NewKey(ctx, "namespace", "", consts.RootKey, nil)
 }
 
 // Query for namespace by Name
-func queryNamespace(ctx appengine.Context, filter string, value interface{}) (*Namespace, bool, error) {
+func queryNamespace(ctx context.Context, filter string, value interface{}) (*Namespace, bool, error) {
 	ns := new(Namespace)
 
 	// Get namespaced context for namespaces
@@ -89,7 +89,7 @@ func queryNamespace(ctx appengine.Context, filter string, value interface{}) (*N
 }
 
 // Get IntID for namespace
-func getId(ctx appengine.Context, name string) int64 {
+func getId(ctx context.Context, name string) int64 {
 	if name == consts.Namespace {
 		return 0
 	}
@@ -109,7 +109,7 @@ func getId(ctx appengine.Context, name string) int64 {
 }
 
 // Get namespace from organization using it's IntID
-func getName(ctx appengine.Context, id int64) (string, error) {
+func getName(ctx context.Context, id int64) (string, error) {
 	if id == 0 {
 		return consts.Namespace, nil
 	}
@@ -130,7 +130,7 @@ func getName(ctx appengine.Context, id int64) (string, error) {
 }
 
 // Get namespaced context
-func getContext(ctx appengine.Context, namespace string) appengine.Context {
+func getContext(ctx context.Context, namespace string) context.Context {
 	if namespace == "" {
 		return ctx
 	}
@@ -144,12 +144,12 @@ func getContext(ctx appengine.Context, namespace string) appengine.Context {
 }
 
 // Get namespaced context for namespaces
-func getNamespaceContext(ctx appengine.Context) appengine.Context {
+func getNamespaceContext(ctx context.Context) context.Context {
 	return getContext(ctx, consts.Namespace)
 }
 
 // Encodes organzation namespace into it's IntID
-func encodeNamespace(ctx appengine.Context, namespace string) int {
+func encodeNamespace(ctx context.Context, namespace string) int {
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -166,7 +166,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 	return int(id)
 }
 
-func decodeNamespace(ctx appengine.Context, encoded int) (ns string, err error) {
+func decodeNamespace(ctx context.Context, encoded int) (ns string, err error) {
 	// Default namespace
 	if encoded == 0 {
 		return "", nil
@@ -186,7 +186,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) (ns string, err error) 
 	return ns, nil
 }
 
-func EncodeKey(ctx appengine.Context, key iface.Key) string {
+func EncodeKey(ctx context.Context, key iface.Key) string {
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -225,7 +225,7 @@ func EncodeKey(ctx appengine.Context, key iface.Key) string {
 	return encoded
 }
 
-func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
+func DecodeKey(ctx context.Context, encoded string) (key *aeds.Key, err error) {
 	ids, err := Decode(encoded)
 	if err != nil {
 		return nil, err
@@ -268,7 +268,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	return key, nil
 }
 
-func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
+func MustDecodeKey(ctx context.Context, encoded string) (key *aeds.Key) {
 	key, err := DecodeKey(ctx, encoded)
 	if err != nil {
 		panic(err)
@@ -277,7 +277,7 @@ func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
 	return key
 }
 
-func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
+func KeyExists(ctx context.Context, encoded string) (bool, error) {
 	key, err := DecodeKey(ctx, encoded)
 	if err != nil {
 		return false, err

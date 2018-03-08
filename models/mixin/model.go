@@ -1,17 +1,18 @@
 package mixin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
-	"appengine"
-	aeds "appengine/datastore"
+	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/util/cache"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/timeutil"
@@ -31,8 +32,8 @@ type Entity interface {
 	Init(db *datastore.Datastore)
 
 	// Get, Set context/namespace
-	Context() appengine.Context
-	SetContext(ctx interface{})
+	Context() context.Context
+	SetContext(ctx context.Context)
 	SetNamespace(namespace string)
 	Namespace() string
 
@@ -74,7 +75,7 @@ type Entity interface {
 
 	// Datastore
 	Datastore() *datastore.Datastore
-	RunInTransaction(fn func() error, opts ...datastore.TransactionOptions) error
+	RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error
 
 	// Query
 	Query() *ModelQuery
@@ -124,8 +125,8 @@ func (m *Model) Init(db *datastore.Datastore, entity Kind) {
 	m.Entity = entity
 }
 
-// Get appengine.Context
-func (m *Model) Context() appengine.Context {
+// Get context.Context
+func (m *Model) Context() context.Context {
 	return m.Db.Context
 }
 
@@ -134,8 +135,8 @@ func (m *Model) SetEntity(entity interface{}) {
 	m.Entity = entity.(Kind)
 }
 
-// Set appengine.Context
-func (m *Model) SetContext(ctx interface{}) {
+// Set context.Context
+func (m *Model) SetContext(ctx context.Context) {
 	if m.Db == nil {
 		m.Db = datastore.New(ctx)
 	} else {
@@ -143,7 +144,7 @@ func (m *Model) SetContext(ctx interface{}) {
 	}
 }
 
-// Set appengine.Context namespace
+// Set context.Context namespace
 func (m *Model) SetNamespace(namespace string) {
 	ctx, err := appengine.Namespace(m.Context(), namespace)
 	if err != nil {
@@ -550,10 +551,10 @@ func (m *Model) Datastore() *datastore.Datastore {
 }
 
 // Run in transaction using model's current context
-func (m *Model) RunInTransaction(fn func() error, opts ...datastore.TransactionOptions) error {
+func (m *Model) RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error {
 	return datastore.RunInTransaction(m.Context(), func(db *datastore.Datastore) error {
 		return fn()
-	}, opts...)
+	}, opts)
 }
 
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.

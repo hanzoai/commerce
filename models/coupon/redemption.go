@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"hanzo.io/datastore"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Redemption struct {

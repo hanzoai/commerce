@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

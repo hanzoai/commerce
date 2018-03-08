@@ -6,7 +6,7 @@ import (
 	"hanzo.io/auth"
 	"hanzo.io/config"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/session"
 )
 

@@ -3,12 +3,12 @@ package order
 import (
 	"strings"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Document struct {
