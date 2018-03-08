@@ -3,6 +3,7 @@ version: v1
 
 runtime: go
 api_version: go1.8
+
 threadsafe: true
 
 automatic_scaling:

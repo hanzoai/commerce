@@ -1,0 +1,104 @@
+package tasks
+
+import (
+	"context"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
+
+	"google.golang.org/appengine/urlfetch"
+
+	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
+	"hanzo.io/models/webhook"
+	"hanzo.io/util/json"
+)
+
+type Payload struct {
+	Data        interface{} `json:"data"`
+	AccessToken string      `json:"accessToken"`
+}
+
+type Client struct {
+	ctx    context.Context
+	client *http.Client
+}
+
+func (c *Client) Post(url string, data interface{}) error {
+	req, err := http.NewRequest("POST", url, json.EncodeBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("User-Agent", "Hanzo/1.0")
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	// Read response
+	body, _ := ioutil.ReadAll(res.Body)
+	log.Debug("Webhook endpoint '%s' responded with %v", url, body)
+
+	return nil
+}
+
+func createClient(ctx context.Context) *Client {
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+
+	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context: ctx,
+	}
+
+	return &Client{ctx: ctx, client: client}
+}
+
+// Fire webhooks
+var Emit = delay.Func("webhook-emit", func(ctx context.Context, org string, event string, data interface{}) {
+	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
+
+	db := datastore.New(ctx)
+	db.SetNamespace(org)
+
+	// Fetch any webhooks for this organization
+	hooks := make([]*webhook.Webhook, 0)
+	_, err := webhook.Query(db).GetAll(&hooks)
+	if err != nil {
+		log.Warn("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
+	}
+
+	// No hooks! Bye!
+	if len(hooks) == 0 {
+		log.Debug("No webhooks defined for organization '%s'", org, ctx)
+		return
+	}
+
+	// Create client to send event data
+	client := createClient(ctx)
+
+	for _, hook := range hooks {
+		// Has all events enabled
+		if hook.All {
+			client.Post(hook.Url, Payload{
+				Data:        data,
+				AccessToken: hook.AccessToken,
+			})
+			continue
+		}
+
+		// Check if current event is enabled
+		if enabled, ok := hook.Events[event]; ok && enabled {
+			client.Post(hook.Url, Payload{
+				Data:        data,
+				AccessToken: hook.AccessToken,
+			})
+		}
+	}
+})

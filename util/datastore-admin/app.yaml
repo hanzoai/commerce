@@ -1,9 +1,9 @@
-application: hanzo-staging
-module: datastore-admin
+service: datastore-admin
 version: v1
 
 runtime: python27
 api_version: 1
+
 threadsafe: true
 
 builtins:
