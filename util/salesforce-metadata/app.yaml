@@ -1,7 +1,9 @@
-application: hanzo-production
-version: 1
+service: salesforce-metadata
+version: v1
+
 runtime: python27
 api_version: 1
+
 threadsafe: true
 
 - url: /.*

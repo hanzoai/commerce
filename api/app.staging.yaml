@@ -1,11 +1,10 @@
-application: hanzo-staging
-module: api
+service: api
 version: v1
 
 runtime: go
-api_version: go1
-threadsafe: true
+api_version: go1.8
 
+threadsafe: true
 instance_class: F1
 
 automatic_scaling:
