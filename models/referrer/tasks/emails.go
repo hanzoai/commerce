@@ -1,19 +1,18 @@
 package tasks
 
 import (
+	"context"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
-
-	"appengine"
+	"hanzo.io/delay"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 // Fire webhooks
-var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx appengine.Context, orgId string, templateName string, usrId string) {
+var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx context.Context, orgId string, templateName string, usrId string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	if err := org.GetById(orgId); err != nil {

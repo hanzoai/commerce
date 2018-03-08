@@ -8,11 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/dustin/go-humanize"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/discount"
@@ -27,7 +28,6 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
@@ -205,12 +205,12 @@ func (o *Order) Validator() *val.Validator {
 	return val.New()
 }
 
-func (o *Order) Load(c <-chan aeds.Property) (err error) {
+func (o *Order) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+	if err = datastore.LoadStruct(o, ps); err != nil {
 		return err
 	}
 
@@ -243,7 +243,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (o *Order) Save(c chan<- aeds.Property) (err error) {
+func (o *Order) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
 	o.Items_ = string(json.EncodeBytes(o.Items))
@@ -251,7 +251,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	o.Number = o.NumberFromId()
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
+	return datastore.SaveStruct(o)
 }
 
 func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {

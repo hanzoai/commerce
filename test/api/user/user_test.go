@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

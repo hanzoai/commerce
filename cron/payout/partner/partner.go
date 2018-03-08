@@ -1,25 +1,26 @@
 package partner
 
 import (
+	"context"
 	"time"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/cron/payout"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/partner"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/delay"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue
 var transferFee = payout.TransferFee.Queue("transfer-partner-fee")
 
 // Create transfers for all un-transferred fees for associated partner
-var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Context, namespace, partnerId string, cutoff time.Time) {
+var transferFees = delay.Func("transfer-partner-fees", func(ctx context.Context, namespace, partnerId string, cutoff time.Time) {
 	db := datastore.New(ctx)
 
 	// Fetch partner
@@ -59,7 +60,7 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Contex
 })
 
 // Payout partners
-func Payout(ctx appengine.Context) error {
+func Payout(ctx context.Context) error {
 	db := datastore.New(ctx)
 
 	log.Debug("Fetching all organizations", ctx)

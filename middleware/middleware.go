@@ -1,7 +1,9 @@
 package middleware
 
 import (
-	"appengine"
+	"context"
+
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,6 +37,6 @@ func LiveReload() gin.HandlerFunc {
 	}
 }
 
-func GetAppEngine(c *gin.Context) appengine.Context {
-	return c.MustGet("appengine").(appengine.Context)
+func GetAppEngine(c *gin.Context) context.Context {
+	return c.MustGet("appengine").(context.Context)
 }

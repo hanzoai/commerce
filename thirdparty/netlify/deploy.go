@@ -6,7 +6,7 @@ import (
 
 	"github.com/netlify/netlify-go"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func (c *Client) CreateDeploy(ste *Site, digest *Digest, draft bool) (*Deploy, error) {

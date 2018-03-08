@@ -1,15 +1,13 @@
 package copy
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 
 	. "hanzo.io/models/ads"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 
@@ -44,20 +42,20 @@ func (m Copy) Fork() *Copy {
 	return m2
 }
 
-func (m *Copy) Load(c <-chan aeds.Property) (err error) {
+func (m *Copy) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
 	// Load supported properties
-	return IgnoreFieldMismatch(aeds.LoadStruct(m, c))
+	return datastore.LoadStruct(m, ps)
 }
 
-func (m *Copy) Save(c chan<- aeds.Property) (err error) {
+func (m *Copy) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	m.IsParent = m.ParentCopyId != ""
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(m, c))
+	return datastore.SaveStruct(m)
 }
 
 func (m Copy) GetParentCopyId() string {

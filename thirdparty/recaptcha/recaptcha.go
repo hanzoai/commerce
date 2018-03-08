@@ -1,15 +1,15 @@
 package recaptcha
 
 import (
+	"context"
 	"io/ioutil"
 	"net/url"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
+	"hanzo.io/log"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 type RecaptchaResponse struct {
@@ -19,7 +19,7 @@ type RecaptchaResponse struct {
 	ErrorCodes  []string  `json:"error-codes"`
 }
 
-func Challenge(ctx appengine.Context, privateKey, response string) bool {
+func Challenge(ctx context.Context, privateKey, response string) bool {
 	// log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
 	client := urlfetch.Client(ctx)
 	r := RecaptchaResponse{}

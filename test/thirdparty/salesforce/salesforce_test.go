@@ -1,13 +1,12 @@
 package test
 
 import (
-	"appengine"
-
-	"github.com/zeekay/aetest"
+	"context"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/salesforce"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -120,12 +119,12 @@ func (a *MockSalesforceClient) GetStatusCode() int {
 	return 204
 }
 
-func (a *MockSalesforceClient) GetContext() appengine.Context {
+func (a *MockSalesforceClient) GetContext() context.Context {
 	return ctx
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	// user   models.User
 	params *ClientParams
 )
@@ -166,8 +165,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("User (de)serialization", func() {

@@ -3,8 +3,8 @@ package search
 import (
 	"fmt"
 
-	aeds "appengine/datastore"
-	"appengine/search"
+	aeds "google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 

@@ -1,21 +1,22 @@
 package default_
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
-	"hanzo.io/util/exec"
+	// "hanzo.io/util/exec"
 	hashid "hanzo.io/util/hashid/http"
-	"hanzo.io/util/log"
 	"hanzo.io/util/router"
 	"hanzo.io/util/task"
 	"hanzo.io/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
-	_ "appengine/remote_api"
+	_ "google.golang.org/appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"
@@ -55,8 +56,16 @@ func Init() {
 		log.Panic("I think I heard, I think I heard a shot.")
 	})
 
+	// Setup routes for delay funcs
+	router.POST(delay.Path, func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		delay.RunFunc(ctx, c.Writer, c.Request)
+	})
+
 	// Setup routes for tasks
 	task.SetupRoutes(router)
+
+	// Setup hashid routes
 	hashid.SetupRoutes(router)
 
 	// Development-only routes below
@@ -69,15 +78,15 @@ func Init() {
 	router.GET("/assets/*file", middleware.Static("assets/"))
 
 	// Warmup: automatically install fixtures, etc.
-	router.GET("/_ah/warmup", func(c *gin.Context) {
-		// Automatically load fixtures
-		if config.AutoLoadFixtures {
-			task.Run(c, "fixtures-all")
-		}
+	// router.GET("/_ah/warmup", func(c *gin.Context) {
+	// 	// Automatically load fixtures
+	// 	if config.AutoLoadFixtures {
+	// 		task.Run(c, "fixtures-all")
+	// 	}
 
-		// Recompile static assets
-		if config.AutoCompileAssets {
-			exec.Run("make assets")
-		}
-	})
+	// 	// Recompile static assets
+	// 	if config.AutoCompileAssets {
+	// 		exec.Run("make assets")
+	// 	}
+	// })
 }

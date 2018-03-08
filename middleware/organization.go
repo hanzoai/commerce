@@ -1,14 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
-
-	"appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
 	token "hanzo.io/util/oldjwt"
 	"hanzo.io/util/session"
 )
@@ -69,7 +68,7 @@ func GetToken(c *gin.Context) *token.Token {
 	return c.MustGet("token").(*token.Token)
 }
 
-func GetNamespace(c *gin.Context) appengine.Context {
+func GetNamespace(c *gin.Context) context.Context {
 	ctx := GetAppEngine(c)
 	return GetOrganization(c).Namespaced(ctx)
 }

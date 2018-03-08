@@ -5,7 +5,7 @@ import (
 
 	ds "hanzo.io/datastore"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("mark-nil-payments-for-deletion",

@@ -1,16 +1,16 @@
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.48
-sdk_path		= $(pwd)/.sdk
+sdk				= go_appengine_sdk_$(platform)-1.9.62
+sdk_path		= $(pwd)/sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date	= $(shell date +"%Y-%m-%d")
 
-appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
-bulkloader.py   = $(sdk_path)/bulkloader.py
+appcfg.py 		= python2 $(sdk_path)/appcfg.py --skip_sdk_update_check
+bulkloader.py   = python2 $(sdk_path)/bulkloader.py
 goapp			= $(sdk_path)/goapp
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
@@ -19,24 +19,17 @@ ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= hanzo.io/analytics \
-		  hanzo.io/api \
-		  hanzo.io/dash
+modules	= hanzo.io/config \
+	      hanzo.io/api
 
 gae_development = config/development \
-				  analytics/app.dev.yaml \
-				  api/app.dev.yaml \
-				  dash/app.dev.yaml
+				  api/app.dev.yaml
 
 gae_staging = config/staging \
-			  analytics/app.staging.yaml \
-			  api/app.staging.yaml \
-			  dash/app.staging.yaml
+			  api/app.staging.yaml
 
 gae_production = config/production \
-				 analytics \
-				 api \
-				 dash
+				 api
 
 gae_sandbox = config/sandbox \
 			  api/app.sandbox.yaml
@@ -82,16 +75,19 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/theme.css \
 					static/css/dash.css
 
-dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --dev_appserver_log_level=error
+dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
+											 --dev_appserver_log_level=debug \
 											 --datastore_path=$(sdk_path)/.datastore.bin \
+    										 --enable_task_running=true \
+											 --admin_port=8000 \
+											 --port=8080
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
-			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
@@ -100,7 +96,7 @@ ifeq ($(os), linux)
 	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
-			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
@@ -114,10 +110,13 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	test_verbose = -v -- -test.v
+	test_verbose = --v --progress -- -test.v=true
 else
 	test_verbose =
 endif
+
+project_env = development
+project_id  = None
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
@@ -144,7 +143,7 @@ datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/
 test_target = -r=true
 test_focus := $(focus)
 ifdef test_focus
-	test_target=test/$(focus)
+	test_target=$(focus)
 endif
 
 test_batch := $(batch)
@@ -191,6 +190,10 @@ compile-css-min:
 build: deps assets
 	$(goapp) build $(modules)
 
+# CLEAN
+clean:
+	rm -rf sdk
+
 # DEPS
 deps: deps-assets deps-go
 
@@ -199,30 +202,30 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/hanzo.io
-	$(gpm) install
+deps-go: sdk sdk/go sdk/gpm sdk/gopath/bin/ginkgo sdk/gopath/src/hanzo.io update-env
+	$(gpm) get
 
-.sdk:
+sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
 	unzip $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
+	sed -i.bak 's/15/120/g' sdk/goroot-1.8/src/appengine/aetest/instance.go
 	$(sdk_install_extra)
 
-.sdk/go:
-	echo '#!/usr/bin/env bash' > $(sdk_path)/go
-	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go
+sdk/go:
+	printf '#!/usr/bin/env bash\n$(sdk_path)/goapp $$@' > $(sdk_path)/go
 	chmod +x $(sdk_path)/go
 
-.sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > .sdk/gpm
-	chmod +x .sdk/gpm
+sdk/gpm:
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > sdk/gpm
+	chmod +x sdk/gpm
 
-.sdk/gopath/bin/ginkgo:
-	$(gpm) install
+sdk/gopath/bin/ginkgo:
+	$(goapp) get github.com/onsi/ginkgo
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
-.sdk/gopath/src/hanzo.io:
+sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/hanzo.io
@@ -235,9 +238,6 @@ install-deps:
 	$(goapp) install $(deps)
 
 # DEV SERVER
-update-env:
-	@echo 'package config\n\nvar Env = "development"' > config/env.go
-
 serve: assets update-env
 	$(bebop) &
 	$(dev_appserver) $(gae_development)
@@ -256,8 +256,8 @@ serve-no-reload: assets update-env
 # GOLANG TOOLS
 tools:
 	@echo If you have issues building:
-	@echo "  rm .sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
-	@echo "  rm .sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
+	@echo "  rm sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
+	@echo "  rm sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
 	@echo
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
@@ -265,17 +265,17 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
-test: install
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
+test: update-env-test
+	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
-test-watch:
-	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
+test-watch: update-env-test
+	$(ginkgo) watch -r=true --compilers=2 --failFast --trace $(test_verbose)
 
-bench: install
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
+bench: update-env-test
+	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
-test-ci:
-	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
+test-ci: update-env-test
+	$(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
 
 coverage:
 	# $(gover) test/ coverage.out
@@ -289,44 +289,38 @@ coverage:
 
 auth:
 	gcloud auth login
-	appcfg.py list_versions config/staging
+	$(appcfg.py) list_versions config/staging
 
 deploy: assets-min deploy-app
 
 deploy-debug: assets deploy-app
 
-deploy-app: rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-app: update-env rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-default: rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-default: update-env rollback
 	$(appcfg.py) update config/production
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-dash: assets-min rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-dash: update-env assets-min rollback
 	$(appcfg.py) update dash
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
-deploy-api: assets-min rollback
-	# Set env for deploy
-	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
-
+deploy-api: update-env assets-min rollback
 	$(appcfg.py) update api
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 update-dispatch:
 	$(appcfg.py) update_dispatch config/$(project_env)
+
+update-env:
+	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
+
+update-env-test:
+	@printf 'package config\n\nvar Env = "test"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
@@ -378,7 +372,8 @@ datastore-replicate:
 	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
-.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
-	datastore-import datastore-export datastore-config deploy deploy-staging \
-	deploy-production deps deps-assets deps-go live-reload serve serve-clear-datastore \
-	serve-public test test-integration test-watch tools
+.PHONY: all auth bench build compile-js compile-js-min compile-css \
+	compile-css-min datastore-import datastore-export datastore-config deploy \
+	deploy-staging deploy-production deps deps-assets deps-go live-reload \
+	serve serve-clear-datastore serve-public test test-integration test-watch \
+	tools

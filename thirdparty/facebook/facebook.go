@@ -12,15 +12,15 @@ import (
 	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
 
-	"appengine"
-	"appengine/memcache"
-	"appengine/urlfetch"
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/memcache"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
 	"hanzo.io/middleware"
 	// "hanzo.io/models"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var appId = config.Facebook.AppId

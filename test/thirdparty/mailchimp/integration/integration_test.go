@@ -3,14 +3,13 @@ package mailchimp_integration_test
 import (
 	"testing"
 
-	"github.com/zeekay/aetest"
-
+	"hanzo.io/log"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/log"
+	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -21,13 +20,13 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	ml  *mailinglist.MailingList
 )
 
 var _ = BeforeSuite(func() {
 	var err error
-	ctx, err = aetest.NewContext(nil)
+	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mock gin context that we can use with fixtures
@@ -36,8 +35,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).NotTo(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("ListSubscribe", func() {

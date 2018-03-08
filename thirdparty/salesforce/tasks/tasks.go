@@ -1,10 +1,11 @@
 package tasks
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-	"appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/parallel"
@@ -22,7 +23,7 @@ import (
 
 // Deferred Tasks
 // UpsertUserTask upserts a contact into salesforce
-var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign *campaign.Campaign, user *user.User) {
+var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c context.Context, campaign *campaign.Campaign, user *user.User) {
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	log.Info("Try to synchronize with salesforce", c)
 
@@ -35,7 +36,7 @@ var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Con
 })
 
 // UpsertOrderTask upserts users into salesforce
-var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign *campaign.Campaign, order *order.Order) {
+var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c context.Context, campaign *campaign.Campaign, order *order.Order) {
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	log.Info("Try to synchronize with salesforce", c)
 
@@ -190,7 +191,7 @@ func ImportProductVariant(c *gin.Context) {
 }
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
-var PullUpdatedUsersTask = delay.Func("SalesforcePullUpdatedUsersTask", func(c appengine.Context) {
+var PullUpdatedUsersTask = delay.Func("SalesforcePullUpdatedUsersTask", func(c context.Context) {
 	// db := datastore.New(c)
 	// campaign := new(models.Campaign)
 
@@ -226,7 +227,7 @@ var PullUpdatedUsersTask = delay.Func("SalesforcePullUpdatedUsersTask", func(c a
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Orders
-var PullUpdatedOrdersTask = delay.Func("SalesforcePullUpdatedOrderTask", func(c appengine.Context) {
+var PullUpdatedOrdersTask = delay.Func("SalesforcePullUpdatedOrderTask", func(c context.Context) {
 	// db := datastore.New(c)
 	// campaign := new(models.Campaign)
 
@@ -262,7 +263,7 @@ var PullUpdatedOrdersTask = delay.Func("SalesforcePullUpdatedOrderTask", func(c 
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
-var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpTask", func(c appengine.Context) {
+var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpTask", func(c context.Context) {
 	// db := datastore.New(c)
 	// campaign := new(models.Campaign)
 
@@ -300,12 +301,12 @@ var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpT
 // Wrappers to deferred function calls for type sanity
 // CallUpsertUserTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
-func CallUpsertUserTask(c appengine.Context, campaign *campaign.Campaign, user *user.User) {
+func CallUpsertUserTask(c context.Context, campaign *campaign.Campaign, user *user.User) {
 	UpsertUserTask.Call(c, campaign, user)
 }
 
 // CallUpsertOrderTask calls the task queue delay function with the passed in params
-func CallUpsertOrderTask(c appengine.Context, campaign *campaign.Campaign, order *order.Order) {
+func CallUpsertOrderTask(c context.Context, campaign *campaign.Campaign, order *order.Order) {
 	UpsertOrderTask.Call(c, campaign, order)
 }
 

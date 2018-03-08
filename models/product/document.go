@@ -1,7 +1,7 @@
 package product
 
 import (
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"

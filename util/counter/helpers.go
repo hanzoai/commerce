@@ -1,21 +1,20 @@
 package counter
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/product"
 	"hanzo.io/models/return"
-	"hanzo.io/util/log"
 )
 
 var incrementSep = "."
 
-func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, t time.Time) error {
+func IncrementByAll(ctx context.Context, tag, storeId, geo string, value int, t time.Time) error {
 	t1 := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 	t2 := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 	baseKey := tag + incrementSep
@@ -95,15 +94,15 @@ func IncrementByAll(ctx appengine.Context, tag, storeId, geo string, value int, 
 	return nil
 }
 
-func IncrUser(ctx appengine.Context, t time.Time) error {
+func IncrUser(ctx context.Context, t time.Time) error {
 	return IncrementByAll(ctx, "user.count", "", "", 1, t)
 }
 
-func IncrSubscriber(ctx appengine.Context, t time.Time) error {
+func IncrSubscriber(ctx context.Context, t time.Time) error {
 	return IncrementByAll(ctx, "subscriber.count", "", "", 1, t)
 }
 
-func IncrOrder(ctx appengine.Context, ord *order.Order) error {
+func IncrOrder(ctx context.Context, ord *order.Order) error {
 	if ord.Test {
 		return nil
 	}
@@ -129,7 +128,7 @@ func IncrOrder(ctx appengine.Context, ord *order.Order) error {
 	return nil
 }
 
-func IncrProduct(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
+func IncrProduct(ctx context.Context, prod *product.Product, ord *order.Order) error {
 	if ord.Test {
 		return nil
 	}
@@ -150,7 +149,7 @@ func IncrProduct(ctx appengine.Context, prod *product.Product, ord *order.Order)
 	return nil
 }
 
-func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time.Time) error {
+func IncrOrderRefund(ctx context.Context, ord *order.Order, refund int, t time.Time) error {
 	if ord.Test {
 		return nil
 	}
@@ -182,7 +181,7 @@ func IncrOrderRefund(ctx appengine.Context, ord *order.Order, refund int, t time
 	return nil
 }
 
-func IncrOrderShip(ctx appengine.Context, ord *order.Order, t time.Time) error {
+func IncrOrderShip(ctx context.Context, ord *order.Order, t time.Time) error {
 	if ord.Test {
 		return nil
 	}
@@ -211,7 +210,7 @@ func IncrOrderShip(ctx appengine.Context, ord *order.Order, t time.Time) error {
 	return nil
 }
 
-func IncrProductShip(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
+func IncrProductShip(ctx context.Context, prod *product.Product, ord *order.Order) error {
 	if ord.Test {
 		return nil
 	}
@@ -222,7 +221,7 @@ func IncrProductShip(ctx appengine.Context, prod *product.Product, ord *order.Or
 	return nil
 }
 
-func IncrProductRefund(ctx appengine.Context, prod *product.Product, ord *order.Order) error {
+func IncrProductRefund(ctx context.Context, prod *product.Product, ord *order.Order) error {
 	if ord.Test {
 		return nil
 	}
@@ -233,7 +232,7 @@ func IncrProductRefund(ctx appengine.Context, prod *product.Product, ord *order.
 	return nil
 }
 
-func IncrOrderReturn(ctx appengine.Context, items []lineitem.LineItem, rtn *return_.Return) error {
+func IncrOrderReturn(ctx context.Context, items []lineitem.LineItem, rtn *return_.Return) error {
 	ord := order.New(rtn.Db)
 	if err := ord.GetById(rtn.OrderId); err != nil {
 		return err
@@ -260,7 +259,7 @@ func IncrOrderReturn(ctx appengine.Context, items []lineitem.LineItem, rtn *retu
 	return nil
 }
 
-func IncrProductReturn(ctx appengine.Context, prod *product.Product, ord *order.Order, rtn *return_.Return) error {
+func IncrProductReturn(ctx context.Context, prod *product.Product, ord *order.Order, rtn *return_.Return) error {
 	if ord.Test {
 		return nil
 	}

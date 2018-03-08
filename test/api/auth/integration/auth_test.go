@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/json"
 	"hanzo.io/util/jwt"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 

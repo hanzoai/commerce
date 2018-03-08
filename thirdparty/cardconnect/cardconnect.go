@@ -2,6 +2,7 @@ package cardconnect
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -9,11 +10,11 @@ import (
 	"net/http"
 
 	// "hanzo.io/models"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 )
 
 var baseUrl = "https://fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
@@ -83,7 +84,7 @@ type AuthorizationRes struct { // {
 	Token    string `json:"token"`    // "token":    "9419786452781111",
 } // }
 
-func Authorize(ctx appengine.Context, order *order.Order, user *user.User) (ares AuthorizationRes, err error) {
+func Authorize(ctx context.Context, order *order.Order, user *user.User) (ares AuthorizationRes, err error) {
 	// Convert models.LineItem to our CardConnect specialized LineItem that
 	// will serialize properly.
 	items := make([]LineItem, len(order.Items))
@@ -124,7 +125,7 @@ func Authorize(ctx appengine.Context, order *order.Order, user *user.User) (ares
 
 	jsonreq, _ := json.Marshal(areq)
 	reqbuf := bytes.NewBuffer(jsonreq)
-	ctx.Debugf("%#v", areq)
+	log.Debug("%#v", areq)
 
 	req, err := http.NewRequest("PUT", baseUrl+"/auth", reqbuf)
 	req.Header.Add("Authorization", "Basic "+authCode)
@@ -144,7 +145,7 @@ func Authorize(ctx appengine.Context, order *order.Order, user *user.User) (ares
 		defer res.Body.Close()
 		body, _ := ioutil.ReadAll(res.Body)
 		json.Unmarshal(body, &ares)
-		ctx.Errorf("%v %v", res.StatusCode, ares)
+		log.Error("%v %v", res.StatusCode, ares)
 		return ares, errors.New("Invalid response from CardConnect.")
 	}
 }

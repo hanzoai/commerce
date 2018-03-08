@@ -6,7 +6,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func List(c *gin.Context) {

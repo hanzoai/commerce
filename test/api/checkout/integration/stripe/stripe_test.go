@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"hanzo.io/log"
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
@@ -14,7 +15,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/test/api/checkout/integration/requests"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

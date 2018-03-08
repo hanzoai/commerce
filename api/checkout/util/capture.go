@@ -1,8 +1,9 @@
 package util
 
 import (
-	"appengine"
+	"context"
 
+	"hanzo.io/log"
 	"hanzo.io/models/cart"
 	"hanzo.io/models/multi"
 	"hanzo.io/models/order"
@@ -16,12 +17,11 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/models"
 )
 
-func UpdateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
+func UpdateOrder(ctx context.Context, ord *order.Order, payments []*payment.Payment) {
 	totalPaid := 0
 
 	for _, pay := range payments {
@@ -36,7 +36,7 @@ func UpdateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Pa
 	ord.MustUpdate()
 }
 
-func UpdateOrderPayments(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
+func UpdateOrderPayments(ctx context.Context, ord *order.Order, payments []*payment.Payment) error {
 	vals := []interface{}{}
 
 	for _, pay := range payments {
@@ -46,7 +46,7 @@ func UpdateOrderPayments(ctx appengine.Context, ord *order.Order, payments []*pa
 	return multi.Update(vals)
 }
 
-func SaveRedemptions(ctx appengine.Context, ord *order.Order) {
+func SaveRedemptions(ctx context.Context, ord *order.Order) {
 	// Save coupon redemptions
 	ord.GetCoupons()
 	if len(ord.Coupons) > 0 {
@@ -96,7 +96,7 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 	}
 }
 
-func UpdateCart(ctx appengine.Context, ord *order.Order) {
+func UpdateCart(ctx context.Context, ord *order.Order) {
 	// Update cart
 	car := cart.New(ord.Db)
 
@@ -112,7 +112,7 @@ func UpdateCart(ctx appengine.Context, ord *order.Order) {
 	}
 }
 
-func UpdateStats(ctx appengine.Context, org *organization.Organization, ord *order.Order, payments []*payment.Payment) {
+func UpdateStats(ctx context.Context, org *organization.Organization, ord *order.Order, payments []*payment.Payment) {
 	log.Debug("Incrementing Counters? %v", ord.Test, ctx)
 	if !ord.Test {
 		log.Debug("Incrementing Counters", ctx)
@@ -145,7 +145,7 @@ func UpdateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 	}
 }
 
-func UpdateMailchimp(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
+func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
 		// Create new mailchimp client

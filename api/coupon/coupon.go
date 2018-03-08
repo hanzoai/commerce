@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/coupon"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"

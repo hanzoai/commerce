@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
 	"hanzo.io/util/session"
 )
 

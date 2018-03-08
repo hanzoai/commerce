@@ -8,7 +8,7 @@ import (
 
 	"hanzo.io/util/bit"
 	"hanzo.io/util/jwt"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 

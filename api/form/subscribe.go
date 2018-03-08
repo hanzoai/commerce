@@ -15,7 +15,7 @@ import (
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	mailchimp "hanzo.io/thirdparty/mailchimp/tasks"
 )

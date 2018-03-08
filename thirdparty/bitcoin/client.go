@@ -1,18 +1,20 @@
 package bitcoin
 
 import (
-	"appengine"
-	"appengine/urlfetch"
 	"bytes"
+	"context"
 	"encoding/hex"
 	ej "encoding/json"
-
 	"errors"
 	"fmt"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
+
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/rand"
 	"net/http"
 	"time"
@@ -22,7 +24,7 @@ var JsonRpcVersion = "1.0"
 var JsonRpcMessage = `{"jsonrpc":"%s","id":%v,"method":"%s","params":%s}`
 
 type BitcoinClient struct {
-	ctx        appengine.Context
+	ctx        context.Context
 	httpClient *http.Client
 	host       string
 	IsTest     bool
@@ -57,11 +59,13 @@ var IdMismatch = errors.New("Ids do not match!")
 // details.  The notification handlers parameter may be nil if you are not
 // interested in receiving notifications and will be ignored if the
 // configuration is set to run in HTTP POST mode.
-func New(ctx appengine.Context, host, username, password string) BitcoinClient {
+func New(ctx context.Context, host, username, password string) BitcoinClient {
+	// Update timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		Deadline:                      time.Duration(55) * time.Second,
+		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 

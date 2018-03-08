@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/user"
 	// "hanzo.io/models/wallet"
 	// "hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 

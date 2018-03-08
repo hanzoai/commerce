@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
