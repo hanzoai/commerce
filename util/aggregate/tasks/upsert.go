@@ -1,15 +1,15 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine"
-	"google.golang.org/appengine/delay"
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/aggregate"
-	"hanzo.io/util/log"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
@@ -22,8 +22,7 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, na
 	}
 
 	db := datastore.New(nsctx)
-
-	if err := db.RunInTransaction(func(ctx context.Context) error {
+	err = db.RunInTransaction(func(db *datastore.Datastore) error {
 		agg := aggregate.New(db)
 		aggregate.Init(agg, name, t, freq)
 
@@ -56,7 +55,9 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, na
 		}
 
 		return nil
-	}, nil); err != nil {
+	}, nil)
+
+	if err != nil {
 		// Poor man's retry
 		panic(err)
 	}

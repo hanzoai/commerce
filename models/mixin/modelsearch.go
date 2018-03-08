@@ -3,16 +3,20 @@ package mixin
 import (
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
-// Interface representing a searchable document
+var DefaultIndex = "everything"
+
+type Document interface {
+	Id() string
+}
+
 type Searchable interface {
 	Document() Document
 }
 
 func (m Model) PutDocument() error {
-	log.Debug("Updating search document for: %v", m)
 	hook, ok := m.Entity.(Searchable)
 	if !ok {
 		// Not a searchable model, do nothing
@@ -20,7 +24,7 @@ func (m Model) PutDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open("all")
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err
@@ -28,7 +32,7 @@ func (m Model) PutDocument() error {
 
 		_, err = index.Put(m.Db.Context, m.Id(), doc)
 		if err != nil {
-			log.Error("Could not save search document for model with id %v: %v", m.Id(), err, m.Db.Context)
+			log.Error("Could not save search document for model with id %v\nError: %s", m.Id(), err, m.Db.Context)
 			return err
 		}
 	}
@@ -44,7 +48,7 @@ func (m Model) DeleteDocument() error {
 	}
 
 	if doc := hook.Document(); doc != nil {
-		index, err := search.Open("all")
+		index, err := search.Open(DefaultIndex)
 		if err != nil {
 			log.Error("Failed to open search index for model with id %v", m.Id(), m.Db.Context)
 			return err

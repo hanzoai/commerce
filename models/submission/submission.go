@@ -1,10 +1,13 @@
 package submission
 
 import (
+	aeds "google.golang.org/appengine/datastore"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
@@ -21,8 +24,33 @@ type Submission struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Submission) Defaults() {
-	s.Metadata = make(Map)
+func (s *Submission) Load(ps []aeds.Property) (err error) {
+	// Ensure we're initialized
+	s.Defaults()
+
+	// Load supported properties
+	if err = datastore.LoadStruct(s, ps); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(s.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(s.Metadata_), &s.Metadata)
+	}
+
+	return err
+}
+
+func (s *Submission) Save() (ps []aeds.Property, err error) {
+	// Serialize unsupported properties
+	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
+
+	// Save properties
+	return datastore.SaveStruct(s)
+}
+
+func (s *Submission) Validator() *val.Validator {
+	return val.New()
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *Submission {

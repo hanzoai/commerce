@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
-	"hanzo.io/util/log"
 )
 
 func New(moduleName string) *gin.RouterGroup {
@@ -42,6 +42,10 @@ func New(moduleName string) *gin.RouterGroup {
 	}
 
 	http.Handle(prefix, router)
+
+	router.GET("/_ah/warmup", Ok)
+	router.GET("/_ah/start", Ok)
+	router.GET("/_ah/stop", Ok)
 
 	return router.Group(prefix)
 }

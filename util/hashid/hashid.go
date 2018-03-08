@@ -1,10 +1,10 @@
 package hashid
 
 import (
+	"context"
 	"errors"
 
 	"github.com/speps/go-hashids"
-	"golang.org/x/net/context"
 
 	"hanzo.io/config"
 )
@@ -19,7 +19,10 @@ func init() {
 }
 
 func Encode(numbers ...int) string {
-	h := hashids.NewWithData(hd)
+	h, err := hashids.NewWithData(hd)
+	if err != nil {
+		panic(err)
+	}
 	hashid, err := h.Encode(numbers)
 	if err != nil {
 		panic(err)
@@ -27,13 +30,20 @@ func Encode(numbers ...int) string {
 	return hashid
 }
 
-func Decode(hashid string) []int {
-	h := hashids.NewWithData(hd)
-	return h.Decode(hashid)
+func Decode(hashid string) ([]int, error) {
+	h, err := hashids.NewWithData(hd)
+	if err != nil {
+		panic(err)
+	}
+	return h.DecodeWithError(hashid)
 }
 
 func GetNamespace(ctx context.Context, hashid string) (string, error) {
-	ids := Decode(hashid)
+	ids, err := Decode(hashid)
+	if err != nil {
+		return "", err
+	}
+
 	// ids should never be empty...
 	idsLen := len(ids)
 	if idsLen <= 0 {
@@ -41,5 +51,9 @@ func GetNamespace(ctx context.Context, hashid string) (string, error) {
 	}
 
 	id := ids[idsLen-1]
-	return decodeNamespace(ctx, id), nil
+	ns, err := decodeNamespace(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return ns, nil
 }

@@ -2,109 +2,321 @@ package order
 
 import (
 	"strings"
-	"time"
 
+	"google.golang.org/appengine/search"
+
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
+	"hanzo.io/models/types/currency"
 )
 
 type Document struct {
-	Id_    string
-	UserId string
-	Number float64
+	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
-	ProductIds string
+	// Special Kind Option
+	Kind search.Atom `search:",facet"`
 
+	Id_        string
+	Number     float64
+	UserId     string
+	StoreId    string
+	CampaignId string
+	CartId     string
+	ReferrerId string
+
+	ProductNames string
+	ProductIds   string
+	ProductSlugs string
+
+	BillingAddressName        string
 	BillingAddressLine1       string
 	BillingAddressLine2       string
 	BillingAddressCity        string
+	BillingAddressStateCode   string
 	BillingAddressState       string
 	BillingAddressCountryCode string
 	BillingAddressCountry     string
 	BillingAddressPostalCode  string
 
+	ShippingAddressName        string
 	ShippingAddressLine1       string
 	ShippingAddressLine2       string
 	ShippingAddressCity        string
+	ShippingAddressStateCode   string
 	ShippingAddressState       string
 	ShippingAddressCountryCode string
 	ShippingAddressCountry     string
 	ShippingAddressPostalCode  string
 
+	Discount   float64
+	Subtotal   float64
+	Shipping   float64
+	Tax        float64
+	Adjustment float64
+	Total      float64
+	Paid       float64
+	Refunded   float64
+
 	Type string
 
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	Currency    string
-	Total       float64
 	CouponCodes string
-	ReferrerId  string
 
 	Status            string
 	PaymentStatus     string
 	FulfillmentStatus string
-	Preorder          string
-	Confirmed         string
+
+	FulfillmentTracking   string
+	FulfillmentExternalId string
+	FulfillmentService    string
+	FulfillmentCarrier    string
+
+	CreatedAt float64
+	UpdatedAt float64
+
+	// Facets
+	ProductNameOption0 search.Atom `search:"productName,facet"`
+	ProductNameOption1 search.Atom `search:"productName,facet"`
+	ProductNameOption2 search.Atom `search:"productName,facet"`
+	ProductNameOption3 search.Atom `search:"productName,facet"`
+	ProductNameOption4 search.Atom `search:"productName,facet"`
+	ProductNameOption5 search.Atom `search:"productName,facet"`
+	ProductNameOption6 search.Atom `search:"productName,facet"`
+	ProductNameOption7 search.Atom `search:"productName,facet"`
+	ProductNameOption8 search.Atom `search:"productName,facet"`
+	ProductNameOption9 search.Atom `search:"productName,facet"`
+
+	BillingAddressCityOption       search.Atom `search:"billingAddressCity,facet"`
+	BillingAddressStateOption      search.Atom `search:"billingAddressState,facet"`
+	BillingAddressPostalCodeOption search.Atom `search:"billingAddressPostalCode,facet"`
+	BillingAddressCountryOption    search.Atom `search:"billingAddressCountry,facet"`
+
+	ShippingAddressCityOption       search.Atom `search:"shippingAddressCity,facet"`
+	ShippingAddressStateOption      search.Atom `search:"shippingAddressState,facet"`
+	ShippingAddressPostalCodeOption search.Atom `search:"shippingAddressPostalCode,facet"`
+	ShippingAddressCountryOption    search.Atom `search:"shippingAddressCountry,facet"`
+
+	DiscountOption   float64 `search:"discount,facet"`
+	SubtotalOption   float64 `search:"subtotal,facet"`
+	ShippingOption   float64 `search:"shipping,facet"`
+	TaxOption        float64 `search:"tax,facet"`
+	AdjustmentOption float64 `search:"adjustment,facet"`
+	TotalOption      float64 `search:"total,facet"`
+	PaidOption       float64 `search:"paid,facet"`
+	RefundedOption   float64 `search:"refunded,facet"`
+
+	TypeOption        search.Atom `search:"type,facet"`
+	CouponCodeOption0 search.Atom `search:"couponCode,facet"`
+
+	StatusOption            search.Atom `search:"status,facet"`
+	PaymentStatusOption     search.Atom `search:"paymentStatus,facet"`
+	FulfillmentStatusOption search.Atom `search:"fulfillmentStatus,facet"`
+	PreorderOption          search.Atom `search:"preorder,facet"`
+	ConfirmedOption         search.Atom `search:"confirmed,facet"`
+
+	FulfillmentTrackingOption0 search.Atom `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption1 search.Atom `search:"fulfillmentTracking,facet"`
+	FulfillmentTrackingOption2 search.Atom `search:"fulfillmentTracking,facet"`
 }
 
-func (d Document) Id() string {
+func (d *Document) Id() string {
 	return d.Id_
 }
 
-func (o Order) Document() mixin.Document {
-	preorder := "true"
-	if !o.Preorder {
-		preorder = "false"
-	}
-	confirmed := "true"
-	if o.Unconfirmed {
-		confirmed = "false"
-	}
+func (d *Document) Init() {
+	d.SetDocument(d)
+}
 
+func (o Order) Document() mixin.Document {
 	productIds := make([]string, 0)
+	productSlugs := make([]string, 0)
+	productNames := make([]string, 0)
 	for _, item := range o.Items {
 		productIds = append(productIds, item.ProductId)
-		productIds = append(productIds, item.ProductSlug)
+		productSlugs = append(productIds, item.ProductSlug)
+		productNames = append(productIds, item.ProductName)
+	}
+	trackings := make([]string, 0)
+	for _, tracking := range o.Fulfillment.Trackings {
+		trackings = append(trackings, tracking.Number)
 	}
 
-	return &Document{
-		o.Id(),
-		o.UserId,
-		float64(o.NumberFromId()),
+	doc := &Document{}
+	doc.Init()
+	doc.Kind = search.Atom(kind)
+	doc.Id_ = o.Id()
+	doc.Number = float64(o.NumberFromId())
+	doc.UserId = o.UserId
+	doc.StoreId = o.StoreId
+	doc.CampaignId = o.CampaignId
+	doc.CartId = o.CartId
+	doc.ReferrerId = o.ReferrerId
 
-		strings.Join(productIds, " "),
+	doc.ProductNames = strings.Join(productNames, " ")
+	doc.ProductIds = strings.Join(productIds, " ")
+	doc.ProductSlugs = strings.Join(productSlugs, " ")
 
-		o.BillingAddress.Line1,
-		o.BillingAddress.Line2,
-		o.BillingAddress.City,
-		o.BillingAddress.State,
-		o.BillingAddress.Country,
-		country.ByISOCodeISO3166_2[o.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		o.BillingAddress.PostalCode,
+	doc.BillingAddressName = o.BillingAddress.Name
+	doc.BillingAddressLine1 = o.BillingAddress.Line1
+	doc.BillingAddressLine2 = o.BillingAddress.Line2
+	doc.BillingAddressCity = o.BillingAddress.City
+	doc.BillingAddressStateCode = o.BillingAddress.State
+	doc.BillingAddressCountryCode = o.BillingAddress.Country
+	if o.BillingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.BillingAddress.Country); err == nil {
+			doc.BillingAddressCountry = c.Name.Common
 
-		o.ShippingAddress.Line1,
-		o.ShippingAddress.Line2,
-		o.ShippingAddress.City,
-		o.ShippingAddress.State,
-		o.BillingAddress.Country,
-		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
-		o.ShippingAddress.PostalCode,
-
-		o.Type,
-
-		o.CreatedAt,
-		o.UpdatedAt,
-
-		string(o.Currency),
-		float64(o.Total),
-		strings.Join(o.CouponCodes, " "),
-		o.ReferrerId,
-
-		string(o.Status),
-		string(o.PaymentStatus),
-		string(o.FulfillmentStatus),
-		string(preorder),
-		string(confirmed),
+			if o.BillingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.BillingAddress.State); err == nil {
+					doc.BillingAddressState = sd.Name
+				} else {
+					log.Error("BillingAddress State Code '%s' caused an error: %s ", o.BillingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("BillingAddress Country Code '%s' caused an error: %s", o.BillingAddress.Country, err, o.Context())
+		}
 	}
+	doc.BillingAddressPostalCode = o.BillingAddress.PostalCode
+
+	doc.ShippingAddressName = o.ShippingAddress.Name
+	doc.ShippingAddressLine1 = o.ShippingAddress.Line1
+	doc.ShippingAddressLine2 = o.ShippingAddress.Line2
+	doc.ShippingAddressCity = o.ShippingAddress.City
+	doc.ShippingAddressStateCode = o.ShippingAddress.State
+	doc.ShippingAddressCountryCode = o.ShippingAddress.Country
+	if o.ShippingAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(o.ShippingAddress.Country); err == nil {
+			doc.ShippingAddressCountry = c.Name.Common
+
+			if o.ShippingAddress.State != "" {
+				if sd, err := c.FindSubDivision(o.ShippingAddress.State); err == nil {
+					doc.ShippingAddressState = sd.Name
+				} else {
+					log.Error("ShippingAddress State Code '%s' caused an error: %s ", o.ShippingAddress.State, err, o.Context())
+				}
+			}
+		} else {
+			log.Error("ShippingAddress Country Code '%s' caused an error: %s", o.ShippingAddress.Country, err, o.Context())
+		}
+	}
+	doc.ShippingAddressPostalCode = o.ShippingAddress.PostalCode
+
+	doc.Discount = o.Currency.ToFloat(o.Discount)
+	doc.Subtotal = o.Currency.ToFloat(o.Subtotal)
+	doc.Shipping = o.Currency.ToFloat(o.Shipping)
+	doc.Tax = o.Currency.ToFloat(o.Tax)
+	doc.Adjustment = o.Currency.ToFloat(o.Adjustment)
+	doc.Total = o.Currency.ToFloat(o.Total)
+	doc.Paid = o.Currency.ToFloat(o.Paid)
+	doc.Refunded = o.Currency.ToFloat(o.Refunded)
+
+	doc.Type = string(o.Type)
+
+	doc.CreatedAt = float64(o.CreatedAt.Unix())
+	doc.UpdatedAt = float64(o.UpdatedAt.Unix())
+
+	doc.CouponCodes = strings.Join(o.CouponCodes, " ")
+	doc.ReferrerId = o.ReferrerId
+
+	doc.Status = string(o.Status)
+	doc.PaymentStatus = string(o.PaymentStatus)
+	doc.FulfillmentStatus = string(o.Fulfillment.Status)
+	doc.FulfillmentTracking = strings.Join(trackings, " ")
+	doc.FulfillmentExternalId = o.Fulfillment.ExternalId
+	doc.FulfillmentService = o.Fulfillment.Service
+	doc.FulfillmentCarrier = o.Fulfillment.Carrier
+
+	nItems := len(o.Items)
+	if nItems > 0 {
+		doc.ProductNameOption0 = search.Atom(o.Items[0].ProductName)
+	}
+	if nItems > 1 {
+		doc.ProductNameOption1 = search.Atom(o.Items[1].ProductName)
+	}
+	if nItems > 2 {
+		doc.ProductNameOption2 = search.Atom(o.Items[2].ProductName)
+	}
+	if nItems > 3 {
+		doc.ProductNameOption3 = search.Atom(o.Items[3].ProductName)
+	}
+	if nItems > 4 {
+		doc.ProductNameOption4 = search.Atom(o.Items[4].ProductName)
+	}
+	if nItems > 5 {
+		doc.ProductNameOption5 = search.Atom(o.Items[5].ProductName)
+	}
+	if nItems > 6 {
+		doc.ProductNameOption6 = search.Atom(o.Items[6].ProductName)
+	}
+	if nItems > 7 {
+		doc.ProductNameOption7 = search.Atom(o.Items[7].ProductName)
+	}
+	if nItems > 8 {
+		doc.ProductNameOption8 = search.Atom(o.Items[8].ProductName)
+	}
+	if nItems > 9 {
+		doc.ProductNameOption9 = search.Atom(o.Items[9].ProductName)
+	}
+
+	doc.BillingAddressCityOption = search.Atom(doc.BillingAddressCity)
+	doc.BillingAddressStateOption = search.Atom(doc.BillingAddressState)
+	doc.BillingAddressPostalCodeOption = search.Atom(doc.BillingAddressPostalCode)
+	doc.BillingAddressCountryOption = search.Atom(doc.BillingAddressCountry)
+
+	doc.ShippingAddressCityOption = search.Atom(doc.ShippingAddressCity)
+	doc.ShippingAddressStateOption = search.Atom(doc.ShippingAddressState)
+	doc.ShippingAddressPostalCodeOption = search.Atom(doc.ShippingAddressPostalCode)
+	doc.ShippingAddressCountryOption = search.Atom(doc.ShippingAddressCountry)
+
+	switch o.Currency {
+	case currency.ETH, currency.BTC, currency.XBT:
+		doc.DiscountOption = float64(o.Discount) / 1e9
+		doc.SubtotalOption = float64(o.Subtotal) / 1e9
+		doc.ShippingOption = float64(o.Shipping) / 1e9
+		doc.TaxOption = float64(o.Tax) / 1e9
+		doc.AdjustmentOption = float64(o.Adjustment) / 1e9
+		doc.TotalOption = float64(o.Total) / 1e9
+		doc.PaidOption = float64(o.Paid) / 1e9
+		doc.RefundedOption = float64(o.Refunded) / 1e9
+	default:
+		doc.DiscountOption = float64(o.Discount)
+		doc.SubtotalOption = float64(o.Subtotal)
+		doc.ShippingOption = float64(o.Shipping)
+		doc.TaxOption = float64(o.Tax)
+		doc.AdjustmentOption = float64(o.Adjustment)
+		doc.TotalOption = float64(o.Total)
+		doc.PaidOption = float64(o.Paid)
+		doc.RefundedOption = float64(o.Refunded)
+	}
+
+	doc.TypeOption = search.Atom(o.Type)
+
+	nCoupons := len(o.CouponCodes)
+	if nCoupons > 0 {
+		doc.CouponCodeOption0 = search.Atom(o.CouponCodes[0])
+	}
+
+	doc.StatusOption = search.Atom(doc.Status)
+	doc.PaymentStatusOption = search.Atom(doc.PaymentStatus)
+	doc.FulfillmentStatusOption = search.Atom(doc.FulfillmentStatus)
+	if o.Preorder {
+		doc.PreorderOption = "preorder"
+	}
+	if !o.Unconfirmed {
+		doc.ConfirmedOption = "confirmed"
+	}
+
+	nTrackings := len(o.Fulfillment.Trackings)
+	if nTrackings > 0 {
+		doc.FulfillmentTrackingOption0 = search.Atom(o.Fulfillment.Trackings[0].Number)
+	}
+	if nTrackings > 1 {
+		doc.FulfillmentTrackingOption1 = search.Atom(o.Fulfillment.Trackings[1].Number)
+	}
+	if nTrackings > 2 {
+		doc.FulfillmentTrackingOption2 = search.Atom(o.Fulfillment.Trackings[2].Number)
+	}
+
+	return doc
 }

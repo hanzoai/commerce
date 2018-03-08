@@ -15,22 +15,35 @@ func Development() *Config {
 	config.Prefixes["analytics"] = "/analytics/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["cdn"] = "/cdn/"
-	config.Prefixes["checkout"] = "/checkout/"
+	config.Prefixes["dash"] = "/dash/"
 	config.Prefixes["default"] = "/"
-	config.Prefixes["platform"] = "/platform/"
-	config.Prefixes["preorder"] = "/preorder/"
-	config.Prefixes["store"] = "/store/"
 
 	config.Hosts["analytics"] = ""
 	config.Hosts["api"] = ""
 	config.Hosts["cdn"] = ""
-	config.Hosts["checkout"] = ""
+	config.Hosts["dash"] = ""
 	config.Hosts["default"] = ""
-	config.Hosts["platform"] = ""
-	config.Hosts["preorder"] = ""
-	config.Hosts["store"] = ""
 
 	config.StaticUrl = "/static"
+
+	config.Ethereum.TestPassword = ""
+	config.Ethereum.DepositPassword = ""
+	// Parity
+	// config.Ethereum.MainNetNodes = []string{"http://35.192.92.62:13264"}
+	// Geth
+	config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:13264"}
+	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:13264"}
+	config.Ethereum.WebhookPassword = ""
+
+	config.Bitcoin.TestPassword = ""
+	config.Bitcoin.DepositPassword = ""
+	config.Bitcoin.MainNetNodes = []string{"http://35.192.49.112:19283"}
+	config.Bitcoin.MainNetUsernames = []string{""}
+	config.Bitcoin.MainNetPasswords = []string{""}
+	config.Bitcoin.TestNetNodes = []string{"http://104.154.51.133:19283"}
+	config.Bitcoin.TestNetUsernames = []string{""}
+	config.Bitcoin.TestNetPasswords = []string{""}
+	config.Bitcoin.WebhookPassword = ""
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
@@ -48,7 +61,7 @@ func Development() *Config {
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
-	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("platform", "/salesforce/callback")
+	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("dash", "/salesforce/callback")
 
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""

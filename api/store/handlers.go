@@ -41,8 +41,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:storeid/variant/:key", publishedRequired, namespaced, getItem("variant"))
 
 	// API for working with listings directly
-	api.GET("/:storeid/listing", adminRequired, namespaced, listListing)
-	api.GET("/:storeid/listing/:key", adminRequired, namespaced, getListing)
+	api.GET("/:storeid/listing", publishedRequired, namespaced, listListing)
+	api.GET("/:storeid/listing/:key", publishedRequired, namespaced, getListing)
+
 	api.POST("/:storeid/listing/:key", adminRequired, namespaced, createListing)
 	api.PUT("/:storeid/listing/:key", adminRequired, namespaced, updateListing)
 	api.PATCH("/:storeid/listing/:key", adminRequired, namespaced, patchListing)

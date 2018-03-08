@@ -8,7 +8,7 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/middleware"
 	"hanzo.io/thirdparty/netlify"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func listFiles(c *gin.Context) {

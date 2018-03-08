@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"math"
 	"regexp"
 	"strconv"
@@ -16,13 +17,20 @@ func FloatPrice(price currency.Cents) float64 {
 	return math.Floor(float64(price)*100+0.5) / 10000
 }
 
-// TODO: Make this work with non-decimal currencies
-func DisplayPrice(price currency.Cents) string {
-	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+func DisplayPrice(t currency.Type, price currency.Cents) string {
+	f := ""
+	if t.IsZeroDecimal() {
+		f = strconv.FormatFloat(float64(price), 'f', 0, 64)
+	} else {
+		f = strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+	}
 	bits := strings.Split(f, ".")
-	decimal := bits[1]
+	decimal := ""
+	if len(bits) > 1 {
+		decimal = "." + bits[1]
+	}
 	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return humanize.Comma(integer) + "." + decimal
+	return t.Symbol() + humanize.Comma(integer) + decimal
 }
 
 // Non-breaking hyphens in title
@@ -34,14 +42,17 @@ func SplitParagraph(text string) []string {
 	return regexp.MustCompile("\\n\\s*\\n").Split(text, -1)
 }
 
-func GetNamespaces(c interface{}) []string {
+func GetNamespaces(ctx context.Context) []string {
 	namespaces := make([]string, 0)
-	db := datastore.New(c)
-	keys, err := db.Query("__namespace__").KeysOnly().GetAll(nil)
+
+	// Fetch namespaces from special __namespace__ table
+	db := datastore.New(ctx)
+	keys, err := db.Query("__namespace__").GetKeys()
 	if err != nil {
 		panic(err)
 	}
 
+	// Append stringID's
 	for _, k := range keys {
 		namespaces = append(namespaces, k.StringID())
 	}
@@ -49,10 +60,10 @@ func GetNamespaces(c interface{}) []string {
 	return namespaces
 }
 
-func GetKinds(c interface{}) []string {
+func GetKinds(ctx context.Context) []string {
 	kinds := make([]string, 0)
-	db := datastore.New(c)
-	keys, err := db.Query("__kind__").KeysOnly().GetAll(nil)
+	db := datastore.New(ctx)
+	keys, err := db.Query("__kind__").GetKeys()
 	if err != nil {
 		panic(err)
 	}

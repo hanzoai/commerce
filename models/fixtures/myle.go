@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 )

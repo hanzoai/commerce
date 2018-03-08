@@ -3,21 +3,27 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/form"
+	"hanzo.io/middleware"
+	"hanzo.io/models/mailinglist"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
+
+	ml "hanzo.io/api/cdn/mailinglist"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := rest.New(form.Form{})
+	rest.New(mailinglist.MailingList{}).Route(router, args...)
 
-	api.POST("/:formid/submit", handleForm)
-	api.POST("/:formid/subscribe", handleForm)
-	api.GET("/:formid/js", formJs)
+	group := router.Group("form")
+	group.Use(middleware.AccessControl("*"))
 
-	// TODO: Remove deprecated endpoints
-	group := router.Group("mailinglist")
+	group.POST("/:formid/submit", handleForm)
+	group.POST("/:formid/subscribe", handleForm)
+	group.GET("/:formid/js", ml.Js)
+
+	group = router.Group("mailinglist")
+	group.Use(middleware.AccessControl("*"))
+
 	group.POST("/:mailinglistid/subscribe", handleForm)
-	group.GET("/:mailinglistid/js", formJs)
-	router.GET("/m/:mailinglistid/mailinglist.js", formJs)
+	group.GET("/:mailinglistid/js", ml.Js)
 }

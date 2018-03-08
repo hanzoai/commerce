@@ -4,8 +4,13 @@ import (
 	"strconv"
 	"time"
 
+	aeds "google.golang.org/appengine/datastore"
+
+	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Frequency string
 
@@ -13,21 +18,6 @@ const (
 	Hourly Frequency = "Hourly"
 	Daily            = "Daily"
 )
-
-type Aggregate struct {
-	mixin.Model
-
-	Instance     string    `json:"instance"`
-	Name         string    `json:"name"`
-	Type         string    `json:"type"`
-	BinTimestamp time.Time `json:"binTimestamp"`
-	Value        int64     `json:"value"`
-	VectorValue  []int64   `json:"vectorValue,omitempty"`
-}
-
-func (a *Aggregate) Defaults() {
-	a.VectorValue = make([]int64, 0)
-}
 
 func Init(a *Aggregate, name string, t time.Time, freq Frequency) {
 	switch freq {
@@ -40,4 +30,28 @@ func Init(a *Aggregate, name string, t time.Time, freq Frequency) {
 	}
 	a.Name = name
 	a.Instance = name + "_" + string(freq) + "_" + strconv.Itoa(int(a.BinTimestamp.Unix()))
+}
+
+type Aggregate struct {
+	mixin.Model
+
+	Instance     string    `json:"instance"`
+	Name         string    `json:"name"`
+	Type         string    `json:"type"`
+	BinTimestamp time.Time `json:"binTimestamp"`
+	Value        int64     `json:"value"`
+	VectorValue  []int64   `json:"vectorValue,omitempty"`
+}
+
+func (a *Aggregate) Load(p []aeds.Property) (err error) {
+	// Ensure we're initialized
+	a.Defaults()
+
+	// Load supported properties
+	return datastore.LoadStruct(a, p)
+}
+
+func (a *Aggregate) Save() (p []aeds.Property, err error) {
+	// Save properties
+	return datastore.SaveStruct(a)
 }

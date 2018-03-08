@@ -3,26 +3,18 @@ package tasks
 import (
 	"hanzo.io/datastore"
 	"hanzo.io/datastore/parallel"
-	"hanzo.io/test/fixtures/user"
-	// "hanzo.io/util/log"
 )
 
 // Define a new worker with parallel.Task
-var TaskPlus1 = parallel.New("test-worker", func(db *datastore.Datastore, model *user.User) {
-	// log.Warn("TaskPlus1", model)
+var TaskPlus1 = parallel.New("test-worker", func(db *datastore.Datastore, model *Model) {
 	model.Count = model.Count + 1
-	if err := model.Put(); err != nil {
-		panic(err)
-	}
+	model.MustPut()
 })
 
 // Define a new worker with parallel.Task
-var TaskSetVal = parallel.New("test-worker2", func(db *datastore.Datastore, model *user.User, v int) {
-	// log.Warn("TaskSetVal %v\nv %v", model, v)
+var TaskSetVal = parallel.New("test-worker2", func(db *datastore.Datastore, model *Model2, v int) {
 	model.Count = v
-	if err := model.Put(); err != nil {
-		panic(err)
-	}
+	model.MustPut()
 })
 
 var TaskSetFilter = parallel.New("test-worker3", func(db *datastore.Datastore, model *user.User, v int) {

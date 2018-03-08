@@ -1,16 +1,15 @@
 package middleware
 
 import (
-	"golang.org/x/net/context"
-
+	"context"
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	"hanzo.io/util/log"
+	token "hanzo.io/util/oldjwt"
 	"hanzo.io/util/session"
-	"hanzo.io/util/token"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {
@@ -22,7 +21,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			panic("THE WORLD MAKES NO SENSE.")
 		}
 
-		log.Debug("Found user.")
+		log.Debug("Found user")
 
 		// Try and re-use last organization
 		orgId := session.GetString(c, "active-organization")
@@ -35,9 +34,9 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 		// Fetch organization
 		db := datastore.New(c)
 		org := organization.New(db)
-		err := org.Get(orgId)
+		err := org.GetById(orgId)
 		if err != nil {
-			log.Warn("Unable to acquire organization.")
+			log.Warn("Unable to acquire organization.", c)
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
 			c.AbortWithStatus(302)
@@ -69,7 +68,7 @@ func GetToken(c *gin.Context) *token.Token {
 	return c.MustGet("token").(*token.Token)
 }
 
-func GetNamespaced(c *gin.Context) context.Context {
+func GetNamespace(c *gin.Context) context.Context {
 	ctx := GetAppEngine(c)
 	return GetOrganization(c).Namespaced(ctx)
 }

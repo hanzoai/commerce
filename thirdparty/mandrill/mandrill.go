@@ -2,19 +2,20 @@ package mandrill
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 const root = "http://mandrillapp.com/api/1.0"
@@ -24,8 +25,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string      `json:"name"`
+	Content interface{} `json:"content"`
 }
 
 type RcptMergeVars struct {
@@ -68,7 +69,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language"`
+		MergeLanguage string          `json:"merge_language,omitempty"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
@@ -132,7 +133,6 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
-	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req
@@ -188,7 +188,12 @@ func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 		return err
 	}
 
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{Context: ctx}
+
 	res, err := client.Do(hreq)
 	if err != nil {
 		return err
@@ -201,7 +206,7 @@ func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
 func Send(ctx context.Context, req *SendReq) error {
@@ -228,5 +233,5 @@ func Send(ctx context.Context, req *SendReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }

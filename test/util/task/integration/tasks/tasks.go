@@ -1,12 +1,13 @@
 package tasks
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/task"
 )
 

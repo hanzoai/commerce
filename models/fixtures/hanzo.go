@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 )
@@ -27,7 +28,7 @@ var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "hanzo"
 	org.AddOwner(u.Id())
-	org.Website = "http://www.hanzo.io"
+	org.Website = "https://hanzo.ai"
 	org.SecretKey = []byte("95j23am4EvU2LHiFHE2gNfC31cwoP0z5")
 
 	// Email configuration

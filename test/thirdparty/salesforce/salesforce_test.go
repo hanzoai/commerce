@@ -1,7 +1,7 @@
 package test
 
 import (
-	"golang.org/x/net/context"
+	"context"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/user"
@@ -12,7 +12,9 @@ import (
 )
 
 // func Test(t *testing.T) {
-// 	Setup("thirdparty/salesforce", t)
+// 	log.SetVerbose(testing.Verbose())
+// 	RegisterFailHandler(Fail)
+// 	RunSpecs(t, "salesforce")
 // }
 
 type MockSObjectTypes struct {
@@ -57,7 +59,7 @@ func (s *MockSObjectSerializeable) Read(so salesforce.SObjectCompatible) error {
 
 func (s *MockSObjectSerializeable) Load(db *datastore.Datastore) salesforce.SObjectCompatible {
 	s.Ref = user.New(db)
-	db.Get(s.ExternalId(), s.Ref)
+	db.GetById(s.ExternalId(), s.Ref)
 	return s.Ref
 }
 
@@ -122,8 +124,7 @@ func (a *MockSalesforceClient) GetContext() context.Context {
 }
 
 var (
-	ctx  context.Context
-	inst ae.Instance
+	ctx ae.Context
 	// user   models.User
 	params *ClientParams
 )
@@ -131,7 +132,6 @@ var (
 var _ = BeforeSuite(func() {
 	// var err error
 	// ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
-	ctx, inst, _ = ae.NewContext()
 	// Expect(err).ToNot(HaveOccurred())
 
 	// user = models.User{
@@ -165,8 +165,7 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	err := inst.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("User (de)serialization", func() {

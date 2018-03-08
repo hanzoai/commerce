@@ -1,145 +1,123 @@
 package mixin
 
 import (
-	"reflect"
-
-	aeds "google.golang.org/appengine/datastore"
-
 	"hanzo.io/datastore"
-	"hanzo.io/util/log"
+	"hanzo.io/datastore/query"
+	"hanzo.io/log"
 )
 
-// Wrap Query so we don't need to pass in entity to First() and key is updated
-// properly.
-type Query struct {
-	datastore.Query
-	datastore *datastore.Datastore
-	model     *Model
+// This is a simple Query helper for individual models. Allows you to query for
+// a single entity or key only as a convenience on an individual model.
+type ModelQuery struct {
+	entity Entity
+	dsq    datastore.Query
 }
 
-// Return a query for this entity kind
-func (m *Model) Query() *Query {
-	q := new(Query)
-	query := datastore.NewQuery(m.Db, m.Entity.Kind())
-	q.Query = query
-	q.datastore = query.Datastore
-	q.model = m
+func (q *ModelQuery) All() datastore.Query {
+	return q.dsq
+}
+
+func (q *ModelQuery) Ancestor(key datastore.Key) *ModelQuery {
+	q.dsq = q.dsq.Ancestor(key)
 	return q
 }
 
-// Wrap datastore.Query
-func (q *Query) Ancestor(key datastore.Key) *Query {
-	q.Query = q.Query.Ancestor(key)
+func (q *ModelQuery) Limit(limit int) *ModelQuery {
+	q.dsq = q.dsq.Limit(limit)
 	return q
 }
 
-func (q *Query) Limit(limit int) *Query {
-	q.Query = q.Query.Limit(limit)
+func (q *ModelQuery) Offset(offset int) *ModelQuery {
+	q.dsq = q.dsq.Offset(offset)
 	return q
 }
 
-func (q *Query) Offset(offset int) *Query {
-	q.Query = q.Query.Offset(offset)
+func (q *ModelQuery) Order(order string) *ModelQuery {
+	q.dsq = q.dsq.Order(order)
 	return q
 }
 
-func (q *Query) Order(order string) *Query {
-	q.Query = q.Query.Order(order)
+func (q *ModelQuery) Filter(filterStr string, value interface{}) *ModelQuery {
+	q.dsq = q.dsq.Filter(filterStr, value)
 	return q
 }
 
-func (q *Query) Filter(filterStr string, value interface{}) *Query {
-	q.Query = q.Query.Filter(filterStr, value)
-	return q
-}
-
-func (q *Query) KeysOnly() *Query {
-	q.Query = q.Query.KeysOnly()
-	return q
-}
-
-// Get Just first result
-func (q *Query) First() (bool, error) {
-	key, ok, err := q.Query.First(q.model.Entity)
+// Get entity
+func (q *ModelQuery) Get() (bool, error) {
+	key, ok, err := q.dsq.First(q.entity)
 	if ok {
-		q.model.setKey(key)
+		q.entity.SetKey(key)
+		return true, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
+}
+
+// Get just key
+func (q *ModelQuery) GetKey() (bool, error) {
+	q.dsq = q.dsq.KeysOnly()
+	return q.Get()
+}
+
+func (q *ModelQuery) MustGet() {
+	ok, err := q.Get()
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		panic(datastore.ErrNoSuchEntity)
+	}
+}
+
+func (q *ModelQuery) MustGetKey() {
+	ok, err := q.GetKey()
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		panic(datastore.ErrNoSuchEntity)
+	}
+}
+
+// Check if id exists
+func (q *ModelQuery) IdExists(id string) (datastore.Key, bool, error) {
+	return q.dsq.IdExists(id)
+}
+
+// Check if key exists
+func (q *ModelQuery) KeyExists(key datastore.Key) (bool, error) {
+	return q.dsq.KeyExists(key)
+}
+
+// Helper to set key if it's query returns one
+func (q *ModelQuery) setAndForget(key datastore.Key, ok bool, err error) (bool, error) {
+	if ok {
+		q.entity.SetKey(key)
 	}
 	return ok, err
 }
 
-// Get all models and return slice
-func (q *Query) GetAll() (interface{}, error) {
-	dst := q.model.Slice()
-	keys, err := q.Query.GetAll(dst)
-
-	// Get value of slice
-	slice := getSlice(dst)
-
-	// Initialize models
-	for i := range keys {
-		entity := slice.Index(i).Interface().(Entity)
-		entity.Init(q.datastore)
-		entity.SetKey(keys[i])
-	}
-
-	return slice.Interface(), err
+// Filter by key
+func (q *ModelQuery) ByKey(key interface{}) (bool, error) {
+	return q.setAndForget(q.dsq.ByKey(q.entity.Key(), q.entity))
 }
 
-// Get all models and return as slice of Entity
-func (q *Query) GetEntities() ([]Entity, error) {
-	dst := q.model.Slice()
-	keys, err := q.Query.GetAll(dst)
-
-	entities := make([]Entity, len(keys))
-
-	// Get value of slice
-	slice := getSlice(dst)
-
-	for i := range keys {
-		log.Debug("%v of (%v / %v)", i, slice.Len(), len(keys))
-		entity := slice.Index(i).Interface().(Entity)
-		entity.Init(q.datastore)
-		entity.SetKey(keys[i])
-		entities[i] = entity
-	}
-
-	return entities, err
+// Filter By Id
+func (q *ModelQuery) ById(id string) (bool, error) {
+	return q.setAndForget(q.dsq.ById(id, q.entity))
 }
 
-// Load models into []Model or []*Model slice
-func (q *Query) LoadAll(dst interface{}) ([]*aeds.Key, error) {
-	keys, err := q.Query.GetAll(dst)
-	if err != nil {
-		return keys, err
-	}
-
-	// Stop now if we found no models
-	if len(keys) == 0 {
-		return keys, nil
-	}
-
-	// Get value of slice
-	slice := getSlice(dst)
-
-	// Check if models should be initialized, which only happens if []*Model is
-	// passed as slice, only *Model matches Entity type.
-	v := slice.Index(0)
-	if v.Type().Kind() != reflect.Ptr {
-		return keys, nil
-	}
-
-	// Initialize all entities
-	for i := range keys {
-		v = slice.Index(i)
-		entity := v.Interface().(Entity)
-		entity.Init(q.datastore)
-		entity.SetKey(keys[i])
-	}
-
-	return keys, nil
-}
-
-// Get just keys
-func (q *Query) GetKeys() ([]*aeds.Key, error) {
-	return q.Query.KeysOnly().GetAll(nil)
+// Return a query for this entity kind
+func (m *Model) Query() *ModelQuery {
+	q := new(ModelQuery)
+	q.entity = m.Entity.(Entity)
+	log.Debug(m.Context())
+	q.dsq = query.New(m.Context(), m.Kind())
+	return q
 }

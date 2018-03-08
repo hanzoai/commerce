@@ -3,6 +3,7 @@ package variant
 import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/dimensions"
 	"hanzo.io/models/types/weight"
 	"hanzo.io/util/val"
 
@@ -15,7 +16,9 @@ type Variant struct {
 
 	ProductId string `json:"productId"`
 
-	SKU  string `json:"sku"`
+	SKU string `json:"sku"`
+	UPC string `json:"upc,omitempty"`
+
 	Name string `json:"name"`
 
 	// 3-letter ISO currency code (lowercase).
@@ -32,9 +35,10 @@ type Variant struct {
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
 
-	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit"`
-	Dimensions string      `json:"dimensions"`
+	Weight         weight.Mass     `json:"weight"`
+	WeightUnit     weight.Unit     `json:"weightUnit"`
+	Dimensions     dimensions.Size `json:"dimensions"`
+	DimensionUnits dimensions.Unit `json:"dimensionsUnit"`
 
 	Taxable bool `json:"taxable"`
 

@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func enable(c *gin.Context) {

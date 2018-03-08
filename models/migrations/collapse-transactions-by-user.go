@@ -7,7 +7,7 @@ import (
 
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )
@@ -19,7 +19,7 @@ var _ = New("collapse-transactions-by-user",
 	},
 	func(db *ds.Datastore, trans *transaction.Transaction) {
 		ctx := db.Context
-		userid := trans.UserId
+		userid := trans.DestinationId
 
 		// Look up user for this order
 		usr := user.New(db)
@@ -41,7 +41,7 @@ var _ = New("collapse-transactions-by-user",
 		}
 
 		log.Warn("Fixing Transaction: %v => %v", usr.Email, usr2.Email, ctx)
-		trans.UserId = usr2.Id()
+		trans.DestinationId = usr2.Id()
 		trans.Put()
 	},
 )

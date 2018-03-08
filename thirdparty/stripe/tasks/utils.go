@@ -1,16 +1,19 @@
 package tasks
 
 import (
-	"golang.org/x/net/context"
+	"context"
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
+	"hanzo.io/models/fee"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 // Get namespaced appengine context for given namespace
@@ -50,15 +53,36 @@ func getPaymentFromCharge(ctx context.Context, ch *stripe.Charge) (*payment.Paym
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
-		if err := pay.Get(id); err == nil {
+		if err := pay.GetById(id); err == nil {
 			return pay, true, nil
 		}
 	}
 
 	// Try to lookup payment using charge id
 	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
-	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First()
+	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).Get()
 	return pay, ok, err
+}
+
+// Get our transfer from a stripe transfer
+func getTransfer(ctx context.Context, str *stripe.Transfer) (*transfer.Transfer, bool, error) {
+	db := datastore.New(ctx)
+	tr := transfer.New(db)
+
+	id, ok := str.Meta["transfer"]
+
+	// Try to get by transfer id
+	if ok {
+		log.Debug("Try to get transfer by transfer id: %v", id, ctx)
+		if err := tr.GetById(id); err == nil {
+			return tr, true, nil
+		}
+	}
+
+	// Try to lookup transfer using transfer id
+	log.Debug("Lookup transfer by transfer id: %v", str.ID, ctx)
+	ok, err := tr.Query().Filter("Account.TransferId=", str.ID).Get()
+	return tr, ok, err
 }
 
 // Update charge in case order/pay id is missing in metadata
@@ -81,5 +105,32 @@ func updateChargeFromPayment(ctx context.Context, token string, pay *payment.Pay
 	// Update charge with new metadata
 	if _, err := client.UpdateCharge(pay); err != nil {
 		log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+	}
+}
+
+func UpdateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+	var feeStatus fee.Status
+
+	switch pay.Status {
+	case payment.Paid:
+		feeStatus = fee.Payable
+	case payment.Refunded:
+		feeStatus = fee.Refunded
+	case payment.Disputed:
+		feeStatus = fee.Disputed
+	case payment.Unpaid:
+		feeStatus = fee.Pending
+	default:
+		log.Warn("Unhandled payment state: '%s'", pay.Status, pay.Db.Context)
+	}
+
+	for _, fe := range fees {
+		// Ignore transferred fees
+		if fe.Status == fee.Transferred {
+			continue
+		}
+
+		fe.Status = feeStatus
+		fe.MustUpdate()
 	}
 }

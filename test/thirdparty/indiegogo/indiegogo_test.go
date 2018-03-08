@@ -3,13 +3,17 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/thirdparty/indiegogo"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 
-	. "hanzo.io/util/test/ginkgo"
+	"hanzo.io/log"
+	"hanzo.io/thirdparty/indiegogo"
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/indiegogo", t)
+	log.SetVerbose(testing.Verbose())
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "thirdparty/indiegogo")
 }
 
 var _ = Describe("indiegogo", func() {

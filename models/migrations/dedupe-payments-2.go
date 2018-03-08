@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

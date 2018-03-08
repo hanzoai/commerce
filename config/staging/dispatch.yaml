@@ -1,5 +1,3 @@
-application: hanzo-staging
-
 dispatch:
   # - url: "default.staging.hanzo.io/*"
   #   module: default
@@ -19,8 +17,14 @@ dispatch:
   - url: "static-staging.hanzo.io/*"
     module: default
 
+  - url: "analytics-staging.hanzo.io/*"
+    module: analytics
+
   - url: "api-staging.hanzo.io/*"
     module: api
 
   - url: "cdn-staging.hanzo.io/*"
     module: api
+
+  - url: "dash-staging.hanzo.io/*"
+    module: dash

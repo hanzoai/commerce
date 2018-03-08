@@ -1,12 +1,12 @@
 package connect
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"golang.org/x/net/context"
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"

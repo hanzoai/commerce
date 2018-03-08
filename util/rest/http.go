@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 
