@@ -5,10 +5,9 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 )
 
 var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
@@ -29,9 +28,8 @@ var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "hanzo"
 	org.AddOwner(u.Id())
-	org.Website = "http://hanzo.io"
+	org.Website = "https://hanzo.ai"
 	org.SecretKey = []byte("95j23am4EvU2LHiFHE2gNfC31cwoP0z5")
-	org.AddDefaultTokens()
 
 	// Email configuration
 	org.Mandrill.APIKey = config.Mandrill.APIKey
@@ -57,16 +55,7 @@ var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	// org.Email.User.EmailConfirmed.Enabled = true
 
 	// Save org into default namespace
-	org.Put()
-
-	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	org.Create()
 
 	return org
 })

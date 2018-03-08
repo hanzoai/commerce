@@ -41,6 +41,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:organizationid/wallet/account", adminRequired, namespaced, wallet.CreateAccount)
 	api.POST("/:organizationid/wallet/send", adminRequired, namespaced, wallet.Send)
 
+	router.GET("/a/:organizationid", analyticsJs)
+	router.GET("/a/:organizationid/analytics.js", analyticsJs)
+	router.GET("/n/:organizationid/native.js", nativeJs)
+
 	api.Route(router, args...)
 
 	// Newer stuff

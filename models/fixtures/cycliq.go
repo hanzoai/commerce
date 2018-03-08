@@ -23,7 +23,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	// u.LastName = "Hagen"
 	// u.Organizations = []string{org.Id()}
 	// u.PasswordHash, _ = password.Hash("cycliqpassword!")
-	// u.Put()
+	// u.MustUpdate()
 
 	// u2 := user.New(db)
 	// u2.Email = "ac@theblackeyeproject.co.uk"
@@ -32,7 +32,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	// u2.LastName = "Copely"
 	// u2.Organizations = []string{org.Id()}
 	// u2.PasswordHash, _ = password.Hash("cycliqpassword!")
-	// u2.Put()
+	// u2.MustUpdate()
 
 	// org.FullName = "Cycliq"
 	// org.Owners = []string{u.Id(), u2.Id()}
@@ -43,7 +43,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	// Add default analytics config
 	integrations := []Integration{
 		Integration{
-			Type: "facebook-pixel",
+			Type: "facebook-audiences",
 			Id:   "381279715352892",
 		},
 		Integration{
@@ -69,16 +69,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	org.Analytics = Analytics{integrations}
 
 	// Save org into default namespace
-	org.MustPut()
-
-	// // Save namespace so we can decode keys for this organization later
-	// ns := namespace.New(db)
-	// ns.Name = org.Name
-	// ns.IntId = org.Key().IntID()
-	// err := ns.Put()
-	// if err != nil {
-	// 	log.Warn("Failed to put namespace: %v", err)
-	// }
+	org.MustUpdate()
 
 	return org
 })

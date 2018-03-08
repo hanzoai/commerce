@@ -43,7 +43,6 @@ func Defaults() *Config {
 	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
-	config.Stripe.BankAccount = "ba_14trEsCSRlllXCwPzT8vGYiK"
 	config.Stripe.DevelopmentClientId = "ca_REDACTED"
 	config.Stripe.ProductionClientId = "ca_REDACTED"
 
@@ -55,16 +54,13 @@ func Defaults() *Config {
 	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.io"
 
-	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
-	config.Redis.Password = ""
-
 	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1"
 	config.Netlify.ClientId = ""
 	config.Netlify.Secret = ""
 
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""
-	config.Cloudflare.Zone = "hanzo.io"
+	config.Cloudflare.ZoneId = "hanzo.io"
 
 	return config
 }

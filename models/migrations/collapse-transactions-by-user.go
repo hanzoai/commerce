@@ -14,7 +14,7 @@ import (
 
 var _ = New("collapse-transactions-by-user",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, trans *transaction.Transaction) {

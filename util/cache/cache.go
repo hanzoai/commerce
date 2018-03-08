@@ -26,6 +26,7 @@ func call(fn interface{}, args ...interface{}) interface{} {
 	}
 }
 
+// Simplifed version of Memoize w/o expiration
 func Once(fn interface{}) Memoized {
 	var cached interface{}
 

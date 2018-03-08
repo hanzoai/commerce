@@ -7,6 +7,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/subscriber"
@@ -15,7 +16,6 @@ import (
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 
 	mailchimp "hanzo.io/thirdparty/mailchimp/tasks"
 )

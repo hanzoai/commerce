@@ -7,13 +7,13 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware/oauthmiddleware"
 	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 // {

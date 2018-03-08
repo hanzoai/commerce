@@ -6,6 +6,10 @@ type BeforeCreate interface {
 	BeforeCreate() error
 }
 
+type BeforeUpdate interface {
+	BeforeUpdate(Entity) error
+}
+
 type BeforeDelete interface {
 	BeforeDelete() error
 }
@@ -14,23 +18,17 @@ type AfterCreate interface {
 	AfterCreate() error
 }
 
-type AfterDelete interface {
-	AfterDelete() error
-}
-
-// These last two interfaces are largely ignored -- we use helper below to have
-// nicely typed update hooks in models.
-type BeforeUpdate interface {
-	BeforeUpdate(Entity) error
-}
-
 type AfterUpdate interface {
 	AfterUpdate(Entity) error
 }
 
+type AfterDelete interface {
+	AfterDelete() error
+}
+
 // Try to get method off a model
-func getHook(name string, entity Kind) (reflect.Method, bool) {
-	typ := reflect.TypeOf(entity)
+func getHook(name string, model *Model) (reflect.Method, bool) {
+	typ := reflect.TypeOf(model.Entity)
 	return typ.MethodByName(name)
 }
 

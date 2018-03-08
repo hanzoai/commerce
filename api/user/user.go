@@ -5,16 +5,17 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/order"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 

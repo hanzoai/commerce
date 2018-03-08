@@ -13,9 +13,8 @@ import (
 var Order = New("order", func(c *gin.Context) *order.Order {
 	db := getNamespaceDb(c)
 
-	u := UserCustomer(c)
+	u := User(c)
 	p := Product(c)
-	Coupon(c)
 
 	ord := order.New(db)
 	ord.UserId = u.Id()
@@ -43,7 +42,7 @@ var Order = New("order", func(c *gin.Context) *order.Order {
 
 	ord.CouponCodes = []string{"SUCH-COUPON", "FREE-DOGE"}
 	ord.UpdateAndTally(nil)
-	ord.MustPut()
+	ord.MustUpdate()
 
 	return ord
 })

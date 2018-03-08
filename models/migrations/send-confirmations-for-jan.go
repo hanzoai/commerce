@@ -7,11 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
-	"hanzo.io/log"
+	"hanzo.io/util/timeutil"
 
 	ds "hanzo.io/datastore"
 )
@@ -33,7 +34,7 @@ var _ = New("send-confirmations-for-jan",
 	func(db *ds.Datastore, ord *order.Order, apiKey string, defaultEnabled bool, defaultFromName, defaultFromEmail string, orderConfirmation organization.Email) {
 		// Fix issue with improperly set up orders
 		sendMail := false
-		if ord.CreatedAt.IsZero() {
+		if timeutil.IsZero(ord.CreatedAt) {
 			ord.MustCreate()
 			sendMail = true
 			log.Warn("Fixing Uninitialized Order %v", ord.Id(), ord.Db.Context)

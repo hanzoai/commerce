@@ -75,11 +75,7 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 
 	// Log error
 	if err != nil {
-		if status < 500 {
-			log.Warn(err, c)
-		} else {
-			log.Error(err, c)
-		}
+		log.Error(err, c)
 	}
 
 	// Stop processing middleware

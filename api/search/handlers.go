@@ -15,6 +15,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	group := router.Group("search")
 	group.Use(middleware.AccessControl("*"))
 
+	group.GET("/", adminRequired, namespaced, searchAll)
+	group.GET("/:kind", adminRequired, namespaced, searchKind)
+
 	group.GET("/user", adminRequired, namespaced, searchUser)
 	group.GET("/order", adminRequired, namespaced, searchOrder)
 	group.POST("/note", adminRequired, namespaced, searchNote)

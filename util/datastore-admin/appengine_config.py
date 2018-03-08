@@ -34,5 +34,5 @@ google/appengine/ext/appstats/sample_appengine_config.py instead.
 # value.  'HTTP_X_APPENGINE_INBOUND_APPID', ['trusted source appid here']
 #
 remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = (
-    'HTTP_X_APPENGINE_INBOUND_APPID', [
-        'crowdstart-us', 'crowdstart-staging', 'crowdstart-skully', 'skully-crowdstart'])
+    'HTTP_X_APPENGINE_INBOUND_APPID', ['hanzo-production', 'hanzo-staging', 'hanzo-sandbox']
+)

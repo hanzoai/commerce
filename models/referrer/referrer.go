@@ -28,7 +28,10 @@ import (
 type Referrer struct {
 	mixin.Model
 
-	Code      string                          `json:"code"`
+	Code      string  `json:"code"`
+	Program   Program `json:"program"`
+	ProgramId string  `json:"programId"`
+
 	Program   referralprogram.ReferralProgram `json:"program"`
 	ProgramId string                          `json:"programId"`
 	OrderId   string                          `json:"orderId"`
@@ -73,6 +76,30 @@ func (r *Referrer) Load(ps []aeds.Property) (err error) {
 	}
 
 	return err
+}
+
+func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
+	trans := transaction.New(r.Db)
+	count, err := referral.Query(r.Db).Filter("ReferrerId=", r.Id()).Count()
+	if err != nil {
+		return nil, err
+	}
+
+	r.Program.GetBonus(trans, count)
+	trans.UserId = r.UserId
+	trans.Type = transaction.Deposit
+
+	trans.Notes = "Deposit from referral " + r.Id()
+	trans.Tags = "referral"
+
+	trans.SourceId = r.Id()
+	trans.SourceKind = r.Kind()
+
+	if err := trans.Put(); err != nil {
+		return nil, err
+	}
+
+	return trans, nil
 }
 
 func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent) (*referral.Referral, error) {

@@ -35,7 +35,7 @@ var Product = New("product", func(c *gin.Context) *product.Product {
 	}
 	prod.Price = 2000
 	prod.Currency = currency.USD
-	prod.MustPut()
+	prod.MustUpdate()
 
 	// Sad Keanu shirt
 	prod = product.New(db)
@@ -52,7 +52,7 @@ var Product = New("product", func(c *gin.Context) *product.Product {
 	}
 	prod.Price = 2500
 	prod.Currency = currency.USD
-	prod.MustPut()
+	prod.MustUpdate()
 
 	return prod
 })

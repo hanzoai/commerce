@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/stripe/stripe-go"
 
+	"hanzo.io/log"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
@@ -10,7 +11,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )

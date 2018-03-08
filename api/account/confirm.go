@@ -2,7 +2,6 @@ package account
 
 import (
 	"errors"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,16 +14,10 @@ import (
 	"hanzo.io/log"
 )
 
-// Copy to Hanzo
 var (
 	PasswordMinLengthError = errors.New("Password needs to be atleast 6 characters")
 	PasswordMismatchError  = errors.New("Passwords need to match")
 )
-
-type resetPasswordReq interface {
-	GetPassword() string
-	GetPasswordConfirm() string
-}
 
 type confirmPasswordReq struct {
 	*user.User
@@ -34,26 +27,18 @@ type confirmPasswordReq struct {
 	PasswordConfirm string `json:"passwordConfirm"`
 }
 
-func (r confirmPasswordReq) GetPassword() string {
-	return r.Password
-}
-
-func (r confirmPasswordReq) GetPasswordConfirm() string {
-	return r.PasswordConfirm
-}
-
-func resetPassword(usr *user.User, req resetPasswordReq) error {
+func resetPassword(usr *user.User, req *confirmPasswordReq) error {
 	// Validate password
-	if len(req.GetPassword()) < 6 {
+	if len(req.Password) < 6 {
 		return PasswordMinLengthError
 	}
 
-	if req.GetPassword() != req.GetPasswordConfirm() {
+	if req.Password != req.PasswordConfirm {
 		return PasswordMismatchError
 	}
 
 	// Update password
-	if err := usr.SetPassword(req.GetPassword()); err != nil {
+	if err := usr.SetPassword(req.Password); err != nil {
 		return err
 	}
 
@@ -113,10 +98,5 @@ func confirm(c *gin.Context) {
 		log.Warn("Unable to update token", err, c)
 	}
 
-	// Return a new token with user id set
-	loginTok := middleware.GetToken(c)
-	loginTok.Set("user-id", usr.Id())
-	loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
-
-	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.String()})
+	http.Render(c, 200, gin.H{"status": "ok"})
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
@@ -20,7 +21,6 @@ import (
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/hashid"
-	"hanzo.io/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>

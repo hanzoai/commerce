@@ -16,3 +16,15 @@ var TaskSetVal = parallel.New("test-worker2", func(db *datastore.Datastore, mode
 	model.Count = v
 	model.MustPut()
 })
+
+var TaskSetFilter = parallel.New("test-worker3", func(db *datastore.Datastore, model *user.User, v int) {
+	// log.Warn("TaskSetFilter\n %v\n %v\nv %v", model.Count, model.Count2, v)
+	model.Count2 = v
+	if err := model.Put(); err != nil {
+		panic(err)
+	}
+},
+	parallel.Filter{
+		FilterStr: "Count<",
+		Value:     5,
+	})

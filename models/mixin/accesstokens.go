@@ -3,8 +3,8 @@ package mixin
 import (
 	"errors"
 
-	"hanzo.io/util/bit"
 	"hanzo.io/log"
+	"hanzo.io/util/bit"
 	token "hanzo.io/util/oldjwt"
 )
 

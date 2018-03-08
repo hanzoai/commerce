@@ -1,29 +1,24 @@
 package campaign
 
-import "hanzo.io/datastore"
-
-var kind = "campaign"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (c Campaign) Kind() string {
-	return kind
+	return "campaign"
 }
 
 func (c *Campaign) Init(db *datastore.Datastore) {
 	c.Model.Init(db, c)
 }
 
-func (c *Campaign) Defaults() {
-	c.Links = make([]string, 0)
-	c.ProductIds = make([]string, 0)
-}
-
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
 	c.Init(db)
-	c.Defaults()
 	return c
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

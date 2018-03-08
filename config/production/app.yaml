@@ -1,16 +1,19 @@
-application: crowdstart-us
-module: default
+service: default
 version: v1
 
 runtime: go
-api_version: go1
-threadsafe: true
+api_version: go1.8
 
+threadsafe: true
 instance_class: F1
 
 automatic_scaling:
   max_concurrent_requests: 100
   min_idle_instances: 0
+  # max_idle_instances: automatic
+  max_idle_instances: 1
+  min_pending_latency: 30ms
+  max_pending_latency: automatic
 
 builtins:
 - remote_api: on
@@ -24,16 +27,6 @@ handlers:
 
 - url: /wake-up
   script: _go_app
-
-- url: /hashid
-  script: _go_app
-  login: admin
-  secure: always
-
-- url: /hashid/.*
-  script: _go_app
-  login: admin
-  secure: always
 
 - url: /tasks
   script: _go_app

@@ -3,7 +3,6 @@ package netlify
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"google.golang.org/appengine/urlfetch"
 )

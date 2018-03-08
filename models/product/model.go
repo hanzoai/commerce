@@ -2,13 +2,12 @@ package product
 
 import (
 	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
 	"hanzo.io/models/variant"
 )
 
-var kind = "product"
-
 func (p Product) Kind() string {
-	return kind
+	return "product"
 }
 
 func (p *Product) Init(db *datastore.Datastore) {
@@ -23,10 +22,9 @@ func (p *Product) Defaults() {
 func New(db *datastore.Datastore) *Product {
 	p := new(Product)
 	p.Init(db)
-	p.Defaults()
 	return p
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

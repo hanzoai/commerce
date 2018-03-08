@@ -1,0 +1,127 @@
+package form
+
+import (
+	"fmt"
+	"os"
+
+	"google.golang.org/appengine"
+
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/types/form"
+	"hanzo.io/models/types/thankyou"
+	"hanzo.io/util/fs"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
+)
+
+var jsTemplate = ""
+
+type Form struct {
+	mixin.Model
+
+	// Name of list
+	Name string `json:"name"`
+
+	// Type of form
+	Type form.Type `json:"type"`
+
+	// Whether to send email confirmation
+	SendWelcome bool `json:"sendWelcome"`
+
+	// Mailchimp settings for this list
+	Mailchimp struct {
+		Id               string `json:"id"`
+		APIKey           string `json:"apiKey"`
+		DoubleOptin      bool   `json:"doubleOptin"`
+		UpdateExisting   bool   `json:"updateExisting"`
+		ReplaceInterests bool   `json:"replaceInterests"`
+
+		// Whether to have Mailchimp send email confirmation
+		SendWelcome bool `json:"sendWelcome"`
+
+		Enabled bool `json:"enabled"`
+	} `json:"mailchimp"`
+
+	// Email forwarding
+	Forward struct {
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Enabled bool   `json:"enabled"`
+	} `json:"forward"`
+
+	// Url to Thank you page
+	ThankYou struct {
+		Type thankyou.Type `json:"type"`
+		Url  string        `json:"url,omitempty"`
+		HTML string        `json:"html,omitempty"`
+	} `json:"thankyou"`
+
+	// Conversion tracking info
+	Facebook struct {
+		Id       string `json:"id"`
+		Value    string `json:"value"`
+		Currency string `json:"currency"`
+	} `json:"facebook"`
+
+	Google struct {
+		Category string `json:"category"`
+		Name     string `json:"name"`
+	} `json:"google"`
+}
+
+func (f *Form) Defaults() {
+	f.Facebook.Value = "0.00"
+	f.Facebook.Currency = "USD"
+	f.ThankYou.Type = thankyou.Disabled
+}
+
+func (m *Form) Validator() *val.Validator {
+	return val.New()
+}
+
+func (f *Form) AddSubscriber(s *subscriber.Subscriber) error {
+	fkey := f.Key()
+	s.FormId = f.Id()
+	s.Parent = fkey
+	s.Normalize()
+
+	return f.RunInTransaction(func() error {
+		keys, err := subscriber.Query(f.Db).Ancestor(fkey).Filter("Email=", s.Email).GetKeys()
+
+		if len(keys) != 0 {
+			return SubscriberAlreadyExists
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return s.Create()
+	})
+}
+
+func (m *Form) Js() string {
+	if jsTemplate == "" {
+		var cwd, _ = os.Getwd()
+		jsTemplate = string(fs.ReadFile(cwd + "/resources/mailinglist.js"))
+	}
+
+	// Endpoint for subscription
+	endpoint := config.UrlFor("api", "/form/", m.Id(), "/subscribe")
+	if appengine.IsDevAppServer() {
+		endpoint = "http://localhost:8080" + endpoint
+	} else {
+		endpoint = "https:" + endpoint
+	}
+
+	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
+}
+
+func FromJSON(db *datastore.Datastore, data []byte) *Form {
+	ml := New(db)
+	json.DecodeBytes(data, ml)
+	return ml
+}

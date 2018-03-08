@@ -1,28 +1,24 @@
 package aggregate
 
-import "hanzo.io/datastore"
-
-var kind = "aggregate"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (a Aggregate) Kind() string {
-	return kind
+	return "aggregate"
 }
 
 func (a *Aggregate) Init(db *datastore.Datastore) {
 	a.Model.Init(db, a)
 }
 
-func (a *Aggregate) Defaults() {
-	a.VectorValue = make([]int64, 0)
-}
-
 func New(db *datastore.Datastore) *Aggregate {
 	a := new(Aggregate)
 	a.Init(db)
-	a.Defaults()
 	return a
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

@@ -45,8 +45,8 @@ func Staging() *Config {
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
 	config.Stripe.SecretKey = config.Stripe.TestSecretKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
+	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
@@ -55,13 +55,13 @@ func Staging() *Config {
 	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
 	config.Google.APIKey = "AIza_REDACTED"
-	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
+	config.Google.Bucket.ImageUploads = "hanzo-staging-image-uploads"
 
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("dash", "/salesforce/callback")
 
-	config.Netlify.AccessToken = "cb55596d4400897691b51df746c9007ea0f073139d1ec0af705b0a3c77d70621"
+	config.Netlify.AccessToken = "e9bd3c37ee5ac513b6d3a2ecc528b011ea2416e16f2de22b003692b1e7850624"
 
 	return config
 }

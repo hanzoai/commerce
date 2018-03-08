@@ -3,6 +3,7 @@ package stripe
 import (
 	"errors"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -11,7 +12,6 @@ import (
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/emails"
-	"hanzo.io/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")

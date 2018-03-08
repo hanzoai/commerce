@@ -12,8 +12,8 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
+
 	router.GET("/", func(c *gin.Context) {
 		c.Redirect(302, "https://docs.hanzo.ai")
-
 	})
 }

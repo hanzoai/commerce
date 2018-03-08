@@ -6,12 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
