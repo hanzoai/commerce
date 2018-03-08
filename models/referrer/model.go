@@ -2,13 +2,11 @@ package referrer
 
 import (
 	"hanzo.io/datastore"
-	. "hanzo.io/models"
+	"hanzo.io/models/mixin"
 )
 
-var kind = "referrer"
-
 func (r Referrer) Kind() string {
-	return kind
+	return "referrer"
 }
 
 func (r *Referrer) Init(db *datastore.Datastore) {
@@ -16,16 +14,16 @@ func (r *Referrer) Init(db *datastore.Datastore) {
 }
 
 func (r *Referrer) Defaults() {
-	r.State = make(Map)
+	r.Program.Triggers = make([]int, 0)
+	r.Program.Actions = make([]Action, 0)
 }
 
 func New(db *datastore.Datastore) *Referrer {
 	r := new(Referrer)
 	r.Init(db)
-	r.Defaults()
 	return r
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

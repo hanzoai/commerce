@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"context"
-
 	"github.com/gin-gonic/gin"
 
 	ds "hanzo.io/datastore"
@@ -69,7 +68,7 @@ var _ = New("update-old-payments",
 
 		// Query out payments with matching chargeId's, only one is linked to a
 		// real order, and the charge should be pointed at that one.
-		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
+		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).LoadAll(&payments)
 		if err != nil {
 			log.Error("Unable query for payments: %v", err, ctx)
 			return
@@ -91,7 +90,7 @@ var _ = New("update-old-payments",
 
 			// See if we have a valid order
 			ord = order.New(db)
-			if err := ord.GetById(p.OrderId); err != nil {
+			if err := ord.Get(p.OrderId); err != nil {
 				// Not a good payment, no matching order
 				deletePayment(ctx, p)
 			} else {

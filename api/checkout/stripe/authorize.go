@@ -16,20 +16,24 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// Do authorization
 	tok, err := client.Authorize(pay)
 	if err != nil {
-		log.Warn("Failed to authorize payment '%s'", pay.Id())
-		log.JSON(pay)
 		return err
 	}
 
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
 		log.Debug("New stripe customer")
-		return firstTime(client, tok, usr, ord, pay)
-	} else {
-		// Existing customer, new card
-		log.Debug("Returning stripe customer")
-		return returning(client, tok, usr, ord, pay)
+		return firstTime(client, tok, usr, pay)
 	}
+
+	// Existing customer, already have card on record
+	if usr.Accounts.Stripe.CardMatches(pay.Account) {
+		log.Debug("Returning stripe customer")
+		return returning(client, tok, usr, pay)
+	}
+
+	// Existing customer, new card
+	log.Debug("Returning stripe customer, new card")
+	return returningNewCard(client, tok, usr, pay)
 }
 
 func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
@@ -44,52 +48,29 @@ func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
 	pay.Account.CVCCheck = string(card.CVCCheck)
 }
 
-func updateUserFromPayment(usr *user.User, pay *payment.Payment) {
-	usr.Accounts.Stripe.CardId = pay.Account.CardId
-	usr.Accounts.Stripe.Brand = string(pay.Account.Brand)
-	usr.Accounts.Stripe.LastFour = pay.Account.LastFour
-	usr.Accounts.Stripe.Month = int(pay.Account.Month)
-	usr.Accounts.Stripe.Year = int(pay.Account.Year)
-	usr.Accounts.Stripe.Country = pay.Account.Country
-	usr.Accounts.Stripe.Fingerprint = pay.Account.Fingerprint
-	usr.Accounts.Stripe.Funding = string(pay.Account.Funding)
-	usr.Accounts.Stripe.CVCCheck = string(pay.Account.CVCCheck)
+func updatePaymentFromUser(pay *payment.Payment, usr *user.User) {
+	acct := usr.Accounts.Stripe
+	pay.Account.CardId = acct.CardId
+	pay.Account.Brand = acct.Brand
+	pay.Account.LastFour = acct.LastFour
+	pay.Account.Month = acct.Month
+	pay.Account.Year = acct.Year
+	pay.Account.Country = acct.Country
+	pay.Account.Fingerprint = acct.Fingerprint
+	pay.Account.Funding = acct.Funding
+	pay.Account.CVCCheck = acct.CVCCheck
 }
 
-func dedupeCards(client *stripe.Client, card *stripe.Card, cust *stripe.Customer, usr *user.User) {
-	// Keep track of last four we've seen
-	seen := make(map[string]bool)
-	seen[card.LastFour] = true
-
-	// Check sources returned on customer for duplicates
-	for _, source := range cust.Sources.Values {
-		// Skip card we just added
-		if card.ID == source.Card.ID {
-			continue
-		}
-
-		// Delete any dupes
-		if _, ok := seen[source.Card.LastFour]; ok {
-			if _, err := client.DeleteCard(source.Card.ID, usr); err != nil {
-				log.Warn("Unable to delete card '%s': %v", card.ID, err, usr.Db.Context)
-			}
-		} else {
-			seen[source.Card.LastFour] = true
-		}
-
-	}
-}
-
-func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
+func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
-	cust, err := client.NewCustomer(tok.ID, usr)
+	cust, err := client.NewCustomer(u, tok.ID)
 	if err != nil {
 		return err
 	}
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Live
 
-	log.JSON("Stripe customer:", cust)
+	log.Debug("Stripe customer: %#v", cust)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
@@ -100,37 +81,42 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 
 	// Update account info
 	updatePaymentFromCard(pay, card)
-	updateUserFromPayment(usr, pay)
 
 	// Save account on user
-	usr.Accounts.Stripe = pay.Account
+	u.Accounts.Stripe = pay.Account
 
 	// Create charge and associate with payment.
 	_, err = client.NewCharge(cust, pay)
 	return err
 }
 
-func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
-	// Add card to customer
-	card, err := client.AddCard(tok.ID, usr)
-	if err != nil {
-		return err
-	}
-
-	// Update account info
-	updatePaymentFromCard(pay, card)
-	updateUserFromPayment(usr, pay)
-
-	// Update customer (which will set new card as default)
+func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
+	// Update customer details
 	cust, err := client.UpdateCustomer(usr)
 	if err != nil {
 		return err
 	}
 	pay.Live = cust.Live
 
-	dedupeCards(client, card, cust, usr)
+	// Update card details using token
+	card, err := client.UpdateCard(tok.ID, usr)
+	updatePaymentFromCard(pay, card)
 
-	// Charge using Stripe Customer Id on user
+	// Charge using customer
+	_, err = client.NewCharge(cust, pay)
+	return err
+}
+
+func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
+	// Add new card to customer
+	card, err := client.AddCard(tok.ID, usr)
+	if err != nil {
+		return err
+	}
+
+	updatePaymentFromCard(pay, card)
+
+	// Charge using customerId on user
 	_, err = client.NewCharge(usr, pay)
 	return err
 }

@@ -13,6 +13,7 @@ import (
 
 func New(moduleName string) *gin.RouterGroup {
 	gin.SetMode(gin.ReleaseMode)
+
 	router := gin.New()
 
 	prefix := strings.TrimSpace(config.Prefixes[moduleName])
@@ -59,4 +60,11 @@ func Empty(c *gin.Context) {
 
 func Robots(c *gin.Context) {
 	c.String(200, "User-agent: *\nDisallow: /\n")
+}
+
+func Humans(c *gin.Context) {
+	c.String(200, `In 1999, a crack software development unit was sent to the internet for a crime
+they didn't commit. Today, still wanted by startups around the world, they
+survive as soldiers of fortune. If you have a problem... if no one else can
+help... and if you can find them... maybe you can hire... Verus.`)
 }

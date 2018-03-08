@@ -2,33 +2,23 @@ package payment
 
 import (
 	"hanzo.io/datastore"
-
-	. "hanzo.io/models"
+	"hanzo.io/models/mixin"
 )
 
-var kind = "payment"
-
 func (p Payment) Kind() string {
-	return kind
+	return "payment"
 }
 
 func (p *Payment) Init(db *datastore.Datastore) {
 	p.Model.Init(db, p)
 }
 
-func (p *Payment) Defaults() {
-	p.Status = Unpaid
-	p.FeeIds = make([]string, 0)
-	p.Metadata = make(Map)
-}
-
 func New(db *datastore.Datastore) *Payment {
 	p := new(Payment)
 	p.Init(db)
-	p.Defaults()
 	return p
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

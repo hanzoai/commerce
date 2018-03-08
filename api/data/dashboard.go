@@ -6,10 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 func dashboard(c *gin.Context) {

@@ -1,16 +1,18 @@
-application: crowdstart-staging
-module: api
+service: api
 version: v1
 
 runtime: go
-api_version: go1
-threadsafe: true
+api_version: go1.8
 
+threadsafe: true
 instance_class: F1
 
 automatic_scaling:
   max_concurrent_requests: 100
   min_idle_instances: 0
+  max_idle_instances: automatic
+  min_pending_latency: 30ms
+  max_pending_latency: automatic
 
 handlers:
 - url: /.*

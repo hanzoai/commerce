@@ -2,46 +2,18 @@ package referral
 
 import (
 	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/client"
-	"hanzo.io/models/types/currency"
 )
-
-type Event string
-
-const (
-	NewOrder Event = "new-order"
-	NewUser  Event = "new-user"
-)
-
-type Referrer struct {
-	Id          string `json:"id"`
-	UserId      string `json:"userId"`
-	AffiliateId string `json:"affiliateId"`
-}
-
-type Fee struct {
-	Currency currency.Type  `json:"currency,omitempty"`
-	Id       string         `json:"id,omitempty"`
-	Amount   currency.Cents `json:"amount,omitempty"`
-}
 
 type Referral struct {
 	mixin.Model
 
-	Type Event `json:"event"`
-
-	// User created by referral
+	// User being referred
 	UserId string `json:"userId"`
 
-	// Order created by referral
+	// Associated order
 	OrderId string `json:"orderId"`
 
 	// Referred by
-	Referrer Referrer `json:"referrer,omitempty"`
-
-	Fee Fee `json:"fee,omitempty"`
-
-	Client      client.Client `json:"-"`
-	Blacklisted bool          `json:"blacklisted,omitempty"`
-	Duplicate   bool          `json:"duplicate,omitempty"`
+	ReferrerUserId string `json:"referrerUserId"`
+	ReferrerId     string `json:"referrerId"`
 }

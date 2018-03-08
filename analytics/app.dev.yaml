@@ -1,10 +1,11 @@
-application: crowdstart-us
-module: analytics
+service: analytics
 version: v1
 
 runtime: go
-api_version: go1
+api_version: go1.8
+
 threadsafe: true
+instance_class: F1
 
 handlers:
 - url: /.*

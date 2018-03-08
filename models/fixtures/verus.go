@@ -5,10 +5,10 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 )
 
 var Verus = New("verus", func(c *gin.Context) *organization.Organization {

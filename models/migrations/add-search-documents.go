@@ -15,9 +15,9 @@ var _ = New("add-search-documents",
 
 		return NoArgs
 	},
-	func(db *ds.Datastore, u *user.User) {
-		u.PutDocument()
-	},
+	// func(db *ds.Datastore, u *user.User) {
+	// 	u.PutDocument()
+	// },
 	func(db *ds.Datastore, o *order.Order) {
 		o.PutDocument()
 	},

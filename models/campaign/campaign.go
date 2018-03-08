@@ -32,3 +32,8 @@ type Campaign struct {
 	FacebookTag     string   `json:"facebookTag"`
 	Links           []string `json:"links"`
 }
+
+func (c *Campaign) Defaults() {
+	c.Links = make([]string, 0)
+	c.ProductIds = make([]string, 0)
+}

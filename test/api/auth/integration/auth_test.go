@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/organization"
@@ -12,7 +13,6 @@ import (
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/json"
 	"hanzo.io/util/jwt"
-	"hanzo.io/log"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 

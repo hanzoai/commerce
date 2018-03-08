@@ -1,29 +1,24 @@
 package coupon
 
-import "hanzo.io/datastore"
-
-var kind = "coupon"
+import (
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+)
 
 func (c Coupon) Kind() string {
-	return kind
+	return "coupon"
 }
 
 func (c *Coupon) Init(db *datastore.Datastore) {
 	c.Model.Init(db, c)
 }
 
-func (c *Coupon) Defaults() {
-	c.Enabled = true
-	// c.Buyers = make([]string, 0)
-}
-
 func New(db *datastore.Datastore) *Coupon {
 	c := new(Coupon)
 	c.Init(db)
-	c.Defaults()
 	return c
 }
 
-func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

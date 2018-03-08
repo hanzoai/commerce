@@ -21,7 +21,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// u.LastName = "API"
 	// u.Organizations = []string{org.Id()}
 	// u.PasswordHash, _ = password.Hash("xvMQrMv2c5dCFbVG")
-	// u.Put()
+	// u.MustUpdate()
 
 	// u2 := user.New(db)
 	// u2.Email = "marko@bellabeat.com"
@@ -30,7 +30,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// u2.LastName = "Bozic"
 	// u2.Organizations = []string{org.Id()}
 	// u2.PasswordHash, _ = password.Hash("bellabeatpassword!")
-	// u2.Put()
+	// u2.Update()
 
 	// u3 := user.New(db)
 	// u3.Email = "morena@bellabeat.com"
@@ -39,7 +39,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// u3.LastName = "Šimatić"
 	// u3.Organizations = []string{org.Id()}
 	// u3.PasswordHash, _ = password.Hash("bellabeatpassword!")
-	// u3.Put()
+	// u3.MustUpdate()
 
 	// u4 := user.New(db)
 	// u4.Email = "ivana@bellabeat.com"
@@ -48,7 +48,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// u4.LastName = "Skegro"
 	// u4.Organizations = []string{org.Id()}
 	// u4.PasswordHash, _ = password.Hash("bellabeatpassword!")
-	// u4.Put()
+	// u4.MustUpdate()
 
 	// org.FullName = "bellabeat"
 	// org.Owners = []string{u.Id()}
@@ -81,16 +81,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// org.Email.User.EmailConfirmed.Enabled = true
 
 	// // Save org into default namespace
-	// org.Put()
-
-	// 	// Save namespace so we can decode keys for this organization later
-	// 	ns := namespace.New(db)
-	// 	ns.Name = org.Name
-	// 	ns.IntId = org.Key().IntID()
-	// 	err := ns.Put()
-	// 	if err != nil {
-	// 		log.Warn("Failed to put namespace: %v", err)
-	// 	}
+	// org.MustUpdate()
 
 	return org
 })

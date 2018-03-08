@@ -1,6 +1,16 @@
-application: crowdstart-staging
-
 dispatch:
+  # - url: "default.staging.hanzo.io/*"
+  #   module: default
+
+  # - url: "static.staging.hanzo.io/*"
+  #   module: default
+
+  # - url: "api.staging.hanzo.io/*"
+  #   module: api
+
+  # - url: "cdn.staging.hanzo.io/*"
+  #   module: api
+
   - url: "default-staging.hanzo.io/*"
     module: default
 

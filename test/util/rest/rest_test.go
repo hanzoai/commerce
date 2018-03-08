@@ -4,9 +4,14 @@ import (
 	"net/http"
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
+	"hanzo.io/models/app"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/token2"
+	"hanzo.io/test/fixtures/user"
 	"hanzo.io/util/bit"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/test/ae"
@@ -20,7 +25,8 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx  ae.Context
+	ctx  context.Context
+	inst ae.Instance
 	tok1 string
 	tok2 string
 )
@@ -33,20 +39,35 @@ const (
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
+	ctx, inst, _ = ae.NewContext()
 
 	// Setup organization so Authorization middleware works
 	db := datastore.New(ctx)
+
 	org := organization.New(db)
-	tok1 = org.AddToken("tok1", Perm1)
-	tok2 = org.AddToken("tok2", Perm2|Perm3)
-	err := org.Put()
+	org.Name = "org"
+	org.MustCreate()
+
+	nsDb := datastore.New(org.Namespaced(ctx))
+	ap := app.New(nsDb)
+	ap.MustCreate()
+
+	t1, err := ap.NewApiKey("tok1", token.Claims{
+		Permissions: bit.Field(Perm1),
+	})
 	Expect(err).NotTo(HaveOccurred())
+	tok1 = t1.String
+
+	t2, err := ap.NewApiKey("tok2", token.Claims{
+		Permissions: bit.Field(Perm2 | Perm3),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	tok2 = t2.String
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	inst.Close()
 })
 
 var _ = Describe("New", func() {
@@ -54,7 +75,7 @@ var _ = Describe("New", func() {
 		client := ginclient.New(ctx)
 
 		// Create routes for Model
-		r := rest.New(Model{})
+		r := rest.New(user.User{})
 		r.Permissions = rest.Permissions{
 			"get":  []bit.Mask{Perm1, Perm2 | Perm3},
 			"list": []bit.Mask{Perm1, Perm2 | Perm3},
@@ -62,28 +83,33 @@ var _ = Describe("New", func() {
 		r.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
-		client.Get("/test-model", nil, 401)
+		w := client.Get("/user")
+		Expect(w.Code).To(Equal(401))
 
 		// Set authorization header for subsequent requests
-		client.Defaults(func(r *http.Request) {
+		client.Setup(func(r *http.Request) {
 			r.Header.Set("Authorization", tok1)
 		})
 
 		// Get should work ok
-		client.Get("/test-model", nil, 200)
+		w = client.Get("/user")
+		Expect(w.Code).To(Equal(200))
 
 		// Should 404
-		client.Get("/test-model2", nil, 404)
+		w = client.Get("/user2")
+		Expect(w.Code).To(Equal(404))
 
 		// Should work with more complex token
-		client.Defaults(func(r *http.Request) {
+		client.Setup(func(r *http.Request) {
 			r.Header.Set("Authorization", tok2)
 		})
 
 		// Get should work ok
-		client.Get("/test-model", nil, 200)
+		w = client.Get("/user")
+		Expect(w.Code).To(Equal(200))
 
 		// Should 404
-		client.Get("/test-model2", nil, 404)
+		w = client.Get("/user2")
+		Expect(w.Code).To(Equal(404))
 	})
 })

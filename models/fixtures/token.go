@@ -13,7 +13,7 @@ var Token = New("token", func(c *gin.Context) *token.Token {
 	token.Email = "test@test.com"
 	token.GetOrCreate("Email=", token.Email)
 	token.UserId = "fake"
-	token.MustPut()
+	token.MustUpdate()
 
 	return token
 })

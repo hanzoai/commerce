@@ -5,9 +5,9 @@ import (
 
 	"google.golang.org/appengine/search"
 
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
-	"hanzo.io/log"
 	"hanzo.io/util/searchpartial"
 )
 

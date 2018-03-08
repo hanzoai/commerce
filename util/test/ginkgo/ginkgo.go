@@ -60,21 +60,13 @@ var Measure = ginkgo.Measure
 var FMeasure = ginkgo.FMeasure
 var PMeasure = ginkgo.PMeasure
 var XMeasure = ginkgo.XMeasure
-
 var BeforeSuite = ginkgo.BeforeSuite
 var AfterSuite = ginkgo.AfterSuite
 var SynchronizedBeforeSuite = ginkgo.SynchronizedBeforeSuite
 var SynchronizedAfterSuite = ginkgo.SynchronizedAfterSuite
-
-var Before = ginkgo.BeforeEach
-var After = ginkgo.AfterEach
-var JustBefore = ginkgo.JustBeforeEach
-
 var BeforeEach = ginkgo.BeforeEach
-var AfterEach = ginkgo.AfterEach
 var JustBeforeEach = ginkgo.JustBeforeEach
-
-var Skip = ginkgo.Skip
+var AfterEach = ginkgo.AfterEach
 
 // Declarations for Gomega DSL
 var RegisterFailHandler = gomega.RegisterFailHandler
@@ -120,39 +112,3 @@ var BeNumerically = gomega.BeNumerically
 var BeTemporally = gomega.BeTemporally
 var BeAssignableToTypeOf = gomega.BeAssignableToTypeOf
 var Panic = gomega.Panic
-
-// Helpers for nested Expect calls
-func Expect1(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
-	return ExpectWithOffset(1, actual, extra...)
-}
-
-func Expect2(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
-	return ExpectWithOffset(2, actual, extra...)
-}
-
-func Expect3(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
-	return ExpectWithOffset(3, actual, extra...)
-}
-
-// BeforeAll / AfterAll helpers
-func BeforeAll(fn func()) {
-	first := true
-	Before(func() {
-		// Only run first time BeforeEach block is executed
-		if first {
-			fn()
-			first = false
-		}
-	})
-}
-
-func AfterAll(fn func()) {
-	first := true
-	After(func() {
-		// Only run first time AfterEach block is executed
-		if first {
-			fn()
-			first = false
-		}
-	})
-}

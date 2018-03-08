@@ -3,7 +3,14 @@ version: v1
 
 runtime: go
 api_version: go1.8
+
 threadsafe: true
+
+builtins:
+- remote_api: on
+
+# inbound_services:
+# - warmup
 
 instance_class: F1
 

@@ -9,7 +9,7 @@ func IsZero(t time.Time) bool {
 		return true
 	}
 
-	// handle zero date from datastore
+	// Handle zero date from datastore
 	if t.Unix() == -2177452800 {
 		return true
 	}

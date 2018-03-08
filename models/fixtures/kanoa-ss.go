@@ -23,13 +23,13 @@ var _ = New("kanoa-ss", func(c *gin.Context) *organization.Organization {
 	u.LastName = "Shipstation"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("6bgX8LVwzwJaDwCd")
-	u.Put()
+	u.MustUpdate()
 
 	// Add to admins
 	org.Admins = append(org.Admins, u.Id())
 
 	// Save org into default namespace
-	org.Put()
+	org.MustUpdate()
 
 	return org
 })

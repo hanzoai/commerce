@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/util/gincontext"
 	"hanzo.io/log"
+	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
 	"hanzo.io/thirdparty/stripe"

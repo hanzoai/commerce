@@ -25,11 +25,6 @@ type Variant struct {
 	Currency currency.Type  `json:"currency"`
 	Price    currency.Cents `json:"price"`
 
-	// Variant Media
-	Header Media   `json:"header"`
-	Image  Media   `json:"image"`
-	Media  []Media `json:"media"`
-
 	// Is the variant available
 	Available bool `json:"available"`
 
@@ -48,6 +43,10 @@ type Variant struct {
 	Taxable bool `json:"taxable"`
 
 	Options []Option `json:"options"`
+}
+
+func (v *Variant) Defaults() {
+	v.Options = make([]Option, 0)
 }
 
 func (v *Variant) Validator() *val.Validator {

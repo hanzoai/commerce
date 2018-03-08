@@ -6,99 +6,48 @@ import (
 	"reflect"
 	"sync"
 
-	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 )
 
 // Vals should be a slice of models
 func multi(vals interface{}, fn func(mixin.Entity) error) error {
-	// Vals must be a slice
-	if reflect.TypeOf(vals).Kind() != reflect.Slice {
+	var wg sync.WaitGroup
+	var err error
+
+	switch reflect.TypeOf(vals).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(vals)
+
+		for i := 0; i < s.Len(); i++ {
+			wg.Add(1)
+
+			// Do something with model
+			entity, ok := s.Index(i).Interface().(mixin.Entity)
+			if !ok {
+				return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", s.Index(i).Interface()))
+			}
+
+			// Run method in gofunc
+			go func(model mixin.Entity) {
+				defer wg.Done()
+
+				// Exit if there is an error
+				if err != nil {
+					return
+				}
+
+				err = fn(entity)
+			}(entity)
+		}
+	default:
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
 	}
 
-	var wg sync.WaitGroup
-	slice := reflect.ValueOf(vals)
-	n := slice.Len()
-	errs := make(MultiError, n)
-	errd := false
-
-	// Loop over slice initializing entities
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-
-			// Grab next entity off slice
-			entity, ok := slice.Index(i).Interface().(mixin.Entity)
-			if !ok {
-				errd = true
-				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not %v", slice.Index(i).Interface()))
-				return
-			}
-
-			// Run operation on entity
-			if err := fn(entity); err != nil {
-				errd = true
-				errs[i] = err
-			}
-		}(i)
-	}
-
 	// Wait to finish
 	wg.Wait()
 
-	if errd {
-		return errs
-	} else {
-		return nil
-	}
-}
-
-func Get(db *datastore.Datastore, keys interface{}, vals interface{}) error {
-	// Fetch underlying entities
-	if err := db.GetMulti(keys, vals); err != nil {
-		return err
-	}
-
-	keySlice := reflect.ValueOf(keys)
-	valSlice := reflect.ValueOf(vals)
-	nkeys := keySlice.Len()
-
-	errs := make(MultiError, nkeys)
-	errd := false
-
-	var wg sync.WaitGroup
-
-	// Loop over slice fetching entities
-	for i := 0; i < nkeys; i++ {
-		wg.Add(1)
-
-		// Run method in gofunc
-		go func(i int) {
-			defer wg.Done()
-
-			key := keySlice.Index(i).Interface()
-			entity := valSlice.Index(i).Interface().(mixin.Entity)
-
-			// Set key on model
-			if err := entity.SetKey(key); err != nil {
-				errd = true
-				errs[i] = err
-			}
-			// Ensure model is initialized correctly
-			entity.Init(db)
-		}(i)
-	}
-
-	// Wait to finish
-	wg.Wait()
-
-	if errd {
-		return errs
-	} else {
-		return nil
-	}
+	// Return first error
+	return err
 }
 
 func Put(vals interface{}) error {
@@ -125,6 +74,12 @@ func Update(vals interface{}) error {
 	})
 }
 
+func CreateOrUpdate(vals interface{}) error {
+	return multi(vals, func(entity mixin.Entity) error {
+		return entity.CreateOrUpdate()
+	})
+}
+
 func MustPut(vals interface{}) {
 	if err := Put(vals); err != nil {
 		panic(err)
@@ -145,6 +100,12 @@ func MustUpdate(vals interface{}) {
 
 func MustDelete(vals interface{}) {
 	if err := Delete(vals); err != nil {
+		panic(err)
+	}
+}
+
+func MustCreateOrUpdate(vals interface{}) {
+	if err := CreateOrUpdate(vals); err != nil {
 		panic(err)
 	}
 }

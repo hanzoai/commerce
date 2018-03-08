@@ -6,11 +6,11 @@ import (
 
 	"github.com/stripe/stripe-go/charge"
 
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/delay"
 )
 
 // Update payment from charge

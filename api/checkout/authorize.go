@@ -11,6 +11,7 @@ import (
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/multi"
@@ -24,7 +25,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/reflect"
 )
 

@@ -18,7 +18,7 @@ var Referral = New("referral", func(c *gin.Context) *referral.Referral {
 	ref.UserId = u.Id()
 	ref.OrderId = ord.Id()
 	ref.GetOrCreate("OrderId=", ref.OrderId)
-	ref.MustPut()
+	ref.MustUpdate()
 
 	return ref
 })

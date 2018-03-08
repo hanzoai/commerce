@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
+	"hanzo.io/models/campaign"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/copy"
 	"hanzo.io/models/discount"
@@ -23,7 +24,6 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/models/webhook"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
@@ -46,12 +46,14 @@ import (
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
 	referrerApi "hanzo.io/api/referrer"
-	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
 	storeApi "hanzo.io/api/store"
+	subscriptionApi "hanzo.io/api/subscription"
 	transactionApi "hanzo.io/api/transaction"
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
+	shipstationApi "hanzo.io/thirdparty/shipstation"
+	stripeApi "hanzo.io/thirdparty/stripe/webhook"
 
 	bitcoinApi "hanzo.io/thirdparty/bitcoin/api"
 	ethereumApi "hanzo.io/thirdparty/ethereum/api"
@@ -67,8 +69,10 @@ import (
 	_ "hanzo.io/models/referrer/tasks"
 )
 
-func Route(api router.Router) {
+func init() {
 	tokenRequired := middleware.TokenRequired()
+
+	api := router.New("api")
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -76,9 +80,10 @@ func Route(api router.Router) {
 	} else {
 		api.GET("/", router.Ok)
 		api.HEAD("/", router.Empty)
-
 		api.GET("/ping", router.Ok)
 		api.HEAD("/ping", router.Empty)
+		api.GET("/humans.txt", router.Humans)
+		api.GET("/robots.txt", router.Robots)
 	}
 
 	// Use permissive CORS policy for all API routes.
@@ -89,8 +94,14 @@ func Route(api router.Router) {
 
 	// Organization APIs, namespaced by organization
 
-	// Checkout APIs (charge, authorize, capture)
-	checkoutApi.Route(api)
+	/////////////////////////////////
+	// Customer Token/API Key APIs
+	/////////////////////////////////
+	accountApi.Route(api, tokenRequired)
+
+	///////////////////////////////////
+	// API Key and Access Token APIs
+	///////////////////////////////////
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
@@ -111,7 +122,7 @@ func Route(api router.Router) {
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
-	paymentApi.Route(api, tokenRequired)
+	paymentApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	accountApi.Route(api, tokenRequired)
 	affiliateApi.Route(api, tokenRequired)
@@ -132,21 +143,38 @@ func Route(api router.Router) {
 
 	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
-	token.Prefix = "/c/"
-	token.Route(api, tokenRequired)
+	token.Prefix = "/_/"
+	token.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	user := rest.New(user.User{})
 	user.DefaultNamespace = true
-	user.Prefix = "/c/"
-	user.Route(api, tokenRequired)
+	user.Prefix = "/_/"
+	user.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
-	searchApi.Route(api, tokenRequired)
+	deployApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	formApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	orderApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	storeApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	referrerApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	subscriptionApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+	userApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+
+	searchApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
+
+	dataApi.Route(api, tokenRequired, middleware.ApiKeyOrAccessTokenOnly)
 
 	// Namespace API
-	namespaceApi.Route(api)
+	// namespaceApi.Route(api)
 
 	// Access token API
-	accessTokenApi.Route(api)
+	// accessTokenApi.Route(api)
+
+	//////////////
+	// Webhooks
+	//////////////
+
+	// Auth Api
+	authApi.Route(api)
 
 	// OAuth API
 	authApi.Route(api)
@@ -157,10 +185,7 @@ func Route(api router.Router) {
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
 
-	// Shipwire custom store API endpoints
-	shipwireApi.Route(api)
-
-	// Stripe callback, webhook
+	// Stripe webhook
 	stripeApi.Route(api)
 
 	// Paypal IPN

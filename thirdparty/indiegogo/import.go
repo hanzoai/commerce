@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-func Import(db *datastore.Datastore, filename string) {
+func ImportCSV(db *datastore.Datastore, filename string) {
 	for record := range csv.Iterator(filename) {
 		if config.IsDevelopment && record.Index > 25 {
 			break // Only import first 25 in development
