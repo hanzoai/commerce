@@ -297,9 +297,9 @@ deploy-debug: assets deploy-app
 
 deploy-app: update-env rollback
 	for module in $(gae_config); do \
-		python2 $(appcfg.py) update $$module; \
+		$(appcfg.py) update $$module; \
 	done
-	python2 $(appcfg.py) update_indexes $(firstword $(gae_config))
+	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 deploy-default: update-env rollback
 	$(appcfg.py) update config/production
@@ -314,7 +314,7 @@ deploy-api: update-env assets-min rollback
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 update-dispatch:
-	python2 $(appcfg.py) update_dispatch config/$(project_env)
+	$(appcfg.py) update_dispatch config/$(project_env)
 
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
@@ -324,7 +324,7 @@ update-env-test:
 
 rollback:
 	for module in $(gae_config); do \
-		python2 $(appcfg.py) rollback $$module; \
+		$(appcfg.py) rollback $$module; \
 	done
 
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
