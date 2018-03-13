@@ -32,7 +32,7 @@ gae_staging = config/staging \
 			  api/app.staging.yaml
 
 gae_production = config/production \
-				 dash
+				 dash \
 				 api
 
 gae_sandbox = config/sandbox \
