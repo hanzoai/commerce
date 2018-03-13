@@ -59,11 +59,6 @@ func create(c *gin.Context) {
 		return
 	}
 
-	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
-		return
-	}
-
 	// Pull out user
 	usr := req.User
 
@@ -185,6 +180,11 @@ func create(c *gin.Context) {
 		}
 	} else {
 		log.Info("Sign up does not require password", c)
+	}
+
+	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
+		return
 	}
 
 	ctx := org.Db.Context
