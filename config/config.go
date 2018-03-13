@@ -6,8 +6,6 @@ import (
 	"os"
 	"path"
 	"strings"
-
-	"google.golang.org/appengine"
 )
 
 var demoMode = true
@@ -215,17 +213,15 @@ func Get() *Config {
 	// Default to development environment
 	cachedConfig = Development()
 
-	if Env == "test" {
+	switch Env {
+	case "test":
 		cachedConfig = Test()
-	} else if !appengine.IsDevAppServer() {
-		switch Env {
-		case "crowdstart-sandbox":
-			cachedConfig = Sandbox()
-		case "crowdstart-staging":
-			cachedConfig = Staging()
-		case "crowdstart-us":
-			cachedConfig = Production()
-		}
+	case "sandbox":
+		cachedConfig = Sandbox()
+	case "staging":
+		cachedConfig = Staging()
+	case "production":
+		cachedConfig = Production()
 	}
 
 	for _, configFile := range configFileLocations {
