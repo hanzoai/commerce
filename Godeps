@@ -29,7 +29,7 @@ github.com/speps/go-hashids                2aa1a76a4e7c76dbe7d39f40661ab0261d701
 github.com/stripe/stripe-go                v25.0.0
 github.com/vanng822/go-premailer/premailer master
 github.com/zeekay/gochimp3                 master
-golang.org/x/crypto/bcrypt                 master
+golang.org/x/crypto/bcrypt                 7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb
 golang.org/x/net/html                      master
 golang.org/x/text/encoding                 master
 golang.org/x/tools/cmd/cover               master
