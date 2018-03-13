@@ -20,15 +20,19 @@ gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/config \
+		  hanzo.io/dash \
 	      hanzo.io/api
 
 gae_development = config/development \
+				  dash/app.dev.yaml \
 				  api/app.dev.yaml
 
 gae_staging = config/staging \
+			  dash/app.staging.yaml \
 			  api/app.staging.yaml
 
 gae_production = config/production \
+				 dash
 				 api
 
 gae_sandbox = config/sandbox \
