@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/delay"
 	"hanzo.io/middleware"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/copy"
@@ -85,6 +86,12 @@ func Route(api router.Router) {
 	api.Use(middleware.AccessControl("*"))
 	api.OPTIONS("*wildcard", func(c *gin.Context) {
 		c.Next()
+	})
+
+	// Setup routes for delay funcs
+	api.POST(delay.Path, func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
 	// Organization APIs, namespaced by organization
