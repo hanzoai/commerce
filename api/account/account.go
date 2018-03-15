@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 func get(c *gin.Context) {
@@ -34,6 +34,11 @@ func get(c *gin.Context) {
 	}
 
 	if err := usr.CalculateBalances(!org.Live); err != nil {
+		http.Fail(c, 500, "User balance data could get be queried", err)
+		return
+	}
+
+	if err := usr.LoadWallet(usr.Db); err != nil {
 		http.Fail(c, 500, "User balance data could get be queried", err)
 		return
 	}
