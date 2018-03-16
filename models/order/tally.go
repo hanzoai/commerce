@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Calculates order totals

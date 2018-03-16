@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // Returns short, url-friendly Id

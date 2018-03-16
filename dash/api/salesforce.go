@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
 

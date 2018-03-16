@@ -2,7 +2,7 @@ package site
 
 import (
 	"hanzo.io/thirdparty/netlify"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/webhook"
 )
 

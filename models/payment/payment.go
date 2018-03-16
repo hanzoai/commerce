@@ -1,21 +1,19 @@
 package payment
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Status string
 
@@ -199,12 +197,12 @@ func (p *Payment) GetFees() ([]*fee.Fee, error) {
 	return fees, nil
 }
 
-func (p *Payment) Load(c <-chan aeds.Property) (err error) {
+func (p *Payment) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
 
@@ -216,14 +214,10 @@ func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (p *Payment) Save(c chan<- aeds.Property) (err error) {
+func (p *Payment) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
-	if err != nil {
-		return err
-	}
-
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+	return datastore.SaveStruct(p)
 }

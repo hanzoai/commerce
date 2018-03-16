@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var Myle = New("myle", func(c *gin.Context) *organization.Organization {
