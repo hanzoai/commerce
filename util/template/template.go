@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/thankyou"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 var cwd, _ = os.Getwd()

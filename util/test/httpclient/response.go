@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type Response struct {

@@ -1,9 +1,8 @@
 package form
 
 import (
+	"context"
 	"fmt"
-
-	"appengine"
 
 	"hanzo.io/config"
 	"hanzo.io/models/mailinglist"
@@ -17,7 +16,7 @@ import (
 )
 
 // Add subscriber to mailing list
-func forward(ctx appengine.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
+func forward(ctx context.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
 	if !ml.Forward.Enabled {
 		return
 	}

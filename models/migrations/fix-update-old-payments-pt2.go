@@ -1,19 +1,17 @@
 package migrations
 
 import (
+	"context"
 	"strings"
-
-	"appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/log"
 
 	ds "hanzo.io/datastore"
 )
@@ -25,7 +23,7 @@ func testModeError(err error) bool {
 }
 
 // Update charge in case order/pay id is missing in metadata
-var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx appengine.Context, payId string) {
+var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx context.Context, payId string) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 	if err := pay.GetById(payId); err != nil {

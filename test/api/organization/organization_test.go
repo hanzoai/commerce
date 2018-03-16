@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api/organization/newRoutes"
+	"hanzo.io/api/organization/newroutes"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
@@ -14,14 +14,14 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/gincontext"
-	//"hanzo.io/util/log"
+	//"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 
 	. "hanzo.io/util/test/ginkgo"
 
-	"appengine"
+	"google.golang.org/appengine"
 
 	organizationApi "hanzo.io/api/organization"
 )

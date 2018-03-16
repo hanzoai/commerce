@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"hanzo.io/util/bit"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	token "hanzo.io/util/oldjwt"
 )
 

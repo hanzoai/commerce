@@ -1,17 +1,16 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"appengine"
-
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
 )
 
 // Synchronize payment using transfer
-var TransferSync = delay.Func("stripe-transfer-sync", func(ctx appengine.Context, ns string, token string, str stripe.Transfer, start time.Time) {
+var TransferSync = delay.Func("stripe-transfer-sync", func(ctx context.Context, ns string, token string, str stripe.Transfer, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using transfer
@@ -38,7 +37,7 @@ var TransferSync = delay.Func("stripe-transfer-sync", func(ctx appengine.Context
 		log.Debug("Transfer after: %+v", tr, ctx)
 
 		return tr.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update transfer '%s' from Stripe transfer %v: ", tr.Id(), str, err, ctx)

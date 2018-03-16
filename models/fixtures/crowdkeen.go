@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var Crowdkeen = New("crowdkeen", func(c *gin.Context) *organization.Organization {

@@ -20,7 +20,7 @@ import (
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
@@ -56,11 +56,6 @@ func create(c *gin.Context) {
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
-		return
-	}
-
-	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 		return
 	}
 
@@ -185,6 +180,11 @@ func create(c *gin.Context) {
 		}
 	} else {
 		log.Info("Sign up does not require password", c)
+	}
+
+	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
+		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
+		return
 	}
 
 	ctx := org.Db.Context
