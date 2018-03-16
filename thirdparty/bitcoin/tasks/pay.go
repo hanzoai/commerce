@@ -8,6 +8,7 @@ import (
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
@@ -16,7 +17,6 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	eutil "hanzo.io/thirdparty/ethereum/util"
-	"hanzo.io/delay"
 	"hanzo.io/util/json"
 	"hanzo.io/util/webhook"
 )
@@ -315,6 +315,8 @@ func BitcoinProcessPaymentImpl(
 
 			pay.Account.BitcoinFinalTransactionCost = currency.Cents(finalCost)
 			pay.Account.BitcoinFinalAmount = transferAmount
+
+			util.HandleDeposit(ord)
 		}
 
 		ord.Paid += pay.Amount
@@ -339,7 +341,6 @@ func BitcoinProcessPaymentImpl(
 		util.UpdateReferral(org, ord)
 		util.UpdateCart(ctx, ord)
 		util.UpdateStats(ctx, org, ord, []*payment.Payment{pay})
-		util.HandleDeposit(ord)
 
 		buyer := pay.Buyer
 
