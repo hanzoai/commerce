@@ -1,12 +1,14 @@
 package email
 
+type Recipient struct{}
+
 type Email struct {
-	Html string `json:"html"`
-	// Text      string      `json:"text"`
-	Subject   string `json:"subject"`
-	FromEmail string `json:"from_email"`
-	FromName  string `json:"from_name"`
-	// To        []Recipient `json:"to"`
+	Html      string      `json:"html"`
+	Text      string      `json:"text"`
+	Subject   string      `json:"subject"`
+	FromEmail string      `json:"from_email"`
+	FromName  string      `json:"from_name"`
+	To        []Recipient `json:"to"`
 
 	Headers struct {
 		ReplyTo string `json:"Reply-To"`
