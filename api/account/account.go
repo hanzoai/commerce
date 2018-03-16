@@ -38,11 +38,6 @@ func get(c *gin.Context) {
 		return
 	}
 
-	if err := usr.LoadWallet(usr.Db); err != nil {
-		http.Fail(c, 500, "User balance data could get be queried", err)
-		return
-	}
-
 	http.Render(c, 200, usr)
 }
 
