@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

@@ -1,7 +1,7 @@
 package submission
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
@@ -11,8 +11,6 @@ import (
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Submission struct {
 	mixin.Model
@@ -26,12 +24,12 @@ type Submission struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Submission) Load(c <-chan aeds.Property) (err error) {
+func (s *Submission) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
 
@@ -43,12 +41,12 @@ func (s *Submission) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Submission) Save(c chan<- aeds.Property) (err error) {
+func (s *Submission) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }
 
 func (s *Submission) Validator() *val.Validator {

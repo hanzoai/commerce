@@ -1,19 +1,17 @@
 package coupon
 
 import (
+	aeds "google.golang.org/appengine/datastore"
+
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
 	"hanzo.io/util/timeutil"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 
@@ -79,21 +77,21 @@ type Coupon struct {
 	// Buyers []string `json:"buyers"`
 }
 
-func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
+func (co *Coupon) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(co, c)); err != nil {
+	if err = datastore.LoadStruct(co, ps); err != nil {
 		return err
 	}
 
 	return err
 }
 
-func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
+func (co *Coupon) Save() (ps []aeds.Property, err error) {
 
 	co.Code_ = strings.ToUpper(co.Code_)
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
+	return datastore.SaveStruct(co)
 }
 
 func (c Coupon) Code() string {

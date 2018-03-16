@@ -24,7 +24,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/reflect"
 )
 

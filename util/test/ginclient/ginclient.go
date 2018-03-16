@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 
+	"golang.org/x/net/context"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/util/gincontext"
@@ -48,7 +50,7 @@ type Client struct {
 	ignoreErrors bool
 }
 
-func newRouter(ctx ae.Context) *gin.Engine {
+func newRouter(ctx context.Context) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {

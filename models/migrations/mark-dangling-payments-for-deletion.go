@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine/datastore"
+	"google.golang.org/appengine/datastore"
 
 	ds "hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("mark-dangling-payments-for-deletion",

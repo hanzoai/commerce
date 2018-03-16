@@ -2,6 +2,7 @@ package mandrill
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -10,12 +11,11 @@ import (
 	"os"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 const root = "http://mandrillapp.com/api/1.0"
@@ -157,7 +157,7 @@ func GetTemplate(filename string) string {
 
 // PingMandrill checks if our credentials/url are okay
 // Returns true if Mandrill replies with  a 200 OK
-func Ping(ctx appengine.Context) bool {
+func Ping(ctx context.Context) bool {
 	url := root + "/users/ping.json"
 
 	str := fmt.Sprintf(`{"key": "%s"}`, config.Mandrill.APIKey)
@@ -177,7 +177,7 @@ func Ping(ctx appengine.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
+func SendTemplate(ctx context.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send-template.json"
 
@@ -188,11 +188,12 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 		return err
 	}
 
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(60) * time.Second,
-	}
+	client.Transport = &urlfetch.Transport{Context: ctx}
+
 	res, err := client.Do(hreq)
 	if err != nil {
 		return err
@@ -208,7 +209,7 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
-func Send(ctx appengine.Context, req *SendReq) error {
+func Send(ctx context.Context, req *SendReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send.json"
 

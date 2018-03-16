@@ -3,7 +3,7 @@ package return_
 import (
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
@@ -14,8 +14,6 @@ import (
 	. "hanzo.io/models"
 	"hanzo.io/models/lineitem"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Return struct {
 	mixin.Model
@@ -66,7 +64,7 @@ func (c *Return) Validator() *val.Validator {
 	return val.New()
 }
 
-func (c *Return) Load(ch <-chan aeds.Property) (err error) {
+func (c *Return) Load(ps []aeds.Property) (err error) {
 	// Prevent duplicate deserialization
 	if c.Loaded() {
 		return nil
@@ -76,7 +74,7 @@ func (c *Return) Load(ch <-chan aeds.Property) (err error) {
 	c.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(c, ch)); err != nil {
+	if err = datastore.LoadStruct(c, ps); err != nil {
 		return err
 	}
 
@@ -92,11 +90,11 @@ func (c *Return) Load(ch <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (c *Return) Save(ch chan<- aeds.Property) (err error) {
+func (c *Return) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
 	c.Items_ = string(json.EncodeBytes(c.Items))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(c, ch))
+	return datastore.SaveStruct(c)
 }

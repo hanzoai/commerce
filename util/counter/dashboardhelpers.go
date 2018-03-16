@@ -1,16 +1,15 @@
 package counter
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"appengine/memcache"
+	"google.golang.org/appengine/memcache"
 
-	"appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
 )
 
 type currencyValue map[currency.Type]int
@@ -31,7 +30,7 @@ type DashboardData struct {
 	// DailyStoreOrders [](map[currency.Type]int64)
 }
 
-func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
+func GetDashboardData(ctx context.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
 	ctx = org.Namespaced(ctx)
 
 	loc := time.FixedZone("utc +"+strconv.Itoa(tzOffset), tzOffset)

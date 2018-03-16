@@ -1,7 +1,7 @@
 package netlify
 
 import (
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"github.com/netlify/netlify-go"
 )
@@ -77,7 +77,7 @@ func (c *Client) DeleteSite(s *Site) error {
 	return err
 }
 
-// func ListSites(ctx appengine.Context) ([]Site, error) {
+// func ListSites(ctx context.Context) ([]Site, error) {
 // 	client := createClient(ctx)
 
 // 	// Create new site on Netlify's side

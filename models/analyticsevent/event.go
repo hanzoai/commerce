@@ -3,7 +3,7 @@ package analyticsevent
 import (
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/analyticsidentifier"
@@ -13,8 +13,6 @@ import (
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type AnalyticsEvent struct {
 	mixin.Model
@@ -35,12 +33,12 @@ type AnalyticsEvent struct {
 	RequestMetadata client.Client `json:"requestMetadata"`
 }
 
-func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {
+func (e *AnalyticsEvent) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	e.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(e, c)); err != nil {
+	if err = datastore.LoadStruct(e, ps); err != nil {
 		return err
 	}
 
@@ -49,10 +47,10 @@ func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {
 		err = json.DecodeBytes([]byte(e.Data_), &e.Data)
 	}
 
-	return
+	return err
 }
 
-func (e *AnalyticsEvent) Save(c chan<- aeds.Property) (err error) {
+func (e *AnalyticsEvent) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	e.Data_ = string(json.EncodeBytes(&e.Data))
 
@@ -62,5 +60,5 @@ func (e *AnalyticsEvent) Save(c chan<- aeds.Property) (err error) {
 	}
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(e, c))
+	return datastore.SaveStruct(e)
 }

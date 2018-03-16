@@ -1,25 +1,24 @@
 package stripe
 
 import (
+	"context"
 	"strconv"
-
-	"appengine"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 type Client struct {
 	*client.API
-	ctx appengine.Context
+	ctx context.Context
 }
 
 // Covert a payment model into a card card we can use for authorization

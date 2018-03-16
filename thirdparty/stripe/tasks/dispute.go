@@ -1,14 +1,13 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
-	"appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/delay"
 )
 
 // Update payment from dispute
@@ -24,7 +23,7 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 }
 
 // Synchronize payment using dispute
-var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
+var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx context.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
 	log.Debug("Dispute %s", dispute, ctx)
 	ctx = getNamespacedContext(ctx, ns)
 
@@ -68,7 +67,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		log.Debug("Fees after: %+v", fees, ctx)
 
 		return pay.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update payment '%s' from charge %v: ", pay.Id(), ch, err, ctx)
