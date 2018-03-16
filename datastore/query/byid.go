@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/reflect"

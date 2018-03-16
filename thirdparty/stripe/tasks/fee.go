@@ -2,16 +2,15 @@ package tasks
 
 // Synchronize payment using charge
 import (
+	"context"
 	"time"
 
-	"appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/delay"
 )
 
-var FeeSync = delay.Func("stripe-fee-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+var FeeSync = delay.Func("stripe-fee-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	log.Debug("Fee Sync %s", ch, ctx)
 
 	ctx = getNamespacedContext(ctx, ns)
@@ -47,7 +46,7 @@ var FeeSync = delay.Func("stripe-fee-sync", func(ctx appengine.Context, ns strin
 		UpdateFeesFromPayment(fees, pay)
 
 		return pay.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update fees '%s' from charge %v: ", pay.Id(), ch, err, ctx)

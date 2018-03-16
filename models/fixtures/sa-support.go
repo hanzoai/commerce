@@ -26,7 +26,7 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 		u.PasswordHash, _ = password.Hash("veruspassword!")
 		u.MustPut()
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 
 	datastore.RunInTransaction(db.Context, func(db *datastore.Datastore) error {
 		u2 := user.New(db)
@@ -38,7 +38,7 @@ var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Org
 		u2.PasswordHash, _ = password.Hash("veruspassword!")
 		u2.MustPut()
 		return nil
-	}, datastore.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 
 	return org
 })

@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/namespace"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var _ = New("add-missing-namespace", func(c *gin.Context) []interface{} {

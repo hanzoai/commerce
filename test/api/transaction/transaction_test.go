@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
 	// "hanzo.io/util/json"
-	// "hanzo.io/util/log"
+	// "hanzo.io/log"
 
 	. "hanzo.io/util/test/ginclient"
 	. "hanzo.io/util/test/ginkgo"

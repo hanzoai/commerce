@@ -1,17 +1,15 @@
 package discount
 
 import (
+	"context"
 	"fmt"
 
-	"appengine"
-	"appengine/memcache"
-
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/discount/scope"
-
-	"hanzo.io/util/log"
 )
 
 // Computes memcache key, using format:
@@ -50,7 +48,7 @@ func (d *Discount) invalidateCache() error {
 }
 
 // Cache discount keys
-func cacheDiscounts(ctx appengine.Context, key string, keys []*aeds.Key) error {
+func cacheDiscounts(ctx context.Context, key string, keys []*aeds.Key) error {
 	return memcache.Gob.Set(ctx,
 		&memcache.Item{
 			Key:    key,
@@ -59,7 +57,7 @@ func cacheDiscounts(ctx appengine.Context, key string, keys []*aeds.Key) error {
 }
 
 // Get cached discount keys
-func getCachedDiscounts(ctx appengine.Context, key string) ([]*aeds.Key, error) {
+func getCachedDiscounts(ctx context.Context, key string) ([]*aeds.Key, error) {
 	keys := make([]*aeds.Key, 0)
 	_, err := memcache.Gob.Get(ctx, key, keys)
 	if err != nil {
@@ -69,7 +67,7 @@ func getCachedDiscounts(ctx appengine.Context, key string) ([]*aeds.Key, error) 
 	return keys, nil
 }
 
-func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
+func GetScopedDiscounts(ctx context.Context, sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
 	// Id required for all scopes except organization
 	if id == "" && sc != scope.Organization {
 		// TODO: Prevent this from happening. Usually due to store id missing on order.

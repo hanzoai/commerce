@@ -9,9 +9,9 @@ You can use `make` to setup your development enviroment. Running:
 $ make deps
 ```
 
-...will download the Go App Engine SDK and unzip it into `.sdk/`. When hacking
+...will download the Go App Engine SDK and unzip it into `sdk/`. When hacking
 on things you'll want to ensure `$GOROOT` and `$GOPATH` point to their
-respective directories inside `.sdk/`.
+respective directories inside `sdk/`.
 
 You can source the provided `.env` file to set these variables, or
 [`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically

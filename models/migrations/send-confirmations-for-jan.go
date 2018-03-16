@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )

@@ -1,7 +1,7 @@
 package query
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 )
 
 var (
