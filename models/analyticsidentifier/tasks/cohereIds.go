@@ -1,21 +1,20 @@
 package tasks
 
 import (
+	"context"
 	"encoding/gob"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/analyticsidentifier"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
-
-	"appengine"
+	"hanzo.io/delay"
 )
 
 func init() {
 	gob.Register(&analyticsidentifier.AnalyticsIdentifier{})
 }
 
-var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyticsidentifier.AnalyticsIdentifier) {
+var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analyticsidentifier.AnalyticsIdentifier) {
 	db := datastore.New(ctx)
 
 	id.Db = db
@@ -73,5 +72,5 @@ var CohereIds = delay.Func("cohere-ids", func(ctx appengine.Context, id *analyti
 		}
 
 		return nil
-	})
+	}, nil)
 })

@@ -3,7 +3,7 @@ package test
 import (
 	"time"
 
-	// "hanzo.io/util/log"
+	// "hanzo.io/log"
 
 	. "hanzo.io/models/types/schedule"
 

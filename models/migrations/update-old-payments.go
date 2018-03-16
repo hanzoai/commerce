@@ -1,23 +1,21 @@
 package migrations
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
+	ds "hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/util/log"
-
-	ds "hanzo.io/datastore"
-
 	"hanzo.io/thirdparty/stripe"
 )
 
 var accessToken = ""
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error {
+func updateChargeFromPayment(ctx context.Context, pay *payment.Payment) error {
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
@@ -31,7 +29,7 @@ func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error 
 }
 
 // Ensure order has right payment id
-func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.Payment) error {
+func orderNeedsPaymentId(ctx context.Context, ord *order.Order, pay *payment.Payment) error {
 	if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
 		log.Warn("Payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
 		ord.PaymentIds = []string{pay.Id()}
@@ -45,7 +43,7 @@ func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.P
 	return nil
 }
 
-func deletePayment(ctx appengine.Context, pay *payment.Payment) error {
+func deletePayment(ctx context.Context, pay *payment.Payment) error {
 	pay.Deleted = true
 	if err := pay.Put(); err != nil {
 		log.Error("Unable to mark payment '%s' as deleted: %v", pay.Id(), err, ctx)

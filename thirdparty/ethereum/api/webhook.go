@@ -16,7 +16,7 @@ import (
 	"hanzo.io/thirdparty/ethereum/tasks"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/models/blockchains"
 )

@@ -1,15 +1,14 @@
 package tasks
 
 import (
+	"context"
 	"errors"
-	// "time"
-
-	"appengine"
 
 	"hanzo.io/api/checkout/tasks"
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -17,9 +16,8 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/bitcoin"
 	eutil "hanzo.io/thirdparty/ethereum/util"
-	"hanzo.io/util/delay"
+	"hanzo.io/delay"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/webhook"
 )
 
@@ -35,7 +33,7 @@ var InsufficientTransfer = errors.New("Not Enough Transfer Balance To Cover Tran
 var BitcoinProcessPayment = delay.Func(
 	"bitcon-process-payment",
 	func(
-		ctx appengine.Context,
+		ctx context.Context,
 		orgName,
 		walletId,
 		txId,
@@ -48,7 +46,7 @@ var BitcoinProcessPayment = delay.Func(
 	})
 
 func BitcoinProcessPaymentImpl(
-	ctx appengine.Context,
+	ctx context.Context,
 	orgName,
 	walletId,
 	txId,
@@ -351,7 +349,7 @@ func BitcoinProcessPaymentImpl(
 		webhook.Emit(ctx, orgName, "order.paid", ord)
 
 		return nil
-	}); err != nil {
+	}, nil); err != nil {
 		return err
 	}
 

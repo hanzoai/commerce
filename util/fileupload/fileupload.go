@@ -1,21 +1,20 @@
 package fileupload
 
 import (
-	"mime/multipart"
+	// "context"
 	"errors"
+	"mime/multipart"
 
-	// "golang.org/x/net/context"
-
-	"appengine"
+	"github.com/gin-gonic/gin"
 
 	// "golang.org/x/oauth2/google"
 	// storage "google.golang.org/api/storage/v1"
 
 	"hanzo.io/models/organization"
-	// "hanzo.io/util/log"
+	// "hanzo.io/log"
 )
 
-func UploadFile(ctx *appengine.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
+func UploadFile(ctx *gin.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
 	return "", errors.New("Disabled")
 	// client, err := google.DefaultClient(context.Background(), storage.DevstorageFullControlScope)
 	// if err != nil {

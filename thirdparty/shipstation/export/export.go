@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,7 +20,7 @@ import (
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/hashid"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>

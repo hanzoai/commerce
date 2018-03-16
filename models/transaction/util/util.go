@@ -1,13 +1,13 @@
 package util
 
 import (
-	"appengine"
+	"context"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 type TransactionData struct {
@@ -22,7 +22,7 @@ type TransactionDatas struct {
 	Data map[currency.Type]*TransactionData `json:"data"`
 }
 
-func GetTransactions(ctx appengine.Context, id, kind string, test bool) (*TransactionDatas, error) {
+func GetTransactions(ctx context.Context, id, kind string, test bool) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -43,7 +43,7 @@ func GetTransactions(ctx appengine.Context, id, kind string, test bool) (*Transa
 	return TallyTransactions(ctx, id, kind, transs)
 }
 
-func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur currency.Type, test bool) (*TransactionDatas, error) {
+func GetTransactionsByCurrency(ctx context.Context, id, kind string, cur currency.Type, test bool) (*TransactionDatas, error) {
 	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -64,7 +64,7 @@ func GetTransactionsByCurrency(ctx appengine.Context, id, kind string, cur curre
 	return TallyTransactions(ctx, id, kind, transs)
 }
 
-func TallyTransactions(ctx appengine.Context, id, kind string, transs []*transaction.Transaction) (*TransactionDatas, error) {
+func TallyTransactions(ctx context.Context, id, kind string, transs []*transaction.Transaction) (*TransactionDatas, error) {
 	datas := &TransactionDatas{
 		Id:   id,
 		Kind: kind,

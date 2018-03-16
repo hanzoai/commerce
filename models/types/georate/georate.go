@@ -6,7 +6,7 @@ import (
 
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 type GeoRate struct {

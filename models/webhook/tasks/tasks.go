@@ -1,19 +1,19 @@
 package tasks
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"appengine"
-	"appengine/delay"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 type Payload struct {
@@ -22,7 +22,7 @@ type Payload struct {
 }
 
 type Client struct {
-	ctx    appengine.Context
+	ctx    context.Context
 	client *http.Client
 }
 
@@ -48,18 +48,20 @@ func (c *Client) Post(url string, data interface{}) error {
 	return nil
 }
 
-func createClient(ctx appengine.Context) *Client {
+func createClient(ctx context.Context) *Client {
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+		Context: ctx,
 	}
 
 	return &Client{ctx: ctx, client: client}
 }
 
 // Fire webhooks
-var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, event string, data interface{}) {
+var Emit = delay.Func("webhook-emit", func(ctx context.Context, org string, event string, data interface{}) {
 	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
 
 	db := datastore.New(ctx)

@@ -1,17 +1,18 @@
 package organization
 
 import (
+	"context"
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
+	"google.golang.org/appengine"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
-	"appengine"
-
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/app"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/oauthtoken"
@@ -24,14 +25,63 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
 
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+type Email struct {
+	Enabled   bool   `json:"enabled"`
+	FromEmail string `json:"fromEmail"`
+	FromName  string `json:"fromName"`
+	Subject   string `json:"subject"`
+	Template  string `json:"template" datastore:",noindex"`
+}
+
+func (e Email) Config(org *Organization) Email {
+	conf := Email{e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
+
+	// Use organization defaults
+	if org != nil {
+		if !org.Email.Defaults.Enabled {
+			conf.Enabled = false
+		}
+
+		if conf.FromEmail == "" {
+			conf.FromEmail = org.Email.Defaults.FromEmail
+		}
+
+		if conf.FromName == "" {
+			conf.FromName = org.Email.Defaults.FromName
+		}
+	}
+
+	return conf
+}
+
+type EmailConfig struct {
+	// Default email configuration
+	Defaults struct {
+		Enabled   bool   `json:"enabled"`
+		FromName  string `json:"fromName"`
+		FromEmail string `json:"fromEmail"`
+	} `json:"defaults"`
+
+	// Per-email configuration
+	OrderConfirmation Email `json:"orderConfirmation"`
+
+	User struct {
+		Welcome           Email `json:"welcome`
+		EmailConfirmation Email `json:"emailConfirmation"`
+		EmailConfirmed    Email `json:"emailConfirmed"`
+		PasswordReset     Email `json:"PasswordReset"`
+	} `json:"user"`
+
+	Subscriber struct {
+		Welcome Email `json:"welcome`
+	} `json:"subscriber"`
+}
 
 type Organization struct {
 	mixin.Model
@@ -145,12 +195,12 @@ type Organization struct {
 	Currency currency.Type `json:"currency"`
 }
 
-func (o *Organization) Load(c <-chan aeds.Property) (err error) {
+func (o *Organization) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+	if err = datastore.LoadStruct(o, ps); err != nil {
 		return err
 	}
 
@@ -169,12 +219,12 @@ func (o *Organization) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (o *Organization) Save(c chan<- aeds.Property) (err error) {
+func (o *Organization) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
+	return datastore.SaveStruct(o)
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
@@ -321,21 +371,17 @@ func (o *Organization) AddOwner(userOrId string) {
 }
 
 // Get namespaced context for this organization
-func (o Organization) Namespaced(ctx interface{}) appengine.Context {
-	var _ctx appengine.Context
-
-	switch v := ctx.(type) {
-	case *gin.Context:
-		_ctx = v.MustGet("appengine").(appengine.Context)
-	case appengine.Context:
-		_ctx = v
+func (o Organization) Namespaced(ctx context.Context) context.Context {
+	if c, ok := ctx.(*gin.Context); ok {
+		ctx = c.MustGet("appengine").(context.Context)
 	}
 
-	_ctx, err := appengine.Namespace(_ctx, o.Name)
+	var err error
+	ctx, err = appengine.Namespace(ctx, o.Name)
 	if err != nil {
 		panic(err)
 	}
-	return _ctx
+	return ctx
 }
 
 func (o Organization) StripeToken() string {

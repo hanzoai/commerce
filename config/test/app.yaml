@@ -1,24 +1,39 @@
-application: development
-module: default
+service: default
+version: v1
 
 runtime: go
-api_version: go1
+api_version: go1.8
 threadsafe: true
-
-instance_class: F1
 
 automatic_scaling:
   max_concurrent_requests: 100
   min_idle_instances: 0
 
 handlers:
+- url: /_/queue/delay
+  script: _go_app
+  login: admin
+
 - url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
+
+- url: /hashid
+  script: _go_app
+
+- url: /hashid/.*
   script: _go_app
 
 - url: /tasks
   script: _go_app
 
 - url: /task/.*
+  script: _go_app
+
+- url: /execute-task/.*
+  script: _go_app
+
+- url: /_ah/remote_api
   script: _go_app
 
 - url: /assets/.*
@@ -34,6 +49,10 @@ handlers:
 - url: /robots.txt
   static_files: ../../static/robots.txt
   upload: ../../static/robots.txt
+
+- url: /favicon.ico
+  static_files: ../../static/favicon.ico
+  upload: ../../static/favicon.ico
 
 - url: /apple-touch-icon.png
   static_files: ../../static/apple-touch-icon.png

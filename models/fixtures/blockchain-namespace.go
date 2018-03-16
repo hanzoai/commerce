@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/namespace"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	"hanzo.io/models/blockchains"
 )

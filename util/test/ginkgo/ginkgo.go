@@ -9,11 +9,12 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/retry"
 )
 
 func Setup(suiteName string, t *testing.T) {
+	log.Error("testing.Verbose", testing.Verbose())
 	log.SetVerbose(testing.Verbose())
 	gomega.RegisterFailHandler(ginkgo.Fail)
 

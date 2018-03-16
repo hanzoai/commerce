@@ -1,14 +1,16 @@
 package referrer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
 
-	"appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/referral"
@@ -16,15 +18,11 @@ import (
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/util/delay"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/timeutil"
 
 	. "hanzo.io/models"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Is a link that can refer customers to buy products
 type Referrer struct {
@@ -53,20 +51,20 @@ type Referrent interface {
 	Kind() string
 }
 
-func (r *Referrer) Save(c chan<- aeds.Property) (err error) {
+func (r *Referrer) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	r.State_ = string(json.EncodeBytes(&r.State))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(r, c))
+	return datastore.SaveStruct(r)
 }
 
-func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
+func (r *Referrer) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	r.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(r, c)); err != nil {
+	if err = datastore.LoadStruct(r, ps); err != nil {
 		return err
 	}
 
@@ -77,7 +75,7 @@ func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (r *Referrer) SaveReferral(ctx appengine.Context, orgId string, event referral.Event, rfn Referrent) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
@@ -232,7 +230,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(ctx appengine.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram) error {
+func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram) error {
 	old := len(r.Program.Triggers) > 0
 	if old {
 		log.Debug("Old Triggers")

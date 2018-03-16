@@ -1,14 +1,15 @@
 package mailchimp
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"github.com/zeekay/gochimp3"
 
+	"hanzo.io/log"
 	"hanzo.io/models/cart"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/order"
@@ -20,7 +21,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 
 	. "hanzo.io/models"
 )
@@ -42,17 +42,19 @@ func idOrEmail(id, email string) string {
 }
 
 type API struct {
-	ctx    appengine.Context
+	ctx    context.Context
 	client *gochimp3.API
 }
 
-func New(ctx appengine.Context, apiKey string) *API {
+func New(ctx context.Context, apiKey string) *API {
+	// Update timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	api := new(API)
 	api.ctx = ctx
 	api.client = gochimp3.New(apiKey)
 	api.client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(60) * time.Second, // Update deadline to 60 seconds
+		Context: ctx,
 	}
 	api.client.Debug = true
 	return api

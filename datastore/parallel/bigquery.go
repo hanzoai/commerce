@@ -1,16 +1,17 @@
 package parallel
 
 import (
+	"context"
 	"reflect"
 	"time"
 
-	"appengine"
-	"appengine/delay"
+	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/thirdparty/bigquery"
-	"hanzo.io/util/log"
 )
 
 func NewBigQuery(name string, fn interface{}) *ParallelFn {
@@ -64,7 +65,7 @@ type BigQueryRow struct {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createBigQueryDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-bigquery-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-bigquery-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx := ctx
 		if namespace != "" {
@@ -75,8 +76,8 @@ func (fn *ParallelFn) createBigQueryDelayFn(name string) {
 			}
 		}
 
-		// Increase Timeout
-		nsCtx = appengine.Timeout(nsCtx, 30*time.Second)
+		// Set timeout
+		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)

@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	stringutil "hanzo.io/util/strings"
 )

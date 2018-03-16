@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/api/checkout"
 	"hanzo.io/models/order"
@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {

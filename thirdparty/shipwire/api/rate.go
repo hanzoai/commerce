@@ -11,7 +11,7 @@ import (
 	"hanzo.io/thirdparty/shipwire"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func rate(c *gin.Context) {

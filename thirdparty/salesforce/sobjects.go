@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")

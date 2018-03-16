@@ -4,7 +4,8 @@ import (
 	"net/url"
 	"testing"
 
-	"appengine/memcache"
+	// "google.golang.org/appengine/aetest"
+	"google.golang.org/appengine/memcache"
 
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/httpclient"
@@ -20,11 +21,7 @@ var ctx ae.Context
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default"},
-		TaskQueues: []string{"default"},
-		Noisy:      true,
-	})
+	ctx = ae.NewContext()
 })
 
 // Tear-down appengine context

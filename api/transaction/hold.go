@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models"
 	"hanzo.io/models/transaction"
@@ -11,7 +12,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 )
 
 type CreateHoldReq struct {
@@ -83,7 +83,7 @@ func CreateHold(c *gin.Context) {
 		}
 
 		return trans.Create()
-	})
+	}, nil)
 
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)
@@ -111,7 +111,7 @@ func RemoveHold(c *gin.Context) {
 		}
 
 		return nil
-	})
+	}, nil)
 
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)
