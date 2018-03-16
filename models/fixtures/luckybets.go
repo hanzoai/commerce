@@ -47,8 +47,8 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 	org.Email.Defaults.FromName = "Admin"
 	org.Email.Defaults.FromEmail = "noreply@hanzo.io"
 
-	org.Email.OrderConfirmation.Subject = "Deposit confirmation"
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Subject = "Deposit confirmation"
+	org.Email.Order.Confirmation.Enabled = true
 
 	org.Email.User.PasswordReset.Subject = "Reset your password"
 	org.Email.User.PasswordReset.Enabled = true
