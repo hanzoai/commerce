@@ -1,10 +1,12 @@
 package email
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -14,15 +16,12 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
-	"hanzo.io/util/log"
-
-	"appengine"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
-func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
-	conf = org.Email.Config(email.UserPasswordReset)
+func SendPasswordResetEmail(ctx context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
+	conf := org.Email.Config(email.UserPasswordReset)
 	if !conf.Enabled {
 		return
 	}
@@ -58,7 +57,7 @@ func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organizatio
 }
 
 // SendEmailConfirmedEmail is gay
-func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
+func SendEmailConfirmedEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
 	conf := org.Email.Config(email.UserEmailConfirmed)
 
 	if !conf.Enabled {
@@ -90,7 +89,7 @@ func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organizati
 	mandrill.SendTemplate(ctx, "user-email-confirmed", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendSubscriberWelcome(ctx appengine.Context, org *organization.Organization, s *subscriber.Subscriber) {
+func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, s *subscriber.Subscriber) {
 	conf := org.Email.Config(email.SubscriberWelcome)
 	if !conf.Enabled {
 		return
@@ -111,7 +110,7 @@ func SendSubscriberWelcome(ctx appengine.Context, org *organization.Organization
 	mandrill.SendTemplate(ctx, "subscriber-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, s.Metadata)
 }
 
-func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr *user.User) {
+func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *user.User) {
 	conf := org.Email.Config(email.UserWelcome)
 	if !conf.Enabled {
 		return
@@ -142,7 +141,7 @@ func SendUserWelcome(ctx appengine.Context, org *organization.Organization, usr 
 	mandrill.SendTemplate(ctx, "user-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
+func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
 	conf := org.Email.Config(email.UserEmailConfirmed)
 	if !conf.Enabled {
 		return
@@ -189,7 +188,7 @@ func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organizati
 	mandrill.SendTemplate(ctx, "user-email-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
+func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	conf := org.Email.Config(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
@@ -318,7 +317,7 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+func SendPartialRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
 	conf := org.Email.Config(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
@@ -424,7 +423,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 	mandrill.SendTemplate(ctx, "order-partially-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+func SendFullRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
 	conf := org.Email.Config(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
@@ -530,7 +529,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 	mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-func SendFulfillmentEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+func SendFulfillmentEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
 	conf := org.Email.Config(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
