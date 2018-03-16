@@ -1,17 +1,16 @@
 package tasks
 
 import (
+	"context"
 	"time"
 
 	"github.com/stripe/stripe-go/charge"
 
-	"appengine"
-
+	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/delay"
-	"hanzo.io/util/log"
+	"hanzo.io/delay"
 )
 
 // Update payment from charge
@@ -43,7 +42,7 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 }
 
 // Synchronize payment using charge
-var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+var ChargeSync = delay.Func("stripe-charge-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	log.Debug("Charge %s", ch, ctx)
 
 	ctx = getNamespacedContext(ctx, ns)
@@ -83,7 +82,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		log.Debug("Fees after: %+v", fees, ctx)
 
 		return pay.Put()
-	})
+	}, nil)
 
 	if err != nil {
 		log.Error("Failed to update payment '%s' from charge %v: ", pay.Id(), ch, err, ctx)

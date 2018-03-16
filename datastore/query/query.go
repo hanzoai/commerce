@@ -1,19 +1,19 @@
 package query
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
-	"appengine"
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"github.com/qedus/nds"
 
 	"hanzo.io/datastore/iface"
 	"hanzo.io/datastore/key"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 
 	. "hanzo.io/datastore/utils"
 )
@@ -23,12 +23,12 @@ type Id struct {
 }
 
 type Query struct {
-	ctx   appengine.Context
+	ctx   context.Context
 	aedsq *aeds.Query
 	kind  string
 }
 
-func New(ctx appengine.Context, kind string) iface.Query {
+func New(ctx context.Context, kind string) iface.Query {
 	q := new(Query)
 	q.ctx = ctx
 	q.kind = kind

@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/api/organization/wallet"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/transaction"
@@ -13,7 +14,6 @@ import (
 	"hanzo.io/util/blockchain"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 )
 
 func withdraw(c *gin.Context) {
@@ -99,7 +99,7 @@ func withdraw(c *gin.Context) {
 		// log.Warn("... %v", json.Encode(trans))
 
 		return trans.Create()
-	})
+	}, nil)
 
 	if err != nil {
 		http.Fail(c, 500, err.Error(), err)

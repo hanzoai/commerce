@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
@@ -8,19 +9,18 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
-	aeds "appengine/datastore"
-	"appengine/search"
+	aeds "google.golang.org/appengine/datastore"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/router"
@@ -288,9 +288,10 @@ func (r Rest) newKind() mixin.Kind {
 
 // Returns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
-	// Increase timeout
 	ctx := middleware.GetAppEngine(c)
-	ctx = appengine.Timeout(ctx, 15*time.Second)
+
+	// Set timeout
+	ctx, _ = context.WithTimeout(ctx, time.Second*20)
 
 	// Create a new entity
 	db := datastore.New(ctx)

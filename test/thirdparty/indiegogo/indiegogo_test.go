@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"hanzo.io/thirdparty/indiegogo"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 func Test(t *testing.T) {

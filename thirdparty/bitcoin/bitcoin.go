@@ -1,9 +1,10 @@
 package bitcoin
 
 import (
-	"appengine"
+	"google.golang.org/appengine"
 
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -23,12 +24,12 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
 	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in
@@ -480,7 +481,7 @@ func CalculateFee(inputs, outputs int, feePerByte int64) int64 {
 	return int64(approximateTransactionLength) * feePerByte
 }
 
-func GetBitcoinTransactions(ctx appengine.Context, address string) ([]OriginWithAmount, error) {
+func GetBitcoinTransactions(ctx context.Context, address string) ([]OriginWithAmount, error) {
 	nsCtx, err := appengine.Namespace(ctx, blockchains.BlockchainNamespace)
 	if err != nil {
 		return nil, err

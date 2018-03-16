@@ -1,29 +1,30 @@
-application: crowdstart-us
-
 dispatch:
   - url: "*/api/*"
-    module: api
+    service: api
 
-  - url: "*/dash/*"
-    module: dash
+  # - url: "*/dash/*"
+  #   service: dash
 
   - url: "*/default/*"
-    module: default
+    service: default
+
+  - url: "*/_/queue/delay"
+    service: default
 
   - url: "*/static/*"
-    module: default
+    service: default
 
   - url: "*/assets/*"
-    module: default
+    service: default
 
   - url: "*/robots.txt"
-    module: default
+    service: default
 
   - url: "*/humans.txt"
-    module: default
+    service: default
 
   - url: "*/apple-touch-icon.png"
-    module: default
+    service: default
 
   - url: "*/apple-touch-icon-precomposed.png"
-    module: default
+    service: default

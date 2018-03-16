@@ -16,7 +16,7 @@ import (
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>

@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 
-	"appengine"
+	"google.golang.org/appengine"
 )
 
 func Encode(value interface{}) string {

@@ -1,14 +1,12 @@
 package webhook
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/json"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Events map[string]bool
 
@@ -38,12 +36,12 @@ type Webhook struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (s *Webhook) Load(c <-chan aeds.Property) (err error) {
+func (s *Webhook) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
 
@@ -55,10 +53,10 @@ func (s *Webhook) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Webhook) Save(c chan<- aeds.Property) (err error) {
+func (s *Webhook) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Events_ = string(json.EncodeBytes(&s.Events))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }

@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strconv"
 
-	"appengine/search"
+	"google.golang.org/appengine/search"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,7 +17,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/emails"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/strings"
 	"hanzo.io/util/template"
 )

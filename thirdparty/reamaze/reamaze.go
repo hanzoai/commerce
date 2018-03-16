@@ -7,7 +7,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/reamaze/custommodule"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 	"hanzo.io/util/router"
 
 	"crypto/hmac"

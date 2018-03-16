@@ -1,17 +1,18 @@
 package tasks
 
 import (
-	"appengine"
-	"appengine/delay"
+	"context"
+
+	"hanzo.io/delay"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/util/log"
 )
 
-var Subscribe = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) error {
+var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, mlJSON []byte, sJSON []byte) error {
 	db := datastore.New(ctx)
 	ml := mailinglist.FromJSON(db, mlJSON)
 	s := subscriber.FromJSON(db, sJSON)

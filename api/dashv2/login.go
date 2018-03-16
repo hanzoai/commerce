@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/util/log"
+	"hanzo.io/log"
 )
 
 var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.io$")
