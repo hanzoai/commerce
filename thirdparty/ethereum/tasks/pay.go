@@ -10,6 +10,7 @@ import (
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
@@ -17,7 +18,6 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/thirdparty/ethereum"
 	eutil "hanzo.io/thirdparty/ethereum/util"
-	"hanzo.io/delay"
 	"hanzo.io/util/webhook"
 )
 
@@ -318,6 +318,8 @@ func EthereumProcessPaymentImpl(
 			}
 			pay.Account.EthereumFinalTransactionCost = blockchains.BigNumber(finalCost.String())
 			pay.Account.EthereumFinalAmount = blockchains.BigNumber(transferAmount.String())
+
+			util.HandleDeposit(ord)
 		}
 
 		ord.Paid += pay.Amount
@@ -342,7 +344,6 @@ func EthereumProcessPaymentImpl(
 		util.UpdateReferral(org, ord)
 		util.UpdateCart(ctx, ord)
 		util.UpdateStats(ctx, org, ord, []*payment.Payment{pay})
-		util.HandleDeposit(ord)
 
 		buyer := pay.Buyer
 
