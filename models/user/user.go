@@ -256,6 +256,14 @@ func (u *User) LoadOrders() error {
 		return err
 	}
 
+	for i, o := range u.Orders {
+		if err := o.LoadWallet(u.Db); err != nil {
+			return err
+		}
+
+		u.Orders[i].Wallet = o.Wallet
+	}
+
 	return nil
 }
 
