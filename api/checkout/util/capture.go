@@ -213,7 +213,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 
 func HandleDeposit(ord *order.Order) {
 	// Handle Deposit Logic
-	if ord.Mode == order.DepositMode {
+	if ord.Mode == order.DepositMode && ord.PaymentStatus == payment.Paid {
 		trans := transaction.New(ord.Db)
 		trans.DestinationId = ord.UserId
 		trans.DestinationKind = "user"
