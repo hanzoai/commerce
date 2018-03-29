@@ -67,8 +67,6 @@ type LoadShopJSReq struct {
 
 	LastChecked time.Time `json:"lastChecked"`
 	StoreId     string    `json:"storeId"`
-
-	Live bool `json:"live"`
 }
 
 type LoadShopJSRes struct {
@@ -76,6 +74,8 @@ type LoadShopJSRes struct {
 	TaxRates      *taxrates.TaxRates           `json:"taxRates,omitempty"`
 	ShippingRates *shippingrates.ShippingRates `json:"shippingRates,omitempty"`
 	Currency      currency.Type                `json:"currency,omitempty"`
+
+	Live bool `json:"live"`
 }
 
 func LoadShopJS(c *gin.Context) {
@@ -90,9 +90,6 @@ func LoadShopJS(c *gin.Context) {
 		return
 	}
 
-	// Determine Test Mode
-	req.Live = org.Live
-
 	// Default store if StoreId is left blank
 	if req.StoreId == "" {
 		req.StoreId = org.DefaultStore
@@ -106,6 +103,9 @@ func LoadShopJS(c *gin.Context) {
 
 	// Build response
 	res := LoadShopJSRes{}
+
+	// Determine Test Mode
+	res.Live = org.Live
 
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {
