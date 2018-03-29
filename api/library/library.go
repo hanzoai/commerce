@@ -67,6 +67,8 @@ type LoadShopJSReq struct {
 
 	LastChecked time.Time `json:"lastChecked"`
 	StoreId     string    `json:"storeId"`
+
+	Live bool `json:"live"`
 }
 
 type LoadShopJSRes struct {
@@ -87,6 +89,9 @@ func LoadShopJS(c *gin.Context) {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
+
+	// Determine Test Mode
+	req.Live = org.Live
 
 	// Default store if StoreId is left blank
 	if req.StoreId == "" {
