@@ -16,4 +16,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Use(publishedRequired)
 
 	api.POST("shopjs", namespaced, LoadShopJS)
+	api.POST("coinjs", namespaced, LoadShopJS)
 }
