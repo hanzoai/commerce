@@ -15,8 +15,8 @@ goapp			= $(sdk_path)/goapp
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 
-ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
-gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
+ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) $(gopath)/bin/ginkgo
+gpm				= GOROOT=$(goroot) GOPATH=$(gopath) $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/config \
@@ -144,7 +144,7 @@ endif
 
 datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api
 
-test_target = -r=true
+test_target = -r=true test
 test_focus := $(focus)
 ifdef test_focus
 	test_target=$(focus)
