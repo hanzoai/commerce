@@ -226,13 +226,12 @@ sdk:
 	$(sdk_install_extra)
 
 sdk/go:
-	printf '#!/usr/bin/env bash\n$(goapp) $$@' > $(sdk_path)/go
-	chmod +x $(sdk_path)/go
+	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
 
 sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
-	ln -s $(shell pwd) $(sdk_path)/gopath/src/hanzo.io
+	ln -s ../../../ $(sdk_path)/gopath/src/hanzo.io
 
 sdk/gopath/bin/ginkgo:
 	$(goapp) get -u github.com/onsi/ginkgo
