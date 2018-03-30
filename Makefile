@@ -378,8 +378,7 @@ datastore-replicate:
 
 # Helpers to store and retrieve build artifacts
 artifact-download:
-	buildkite-agent artifact download sdk.tar .
-	tar -xf sdk.tar
+	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no artifacts found
 
 artifact-upload:
 	tar -cf sdk.tar sdk
