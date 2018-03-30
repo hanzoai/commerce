@@ -3,7 +3,7 @@ pwd				= $(shell pwd)
 platform		= $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.64
 sdk_path		= $(pwd)/sdk
-goroot			= $(sdk_path)/goroot
+goroot			= $(sdk_path)/goroot-1.9
 gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
@@ -214,7 +214,7 @@ sdk:
 	unzip $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
-	sed -i.bak 's/15/120/g' sdk/goroot-1.8/src/appengine/aetest/instance.go
+	sed -i.bak 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
 	$(sdk_install_extra)
 
 sdk/go:
