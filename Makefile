@@ -198,6 +198,10 @@ build: deps assets
 # CLEAN
 clean:
 	rm -rf sdk
+	rm -rf vendor/github.com
+	rm -rf vendor/golang.org
+	rm -rf vendor/google.golang.org
+	rm -rf vendor/gopkg.in
 
 # DEPS
 deps: deps-assets deps-go
@@ -234,7 +238,6 @@ sdk/gopath/bin/ginkgo:
 sdk/gopath/bin/govendor:
 	$(goapp) get -u github.com/kardianos/govendor
 	$(goapp) install github.com/kardianos/govendor
-
 
 # INSTALL
 install:
@@ -285,12 +288,10 @@ coverage:
 	# $(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
 
 # DEPLOY
-
-# To re-auth you might need to:
-# 	gcloud components reinstall
-# 	rm ~/.appcfg*
-
 auth:
+	@echo If you have issues authenticating try:
+	@echo "   gcloud components reinstall"
+	@echo "	 rm ~/.appcfg*"
 	gcloud auth login
 	$(appcfg.py) list_versions config/staging
 
@@ -377,11 +378,11 @@ datastore-replicate:
 
 # Helpers to store and retrieve build artifacts
 artifact-download:
-	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no artifacts found
+	buildkite-agent artifact download vendor.tar . && tar -xf vendor.tar || echo no vendor artifact found
 
 artifact-upload:
-	tar -cf sdk.tar sdk
-	buildkite-agent artifact upload sdk.tar
+	tar -cf vendor.tar sdk
+	buildkite-agent artifact upload vendor.tar
 
 .PHONY: all auth bench build buildkite-artifact-download \
 	buildkite-artifact-upload compile-js compile-js-min compile-css \
