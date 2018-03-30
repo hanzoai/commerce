@@ -1,4 +1,4 @@
-# Hanzo [![CircleCI](https://circleci.com/gh/hanzo-io/platform.svg?style=svg&circle-token=fbc175690392a3aa50b991100261397e56e8f29d)](https://circleci.com/gh/hanzo-io/platform)
+# Hanzo [![Build status](https://badge.buildkite.com/d7e68217b7c11a402384e82726433b30b9ebdb54cab934d89c.svg)](https://buildkite.com/hanzo/platform)
 Hanzo is a modern crowdfunding and ecommerce platform designed for the future.
 
 
