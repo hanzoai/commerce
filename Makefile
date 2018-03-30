@@ -219,6 +219,9 @@ sdk:
 	unzip -q $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
+	rm -rf sdk/goroot-1.6
+	rm -rf sdk/goroot-1.8
+	rm -rf sdk/php
 	sed -i.bak 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
 	$(sdk_install_extra)
 
@@ -378,10 +381,13 @@ datastore-replicate:
 
 # Helpers to store and retrieve build artifacts
 artifact-download:
+	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no sdk artifact found
 	buildkite-agent artifact download vendor.tar . && tar -xf vendor.tar || echo no vendor artifact found
 
 artifact-upload:
-	tar -cf vendor.tar sdk
+	tar -cf sdk.tar sdk
+	tar -cf vendor.tar vendor
+	buildkite-agent artifact upload sdk.tar
 	buildkite-agent artifact upload vendor.tar
 
 .PHONY: all auth bench build buildkite-artifact-download \
