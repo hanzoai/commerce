@@ -386,8 +386,7 @@ artifact-download:
 artifact-upload:
 	tar -cf sdk.tar sdk
 	tar -cf vendor.tar vendor
-	buildkite-agent artifact upload sdk.tar
-	buildkite-agent artifact upload vendor.tar
+	buildkite-agent artifact upload '*.tar'
 
 .PHONY: all auth bench build buildkite-artifact-download \
 	buildkite-artifact-upload compile-js compile-js-min compile-css \
