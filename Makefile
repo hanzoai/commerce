@@ -383,6 +383,10 @@ artifact-download:
 	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no sdk artifact found
 	buildkite-agent artifact download vendor.tar . && tar -xf vendor.tar || echo no vendor artifact found
 
+artifact-download-prev:
+	buildkite-agent artifact download --build $$(($$BUILDKITE_BUILD_NUMBER - 1 )) sdk.tar . && tar -xf sdk.tar || echo no sdk artifact found
+	buildkite-agent artifact download --build $$(($$BUILDKITE_BUILD_NUMBER - 1 )) vendor.tar . && tar -xf vendor.tar || echo no vendor artifact found
+
 artifact-upload:
 	tar -cf sdk.tar sdk
 	tar -cf vendor.tar vendor
