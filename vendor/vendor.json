@@ -1,0 +1,229 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "gHQefRGFRZ8RUryFq5AKDmqf/DM=",
+			"path": "github.com/Machiel/slugify",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "DnnyjGwBErHjlmdESdX4AH3VQRY=",
+			"path": "github.com/Sirupsen/logrus",
+			"revision": "95002bc71734b797b2dc8ffb20ffc725c9f543ed",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "PopAEis/dczrSV4YL70qNVTNbOI=",
+			"path": "github.com/btcsuite/btcd/btcjson",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "J6VwqSZwsPkigujNZo4vyYIFPWU=",
+			"path": "github.com/btcsuite/btclog",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "oQgLy8KmIOVov04WXH7KgU1bszc=",
+			"path": "github.com/btcsuite/btcutil/base58",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "j3yRnuia1i5Wb7C9Tc5g0d6gdpM=",
+			"path": "github.com/btcsuite/go-socks/socks",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "SPQcWDUN+wcTThipcR9EzX4t3E8=",
+			"path": "github.com/cenkalti/backoff",
+			"revision": "b02f2bbce11d7ea6b97f282ef1771b0fe2f65ef3",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "CSPbwbyzqA6sfORicn4HFtIhF/c=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "z3vOL8feFRigBAyGCVnPOAkDoAY=",
+			"path": "github.com/dgrijalva/jwt-go",
+			"revision": "v2.7.0",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "Kqu7754FR3bDXk0xNJk7+kfufYo=",
+			"path": "github.com/dustin/go-humanize",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "2FYN8bb0AedYV7SfqKBEGHh2Fp4=",
+			"path": "github.com/flosch/pongo2",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "+Uw2pCNGTD/8ebJkY/bOuGB44H0=",
+			"path": "github.com/gin-gonic/gin",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "PCLeuW5D0dEk1Vc29lUsXEPLmuY=",
+			"path": "github.com/gorilla/schema",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "/jOLCzAcN8p1GakgUYaWOs4tjw8=",
+			"path": "github.com/gorilla/sessions",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "aB9/gsmz2XNGY2qAgzXAcsFzh3I=",
+			"path": "github.com/hashicorp/golang-lru",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "ovWGtabAKIXj5cY/X92vKyEQm9Q=",
+			"path": "github.com/huandu/facebook",
+			"revision": "v1.8.1",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "BsthneguvM91uWyniCLTJrRThrM=",
+			"path": "github.com/icrowley/fake",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "ezRkrYYy9mMxREVDryjD5NlHa7M=",
+			"path": "github.com/julienschmidt/httprouter",
+			"revision": "8c199fb6259ffc1af525cc3ad52ee60ba8359669",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "yLXRmu70BwReSQY2qPD11tRXtGo=",
+			"path": "github.com/mholt/binding",
+			"revision": "5594cf7a0fc126359d4ba7094fa65e9bf666e429",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "fPDUGIgF9pVsesxBIZrgslwlb2o=",
+			"path": "github.com/netlify/netlify-go",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "Om9lsVL/FosgIZDyxfh+3lSRCvI=",
+			"path": "github.com/onsi/ginkgo",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "9GizlnPgmmq/rPlufhRU6123HAg=",
+			"path": "github.com/onsi/gomega",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "mB0aLgTP+FRQOd8aCL+PORc/rkY=",
+			"path": "github.com/op/go-logging",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "qrD0U8u8RByZ5qr6ffgUIzmmC+8=",
+			"path": "github.com/pariz/gountries",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "j0Pv7Rimafi+ViHyLiRvQOS8gLk=",
+			"path": "github.com/phayes/freeport",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "0XQQ9KEKKZTKuaxgl0BQziICqlQ=",
+			"path": "github.com/qedus/nds",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "6JP37UqrI0H80Gpk0Y2P+KXgn5M=",
+			"path": "github.com/ryanuber/go-glob",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "oTGT9fuOKLX+kD+p4DYIzd1f2vQ=",
+			"path": "github.com/speps/go-hashids",
+			"revision": "2aa1a76a4e7c76dbe7d39f40661ab0261d70153a",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "JYbMhHHw92r93+QAN0KiUCSAv54=",
+			"path": "github.com/stripe/stripe-go",
+			"revision": "v25.0.0",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "oFXJ46WI7UeB3+1/0+sI1x2Z4n4=",
+			"path": "github.com/vanng822/go-premailer/premailer",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "p4/5umvW/3uC6DyZpdLOsDak+Mo=",
+			"path": "github.com/zeekay/gochimp3",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "oCH3J96RWvO8W4xjix47PModpio=",
+			"path": "golang.org/x/crypto/bcrypt",
+			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "CrhfxTI6XK2Ont6K5TByvt0YiPs=",
+			"path": "golang.org/x/net/html",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "4MMYg4dkcSY0k5PBp4MAzcD/wQw=",
+			"path": "golang.org/x/text/encoding",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "i05c1J3Pkn6Ll+YINNnf6nv8z0g=",
+			"path": "golang.org/x/tools/cmd/cover",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "ZND96AJT83etiusg71vF6RKVOEU=",
+			"path": "google.golang.org/appengine",
+			"revision": "master",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "master",
+			"tree": true
+		}
+	],
+	"rootPath": "hanzo.io"
+}

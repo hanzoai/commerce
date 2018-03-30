@@ -18,6 +18,7 @@ static/js/analytics/native.js
 static/js/analytics/snippet.js
 static/js/api.js
 static/js/mailinglist.js
+vendor/
 
 *.sql3
 *.csv

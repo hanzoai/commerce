@@ -7,18 +7,19 @@ goroot			= $(sdk_path)/goroot-1.9
 gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
+project_path 	= $(gopath)/src/hanzo.io
 current_date	= $(shell date +"%Y-%m-%d")
 
 appcfg.py 		= python2 $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = python2 $(sdk_path)/bulkloader.py
-goapp			= $(sdk_path)/goapp
+goapp			= $(goroot)/bin/goapp
+
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 
+govendor		= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH cd $(project_path); $(gopath)/bin/govendor
 ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
-gpm				= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
-deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/config \
 		  hanzo.io/dash \
 	      hanzo.io/api
@@ -206,8 +207,10 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: sdk sdk/go sdk/gpm sdk/gopath/bin/ginkgo sdk/gopath/src/hanzo.io update-env
-	$(gpm) get
+deps-go: sdk sdk/go sdk/gopath/src/hanzo.io update-env
+	$(goapp) get -u github.com/kardianos/govendor
+	$(goapp) get -u github.com/onsi/ginkgo
+	$(govendor) sync
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
@@ -218,16 +221,8 @@ sdk:
 	$(sdk_install_extra)
 
 sdk/go:
-	printf '#!/usr/bin/env bash\n$(sdk_path)/goapp $$@' > $(sdk_path)/go
+	printf '#!/usr/bin/env bash\n$(goapp) $$@' > $(sdk_path)/go
 	chmod +x $(sdk_path)/go
-
-sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > sdk/gpm
-	chmod +x sdk/gpm
-
-sdk/gopath/bin/ginkgo:
-	$(goapp) get github.com/onsi/ginkgo
-	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
 sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
@@ -235,11 +230,8 @@ sdk/gopath/src/hanzo.io:
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/hanzo.io
 
 # INSTALL
-install: install-deps
-	$(goapp) install $(modules) $(packages)
-
-install-deps:
-	$(goapp) install $(deps)
+install:
+	$(goapp) install $(packages)
 
 # DEV SERVER
 serve: assets update-env
