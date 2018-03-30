@@ -220,9 +220,11 @@
 			"tree": true
 		},
 		{
-			"checksumSHA1": "fPDUGIgF9pVsesxBIZrgslwlb2o=",
+			"checksumSHA1": "uyh7uE4UTuqAaG2F49AQfVwVMXE=",
+			"origin": "github.com/zeekay/netlify-go",
 			"path": "github.com/netlify/netlify-go",
-			"revision": "master",
+			"revision": "9611031a648e8bd8cf8c88ac57ee7f2789c783b0",
+			"revisionTime": "2018-03-30T21:21:18Z",
 			"tree": true
 		},
 		{
