@@ -15,8 +15,8 @@ goapp			= $(sdk_path)/goapp
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 
-ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) $(gopath)/bin/ginkgo
-gpm				= GOROOT=$(goroot) GOPATH=$(gopath) $(sdk_path)/gpm
+ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+gpm				= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= hanzo.io/config \
