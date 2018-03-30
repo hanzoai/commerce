@@ -377,11 +377,11 @@ datastore-replicate:
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Helpers to store and retrieve build artifacts
-buildkite-artifact-download:
+artifact-download:
 	buildkite-agent artifact download sdk.tar .
 	tar -xf sdk.tar
 
-buildkite-artifact-upload:
+artifact-upload:
 	tar -cf sdk.tar sdk
 	buildkite-agent artifact upload sdk.tar
 
