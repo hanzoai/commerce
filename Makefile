@@ -211,7 +211,7 @@ deps-go: sdk sdk/go sdk/gpm sdk/gopath/bin/ginkgo sdk/gopath/src/hanzo.io update
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
-	unzip $(sdk).zip
+	unzip -q $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
 	sed -i.bak 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
