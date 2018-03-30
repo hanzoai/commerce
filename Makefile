@@ -284,7 +284,7 @@ bench: update-env-test
 	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci: update-env-test
-	$(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
+	cd $(project_path); $(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
 
 coverage:
 	# $(gover) test/ coverage.out
