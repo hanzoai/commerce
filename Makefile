@@ -16,7 +16,6 @@ goapp			= $(goroot)/bin/goapp
 
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
-
 govendor		= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH cd $(project_path); $(gopath)/bin/govendor
 ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
