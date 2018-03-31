@@ -20,19 +20,15 @@ govendor		= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH cd $(proje
 ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
 modules	= hanzo.io/config \
-		  hanzo.io/dash \
 	      hanzo.io/api
 
 gae_development = config/development \
-				  dash/app.dev.yaml \
 				  api/app.dev.yaml
 
 gae_staging = config/staging \
-			  dash/app.staging.yaml \
 			  api/app.staging.yaml
 
 gae_production = config/production \
-				 dash \
 				 api
 
 gae_sandbox = config/sandbox \
@@ -55,30 +51,6 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-bebop    = node_modules/.bin/bebop
-coffee	 = node_modules/.bin/coffee
-uglifyjs = node_modules/.bin/uglifyjs
-
-requisite	   = node_modules/.bin/requisite -g
-requisite_opts = assets/js/api/api.coffee \
-				 assets/js/dash/dash.coffee \
-				 -o static/js/api.js \
-				 -o static/js/dash.js
-
-# requisite_opts_min = --strip-debug --minifier uglify
-requisite_opts_min = --strip-debug
-
-stylus		= node_modules/.bin/stylus
-stylus_opts = assets/css/theme/theme.styl \
-			  assets/css/dash/dash.styl \
-			  -o static/css
-stylus_opts_min = -u csso-stylus -c
-
-autoprefixer = node_modules/.bin/autoprefixer-cli
-autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
-					static/css/theme.css \
-					static/css/dash.css
-
 dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --dev_appserver_log_level=debug \
 											 --datastore_path=$(sdk_path)/.datastore.bin \
@@ -86,30 +58,29 @@ dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --admin_port=8000 \
 											 --port=8080
 
-sdk_install_extra = rm -rf $(sdk_path)/demos
+sdk_install_extra = rm -rf sdk/goroot-1.6 \
+					rm -rf sdk/goroot-1.8 \
+					rm -rf sdk/php \
+					rm -rf sdk/demos
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
-			   				  -not -path "./assets/*" \
-			   				  -not -path "./static/*" \
-			   				  -not -path "./node_modules/*" \
+			   				  -not -path "./vendor/*" \
 			   				  -printf '%h\n' | sort -u | sed -e 's/.\//hanzo.io\//')
 	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test/*" \
-			   				  -not -path "./assets/*" \
-			   				  -not -path "./static/*" \
-			   				  -not -path "./node_modules/*" \
+			   				  -not -path "./vendor/*" \
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
-	sdk_install_extra := $(sdk_install_extra) && \
+	sed = @sed -i .bak -e
+	sdk_install_extra := $(sdk_install_extra) \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip2 install macfsevents --upgrade
-	sed = @sed -i .bak -e
 endif
 
 # set v=1 to enable verbose mode
@@ -160,38 +131,8 @@ export GOPATH := $(gopath)
 
 all: deps test install
 
-# ASSETS
-assets: deps-assets compile-css compile-js
-
-assets-min: deps-assets compile-css-min compile-js-min
-
-compile-js:
-	$(requisite) $(requisite_opts)
-	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(requisite) node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
-	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
-	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
-
-compile-js-min: compile-js
-	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c -m
-	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
-	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
-	$(uglifyjs) static/js/dash.js -o static/js/dash.min.js -c
-	@mv static/js/api.min.js static/js/api.js
-	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
-	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
-	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
-	@mv static/js/dash.min.js static/js/dash.js
-
-compile-css:
-	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
-
-compile-css-min:
-	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
-
 # BUILD
-build: deps assets
+build: deps
 	$(goapp) build $(modules)
 
 # CLEAN
@@ -203,26 +144,20 @@ clean:
 	rm -rf vendor/gopkg.in
 
 # DEPS
-deps: deps-assets deps-go
+deps: sdk deps-tools deps-go
 
-# DEPS JS/CSS
-deps-assets:
-	npm update
+deps-tools: sdk/gopath/bin/ginkgo sdk/gopath/bin/govendor
 
-# DEPS GO
-deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo sdk/gopath/bin/govendor update-env
+deps-go: update-env
 	$(govendor) sync
 
-sdk:
+sdk: sdk/go sdk/gopath/src/hanzo.io
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
 	unzip -q $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
-	rm -rf sdk/goroot-1.6
-	rm -rf sdk/goroot-1.8
-	rm -rf sdk/php
-	sed -i.bak 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
-	$(sdk_install_extra)
+	$(sed) 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
+	$(install_sdk_extra)
 
 sdk/go:
 	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
@@ -296,26 +231,10 @@ auth:
 	gcloud auth login
 	$(appcfg.py) list_versions config/staging
 
-deploy: assets-min deploy-app
-
-deploy-debug: assets deploy-app
-
-deploy-app: update-env rollback
+deploy: update-env rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-default: update-env rollback
-	$(appcfg.py) update config/production
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-dash: update-env assets-min rollback
-	$(appcfg.py) update dash
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-api: update-env assets-min rollback
-	$(appcfg.py) update api
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 
 update-dispatch:
