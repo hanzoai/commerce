@@ -144,14 +144,14 @@ clean:
 	rm -rf vendor/gopkg.in
 
 # DEPS
-deps: sdk deps-tools deps-go
+deps: deps-go
 
 deps-tools: sdk/gopath/bin/ginkgo sdk/gopath/bin/govendor
 
-deps-go: update-env
+deps-go: sdk sdk/go sdk/gopath/src/hanzo.io deps-tools update-env
 	$(govendor) sync
 
-sdk: sdk/go sdk/gopath/src/hanzo.io
+sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
 	unzip -q $(sdk).zip
 	mv go_appengine $(sdk_path)
@@ -312,8 +312,7 @@ artifact-upload:
 	buildkite-agent artifact upload '*.tar'
 
 .PHONY: all auth bench build buildkite-artifact-download \
-	buildkite-artifact-upload compile-js compile-js-min compile-css \
-	compile-css-min datastore-import datastore-export datastore-config \
-	deploy \ deploy-staging deploy-production deps deps-assets deps-go \
-	live-reload serve serve-clear-datastore serve-public test \
-	test-integration test-watch tools
+	buildkite-artifact-upload build-artifact-download-prev datastore-import \
+	datastore-export datastore-config deploy deploy-staging deploy-production \
+	deps deps-tools deps-go live-reoad serve serve-clear-datastore serve-public \
+	test test-integration test-watch tools
