@@ -13,8 +13,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	namespaced := middleware.Namespace()
 
 	api := router.Group("/library/")
-	api.Use(publishedRequired)
 
-	api.POST("shopjs", namespaced, LoadShopJS)
-	api.POST("coinjs", namespaced, LoadShopJS)
+	api.POST("shopjs", publishedRequired, namespaced, LoadShopJS)
+	api.POST("coinjs", publishedRequired, namespaced, LoadShopJS)
+	api.POST("daisho", LoadDaisho)
 }
