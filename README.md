@@ -48,8 +48,3 @@ caching valuable. These entities/paths are:
 - Store `api.hanzo.io/store`
 - Form JS snippets `api.hanzo.io/form/*/js`
 - Organization JS snippets `api.hanzo.io/organization/*/js`
-
-In the future, we should only cache one specific path - `cdn.hanzo.io`, for
-example - and allow caching to be circumvented by directly hitting
-`api.hanzo.io`.  This is dependent upon us being able to charge users directly
-for API calls, however, so it is still a little bit off in terms of engineering.
