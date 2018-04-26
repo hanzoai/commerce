@@ -28,6 +28,7 @@ import (
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
+	"hanzo.io/util/permission"
 
 	accessTokenApi "hanzo.io/api/accesstoken"
 	accountApi "hanzo.io/api/account"
