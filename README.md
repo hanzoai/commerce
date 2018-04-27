@@ -9,14 +9,15 @@ You can use `make` to setup your development enviroment. Running:
 $ make deps
 ```
 
-...will download the Go App Engine SDK and unzip it into `sdk/`. When hacking
-on things you'll want to ensure `$GOROOT` and `$GOPATH` point to their
-respective directories inside `sdk/`.
+...will download the Go App Engine SDK and unzip it into `sdk/`. When hacking on
+things you'll want to ensure `$GOROOT` and `$GOPATH` point to their respective
+directories inside `sdk/`.
 
 You can source the provided `.env` file to set these variables, or
 [`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically
 when entering the project directory.
 
+## Developer tools
 You can install the common Go command line tools and configure `gocode` to work
 with App Engine by running:
 
@@ -24,11 +25,28 @@ with App Engine by running:
 $ make tools
 ```
 
+## Development server
 You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
 You can create a local `config.json` file containing configuration variables to
 customize settings locally (for instance to disable the auto fixture loading).
+
+## Installing dependencies
+We use Go vendoring and the [govendor](https://github.com/kardianos/govendor)
+tool to manage deps. All go deps should be added to the vendor/vendor.json which
+govendor maintains.
+
+
+### Installing a new dependency
+```bash
+$ govendor fetch golang.org/x/net/context
+```
+
+### Changing version of a dependency
+```bash
+$ govendor fetch golang.org/x/net/context@a4bbce9fcae005b22ae5443f6af064d80a6f5a55
+```
 
 ## Semantics
 There are a number of high-level semantics that are important to the overall
