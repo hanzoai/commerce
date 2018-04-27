@@ -27,7 +27,7 @@ with App Engine by running:
 $ make tools
 ```
 
-### Dev server
+### Development server
 You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
