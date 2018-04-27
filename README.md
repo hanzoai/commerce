@@ -3,6 +3,8 @@
 Hanzo is a modern blockchain development platform.
 
 ## Development
+
+### Getting started
 You can use `make` to setup your development enviroment. Running:
 
 ```
@@ -17,7 +19,7 @@ You can source the provided `.env` file to set these variables, or
 [`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically
 when entering the project directory.
 
-## Developer tools
+### Installing Go tools
 You can install the common Go command line tools and configure `gocode` to work
 with App Engine by running:
 
@@ -25,25 +27,25 @@ with App Engine by running:
 $ make tools
 ```
 
-## Development server
+### Dev server
 You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
 You can create a local `config.json` file containing configuration variables to
 customize settings locally (for instance to disable the auto fixture loading).
 
-## Installing dependencies
+### Installing dependencies
 We use Go vendoring and the [govendor](https://github.com/kardianos/govendor)
 tool to manage deps. All go deps should be added to the vendor/vendor.json which
 govendor maintains.
 
 
-### Installing a new dependency
+Installing a new dependency:
 ```bash
 $ govendor fetch golang.org/x/net/context
 ```
 
-### Changing version of a dependency
+Changing version of a dependency:
 ```bash
 $ govendor fetch golang.org/x/net/context@a4bbce9fcae005b22ae5443f6af064d80a6f5a55
 ```
