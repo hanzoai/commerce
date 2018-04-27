@@ -324,10 +324,10 @@
 			"revisionTime": "2018-03-21T23:38:19Z"
 		},
 		{
-			"checksumSHA1": "TQoVgHqUD72/5ALzi9p5W3oyaug=",
+			"checksumSHA1": "y/oIaxq2d3WPizRZfVjo8RCRYTU=",
 			"path": "golang.org/x/crypto/ripemd160",
-			"revision": "88942b9c40a4c9d203b82b3731787b672d6e809b",
-			"revisionTime": "2018-03-21T23:38:19Z"
+			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
+			"revisionTime": "2018-03-08T08:35:08Z"
 		},
 		{
 			"checksumSHA1": "dHh6VeHcbNg11miGjGEl8LbPe7w=",
@@ -442,6 +442,16 @@
 			"path": "gopkg.in/yaml.v2",
 			"revision": "master",
 			"tree": true
+		},
+		{
+			"path": "https://github.com/golang/crypto",
+			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
+			"version": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb"
+		},
+		{
+			"path": "https://github.com/golang/crypto/tree/master/ripemd160",
+			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
+			"version": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb"
 		}
 	],
 	"rootPath": "hanzo.io"
