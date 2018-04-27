@@ -210,7 +210,7 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo sdk/gopath/bin/govendor update-env
+deps-go: sdk sdk/go sdk/govendor sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo update-env
 	$(govendor) sync
 
 sdk:
@@ -226,6 +226,9 @@ sdk:
 
 sdk/go:
 	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
+
+sdk/govendor: sdk/gopath/bin/govendor
+	ln -s $(pwd)/scripts/govendor $(sdk_path)/govendor
 
 sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
