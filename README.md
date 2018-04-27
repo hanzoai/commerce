@@ -17,7 +17,7 @@ directories inside `sdk/`.
 
 You can source the provided `.env` file to set these variables, or use
 [`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically
-whenever you cd into the project directory.
+whenever you `cd` into the project directory.
 
 ### Installing Go tools
 You can install the common Go command line tools and configure `gocode` to work
