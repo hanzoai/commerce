@@ -15,9 +15,9 @@ $ make deps
 things you'll want to ensure `$GOROOT` and `$GOPATH` point to their respective
 directories inside `sdk/`.
 
-You can source the provided `.env` file to set these variables, or
+You can source the provided `.env` file to set these variables, or use
 [`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically
-when entering the project directory.
+whenever you cd into the project directory.
 
 ### Installing Go tools
 You can install the common Go command line tools and configure `gocode` to work
