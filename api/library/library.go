@@ -175,8 +175,6 @@ type LoadDaishoReq struct {
 
 type LoadDaishoRes struct {
 	Countries []Country `json:"countries,omitempty"`
-
-	Live bool `json:"live"`
 }
 
 func LoadDaisho(c *gin.Context) {
