@@ -225,17 +225,17 @@ sdk:
 	$(sdk_install_extra)
 
 sdk/go:
-	rm $(sdk_path)/go
+	rm -f $(sdk_path)/go
 	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
 
 sdk/govendor: sdk/gopath/bin/govendor
-	rm $(sdk_path)/govendor
+	rm -f $(sdk_path)/govendor
 	ln -s $(pwd)/scripts/govendor $(sdk_path)/govendor
 
 sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
-	rm $(sdk_path)/gopath/src/hanzo.io
+	rm -f $(sdk_path)/gopath/src/hanzo.io
 	ln -s ../../../ $(sdk_path)/gopath/src/hanzo.io
 
 sdk/gopath/bin/ginkgo:
