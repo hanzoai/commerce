@@ -27,6 +27,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:orderid/returns", adminRequired, namespaced, Returns)
 	api.GET("/:orderid/status", publishedRequired, namespaced, Status)
 
+	api.GET("/:orderid/sendorderconfirmation", adminRequired, namespaced,SendOrderConfirmation)
+	api.GET("/:orderid/sendrefundconfirmation",adminRequired, namespaced, SendRefundConfirmation)
+	api.GET("/:orderid/sendfulfillmentconfirmation", adminRequired, namespaced,SendFulfillmentConfirmation)
+
 	api.Create = Create
 	api.Update = Update
 	api.Patch = Patch
