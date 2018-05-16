@@ -35,7 +35,7 @@ func init() {
 
 	// Dashboard routes
 	dash := router.Group("")
-	dash.Use(loginRequired, acquireUser, acquireOrganization, middleware.AccessControl("*"))
+	dash.Use(middleware.AccessControl("*"), loginRequired, acquireUser, acquireOrganization)
 	dash.OPTIONS("*wildcard", func(c *gin.Context) {
 		c.Next()
 	})
