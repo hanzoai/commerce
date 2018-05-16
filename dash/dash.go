@@ -1,6 +1,8 @@
 package dash
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"hanzo.io/dash/api"
 	"hanzo.io/dash/login"
 	"hanzo.io/dash/user"
