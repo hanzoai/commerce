@@ -442,16 +442,6 @@
 			"path": "gopkg.in/yaml.v2",
 			"revision": "master",
 			"tree": true
-		},
-		{
-			"path": "https://github.com/golang/crypto",
-			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
-			"version": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb"
-		},
-		{
-			"path": "https://github.com/golang/crypto/tree/master/ripemd160",
-			"revision": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb",
-			"version": "7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb"
 		}
 	],
 	"rootPath": "hanzo.io"
