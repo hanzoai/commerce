@@ -117,7 +117,7 @@ func Route(api router.Router) {
 	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
-	rest.New(wallet.Wallet{}).Route(api, tokenRequired)
+	rest.New(wallet.Wallet{}).Route(api, adminRequired)
 	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
 	paymentApi := rest.New(payment.Payment{})

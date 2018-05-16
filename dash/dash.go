@@ -33,7 +33,10 @@ func init() {
 
 	// Dashboard routes
 	dash := router.Group("")
-	dash.Use(loginRequired, acquireUser, acquireOrganization)
+	dash.Use(loginRequired, acquireUser, acquireOrganization, middleware.AccessControl("*"))
+	dash.OPTIONS("*wildcard", func(c *gin.Context) {
+		c.Next()
+	})
 
 	dash.GET("/profile", user.Profile)
 	dash.POST("/profile", user.ContactSubmit)
