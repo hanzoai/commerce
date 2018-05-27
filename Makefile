@@ -16,7 +16,7 @@ goapp			= $(goroot)/bin/goapp
 
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
-govendor		= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH cd $(project_path); $(gopath)/bin/govendor
+gpm				= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/gpm
 ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
 modules	= hanzo.io/config \
@@ -197,10 +197,6 @@ build: deps assets
 # CLEAN
 clean:
 	rm -rf sdk
-	rm -rf vendor/github.com
-	rm -rf vendor/golang.org
-	rm -rf vendor/google.golang.org
-	rm -rf vendor/gopkg.in
 
 # DEPS
 deps: deps-assets deps-go
@@ -210,8 +206,8 @@ deps-assets:
 	npm update
 
 # DEPS GO
-deps-go: sdk sdk/go sdk/govendor sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo update-env
-	$(govendor) sync
+deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo update-env
+	gpm install
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
@@ -228,10 +224,6 @@ sdk/go:
 	rm -f $(sdk_path)/go
 	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
 
-sdk/govendor: sdk/gopath/bin/govendor
-	rm -f $(sdk_path)/govendor
-	ln -s $(pwd)/scripts/govendor $(sdk_path)/govendor
-
 sdk/gopath/src/hanzo.io:
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
@@ -242,9 +234,8 @@ sdk/gopath/bin/ginkgo:
 	$(goapp) get -u github.com/onsi/ginkgo
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
-sdk/gopath/bin/govendor:
-	$(goapp) get -u github.com/kardianos/govendor
-	$(goapp) install github.com/kardianos/govendor
+sdk/gopath/bin/gpm:
+	$(goapp) get install github.com/pote/gpm
 
 # INSTALL
 install:
@@ -386,16 +377,13 @@ datastore-replicate:
 # Helpers to store and retrieve build artifacts
 artifact-download:
 	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no sdk artifact found
-	buildkite-agent artifact download vendor.tar . && tar -xf vendor.tar || echo no vendor artifact found
 
 artifact-download-prev : build_id = $(shell curl -H "Authorization: Bearer 08a7fd928cc9062dd7522f92f9781fb0d7ea822f" https://api.buildkite.com/v2/organizations/hanzo/pipelines/platform/builds/$$(( $$BUILDKITE_BUILD_NUMBER - 1 )) | jq -r .id)
 artifact-download-prev:
 	buildkite-agent artifact download sdk.tar . --build $(build_id) && tar -xf sdk.tar || echo no sdk artifact found
-	buildkite-agent artifact download vendor.tar . --build $(build_id) && tar -xf vendor.tar || echo no vendor artifact found
 
 artifact-upload:
 	tar -cf sdk.tar sdk
-	tar -cf vendor.tar vendor
 	buildkite-agent artifact upload '*.tar'
 
 .PHONY: all auth bench build buildkite-artifact-download \
