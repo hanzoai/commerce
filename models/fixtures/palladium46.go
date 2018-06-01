@@ -12,7 +12,7 @@ import (
 	// "hanzo.io/models/webhook"
 )
 
-var HanzoICO = New("palladium46", func(c *gin.Context) *organization.Organization {
+var Palladium46 = New("palladium46", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
@@ -51,7 +51,7 @@ var HanzoICO = New("palladium46", func(c *gin.Context) *organization.Organizatio
 	org.MustUpdate()
 
 	w := wallet.New(db)
-	w.Id_ = "palladium46-wallet"
+	w.Id_ = "palladiu46-wallet"
 	w.UseStringKey = true
 	w.GetOrCreate("Id_=", "palladium46-wallet")
 
