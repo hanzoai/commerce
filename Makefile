@@ -235,7 +235,7 @@ sdk/gopath/bin/ginkgo:
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
 sdk/gopath/bin/gpm:
-	$(goapp) get install github.com/pote/gpm
+	curl https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > $(sdk_path)/gpm
 
 # INSTALL
 install:
