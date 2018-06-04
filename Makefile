@@ -236,6 +236,7 @@ sdk/gopath/bin/ginkgo:
 
 sdk/gopath/bin/gpm:
 	curl https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > $(sdk_path)/gpm
+	chmod +x $(sdk_path)/gpm
 
 # INSTALL
 install:
