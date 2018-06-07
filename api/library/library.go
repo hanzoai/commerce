@@ -74,6 +74,8 @@ type LoadShopJSRes struct {
 	TaxRates      *taxrates.TaxRates           `json:"taxRates,omitempty"`
 	ShippingRates *shippingrates.ShippingRates `json:"shippingRates,omitempty"`
 	Currency      currency.Type                `json:"currency,omitempty"`
+
+	Live bool `json:"live"`
 }
 
 func LoadShopJS(c *gin.Context) {
@@ -101,6 +103,9 @@ func LoadShopJS(c *gin.Context) {
 
 	// Build response
 	res := LoadShopJSRes{}
+
+	// Determine Test Mode
+	res.Live = org.Live
 
 	if !req.HasCountries ||
 		req.LastChecked.Before(CountryLastUpdated) {
@@ -157,6 +162,36 @@ func LoadShopJS(c *gin.Context) {
 			http.Fail(c, 500, err.Error(), err)
 			return
 		}
+	}
+
+	http.Render(c, 200, res)
+}
+
+type LoadDaishoReq struct {
+	HasCountries bool `json:"hasCountries"`
+
+	LastChecked time.Time `json:"lastChecked"`
+}
+
+type LoadDaishoRes struct {
+	Countries []Country `json:"countries,omitempty"`
+}
+
+func LoadDaisho(c *gin.Context) {
+	// Decode response body to get ShopJS Params
+	req := &LoadDaishoReq{}
+
+	if err := json.Decode(c.Request.Body, req); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	// Build response
+	res := LoadDaishoRes{}
+
+	if !req.HasCountries ||
+		req.LastChecked.Before(CountryLastUpdated) {
+		res.Countries = Countries
 	}
 
 	http.Render(c, 200, res)
