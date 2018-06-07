@@ -42,6 +42,10 @@ handlers:
   script: _go_app
   login: admin
 
+- url: /_/queue/delay
+  script: _go_app
+  login: admin
+
 - url: /*
   static_dir: static
   http_headers:
