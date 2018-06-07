@@ -97,8 +97,6 @@ func Route(api router.Router) {
 		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
-	// Organization APIs, namespaced by organization
-
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
 
