@@ -2,7 +2,7 @@ service: default
 version: v1
 
 runtime: go
-api_version: go1.8
+api_version: go1.9
 threadsafe: true
 
 automatic_scaling:
@@ -41,6 +41,10 @@ handlers:
 
 - url: /static/.*
   script: _go_app
+
+- url: /_/queue/delay
+  script: _go_app
+  login: admin
 
 - url: /humans.txt
   static_files: ../../static/humans.txt
