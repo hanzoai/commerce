@@ -42,6 +42,10 @@ handlers:
 - url: /static/.*
   script: _go_app
 
+- url: /_/queue/delay
+  script: _go_app
+  login: admin
+
 - url: /humans.txt
   static_files: ../../static/humans.txt
   upload: ../../static/humans.txt
