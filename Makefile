@@ -207,7 +207,7 @@ deps-assets:
 
 # DEPS GO
 deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo sdk/gopath/bin/gpm update-env
-	$(gpm) install
+	$(gpm) get
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
