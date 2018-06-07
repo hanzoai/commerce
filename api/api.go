@@ -24,9 +24,11 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
+	"hanzo.io/models/wallet"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
+	"hanzo.io/util/permission"
 
 	accessTokenApi "hanzo.io/api/accesstoken"
 	accountApi "hanzo.io/api/account"
@@ -70,6 +72,7 @@ import (
 
 func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
+	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -94,8 +97,6 @@ func Route(api router.Router) {
 		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
-	// Organization APIs, namespaced by organization
-
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
 
@@ -114,7 +115,8 @@ func Route(api router.Router) {
 	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
-	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
+	rest.New(wallet.Wallet{}).Route(api, adminRequired)
+	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)

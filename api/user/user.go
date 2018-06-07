@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/order"
@@ -14,7 +15,6 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 
@@ -51,7 +51,7 @@ func getReferrals(c *gin.Context) {
 	id := c.Params.ByName("userid")
 
 	referrals := make([]referral.Referral, 0)
-	if _, err := referral.Query(db).Filter("ReferrerUserId=", id).GetAll(&referrals); err != nil {
+	if _, err := referral.Query(db).Filter("Referrer.UserId=", id).GetAll(&referrals); err != nil {
 		http.Fail(c, 400, "Could not query referral", err)
 		return
 	}

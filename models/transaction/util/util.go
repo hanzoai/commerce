@@ -38,7 +38,7 @@ func GetTransactions(ctx context.Context, id, kind string, test bool) (*Transact
 		return nil, err
 	}
 
-	log.Info("GetTransactions '%v/%v': %v", kind, id, json.Encode(transs), ctx)
+	log.Info("GetTransactions (Test:%v) '%v/%v': %v", test, kind, id, json.Encode(transs), ctx)
 
 	return TallyTransactions(ctx, id, kind, transs)
 }
@@ -59,7 +59,7 @@ func GetTransactionsByCurrency(ctx context.Context, id, kind string, cur currenc
 		return nil, err
 	}
 
-	log.Info("GetTransactionsByCurrency '%v/%v', '%v': %v", kind, id, cur, json.Encode(transs), ctx)
+	log.Info("GetTransactionsByCurrency (Test:%v) '%v/%v', '%v': %v", test, kind, id, cur, json.Encode(transs), ctx)
 
 	return TallyTransactions(ctx, id, kind, transs)
 }
