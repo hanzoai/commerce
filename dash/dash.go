@@ -1,6 +1,8 @@
 package dash
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"hanzo.io/dash/api"
 	"hanzo.io/dash/login"
 	"hanzo.io/dash/user"
@@ -33,7 +35,10 @@ func init() {
 
 	// Dashboard routes
 	dash := router.Group("")
-	dash.Use(loginRequired, acquireUser, acquireOrganization)
+	dash.Use(middleware.AccessControl("*"), loginRequired, acquireUser, acquireOrganization)
+	dash.OPTIONS("*wildcard", func(c *gin.Context) {
+		c.Next()
+	})
 
 	dash.GET("/profile", user.Profile)
 	dash.POST("/profile", user.ContactSubmit)
