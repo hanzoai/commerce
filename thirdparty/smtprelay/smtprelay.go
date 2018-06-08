@@ -2,11 +2,11 @@ package smtprelay
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"time"
 
-	"appengine"
-	"appengine/urlfetch"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
 	"hanzo.io/util/json"
@@ -30,14 +30,13 @@ type Client struct {
 	client *http.Client
 }
 
-func New(ctx appengine.Context) *Client {
+func New(ctx context.Context) *Client {
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
 	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(45) * time.Second,
-	}
 
 	return &Client{
+		client:   client,
 		Endpoint: config.SmtpRelay.Endpoint,
 		Username: config.SmtpRelay.Username,
 		Password: config.SmtpRelay.Password,
