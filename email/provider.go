@@ -1,11 +1,15 @@
 package email
 
 import (
-	"appengine"
+	"context"
 )
 
 type Provider interface {
-	Send(appengine.Context, Email)
-	SendTemplate(appengine.Context, Email)
-	SendProviderTemplate(appengine.Context, Email)
+	Send(context.Context, Email)
+	SendTemplate(context.Context)
+
+	TemplateGet(context.Context, Email)
+	TemplateCreate(context.Context, Email)
+	TemplateUpdate(context.Context, Email)
+	TemplateDelete(context.Context, Email)
 }
