@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/log"
 )
 
