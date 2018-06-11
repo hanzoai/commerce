@@ -3,6 +3,7 @@ package stripe
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
@@ -10,6 +11,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
@@ -75,6 +77,107 @@ func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, err
 	}
 
 	return ch.Status == "succeeded", err
+}
+
+func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
+	log.Debug("sub.Plan %v", sub.Plan)
+	params := &stripe.SubParams{
+		Plan: sub.Plan.StripeId,
+	}
+
+	switch v := source.(type) {
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("user", v.Id())
+	}
+
+	params.AddMeta("plan", sub.Plan.Id())
+
+	s, err := c.Subs.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.StripeSubscriptionId = s.ID
+	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = time.Unix(s.Ended, 0)
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Update subscribe to a plan
+func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer: sub.StripeAccount.CustomerId,
+		Plan:     sub.Plan.StripeId,
+		Quantity: uint64(sub.Quantity),
+	}
+
+	params.AddMeta("plan", sub.Plan.Id())
+
+	s, err := c.Subs.Update(sub.StripeSubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.StripeSubscriptionId = s.ID
+	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Subscribe to a plan
+func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer:  sub.StripeAccount.CustomerId,
+		EndCancel: true,
+	}
+
+	s, err := c.Subs.Cancel(sub.StripeSubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.StripeSubscriptionId = s.ID
+	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+	sub.CanceledAt = time.Now()
+	sub.EndCancel = true
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
 }
 
 // Do authorization, return token
