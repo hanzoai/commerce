@@ -1,21 +1,19 @@
 package subscription
 
 import (
-	"strconv"
 	"time"
+	"errors"
 
-	"github.com/stripe/stripe-go"
+	aeds "google.golang.org/appengine/datastore"
 
-	aeds "appengine/datastore"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/plan"
+	"hanzo.io/util/hashid"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/plan"
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
-
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 // Based On Stripe Subscription
@@ -49,9 +47,6 @@ type Subscription struct {
 	mixin.Model
 
 	Number int `json:"number,omitempty" datastore:"-"`
-
-	// Payment source information
-	Account Account `json:"account"`
 
 	// Immutable buyer data from time of payment, may or may not be associated
 	// with a user.
@@ -87,48 +82,20 @@ type Subscription struct {
 	Test bool `json:"-"`
 }
 
-func New(db *datastore.Datastore) *Subscription {
-	s := new(Subscription)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
-func (s *Subscription) Init() {
-	s.Metadata = make(Map)
-}
-
-func (s Subscription) Kind() string {
-	return "subscription"
-}
-
-func (s Subscription) ToCard() *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = s.Buyer.Name()
-	card.Number = s.Account.Number
-	card.CVC = s.Account.CVC
-	card.Month = strconv.Itoa(s.Account.Month)
-	card.Year = strconv.Itoa(s.Account.Year)
-	card.Address1 = s.Buyer.Address.Line1
-	card.Address2 = s.Buyer.Address.Line2
-	card.City = s.Buyer.Address.City
-	card.State = s.Buyer.Address.State
-	card.Zip = s.Buyer.Address.PostalCode
-	card.Country = s.Buyer.Address.Country
-	return &card
-}
-
-func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
+func (s *Subscription) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, ps)); err != nil {
 		return err
 	}
 
 	// Set order number
-	s.Number = s.NumberFromId()
+	num, err := s.NumberFromId()
+	if err != nil {
+		return err
+	}
+	s.Number = num
 
 	// Deserialize from datastore
 	if len(s.Metadata_) > 0 {
@@ -138,29 +105,29 @@ func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscription) Save(c chan<- aeds.Property) (err error) {
+func (s *Subscription) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+	return datastore.SaveStruct(s)
 }
 
 func (s *Subscription) Validator() *val.Validator {
-	return val.New(s)
+	return val.New()
 }
 
-func (s Subscription) NumberFromId() int {
+func (s Subscription) NumberFromId() (i int, err error) {
 	if s.Id_ == "" {
-		return -1
+		return -1, errors.New("Subscription.NumberFromID(): Blank ID passed.")
 	}
-	return hashid.Decode(s.Id_)[1]
+
+	ret, err := hashid.Decode(s.Id_)
+
+	return ret[1], err
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
-}

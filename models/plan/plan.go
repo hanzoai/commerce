@@ -1,15 +1,15 @@
 package plan
 
 import (
-	aeds "appengine/datastore"
+	aeds "google.golang.org/appengine/datastore"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 type Interval string
@@ -62,26 +62,9 @@ type Plan struct {
 	Metadata_ string `json:"-" datastore:"-"`
 }
 
-func New(db *datastore.Datastore) *Plan {
-	p := new(Plan)
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
-}
-
-func (p *Plan) Init() {
-	p.Metadata = make(Map)
-}
-
-func (p Plan) Kind() string {
-	return "plan"
-}
-
-func (p *Plan) Load(c <-chan aeds.Property) (err error) {
-	// Ensure we're initialized
-	p.Init()
-
+func (p *Plan) Load(ps []aeds.Property) (err error) {
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
 
@@ -93,22 +76,19 @@ func (p *Plan) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (p *Plan) Save(c chan<- aeds.Property) (err error) {
+func (p *Plan) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+	return datastore.SaveStruct(p)
 }
 
 func (p *Plan) Validator() *val.Validator {
-	return val.New(p)
+	return val.New()
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
-}

@@ -3,13 +3,13 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/subscription"
-	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/permission"
-	"crowdstart.com/util/router"
+	"hanzo.io/config"
+	"hanzo.io/datastore"
+	"hanzo.io/middleware"
+	"hanzo.io/models/subscription"
+	"hanzo.io/util/json/http"
+	"hanzo.io/util/permission"
+	"hanzo.io/util/router"
 )
 
 var subscriptionEndpoint = config.UrlFor("api", "/subscription/")
@@ -27,7 +27,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 
 	// Get order if an existing order was referenced
 	if id := c.Params.ByName("subscriptionid"); id != "" {
-		if err := sub.Get(id); err != nil {
+		if err := sub.GetById(id); err != nil {
 			return nil, err
 		}
 	}
@@ -45,7 +45,12 @@ func Subscribe(c *gin.Context) {
 	}
 
 	c.Writer.Header().Add("Location", subscriptionEndpoint+sub.Id())
-	sub.Number = sub.NumberFromId()
+	num, err := sub.NumberFromId()
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+	sub.Number = num
 	http.Render(c, 200, sub)
 }
 
@@ -56,7 +61,12 @@ func GetSubscribe(c *gin.Context) {
 		return
 	}
 
-	sub.Number = sub.NumberFromId()
+	num, err := sub.NumberFromId()
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+	sub.Number = num
 	http.Render(c, 200, sub)
 }
 
@@ -74,7 +84,12 @@ func UpdateSubscribe(c *gin.Context) {
 		return
 	}
 
-	sub.Number = sub.NumberFromId()
+	num, err := sub.NumberFromId()
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+	sub.Number = num
 	http.Render(c, 200, sub)
 }
 
@@ -92,7 +107,12 @@ func Unsubscribe(c *gin.Context) {
 		return
 	}
 
-	sub.Number = sub.NumberFromId()
+	num, err := sub.NumberFromId()
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+	sub.Number = num
 	http.Render(c, 200, sub)
 }
 
