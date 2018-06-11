@@ -377,11 +377,11 @@ datastore-replicate:
 
 # Helpers to store and retrieve build artifacts
 artifact-download:
-	buildkite-agent artifact download sdk.tar . && tar -xf sdk.tar || echo no sdk artifact found
+	buildkite-agent artifact download sdk-$(BUILDKITE_BRANCH).tar . && tar -xf sdk-$(BUILDKITE_BRANCH).tar || echo no sdk artifact found
 
 artifact-download-prev : build_id = $(shell curl -H "Authorization: Bearer 08a7fd928cc9062dd7522f92f9781fb0d7ea822f" https://api.buildkite.com/v2/organizations/hanzo/pipelines/platform/builds/$$(( $$BUILDKITE_BUILD_NUMBER - 1 )) | jq -r .id)
 artifact-download-prev:
-	buildkite-agent artifact download sdk.tar . --build $(build_id) && tar -xf sdk.tar || echo no sdk artifact found
+	buildkite-agent artifact download sdk-$(BUILDKITE_BRANCH).tar . --build $(build_id) && tar -xf sdk-$(BUILDKITE_BRANCH).tar || echo no sdk artifact found
 
 artifact-upload:
 	tar -cf sdk.tar sdk
