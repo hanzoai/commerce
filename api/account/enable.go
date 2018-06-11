@@ -11,7 +11,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"
