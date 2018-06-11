@@ -384,7 +384,7 @@ artifact-download-prev:
 	buildkite-agent artifact download sdk-$(BUILDKITE_BRANCH).tar . --build $(build_id) && tar -xf sdk-$(BUILDKITE_BRANCH).tar || echo no sdk artifact found
 
 artifact-upload:
-	tar -cf sdk.tar sdk
+	tar -cf sdk-$(BUILDKITE_BRANCH).tar sdk
 	buildkite-agent artifact upload '*.tar'
 
 .PHONY: all auth bench build buildkite-artifact-download \
