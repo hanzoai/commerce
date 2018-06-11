@@ -3,10 +3,10 @@ package subscription
 import (
 	"strings"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/subscription"
-	"crowdstart.com/models/user"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/subscription"
+	"hanzo.io/models/user"
 )
 
 type SubscriptionReq struct {
@@ -23,7 +23,7 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 	// If id is set, this is a pre-existing user, use data from datastore
 	if id != "" {
 		sr.User_ = user.New(db)
-		if err := sr.User_.Get(id); err != nil {
+		if err := sr.User_.GetById(id); err != nil {
 			return nil, UserDoesNotExist
 		} else {
 			return sr.User_, nil
@@ -42,7 +42,6 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 
 func (sr *SubscriptionReq) Subscription() (*subscription.Subscription, error) {
 	sub := sr.Subscription_
-	sub.Init()
 	sub.Model.Entity = sr.Subscription_
 	sub.Model.Db = sr.Db
 
