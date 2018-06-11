@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 )
 
 var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId string, ordId string) {
