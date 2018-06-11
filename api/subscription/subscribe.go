@@ -3,14 +3,14 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/subscription/stripe"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/plan"
-	"crowdstart.com/models/subscription"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+	"hanzo.io/api/subscription/stripe"
+	"hanzo.io/datastore"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/plan"
+	"hanzo.io/models/subscription"
+	"hanzo.io/models/user"
+	"hanzo.io/util/json"
+	"hanzo.io/log"
 )
 
 func subscriptionRequest(c *gin.Context, org *organization.Organization) (*SubscriptionReq, error) {
