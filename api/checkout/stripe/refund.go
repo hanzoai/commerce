@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/log"
 )
 
