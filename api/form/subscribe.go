@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"

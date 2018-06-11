@@ -17,7 +17,7 @@ import (
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/recaptcha"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"

@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"
 	"hanzo.io/util/strings"
