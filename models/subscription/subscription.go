@@ -8,6 +8,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/payment"
 	"hanzo.io/models/plan"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
@@ -43,6 +44,23 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+type BillingType string
+
+const (
+	Charge	BillingType = "charge_automatically"
+	Invoice BillingType = "send_invoice"
+)
+
+type Status string
+
+const (
+	Trialing	Status = "trialing"
+	Active		Status = "active"
+	PastDue		Status = "past_due"
+	Canceled	Status = "canceled"
+	Unpaid		Status = "unpaid"
+)
+
 type Subscription struct {
 	mixin.Model
 
@@ -51,6 +69,8 @@ type Subscription struct {
 	// Immutable buyer data from time of payment, may or may not be associated
 	// with a user.
 	Buyer Buyer `json:"buyer"`
+
+	Type BillingType `json:"billing_type"`
 
 	PlanId string `json:"planId"`
 	UserId string `json:"userId"`
@@ -63,6 +83,7 @@ type Subscription struct {
 
 	Start      time.Time `json:"start"`
 	Ended      time.Time `json:"ended_at"`
+	Canceled bool `json:"canceled"`
 	CanceledAt time.Time `json:"canceled_at"`
 
 	TrialStart time.Time `json:"trial_start"`
@@ -70,7 +91,7 @@ type Subscription struct {
 
 	Plan     plan.Plan `json:"plan"`
 	Quantity int       `json:"quantity"`
-	Status   string    `json:"status"`
+	Status   Status	   `json:"status"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
@@ -80,6 +101,9 @@ type Subscription struct {
 
 	// Internal testing flag
 	Test bool `json:"-"`
+
+	StripeAccount payment.Account `json:"stripeAccount,omitEmpty"`
+	StripeSubscriptionId string `json:"stripeSubscriptionId,omitEmpty"`
 }
 
 func (s *Subscription) Load(ps []aeds.Property) (err error) {
