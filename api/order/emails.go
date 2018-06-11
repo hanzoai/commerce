@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 )
 
 func SendOrderConfirmation(c *gin.Context) {

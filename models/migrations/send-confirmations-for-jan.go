@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
