@@ -40,6 +40,22 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	return &card
 }
 
+func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = sub.Buyer.Name()
+	card.Number = sub.StripeAccount.Number
+	card.CVC = sub.StripeAccount.CVC
+	card.Month = strconv.Itoa(sub.StripeAccount.Month)
+	card.Year = strconv.Itoa(sub.StripeAccount.Year)
+	card.Address1 = sub.Buyer.Address.Line1
+	card.Address2 = sub.Buyer.Address.Line2
+	card.City = sub.Buyer.Address.City
+	card.State = sub.Buyer.Address.State
+	card.Zip = sub.Buyer.Address.PostalCode
+	card.Country = sub.Buyer.Address.Country
+	return &card
+}
+
 // Create a Source object to pay with Bitcoin.
 func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
 
@@ -194,6 +210,20 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	return (*Token)(t), nil
 }
 
+func (c Client) AuthorizeSubscription(sub *subscription.Subscription) (*Token, error) {
+
+	t, err := c.API.Tokens.New(&stripe.TokenParams{
+		Card: SubscriptionToCard(sub),
+	})
+
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Cast back to our token
+	return (*Token)(t), nil
+}
+
 // Attempts to refund payment and updates the payment in datastore
 func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
 	if refundAmount > pay.Amount {
@@ -322,7 +352,7 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 }
 
 // Update card associated with Stripe customer
-func (c Client) UpdateCard(token string, pay *payment.Payment, usr *user.User) (*Card, error) {
+func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 	customerId := usr.Accounts.Stripe.CustomerId
 	cardId := usr.Accounts.Stripe.CardId
 
