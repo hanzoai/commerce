@@ -3,18 +3,16 @@ package invoice
 import (
 	"strconv"
 
-	"github.com/stripe/stripe-go"
+	aeds "google.golang.org/appengine/datastore"
 
-	aeds "appengine/datastore"
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/client"
+	"hanzo.io/models/types/currency"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/client"
-	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
-
-	. "crowdstart.com/models"
+	. "hanzo.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -110,7 +108,7 @@ func (p Invoice) ToCard() *stripe.CardParams {
 	return &card
 }
 
-func (p *Invoice) Load(c <-chan aeds.Property) (err error) {
+func (p *Invoice) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Init()
 
@@ -127,7 +125,7 @@ func (p *Invoice) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (p *Invoice) Save(c chan<- aeds.Property) (err error) {
+func (p *Invoice) Save() (err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
@@ -136,7 +134,7 @@ func (p *Invoice) Save(c chan<- aeds.Property) (err error) {
 	}
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+	return datastore.SaveStruct(p)
 }
 
 func (p *Invoice) Validator() *val.Validator {

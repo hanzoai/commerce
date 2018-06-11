@@ -20,7 +20,7 @@ import (
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
-	"hanzo.io/modles/plan"
+	"hanzo.io/models/plan"
 	// "hanzo.io/models/transaction"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
