@@ -1,7 +1,5 @@
 package email
 
-type Recipient struct{}
-
 type Email struct {
 	Html      string      `json:"html"`
 	Text      string      `json:"text"`
