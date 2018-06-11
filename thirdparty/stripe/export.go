@@ -23,6 +23,7 @@ type Event struct {
 	Type     string            `json:"type"`
 	Request  string            `json:"request"`
 }
+type Sub stripe.Sub
 
 type Reversal stripe.Reversal
 type Token stripe.Token

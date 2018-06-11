@@ -1,12 +1,12 @@
 package stripe
 
 import (
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
@@ -24,11 +24,11 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
 		log.Debug("New stripe customer")
-		return firstTime(client, tok, usr, ord, pay)
+		return firstTime(client, tok, usr, pay)
 	} else {
 		// Existing customer, new card
 		log.Debug("Returning stripe customer")
-		return returning(client, tok, usr, ord, pay)
+		return returning(client, tok, usr, pay)
 	}
 }
 
@@ -80,7 +80,7 @@ func dedupeCards(client *stripe.Client, card *stripe.Card, cust *stripe.Customer
 	}
 }
 
-func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
+func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
 	cust, err := client.NewCustomer(tok.ID, usr)
 	if err != nil {
@@ -110,7 +110,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	return err
 }
 
-func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
+func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
 	// Add card to customer
 	card, err := client.AddCard(tok.ID, usr)
 	if err != nil {
