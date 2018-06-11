@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
@@ -71,6 +72,20 @@ func getReferrers(c *gin.Context) {
 	}
 
 	http.Render(c, 200, referrers)
+}
+
+func getSubscriptions(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	subscriptions := make([]subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", id).GetAll(&subscriptions); err != nil {
+		http.Fail(c, 400, "Could not query subscription", err)
+		return
+	}
+
+	http.Render(c, 200, subscriptions)
 }
 
 func getOrders(c *gin.Context) {
