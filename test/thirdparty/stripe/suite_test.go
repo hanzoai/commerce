@@ -19,6 +19,7 @@ var (
 	ctx    ae.Context
 	db     *datastore.Datastore
 	client *stripe.Client
+	token string
 )
 
 func Test(t *testing.T) {
@@ -30,7 +31,8 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
 	log.Warn("Before Suite")
-	client = stripe.New(ctx, "sk_test_UmnR9sIn9Scdx3xi99cpOozQ")
+	token = "sk_test_UmnR9sIn9Scdx3xi99cpOozQ"
+	client = stripe.New(ctx, token)
 })
 
 var _ = AfterSuite(func() {
