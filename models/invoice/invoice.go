@@ -1,7 +1,6 @@
 package invoice
 
 import (
-	"strconv"
 
 	aeds "google.golang.org/appengine/datastore"
 
@@ -40,9 +39,6 @@ const (
 
 type Invoice struct {
 	mixin.Model
-
-	// Invoice source information
-	Account Account `json:"account"`
 
 	// Immutable buyer data from time of payment, may or may not be associated
 	// with a user.
@@ -92,28 +88,13 @@ func (p *Invoice) Init() {
 	p.Metadata = make(Map)
 }
 
-func (p Invoice) ToCard() *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = p.Buyer.Name()
-	card.Number = p.Account.Number
-	card.CVC = p.Account.CVC
-	card.Month = strconv.Itoa(p.Account.Month)
-	card.Year = strconv.Itoa(p.Account.Year)
-	card.Address1 = p.Buyer.Address.Line1
-	card.Address2 = p.Buyer.Address.Line2
-	card.City = p.Buyer.Address.City
-	card.State = p.Buyer.Address.State
-	card.Zip = p.Buyer.Address.PostalCode
-	card.Country = p.Buyer.Address.Country
-	return &card
-}
 
 func (p *Invoice) Load(ps []aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Init()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, ps)); err != nil {
 		return err
 	}
 
@@ -125,12 +106,12 @@ func (p *Invoice) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (p *Invoice) Save() (err error) {
+func (p *Invoice) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Save properties
@@ -138,7 +119,7 @@ func (p *Invoice) Save() (err error) {
 }
 
 func (p *Invoice) Validator() *val.Validator {
-	return val.New(p)
+	return val.New()
 }
 
 func New(db *datastore.Datastore) *Invoice {
@@ -148,6 +129,3 @@ func New(db *datastore.Datastore) *Invoice {
 	return p
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
-}

@@ -8,8 +8,6 @@ import (
 	"hanzo.io/log"
 )
 
-// There's a LOT of junk that's gonna be commented out in here for a bit until
-// I can get a handle on exactly how boned this file is.
 func Subscribe(org *organization.Organization, usr *user.User, sub *subscription.Subscription) error {
 	// Create stripe client
 	log.Debug("Entering Subscribe")
@@ -46,7 +44,6 @@ func UpdateSubscription(org *organization.Organization, sub *subscription.Subscr
 	_, err := client.UpdateSubscription(sub)
 	return err
 
-	return nil
 }
 
 func Unsubscribe(org *organization.Organization, sub *subscription.Subscription) error {
