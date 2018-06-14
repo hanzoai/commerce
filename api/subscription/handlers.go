@@ -7,6 +7,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/subscription"
+	"hanzo.io/api/subscription/stripe"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/router"
@@ -38,7 +39,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 func Subscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
-	sub, _, err := subscribe(c, org)
+	sub, usr, err := subscribe(c, org)
 	if err != nil {
 		http.Fail(c, 500, "Error during subscribe", err)
 		return
@@ -51,6 +52,13 @@ func Subscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
+
+	err = stripe.Subscribe(org, usr, sub)
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+
 	http.Render(c, 200, sub)
 }
 
@@ -90,6 +98,12 @@ func UpdateSubscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
+
+	err = stripe.UpdateSubscription(org, sub);
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
 	http.Render(c, 200, sub)
 }
 
@@ -113,6 +127,11 @@ func Unsubscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
+	err = stripe.Unsubscribe(org, sub);
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
 	http.Render(c, 200, sub)
 }
 
@@ -127,6 +146,6 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	// Charge Payment API
 	api.POST("/subscribe", publishedRequired, Subscribe)
 	api.GET("/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
-	api.POST("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
+	api.PATCH("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
 	api.DELETE("/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
 }
