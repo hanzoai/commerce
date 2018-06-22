@@ -13,6 +13,7 @@ import (
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
+	"hanzo.io/util/timeutil"
 
 	. "hanzo.io/models"
 )
@@ -102,8 +103,8 @@ type Subscription struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	StripeAccount payment.Account `json:"stripeAccount,omitEmpty"`
-	StripeSubscriptionId string `json:"stripeSubscriptionId,omitEmpty"`
+	Account payment.Account `json:"account,omitEmpty"`
+	RemoteSubscriptionId string `json:"stripeSubscriptionId,omitEmpty"`
 }
 
 func (s *Subscription) Load(ps []aeds.Property) (err error) {
@@ -155,3 +156,20 @@ func (s Subscription) NumberFromId() (i int, err error) {
 	return ret[1], err
 }
 
+func (s Subscription) TrialPeriodsRemaining() int {
+	years, months := timeutil.YearMonthDiff(s.TrialStart, s.TrialEnd)
+
+	if s.Plan.Interval == plan.Monthly {
+		return months
+	}
+	return years
+}
+
+func (s Subscription) PeriodsRemaining() int {
+	months, years := timeutil.YearMonthDiff(s.PeriodStart, s.PeriodEnd)
+
+	if s.Plan.Interval == plan.Monthly {
+		return months
+	}
+	return years
+}
