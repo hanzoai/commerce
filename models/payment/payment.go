@@ -32,6 +32,7 @@ type Type string
 
 const (
 	Affirm   Type = "affirm"
+	Authorize Type = "authorize"
 	Balance  Type = "balance"
 	Ethereum Type = "ethereum"
 	Bitcoin  Type = "bitcoin"
@@ -44,6 +45,19 @@ type AffirmAccount struct {
 	CaptureId     string `json:"captureId,omitempty"`
 	TransactionId string `json:"transactionId,omitempty"`
 	CheckoutToken string `json:"checkoutToken,omitempty"`
+}
+
+type AuthorizeNetAccount struct {
+	AuthCode       string `json:"authCode,omitempty"`
+	AvsResultCode  string `json:"avsResultCode,omitempty"`
+	CvvResultCode  string `json:"cvvResultCode,omitempty"`
+	CavvResultCode string `json:"cavvResultCode,omitempty"`
+	TransId        string `json:"transId,omitempty"`
+	RefTransId     string `json:"refTransId,omitempty"`
+	TransHash      string `json:"transHash,omitempty"`
+	TestRequest    string `json:"testRequest,omitempty"`
+	AccountNumber  string `json:"accountNumber,omitempty"`
+	AccountType    string `json:"accountType,omitempty"`
 }
 
 type PayPalAccount struct {
@@ -136,6 +150,7 @@ type Account struct {
 	StripeAccount
 	BitcoinTransaction
 	EthereumTransaction
+	AuthorizeNetAccount
 
 	Error string `json:"error,omitempty"`
 }

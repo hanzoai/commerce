@@ -43,10 +43,10 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 	card := stripe.CardParams{}
 	card.Name = sub.Buyer.Name()
-	card.Number = sub.StripeAccount.Number
-	card.CVC = sub.StripeAccount.CVC
-	card.Month = strconv.Itoa(sub.StripeAccount.Month)
-	card.Year = strconv.Itoa(sub.StripeAccount.Year)
+	card.Number = sub.Account.Number
+	card.CVC = sub.Account.CVC
+	card.Month = strconv.Itoa(sub.Account.Month)
+	card.Year = strconv.Itoa(sub.Account.Year)
 	card.Address1 = sub.Buyer.Address.Line1
 	card.Address2 = sub.Buyer.Address.Line2
 	card.City = sub.Buyer.Address.City
@@ -116,8 +116,8 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 		return nil, errors.New(err)
 	}
 
-	sub.StripeSubscriptionId = s.ID
-	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.RemoteSubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -136,20 +136,20 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 // Update subscribe to a plan
 func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
 	params := &stripe.SubParams{
-		Customer: sub.StripeAccount.CustomerId,
+		Customer: sub.Account.CustomerId,
 		Plan:     sub.Plan.StripeId,
 		Quantity: uint64(sub.Quantity),
 	}
 
 	params.AddMeta("plan", sub.Plan.Id())
 
-	s, err := c.Subs.Update(sub.StripeSubscriptionId, params)
+	s, err := c.Subs.Update(sub.RemoteSubscriptionId, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.StripeSubscriptionId = s.ID
-	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.RemoteSubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -168,17 +168,17 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error)
 // Subscribe to a plan
 func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
 	params := &stripe.SubParams{
-		Customer:  sub.StripeAccount.CustomerId,
+		Customer:  sub.Account.CustomerId,
 		EndCancel: true,
 	}
 
-	s, err := c.Subs.Cancel(sub.StripeSubscriptionId, params)
+	s, err := c.Subs.Cancel(sub.RemoteSubscriptionId, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.StripeSubscriptionId = s.ID
-	sub.StripeAccount.CustomerId = s.Customer.ID
+	sub.RemoteSubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
