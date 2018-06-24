@@ -97,7 +97,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	if ord.Total == ord.Refunded {
-		emails.SendFullRefundEmail(ctx, org, ord, usr, payments[0])
+		email.SendFullRefundEmail(ctx, org, ord, usr, payments[0])
 
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
@@ -110,7 +110,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		ord.PaymentStatus = payment.Refunded
 		ord.Status = order.Cancelled
 	} else {
-		emails.SendPartialRefundEmail(ctx, org, ord, usr, payments[0])
+		email.SendPartialRefundEmail(ctx, org, ord, usr, payments[0])
 	}
 
 	return ord.Put()

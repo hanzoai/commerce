@@ -58,7 +58,7 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Send welcome email
-	emails.SendSubscriberWelcome(ctx, org, s)
+	email.SendSubscriberWelcome(ctx, org, s)
 
 	// Forward subscriber (if enabled)
 	forward(ctx, org, ml, s)
