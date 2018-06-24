@@ -142,7 +142,7 @@ func ShipNotify(c *gin.Context) {
 		pay := payment.New(db)
 		pay.MustGetById(ord.PaymentIds[0])
 
-		emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
+		email.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
 	}
 
 	ord.MustPut()
