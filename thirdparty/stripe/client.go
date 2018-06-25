@@ -56,44 +56,45 @@ func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 	return &card
 }
 
+// Removed from API
 // Create a Source object to pay with Bitcoin.
-func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
+// func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
 
-	sourceParams := &stripe.SourceObjectParams{
-		Type:     "bitcoin",
-		Amount:   uint64(pay.Amount),
-		Currency: "usd",
-		Owner: &stripe.SourceOwnerParams{
-			Email: usr.Email,
-		},
-	}
+// 	sourceParams := &stripe.SourceObjectParams{
+// 		Type:     "bitcoin",
+// 		Amount:   uint64(pay.Amount),
+// 		Currency: "usd",
+// 		Owner: &stripe.SourceOwnerParams{
+// 			Email: usr.Email,
+// 		},
+// 	}
 
-	src, err := c.API.Sources.New(sourceParams)
+// 	src, err := c.API.Sources.New(sourceParams)
 
-	log.JSON(src)
+// 	log.JSON(src)
 
-	if err != nil {
-		return 0, "", "", err
-	}
+// 	if err != nil {
+// 		return 0, "", "", err
+// 	}
 
-	return int64(src.TypeData["amount"].(float64)), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
-}
+// 	return int64(src.TypeData["amount"].(float64)), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+// }
 
-func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
-	chargeParams := &stripe.ChargeParams{
-		Amount:   1000,
-		Currency: "usd",
-	}
+// func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
+// 	chargeParams := &stripe.ChargeParams{
+// 		Amount:   1000,
+// 		Currency: "usd",
+// 	}
 
-	chargeParams.SetSource(src)
-	ch, err := c.API.Charges.New(chargeParams)
+// 	chargeParams.SetSource(src)
+// 	ch, err := c.API.Charges.New(chargeParams)
 
-	if err != nil {
-		return false, err
-	}
+// 	if err != nil {
+// 		return false, err
+// 	}
 
-	return ch.Status == "succeeded", err
-}
+// 	return ch.Status == "succeeded", err
+// }
 
 func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
