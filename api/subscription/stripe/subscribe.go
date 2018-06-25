@@ -27,7 +27,7 @@ func Subscribe(org *organization.Organization, usr *user.User, sub *subscription
 	}
 
 	// Existing customer, already have card on record
-	if usr.Accounts.Stripe.CardMatches(sub.StripeAccount) {
+	if usr.Accounts.Stripe.CardMatches(sub.Account) {
 		log.Debug("Returning stripe customer")
 		return returning(client, tok, usr, sub)
 	}
@@ -62,7 +62,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 	if err != nil {
 		return err
 	}
-	sub.StripeAccount.CustomerId = cust.ID
+	sub.Account.CustomerId = cust.ID
 	sub.Live = cust.Live
 
 	log.Debug("Stripe customer: %#v", cust)
@@ -78,7 +78,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 	updatePaymentFromCard(sub, card)
 
 	// Save account on user
-	u.Accounts.Stripe = sub.StripeAccount
+	u.Accounts.Stripe = sub.Account
 
 	// Create charge and associate with payment.
 	_, err = client.NewSubscription(tok.ID, cust, sub)
@@ -86,15 +86,15 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 }
 
 func updatePaymentFromCard(sub *subscription.Subscription, card *stripe.Card) {
-	sub.StripeAccount.CardId = card.ID
-	sub.StripeAccount.Brand = string(card.Brand)
-	sub.StripeAccount.LastFour = card.LastFour
-	sub.StripeAccount.Month = int(card.Month)
-	sub.StripeAccount.Year = int(card.Year)
-	sub.StripeAccount.Country = card.Country
-	sub.StripeAccount.Fingerprint = card.Fingerprint
-	sub.StripeAccount.Funding = string(card.Funding)
-	sub.StripeAccount.CVCCheck = string(card.CVCCheck)
+	sub.Account.CardId = card.ID
+	sub.Account.Brand = string(card.Brand)
+	sub.Account.LastFour = card.LastFour
+	sub.Account.Month = int(card.Month)
+	sub.Account.Year = int(card.Year)
+	sub.Account.Country = card.Country
+	sub.Account.Fingerprint = card.Fingerprint
+	sub.Account.Funding = string(card.Funding)
+	sub.Account.CVCCheck = string(card.CVCCheck)
 }
 
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, sub *subscription.Subscription) error {
