@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/subscription"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/plan"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
@@ -350,6 +351,62 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 	}
 
 	return (*Card)(card), nil
+}
+
+// Add new subscription to Stripe
+func (c Client) AddPlan(token string, p *plan.Plan) (*Plan, error) {
+	params := &stripe.PlanParams {
+		Name: p.Name,
+		Currency: stripe.Currency(p.Currency),
+		Interval: stripe.PlanInterval(p.Interval),
+		IntervalCount: uint64(p.IntervalCount),
+		TrialPeriod: uint64(p.TrialPeriodDays),
+		Statement: p.Description,
+	}
+
+	plan, err := c.API.Plans.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Plan)(plan), nil
+}
+
+func (c Client) UpdatePlan(token string, p *plan.Plan) (*Plan, error) {
+	planId := p.StripeId
+
+	params := &stripe.PlanParams {
+		Name: p.Name,
+		Currency: stripe.Currency(p.Currency),
+		Interval: stripe.PlanInterval(p.Interval),
+		IntervalCount: uint64(p.IntervalCount),
+		TrialPeriod: uint64(p.TrialPeriodDays),
+		Statement: p.Description,
+	}
+
+	plan, err := c.API.Plans.Update(planId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Plan)(plan), nil
+}
+
+func (c Client) DeletePlan(token string, p *plan.Plan) (*Plan, error) {
+	params := &stripe.PlanParams {
+		Name: p.Name,
+		Currency: stripe.Currency(p.Currency),
+		Interval: stripe.PlanInterval(p.Interval),
+		IntervalCount: uint64(p.IntervalCount),
+		TrialPeriod: uint64(p.TrialPeriodDays),
+		Statement: p.Description,
+	}
+	plan, err := c.API.Plans.Del(p.StripeId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Plan)(plan), nil
 }
 
 // Update card associated with Stripe customer
