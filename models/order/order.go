@@ -22,6 +22,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/pricing"
@@ -104,7 +105,7 @@ type Order struct {
 	Currency currency.Type `json:"currency"`
 
 	// Payment processor type - paypal, stripe, etc
-	Type payment.Type `json:"type,omitempty"`
+	Type accounts.Type `json:"type,omitempty"`
 
 	// Payment mode
 	Mode Mode `json:"mode,omitempty"`

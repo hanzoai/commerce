@@ -78,10 +78,10 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 	updatePaymentFromCard(sub, card)
 
 	// Save account on user
-	u.Accounts.Stripe = sub.Account
+	u.Accounts.Stripe = sub.Account.Stripe
 
 	// Create charge and associate with payment.
-	_, err = client.NewSubscription(tok.ID, cust, sub)
+	_, err = client.NewSubscription(cust, sub)
 	return err
 }
 
@@ -110,14 +110,14 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, sub *su
 	updatePaymentFromCard(sub, card)
 
 	// Charge using customer
-	_, err = client.NewSubscription(tok.ID, cust, sub)
+	_, err = client.NewSubscription(cust, sub)
 	return err
 }
 
 func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, sub *subscription.Subscription) error {
 	// Add new card to customer
 
-	card, err := client.AddCard(tok.ID, usr)
+	card, err := client.NewCard(tok.ID, usr)
 	if err != nil {
 		return err
 	}
@@ -125,6 +125,6 @@ func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, 
 	updatePaymentFromCard(sub, card)
 
 	// Charge using customerId on user
-	_, err = client.NewSubscription(tok.ID, usr, sub)
+	_, err = client.NewSubscription(usr, sub)
 	return err
 }

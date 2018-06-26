@@ -11,7 +11,7 @@ import (
 	"hanzo.io/api/checkout"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
@@ -40,7 +40,7 @@ var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
 	ord.ShippingAddress.State = sd.Code
 	ord.ShippingAddress.Country = ctr.Codes.Alpha2
 	ord.ShippingAddress.PostalCode = "66212"
-	ord.Type = payment.Bitcoin
+	ord.Type = accounts.BitcoinType
 
 	ord.Currency = currency.BTC
 	ord.Subtotal = currency.Cents(1e5)

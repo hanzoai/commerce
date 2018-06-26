@@ -12,6 +12,8 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/subscription"
+	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/plan"
 	"hanzo.io/models/user"
@@ -97,10 +99,10 @@ func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 // 	return ch.Status == "succeeded", err
 // }
 
-func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
+func (c Client) NewSubscription(source interface{}, sub *subscription.Subscription) (*Sub, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
 	params := &stripe.SubParams{
-		Plan: sub.Plan.StripeId,
+		Plan: sub.Plan.Id_,
 	}
 
 	switch v := source.(type) {
@@ -111,15 +113,17 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 		params.AddMeta("user", v.Id())
 	}
 
-	params.AddMeta("plan", sub.Plan.Id())
+	params.AddMeta("plan", sub.Plan.Id_)
 
 	s, err := c.Subs.New(params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.RemoteSubscriptionId = s.ID
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -139,19 +143,21 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
 	params := &stripe.SubParams{
 		Customer: sub.Account.CustomerId,
-		Plan:     sub.Plan.StripeId,
+		Plan:     sub.Plan.Id_,
 		Quantity: uint64(sub.Quantity),
 	}
 
-	params.AddMeta("plan", sub.Plan.Id())
+	params.AddMeta("plan", sub.Plan.Id_)
 
-	s, err := c.Subs.Update(sub.RemoteSubscriptionId, params)
+	s, err := c.Subs.Update(sub.Ref.Stripe.Id, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.RemoteSubscriptionId = s.ID
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -174,13 +180,15 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error)
 		EndCancel: true,
 	}
 
-	s, err := c.Subs.Cancel(sub.RemoteSubscriptionId, params)
+	s, err := c.Subs.Cancel(sub.Ref.Stripe.Id, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.RemoteSubscriptionId = s.ID
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -339,7 +347,7 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 }
 
 // Add new card to Stripe customer
-func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
+func (c Client) NewCard(token string, usr *user.User) (*Card, error) {
 	params := &stripe.CardParams{
 		Customer: usr.Accounts.Stripe.CustomerId,
 		Token:    token,
@@ -354,8 +362,9 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 }
 
 // Add new subscription to Stripe
-func (c Client) AddPlan(token string, p *plan.Plan) (*Plan, error) {
+func (c Client) NewPlan(p *plan.Plan) (*Plan, error) {
 	params := &stripe.PlanParams {
+		ID: p.Id(),
 		Name: p.Name,
 		Currency: stripe.Currency(p.Currency),
 		Interval: stripe.PlanInterval(p.Interval),
@@ -364,18 +373,24 @@ func (c Client) AddPlan(token string, p *plan.Plan) (*Plan, error) {
 		Statement: p.Description,
 	}
 
+	params.AddMeta("plan", p.Id())
+
 	plan, err := c.API.Plans.New(params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
+	p.Ref.Stripe.Id = plan.ID
+	p.Ref.Type = refs.StripeEcommerceRefType
+
 	return (*Plan)(plan), nil
 }
 
-func (c Client) UpdatePlan(token string, p *plan.Plan) (*Plan, error) {
-	planId := p.StripeId
+func (c Client) UpdatePlan(p *plan.Plan) (*Plan, error) {
+	planId := p.Id()
 
 	params := &stripe.PlanParams {
+		ID: p.Id(),
 		Name: p.Name,
 		Currency: stripe.Currency(p.Currency),
 		Interval: stripe.PlanInterval(p.Interval),
@@ -389,25 +404,29 @@ func (c Client) UpdatePlan(token string, p *plan.Plan) (*Plan, error) {
 		return nil, errors.New(err)
 	}
 
-	return (*Plan)(plan), nil
-}
-
-func (c Client) DeletePlan(token string, p *plan.Plan) (*Plan, error) {
-	params := &stripe.PlanParams {
-		Name: p.Name,
-		Currency: stripe.Currency(p.Currency),
-		Interval: stripe.PlanInterval(p.Interval),
-		IntervalCount: uint64(p.IntervalCount),
-		TrialPeriod: uint64(p.TrialPeriodDays),
-		Statement: p.Description,
-	}
-	plan, err := c.API.Plans.Del(p.StripeId, params)
-	if err != nil {
-		return nil, errors.New(err)
-	}
+	p.Ref.Stripe.Id = plan.ID
+	p.Ref.Type = refs.StripeEcommerceRefType
 
 	return (*Plan)(plan), nil
 }
+
+// func (c Client) DeletePlan(p *plan.Plan) (*Plan, error) {
+// 	params := &stripe.PlanParams {
+// 		ID: p.Id(),
+// 		Name: p.Name,
+// 		Currency: stripe.Currency(p.Currency),
+// 		Interval: stripe.PlanInterval(p.Interval),
+// 		IntervalCount: uint64(p.IntervalCount),
+// 		TrialPeriod: uint64(p.TrialPeriodDays),
+// 		Statement: p.Description,
+// 	}
+// 	plan, err := c.API.Plans.Del(p.Id(), params)
+// 	if err != nil {
+// 		return nil, errors.New(err)
+// 	}
+
+// 	return (*Plan)(plan), nil
+// }
 
 // Update card associated with Stripe customer
 func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
