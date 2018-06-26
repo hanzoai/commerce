@@ -6,6 +6,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/plan"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/util/fake"
 )
 
@@ -20,5 +21,12 @@ func Fake(db *datastore.Datastore) *Subscription {
 	sub.Quantity = rand.Intn(10)
 	sub.Status = Active
 	sub.Plan = *plan.Fake(db)
+
+	sub.Account.Type = accounts.StripeType
+	sub.Account.Number = "4242424242424242"
+	sub.Account.CVC = "424"
+	sub.Account.Month = 12
+	sub.Account.Year = 2024
+
 	return sub
 }

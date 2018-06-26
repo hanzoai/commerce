@@ -8,8 +8,9 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
-	"hanzo.io/models/payment"
 	"hanzo.io/models/plan"
+	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/util/hashid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
@@ -103,8 +104,8 @@ type Subscription struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	Account payment.Account `json:"account,omitEmpty"`
-	RemoteSubscriptionId string `json:"stripeSubscriptionId,omitEmpty"`
+	Account accounts.Account `json:"account,omitempty"`
+	Ref refs.EcommerceRef `json:"ref,omitempty"`
 }
 
 func (s *Subscription) Load(ps []aeds.Property) (err error) {

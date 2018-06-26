@@ -103,7 +103,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	updateUserFromPayment(usr, pay)
 
 	// Save account on user
-	usr.Accounts.Stripe = pay.Account
+	usr.Accounts.Stripe = pay.Account.Stripe
 
 	// Create charge and associate with payment.
 	_, err = client.NewCharge(cust, pay)
@@ -112,7 +112,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
 	// Add card to customer
-	card, err := client.AddCard(tok.ID, usr)
+	card, err := client.NewCard(tok.ID, usr)
 	if err != nil {
 		return err
 	}
