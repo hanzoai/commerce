@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/models/fixtures"
+	"hanzo.io/models/organization"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/log"
 	"hanzo.io/util/test/ae"
@@ -31,7 +33,8 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
 	log.Warn("Before Suite")
-	token = "sk_test_UmnR9sIn9Scdx3xi99cpOozQ"
+	org := fixtures.Organization(c).(*organization.Organization)
+	token = org.Stripe.Test.AccessToken
 	client = stripe.New(ctx, token)
 })
 

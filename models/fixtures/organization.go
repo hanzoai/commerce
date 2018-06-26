@@ -36,9 +36,9 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	// Saved stripe tokens
 	org.Stripe.Test.UserId = "acct_16fNBDH4ZOGOmFfW"
-	org.Stripe.Test.AccessToken = "sk_test_RnnTXycI4vLympetwb66jTab"
-	org.Stripe.Test.PublishableKey = "pk_test_1Y8PTDLIWERNUYcpg8tglNBY"
-	org.Stripe.Test.RefreshToken = "rt_9MArkOe9fEf4bDRstgha9Ma6r6W5JM5c3LWlWFBRwv9iA2qi"
+	org.Stripe.Test.AccessToken = ""
+	org.Stripe.Test.PublishableKey = "pk_test_HHiaCsBYlyfI45xtAvIAsjRe"
+	org.Stripe.Test.RefreshToken = ""
 
 	// Ethereum
 	org.Ethereum.Address = "0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"

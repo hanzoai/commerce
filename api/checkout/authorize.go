@@ -19,6 +19,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/store"
 	"hanzo.io/models/tokensale"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/client"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
@@ -175,23 +176,23 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Handle authorization
 	switch ord.Type {
-	case payment.Balance:
+	case accounts.BalanceType:
 		err = balance.Authorize(org, ord, usr, pay)
-	case payment.Ethereum:
+	case accounts.EthereumType:
 		if ord.Currency != currency.ETH {
 			return nil, UnsupportedEthereumCurrency
 		}
 		err = ethereum.Authorize(org, ord, usr)
-	case payment.Bitcoin:
+	case accounts.BitcoinType:
 		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
 			return nil, UnsupportedBitcoinCurrency
 		}
 		err = bitcoin.Authorize(org, ord, usr)
-	case payment.Null:
+	case accounts.NullType:
 		err = null.Authorize(org, ord, usr, pay)
-	case payment.PayPal:
+	case accounts.PayPalType:
 		err = paypal.Authorize(org, ord, usr, pay)
-	case payment.Stripe:
+	case accounts.StripeType:
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
