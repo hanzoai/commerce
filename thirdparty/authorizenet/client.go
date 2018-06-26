@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/subscription"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/models/plan"
 	"hanzo.io/thirdparty/authorizenet/errors"
 )
@@ -104,7 +105,8 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 }
 
 func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *subscription.Subscription {
-	sub.RemoteSubscriptionId = tran.SubscriptionID
+	sub.Ref.Affirm.Id = tran.SubscriptionID
+	sub.Ref.Type = refs.AffirmEcommerceRefType
 
 	return sub
 }
@@ -158,7 +160,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	s := AuthorizeCIM.SetSubscription{
-		Id: sub.RemoteSubscriptionId,
+		Id: sub.Ref.Affirm.Id,
 	}
 	_, err := s.Cancel()
 
