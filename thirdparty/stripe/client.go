@@ -208,8 +208,11 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error)
 
 // Do authorization, return token
 func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
+	crd := PaymentToCard(pay)
+	log.JSON(crd)
+
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
-		Card: PaymentToCard(pay),
+		Card: crd,
 	})
 
 	if err != nil {
