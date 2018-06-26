@@ -6,6 +6,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
 
@@ -46,8 +47,6 @@ type Plan struct {
 	// Internal id
 	SKU string `json:"sku"`
 
-	StripeId string `json:"stripeId"`
-
 	// Human readable name
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -60,6 +59,8 @@ type Plan struct {
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
+
+	Ref refs.EcommerceRef `json:"ref,omitempty"`
 }
 
 func (p *Plan) Load(ps []aeds.Property) (err error) {
