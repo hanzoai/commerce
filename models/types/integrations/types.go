@@ -185,6 +185,10 @@ type AuthorizeNet struct {
 	SandboxApiLoginId		string `json:"sandboxAccessLoginId,omitempty"`
 	SandboxTransactionKey	string `json:"sandboxTransactionkey,omitempty"`
 	SandboxKey				string `json:"sandboxKey,omitempty"`
+
+	LiveApiLoginId		string `json:"liveAccessLoginId,omitempty"`
+	LiveTransactionKey	string `json:"liveTransactionkey,omitempty"`
+	LiveKey				string `json:"liveKey,omitempty"`
 }
 
 

@@ -1,9 +1,14 @@
-package stripe
+package authorizenet
 
 import (
+	"context"
 	"strconv"
+	"time"
 
 	"github.com/hunterlong/authorizecim"
+
+	"google.golang.org/appengine"
+	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
@@ -15,6 +20,26 @@ import (
 )
 
 type Client struct {
+	ctx context.Context
+	loginId string
+	transactionKey string
+	Key string
+}
+
+func New(ctx context.Context, loginId string, transactionKey string, key string) *Client {
+
+	// Set deadline
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+
+	// Set HTTP Client for App engine
+	httpClient := urlfetch.Client(ctx)
+
+	httpClient.Transport = &urlfetch.Transport{
+		Context: ctx,
+		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
+	}
+
+	return &Client{ctx, loginId, transactionKey, key}
 
 }
 
