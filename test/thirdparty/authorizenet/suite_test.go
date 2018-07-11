@@ -26,7 +26,7 @@ var (
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/stripe", t)
+	Setup("thirdparty/authorizenet", t)
 }
 
 var _ = BeforeSuite(func() {
