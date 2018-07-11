@@ -182,14 +182,9 @@ type Stripe struct {
 // Authorize.net connection
 type AuthorizeNet struct {
 	// For convenience duplicated
-	AccessToken    string `json:"accessToken,omitempty"`
-	PublishableKey string `json:"publishableKey,omitempty"`
-	RefreshToken   string `json:"refreshToken,omitempty"`
-	UserId         string `json:"userId,omitempty"`
-
-	// Save entire live and test tokens
-	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
-	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
+	SandboxApiLoginId		string `json:"sandboxAccessLoginId,omitempty"`
+	SandboxTransactionKey	string `json:"sandboxTransactionkey,omitempty"`
+	SandboxKey				string `json:"sandboxKey,omitempty"`
 }
 
 
