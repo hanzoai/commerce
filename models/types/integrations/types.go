@@ -22,17 +22,18 @@ const (
 	AnalyticsSentryType              IntegrationType = "analytics-sentry"
 
 	// Others
-	BitcoinType    IntegrationType = "bitcoin"
-	EthereumType   IntegrationType = "ethereum"
-	MailchimpType  IntegrationType = "mailchimp"
-	MandrillType   IntegrationType = "mandrill"
-	NetlifyType    IntegrationType = "netlify"
-	PaypalType     IntegrationType = "paypal"
-	ReamazeType    IntegrationType = "reamaze"
-	RecaptchaType  IntegrationType = "recaptcha"
-	SalesforceType IntegrationType = "salesforce"
-	ShipwireType   IntegrationType = "shipwire"
-	StripeType     IntegrationType = "stripe"
+	BitcoinType		   IntegrationType = "bitcoin"
+	EthereumType	   IntegrationType = "ethereum"
+	MailchimpType	   IntegrationType = "mailchimp"
+	MandrillType	   IntegrationType = "mandrill"
+	NetlifyType		   IntegrationType = "netlify"
+	PaypalType		   IntegrationType = "paypal"
+	ReamazeType		   IntegrationType = "reamaze"
+	RecaptchaType	   IntegrationType = "recaptcha"
+	SalesforceType	   IntegrationType = "salesforce"
+	ShipwireType	   IntegrationType = "shipwire"
+	StripeType		   IntegrationType = "stripe"
+	AuthorizeNetType   IntegrationType = "authorizeNet"
 )
 
 // Analytics
@@ -177,6 +178,20 @@ type Stripe struct {
 	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
 	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
 }
+
+// Authorize.net connection
+type AuthorizeNet struct {
+	// For convenience duplicated
+	AccessToken    string `json:"accessToken,omitempty"`
+	PublishableKey string `json:"publishableKey,omitempty"`
+	RefreshToken   string `json:"refreshToken,omitempty"`
+	UserId         string `json:"userId,omitempty"`
+
+	// Save entire live and test tokens
+	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
+	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
+}
+
 
 // Bitcoin
 type Bitcoin struct {
