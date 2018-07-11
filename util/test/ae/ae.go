@@ -64,13 +64,17 @@ func NewContext(args ...Options) Context {
 
 	// Create new dev server instance
 	var inst aetest.Instance
-	err = retry.Retry(3, func() error {
+	err = retry.Retry(10, func() error {
 		inst, err = aetest.NewInstance(&aetest.Options{
 			AppID: opts.AppID,
 			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
 		if err != nil {
+			log.Error("Cannot Initialize AeTest Instance: %v", err)
+		}
+		if err != nil && inst != nil {
 			inst.Close()
+			return err
 		}
 		return nil
 	})
