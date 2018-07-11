@@ -191,7 +191,11 @@ type Organization struct {
 	// Stripe connection
 	Stripe integrations.Stripe `json:"-"`
 
+	// Stripe connection
+	AuthorizeNet integrations.AuthorizeNet `json:"-"`
+
 	Currency currency.Type `json:"currency"`
+
 }
 
 func (o *Organization) Load(ps []aeds.Property) (err error) {
