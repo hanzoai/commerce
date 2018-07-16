@@ -267,8 +267,16 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	newTransaction := PaymentToNewTransaction(pay)
 	newTransaction.Amount = pay.Currency.ToStringNoSymbol(refundAmount)
-
-	response, err := newTransaction.Refund()
+	newTransaction.RefTransId = pay.Account.TransId
+	var tr = AuthorizeCIM.TransactionRequest{
+		TransactionType: "refundTransaction",
+		Amount:          newTransaction.Amount,
+		RefTransId:      newTransaction.RefTransId,
+		Payment: &AuthorizeCIM.Payment{
+			CreditCard: newTransaction.CreditCard,
+		},
+	}
+	response, err := AuthorizeCIM.SendTransactionRequest(tr)
 	if response.Approved() {
 		// Authorize.Net does not return the specific amount
 		// refunded in this transaction. If the response is
@@ -279,6 +287,12 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		}
 		return pay, pay.Put()
 	} else {
+		log.Debug("Authorize: Authorize.Net API did not approve transaction")
+		log.Debug("Authorize: Authorize.Net payment amount: %v", newTransaction.Amount)
+		log.Debug("Authorize: Authorize.Net card number: %v", newTransaction.CreditCard.CardNumber)
+		log.Debug("Authorize: Authorize.Net card expiration: %v", newTransaction.CreditCard.ExpirationDate)
+		log.Debug("Authorize: Authorize.Net refTransId: %v", newTransaction.RefTransId)
+		log.Debug("Authorize: Authorize.Net returned error: %v", err)
 		return pay, err
 	}
 }
@@ -464,6 +478,7 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
+		pay.Status = payment.Paid
 		return pay, nil
 	} else {
 		return pay, err
@@ -479,6 +494,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	response, err := oldTransaction.Capture()
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
+		pay.Status = payment.Paid
 		return pay, nil
 	} else {
 		return pay, err
