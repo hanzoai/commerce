@@ -9,12 +9,21 @@ import (
 var _ = Describe("thirdparty.authorizenet.authorize", func() {
 
 	Context("Authorize a payment", func() {
-		pay := payment.Fake(db)
-		It("Should succed to authorize", func() {
+		It("Should succeed to authorize", func() {
+			pay := payment.Fake(db)
 			retPay, err := client.Authorize(pay)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retPay.Account.TransId).NotTo(BeNil())
 			Expect(retPay.Account.TransId).NotTo(Equal(""))
+		})
+		It("Should succeed to an authorized payment", func() {
+			pay := payment.Fake(db)
+			retPay, err := client.Authorize(pay)
+			Expect(err).ToNot(HaveOccurred())
+			capPay, err := client.Capture(retPay)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(capPay.Account.TransId).NotTo(BeNil())
+			Expect(capPay.Account.TransId).NotTo(Equal(""))
 		})
 	})
 })
