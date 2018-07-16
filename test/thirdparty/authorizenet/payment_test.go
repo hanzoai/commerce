@@ -13,7 +13,8 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 		It("Should succed to authorize", func() {
 			retPay, err := client.Authorize(pay)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(retPay.Status).To(Equal(payment.Paid))
+			Expect(retPay.Account.TransId).NotTo(BeNil())
+			Expect(retPay.Account.TransId).NotTo(Equal(""))
 		})
 	})
 })
