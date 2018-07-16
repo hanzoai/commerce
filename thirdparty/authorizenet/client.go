@@ -118,7 +118,7 @@ func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction{
 func PaymentToPreviousTransaction(pay *payment.Payment) *AuthorizeCIM.PreviousTransaction{
 	prevTransaction := AuthorizeCIM.PreviousTransaction{
 				Amount: pay.Currency.ToStringNoSymbol(pay.Amount),
-				RefId: pay.Account.RefTransId,
+				RefId: pay.Account.TransId,
 			}
 	return &prevTransaction
 }
