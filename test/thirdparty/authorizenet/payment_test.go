@@ -2,6 +2,7 @@ package test
 
 import (
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/currency"
 	//"hanzo.io/thirdparty/authorizenet"
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -31,6 +32,19 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(chrgPay.Account.TransId).NotTo(BeNil())
 			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
+		})
+		It("Should succeed at a refund", func() {
+			pay := payment.Fake(db)
+			chrgPay, err := client.Charge(pay)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(chrgPay.Account.TransId).NotTo(BeNil())
+			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
+			refund, err := client.RefundPayment(pay, currency.Cents(50))
+			Expect(err).To(HaveOccurred())
+			// AUthorize.net only allows settled transactions to be refunded.
+			// That usually means the next day.
+			// We can't test the happy path, but we can ensure that the API
+			// At least understood our request.
 		})
 	})
 })
