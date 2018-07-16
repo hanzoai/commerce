@@ -16,7 +16,7 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 			Expect(retPay.Account.TransId).NotTo(BeNil())
 			Expect(retPay.Account.TransId).NotTo(Equal(""))
 		})
-		It("Should succeed to an authorized payment", func() {
+		It("Should succeed to charge an authorized payment", func() {
 			pay := payment.Fake(db)
 			retPay, err := client.Authorize(pay)
 			Expect(err).ToNot(HaveOccurred())
@@ -24,6 +24,13 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(capPay.Account.TransId).NotTo(BeNil())
 			Expect(capPay.Account.TransId).NotTo(Equal(""))
+		})
+		It("Should succeed a one-step charge", func() {
+			pay := payment.Fake(db)
+			chrgPay, err := client.Charge(pay)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(chrgPay.Account.TransId).NotTo(BeNil())
+			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
 		})
 	})
 })

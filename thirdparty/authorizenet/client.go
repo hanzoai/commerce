@@ -455,12 +455,12 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 }*/
 
 // Create new charge
-func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*payment.Payment, error) {
+func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 
 	newTransaction := PaymentToNewTransaction(pay)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	response, err := newTransaction.AuthOnly()
+	response, err := newTransaction.Charge()
 
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
