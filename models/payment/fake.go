@@ -11,6 +11,7 @@ import (
 
 func Fake(db *datastore.Datastore) *Payment {
 	pay := New(db)
+	pay.Amount = currency.Cents(0).Fake()
 	pay.Account.Type = accounts.NullType
 	pay.Buyer = Buyer{
 		Email:     fake.EmailAddress(),

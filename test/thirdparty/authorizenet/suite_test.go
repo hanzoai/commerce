@@ -38,9 +38,15 @@ var _ = BeforeSuite(func() {
 	loginId := org.AuthorizeNet.SandboxApiLoginId
 	transactionKey := org.AuthorizeNet.SandboxTransactionKey
 	key := org.AuthorizeNet.SandboxKey
-	client = authorizenet.New(ctx, loginId, transactionKey, key)
+	client = authorizenet.New(ctx, loginId, transactionKey, key, true)
 })
 
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
+
+/*
+* API Login Id: 
+* Transaction Key: 
+* Key: Simon
+*/

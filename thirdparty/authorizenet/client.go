@@ -24,9 +24,10 @@ type Client struct {
 	loginId string
 	transactionKey string
 	Key string
+	test bool
 }
 
-func New(ctx context.Context, loginId string, transactionKey string, key string) *Client {
+func New(ctx context.Context, loginId string, transactionKey string, key string, test bool) *Client {
 
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
@@ -39,17 +40,25 @@ func New(ctx context.Context, loginId string, transactionKey string, key string)
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return &Client{ctx, loginId, transactionKey, key}
+	return &Client{ctx, loginId, transactionKey, key, test}
 
+}
+
+func (c Client) getTestValue() string {
+	if(c.test) {
+		return "test"
+	}
+	return "live"
 }
 
 func toStringExpirationDate(month int, year int) string {
 
+	y := strconv.Itoa(year)
+	l := len(y)
 	if(month < 10) {
-		return "0" + strconv.Itoa(month) + "/" + strconv.Itoa(year)
+		return "0" + strconv.Itoa(month) + "/" + y[l-2:]
 	}
-	return strconv.Itoa(month) + "/" + strconv.Itoa(year)
-
+	return strconv.Itoa(month) + "/" + y[l-2:]
 }
 
 func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.Subscription {
@@ -156,6 +165,8 @@ func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *Auth
 func (c Client) NewSubscription(token string, sub *subscription.Subscription) (*subscription.Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
 
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+
 	subscription := HanzoToAuthorizeSubscription(sub)
 
 	response, err := subscription.Charge()
@@ -170,6 +181,8 @@ func (c Client) NewSubscription(token string, sub *subscription.Subscription) (*
 func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
 
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+
 	subscription := HanzoToAuthorizeSubscription(sub)
 
 	response, err := subscription.Update()
@@ -183,6 +196,8 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscriptio
 // Subscribe to a plan
 func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
+
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	s := AuthorizeCIM.SetSubscription{
 		Id: sub.Ref.Affirm.Id,
@@ -201,12 +216,22 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	newTransaction := PaymentToNewTransaction(pay)
 
+	log.Debug("Authorize: Setting API Info")
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+
+	log.Debug("Authorize: Invoking Authorize.net API")
 	response, err := newTransaction.AuthOnly()
 
+	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
 		return pay, nil
 	} else {
+		log.Debug("Authorize: Authorize.Net API did not approve transaction")
+		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
+		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
+		log.Debug("Authorize: Authorize.Net card expiration: %v", toStringExpirationDate(pay.Account.Month, pay.Account.Year))
+		log.Debug("Authorize: Authorize.Net returned error: %v", err)
 		return pay, err
 	}
 }
@@ -239,6 +264,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		return pay, errors.UnableToRefundUnpaidTransaction
 	}
 
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	newTransaction := PaymentToNewTransaction(pay)
 	newTransaction.Amount = pay.Currency.ToStringNoSymbol(refundAmount)
 
@@ -433,6 +459,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*payment.Pa
 
 	newTransaction := PaymentToNewTransaction(pay)
 
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	response, err := newTransaction.AuthOnly()
 
 	if response.Approved() {
@@ -448,6 +475,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	log.Debug("Capture charge '%s'", pay.Account.AuthCode)
 	oldTransaction := PaymentToPreviousTransaction(pay)
 
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	response, err := oldTransaction.Capture()
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
