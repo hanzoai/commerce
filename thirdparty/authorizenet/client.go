@@ -141,9 +141,15 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 }
 
 func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *subscription.Subscription {
-	sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
-	sub.Ref.AuthorizeNet.CustomerProfileId = tran.Profile.CustomerProfileID
-	sub.Ref.AuthorizeNet.CustomerPaymentProfileId = tran.Profile.CustomerPaymentProfileID
+	if(tran.SubscriptionID != "") {
+		sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
+	}
+	if(tran.Profile.CustomerProfileID != "") {
+		sub.Ref.AuthorizeNet.CustomerProfileId = tran.Profile.CustomerProfileID
+	}
+	if(tran.Profile.CustomerPaymentProfileID != "") {
+		sub.Ref.AuthorizeNet.CustomerPaymentProfileId = tran.Profile.CustomerPaymentProfileID
+	}
 	sub.Ref.Type = refs.AuthorizeNetRefType
 
 	return sub
@@ -192,6 +198,7 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscriptio
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	subscription := HanzoToAuthorizeSubscription(sub)
+	subscription.SubscriptionId = sub.Ref.AuthorizeNet.SubscriptionId
 
 	response, err := subscription.Update()
 
