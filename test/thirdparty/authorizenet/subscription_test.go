@@ -2,6 +2,8 @@ package test
 
 import (
 	"hanzo.io/models/subscription"
+	"hanzo.io/log"
+	"hanzo.io/models/types/currency"
 	//"hanzo.io/thirdparty/authorizenet"
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -10,6 +12,7 @@ var _ = Describe("thirdparty.authorizenet.subscription", func() {
 	Context("Subscription", func() {
 		It("Should make new subscription", func() {
 			sub := subscription.Fake(db)
+			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
 			retSub, err := client.NewSubscription(sub)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retSub.Account.TransId).NotTo(BeNil())
@@ -19,11 +22,27 @@ var _ = Describe("thirdparty.authorizenet.subscription", func() {
 		})
 		It("Should cancel subscription", func() {
 			sub := subscription.Fake(db)
+			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
 			retSub, err := client.NewSubscription(sub)
 			Expect(err).ToNot(HaveOccurred())
 			canceledSub, err := client.CancelSubscription(retSub)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(canceledSub.Canceled).To(BeTrue())
+		})
+		It("Should update subscription", func() {
+			sub := subscription.Fake(db)
+			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
+			retSub, err := client.NewSubscription(sub)
+			Expect(err).ToNot(HaveOccurred())
+			retSub.Account.Number = "5555555555554444"
+			retSub.Account.CVC = "434"
+			retSub.Account.Month = 12
+			retSub.Account.Year = 2025
+			updateSub, err := client.UpdateSubscription(retSub)
+			log.JSON(updateSub)
+			Expect(updateSub.Ref.AuthorizeNet.SubscriptionId).NotTo(Equal(""))
+			Expect(updateSub.Ref.AuthorizeNet.CustomerProfileId).NotTo(Equal(""))
+			Expect(updateSub.Ref.AuthorizeNet.CustomerPaymentProfileId).NotTo(Equal(""))
 		})
 	})
 })
