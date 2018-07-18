@@ -141,8 +141,10 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 }
 
 func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *subscription.Subscription {
-	sub.Ref.Affirm.Id = tran.SubscriptionID
-	sub.Ref.Type = refs.AffirmEcommerceRefType
+	sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
+	sub.Ref.AuthorizeNet.CustomerProfileId = tran.Profile.CustomerProfileID
+	sub.Ref.AuthorizeNet.CustomerPaymentProfileId = tran.Profile.CustomerPaymentProfileID
+	sub.Ref.Type = refs.AuthorizeNetRefType
 
 	return sub
 }
@@ -175,6 +177,8 @@ func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.S
 
 	response, err := subscription.Charge()
 
+	log.JSON(response)
+
 	if response.Approved() {
 		return PopulateSubscriptionWithResponse(sub, response), nil
 	}
@@ -204,7 +208,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	s := AuthorizeCIM.SetSubscription{
-		Id: sub.Ref.Affirm.Id,
+		Id: sub.Ref.AuthorizeNet.SubscriptionId,
 	}
 	_, err := s.Cancel()
 
