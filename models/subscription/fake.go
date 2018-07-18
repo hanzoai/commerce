@@ -8,6 +8,8 @@ import (
 	"hanzo.io/models/plan"
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/util/fake"
+
+	. "hanzo.io/models"
 )
 
 func Fake(db *datastore.Datastore) *Subscription {
@@ -21,6 +23,18 @@ func Fake(db *datastore.Datastore) *Subscription {
 	sub.Quantity = rand.Intn(10)
 	sub.Status = Active
 	sub.Plan = *plan.Fake(db)
+	sub.Buyer = Buyer{
+		Email:     fake.EmailAddress(),
+		FirstName: fake.FirstName(),
+		LastName:  fake.LastName(),
+		Address: Address{
+			Line1:      fake.Street(),
+			City:       fake.City(),
+			State:      fake.State(),
+			PostalCode: fake.Zip(),
+			Country:    "US",
+		},
+	}
 
 	sub.Account.Type = accounts.StripeType
 	sub.Account.Number = "4242424242424242"
