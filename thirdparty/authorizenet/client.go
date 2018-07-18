@@ -72,8 +72,8 @@ func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.
 		Amount:      sub.Plan.Currency.ToStringNoSymbol(sub.Plan.Price),
 		TrialAmount: "0.00",
 		PaymentSchedule: &AuthorizeCIM.PaymentSchedule{
-			StartDate:        sub.PeriodStart.String(),
-			TotalOccurrences: strconv.Itoa(sub.PeriodsRemaining()),
+			StartDate:        sub.PeriodStart.Format("2006-01-02"),
+			TotalOccurrences: "9999",
 			TrialOccurrences: strconv.Itoa(sub.TrialPeriodsRemaining()),
 			Interval: interval,
 		},
@@ -85,6 +85,8 @@ func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.
 			},
 		},
 		BillTo: &AuthorizeCIM.BillTo{
+			FirstName:	 sub.Buyer.FirstName,
+			LastName:	 sub.Buyer.LastName,
 			Address:     sub.Buyer.Address.Line1,
 			City:        sub.Buyer.Address.City,
 			State:       sub.Buyer.Address.State,
@@ -162,12 +164,14 @@ func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *Auth
 }*/
 
 
-func (c Client) NewSubscription(token string, sub *subscription.Subscription) (*subscription.Subscription, error) {
+func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	subscription := HanzoToAuthorizeSubscription(sub)
+
+	log.JSON(subscription)
 
 	response, err := subscription.Charge()
 

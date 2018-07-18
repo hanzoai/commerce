@@ -7,9 +7,9 @@ import (
 	. "hanzo.io/util/test/ginkgo"
 )
 
-var _ = Describe("thirdparty.authorizenet.authorize", func() {
+var _ = Describe("thirdparty.authorizenet.payments", func() {
 
-	Context("Authorize a payment", func() {
+	Context("Payments", func() {
 		It("Should succeed to authorize", func() {
 			pay := payment.Fake(db)
 			retPay, err := client.Authorize(pay)
@@ -39,7 +39,7 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(chrgPay.Account.TransId).NotTo(BeNil())
 			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
-			refund, err := client.RefundPayment(pay, currency.Cents(50))
+			_, err = client.RefundPayment(pay, currency.Cents(50))
 			Expect(err).To(HaveOccurred())
 			// AUthorize.net only allows settled transactions to be refunded.
 			// That usually means the next day.
@@ -48,4 +48,3 @@ var _ = Describe("thirdparty.authorizenet.authorize", func() {
 		})
 	})
 })
-
