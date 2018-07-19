@@ -3,7 +3,8 @@ package test
 import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
-	//"hanzo.io/thirdparty/authorizenet"
+	"hanzo.io/thirdparty/authorizenet"
+
 	. "hanzo.io/util/test/ginkgo"
 )
 
@@ -40,7 +41,7 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 			Expect(chrgPay.Account.TransId).NotTo(BeNil())
 			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
 			_, err = client.RefundPayment(pay, currency.Cents(50))
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(authorizenet.MinimumRefundTimeNotReachedError))
 			// AUthorize.net only allows settled transactions to be refunded.
 			// That usually means the next day.
 			// We can't test the happy path, but we can ensure that the API
