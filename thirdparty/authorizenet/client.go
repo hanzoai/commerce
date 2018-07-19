@@ -16,7 +16,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/refs"
 	"hanzo.io/models/plan"
-	"hanzo.io/thirdparty/authorizenet/errors"
 )
 
 type Client struct {
@@ -179,7 +178,7 @@ func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.S
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 
-	log.JSON(subscription)
+	// log.JSON(subscription)
 
 	response, err := subscription.Charge()
 
@@ -268,15 +267,15 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 // Attempts to refund payment and updates the payment in datastore
 func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
 	if refundAmount > pay.Amount {
-		return pay, errors.RefundGreaterThanPayment
+		return pay, RefundGreaterThanPaymentError
 	}
 
 	if refundAmount+pay.AmountRefunded > pay.Amount {
-		return pay, errors.RefundGreaterThanPayment
+		return pay, RefundGreaterThanPaymentError
 	}
 
 	if pay.Status == payment.Unpaid {
-		return pay, errors.UnableToRefundUnpaidTransaction
+		return pay, UnableToRefundUnpaidTransactionError
 	}
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
@@ -303,11 +302,16 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		return pay, pay.Put()
 	} else {
 		log.Debug("Authorize: Authorize.Net API did not approve transaction")
-		log.Debug("Authorize: Authorize.Net payment amount: %v", newTransaction.Amount)
-		log.Debug("Authorize: Authorize.Net card number: %v", newTransaction.CreditCard.CardNumber)
-		log.Debug("Authorize: Authorize.Net card expiration: %v", newTransaction.CreditCard.ExpirationDate)
 		log.Debug("Authorize: Authorize.Net refTransId: %v", newTransaction.RefTransId)
+		log.Debug("Authorize: Authorize.Net payment amount: %v", newTransaction.Amount)
+		// log.Debug("Authorize: Authorize.Net card number: %v", newTransaction.CreditCard.CardNumber)
+		// log.Debug("Authorize: Authorize.Net card expiration: %v", newTransaction.CreditCard.ExpirationDate)
 		log.Debug("Authorize: Authorize.Net returned error: %v", err)
+
+		if err == nil {
+			err = MinimumRefundTimeNotReachedError
+		}
+
 		return pay, err
 	}
 }
