@@ -43,6 +43,9 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "Halcyon Bio"
 	org.Email.Defaults.FromEmail = "hi@halcyon.bio"
 
+	org.SignUpOptions.ImmediateLogin = true
+	org.SignUpOptions.AccountsEnabledByDefault = true
+
 	org.MustUpdate()
 
 	nsdb := datastore.New(org.Namespaced(db.Context))
