@@ -40,9 +40,9 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.Test.PublishableKey = "pk_test_HHiaCsBYlyfI45xtAvIAsjRe"
 	org.Stripe.Test.RefreshToken = ""
 
-	org.AuthorizeNet.SandboxApiLoginId = ""
-	org.AuthorizeNet.SandboxTransactionKey = ""
-	org.AuthorizeNet.SandboxKey = "Simon"
+	org.AuthorizeNet.Sandbox.LoginId = ""
+	org.AuthorizeNet.Sandbox.TransactionKey = ""
+	org.AuthorizeNet.Sandbox.Key = "Simon"
 
 	// Ethereum
 	org.Ethereum.Address = "0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"
