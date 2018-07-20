@@ -191,7 +191,7 @@ type Organization struct {
 	// Stripe connection
 	Stripe integrations.Stripe `json:"-"`
 
-	// Stripe connection
+	// AuthorizeNet connection
 	AuthorizeNet integrations.AuthorizeNet `json:"-"`
 
 	Currency currency.Type `json:"currency"`
@@ -393,6 +393,14 @@ func (o Organization) StripeToken() string {
 	}
 
 	return o.Stripe.Test.AccessToken
+}
+
+func (o Organization) AuthorizeNetTokens() integrations.AuthorizeNetConnection {
+	if o.Live {
+		return o. AuthorizeNet.Live
+	}
+
+	return o. AuthorizeNet.Sandbox
 }
 
 func (o Organization) IsTestEmail(email string) bool {

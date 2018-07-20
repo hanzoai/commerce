@@ -35,9 +35,9 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(c)
 	log.Warn("Before Suite")
 	org := fixtures.Organization(c).(*organization.Organization)
-	loginId := org.AuthorizeNet.SandboxApiLoginId
-	transactionKey := org.AuthorizeNet.SandboxTransactionKey
-	key := org.AuthorizeNet.SandboxKey
+	loginId := org.AuthorizeNet.Sandbox.LoginId
+	transactionKey := org.AuthorizeNet.Sandbox.TransactionKey
+	key := org.AuthorizeNet.Sandbox.Key
 	client = authorizenet.New(ctx, loginId, transactionKey, key, true)
 })
 
