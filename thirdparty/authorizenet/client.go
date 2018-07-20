@@ -50,14 +50,19 @@ func (c Client) getTestValue() string {
 	return "live"
 }
 
-func toStringExpirationDate(month int, year int) string {
+func ToStringExpirationDate(month int, year int) string {
 
 	y := strconv.Itoa(year)
 	l := len(y)
-	if(month < 10) {
-		return "0" + strconv.Itoa(month) + "/" + y[l-2:]
+	twoDigitYear := y
+	if  l > 2 {
+		twoDigitYear = y[l-2:]
 	}
-	return strconv.Itoa(month) + "/" + y[l-2:]
+
+	if(month < 10) {
+		return "0" + strconv.Itoa(month) + "/" + twoDigitYear
+	}
+	return strconv.Itoa(month) + "/" + twoDigitYear
 }
 
 func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.Subscription {
@@ -79,7 +84,7 @@ func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.
 		Payment: &AuthorizeCIM.Payment{
 			CreditCard: AuthorizeCIM.CreditCard{
 				CardNumber:     sub.Account.Number,
-				ExpirationDate: toStringExpirationDate(sub.Account.Month, sub.Account.Year),
+				ExpirationDate: ToStringExpirationDate(sub.Account.Month, sub.Account.Year),
 				CardCode:		sub.Account.CVC,
 			},
 		},
@@ -102,7 +107,7 @@ func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction{
 				RefTransId: pay.Account.RefTransId,
 				CreditCard: AuthorizeCIM.CreditCard{
 					CardNumber:     pay.Account.Number,
-					ExpirationDate: toStringExpirationDate(pay.Account.Month, pay.Account.Year),
+					ExpirationDate: ToStringExpirationDate(pay.Account.Month, pay.Account.Year),
 					CardCode:		pay.Account.CVC,
 				},
 				BillTo: &AuthorizeCIM.BillTo{
@@ -236,6 +241,10 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	log.Debug("Authorize: Invoking Authorize.net API")
 	response, err := newTransaction.AuthOnly()
 
+	if err != nil {
+		return pay, err
+	}
+
 	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
@@ -244,7 +253,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 		log.Debug("Authorize: Authorize.Net API did not approve transaction")
 		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
 		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
-		log.Debug("Authorize: Authorize.Net card expiration: %v", toStringExpirationDate(pay.Account.Month, pay.Account.Year))
+		log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
 		log.Debug("Authorize: Authorize.Net returned error: %v", err)
 		return pay, err
 	}
@@ -291,6 +300,11 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		},
 	}
 	response, err := AuthorizeCIM.SendTransactionRequest(tr)
+
+	if err != nil {
+		return pay, err
+	}
+
 	if response.Approved() {
 		// Authorize.Net does not return the specific amount
 		// refunded in this transaction. If the response is
@@ -495,6 +509,10 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	response, err := newTransaction.Charge()
 
+	if err != nil {
+		return pay, err
+	}
+
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
 		pay.Status = payment.Paid
@@ -511,6 +529,11 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	response, err := oldTransaction.Capture()
+
+	if err != nil {
+		return pay, err
+	}
+
 	if response.Approved() {
 		pay = PopulatePaymentWithResponse(pay,response)
 		pay.Status = payment.Paid
