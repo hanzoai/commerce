@@ -46,7 +46,7 @@ var _ = New("add-stripe-fix-mysterious",
 			usr.Phone = buyer.Phone
 			usr.ShippingAddress = buyer.Address
 			usr.History = []models.Event{models.Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
-			usr.Accounts.Stripe = pay.Account
+			usr.Accounts.Stripe = pay.Account.Stripe
 
 			usr.MustPut()
 		}

@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/fulfillment"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/user"
 	"hanzo.io/log"
 
@@ -169,7 +170,7 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 	// Default all payment types to Stripe for now, although eventually we
 	// should use organization settings
 	if pay.Type == "" {
-		pay.Type = payment.Stripe
+		pay.Type = accounts.StripeType
 	}
 
 	// Ensure order has same type as payment
