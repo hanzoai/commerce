@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/currency"
 )
 
@@ -196,7 +197,7 @@ func IncrStoreSales(ctx context.Context, org *organization.Organization, storeId
 
 	for _, pay := range pays {
 		// This is first because we care about it more :p
-		if pay.Type == payment.Stripe && pay.CurrencyTransferred != "" {
+		if (pay.Account.Type == accounts.StripeType && pay.CurrencyTransferred != "") || (pay.Type == accounts.StripeType && pay.CurrencyTransferred != "") {
 			total += pay.AmountTransferred
 			if cur == "" {
 				cur = pay.CurrencyTransferred
