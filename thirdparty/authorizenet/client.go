@@ -2,7 +2,9 @@ package authorizenet
 
 import (
 	"context"
+	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hunterlong/authorizecim"
@@ -129,7 +131,17 @@ func PaymentToPreviousTransaction(pay *payment.Payment) *AuthorizeCIM.PreviousTr
 	return &prevTransaction
 }
 
-func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.TransactionResponse) *payment.Payment {
+func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.TransactionResponse) (*payment.Payment, error) {
+	msgs := make([]string, 0)
+	for _, msg := range(tran.Response.Message.Message) {
+		msgs = append(msgs, "Code: " + msg.Code + ", " + msg.Description)
+	}
+
+	errMsgs := make([]string, 0)
+	for _, msg := range(tran.Response.Errors) {
+		errMsgs = append(errMsgs, "Code: " + msg.ErrorCode + ", " + msg.ErrorText)
+	}
+
 	pay.Account.AuthCode = tran.Response.AuthCode
 	pay.Account.AvsResultCode = tran.Response.AvsResultCode
 	pay.Account.CvvResultCode = tran.Response.CvvResultCode
@@ -140,8 +152,14 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 	pay.Account.TestRequest = tran.Response.TestRequest
 	pay.Account.AccountNumber = tran.Response.AccountNumber
 	pay.Account.AccountType = tran.Response.AccountType
+	pay.Account.Messages = msgs
+	pay.Account.ErrorMessages = errMsgs
 
-	return pay
+	if len(errMsgs) > 0 {
+		return pay, errors.New(strings.Join(errMsgs, ", "))
+	}
+
+	return pay, nil
 }
 
 func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *subscription.Subscription {
@@ -238,24 +256,28 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	log.Debug("Authorize: Setting API Info")
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
+	log.JSON(newTransaction)
+
 	log.Debug("Authorize: Invoking Authorize.net API")
 	response, err := newTransaction.AuthOnly()
 
 	if err != nil {
+		log.Warn("Error")
 		return pay, err
 	}
 
 	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
-		pay = PopulatePaymentWithResponse(pay,response)
-		return pay, nil
+		log.Warn("Approved")
+		return PopulatePaymentWithResponse(pay,response)
 	} else {
+		log.Warn("Not Approved")
 		log.Debug("Authorize: Authorize.Net API did not approve transaction")
 		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
 		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
 		log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
 		log.Debug("Authorize: Authorize.Net returned error: %v", err)
-		return pay, err
+		return pay, AuthorizeNotApprovedError
 	}
 }
 
@@ -299,11 +321,14 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 			CreditCard: newTransaction.CreditCard,
 		},
 	}
+
 	response, err := AuthorizeCIM.SendTransactionRequest(tr)
 
 	if err != nil {
 		return pay, err
 	}
+
+	log.JSON(response)
 
 	if response.Approved() {
 		// Authorize.Net does not return the specific amount
@@ -514,11 +539,10 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	}
 
 	if response.Approved() {
-		pay = PopulatePaymentWithResponse(pay,response)
-		pay.Status = payment.Paid
-		return pay, nil
-	} else {
+		pay, err = PopulatePaymentWithResponse(pay,response)
 		return pay, err
+	} else {
+		return pay, ChargeNotApprovedError
 	}
 }
 
@@ -535,11 +559,10 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	}
 
 	if response.Approved() {
-		pay = PopulatePaymentWithResponse(pay,response)
-		pay.Status = payment.Paid
-		return pay, nil
-	} else {
+		pay, err = PopulatePaymentWithResponse(pay,response)
 		return pay, err
+	} else {
+		return pay, CaptureNotApprovedError
 	}
 
 }
