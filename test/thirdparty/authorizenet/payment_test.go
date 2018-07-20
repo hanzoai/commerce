@@ -3,7 +3,6 @@ package test
 import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/thirdparty/authorizenet"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -41,11 +40,29 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 			Expect(chrgPay.Account.TransId).NotTo(BeNil())
 			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
 			_, err = client.RefundPayment(pay, currency.Cents(50))
-			Expect(err).To(Equal(authorizenet.MinimumRefundTimeNotReachedError))
+			Expect(err.Error()).To(Equal("Unable to refund unpaid transaction"))
 			// AUthorize.net only allows settled transactions to be refunded.
 			// That usually means the next day.
 			// We can't test the happy path, but we can ensure that the API
 			// At least understood our request.
+		})
+
+		It("Should authorize a simple payment", func() {
+			pay := payment.New(db)
+			pay.Amount = 2000
+			pay.Account.CVC = "424"
+			pay.Account.Month = 4
+			pay.Account.Year = 24
+			pay.Account.Name = "David Tai"
+			pay.Account.Number = "4242424242424242"
+
+			retPay, err := client.Authorize(pay)
+
+			Expect(err).ToNot(HaveOccurred())
+			capPay, err := client.Capture(retPay)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(capPay.Account.TransId).NotTo(BeNil())
+			Expect(capPay.Account.TransId).NotTo(Equal(""))
 		})
 	})
 })
