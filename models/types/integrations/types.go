@@ -22,18 +22,19 @@ const (
 	AnalyticsSentryType              IntegrationType = "analytics-sentry"
 
 	// Others
-	BitcoinType    IntegrationType = "bitcoin"
-	EthereumType   IntegrationType = "ethereum"
-	MailchimpType  IntegrationType = "mailchimp"
-	MandrillType   IntegrationType = "mandrill"
-	NetlifyType    IntegrationType = "netlify"
-	PaypalType     IntegrationType = "paypal"
-	ReamazeType    IntegrationType = "reamaze"
-	RecaptchaType  IntegrationType = "recaptcha"
-	SalesforceType IntegrationType = "salesforce"
-	ShipwireType   IntegrationType = "shipwire"
-	StripeType     IntegrationType = "stripe"
-	SmtpRelayType  IntegrationType = "smtprelay"
+	AuthorizeNetType IntegrationType = "authorizeNet"
+	BitcoinType      IntegrationType = "bitcoin"
+	EthereumType     IntegrationType = "ethereum"
+	MailchimpType    IntegrationType = "mailchimp"
+	MandrillType     IntegrationType = "mandrill"
+	NetlifyType      IntegrationType = "netlify"
+	PaypalType       IntegrationType = "paypal"
+	ReamazeType      IntegrationType = "reamaze"
+	RecaptchaType    IntegrationType = "recaptcha"
+	SalesforceType   IntegrationType = "salesforce"
+	ShipwireType     IntegrationType = "shipwire"
+	SmtpRelayType    IntegrationType = "smtprelay"
+	StripeType       IntegrationType = "stripe"
 )
 
 // Analytics
@@ -190,6 +191,19 @@ type Stripe struct {
 	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
+// Authorize.net connection
+type AuthorizeNetConnection struct {
+	LoginId        string `json:"loginId,omitempty"`
+	TransactionKey string `json:"transactionKey,omitempty"`
+	Key            string `json:"key,omitempty"`
+}
+
+type AuthorizeNet struct {
+	// For convenience duplicated
+	Sandbox AuthorizeNetConnection `json:"sandbox"`
+	Live    AuthorizeNetConnection `json:"live"`
+}
+
 // Bitcoin
 type Bitcoin struct {
 	Address     string `json:"address,omitempty"`
@@ -227,16 +241,17 @@ type Integration struct {
 	AnalyticsSentry              AnalyticsSentry              `json:"-"`
 
 	// Others
-	Bitcoin    Bitcoin    `json:"-"`
-	Ethereum   Ethereum   `json:"-"`
-	Mailchimp  Mailchimp  `json:"-"`
-	Mandrill   Mandrill   `json:"-"`
-	Netlify    Netlify    `json:"-"`
-	Paypal     Paypal     `json:"-"`
-	Reamaze    Reamaze    `json:"-"`
-	Recaptcha  Recaptcha  `json:"-"`
-	Salesforce Salesforce `json:"-"`
-	Shipwire   Shipwire   `json:"-"`
-	Stripe     Stripe     `json:"-"`
-	SmtpRelay  SmtpRelay  `json:"-"`
+	AuthorizeNet AuthorizeNet `json:"-"`
+	Bitcoin      Bitcoin      `json:"-"`
+	Ethereum     Ethereum     `json:"-"`
+	Mailchimp    Mailchimp    `json:"-"`
+	Mandrill     Mandrill     `json:"-"`
+	Netlify      Netlify      `json:"-"`
+	Paypal       Paypal       `json:"-"`
+	Reamaze      Reamaze      `json:"-"`
+	Recaptcha    Recaptcha    `json:"-"`
+	Salesforce   Salesforce   `json:"-"`
+	Shipwire     Shipwire     `json:"-"`
+	SmtpRelay    SmtpRelay    `json:"-"`
+	Stripe       Stripe       `json:"-"`
 }

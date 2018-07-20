@@ -6,6 +6,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
@@ -49,7 +50,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	for _, pay := range payments {
-		if pay.Type != payment.Stripe {
+		if pay.Type != accounts.StripeType {
 			return NonStripePayment
 		}
 	}
