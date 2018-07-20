@@ -13,6 +13,10 @@ type ChargeListParams stripe.ChargeListParams
 type ChargeParams stripe.ChargeParams
 type Customer stripe.Customer
 type Dispute stripe.Dispute
+type Plan stripe.Plan
+type PlanListParams stripe.PlanListParams
+type PlanParams stripe.PlanParams
+type PlanList stripe.PlanList
 type Event struct {
 	ID       string            `json:"id"`
 	Account  string            `json:"account"`
@@ -23,6 +27,7 @@ type Event struct {
 	Type     string            `json:"type"`
 	Request  string            `json:"request"`
 }
+type Sub stripe.Sub
 
 type Reversal stripe.Reversal
 type Token stripe.Token
