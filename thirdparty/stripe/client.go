@@ -3,6 +3,7 @@ package stripe
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
@@ -10,7 +11,11 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
+	"hanzo.io/models/subscription"
+	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/plan"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
@@ -38,49 +43,190 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	return &card
 }
 
-// Create a Source object to pay with Bitcoin.
-func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
-
-	sourceParams := &stripe.SourceObjectParams{
-		Type:     "bitcoin",
-		Amount:   uint64(pay.Amount),
-		Currency: "usd",
-		Owner: &stripe.SourceOwnerParams{
-			Email: usr.Email,
-		},
-	}
-
-	src, err := c.API.Sources.New(sourceParams)
-
-	log.JSON(src)
-
-	if err != nil {
-		return 0, "", "", err
-	}
-
-	return int64(src.TypeData["amount"].(float64)), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = sub.Buyer.Name()
+	card.Number = sub.Account.Number
+	card.CVC = sub.Account.CVC
+	card.Month = strconv.Itoa(sub.Account.Month)
+	card.Year = strconv.Itoa(sub.Account.Year)
+	card.Address1 = sub.Buyer.Address.Line1
+	card.Address2 = sub.Buyer.Address.Line2
+	card.City = sub.Buyer.Address.City
+	card.State = sub.Buyer.Address.State
+	card.Zip = sub.Buyer.Address.PostalCode
+	card.Country = sub.Buyer.Address.Country
+	return &card
 }
 
-func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
-	chargeParams := &stripe.ChargeParams{
-		Amount:   1000,
-		Currency: "usd",
+// Removed from API
+// Create a Source object to pay with Bitcoin.
+// func (c Client) CreateBitcoinSource(pay *payment.Payment, usr *user.User) (int64, string, string, error) {
+
+// 	sourceParams := &stripe.SourceObjectParams{
+// 		Type:     "bitcoin",
+// 		Amount:   uint64(pay.Amount),
+// 		Currency: "usd",
+// 		Owner: &stripe.SourceOwnerParams{
+// 			Email: usr.Email,
+// 		},
+// 	}
+
+// 	src, err := c.API.Sources.New(sourceParams)
+
+// 	log.JSON(src)
+
+// 	if err != nil {
+// 		return 0, "", "", err
+// 	}
+
+// 	return int64(src.TypeData["amount"].(float64)), src.TypeData["address"].(string), src.TypeData["uri"].(string), nil
+// }
+
+// func (c Client) ChargeBitcoinSource(pay *payment.Payment, src string) (bool, error) {
+// 	chargeParams := &stripe.ChargeParams{
+// 		Amount:   1000,
+// 		Currency: "usd",
+// 	}
+
+// 	chargeParams.SetSource(src)
+// 	ch, err := c.API.Charges.New(chargeParams)
+
+// 	if err != nil {
+// 		return false, err
+// 	}
+
+// 	return ch.Status == "succeeded", err
+// }
+
+func (c Client) NewSubscription(source interface{}, sub *subscription.Subscription) (*Sub, error) {
+	log.Debug("sub.Plan %v", sub.Plan)
+	params := &stripe.SubParams{
+		Plan: sub.Plan.Id_,
 	}
 
-	chargeParams.SetSource(src)
-	ch, err := c.API.Charges.New(chargeParams)
+	switch v := source.(type) {
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("user", v.Id())
+	}
 
+	params.AddMeta("plan", sub.Plan.Id_)
+
+	s, err := c.Subs.New(params)
 	if err != nil {
-		return false, err
+		return nil, errors.New(err)
 	}
 
-	return ch.Status == "succeeded", err
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
+	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = time.Unix(s.Ended, 0)
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Update subscribe to a plan
+func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer: sub.Account.CustomerId,
+		Plan:     sub.Plan.Id_,
+		Quantity: uint64(sub.Quantity),
+	}
+
+	params.AddMeta("plan", sub.Plan.Id_)
+
+	s, err := c.Subs.Update(sub.Ref.Stripe.Id, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
+	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
+}
+
+// Subscribe to a plan
+func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer:  sub.Account.CustomerId,
+		EndCancel: true,
+	}
+
+	s, err := c.Subs.Cancel(sub.Ref.Stripe.Id, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Ref.Stripe.Id = s.ID
+	sub.Ref.Type = refs.StripeEcommerceRefType
+	sub.Account.CustomerId = s.Customer.ID
+	sub.Account.Type = accounts.StripeType
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+	sub.CanceledAt = time.Now()
+	sub.EndCancel = true
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = subscription.Status(s.Status)
+
+	return (*Sub)(s), nil
 }
 
 // Do authorization, return token
 func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
+	crd := PaymentToCard(pay)
+	log.JSON(crd)
+
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
-		Card: PaymentToCard(pay),
+		Card: crd,
+	})
+
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	// Cast back to our token
+	return (*Token)(t), nil
+}
+
+func (c Client) AuthorizeSubscription(sub *subscription.Subscription) (*Token, error) {
+
+	t, err := c.API.Tokens.New(&stripe.TokenParams{
+		Card: SubscriptionToCard(sub),
 	})
 
 	if err != nil {
@@ -204,7 +350,7 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 }
 
 // Add new card to Stripe customer
-func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
+func (c Client) NewCard(token string, usr *user.User) (*Card, error) {
 	params := &stripe.CardParams{
 		Customer: usr.Accounts.Stripe.CustomerId,
 		Token:    token,
@@ -218,8 +364,75 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 	return (*Card)(card), nil
 }
 
+// Add new subscription to Stripe
+func (c Client) NewPlan(p *plan.Plan) (*Plan, error) {
+	params := &stripe.PlanParams {
+		ID: p.Id(),
+		Name: p.Name,
+		Currency: stripe.Currency(p.Currency),
+		Interval: stripe.PlanInterval(p.Interval),
+		IntervalCount: uint64(p.IntervalCount),
+		TrialPeriod: uint64(p.TrialPeriodDays),
+		Statement: p.Description,
+	}
+
+	params.AddMeta("plan", p.Id())
+
+	plan, err := c.API.Plans.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	p.Ref.Stripe.Id = plan.ID
+	p.Ref.Type = refs.StripeEcommerceRefType
+
+	return (*Plan)(plan), nil
+}
+
+func (c Client) UpdatePlan(p *plan.Plan) (*Plan, error) {
+	planId := p.Id()
+
+	params := &stripe.PlanParams {
+		ID: p.Id(),
+		Name: p.Name,
+		Currency: stripe.Currency(p.Currency),
+		Interval: stripe.PlanInterval(p.Interval),
+		IntervalCount: uint64(p.IntervalCount),
+		TrialPeriod: uint64(p.TrialPeriodDays),
+		Statement: p.Description,
+	}
+
+	plan, err := c.API.Plans.Update(planId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	p.Ref.Stripe.Id = plan.ID
+	p.Ref.Type = refs.StripeEcommerceRefType
+
+	return (*Plan)(plan), nil
+}
+
+// func (c Client) DeletePlan(p *plan.Plan) (*Plan, error) {
+// 	params := &stripe.PlanParams {
+// 		ID: p.Id(),
+// 		Name: p.Name,
+// 		Currency: stripe.Currency(p.Currency),
+// 		Interval: stripe.PlanInterval(p.Interval),
+// 		IntervalCount: uint64(p.IntervalCount),
+// 		TrialPeriod: uint64(p.TrialPeriodDays),
+// 		Statement: p.Description,
+// 	}
+// 	plan, err := c.API.Plans.Del(p.Id(), params)
+// 	if err != nil {
+// 		return nil, errors.New(err)
+// 	}
+
+// 	return (*Plan)(plan), nil
+// }
+
 // Update card associated with Stripe customer
-func (c Client) UpdateCard(token string, pay *payment.Payment, usr *user.User) (*Card, error) {
+func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 	customerId := usr.Accounts.Stripe.CustomerId
 	cardId := usr.Accounts.Stripe.CardId
 
