@@ -9,6 +9,7 @@ import (
 	"hanzo.io/api/checkout/bitcoin"
 	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/api/checkout/null"
+	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
 	"hanzo.io/models/blockchains"
@@ -192,15 +193,19 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		err = null.Authorize(org, ord, usr, pay)
 	case accounts.PayPalType:
 		err = paypal.Authorize(org, ord, usr, pay)
+	case accounts.AuthorizeNetType:
+		if ord.Currency.IsCrypto() {
+			return nil, UnsupportedStripeCurrency
+		}
+		err = authorizenet.Authorize(org, ord, usr, pay)
 	case accounts.StripeType:
+	default:
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
 		if ord.Total > 500000 {
 			return nil, TransactionLimitReached
 		}
-		err = stripe.Authorize(org, ord, usr, pay)
-	default:
 		err = stripe.Authorize(org, ord, usr, pay)
 	}
 

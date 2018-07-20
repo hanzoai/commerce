@@ -10,7 +10,7 @@ type Type string
 
 const (
 	AffirmType   Type = "affirm"
-	AuthorizeType Type = "authorize"
+	AuthorizeNetType Type = "authorizenet"
 	BalanceType  Type = "balance"
 	EthereumType Type = "ethereum"
 	BitcoinType  Type = "bitcoin"
