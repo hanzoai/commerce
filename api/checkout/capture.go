@@ -3,6 +3,7 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/balance"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/stripe"
@@ -11,6 +12,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/util/webhook"
 )
 
@@ -20,13 +22,15 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	var payments []*payment.Payment
 
 	switch ord.Type {
-	case "null":
-		ord, payments, err = null.Capture(org, ord)
-	case "balance":
+	case accounts.AuthorizeNetType:
+		ord, payments, err = authorizenet.Capture(org, ord)
+	case accounts.BalanceType:
 		ord, payments, err = balance.Capture(org, ord)
-	case "stripe":
+	case accounts.NullType:
+		ord, payments, err = null.Capture(org, ord)
+	case accounts.StripeType:
 		ord, payments, err = stripe.Capture(org, ord)
-	case "paypal":
+	case accounts.PayPalType:
 		payments = ord.Payments
 	default:
 		// TODO: return nil, errors.New("Invalid order type")

@@ -20,15 +20,16 @@ import (
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
+	"hanzo.io/models/plan"
 	// "hanzo.io/models/transaction"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/models/wallet"
 	"hanzo.io/models/webhook"
+	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
-	"hanzo.io/util/permission"
 
 	accessTokenApi "hanzo.io/api/accesstoken"
 	accountApi "hanzo.io/api/account"
@@ -52,6 +53,7 @@ import (
 	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
 	storeApi "hanzo.io/api/store"
+	subscriptionApi "hanzo.io/api/subscription"
 	transactionApi "hanzo.io/api/transaction"
 	userApi "hanzo.io/api/user"
 	xdApi "hanzo.io/api/xd"
@@ -100,12 +102,15 @@ func Route(api router.Router) {
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
 
+	subscriptionApi.Route(api)
+
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
 	rest.New(copy.Copy{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
 	rest.New(media.Media{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
+	rest.New(plan.Plan{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(return_.Return{}).Route(api, tokenRequired)
