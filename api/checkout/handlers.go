@@ -45,6 +45,7 @@ func Authorize(c *gin.Context) {
 	}
 
 	if _, err = authorize(c, org, ord); err != nil {
+		log.Warn("Error %v", err.Error())
 		http.Fail(c, 400, err.Error(), err)
 		return
 	}
