@@ -34,6 +34,8 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.AnalyticsHeap)
 	case AnalyticsSentryType:
 		dst.Data = json.EncodeBytes(src.AnalyticsSentry)
+	case AuthorizeNetType:
+		dst.Data = json.EncodeBytes(src.AuthorizeNet)
 	case BitcoinType:
 		dst.Data = json.EncodeBytes(src.Bitcoin)
 	case EthereumType:
@@ -87,6 +89,8 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.AnalyticsHeap = src.AnalyticsHeap
 	case AnalyticsSentryType:
 		dst.AnalyticsSentry = src.AnalyticsSentry
+	case AuthorizeNetType:
+		dst.AuthorizeNet = src.AuthorizeNet
 	case BitcoinType:
 		dst.Bitcoin = src.Bitcoin
 	case EthereumType:
