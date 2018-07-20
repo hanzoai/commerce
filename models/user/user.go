@@ -12,10 +12,10 @@ import (
 	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction/util"
+	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
@@ -61,11 +61,7 @@ type User struct {
 	} `json:"-"`
 
 	// Account to use for new orders when customer creates new orders
-	Accounts struct {
-		Stripe payment.Account `json:"stripe,omitempty"`
-		PayPal payment.Account `json:"paypal,omitempty"`
-		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"-" datastore:",noindex"`
+	Accounts accounts.Account `json:"-" datastore:",noindex"`
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 

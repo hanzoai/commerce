@@ -58,6 +58,7 @@ func init() {
 		User(c)
 		Organization(c)
 		Product(c)
+		Plan(c)
 		Variant(c)
 		Collection(c)
 		Token(c)
