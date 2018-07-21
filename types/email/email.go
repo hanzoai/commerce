@@ -1,62 +1,29 @@
 package email
 
+// Email name and address for sender, recpient, etc
 type Email struct {
 	Name    string `json:"name,omitempty"`
 	Address string `json:"address`
 }
 
+// Attachment holds attachement information
+type Attachment struct {
+	Content     string `json:"content,omitempty"`
+	Type        string `json:"type,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Filename    string `json:"filename,omitempty"`
+	Disposition string `json:"disposition,omitempty"`
+	ContentID   string `json:"contentId,omitempty"`
+}
+
+// Represents a single email message
 type Message struct {
-	Html    string  `json:"html,omitempty"`
-	Text    string  `json:"text,omitempty"`
-	Subject string  `json:"subject"`
-	From    Email   `json:"from"`
-	ReplyTo Email   `json:"replyTo,omitempty"`
-	To      []Email `json:"to"`
-
-	// Important bool `json:"important"`
-	// TrackOpens         interface{} `json:"track_opens"`
-	// TrackClicks        interface{} `json:"track_clicks"`
-	// AutoText           interface{} `json:"auto_text"`
-	AutoHtml interface{} `json:"auto_html"`
-	// InlineCss          interface{} `json:"inline_css"`
-	// UrlStripQs         interface{} `json:"url_strip_qs"`
-	// PreserveRecipients interface{} `json:"preserve_recipients"`
-	// ViewContentLink    interface{} `json:"view_content_link"`
-	// BccAddress string `json:"bcc_address"`
-	// TrackingDomain     interface{} `json:"tracking_domain"`
-	// SigningDomain    interface{} `json:"signing_domain"`
-	// ReturnPathDomain interface{} `json:"return_path_domain"`
-
-	Merge         bool   `json:"merge"`
-	MergeLanguage string `json:"merge_language,omitempty"`
-	// MergeVars     []Var           `json:"global_merge_vars"`
-	// RcptMergeVars []RcptMergeVars `json:"merge_vars"`
-
-	// Tags []string `json:"tags"`
-	// Subaccount      string            `json:"subaccount"`
-	// GoogleAnalyticsDomains  []string `json:"google_analytics_domains"`
-	// GoogleAnalyticsCampaign string   `json:"google_analytics_campaign"`
-
-	// Metadata struct {
-	//	Website string `json:"website"`
-	// } `json:"metadata"`
-
-	// RecipientMetadata []struct {
-	// 	Rcpt   string `json:"rcpt"`
-	// 	Values struct {
-	// 		UserId int `json:"user_id"`
-	// 	} `json:"values"`
-	// } `json:"recipient_metadata"`
-
-	// Attachments []struct {
-	// 	Type    string `json:"type"`
-	// 	Name    string `json:"name"`
-	// 	Content string `json:"content"`
-	// } `json:"attachments"`
-
-	// Images []struct {
-	// 	Type    string `json:"type"`
-	// 	Name    string `json:"name"`
-	// 	Content string `json:"content"`
-	// } `json:"images"`
+	Subject     string       `json:"subject,omitempty"`
+	From        Email        `json:"from"`
+	ReplyTo     Email        `json:"replyTo,omitempty"`
+	To          []Email      `json:"to"`
+	Bcc         []Email      `json:"bcc,omitempty"`
+	Html        string       `json:"html,omitempty"`
+	Text        string       `json:"text,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty`
 }
