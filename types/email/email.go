@@ -1,16 +1,17 @@
 package email
 
 type Email struct {
-	Html      string      `json:"html"`
-	Text      string      `json:"text"`
-	Subject   string      `json:"subject"`
-	FromEmail string      `json:"from_email"`
-	FromName  string      `json:"from_name"`
-	To        []Recipient `json:"to"`
+	Name    string `json:"name,omitempty"`
+	Address string `json:"address`
+}
 
-	Headers struct {
-		ReplyTo string `json:"Reply-To"`
-	} `json:"headers"`
+type Message struct {
+	Html    string  `json:"html,omitempty"`
+	Text    string  `json:"text,omitempty"`
+	Subject string  `json:"subject"`
+	From    Email   `json:"from"`
+	ReplyTo Email   `json:"replyTo,omitempty"`
+	To      []Email `json:"to"`
 
 	// Important bool `json:"important"`
 	// TrackOpens         interface{} `json:"track_opens"`
