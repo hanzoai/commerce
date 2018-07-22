@@ -19,11 +19,11 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/json"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
@@ -76,7 +76,7 @@ type Organization struct {
 	} `json:"-"`
 
 	// Affiliate configuration
-	Affiliate integrations.Affiliate `json:"-" datastore:",noindex"`
+	Affiliate integration.Affiliate `json:"-" datastore:",noindex"`
 
 	// Signup options
 	SignUpOptions struct {
@@ -101,48 +101,49 @@ type Organization struct {
 	// List of comma deliminated email globs that result in charges of 50 cents
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 
-	// Integrations
-	Integrations  integrations.Integrations `json:"integrations" datastore:"-"`
-	Integrations_ string                    `json:"-" datastore:",noindex"`
+	// integration
+	Integrations  integration.Integrations `json:"integrations" datastore:"-"`
+	Integrations_ string                   `json:"-" datastore:",noindex"`
 
-	// Integrations (deprecated)
+	// integration (deprecated)
 
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
 	// Bitcoi settings
-	Bitcoin integrations.Bitcoin `json:"-"`
+	Bitcoin integration.Bitcoin `json:"-"`
 
 	// Ethereum settings
-	Ethereum integrations.Ethereum `json:"-"`
+	Ethereum integration.Ethereum `json:"-"`
 
 	// Mailchimp settings
-	Mailchimp integrations.Mailchimp `json:"-"`
+	Mailchimp integration.Mailchimp `json:"-"`
 
 	// Mandrill settings
-	Mandrill integrations.Mandrill `json:"-"`
+	Mandrill integration.Mandrill `json:"-"`
 
 	// Netlify settings
-	Netlify integrations.Netlify `json:"-"`
+	Netlify integration.Netlify `json:"-"`
 
 	// Paypal connection
-	Paypal integrations.Paypal `json:"-"`
+	Paypal integration.Paypal `json:"-"`
 
-	Reamaze integrations.Reamaze `json:"-"`
+	// ReAmaze settings
+	Reamaze integration.Reamaze `json:"-"`
 
-	Recaptcha integrations.Recaptcha `json:"-" datastore:",noindex"`
+	Recaptcha integration.Recaptcha `json:"-" datastore:",noindex"`
 
 	// Salesforce settings
-	Salesforce integrations.Salesforce `json:"-"`
+	Salesforce integration.Salesforce `json:"-"`
 
 	// Shipwire settings
-	Shipwire integrations.Shipwire `json:"-"`
+	Shipwire integration.Shipwire `json:"-"`
 
 	// Stripe connection
-	Stripe integrations.Stripe `json:"-"`
+	Stripe integration.Stripe `json:"-"`
 
 	// AuthorizeNet connection
-	AuthorizeNet integrations.AuthorizeNet `json:"-"`
+	AuthorizeNet integration.AuthorizeNet `json:"-"`
 
 	Currency currency.Type `json:"currency"`
 }
@@ -161,7 +162,7 @@ func (o *Organization) Load(ps []aeds.Property) (err error) {
 	}
 
 	for i, in := range o.Integrations {
-		err = integrations.Decode(&in, &in)
+		err = integration.Decode(&in, &in)
 		o.Integrations[i] = in
 		if err != nil {
 			return err
@@ -344,7 +345,7 @@ func (o Organization) StripeToken() string {
 	return o.Stripe.Test.AccessToken
 }
 
-func (o Organization) AuthorizeNetTokens() integrations.AuthorizeNetConnection {
+func (o Organization) AuthorizeNetTokens() integration.AuthorizeNetConnection {
 	if o.Live {
 		return o.AuthorizeNet.Live
 	}

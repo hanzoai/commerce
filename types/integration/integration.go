@@ -1,4 +1,4 @@
-package integrations
+package integration
 
 import (
 	"time"
@@ -9,33 +9,33 @@ import (
 	enjson "encoding/json"
 )
 
-type IntegrationType string
+type Type string
 
 const (
 	// Analytics
-	AnalyticsCustomType              IntegrationType = "analytics-custom"
-	AnalyticsFacebookPixelType       IntegrationType = "analytics-facebook-pixel"
-	AnalyticsFacebookConversionsType IntegrationType = "analytics-facebook-conversions"
-	AnalyticsGoogleAdwordsType       IntegrationType = "analytics-google-adwords"
-	AnalyticsGoogleAnalyticsType     IntegrationType = "analytics-google-analytics"
-	AnalyticsHeapType                IntegrationType = "analytics-heap"
-	AnalyticsSentryType              IntegrationType = "analytics-sentry"
+	AnalyticsCustomType              Type = "analytics-custom"
+	AnalyticsFacebookPixelType       Type = "analytics-facebook-pixel"
+	AnalyticsFacebookConversionsType Type = "analytics-facebook-conversions"
+	AnalyticsGoogleAdwordsType       Type = "analytics-google-adwords"
+	AnalyticsGoogleAnalyticsType     Type = "analytics-google-analytics"
+	AnalyticsHeapType                Type = "analytics-heap"
+	AnalyticsSentryType              Type = "analytics-sentry"
 
 	// Others
-	AuthorizeNetType IntegrationType = "authorizeNet"
-	BitcoinType      IntegrationType = "bitcoin"
-	EthereumType     IntegrationType = "ethereum"
-	MailchimpType    IntegrationType = "mailchimp"
-	MandrillType     IntegrationType = "mandrill"
-	NetlifyType      IntegrationType = "netlify"
-	PaypalType       IntegrationType = "paypal"
-	ReamazeType      IntegrationType = "reamaze"
-	RecaptchaType    IntegrationType = "recaptcha"
-	SalesforceType   IntegrationType = "salesforce"
-	SendGridType     IntegrationType = "sendgrid"
-	ShipwireType     IntegrationType = "shipwire"
-	SmtpRelayType    IntegrationType = "smtprelay"
-	StripeType       IntegrationType = "stripe"
+	AuthorizeNetType Type = "authorizeNet"
+	BitcoinType      Type = "bitcoin"
+	EthereumType     Type = "ethereum"
+	MailchimpType    Type = "mailchimp"
+	MandrillType     Type = "mandrill"
+	NetlifyType      Type = "netlify"
+	PaypalType       Type = "paypal"
+	ReamazeType      Type = "reamaze"
+	RecaptchaType    Type = "recaptcha"
+	SalesforceType   Type = "salesforce"
+	SendGridType     Type = "sendgrid"
+	ShipwireType     Type = "shipwire"
+	SMTPRelayType    Type = "smtprelay"
+	StripeType       Type = "stripe"
 )
 
 // Analytics
@@ -174,7 +174,7 @@ type Shipwire struct {
 }
 
 // SMTP settings
-type SmtpRelay struct {
+type SMTPRelay struct {
 	Username string   `json:"username"`
 	Password string   `json:"password"`
 	Host     string   `json:"host"`
@@ -222,20 +222,14 @@ type Ethereum struct {
 	TestAddress string `json:"testAddress,omitempty"`
 }
 
-type Base struct {
-	Enabled bool `json:"enabled,omitempty"`
-	Show    bool `json:"show,omitempty"`
-
-	Id   string            `json:"id,omitempty"`
-	Data enjson.RawMessage `json:"data,omitempty"`
-	Type IntegrationType   `json:"type,omitempty"`
-
-	CreatedAt time.Time `json:"createdAt,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty"`
-}
-
 type Integration struct {
-	Base
+	Type      Type              `json:"type,omitempty"`
+	Enabled   bool              `json:"enabled,omitempty"`
+	Show      bool              `json:"show,omitempty"`
+	Id        string            `json:"id,omitempty"`
+	Data      enjson.RawMessage `json:"data,omitempty"`
+	CreatedAt time.Time         `json:"createdAt,omitempty"`
+	UpdatedAt time.Time         `json:"updatedAt,omitempty"`
 
 	// Analytics
 	AnalyticsCustom              AnalyticsCustom              `json:"-"`
@@ -259,6 +253,6 @@ type Integration struct {
 	Salesforce   Salesforce   `json:"-"`
 	Shipwire     Shipwire     `json:"-"`
 	SendGrid     SendGrid     `json:"-"`
-	SmtpRelay    SmtpRelay    `json:"-"`
+	SMTPRelay    SMTPRelay    `json:"-"`
 	Stripe       Stripe       `json:"-"`
 }

@@ -1,6 +1,6 @@
 package provider
 
-// Types of system-defined emails
+// Available email providers
 type Type string
 
 const (
