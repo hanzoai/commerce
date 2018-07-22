@@ -47,13 +47,13 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 			// At least understood our request.
 		})
 
-		It("Should authorize a simple payment", func() {
+		FIt("Should authorize a simple payment", func() {
 			pay := payment.New(db)
 			pay.Amount = 2000
+			pay.Account.Name = "Test"
 			pay.Account.CVC = "424"
-			pay.Account.Month = 4
-			pay.Account.Year = 24
-			pay.Account.Name = "David Tai"
+			pay.Account.Month = 5
+			pay.Account.Year = 2025
 			pay.Account.Number = "4242424242424242"
 
 			retPay, err := client.Authorize(pay)
