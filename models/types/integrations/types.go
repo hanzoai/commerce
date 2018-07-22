@@ -32,6 +32,7 @@ const (
 	ReamazeType      IntegrationType = "reamaze"
 	RecaptchaType    IntegrationType = "recaptcha"
 	SalesforceType   IntegrationType = "salesforce"
+	SendGridType     IntegrationType = "sendgrid"
 	ShipwireType     IntegrationType = "shipwire"
 	SmtpRelayType    IntegrationType = "smtprelay"
 	StripeType       IntegrationType = "stripe"
@@ -102,6 +103,11 @@ type Mailchimp struct {
 
 // Mandrill settings
 type Mandrill struct {
+	APIKey string `json:"apiKey,omitempty"`
+}
+
+// SendGrid settings
+type SendGrid struct {
 	APIKey string `json:"apiKey,omitempty"`
 }
 
@@ -252,6 +258,7 @@ type Integration struct {
 	Recaptcha    Recaptcha    `json:"-"`
 	Salesforce   Salesforce   `json:"-"`
 	Shipwire     Shipwire     `json:"-"`
+	SendGrid     SendGrid     `json:"-"`
 	SmtpRelay    SmtpRelay    `json:"-"`
 	Stripe       Stripe       `json:"-"`
 }

@@ -14,14 +14,14 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/email"
 	"hanzo.io/models/user"
+	"hanzo.io/types/email"
 
 	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 func SendPasswordResetEmail(ctx context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
-	conf := org.Email.Config(email.UserPasswordReset)
+	conf := org.Email.Get(email.UserPasswordReset)
 	if !conf.Enabled {
 		return
 	}
@@ -52,13 +52,14 @@ func SendPasswordResetEmail(ctx context.Context, org *organization.Organization,
 		"TOKEN_ID":       strings.Title(tok.Id()),
 	}
 
+	// Get Email integration
 	// Send Email
 	mandrill.SendTemplate(ctx, "password-reset", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 // SendEmailConfirmedEmail is gay
 func SendEmailConfirmedEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Config(email.UserEmailConfirmed)
+	conf := org.Email.Get(email.UserEmailConfirmed)
 
 	if !conf.Enabled {
 		return
@@ -90,7 +91,7 @@ func SendEmailConfirmedEmail(ctx context.Context, org *organization.Organization
 }
 
 func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, s *subscriber.Subscriber) {
-	conf := org.Email.Config(email.SubscriberWelcome)
+	conf := org.Email.Get(email.SubscriberWelcome)
 	if !conf.Enabled {
 		return
 	}
@@ -111,7 +112,7 @@ func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, 
 }
 
 func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Config(email.UserWelcome)
+	conf := org.Email.Get(email.UserWelcome)
 	if !conf.Enabled {
 		return
 	}
@@ -142,7 +143,7 @@ func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *u
 }
 
 func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Config(email.UserEmailConfirmed)
+	conf := org.Email.Get(email.UserEmailConfirmed)
 	if !conf.Enabled {
 		return
 	}
@@ -189,7 +190,7 @@ func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization
 }
 
 func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
-	conf := org.Email.Config(email.OrderConfirmation)
+	conf := org.Email.Get(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
 	}
@@ -318,7 +319,7 @@ func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organizat
 }
 
 func SendPartialRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Config(email.OrderConfirmation)
+	conf := org.Email.Get(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
 	}
@@ -424,7 +425,7 @@ func SendPartialRefundEmail(ctx context.Context, org *organization.Organization,
 }
 
 func SendFullRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Config(email.OrderConfirmation)
+	conf := org.Email.Get(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
 	}
@@ -530,7 +531,7 @@ func SendFullRefundEmail(ctx context.Context, org *organization.Organization, or
 }
 
 func SendFulfillmentEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Config(email.OrderConfirmation)
+	conf := org.Email.Get(email.OrderConfirmation)
 	if !conf.Enabled {
 		return
 	}
