@@ -18,6 +18,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/refs"
 	"hanzo.io/models/plan"
+	"hanzo.io/util/json"
 )
 
 type Client struct {
@@ -120,6 +121,8 @@ func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction{
 					Country:     pay.Buyer.Address.Country,
 				},
 			}
+	// log.Warn("Payment %v", json.Encode(pay), pay.Db.Context)
+	// log.Warn("New Transaction %v", json.Encode(newTransaction), pay.Db.Context)
 	return &newTransaction
 }
 
@@ -262,21 +265,25 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	response, err := newTransaction.AuthOnly()
 
 	if err != nil {
-		log.Warn("Error")
+		log.Error("Authorize.net Authorize 1 %v / %v, Error %v", pay, newTransaction, err, c.ctx)
 		return pay, err
 	}
 
 	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
-		log.Warn("Approved")
-		return PopulatePaymentWithResponse(pay,response)
+		// log.Warn("Approved")
+		pay, err := PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Authorize 2 %v", err, c.ctx)
+		}
+		return pay, err
 	} else {
-		log.Warn("Not Approved")
+		// log.Warn("Not Approved")
 		log.Debug("Authorize: Authorize.Net API did not approve transaction")
 		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
 		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
 		log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
-		log.Debug("Authorize: Authorize.Net returned error: %v", err)
+		log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
 		return pay, AuthorizeNotApprovedError
 	}
 }
@@ -288,7 +295,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	})
 
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	// Cast back to our token
@@ -345,7 +352,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		log.Debug("Authorize: Authorize.Net payment amount: %v", newTransaction.Amount)
 		// log.Debug("Authorize: Authorize.Net card number: %v", newTransaction.CreditCard.CardNumber)
 		// log.Debug("Authorize: Authorize.Net card expiration: %v", newTransaction.CreditCard.ExpirationDate)
-		log.Debug("Authorize: Authorize.Net returned error: %v", err)
+		log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
 
 		if err == nil {
 			err = MinimumRefundTimeNotReachedError
@@ -362,7 +369,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 
 	card, err := c.API.Cards.Get(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -375,7 +382,7 @@ func (c Client) GetCustomer(token, usr *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.Get(usr.Accounts.Stripe.CustomerId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -403,7 +410,7 @@ func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.Update(customerId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -426,7 +433,7 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -441,7 +448,7 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -459,7 +466,7 @@ func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.Update(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -473,7 +480,7 @@ func (c Client) DeleteCard(cardId string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.Del(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -520,7 +527,7 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 
 	charge, err := c.API.Charges.Update(id, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Charge)(charge), nil
@@ -535,11 +542,15 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	response, err := newTransaction.Charge()
 
 	if err != nil {
+		log.Error("Authorize.net Charge 1 %v", err, c.ctx)
 		return pay, err
 	}
 
 	if response.Approved() {
 		pay, err = PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Charge 2 %v", err, c.ctx)
+		}
 		return pay, err
 	} else {
 		return pay, ChargeNotApprovedError
@@ -555,11 +566,15 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	response, err := oldTransaction.Capture()
 
 	if err != nil {
+		log.Error("Authorize.net Capture 1 %v", err, c.ctx)
 		return pay, err
 	}
 
 	if response.Approved() {
 		pay, err = PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Capture 2 %v", err, c.ctx)
+		}
 		return pay, err
 	} else {
 		return pay, CaptureNotApprovedError
