@@ -9,54 +9,72 @@ import (
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
+	"hanzo.io/log"
+	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/json"
 )
 
 type Request struct {
-	Username string   `json:"username"`
-	Password string   `json:"password"`
-	Host     string   `json:"host"`
-	Port     string   `json:"port"`
-	MailFrom string   `json:"mailFrom"`
-	MailTo   []string `json:"mailTo"`
-	Msg      string   `json:"msg"`
+	Username string        `json:"username"`
+	Password string        `json:"password"`
+	Host     string        `json:"host"`
+	Port     string        `json:"port"`
+	From     email.Email   `json:"mailFrom"`
+	To       []email.Email `json:"mailTo"`
+	Msg      string        `json:"msg"`
 }
 
 type Client struct {
-	Endpoint string
-	Username string
-	Password string
-
-	client *http.Client
+	endpoint string
+	username string
+	password string
+	settings integration.SMTPRelay
+	client   *http.Client
 }
 
-func New(ctx context.Context) *Client {
+func New(ctx context.Context, settings integration.SMTPRelay) *Client {
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	client := urlfetch.Client(ctx)
 
 	return &Client{
 		client:   client,
-		Endpoint: config.SmtpRelay.Endpoint,
-		Username: config.SmtpRelay.Username,
-		Password: config.SmtpRelay.Password,
+		endpoint: config.SmtpRelay.Endpoint,
+		username: config.SmtpRelay.Username,
+		password: config.SmtpRelay.Password,
+		settings: settings,
 	}
 }
 
-func (c *Client) Send(r *Request) (*http.Response, error) {
+func (c *Client) Request(r *Request) error {
 	var payload *bytes.Reader
 
 	if r != nil {
 		payload = bytes.NewReader(json.EncodeBytes(r))
 	}
 
-	req, err := http.NewRequest("POST", c.Endpoint, payload)
+	req, err := http.NewRequest("POST", c.endpoint, payload)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	req.SetBasicAuth(c.Username, c.Password)
+	req.SetBasicAuth(c.username, c.password)
 	req.Header.Add("Content-Type", "application/json")
 
-	return c.client.Do(req)
+	res, err := c.client.Do(req)
+
+	log.Debug(res)
+
+	return err
+}
+
+func (c *Client) Send(message email.Message, subs []email.Substitution) error {
+	req := new(Request)
+	return c.Request(req)
+}
+
+func (c *Client) SendTemplate(message email.Message, subs []email.Substitution) error {
+	req := new(Request)
+	return c.Request(req)
 }
