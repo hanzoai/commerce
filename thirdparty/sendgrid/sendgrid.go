@@ -9,6 +9,8 @@ import (
 
 	"github.com/sendgrid/rest"
 	"github.com/sendgrid/sendgrid-go"
+
+	"hanzo.io/types/integration"
 )
 
 // func main() {
@@ -29,7 +31,7 @@ import (
 // 	}
 // }
 
-func New(ctx context.Context, accessToken string) *Client {
+func New(ctx context.Context, settings integration.SendGrid) *Client {
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
@@ -41,7 +43,7 @@ func New(ctx context.Context, accessToken string) *Client {
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 	rest.DefaultClient = &rest.Client{HTTPClient: httpClient}
-	client := sendgrid.NewSendClient(accessToken)
+	client := sendgrid.NewSendClient(settings.APIKey)
 
 	return &Client{ctx, client}
 }
