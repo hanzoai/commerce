@@ -19,69 +19,17 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/email"
 	"hanzo.io/models/types/integrations"
 	"hanzo.io/models/types/pricing"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
+	"hanzo.io/types/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
 )
-
-type Email struct {
-	Enabled   bool   `json:"enabled"`
-	FromEmail string `json:"fromEmail"`
-	FromName  string `json:"fromName"`
-	Subject   string `json:"subject"`
-	Template  string `json:"template" datastore:",noindex"`
-}
-
-func (e Email) Config(org *Organization) Email {
-	conf := Email{e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
-
-	// Use organization defaults
-	if org != nil {
-		if !org.Email.Defaults.Enabled {
-			conf.Enabled = false
-		}
-
-		if conf.FromEmail == "" {
-			conf.FromEmail = org.Email.Defaults.FromEmail
-		}
-
-		if conf.FromName == "" {
-			conf.FromName = org.Email.Defaults.FromName
-		}
-	}
-
-	return conf
-}
-
-type EmailConfig struct {
-	// Default email configuration
-	Defaults struct {
-		Enabled   bool   `json:"enabled"`
-		FromName  string `json:"fromName"`
-		FromEmail string `json:"fromEmail"`
-	} `json:"defaults"`
-
-	// Per-email configuration
-	OrderConfirmation Email `json:"orderConfirmation"`
-
-	User struct {
-		Welcome           Email `json:"welcome`
-		EmailConfirmation Email `json:"emailConfirmation"`
-		EmailConfirmed    Email `json:"emailConfirmed"`
-		PasswordReset     Email `json:"PasswordReset"`
-	} `json:"user"`
-
-	Subscriber struct {
-		Welcome Email `json:"welcome`
-	} `json:"subscriber"`
-}
 
 type Organization struct {
 	mixin.Model
@@ -149,6 +97,7 @@ type Organization struct {
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
 
+	// TODO: Remain to PaymentWhitelist for clarity
 	// List of comma deliminated email globs that result in charges of 50 cents
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 
@@ -196,7 +145,6 @@ type Organization struct {
 	AuthorizeNet integrations.AuthorizeNet `json:"-"`
 
 	Currency currency.Type `json:"currency"`
-
 }
 
 func (o *Organization) Load(ps []aeds.Property) (err error) {
@@ -398,10 +346,10 @@ func (o Organization) StripeToken() string {
 
 func (o Organization) AuthorizeNetTokens() integrations.AuthorizeNetConnection {
 	if o.Live {
-		return o. AuthorizeNet.Live
+		return o.AuthorizeNet.Live
 	}
 
-	return o. AuthorizeNet.Sandbox
+	return o.AuthorizeNet.Sandbox
 }
 
 func (o Organization) IsTestEmail(email string) bool {

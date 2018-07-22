@@ -36,12 +36,18 @@ type Substitution struct {
 // A tag to associate with a message
 type Tag string
 
+type Tracking struct {
+	Opens  bool `json:"opens`
+	Clicks bool `json:"clicks`
+}
+
 // Represents a single email message
 type Message struct {
 	Subject       string         `json:"subject,omitempty"`
 	From          Email          `json:"from"`
 	ReplyTo       Email          `json:"replyTo,omitempty"`
 	To            []Email        `json:"to"`
+	Cc            []Email        `json:"cc,omitempty"`
 	Bcc           []Email        `json:"bcc,omitempty"`
 	Html          string         `json:"html,omitempty"`
 	Text          string         `json:"text,omitempty"`
@@ -51,4 +57,5 @@ type Message struct {
 	TemplateID    string         `json:"templateId,omitempty"`
 	SendAt        time.Time      `json:"sendAt,omitempty"`
 	Tags          []Tag          `json:"tags,omitempty"`
+	Tracking      Tracking       `json:"tracking,omitempty"`
 }
