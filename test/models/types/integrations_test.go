@@ -3,7 +3,7 @@ package test
 import (
 	"regexp"
 
-	. "hanzo.io/models/types/integrations"
+	. "hanzo.io/types/integration"
 	// "hanzo.io/log"
 
 	. "github.com/onsi/ginkgo"
@@ -16,9 +16,7 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins = ins.MustAppend(&Integration{
-				Base: Base{
-					Type: AnalyticsCustomType,
-				},
+				Type: AnalyticsCustomType,
 			})
 			Expect(len(ins)).To(Equal(1))
 

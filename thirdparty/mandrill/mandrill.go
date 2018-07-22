@@ -14,7 +14,10 @@ import (
 	"google.golang.org/appengine/urlfetch"
 
 	"hanzo.io/config"
+	iface "hanzo.io/iface/email"
 	"hanzo.io/log"
+	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/json"
 )
 
@@ -234,4 +237,18 @@ func Send(ctx context.Context, req *SendReq) error {
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
 	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
+}
+
+type placeholder struct{}
+
+func (p *placeholder) Send(message email.Message, subs []email.Substitution) error {
+	return errors.New("Send is not implemented")
+}
+
+func (p *placeholder) SendTemplate(message email.Message, subs []email.Substitution) error {
+	return errors.New("SendTemplate is not implemented")
+}
+
+func New(c context.Context, in integration.Mandrill) iface.Provider {
+	return new(placeholder)
 }
