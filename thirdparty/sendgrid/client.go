@@ -2,6 +2,7 @@ package sendgrid
 
 import (
 	"context"
+	"errors"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 
@@ -39,28 +40,72 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 	// Set subject
 	m.Subject = message.Subject
 
-	// Add recipients
+	// Add Recipients
 	p := mail.NewPersonalization()
 	for _, to := range message.To {
 		p.AddTos(newEmail(to))
 	}
+
+	for _, cc := range message.Cc {
+		p.AddCCs(newEmail(cc))
+	}
+
+	for _, bcc := range message.Bcc {
+		p.AddBCCs(newEmail(bcc))
+	}
+
 	m.AddPersonalizations(p)
 
+	// Set tracking
+	ts := mail.NewTrackingSettings()
+
+	ct := mail.NewClickTrackingSetting()
+	ct.SetEnable(message.Tracking.Clicks)
+	ts.SetClickTracking(ct)
+
+	ot := mail.NewOpenTrackingSetting()
+	ot.SetEnable(message.Tracking.Opens)
+	ts.SetOpenTracking(ot)
+
+	m.SetTrackingSettings(ts)
+
 	// Add content
-	m.AddContent(newContent("text/plain", message.Text), newContent("text/html", message.Html))
+	if message.Text != "" {
+		m.AddContent(newContent("text/plain", message.Text))
+
+	}
+
+	if message.Html != "" {
+		m.AddContent(newContent("text/html", message.Html))
+	}
+
+	// Use template if set
+	if message.TemplateID != "" {
+		m.SetTemplateID(message.TemplateID)
+	}
 
 	return m
 }
 
-func (c *Client) Send(message email.Message) {
+// Send a single email w/o template
+func (c *Client) Send(message email.Message) error {
 	res, err := c.client.Send(newMessage(message))
 	if err != nil {
 		log.Error(err)
-	} else {
-		log.Info(res.StatusCode)
-		log.Info(res.Body)
-		log.Info(res.Headers)
+		return err
 	}
+	log.Info(res.StatusCode)
+	log.Info(res.Body)
+	log.Info(res.Headers)
+	return nil
+}
+
+// Send a single email, specifying a given template
+func (c *Client) SendTemplate(message email.Message) error {
+	if message.TemplateID == "" {
+		return errors.New("Template not specified")
+	}
+	return c.Send(message)
 }
 
 // func (c *Client) SendCampaign(id string) {
