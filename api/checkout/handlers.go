@@ -45,7 +45,7 @@ func Authorize(c *gin.Context) {
 	}
 
 	if _, err = authorize(c, org, ord); err != nil {
-		log.Warn("Error %v", err.Error())
+		log.Error("Error %v %v", err.Error(), err, c)
 		http.Fail(c, 400, err.Error(), err)
 		return
 	}
@@ -63,6 +63,7 @@ func Capture(c *gin.Context) {
 	}
 
 	if err = capture(c, org, ord); err != nil {
+		log.Error("Error during capture %v", err, c)
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
@@ -79,12 +80,14 @@ func Charge(c *gin.Context) {
 
 	// Do authorization
 	if _, err = authorize(c, org, ord); err != nil {
+		log.Error("Error %v %v", err.Error(), err, c)
 		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
 
 	// Do capture using order from authorization
 	if err = capture(c, org, ord); err != nil {
+		log.Error("Error during capture %v", err, c)
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
