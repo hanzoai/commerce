@@ -18,6 +18,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/types/email"
 	token "hanzo.io/util/oldjwt"
 )
 
@@ -100,9 +101,11 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "LuDela"
-	org.Email.Defaults.FromEmail = "hi@ludela.com"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "LuDela",
+		Address: "hi@ludela.com",
+	}
 
 	org.Email.Order.Confirmation.Subject = "LuDela Order Confirmation"
 	org.Email.Order.Confirmation.Enabled = true
