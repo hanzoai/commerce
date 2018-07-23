@@ -17,13 +17,3 @@ func SendEmail(c context.Context, org *organization.Organization, message *email
 	tasks.Send.Call(c, in, message)
 	return nil
 }
-
-func SendEmailTemplate(c context.Context, org *organization.Organization, templateId string, message *email.Message) error {
-	in, err := org.Integrations.EmailProvider()
-	if err != nil {
-		return err
-	}
-
-	tasks.SendTemplate.Call(c, in, message)
-	return nil
-}
