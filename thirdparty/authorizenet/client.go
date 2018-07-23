@@ -15,7 +15,7 @@ import (
 	"bytes"
 	"io/ioutil"
 
-	"github.com/hunterlong/authorizecim"
+	"github.com/hanzoai/goauthorizenet"
 
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
