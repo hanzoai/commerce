@@ -239,13 +239,14 @@ func Send(ctx context.Context, req *SendReq) error {
 	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
+// TODO: Update Mandrill
 type placeholder struct{}
 
-func (p *placeholder) Send(message email.Message, subs []email.Substitution) error {
+func (p *placeholder) Send(message email.Message) error {
 	return errors.New("Send is not implemented")
 }
 
-func (p *placeholder) SendTemplate(message email.Message, subs []email.Substitution) error {
+func (p *placeholder) SendTemplate(message email.Message) error {
 	return errors.New("SendTemplate is not implemented")
 }
 

@@ -5,13 +5,13 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/product"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 )
 
 var Crowdkeen = New("crowdkeen", func(c *gin.Context) *organization.Organization {
@@ -45,9 +45,9 @@ var Crowdkeen = New("crowdkeen", func(c *gin.Context) *organization.Organization
 	org.Mailchimp.ListId = "36005"
 
 	// Email configuration
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "crowdkeen"
-	org.Email.Defaults.FromEmail = "hi@crowdkeen.net"
+	// org.Email.Defaults.Enabled = true
+	// org.Email.Defaults.FromName = "crowdkeen"
+	// org.Email.Defaults.FromEmail = "hi@crowdkeen.net"
 
 	// Save org into default namespace
 	org.Put()
