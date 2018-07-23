@@ -3,12 +3,11 @@ package tasks
 import (
 	"context"
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/delay"
-
-	mandrill "hanzo.io/thirdparty/mandrill/tasks"
+	// mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 // Fire webhooks
@@ -21,7 +20,7 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx context.Cont
 	}
 
 	// User Welcome stuff
-	if !org.Email.Defaults.Enabled {
+	if !org.Email.Enabled {
 		return
 	}
 
@@ -33,24 +32,23 @@ var SendUserEmail = delay.Func("referrer-send-user-email", func(ctx context.Cont
 		return
 	}
 
-	// From
-	fromEmail := org.Email.Defaults.FromEmail
-	fromName := org.Email.Defaults.FromName
+	// // From
+	// from := org.Email.From
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Create Merge Vars
-	vars := map[string]interface{}{
-		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
-		},
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
-	}
+	// // Create Merge Vars
+	// vars := map[string]interface{}{
+	// 	"user": map[string]interface{}{
+	// 		"firstname": usr.FirstName,
+	// 		"lastname":  usr.LastName,
+	// 	},
+	// 	"USER_FIRSTNAME": usr.FirstName,
+	// 	"USER_LASTNAME":  usr.LastName,
+	// }
 
 	// Send Email
-	mandrill.SendTemplate(ctx, templateName, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, "", vars)
+	// mandrill.SendTemplate(ctx, templateName, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, "", vars)
 })
