@@ -5,87 +5,62 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/log"
-	"hanzo.io/thirdparty/mandrill"
+	"hanzo.io/thirdparty/sendgrid"
+	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/test/ae"
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
-	Setup("thirdparty/mandrill/integration", t)
+	Setup("thirdparty/sendgrid/integration", t)
 }
 
 var (
-	ctx ae.Context
+	ctx      ae.Context
+	settings = integration.SendGrid{
+		APIKey: config.SendGrid.APIKey,
+	}
 )
 
 var _ = BeforeSuite(func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
-
 	var err error
 	ctx = ae.NewContext()
 	Expect(err).NotTo(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
-
 	ctx.Close()
 })
 
-var _ = Describe("Ping", func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
-
-	It("Should return true from Ping", func() {
-		Expect(mandrill.Ping(ctx)).To(Equal(true))
-	})
-})
-
 var _ = Describe("Send", func() {
-	if config.Mandrill.APIKey == "" {
+	if config.SendGrid.APIKey == "" {
 		return
 	}
 
 	It("Should send email", func() {
-		html := mandrill.GetTemplate("../../../../templates/email/order-confirmation.html")
-		req := mandrill.NewSendReq()
-		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
+		client := sendgrid.New(ctx, settings)
+		message := email.NewMessage()
+		message.From = email.Email{
+			Name:    "Hanzo",
+			Address: "test@hanzo.ai",
+		}
+		message.AddTos(email.Email{
+			Name:    "Hanzo Test",
+			Address: "sendgrid@hanzo.ai",
+		})
+		message.Subject = "Test"
+		message.HTML = `
+		<html>
+		hi!
+		</html>
+		`
+		message.Text = `
+		Hi!
+		`
 
-		req.Message.Subject = "Test subject"
-		req.Message.FromEmail = "dev@hanzo.ai"
-		req.Message.FromName = "Tester"
-		req.Message.Html = html
-
-		err := mandrill.Send(ctx, &req)
-		Expect(err).NotTo(HaveOccurred())
-	})
-})
-
-var _ = Describe("SendTemplate", func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
-
-	It("Should send templated email", func() {
-		req := mandrill.NewSendTemplateReq()
-		// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
-		// req.AddRecipient("dev@hanzo.ai", "Michael W")
-		// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
-		// req.AddRecipient("dev@hanzo.ai", "David Tai")
-		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
-
-		req.Message.Subject = "Test subject"
-		req.Message.FromEmail = "dev@hanzo.ai"
-		req.Message.FromName = "Tester"
-		req.TemplateName = "preorder-confirmation-template"
-
-		err := mandrill.SendTemplate(ctx, &req)
+		err := client.Send(message)
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
