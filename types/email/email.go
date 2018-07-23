@@ -26,19 +26,20 @@ type Attachment struct {
 	ContentID   string `json:"contentId,omitempty"`
 }
 
-// Tags to substitute in an email body
+// Map of substiutitons to apply to email on provider side
 type Substitutions map[string]string
 
 // Tags to replace in an email for a specific recipient
 type Personalization struct {
-	Substitutions map[string]Substitutions `json:"substitution"`
-	Subject       string                   `json:"subject,omitempty"`
-	Headers       []Header                 `json:"headers,omitempty"`
-	To            []Email                  `json:"to,omitempty"`
-	CC            []Email                  `json:"cc,omitempty"`
-	BCC           []Email                  `json:"bcc,omitempty"`
-	SendAt        time.Time                `json:"sendAt,omitempty"`
+	// Override default message
+	Substitutions Substitutions `json:"substitution"`
+	Subject       string        `json:"subject,omitempty"`
+	Headers       []Header      `json:"headers,omitempty"`
+	SendAt        time.Time     `json:"sendAt,omitempty"`
 }
+
+// Map of address -> personalizations
+type Personalizations map[string]*Personalization
 
 // Tracking settings for a given message
 type Tracking struct {
@@ -48,22 +49,22 @@ type Tracking struct {
 
 // Represents a single email message
 type Message struct {
-	Subject          string            `json:"subject,omitempty"`
-	From             Email             `json:"from"`
-	ReplyTo          Email             `json:"replyTo,omitempty"`
-	To               []Email           `json:"to"`
-	CC               []Email           `json:"cc,omitempty"`
-	BCC              []Email           `json:"bcc,omitempty"`
-	Html             string            `json:"html,omitempty"`
-	Text             string            `json:"text,omitempty"`
-	TemplateID       string            `json:"templateId,omitempty"`
-	Attachments      []Attachment      `json:"attachments,omitempty"`
-	Substitutions    Substitutions     `json:"substitutions,omitempty"`
-	Personalizations []Personalization `json:"personalizations,omitempty"`
-	Headers          []Header          `json:"headers,omitempty"`
-	SendAt           time.Time         `json:"sendAt,omitempty"`
-	Tags             []string          `json:"tags,omitempty"`
-	Tracking         Tracking          `json:"tracking,omitempty"`
+	Subject          string           `json:"subject,omitempty"`
+	From             Email            `json:"from"`
+	ReplyTo          Email            `json:"replyTo,omitempty"`
+	To               []Email          `json:"to"`
+	CC               []Email          `json:"cc,omitempty"`
+	BCC              []Email          `json:"bcc,omitempty"`
+	HTML             string           `json:"html,omitempty"`
+	Text             string           `json:"text,omitempty"`
+	TemplateID       string           `json:"templateId,omitempty"`
+	Attachments      []Attachment     `json:"attachments,omitempty"`
+	Substitutions    Substitutions    `json:"substitutions,omitempty"`
+	Personalizations Personalizations `json:"personalizations,omitempty"`
+	Headers          []Header         `json:"headers,omitempty"`
+	SendAt           time.Time        `json:"sendAt,omitempty"`
+	Tags             []string         `json:"tags,omitempty"`
+	Tracking         Tracking         `json:"tracking,omitempty"`
 }
 
 func (m *Message) AddAttachments(ats ...Attachment) {
@@ -88,6 +89,8 @@ func (m *Message) AddSubsitutions(subs Substitutions) {
 	}
 }
 
-func (m *Message) AddPersonalizations(personalizations ...Personalization) {
-	m.Personalizations = append(m.Personalizations, personalizations...)
+func (m *Message) AddPersonalizations(personalizations Personalizations) {
+	for k, v := range personalizations {
+		m.Personalizations[k] = v
+	}
 }

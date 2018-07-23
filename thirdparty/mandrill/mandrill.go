@@ -242,12 +242,8 @@ func Send(ctx context.Context, req *SendReq) error {
 // TODO: Update Mandrill
 type placeholder struct{}
 
-func (p *placeholder) Send(message email.Message) error {
+func (p *placeholder) Send(message *email.Message) error {
 	return errors.New("Send is not implemented")
-}
-
-func (p *placeholder) SendTemplate(message email.Message) error {
-	return errors.New("SendTemplate is not implemented")
 }
 
 func New(c context.Context, in integration.Mandrill) iface.Provider {
