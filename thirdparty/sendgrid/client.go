@@ -47,7 +47,7 @@ func newMessage(message *email.Message) *mail.SGMailV3 {
 	// Set subject
 	m.Subject = message.Subject
 
-	// Add Recipients, personalizations
+	// Add recipients + personalizations
 	for _, to := range message.To {
 		p := mail.NewPersonalization()
 		p.AddTos(newEmail(to))
@@ -65,6 +65,11 @@ func newMessage(message *email.Message) *mail.SGMailV3 {
 		p := mail.NewPersonalization()
 		p.AddBCCs(newEmail(bcc))
 		m.AddPersonalizations(p)
+	}
+
+	// Add section substitutions
+	for k, v := range message.Substitutions {
+		m.AddSection(k, v)
 	}
 
 	// Set tracking
