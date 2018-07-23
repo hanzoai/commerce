@@ -69,7 +69,7 @@ func newMessage(message *email.Message) *mail.SGMailV3 {
 
 	// Add section substitutions
 	for k, v := range message.Substitutions {
-		m.AddSection(k, v)
+		m.AddSection("-"+k+"-", v)
 	}
 
 	// Set tracking
