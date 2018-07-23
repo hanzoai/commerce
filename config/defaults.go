@@ -66,9 +66,9 @@ func Defaults() *Config {
 	config.Cloudflare.Key = ""
 	config.Cloudflare.Zone = "hanzo.io"
 
-	config.SmtpRelay.Endpoint = "https://smtprelay.hanzo.ai"
-	config.SmtpRelay.Username = "admin@hanzo.ai"
-	config.SmtpRelay.Password = ""
+	config.SMTPRelay.Endpoint = "https://smtprelay.hanzo.ai"
+	config.SMTPRelay.Username = "admin@hanzo.ai"
+	config.SMTPRelay.Password = ""
 
 	return config
 }
