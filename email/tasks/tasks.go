@@ -35,5 +35,5 @@ var Send = delay.Func("send-email", func(c context.Context, in integration.Integ
 	if err != nil {
 		log.Error("Email provider integration not found")
 	}
-	provider.Send(message)
+	provider.Send(&message)
 })

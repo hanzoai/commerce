@@ -69,12 +69,7 @@ func (c *Client) Request(r *Request) error {
 	return err
 }
 
-func (c *Client) Send(message email.Message) error {
-	req := new(Request)
-	return c.Request(req)
-}
-
-func (c *Client) SendTemplate(message email.Message) error {
+func (c *Client) Send(message *email.Message) error {
 	req := new(Request)
 	return c.Request(req)
 }

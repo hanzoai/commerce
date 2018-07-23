@@ -2,7 +2,6 @@ package sendgrid
 
 import (
 	"context"
-	"errors"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 
@@ -29,7 +28,15 @@ func newEmail(email email.Email) *mail.Email {
 	}
 }
 
-func newMessage(message email.Message) *mail.SGMailV3 {
+func addSubsitutions(message *email.Message, address string, personalization *mail.Personalization) {
+	if v, ok := message.Personalizations[address]; ok {
+		for k, v := range v.Substitutions {
+			personalization.SetSubstitution("-"+k+"-", v)
+		}
+	}
+}
+
+func newMessage(message *email.Message) *mail.SGMailV3 {
 	// New SendGrid message
 	m := new(mail.SGMailV3)
 
@@ -40,21 +47,25 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 	// Set subject
 	m.Subject = message.Subject
 
-	// Add Recipients
-	p := mail.NewPersonalization()
+	// Add Recipients, personalizations
 	for _, to := range message.To {
+		p := mail.NewPersonalization()
 		p.AddTos(newEmail(to))
+		addSubsitutions(message, to.Address, p)
+		m.AddPersonalizations(p)
 	}
 
 	for _, cc := range message.CC {
+		p := mail.NewPersonalization()
 		p.AddCCs(newEmail(cc))
+		m.AddPersonalizations(p)
 	}
 
 	for _, bcc := range message.BCC {
+		p := mail.NewPersonalization()
 		p.AddBCCs(newEmail(bcc))
+		m.AddPersonalizations(p)
 	}
-
-	m.AddPersonalizations(p)
 
 	// Set tracking
 	ts := mail.NewTrackingSettings()
@@ -75,8 +86,8 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 
 	}
 
-	if message.Html != "" {
-		m.AddContent(newContent("text/html", message.Html))
+	if message.HTML != "" {
+		m.AddContent(newContent("text/html", message.HTML))
 	}
 
 	// Use template if set
@@ -88,7 +99,7 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 }
 
 // Send a single email w/o template
-func (c *Client) Send(message email.Message) error {
+func (c *Client) Send(message *email.Message) error {
 	res, err := c.client.Send(newMessage(message))
 	if err != nil {
 		log.Error(err)
@@ -98,14 +109,6 @@ func (c *Client) Send(message email.Message) error {
 	log.Info(res.Body)
 	log.Info(res.Headers)
 	return nil
-}
-
-// Send a single email, specifying a given template
-func (c *Client) SendTemplate(message email.Message) error {
-	if message.TemplateID == "" {
-		return errors.New("Template not specified")
-	}
-	return c.Send(message)
 }
 
 // func (c *Client) SendCampaign(id string) {
