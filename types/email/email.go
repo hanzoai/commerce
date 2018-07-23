@@ -96,11 +96,20 @@ func (m *Message) AddPersonalizations(personalizations Personalizations) {
 }
 
 func NewMessage() *Message {
-	message := new(Message)
-	message.To = make([]Email, 0)
-	message.CC = make([]Email, 0)
-	message.BCC = make([]Email, 0)
-	message.Headers = make([]Header, 0)
-	message.Tags = make([]string, 0)
-	return message
+	m := new(Message)
+	m.To = make([]Email, 0)
+	m.CC = make([]Email, 0)
+	m.BCC = make([]Email, 0)
+	m.Headers = make([]Header, 0)
+	m.Tags = make([]string, 0)
+	m.Substitutions = make(Substitutions)
+	m.Personalizations = make(Personalizations)
+	return m
+}
+
+func NewPersonalization() *Personalization {
+	p := new(Personalization)
+	p.Headers = make([]Header, 0)
+	p.Substitutions = make(Substitutions)
+	return p
 }
