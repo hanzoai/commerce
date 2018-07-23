@@ -5,6 +5,6 @@ import (
 )
 
 type Provider interface {
-	Send(message email.Message, subs []email.Substitution) error
-	SendTemplate(message email.Message, subs []email.Substitution) error
+	Send(message email.Message) error
+	SendTemplate(message email.Message) error
 }

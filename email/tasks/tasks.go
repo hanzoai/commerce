@@ -29,20 +29,20 @@ func getProvider(c context.Context, in integration.Integration) (iface.Provider,
 }
 
 // Send email with appropriate provider
-var Send = delay.Func("send-email", func(c context.Context, in integration.Integration, message email.Message, subs []email.Substitution) {
+var Send = delay.Func("send-email", func(c context.Context, in integration.Integration, message email.Message) {
 	log.Debug("Sending email to %s, %v", message.To[0], c)
 	provider, err := getProvider(c, in)
 	if err != nil {
 		log.Error("Email provider integration not found")
 	}
-	provider.Send(message, subs)
+	provider.Send(message)
 })
 
-var SendTemplate = delay.Func("send-email-template", func(c context.Context, in integration.Integration, message email.Message, subs []email.Substitution) {
+var SendTemplate = delay.Func("send-email-template", func(c context.Context, in integration.Integration, message email.Message) {
 	log.Debug("Sending email to %s, %v", message.To[0], c)
 	provider, err := getProvider(c, in)
 	if err != nil {
 		log.Error("Email provider integration not found")
 	}
-	provider.SendTemplate(message, subs)
+	provider.SendTemplate(message)
 })

@@ -46,11 +46,11 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 		p.AddTos(newEmail(to))
 	}
 
-	for _, cc := range message.Cc {
+	for _, cc := range message.CC {
 		p.AddCCs(newEmail(cc))
 	}
 
-	for _, bcc := range message.Bcc {
+	for _, bcc := range message.BCC {
 		p.AddBCCs(newEmail(bcc))
 	}
 
@@ -88,7 +88,7 @@ func newMessage(message email.Message) *mail.SGMailV3 {
 }
 
 // Send a single email w/o template
-func (c *Client) Send(message email.Message, subs []email.Substitution) error {
+func (c *Client) Send(message email.Message) error {
 	res, err := c.client.Send(newMessage(message))
 	if err != nil {
 		log.Error(err)
@@ -101,11 +101,11 @@ func (c *Client) Send(message email.Message, subs []email.Substitution) error {
 }
 
 // Send a single email, specifying a given template
-func (c *Client) SendTemplate(message email.Message, subs []email.Substitution) error {
+func (c *Client) SendTemplate(message email.Message) error {
 	if message.TemplateID == "" {
 		return errors.New("Template not specified")
 	}
-	return c.Send(message, subs)
+	return c.Send(message)
 }
 
 // func (c *Client) SendCampaign(id string) {
