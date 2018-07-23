@@ -27,6 +27,7 @@ import (
 )
 
 type Client struct {
+	client *http.Client
 	ctx context.Context
 	loginId string
 	transactionKey string
@@ -47,7 +48,7 @@ func New(ctx context.Context, loginId string, transactionKey string, key string,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return &Client{ctx, loginId, transactionKey, key, test}
+	return &Client{httpClient, ctx, loginId, transactionKey, key, test}
 
 }
 
@@ -206,6 +207,7 @@ func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.S
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 
@@ -226,6 +228,7 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscriptio
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 	subscription.SubscriptionId = sub.Ref.AuthorizeNet.SubscriptionId
@@ -243,6 +246,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	s := AuthorizeCIM.SetSubscription{
 		Id: sub.Ref.AuthorizeNet.SubscriptionId,
@@ -263,6 +267,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 
 	log.Debug("Authorize: Setting API Info")
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	log.JSON(newTransaction)
 
@@ -322,6 +327,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	}
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 	newTransaction := PaymentToNewTransaction(pay)
 	newTransaction.Amount = pay.Currency.ToStringNoSymbol(refundAmount)
 	newTransaction.RefTransId = pay.Account.TransId
@@ -544,6 +550,7 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	newTransaction := PaymentToNewTransaction(pay)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 	response, err := newTransaction.Charge()
 
 	if err != nil {
@@ -570,6 +577,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	oldTransaction := PaymentToPreviousTransaction(pay)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 	response, err := Capture(c.ctx, *oldTransaction)
 
 	if err != nil {
