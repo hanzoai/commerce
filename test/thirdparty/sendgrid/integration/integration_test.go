@@ -48,7 +48,7 @@ var _ = Describe("Send", func() {
 		}
 		message.AddTos(email.Email{
 			Name:    "Hanzo Test",
-			Address: "sendgrid@hanzo.ai",
+			Address: "relay@hanzo.ai",
 		})
 		message.Subject = "Test"
 		message.HTML = `
