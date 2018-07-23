@@ -9,6 +9,9 @@ type Type string
 
 const (
 	OrderConfirmation     Type = "order.confirmation"
+	OrderRefunded         Type = "order.refunded"
+	OrderShipped          Type = "order.shipped"
+	OrderUpdated          Type = "order.updated"
 	UserWelcome           Type = "user.welcome"
 	UserEmailConfirmation Type = "user.emailConfirmation"
 	UserEmailConfirmed    Type = "user.emailConfirmed"
@@ -17,32 +20,38 @@ const (
 )
 
 type Setting struct {
-	Enabled    bool     `json:"enabled"`
-	FromEmail  string   `json:"fromEmail"`
-	FromName   string   `json:"fromName"`
-	Subject    string   `json:"subject"`
-	Template   string   `json:"template" datastore:",noindex"`
-	Cc         []string `json:"cc,omitempty"`
-	Bcc        []string `json:"cc,omitempty"`
-	ProviderId string   `json:"providerId"`
+	Enabled    bool    `json:"enabled"`
+	From       Email   `json:"from"`
+	ReplyTo    Email   `json:"replyTo"`
+	Subject    string  `json:"subject"`
+	CC         []Email `json:"cc,omitempty"`
+	BCC        []Email `json:"bcc,omitempty"`
+	HTML       string  `json:"html,omitempty" datastore:",noindex"`
+	Text       string  `json:"text,omitempty" datastore:",noindex"`
+	TemplateId string  `json:"templateId,omitempty"`
+	ProviderId string  `json:"providerId"`
 }
 
 // System-wide email settings
 type Settings struct {
+	// Global enable/disable of email
+	Enabled bool `json:"enabled"`
 
-	// Default email configuration
+	// Defaults for all email settings
 	Defaults struct {
-		Enabled    bool     `json:"enabled"`
-		ProviderId string   `json:"providerId"`
-		FromName   string   `json:"fromName"`
-		FromEmail  string   `json:"fromEmail"`
-		Cc         []string `json:"cc,omitempty"`
-		Bcc        []string `json:"bcc,omitempty"`
-	} `json:"defaults"`
+		From       Email   `json:"from"`
+		ReplyTo    Email   `json:"replyTo"`
+		CC         []Email `json:"cc,omitempty"`
+		BCC        []Email `json:"bcc,omitempty"`
+		ProviderId string  `json:"providerId"`
+	} `json:"defaults`
 
 	// Per-email configuration
 	Order struct {
 		Confirmation Setting `json:"confirmation"`
+		Refunded     Setting `json:"refunded"`
+		Shipped      Setting `json:"shipped"`
+		Updated      Setting `json:"updated"`
 	} `json:"order"`
 
 	User struct {
@@ -77,24 +86,24 @@ func (s Settings) Get(typ Type) Setting {
 	}
 
 	// Use organization defaults
-	if !s.Defaults.Enabled {
+	if !s.Enabled {
 		setting.Enabled = false
 	}
 
-	if setting.FromEmail == "" {
-		setting.FromEmail = s.Defaults.FromEmail
+	if setting.From.Address == "" {
+		setting.From.Address = s.Defaults.From.Address
 	}
 
-	if setting.FromName == "" {
-		setting.FromName = s.Defaults.FromName
+	if setting.From.Name == "" {
+		setting.From.Name = s.Defaults.From.Name
 	}
 
-	if len(setting.Cc) == 0 {
-		setting.Cc = s.Defaults.Cc
+	if len(setting.CC) == 0 {
+		setting.CC = s.Defaults.CC
 	}
 
-	if len(setting.Bcc) == 0 {
-		setting.Bcc = s.Defaults.Bcc
+	if len(setting.BCC) == 0 {
+		setting.BCC = s.Defaults.BCC
 	}
 
 	if setting.ProviderId == "" {

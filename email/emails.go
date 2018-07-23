@@ -2,92 +2,83 @@ package email
 
 import (
 	"context"
-	"strconv"
-	"strings"
+	// "strconv"
+	// "strings"
 	"time"
 
-	"hanzo.io/log"
+	// "hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/referrer"
+	// "hanzo.io/models/referrer"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
-	"hanzo.io/models/types/country"
+	// "hanzo.io/models/types/country"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
-
-	mandrill "hanzo.io/thirdparty/mandrill/tasks"
+	// mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 func SendPasswordResetEmail(ctx context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
+	// Get configuration for this email
 	conf := org.Email.Get(email.UserPasswordReset)
 	if !conf.Enabled {
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// from := conf.From
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// to := email.Email{
+	// 	Name:    usr.Name(),
+	// 	Address: usr.Email,
+	// }
 
-	// Subject
-	subject := conf.Subject
+	// // Subject
+	// subject := conf.Subject
 
-	// Create Merge Vars
-	vars := map[string]interface{}{
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
-		"token": map[string]interface{}{
-			"id": tok.Id(),
-		},
+	// // Create Merge Vars
+	// vars := map[string]interface{}{
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
+	// 	"token": map[string]interface{}{
+	// 		"id": tok.Id(),
+	// 	},
 
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
-		"TOKEN_ID":       strings.Title(tok.Id()),
-	}
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
+	// 	"TOKEN_ID":       strings.Title(tok.Id()),
+	// }
 
 	// Get Email integration
 	// Send Email
-	mandrill.SendTemplate(ctx, "password-reset", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// mandrill.SendTemplate(ctx, "password-reset", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 // SendEmailConfirmedEmail is gay
-func SendEmailConfirmedEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Get(email.UserEmailConfirmed)
+func SendEmailConfirmedEmail(c context.Context, org *organization.Organization, usr *user.User) {
+	s := org.Email.Get(email.UserEmailConfirmed)
 
-	if !conf.Enabled {
+	if !s.Enabled {
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// Create email message
+	message := new(email.Message)
+	message.From = s.From
+	message.ReplyTo = s.ReplyTo
+	message.Subject = s.Subject
+	message.AddTos(email.Email{usr.Name(), usr.Email})
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	subs := make(map[string]string)
+	subs["userId"] = usr.Id()
+	subs["firstName"] = usr.FirstName
+	subs["lastName"] = usr.LastName
+	message.Substitutions = subs
 
-	// Subject
-	subject := conf.Subject
-
-	// Create Merge Vars
-	vars := map[string]interface{}{
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
-	}
-
-	// Send Email
-	mandrill.SendTemplate(ctx, "user-email-confirmed", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	SendEmail(c, org, message)
 }
 
 func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, s *subscriber.Subscriber) {
@@ -96,19 +87,19 @@ func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, 
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := s.Email
-	toName := s.Name()
+	// // To
+	// toEmail := s.Email
+	// toName := s.Name()
 
-	// Subject
-	subject := conf.Subject
+	// // Subject
+	// subject := conf.Subject
 
-	// Send Email
-	mandrill.SendTemplate(ctx, "subscriber-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, s.Metadata)
+	// // Send Email
+	// mandrill.SendTemplate(ctx, "subscriber-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, s.Metadata)
 }
 
 func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *user.User) {
@@ -117,29 +108,29 @@ func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *u
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject
-	subject := conf.Subject
+	// // Subject
+	// subject := conf.Subject
 
-	// Create Merge Vars
-	vars := map[string]interface{}{
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
-	}
+	// // Create Merge Vars
+	// vars := map[string]interface{}{
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
+	// }
 
-	// Send Email
-	mandrill.SendTemplate(ctx, "user-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// // Send Email
+	// mandrill.SendTemplate(ctx, "user-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
@@ -159,34 +150,34 @@ func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization
 		panic(err)
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject
-	subject := conf.Subject
+	// // Subject
+	// subject := conf.Subject
 
-	// Create Merge Vars
-	vars := map[string]interface{}{
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
-		"token": map[string]interface{}{
-			"id": tok.Id(),
-		},
+	// // Create Merge Vars
+	// vars := map[string]interface{}{
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
+	// 	"token": map[string]interface{}{
+	// 		"id": tok.Id(),
+	// 	},
 
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
-		"TOKEN_ID":       tok.Id(),
-	}
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
+	// 	"TOKEN_ID":       tok.Id(),
+	// }
 
-	// Send Email
-	mandrill.SendTemplate(ctx, "user-email-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// // Send Email
+	// mandrill.SendTemplate(ctx, "user-email-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
@@ -195,127 +186,127 @@ func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organizat
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject, HTML
+	// // Subject, HTML
 
-	// order.number
-	// order.items.productName
-	// order.items.quantity
-	// order.items.displayPrice
-	// order.displaySubtotal
-	// order.displayDiscount
-	// order.displayTax
-	// order.displayShipping
-	// order.currency
-	// order.displayTotal
-	// order.shippingAddress.line1
-	// order.shippingAddress.line2
-	// order.shippingAddress.postalCode
-	// order.shippingAddress.state
-	// order.shippingAddress.country
-	// order.orderDay
-	// order.orderMonthName
-	// order.orderYear
-	subject := conf.Subject
+	// // order.number
+	// // order.items.productName
+	// // order.items.quantity
+	// // order.items.displayPrice
+	// // order.displaySubtotal
+	// // order.displayDiscount
+	// // order.displayTax
+	// // order.displayShipping
+	// // order.currency
+	// // order.displayTotal
+	// // order.shippingAddress.line1
+	// // order.shippingAddress.line2
+	// // order.shippingAddress.postalCode
+	// // order.shippingAddress.state
+	// // order.shippingAddress.country
+	// // order.orderDay
+	// // order.orderMonthName
+	// // order.orderYear
+	// subject := conf.Subject
 
-	referralCode := ""
-	referrers := make([]referrer.Referrer, 0)
-	if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
-		log.Warn("Failed to load referrals for user: %v", err, ctx)
-	}
+	// referralCode := ""
+	// referrers := make([]referrer.Referrer, 0)
+	// if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+	// 	log.Warn("Failed to load referrals for user: %v", err, ctx)
+	// }
 
-	if len(referrers) > 0 {
-		referralCode = referrers[0].Id_
-	}
+	// if len(referrers) > 0 {
+	// 	referralCode = referrers[0].Id_
+	// }
 
-	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	stateName := ord.ShippingAddress.State
-	if len(stateName) <= 2 {
-		stateName = strings.ToUpper(stateName)
-	}
-	items := make([]map[string]interface{}, len(ord.Items))
-	vars := map[string]interface{}{
-		"order": map[string]interface{}{
-			"number":          ord.DisplayId(),
-			"displaysubtotal": ord.DisplaySubtotal(),
-			"displaytax":      ord.DisplayTax(),
-			"displayshipping": ord.DisplayShipping(),
-			"displaytotal":    ord.DisplayTotal(),
-			"currency":        currencyCode,
-			"items":           items,
-			"shippingaddress": map[string]interface{}{
-				"name":       strings.Title(ord.ShippingAddress.Name),
-				"line1":      strings.Title(ord.ShippingAddress.Line1),
-				"line2":      strings.Title(ord.ShippingAddress.Line2),
-				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       strings.Title(ord.ShippingAddress.City),
-				"state":      stateName,
-				"country":    countryName,
-			},
-			"createdday":       ord.CreatedAt.Day(),
-			"createdmonthname": ord.CreatedAt.Month().String(),
-			"createdyear":      ord.CreatedAt.Year(),
-			"referral":         referralCode,
-			"storeid":          ord.StoreId,
-		},
-		"ORDER_NUMBER":                      ord.DisplayId(),
-		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_NAME":       strings.Title(ord.ShippingAddress.Name),
-		"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
-		"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
-		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
-		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-		"ORDER_REFERRAL":                    referralCode,
-		"ORDER_STOREID":                     ord.StoreId,
+	// currencyCode := strings.ToUpper(ord.Currency.Code())
+	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	// stateName := ord.ShippingAddress.State
+	// if len(stateName) <= 2 {
+	// 	stateName = strings.ToUpper(stateName)
+	// }
+	// items := make([]map[string]interface{}, len(ord.Items))
+	// vars := map[string]interface{}{
+	// 	"order": map[string]interface{}{
+	// 		"number":          ord.DisplayId(),
+	// 		"displaysubtotal": ord.DisplaySubtotal(),
+	// 		"displaytax":      ord.DisplayTax(),
+	// 		"displayshipping": ord.DisplayShipping(),
+	// 		"displaytotal":    ord.DisplayTotal(),
+	// 		"currency":        currencyCode,
+	// 		"items":           items,
+	// 		"shippingaddress": map[string]interface{}{
+	// 			"name":       strings.Title(ord.ShippingAddress.Name),
+	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
+	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
+	// 			"postalcode": ord.ShippingAddress.PostalCode,
+	// 			"city":       strings.Title(ord.ShippingAddress.City),
+	// 			"state":      stateName,
+	// 			"country":    countryName,
+	// 		},
+	// 		"createdday":       ord.CreatedAt.Day(),
+	// 		"createdmonthname": ord.CreatedAt.Month().String(),
+	// 		"createdyear":      ord.CreatedAt.Year(),
+	// 		"referral":         referralCode,
+	// 		"storeid":          ord.StoreId,
+	// 	},
+	// 	"ORDER_NUMBER":                      ord.DisplayId(),
+	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
+	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
+	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
+	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+	// 	"ORDER_CURRENCY":                    currencyCode,
+	// 	"ORDER_SHIPPING_ADDRESS_NAME":       strings.Title(ord.ShippingAddress.Name),
+	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
+	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
+	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
+	// 	"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
+	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
+	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
+	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
+	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
+	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+	// 	"ORDER_REFERRAL":                    referralCode,
+	// 	"ORDER_STOREID":                     ord.StoreId,
 
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
 
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
-	}
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
+	// }
 
-	if ord.Discount != 0 {
-		ordVars := vars["order"].(map[string]interface{})
-		ordVars["displaydiscount"] = ord.DisplayDiscount()
-		vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	}
+	// if ord.Discount != 0 {
+	// 	ordVars := vars["order"].(map[string]interface{})
+	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
+	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
+	// }
 
-	for i, item := range ord.Items {
-		items[i] = map[string]interface{}{
-			"productname":  item.ProductName,
-			"quantity":     item.Quantity,
-			"displayprice": item.DisplayPrice(ord.Currency),
-			"currency":     currencyCode,
-		}
+	// for i, item := range ord.Items {
+	// 	items[i] = map[string]interface{}{
+	// 		"productname":  item.ProductName,
+	// 		"quantity":     item.Quantity,
+	// 		"displayprice": item.DisplayPrice(ord.Currency),
+	// 		"currency":     currencyCode,
+	// 	}
 
-		idx := strconv.Itoa(i)
-		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	}
+	// 	idx := strconv.Itoa(i)
+	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
+	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
+	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
+	// }
 
-	mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendPartialRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
@@ -324,104 +315,104 @@ func SendPartialRefundEmail(ctx context.Context, org *organization.Organization,
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject, HTML
-	subject := conf.Subject
+	// // Subject, HTML
+	// subject := conf.Subject
 
-	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	stateName := ord.ShippingAddress.State
-	if len(stateName) <= 2 {
-		stateName = strings.ToUpper(stateName)
-	}
-	items := make([]map[string]interface{}, len(ord.Items))
-	vars := map[string]interface{}{
-		"order": map[string]interface{}{
-			"number":           ord.DisplayId(),
-			"displaysubtotal":  ord.DisplaySubtotal(),
-			"displaytax":       ord.DisplayTax(),
-			"displayshipping":  ord.DisplayShipping(),
-			"displaytotal":     ord.DisplayTotal(),
-			"displayrefunded":  ord.DisplayRefunded(),
-			"displayremaining": ord.DisplayRemaining(),
-			"currency":         currencyCode,
-			"items":            items,
-			"shippingaddress": map[string]interface{}{
-				"line1":      strings.Title(ord.ShippingAddress.Line1),
-				"line2":      strings.Title(ord.ShippingAddress.Line2),
-				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       strings.Title(ord.ShippingAddress.City),
-				"state":      stateName,
-				"country":    countryName,
-			},
-			"createdday":       ord.CreatedAt.Day(),
-			"createdmonthname": ord.CreatedAt.Month().String(),
-			"createdyear":      ord.CreatedAt.Year(),
-			"storeid":          ord.StoreId,
-		},
-		"ORDER_NUMBER":                      ord.DisplayId(),
-		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-		"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
-		"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
-		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
-		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-		"ORDER_STOREID":                     ord.StoreId,
+	// currencyCode := strings.ToUpper(ord.Currency.Code())
+	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	// stateName := ord.ShippingAddress.State
+	// if len(stateName) <= 2 {
+	// 	stateName = strings.ToUpper(stateName)
+	// }
+	// items := make([]map[string]interface{}, len(ord.Items))
+	// vars := map[string]interface{}{
+	// 	"order": map[string]interface{}{
+	// 		"number":           ord.DisplayId(),
+	// 		"displaysubtotal":  ord.DisplaySubtotal(),
+	// 		"displaytax":       ord.DisplayTax(),
+	// 		"displayshipping":  ord.DisplayShipping(),
+	// 		"displaytotal":     ord.DisplayTotal(),
+	// 		"displayrefunded":  ord.DisplayRefunded(),
+	// 		"displayremaining": ord.DisplayRemaining(),
+	// 		"currency":         currencyCode,
+	// 		"items":            items,
+	// 		"shippingaddress": map[string]interface{}{
+	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
+	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
+	// 			"postalcode": ord.ShippingAddress.PostalCode,
+	// 			"city":       strings.Title(ord.ShippingAddress.City),
+	// 			"state":      stateName,
+	// 			"country":    countryName,
+	// 		},
+	// 		"createdday":       ord.CreatedAt.Day(),
+	// 		"createdmonthname": ord.CreatedAt.Month().String(),
+	// 		"createdyear":      ord.CreatedAt.Year(),
+	// 		"storeid":          ord.StoreId,
+	// 	},
+	// 	"ORDER_NUMBER":                      ord.DisplayId(),
+	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
+	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
+	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
+	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
+	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
+	// 	"ORDER_CURRENCY":                    currencyCode,
+	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
+	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
+	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
+	// 	"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
+	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
+	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
+	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
+	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
+	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+	// 	"ORDER_STOREID":                     ord.StoreId,
 
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
 
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
 
-		"payment": map[string]interface{}{
-			"lastfour": pay.Account.LastFour,
-		},
+	// 	"payment": map[string]interface{}{
+	// 		"lastfour": pay.Account.LastFour,
+	// 	},
 
-		"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	}
+	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
+	// }
 
-	if ord.Discount != 0 {
-		ordVars := vars["order"].(map[string]interface{})
-		ordVars["displaydiscount"] = ord.DisplayDiscount()
-		vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	}
+	// if ord.Discount != 0 {
+	// 	ordVars := vars["order"].(map[string]interface{})
+	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
+	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
+	// }
 
-	for i, item := range ord.Items {
-		items[i] = map[string]interface{}{
-			"productname":  item.ProductName,
-			"quantity":     item.Quantity,
-			"displayprice": item.DisplayPrice(ord.Currency),
-			"currency":     currencyCode,
-		}
+	// for i, item := range ord.Items {
+	// 	items[i] = map[string]interface{}{
+	// 		"productname":  item.ProductName,
+	// 		"quantity":     item.Quantity,
+	// 		"displayprice": item.DisplayPrice(ord.Currency),
+	// 		"currency":     currencyCode,
+	// 	}
 
-		idx := strconv.Itoa(i)
-		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	}
+	// 	idx := strconv.Itoa(i)
+	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
+	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
+	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
+	// }
 
-	mandrill.SendTemplate(ctx, "order-partially-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// mandrill.SendTemplate(ctx, "order-partially-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendFullRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
@@ -430,104 +421,104 @@ func SendFullRefundEmail(ctx context.Context, org *organization.Organization, or
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject, HTML
-	subject := conf.Subject
+	// // Subject, HTML
+	// subject := conf.Subject
 
-	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	stateName := ord.ShippingAddress.State
-	if len(stateName) <= 2 {
-		stateName = strings.ToUpper(stateName)
-	}
-	items := make([]map[string]interface{}, len(ord.Items))
-	vars := map[string]interface{}{
-		"order": map[string]interface{}{
-			"number":           ord.DisplayId(),
-			"displaysubtotal":  ord.DisplaySubtotal(),
-			"displaytax":       ord.DisplayTax(),
-			"displayshipping":  ord.DisplayShipping(),
-			"displaytotal":     ord.DisplayTotal(),
-			"displayrefunded":  ord.DisplayRefunded(),
-			"displayremaining": ord.DisplayRemaining(),
-			"currency":         currencyCode,
-			"items":            items,
-			"shippingaddress": map[string]interface{}{
-				"line1":      ord.ShippingAddress.Line1,
-				"line2":      ord.ShippingAddress.Line2,
-				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       ord.ShippingAddress.City,
-				"state":      stateName,
-				"country":    countryName,
-			},
-			"createdday":       ord.CreatedAt.Day(),
-			"createdmonthname": ord.CreatedAt.Month().String(),
-			"createdyear":      ord.CreatedAt.Year(),
-			"storeid":          ord.StoreId,
-		},
-		"ORDER_NUMBER":                      ord.DisplayId(),
-		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-		"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
-		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
-		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-		"ORDER_STOREID":                     ord.StoreId,
+	// currencyCode := strings.ToUpper(ord.Currency.Code())
+	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	// stateName := ord.ShippingAddress.State
+	// if len(stateName) <= 2 {
+	// 	stateName = strings.ToUpper(stateName)
+	// }
+	// items := make([]map[string]interface{}, len(ord.Items))
+	// vars := map[string]interface{}{
+	// 	"order": map[string]interface{}{
+	// 		"number":           ord.DisplayId(),
+	// 		"displaysubtotal":  ord.DisplaySubtotal(),
+	// 		"displaytax":       ord.DisplayTax(),
+	// 		"displayshipping":  ord.DisplayShipping(),
+	// 		"displaytotal":     ord.DisplayTotal(),
+	// 		"displayrefunded":  ord.DisplayRefunded(),
+	// 		"displayremaining": ord.DisplayRemaining(),
+	// 		"currency":         currencyCode,
+	// 		"items":            items,
+	// 		"shippingaddress": map[string]interface{}{
+	// 			"line1":      ord.ShippingAddress.Line1,
+	// 			"line2":      ord.ShippingAddress.Line2,
+	// 			"postalcode": ord.ShippingAddress.PostalCode,
+	// 			"city":       ord.ShippingAddress.City,
+	// 			"state":      stateName,
+	// 			"country":    countryName,
+	// 		},
+	// 		"createdday":       ord.CreatedAt.Day(),
+	// 		"createdmonthname": ord.CreatedAt.Month().String(),
+	// 		"createdyear":      ord.CreatedAt.Year(),
+	// 		"storeid":          ord.StoreId,
+	// 	},
+	// 	"ORDER_NUMBER":                      ord.DisplayId(),
+	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
+	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
+	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
+	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
+	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
+	// 	"ORDER_CURRENCY":                    currencyCode,
+	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
+	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
+	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
+	// 	"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
+	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
+	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
+	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
+	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
+	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+	// 	"ORDER_STOREID":                     ord.StoreId,
 
-		"user": map[string]interface{}{
-			"firstname": usr.FirstName,
-			"lastname":  usr.LastName,
-		},
+	// 	"user": map[string]interface{}{
+	// 		"firstname": usr.FirstName,
+	// 		"lastname":  usr.LastName,
+	// 	},
 
-		"USER_FIRSTNAME": usr.FirstName,
-		"USER_LASTNAME":  usr.LastName,
+	// 	"USER_FIRSTNAME": usr.FirstName,
+	// 	"USER_LASTNAME":  usr.LastName,
 
-		"payment": map[string]interface{}{
-			"lastfour": pay.Account.LastFour,
-		},
+	// 	"payment": map[string]interface{}{
+	// 		"lastfour": pay.Account.LastFour,
+	// 	},
 
-		"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	}
+	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
+	// }
 
-	if ord.Discount != 0 {
-		ordVars := vars["order"].(map[string]interface{})
-		ordVars["displaydiscount"] = ord.DisplayDiscount()
-		vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	}
+	// if ord.Discount != 0 {
+	// 	ordVars := vars["order"].(map[string]interface{})
+	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
+	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
+	// }
 
-	for i, item := range ord.Items {
-		items[i] = map[string]interface{}{
-			"productname":  item.ProductName,
-			"quantity":     item.Quantity,
-			"displayprice": item.DisplayPrice(ord.Currency),
-			"currency":     currencyCode,
-		}
+	// for i, item := range ord.Items {
+	// 	items[i] = map[string]interface{}{
+	// 		"productname":  item.ProductName,
+	// 		"quantity":     item.Quantity,
+	// 		"displayprice": item.DisplayPrice(ord.Currency),
+	// 		"currency":     currencyCode,
+	// 	}
 
-		idx := strconv.Itoa(i)
-		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	}
+	// 	idx := strconv.Itoa(i)
+	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
+	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
+	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
+	// }
 
-	mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func SendFulfillmentEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
@@ -536,108 +527,108 @@ func SendFulfillmentEmail(ctx context.Context, org *organization.Organization, o
 		return
 	}
 
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
+	// // From
+	// fromName := conf.FromName
+	// fromEmail := conf.FromEmail
 
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
+	// // To
+	// toEmail := usr.Email
+	// toName := usr.Name()
 
-	// Subject, HTML
-	subject := conf.Subject
+	// // Subject, HTML
+	// subject := conf.Subject
 
-	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	stateName := ord.ShippingAddress.State
-	if len(stateName) <= 2 {
-		stateName = strings.ToUpper(stateName)
-	}
-	items := make([]map[string]interface{}, len(ord.Items))
-	vars := map[string]interface{}{
-		"order": map[string]interface{}{
-			"number":           ord.DisplayId(),
-			"displaysubtotal":  ord.DisplaySubtotal(),
-			"displaytax":       ord.DisplayTax(),
-			"displayshipping":  ord.DisplayShipping(),
-			"displaytotal":     ord.DisplayTotal(),
-			"displayrefunded":  ord.DisplayRefunded(),
-			"displayremaining": ord.DisplayRemaining(),
-			"currency":         currencyCode,
-			"items":            items,
-			"shippingaddress": map[string]interface{}{
-				"line1":      strings.Title(ord.ShippingAddress.Line1),
-				"line2":      strings.Title(ord.ShippingAddress.Line2),
-				"postalcode": ord.ShippingAddress.PostalCode,
-				"city":       strings.Title(ord.ShippingAddress.City),
-				"state":      stateName,
-				"country":    countryName,
-			},
-			"createdday":       ord.CreatedAt.Day(),
-			"createdmonthname": ord.CreatedAt.Month().String(),
-			"createdyear":      ord.CreatedAt.Year(),
-			"fulfillment": map[string]interface{}{
-				"trackingnumber": "",
-				"service":        ord.Fulfillment.Service,
-				"carrier":        ord.Fulfillment.Carrier,
-			},
-		},
-		"ORDER_NUMBER":                      ord.DisplayId(),
-		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-		"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-		"ORDER_CURRENCY":                    currencyCode,
-		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
-		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
-		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-		"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-		"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-		"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-		"ORDER_FULFILLMENT_TRACKING_NUMBER": "",
-		"ORDER_FULFILLMENT_SERVICE":         ord.Fulfillment.Service,
-		"ORDER_FULFILLMENT_CARRIER":         ord.Fulfillment.Carrier,
+	// currencyCode := strings.ToUpper(ord.Currency.Code())
+	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	// stateName := ord.ShippingAddress.State
+	// if len(stateName) <= 2 {
+	// 	stateName = strings.ToUpper(stateName)
+	// }
+	// items := make([]map[string]interface{}, len(ord.Items))
+	// vars := map[string]interface{}{
+	// 	"order": map[string]interface{}{
+	// 		"number":           ord.DisplayId(),
+	// 		"displaysubtotal":  ord.DisplaySubtotal(),
+	// 		"displaytax":       ord.DisplayTax(),
+	// 		"displayshipping":  ord.DisplayShipping(),
+	// 		"displaytotal":     ord.DisplayTotal(),
+	// 		"displayrefunded":  ord.DisplayRefunded(),
+	// 		"displayremaining": ord.DisplayRemaining(),
+	// 		"currency":         currencyCode,
+	// 		"items":            items,
+	// 		"shippingaddress": map[string]interface{}{
+	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
+	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
+	// 			"postalcode": ord.ShippingAddress.PostalCode,
+	// 			"city":       strings.Title(ord.ShippingAddress.City),
+	// 			"state":      stateName,
+	// 			"country":    countryName,
+	// 		},
+	// 		"createdday":       ord.CreatedAt.Day(),
+	// 		"createdmonthname": ord.CreatedAt.Month().String(),
+	// 		"createdyear":      ord.CreatedAt.Year(),
+	// 		"fulfillment": map[string]interface{}{
+	// 			"trackingnumber": "",
+	// 			"service":        ord.Fulfillment.Service,
+	// 			"carrier":        ord.Fulfillment.Carrier,
+	// 		},
+	// 	},
+	// 	"ORDER_NUMBER":                      ord.DisplayId(),
+	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
+	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
+	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
+	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
+	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
+	// 	"ORDER_CURRENCY":                    currencyCode,
+	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
+	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
+	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
+	// 	"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
+	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
+	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
+	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
+	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
+	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
+	// 	"ORDER_FULFILLMENT_TRACKING_NUMBER": "",
+	// 	"ORDER_FULFILLMENT_SERVICE":         ord.Fulfillment.Service,
+	// 	"ORDER_FULFILLMENT_CARRIER":         ord.Fulfillment.Carrier,
 
-		"user": map[string]interface{}{
-			"firstname": strings.Title(usr.FirstName),
-			"lastname":  strings.Title(usr.LastName),
-		},
+	// 	"user": map[string]interface{}{
+	// 		"firstname": strings.Title(usr.FirstName),
+	// 		"lastname":  strings.Title(usr.LastName),
+	// 	},
 
-		"USER_FIRSTNAME": strings.Title(usr.FirstName),
-		"USER_LASTNAME":  strings.Title(usr.LastName),
+	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
+	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
 
-		"payment": map[string]interface{}{
-			"lastfour": pay.Account.LastFour,
-		},
+	// 	"payment": map[string]interface{}{
+	// 		"lastfour": pay.Account.LastFour,
+	// 	},
 
-		"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	}
+	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
+	// }
 
-	if ord.Discount != 0 {
-		ordVars := vars["order"].(map[string]interface{})
-		ordVars["displaydiscount"] = ord.DisplayDiscount()
-		vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	}
+	// if ord.Discount != 0 {
+	// 	ordVars := vars["order"].(map[string]interface{})
+	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
+	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
+	// }
 
-	for i, item := range ord.Items {
-		items[i] = map[string]interface{}{
-			"productname":  item.ProductName,
-			"quantity":     item.Quantity,
-			"displayprice": item.DisplayPrice(ord.Currency),
-			"currency":     currencyCode,
-		}
+	// for i, item := range ord.Items {
+	// 	items[i] = map[string]interface{}{
+	// 		"productname":  item.ProductName,
+	// 		"quantity":     item.Quantity,
+	// 		"displayprice": item.DisplayPrice(ord.Currency),
+	// 		"currency":     currencyCode,
+	// 	}
 
-		idx := strconv.Itoa(i)
-		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	}
+	// 	idx := strconv.Itoa(i)
+	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
+	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
+	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
+	// }
 
-	mandrill.SendTemplate(ctx, "order-shipped", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	// mandrill.SendTemplate(ctx, "order-shipped", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
