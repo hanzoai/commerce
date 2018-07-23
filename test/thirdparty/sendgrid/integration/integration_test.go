@@ -19,6 +19,7 @@ func Test(t *testing.T) {
 
 var (
 	ctx      ae.Context
+	client   *sendgrid.Client
 	settings = integration.SendGrid{
 		APIKey: config.SendGrid.APIKey,
 	}
@@ -27,6 +28,7 @@ var (
 var _ = BeforeSuite(func() {
 	var err error
 	ctx = ae.NewContext()
+	client = sendgrid.New(ctx, settings)
 	Expect(err).NotTo(HaveOccurred())
 })
 
@@ -40,7 +42,6 @@ var _ = Describe("Send", func() {
 	}
 
 	It("Should send email", func() {
-		client := sendgrid.New(ctx, settings)
 		message := email.NewMessage()
 		message.From = email.Email{
 			Name:    "Hanzo",
@@ -59,6 +60,106 @@ var _ = Describe("Send", func() {
 		message.Text = `
 		Hi!
 		`
+
+		err := client.Send(message)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("Should send email", func() {
+		message := email.NewMessage()
+		message.From = email.Email{
+			Name:    "Hanzo",
+			Address: "test@hanzo.ai",
+		}
+		message.AddTos(email.Email{
+			Name:    "Hanzo Test",
+			Address: "relay@hanzo.ai",
+		})
+		message.Subject = "Test"
+		message.HTML = `
+		<html>
+		hi!
+		</html>
+		`
+		message.Text = `
+		Hi!
+		`
+
+		err := client.Send(message)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("Should send email and apply substitutions", func() {
+		message := email.NewMessage()
+		message.From = email.Email{
+			Name:    "Hanzo",
+			Address: "test@hanzo.ai",
+		}
+		message.AddTos(email.Email{
+			Name:    "Hanzo Test",
+			Address: "relay@hanzo.ai",
+		})
+		message.Subject = "Test"
+		message.HTML = `
+		<html>
+		Hi! -substitution-
+		</html>
+		`
+		message.Text = `
+		Hi! -substitution-
+		`
+		message.Substitutions["substitution"] = "Substitution works."
+
+		err := client.Send(message)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("Should send email and apply personalizations", func() {
+		message := email.NewMessage()
+		message.From = email.Email{
+			Name:    "Hanzo",
+			Address: "test@hanzo.ai",
+		}
+		message.AddTos(email.Email{
+			Name:    "Hanzo Test",
+			Address: "relay@hanzo.ai",
+		})
+		message.Subject = "Test"
+		message.HTML = `
+		<html>
+		Hi -personalization-! -substitution-
+		</html>
+		`
+		message.Text = `
+		Hi -personalization-! -substitution-
+		`
+		message.Substitutions["substitution"] = "Substitution works."
+
+		p := email.NewPersonalization()
+		p.Substitutions["personalization"] = "Personalized Name"
+		message.Personalizations["relay@hanzo.ai"] = p
+
+		err := client.Send(message)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("Should send email templates and apply personalizations", func() {
+		message := email.NewMessage()
+		message.From = email.Email{
+			Name:    "Hanzo",
+			Address: "test@hanzo.ai",
+		}
+		message.AddTos(email.Email{
+			Name:    "Hanzo Test",
+			Address: "relay@hanzo.ai",
+		})
+		message.Subject = "Test"
+		message.TemplateID = "1e5fce06-f67a-4c01-8dd6-d921090717c6"
+		message.Substitutions["substitution"] = "Substitution works."
+
+		p := email.NewPersonalization()
+		p.Substitutions["personalization"] = "Personalized Name"
+		message.Personalizations["relay@hanzo.ai"] = p
 
 		err := client.Send(message)
 		Expect(err).NotTo(HaveOccurred())
