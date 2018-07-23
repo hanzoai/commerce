@@ -38,8 +38,10 @@ type Product struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency      currency.Type  `json:"currency"`
 	Price         currency.Cents `json:"price"`
-	ListPrice     currency.Cents `json:"listPrice,omitempty"`
+	MSRP		  currency.Cents `json:"msrp,omitempty"`
 	InventoryCost currency.Cents `json:"-"`
+
+	SubscriptionPlan SubscriptionPlan `json:"subscriptionPlan,omitempty"`
 
 	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`
@@ -96,6 +98,10 @@ type Product struct {
 	// Reference to options used
 	Options  []*Option `json:"options" datastore:"-"`
 	Options_ string    `json:"-" datastore:",noindex"`
+
+	// Deprecated because people keep getting confused that its hte display
+	// price
+	ListPrice     currency.Cents `json:"listPrice,omitempty"`
 }
 
 func (p *Product) Validator() *val.Validator {
