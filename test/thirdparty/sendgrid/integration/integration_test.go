@@ -65,30 +65,6 @@ var _ = Describe("Send", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("Should send email", func() {
-		message := email.NewMessage()
-		message.From = email.Email{
-			Name:    "Hanzo",
-			Address: "test@hanzo.ai",
-		}
-		message.AddTos(email.Email{
-			Name:    "Hanzo Test",
-			Address: "relay@hanzo.ai",
-		})
-		message.Subject = "Test"
-		message.HTML = `
-		<html>
-		hi!
-		</html>
-		`
-		message.Text = `
-		Hi!
-		`
-
-		err := client.Send(message)
-		Expect(err).NotTo(HaveOccurred())
-	})
-
 	It("Should send email and apply substitutions", func() {
 		message := email.NewMessage()
 		message.From = email.Email{
@@ -143,7 +119,7 @@ var _ = Describe("Send", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("Should send email templates and apply personalizations", func() {
+	It("Should send email templates and apply personalizations and substitutions", func() {
 		message := email.NewMessage()
 		message.From = email.Email{
 			Name:    "Hanzo",
