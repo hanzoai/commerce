@@ -5,5 +5,5 @@ import (
 )
 
 type Provider interface {
-	Send(message email.Message) error
+	Send(message *email.Message) error
 }
