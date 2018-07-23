@@ -40,9 +40,9 @@ func New(ctx context.Context, settings integration.SMTPRelay) *Client {
 
 	return &Client{
 		client:   client,
-		endpoint: config.SmtpRelay.Endpoint,
-		username: config.SmtpRelay.Username,
-		password: config.SmtpRelay.Password,
+		endpoint: config.SMTPRelay.Endpoint,
+		username: config.SMTPRelay.Username,
+		password: config.SMTPRelay.Password,
 		settings: settings,
 	}
 }

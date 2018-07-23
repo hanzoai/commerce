@@ -94,3 +94,13 @@ func (m *Message) AddPersonalizations(personalizations Personalizations) {
 		m.Personalizations[k] = v
 	}
 }
+
+func NewMessage() *Message {
+	message := new(Message)
+	message.To = make([]Email, 0)
+	message.CC = make([]Email, 0)
+	message.BCC = make([]Email, 0)
+	message.Headers = make([]Header, 0)
+	message.Tags = make([]string, 0)
+	return message
+}

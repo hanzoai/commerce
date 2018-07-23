@@ -145,8 +145,13 @@ type Config struct {
 		Password string
 	}
 
+	// Sendgrid API key
+	SendGrid struct {
+		APIKey string
+	}
+
 	// SMTP Relay
-	SmtpRelay struct {
+	SMTPRelay struct {
 		Endpoint string
 		Username string
 		Password string
@@ -249,8 +254,8 @@ var config = Get()
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var Bitcoin = config.Bitcoin
-var CookieDomain = config.CookieDomain
 var Cloudflare = config.Cloudflare
+var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Ethereum = config.Ethereum
@@ -258,23 +263,24 @@ var Facebook = config.Facebook
 var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
-var IsTest = config.IsTest
 var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
+var IsTest = config.IsTest
 var Mandrill = config.Mandrill
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes
 var Redis = config.Redis
 var RootDir = config.RootDir
+var SMTPRelay = config.SMTPRelay
 var Salesforce = config.Salesforce
 var Secret = config.Secret
+var SendGrid = config.SendGrid
 var SentryDSN = config.SentryDSN
 var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
-var SmtpRelay = config.SmtpRelay
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 
