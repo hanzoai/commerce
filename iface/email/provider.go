@@ -6,5 +6,4 @@ import (
 
 type Provider interface {
 	Send(message email.Message) error
-	SendTemplate(message email.Message) error
 }
