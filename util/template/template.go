@@ -5,6 +5,7 @@ import (
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
+	"github.com/aymerick/raymond"
 
 	"hanzo.io/config"
 	"hanzo.io/log"
@@ -12,6 +13,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/thankyou"
 	"hanzo.io/util/json"
+	"hanzo.io/util/fs"
 )
 
 var cwd, _ = os.Getwd()
@@ -111,19 +113,10 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 func RenderEmail(path string, data map[string]interface{}) string {
 	// Get template
-	template := getTemplate(path)
-
-	// Create pongo context
-	ctx := pongo2.Context{}
-	for k, v := range data {
-		ctx[k] = v
-	}
+	template := fs.ReadFile(path)
 
 	// Render template
-	out, err := template.Execute(ctx)
-	if err != nil {
-		log.Panic("Unable to render template: %v\n\n%v", path, err)
-	}
+	out := raymond.MustRender(string(template),data)
 
 	return out
 }
