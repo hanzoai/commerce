@@ -7,10 +7,11 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referralprogram"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/types/email"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -43,9 +44,11 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Fees.Affiliate.Flat = 0
 	org.Fees.Affiliate.Percent = 0.20
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Halcyon Bio"
-	org.Email.Defaults.FromEmail = "hi@halcyon.bio"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Halcyon Bio",
+		Address: "hi@halcyon.bio",
+	}
 
 	org.SignUpOptions.ImmediateLogin = true
 	org.SignUpOptions.AccountsEnabledByDefault = true
