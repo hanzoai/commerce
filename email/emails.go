@@ -30,10 +30,13 @@ func message(settings email.Setting) *email.Message {
 func userMessage(settings email.Setting, usr *user.User) *email.Message {
 	m := message(settings)
 	m.AddTos(email.Email{usr.Name(), usr.Email})
-	m.Substitutions["USER_ID"] = usr.Id()
-	m.Substitutions["FIRST_NAME"] = usr.FirstName
-	m.Substitutions["LAST_NAME"] = usr.LastName
-	m.TemplateData["user"] = usr
+	user := map[string]interface{}{
+		"id":        usr.Id(),
+		"name":      usr.Name(),
+		"firstName": usr.FirstName,
+		"lastName":  usr.LastName,
+	}
+	m.TemplateData["user"] = user
 	return m
 }
 
@@ -41,9 +44,11 @@ func userMessage(settings email.Setting, usr *user.User) *email.Message {
 func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber) *email.Message {
 	m := message(settings)
 	m.AddTos(email.Email{sub.Name(), sub.Email})
-	m.Substitutions["SUBSCRIBER_ID"] = sub.Id()
-	m.Substitutions["NAME"] = sub.Name()
-	m.TemplateData["subscriber"] = sub
+	subscriber := map[string]interface{}{
+		"id":   sub.Id(),
+		"name": sub.Name(),
+	}
+	m.TemplateData["subscriber"] = subscriber
 	return m
 }
 
