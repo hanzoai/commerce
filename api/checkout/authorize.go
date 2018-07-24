@@ -184,11 +184,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, UnsupportedEthereumCurrency
 		}
 		err = ethereum.Authorize(org, ord, usr)
+		if err != nil {
+			log.Error("Ethereum Error: %v", err, c)
+		}
 	case accounts.BitcoinType:
 		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
 			return nil, UnsupportedBitcoinCurrency
 		}
 		err = bitcoin.Authorize(org, ord, usr)
+		if err != nil {
+			log.Error("Bitcoin Error: %v", err, c)
+		}
 	case accounts.NullType:
 		err = null.Authorize(org, ord, usr, pay)
 	case accounts.PayPalType:
@@ -198,6 +204,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, UnsupportedStripeCurrency
 		}
 		err = authorizenet.Authorize(org, ord, usr, pay)
+		if err != nil {
+			log.Error("Authorize.net Error: %v", err, c)
+		}
 	case accounts.StripeType:
 	default:
 		if ord.Currency.IsCrypto() {
@@ -207,10 +216,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			return nil, TransactionLimitReached
 		}
 		err = stripe.Authorize(org, ord, usr, pay)
+		if err != nil {
+			log.Error("Stripe Error: %v", err, c)
+		}
 	}
 
 	// Bail on authorization failure
 	if err != nil {
+		log.Error("Authorize Error: %v", err, c)
 		// Update payment status accordingly
 		ord.Status = order.Cancelled
 		if pay != nil {
