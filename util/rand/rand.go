@@ -3,11 +3,10 @@ package rand
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	mathrand "math/rand"
 	"strings"
 	"time"
-
-	"hanzo.io/log"
 )
 
 // Returns short, url-friendly Id
@@ -16,7 +15,7 @@ func ShortPassword() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Error("Failed to genrate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -28,7 +27,7 @@ func ShortId() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Error("Failed to genrate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -40,7 +39,7 @@ func SecretKey() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Error("Failed to genrate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")

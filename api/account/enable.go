@@ -11,7 +11,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"
@@ -94,7 +94,7 @@ func enable(c *gin.Context) {
 
 	// Send account confirmed email
 	ctx := middleware.GetAppEngine(c)
-	emails.SendEmailConfirmedEmail(ctx, org, usr)
+	email.SendEmailConfirmedEmail(ctx, org, usr)
 
 	loginTok := middleware.GetToken(c)
 	loginTok.Set("user-id", usr.Id())

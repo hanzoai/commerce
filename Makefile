@@ -1,7 +1,7 @@
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.65
+sdk				= go_appengine_sdk_$(platform)-1.9.67
 sdk_path		= $(pwd)/sdk
 goroot			= $(sdk_path)/goroot-1.9
 gopath			= $(sdk_path)/gopath
@@ -207,7 +207,7 @@ deps-assets:
 
 # DEPS GO
 deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo sdk/gopath/bin/gpm update-env
-	$(gpm) install
+	$(gpm) get
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip

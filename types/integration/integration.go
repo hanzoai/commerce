@@ -1,39 +1,41 @@
-package integrations
+package integration
 
 import (
+	"encoding/json"
 	"time"
 
-	"hanzo.io/models/types/analytics"
-	"hanzo.io/thirdparty/stripe/connect"
+	stripe "hanzo.io/thirdparty/stripe/connect/types"
 
-	enjson "encoding/json"
+	"hanzo.io/models/types/analytics"
 )
 
-type IntegrationType string
+type Type string
 
 const (
 	// Analytics
-	AnalyticsCustomType              IntegrationType = "analytics-custom"
-	AnalyticsFacebookPixelType       IntegrationType = "analytics-facebook-pixel"
-	AnalyticsFacebookConversionsType IntegrationType = "analytics-facebook-conversions"
-	AnalyticsGoogleAdwordsType       IntegrationType = "analytics-google-adwords"
-	AnalyticsGoogleAnalyticsType     IntegrationType = "analytics-google-analytics"
-	AnalyticsHeapType                IntegrationType = "analytics-heap"
-	AnalyticsSentryType              IntegrationType = "analytics-sentry"
+	AnalyticsCustomType              Type = "analytics-custom"
+	AnalyticsFacebookPixelType       Type = "analytics-facebook-pixel"
+	AnalyticsFacebookConversionsType Type = "analytics-facebook-conversions"
+	AnalyticsGoogleAdwordsType       Type = "analytics-google-adwords"
+	AnalyticsGoogleAnalyticsType     Type = "analytics-google-analytics"
+	AnalyticsHeapType                Type = "analytics-heap"
+	AnalyticsSentryType              Type = "analytics-sentry"
 
 	// Others
-	BitcoinType		   IntegrationType = "bitcoin"
-	EthereumType	   IntegrationType = "ethereum"
-	MailchimpType	   IntegrationType = "mailchimp"
-	MandrillType	   IntegrationType = "mandrill"
-	NetlifyType		   IntegrationType = "netlify"
-	PaypalType		   IntegrationType = "paypal"
-	ReamazeType		   IntegrationType = "reamaze"
-	RecaptchaType	   IntegrationType = "recaptcha"
-	SalesforceType	   IntegrationType = "salesforce"
-	ShipwireType	   IntegrationType = "shipwire"
-	StripeType		   IntegrationType = "stripe"
-	AuthorizeNetType   IntegrationType = "authorizeNet"
+	AuthorizeNetType Type = "authorizeNet"
+	BitcoinType      Type = "bitcoin"
+	EthereumType     Type = "ethereum"
+	MailchimpType    Type = "mailchimp"
+	MandrillType     Type = "mandrill"
+	NetlifyType      Type = "netlify"
+	PaypalType       Type = "paypal"
+	ReamazeType      Type = "reamaze"
+	RecaptchaType    Type = "recaptcha"
+	SalesforceType   Type = "salesforce"
+	SendGridType     Type = "sendgrid"
+	ShipwireType     Type = "shipwire"
+	SMTPRelayType    Type = "smtprelay"
+	StripeType       Type = "stripe"
 )
 
 // Analytics
@@ -104,6 +106,11 @@ type Mandrill struct {
 	APIKey string `json:"apiKey,omitempty"`
 }
 
+// SendGrid settings
+type SendGrid struct {
+	APIKey string `json:"apiKey,omitempty"`
+}
+
 // Netlify settings
 type Netlify struct {
 	AccessToken string    `json:"accessToken,omitempty"`
@@ -166,6 +173,17 @@ type Shipwire struct {
 	Password string `json:"password,omitempty"`
 }
 
+// SMTP settings
+type SMTPRelay struct {
+	Username string   `json:"username"`
+	Password string   `json:"password"`
+	Host     string   `json:"host"`
+	Port     string   `json:"port"`
+	MailFrom string   `json:"mailFrom"`
+	MailTo   []string `json:"mailTo"`
+	Msg      string   `json:"msg"`
+}
+
 // Stripe connection
 type Stripe struct {
 	// For convenience duplicated
@@ -175,15 +193,15 @@ type Stripe struct {
 	UserId         string `json:"userId,omitempty"`
 
 	// Save entire live and test tokens
-	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
-	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
+	Live stripe.Token `json:"live,omitempty" datastore:",noindex"`
+	Test stripe.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
 // Authorize.net connection
 type AuthorizeNetConnection struct {
-	LoginId		    string `json:"loginId,omitempty"`
-	TransactionKey	string `json:"transactionKey,omitempty"`
-	Key				string `json:"key,omitempty"`
+	LoginId        string `json:"loginId,omitempty"`
+	TransactionKey string `json:"transactionKey,omitempty"`
+	Key            string `json:"key,omitempty"`
 }
 
 type AuthorizeNet struct {
@@ -204,20 +222,14 @@ type Ethereum struct {
 	TestAddress string `json:"testAddress,omitempty"`
 }
 
-type BasicIntegration struct {
-	Enabled bool `json:"enabled,omitempty"`
-	Show    bool `json:"show,omitempty"`
-
-	Id   string            `json:"id,omitempty"`
-	Data enjson.RawMessage `json:"data,omitempty"`
-	Type IntegrationType   `json:"type,omitempty"`
-
-	CreatedAt time.Time `json:"createdAt,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty"`
-}
-
 type Integration struct {
-	BasicIntegration
+	Type      Type            `json:"type,omitempty"`
+	Enabled   bool            `json:"enabled,omitempty"`
+	Show      bool            `json:"show,omitempty"`
+	Id        string          `json:"id,omitempty"`
+	Data      json.RawMessage `json:"data,omitempty"`
+	CreatedAt time.Time       `json:"createdAt,omitempty"`
+	UpdatedAt time.Time       `json:"updatedAt,omitempty"`
 
 	// Analytics
 	AnalyticsCustom              AnalyticsCustom              `json:"-"`
@@ -230,15 +242,17 @@ type Integration struct {
 
 	// Others
 	AuthorizeNet AuthorizeNet `json:"-"`
-	Bitcoin      Bitcoin    `json:"-"`
-	Ethereum     Ethereum   `json:"-"`
-	Mailchimp    Mailchimp  `json:"-"`
-	Mandrill     Mandrill   `json:"-"`
-	Netlify      Netlify    `json:"-"`
-	Paypal       Paypal     `json:"-"`
-	Reamaze      Reamaze    `json:"-"`
-	Recaptcha    Recaptcha  `json:"-"`
-	Salesforce   Salesforce `json:"-"`
-	Shipwire     Shipwire   `json:"-"`
-	Stripe       Stripe     `json:"-"`
+	Bitcoin      Bitcoin      `json:"-"`
+	Ethereum     Ethereum     `json:"-"`
+	Mailchimp    Mailchimp    `json:"-"`
+	Mandrill     Mandrill     `json:"-"`
+	Netlify      Netlify      `json:"-"`
+	Paypal       Paypal       `json:"-"`
+	Reamaze      Reamaze      `json:"-"`
+	Recaptcha    Recaptcha    `json:"-"`
+	Salesforce   Salesforce   `json:"-"`
+	Shipwire     Shipwire     `json:"-"`
+	SendGrid     SendGrid     `json:"-"`
+	SMTPRelay    SMTPRelay    `json:"-"`
+	Stripe       Stripe       `json:"-"`
 }

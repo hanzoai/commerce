@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/types/email"
 )
 
 var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
@@ -62,24 +63,26 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Paypal.Test.SecurityPassword = "XMDRP9CF75ESA8P8"
 	org.Paypal.Test.SecuritySignature = "AcoBndPxINN2yEkgSKALAXYErpWTAFpUk3S6BucWeefHiUNpGxIleLof"
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "KANOA"
-	org.Email.Defaults.FromEmail = "hi@kanoa.com"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "KANOA",
+		Address: "hi@kanoa.com",
+	}
 
-	org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Subject = "KANOA Earphones Order Confirmation"
+	org.Email.Order.Confirmation.HTML = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
+	org.Email.Order.Confirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
+	org.Email.User.PasswordReset.HTML = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
 	org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
 	org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
+	org.Email.User.EmailConfirmation.HTML = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
 	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
 	org.Email.User.EmailConfirmation.Enabled = true
 
 	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
+	org.Email.User.EmailConfirmed.HTML = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
 	org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
