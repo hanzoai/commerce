@@ -1,12 +1,12 @@
 package integration
 
 import (
+	"encoding/json"
 	"time"
 
-	"hanzo.io/models/types/analytics"
-	"hanzo.io/thirdparty/stripe/connect"
+	stripe "hanzo.io/thirdparty/stripe/connect/types"
 
-	enjson "encoding/json"
+	"hanzo.io/models/types/analytics"
 )
 
 type Type string
@@ -193,8 +193,8 @@ type Stripe struct {
 	UserId         string `json:"userId,omitempty"`
 
 	// Save entire live and test tokens
-	Live connect.Token `json:"live,omitempty" datastore:",noindex"`
-	Test connect.Token `json:"test,omitempty" datastore:",noindex"`
+	Live stripe.Token `json:"live,omitempty" datastore:",noindex"`
+	Test stripe.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
 // Authorize.net connection
@@ -223,13 +223,13 @@ type Ethereum struct {
 }
 
 type Integration struct {
-	Type      Type              `json:"type,omitempty"`
-	Enabled   bool              `json:"enabled,omitempty"`
-	Show      bool              `json:"show,omitempty"`
-	Id        string            `json:"id,omitempty"`
-	Data      enjson.RawMessage `json:"data,omitempty"`
-	CreatedAt time.Time         `json:"createdAt,omitempty"`
-	UpdatedAt time.Time         `json:"updatedAt,omitempty"`
+	Type      Type            `json:"type,omitempty"`
+	Enabled   bool            `json:"enabled,omitempty"`
+	Show      bool            `json:"show,omitempty"`
+	Id        string          `json:"id,omitempty"`
+	Data      json.RawMessage `json:"data,omitempty"`
+	CreatedAt time.Time       `json:"createdAt,omitempty"`
+	UpdatedAt time.Time       `json:"updatedAt,omitempty"`
 
 	// Analytics
 	AnalyticsCustom              AnalyticsCustom              `json:"-"`
