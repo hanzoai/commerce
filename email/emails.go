@@ -1,0 +1,259 @@
+package email
+
+import (
+	"context"
+	"strings"
+	"time"
+
+	"hanzo.io/log"
+	"hanzo.io/models/order"
+	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
+	"hanzo.io/models/referrer"
+	"hanzo.io/models/subscriber"
+	"hanzo.io/models/token"
+	"hanzo.io/models/types/country"
+	"hanzo.io/models/user"
+	"hanzo.io/types/email"
+)
+
+// Create new message using provided defaults
+func message(settings email.Setting) *email.Message {
+	m := email.NewMessage()
+	m.From = settings.From
+	m.ReplyTo = settings.ReplyTo
+	m.Subject = settings.Subject
+	return m
+}
+
+// Transactional email for user
+func userMessage(settings email.Setting, usr *user.User) *email.Message {
+	m := message(settings)
+	m.AddTos(email.Email{usr.Name(), usr.Email})
+	user := map[string]interface{}{
+		"id":        usr.Id(),
+		"name":      usr.Name(),
+		"firstName": usr.FirstName,
+		"lastName":  usr.LastName,
+	}
+	m.TemplateData["user"] = user
+	return m
+}
+
+// Transactional email for subscriber
+func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber) *email.Message {
+	m := message(settings)
+	m.AddTos(email.Email{sub.Name(), sub.Email})
+	subscriber := map[string]interface{}{
+		"id":   sub.Id(),
+		"name": sub.Name(),
+	}
+	m.TemplateData["subscriber"] = subscriber
+	return m
+}
+
+// Transactional email related to an order
+func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay *payment.Payment) *email.Message {
+	m := userMessage(settings, usr)
+
+	currencyCode := strings.ToUpper(ord.Currency.Code())
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	stateName := ord.ShippingAddress.State
+	if len(stateName) <= 2 {
+		stateName = strings.ToUpper(stateName)
+	}
+	items := make([]map[string]interface{}, len(ord.Items))
+
+	for i, item := range ord.Items {
+		items[i] = map[string]interface{}{
+			"productName":  item.ProductName,
+			"quantity":     item.Quantity,
+			"price":        item.DisplayPrice(ord.Currency),
+			"currencyCode": currencyCode,
+		}
+	}
+
+	// Include all relevant order information
+	order := map[string]interface{}{
+		"number":    ord.Number,
+		"id":        ord.DisplayId(),
+		"subtotal":  ord.DisplaySubtotal(),
+		"tax":       ord.DisplayTax(),
+		"shipping":  ord.DisplayShipping(),
+		"total":     ord.DisplayTotal(),
+		"refunded":  ord.DisplayRefunded(),
+		"remaining": ord.DisplayRemaining(),
+		"currency":  currencyCode,
+		"items":     items,
+		"billingAddress": map[string]interface{}{
+			"name":       strings.Title(ord.BillingAddress.Name),
+			"line1":      strings.Title(ord.BillingAddress.Line1),
+			"line2":      strings.Title(ord.BillingAddress.Line2),
+			"postalCode": ord.BillingAddress.PostalCode,
+			"city":       strings.Title(ord.BillingAddress.City),
+			"state":      stateName,
+			"country":    countryName,
+		},
+		"shippingAddress": map[string]interface{}{
+			"name":       strings.Title(ord.ShippingAddress.Name),
+			"line1":      strings.Title(ord.ShippingAddress.Line1),
+			"line2":      strings.Title(ord.ShippingAddress.Line2),
+			"postalCode": ord.ShippingAddress.PostalCode,
+			"city":       strings.Title(ord.ShippingAddress.City),
+			"state":      stateName,
+			"country":    countryName,
+		},
+		"day":       ord.CreatedAt.Day(),
+		"month":     ord.CreatedAt.Month(),
+		"monthName": ord.CreatedAt.Month().String(),
+		"year":      ord.CreatedAt.Year(),
+		"fulfillment": map[string]interface{}{
+			"trackingnumber": ord.Fulfillment.Trackings[0],
+			"service":        ord.Fulfillment.Service,
+			"carrier":        ord.Fulfillment.Carrier,
+		},
+		"storeId": ord.StoreId,
+	}
+
+	// Include discount
+	if ord.Discount != 0 {
+		order["discount"] = ord.DisplayDiscount()
+	}
+
+	// Include payment data if available
+	if pay != nil {
+		m.TemplateData["payment"] = map[string]interface{}{
+			"lastFour": pay.Account.LastFour,
+		}
+	}
+
+	m.TemplateData["order"] = order
+	return m
+}
+
+// Send reset password email
+func SendResetPassword(c context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
+	// Get configuration for this email
+	settings := org.Email.Get(email.UserResetPassword)
+	if !settings.Enabled {
+		return
+	}
+
+	message := userMessage(settings, usr)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = tok
+	SendTemplate("password-reset", c, message, org)
+}
+
+// Send email asking for user to confirm email address
+func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserConfirmEmail)
+	if !settings.Enabled {
+		return
+	}
+
+	// Create token
+	tok := token.New(usr.Db)
+	tok.Email = usr.Email
+	tok.UserId = usr.Id()
+	tok.Expires = time.Now().Add(time.Hour * 24 * 7)
+
+	err := tok.Put()
+	if err != nil {
+		panic(err)
+	}
+
+	message := userMessage(settings, usr)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = tok
+	SendTemplate("user-email-confirmation", c, message, org)
+}
+
+// Send email confirming email address is confirmed
+func SendUserActivated(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserActivated)
+	if !settings.Enabled {
+		return
+	}
+
+	message := userMessage(settings, usr)
+	SendTemplate("user-email-confirmed", c, message, org)
+}
+
+// Send welcome email to subscriber
+func SendSubscriberWelcome(c context.Context, org *organization.Organization, s *subscriber.Subscriber) {
+	settings := org.Email.Get(email.SubscriberWelcome)
+	if !settings.Enabled {
+		return
+	}
+
+	message := subscriberMessage(settings, s)
+	SendTemplate("subscriber-welcome", c, message, org)
+}
+
+// Send welcome email to user
+func SendUserWelcome(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserWelcome)
+	if !settings.Enabled {
+		return
+	}
+
+	message := userMessage(settings, usr)
+	SendTemplate("subscriber-welcome", c, message, org)
+}
+
+func SendOrderConfirmation(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
+	settings := org.Email.Get(email.OrderConfirmation)
+	if !settings.Enabled {
+		return
+	}
+
+	message := orderMessage(settings, ord, usr, nil)
+
+	referralCode := ""
+	referrers := make([]referrer.Referrer, 0)
+	if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+		log.Warn("Failed to load referrals for user: %v", err, c)
+	}
+
+	if len(referrers) > 0 {
+		referralCode = referrers[0].Id_
+	}
+	order := message.TemplateData["order"].(map[string]interface{})
+	order["referralCode"] = referralCode
+
+	SendTemplate("order-confirmation", c, message, org)
+}
+
+func SendOrderPartiallyRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderPartialRefund)
+	if !settings.Enabled {
+		return
+	}
+
+	message := orderMessage(settings, ord, usr, pay)
+	message.TemplateData["payment"] = map[string]interface{}{
+		"lastFour": pay.Account.LastFour,
+	}
+	SendTemplate("order-partially-refunded", c, message, org)
+}
+
+func SendOrderRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderRefund)
+	if !settings.Enabled {
+		return
+	}
+
+	message := orderMessage(settings, ord, usr, pay)
+	SendTemplate("order-refunded", c, message, org)
+}
+
+func SendOrderShipped(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderShipped)
+	if !settings.Enabled {
+		return
+	}
+
+	message := orderMessage(settings, ord, usr, pay)
+	SendTemplate("order-shipped", c, message, org)
+}

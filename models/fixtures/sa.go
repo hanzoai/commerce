@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/types/email"
 )
 
 var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
@@ -47,9 +48,11 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Stoned Audio"
-	org.Email.Defaults.FromEmail = "dev@hanzo.ai"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Stoned Audio",
+		Address: "dev@hanzo.ai",
+	}
 
 	//org.Email.OrderConfirmation.Subject = "Stoned Audio Order Confirmation"
 	//org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/sa/emails/order-confirmation.html")

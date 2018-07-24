@@ -3,7 +3,7 @@ package test
 import (
 	"regexp"
 
-	. "hanzo.io/models/types/integrations"
+	. "hanzo.io/types/integration"
 	// "hanzo.io/log"
 
 	. "github.com/onsi/ginkgo"
@@ -16,9 +16,7 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
-					Type: AnalyticsCustomType,
-				},
+				Type: AnalyticsCustomType,
 			})
 			Expect(len(ins)).To(Equal(1))
 
@@ -32,7 +30,7 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins2 := ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -49,7 +47,7 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			in := &Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}
@@ -69,15 +67,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -103,7 +101,7 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins = ins.MustUpdate(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -120,15 +118,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -160,15 +158,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -200,15 +198,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -241,7 +239,7 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			in := &Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}
@@ -267,15 +265,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -296,15 +294,15 @@ var _ = Describe("models/types/integrations", func() {
 			ins := Integrations{}
 			Expect(len(ins)).To(Equal(0))
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -343,15 +341,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -368,15 +366,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})
@@ -395,15 +393,15 @@ var _ = Describe("models/types/integrations", func() {
 			Expect(len(ins)).To(Equal(0))
 
 			ins = ins.MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsFacebookPixelType,
 				},
 			}).MustAppend(&Integration{
-				BasicIntegration: BasicIntegration{
+				Base: Base{
 					Type: AnalyticsCustomType,
 				},
 			})

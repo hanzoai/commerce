@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/log"
 )
 
@@ -142,7 +142,7 @@ func ShipNotify(c *gin.Context) {
 		pay := payment.New(db)
 		pay.MustGetById(ord.PaymentIds[0])
 
-		emails.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
+		email.SendFulfillmentEmail(db.Context, org, ord, usr, pay)
 	}
 
 	ord.MustPut()
