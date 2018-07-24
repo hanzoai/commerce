@@ -155,7 +155,7 @@ func SendOrderConfirmation(c *gin.Context) {
 	u := user.New(db)
 	u.MustGetById(o.UserId)
 
-	email.SendOrderConfirmationEmail(db.Context, org, o, u)
+	email.SendOrderConfirmation(db.Context, org, o, u)
 
 	c.Writer.WriteHeader(204)
 }
@@ -174,7 +174,7 @@ func SendFulfillmentConfirmation(c *gin.Context) {
 	p := payment.New(db)
 	p.MustGetById(o.PaymentIds[0])
 
-	email.SendFulfillmentEmail(db.Context, org, o, u, p)
+	email.SendOrderShipped(db.Context, org, o, u, p)
 
 	c.Writer.WriteHeader(204)
 }
@@ -194,9 +194,9 @@ func SendRefundConfirmation(c *gin.Context) {
 	p.MustGetById(o.PaymentIds[0])
 
 	if o.Refunded == o.Paid {
-		email.SendFullRefundEmail(db.Context, org, o, u, p)
+		email.SendOrderRefunded(db.Context, org, o, u, p)
 	} else if o.Refunded > 0 {
-		email.SendPartialRefundEmail(db.Context, org, o, u, p)
+		email.SendOrderPartiallyRefunded(db.Context, org, o, u, p)
 	}
 
 	c.Writer.WriteHeader(204)

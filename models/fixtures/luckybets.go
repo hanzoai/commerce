@@ -53,14 +53,14 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 	org.Email.Order.Confirmation.Subject = "Deposit confirmation"
 	org.Email.Order.Confirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Subject = "Reset your password"
+	/*org.Email.User.PasswordReset.Subject = "Reset your password"
 	org.Email.User.PasswordReset.Enabled = true
 
 	// org.Email.User.EmailConfirmation.Subject = ""
 	org.Email.User.EmailConfirmation.Enabled = false
 
 	org.Email.User.EmailConfirmed.Subject = "Complete registration"
-	org.Email.User.EmailConfirmed.Enabled = true
+	org.Email.User.EmailConfirmed.Enabled = true*/
 
 	// Save org into default namespace
 	org.MustUpdate()

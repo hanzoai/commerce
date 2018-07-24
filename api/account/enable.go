@@ -94,7 +94,7 @@ func enable(c *gin.Context) {
 
 	// Send account confirmed email
 	ctx := middleware.GetAppEngine(c)
-	email.SendEmailConfirmedEmail(ctx, org, usr)
+	email.SendUserActivated(ctx, org, usr)
 
 	loginTok := middleware.GetToken(c)
 	loginTok.Set("user-id", usr.Id())

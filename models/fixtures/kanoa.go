@@ -73,18 +73,6 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Email.Order.Confirmation.HTML = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
 	org.Email.Order.Confirmation.Enabled = true
 
-	org.Email.User.PasswordReset.HTML = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
-	org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
-	org.Email.User.PasswordReset.Enabled = true
-
-	org.Email.User.EmailConfirmation.HTML = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
-	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	org.Email.User.EmailConfirmation.Enabled = true
-
-	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.HTML = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
-	org.Email.User.EmailConfirmed.Enabled = false
-
 	// Save org into default namespace
 	org.MustUpdate()
 
