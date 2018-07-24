@@ -71,5 +71,7 @@ func (c *Client) Request(r *Request) error {
 
 func (c *Client) Send(message *email.Message) error {
 	req := new(Request)
+	req.To = message.To
+	req.Msg = message.HTML
 	return c.Request(req)
 }
