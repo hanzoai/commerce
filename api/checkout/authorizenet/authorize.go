@@ -10,19 +10,26 @@ import (
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
+	ctx := ord.Db.Context
+
 	// Create stripe client
 	con := org.AuthorizeNetTokens()
+
+	log.Warn("Connection: %v", con, ctx)
+	log.Warn("Test?: %v", !org.Live, ctx)
 
 	loginId := con.LoginId
 	transactionKey := con.TransactionKey
 	key := con.Key
 
-	client := authorizenet.New(ord.Db.Context, loginId, transactionKey, key, false)
+	pay.Amount = ord.Total
+
+	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
 
 	// Do authorization
 	_, err := client.Authorize(pay)
 	if err != nil {
-		log.Warn("Failed to authorize payment '%s'", pay.Id())
+		log.Error("Failed to authorize payment '%s'", pay.Id(), ctx)
 		log.JSON(pay)
 		return err
 	}
