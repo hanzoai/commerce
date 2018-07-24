@@ -49,6 +49,7 @@ github.com/ugorji/go/codec                                      02537d3a3e32ef63
 github.com/vanng822/css                                         c6885fd13293bb05bfcdd824ce4a4aa4ca89e075
 github.com/vanng822/go-premailer/premailer                      master
 github.com/zeekay/gochimp3                                      master
+github.com/hanzoai/goauthorizenet                               master
 golang.org/x/crypto/bcrypt                                      7effd64e1180aa386cd36da9ca55a1e9fc7cf7cb
 golang.org/x/crypto/blowfish                                    88942b9c40a4c9d203b82b3731787b672d6e809b
 golang.org/x/crypto/pbkdf2                                      88942b9c40a4c9d203b82b3731787b672d6e809b
