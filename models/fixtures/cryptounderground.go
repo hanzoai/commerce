@@ -43,9 +43,9 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 	// Email configuration
 	// org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Crypto Underground"
-	org.Email.Defaults.FromEmail = "hi@cryptounderground.com"
+	// org.Email.Defaults.Enabled = true
+	// org.Email.Defaults.FromName = "Crypto Underground"
+	// org.Email.Defaults.FromEmail = "hi@cryptounderground.com"
 
 	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
 	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")

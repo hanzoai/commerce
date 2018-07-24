@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
+	"hanzo.io/types/email"
 	// "hanzo.io/models/webhook"
 )
 
@@ -43,9 +44,11 @@ var Palladium46 = New("palladium46", func(c *gin.Context) *organization.Organiza
 	// Email configuration
 	// org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Palladium46"
-	org.Email.Defaults.FromEmail = "hi@palladium46.com"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Palladium46",
+		Address: "hi@palladium46.com",
+	}
 
 	// Save org into default namespace
 	org.MustUpdate()

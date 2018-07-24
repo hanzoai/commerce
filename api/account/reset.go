@@ -9,7 +9,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"
@@ -33,11 +33,11 @@ func reset(c *gin.Context) {
 		return
 	}
 
-	email := req.Email
+	emailAddress := req.Email
 
-	if err := usr.GetByEmail(email); err != nil {
+	if err := usr.GetByEmail(emailAddress); err != nil {
 		// If user doesn't exist, we pretend like it's ok
-		log.Warn("Email doesn't exist, unable to reset password: %v", email, c)
+		log.Warn("Email doesn't exist, unable to reset password: %v", emailAddress, c)
 		http.Render(c, 200, gin.H{"status": "ok"})
 		return
 	}
@@ -55,7 +55,7 @@ func reset(c *gin.Context) {
 
 	// Send email
 	ctx := middleware.GetAppEngine(c)
-	emails.SendPasswordResetEmail(ctx, org, usr, tok)
+	email.SendPasswordResetEmail(ctx, org, usr, tok)
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }

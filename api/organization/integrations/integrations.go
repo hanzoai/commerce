@@ -10,7 +10,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/types/analytics"
-	"hanzo.io/models/types/integrations"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/rand"
@@ -30,18 +30,18 @@ func Get(c *gin.Context) {
 	// Add a read only stripe integration (will need to do this with all other
 	// oauths)
 	if org.Stripe.AccessToken != "" {
-		in := integrations.Integration{Stripe: org.Stripe}
+		in := integration.Integration{Stripe: org.Stripe}
 		in.Enabled = true
 		in.Show = true
 		in.Id = rand.ShortId()
-		in.Type = integrations.StripeType
+		in.Type = integration.StripeType
 		in.CreatedAt = time.Now()
 		in.UpdatedAt = in.CreatedAt
 		ins = append(ins, in)
 	}
 
 	for i, in := range ins {
-		if err := integrations.Encode(&in, &in); err != nil {
+		if err := integration.Encode(&in, &in); err != nil {
 			log.Warn("Could not encode integration: %s", err, c)
 			continue
 		}
@@ -82,7 +82,7 @@ func Upsert(c *gin.Context) {
 	}
 
 	ins := org.Integrations
-	updateIns := integrations.Integrations{}
+	updateIns := integration.Integrations{}
 
 	// dump, _ := httputil.DumpRequestOut(c.Request, true)
 	// log.Warn("Request %s", dump, c)
@@ -114,14 +114,14 @@ func Upsert(c *gin.Context) {
 		for _, in := range org.Integrations {
 			an := analytics.Integration{}
 			switch in.Type {
-			case integrations.AnalyticsCustomType:
+			case integration.AnalyticsCustomType:
 				an.Type = "custom"
 				an.Id = in.AnalyticsCustom.Id
 				an.Event = in.AnalyticsCustom.Event
 				an.Sampling = in.AnalyticsCustom.Sampling
 				an.Code = in.AnalyticsCustom.Code
 				an.Disabled = !in.Enabled
-			case integrations.AnalyticsFacebookConversionsType:
+			case integration.AnalyticsFacebookConversionsType:
 				an.Type = "facebook-conversions"
 				an.Id = in.AnalyticsFacebookConversions.Id
 				an.Event = in.AnalyticsFacebookConversions.Event
@@ -129,26 +129,26 @@ func Upsert(c *gin.Context) {
 				an.Value = in.AnalyticsFacebookConversions.Value
 				an.Currency = in.AnalyticsFacebookConversions.Currency
 				an.Disabled = !in.Enabled
-			case integrations.AnalyticsFacebookPixelType:
+			case integration.AnalyticsFacebookPixelType:
 				an.Type = "facebook-pixel"
 				an.Id = in.AnalyticsFacebookPixel.Id
 				an.Event = in.AnalyticsFacebookPixel.Event
 				an.Sampling = in.AnalyticsFacebookPixel.Sampling
 				an.Values = analytics.Values(in.AnalyticsFacebookPixel.Values)
 				an.Disabled = !in.Enabled
-			case integrations.AnalyticsGoogleAdwordsType:
+			case integration.AnalyticsGoogleAdwordsType:
 				an.Type = "google-adwords"
 				an.Id = in.AnalyticsGoogleAdwords.Id
 				an.Event = in.AnalyticsGoogleAdwords.Event
 				an.Sampling = in.AnalyticsGoogleAdwords.Sampling
 				an.Disabled = !in.Enabled
-			case integrations.AnalyticsGoogleAnalyticsType:
+			case integration.AnalyticsGoogleAnalyticsType:
 				an.Type = "google-analytics"
 				an.Id = in.AnalyticsGoogleAnalytics.Id
 				an.Event = in.AnalyticsGoogleAnalytics.Event
 				an.Sampling = in.AnalyticsGoogleAnalytics.Sampling
 				an.Disabled = !in.Enabled
-			case integrations.AnalyticsHeapType:
+			case integration.AnalyticsHeapType:
 				an.Type = "heap"
 				an.Id = in.AnalyticsHeap.Id
 				an.Event = in.AnalyticsHeap.Event
@@ -165,49 +165,49 @@ func Upsert(c *gin.Context) {
 		org.Analytics = ans
 
 		// Synchronize integrations
-		if eth := org.Integrations.FilterByType(integrations.BitcoinType); len(eth) > 0 {
+		if eth := org.Integrations.FilterByType(integration.BitcoinType); len(eth) > 0 {
 			m := eth[0]
 			org.Bitcoin = m.Bitcoin
 		}
 
 		// Synchronize integrations
-		if eth := org.Integrations.FilterByType(integrations.EthereumType); len(eth) > 0 {
+		if eth := org.Integrations.FilterByType(integration.EthereumType); len(eth) > 0 {
 			m := eth[0]
 			org.Ethereum = m.Ethereum
 		}
 
 		// Synchronize integrations
-		if mailchimps := org.Integrations.FilterByType(integrations.MailchimpType); len(mailchimps) > 0 {
+		if mailchimps := org.Integrations.FilterByType(integration.MailchimpType); len(mailchimps) > 0 {
 			m := mailchimps[0]
 			org.Mailchimp = m.Mailchimp
 		}
 
-		if mandrills := org.Integrations.FilterByType(integrations.MandrillType); len(mandrills) > 0 {
+		if mandrills := org.Integrations.FilterByType(integration.MandrillType); len(mandrills) > 0 {
 			m := mandrills[0]
 			org.Mandrill = m.Mandrill
 		}
 
-		if netlifies := org.Integrations.FilterByType(integrations.NetlifyType); len(netlifies) > 0 {
+		if netlifies := org.Integrations.FilterByType(integration.NetlifyType); len(netlifies) > 0 {
 			n := netlifies[0]
 			org.Netlify = n.Netlify
 		}
 
-		if reamazes := org.Integrations.FilterByType(integrations.ReamazeType); len(reamazes) > 0 {
+		if reamazes := org.Integrations.FilterByType(integration.ReamazeType); len(reamazes) > 0 {
 			r := reamazes[0]
 			org.Reamaze = r.Reamaze
 		}
 
-		if recaptchas := org.Integrations.FilterByType(integrations.RecaptchaType); len(recaptchas) > 0 {
+		if recaptchas := org.Integrations.FilterByType(integration.RecaptchaType); len(recaptchas) > 0 {
 			r := recaptchas[0]
 			org.Recaptcha = r.Recaptcha
 		}
 
-		if shipwires := org.Integrations.FilterByType(integrations.ShipwireType); len(shipwires) > 0 {
+		if shipwires := org.Integrations.FilterByType(integration.ShipwireType); len(shipwires) > 0 {
 			s := shipwires[0]
 			org.Shipwire = s.Shipwire
 		}
 
-		if stripes := org.Integrations.FilterByType(integrations.StripeType); len(stripes) > 0 {
+		if stripes := org.Integrations.FilterByType(integration.StripeType); len(stripes) > 0 {
 			s := stripes[0]
 			org.Stripe = s.Stripe
 		}

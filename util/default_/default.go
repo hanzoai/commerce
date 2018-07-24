@@ -21,6 +21,7 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "hanzo.io/api/checkout/tasks"
 	_ "hanzo.io/cron/tasks"
+	_ "hanzo.io/email/tasks"
 	_ "hanzo.io/models/analyticsidentifier/tasks"
 	_ "hanzo.io/models/fixtures"
 	_ "hanzo.io/models/fixtures/users"
@@ -28,7 +29,6 @@ import (
 	_ "hanzo.io/models/referrer/tasks"
 	_ "hanzo.io/models/webhook/tasks"
 	_ "hanzo.io/thirdparty/mailchimp/tasks"
-	_ "hanzo.io/thirdparty/mandrill/tasks"
 	_ "hanzo.io/util/aggregate/tasks"
 	_ "hanzo.io/util/analytics/tasks"
 	// _ "hanzo.io/thirdparty/salesforce/tasks"

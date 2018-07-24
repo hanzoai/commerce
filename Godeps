@@ -25,11 +25,14 @@ github.com/gorilla/css/scanner                                  398b0b046082ecb3
 github.com/gorilla/schema                                       master
 github.com/gorilla/securecookie                                 e59506cc896acb7f7bf732d4fdf5e25f7ccd8983
 github.com/gorilla/sessions                                     master
+github.com/hanzoai/sendgrid-go                                  hanzoai
 github.com/hashicorp/golang-lru                                 master
 github.com/huandu/facebook                                      v1.8.1
+github.com/hunterlong/authorizecim                              7b3f2878695d8893eed56f394e901e6fd959c6ea
 github.com/icrowley/fake                                        4178557ae428460c3780a381c824a1f3aceb6325
 github.com/juju/errors                                          c7d06af17c68cd34c835053720b21f6549d9b0ee
 github.com/julienschmidt/httprouter                             8c199fb6259ffc1af525cc3ad52ee60ba8359669
+github.com/keighl/mandrill                                      master
 github.com/mattn/go-isatty                                      6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
 github.com/mholt/binding                                        5594cf7a0fc126359d4ba7094fa65e9bf666e429
 github.com/netlify/netlify-go                                   9611031a648e8bd8cf8c88ac57ee7f2789c783b0
