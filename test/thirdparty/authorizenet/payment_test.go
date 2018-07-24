@@ -22,6 +22,7 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 			retPay, err := client.Authorize(pay)
 			Expect(err).ToNot(HaveOccurred())
 			capPay, err := client.Capture(retPay)
+			Expect(capPay.Captured).To(Equal(true))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(capPay.Account.TransId).NotTo(BeNil())
 			Expect(capPay.Account.TransId).NotTo(Equal(""))
@@ -29,6 +30,7 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 		It("Should succeed a one-step charge", func() {
 			pay := payment.Fake(db)
 			chrgPay, err := client.Charge(pay)
+			Expect(chrgPay.Captured).To(Equal(true))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(chrgPay.Account.TransId).NotTo(BeNil())
 			Expect(chrgPay.Account.TransId).NotTo(Equal(""))
@@ -50,16 +52,17 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 		It("Should authorize a simple payment", func() {
 			pay := payment.New(db)
 			pay.Amount = 2000
+			pay.Account.Name = "Test"
 			pay.Account.CVC = "424"
-			pay.Account.Month = 4
-			pay.Account.Year = 24
-			pay.Account.Name = "David Tai"
+			pay.Account.Month = 5
+			pay.Account.Year = 2025
 			pay.Account.Number = "4242424242424242"
 
 			retPay, err := client.Authorize(pay)
 
 			Expect(err).ToNot(HaveOccurred())
 			capPay, err := client.Capture(retPay)
+			Expect(capPay.Captured).To(Equal(true))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(capPay.Account.TransId).NotTo(BeNil())
 			Expect(capPay.Account.TransId).NotTo(Equal(""))
