@@ -44,6 +44,7 @@ github.com/phayes/freeport                                      master
 github.com/qedus/nds                                            master
 github.com/ryanuber/go-glob                                     master
 github.com/sendgrid/sendgrid-go                                 master
+github.com/aymerick/raymond                                     master
 github.com/sendgrid/rest                                        master
 github.com/speps/go-hashids                                     2aa1a76a4e7c76dbe7d39f40661ab0261d70153a
 github.com/stripe/stripe-go                                     v25.0.0
