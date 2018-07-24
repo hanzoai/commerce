@@ -55,7 +55,7 @@ func reset(c *gin.Context) {
 
 	// Send email
 	ctx := middleware.GetAppEngine(c)
-	email.SendPasswordResetEmail(ctx, org, usr, tok)
+	email.SendResetPassword(ctx, org, usr, tok)
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }
