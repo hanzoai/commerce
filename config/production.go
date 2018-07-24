@@ -54,7 +54,7 @@ func Production() *Config {
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
 	config.Facebook.GraphVersion = "v2.2"
 
-	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+	config.Email.Provider.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
 	config.Salesforce.ConsumerKey = ""
 	config.Salesforce.ConsumerSecret = ""
