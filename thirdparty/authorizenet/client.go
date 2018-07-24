@@ -7,10 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hunterlong/authorizecim"
-
+	"encoding/json"
+	"net/http"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
+	"net/http/httputil"
+	"bytes"
+	"io/ioutil"
+
+	"github.com/hanzoai/goauthorizenet"
 
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
@@ -18,9 +23,11 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/refs"
 	"hanzo.io/models/plan"
+	json2 "hanzo.io/util/json"
 )
 
 type Client struct {
+	client *http.Client
 	ctx context.Context
 	loginId string
 	transactionKey string
@@ -41,7 +48,7 @@ func New(ctx context.Context, loginId string, transactionKey string, key string,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
-	return &Client{ctx, loginId, transactionKey, key, test}
+	return &Client{httpClient, ctx, loginId, transactionKey, key, test}
 
 }
 
@@ -120,6 +127,8 @@ func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction{
 					Country:     pay.Buyer.Address.Country,
 				},
 			}
+	log.Warn("Payment %v", json2.Encode(pay), pay.Db.Context)
+	log.Warn("New Transaction %v", json2.Encode(newTransaction), pay.Db.Context)
 	return &newTransaction
 }
 
@@ -198,6 +207,7 @@ func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.S
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 
@@ -218,6 +228,7 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscriptio
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 	subscription.SubscriptionId = sub.Ref.AuthorizeNet.SubscriptionId
@@ -235,6 +246,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 	log.Debug("sub.Plan %v", sub.Plan)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	s := AuthorizeCIM.SetSubscription{
 		Id: sub.Ref.AuthorizeNet.SubscriptionId,
@@ -255,28 +267,33 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 
 	log.Debug("Authorize: Setting API Info")
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 
 	log.JSON(newTransaction)
 
 	log.Debug("Authorize: Invoking Authorize.net API")
-	response, err := newTransaction.AuthOnly()
+	response, err := AuthOnly(c.ctx, *newTransaction)
 
 	if err != nil {
-		log.Warn("Error")
+		log.Error("Authorize.net Authorize 1 %v / %v, Error %v", pay, newTransaction, err, c.ctx)
 		return pay, err
 	}
 
 	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
 		log.Warn("Approved")
-		return PopulatePaymentWithResponse(pay,response)
+		pay, err := PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Authorize 2 %v", err, c.ctx)
+		}
+		return pay, err
 	} else {
 		log.Warn("Not Approved")
 		log.Debug("Authorize: Authorize.Net API did not approve transaction")
 		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
 		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
 		log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
-		log.Debug("Authorize: Authorize.Net returned error: %v", err)
+		log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
 		return pay, AuthorizeNotApprovedError
 	}
 }
@@ -288,7 +305,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	})
 
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	// Cast back to our token
@@ -310,6 +327,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	}
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 	newTransaction := PaymentToNewTransaction(pay)
 	newTransaction.Amount = pay.Currency.ToStringNoSymbol(refundAmount)
 	newTransaction.RefTransId = pay.Account.TransId
@@ -345,7 +363,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		log.Debug("Authorize: Authorize.Net payment amount: %v", newTransaction.Amount)
 		// log.Debug("Authorize: Authorize.Net card number: %v", newTransaction.CreditCard.CardNumber)
 		// log.Debug("Authorize: Authorize.Net card expiration: %v", newTransaction.CreditCard.ExpirationDate)
-		log.Debug("Authorize: Authorize.Net returned error: %v", err)
+		log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
 
 		if err == nil {
 			err = MinimumRefundTimeNotReachedError
@@ -362,7 +380,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 
 	card, err := c.API.Cards.Get(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -375,7 +393,7 @@ func (c Client) GetCustomer(token, usr *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.Get(usr.Accounts.Stripe.CustomerId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -403,7 +421,7 @@ func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.Update(customerId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -426,7 +444,7 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 
 	cust, err := c.API.Customers.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Customer)(cust), nil
@@ -441,7 +459,7 @@ func (c Client) AddCard(token string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -459,7 +477,7 @@ func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.Update(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -473,7 +491,7 @@ func (c Client) DeleteCard(cardId string, usr *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.Del(cardId, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Card)(card), nil
@@ -520,7 +538,7 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 
 	charge, err := c.API.Charges.Update(id, params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, errors.New(err, c.ctx)
 	}
 
 	return (*Charge)(charge), nil
@@ -532,14 +550,21 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	newTransaction := PaymentToNewTransaction(pay)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetHTTPClient(c.client)
 	response, err := newTransaction.Charge()
 
 	if err != nil {
+		log.Error("Authorize.net Charge 1 %v", err, c.ctx)
 		return pay, err
 	}
 
 	if response.Approved() {
 		pay, err = PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Charge 2 %v", err, c.ctx)
+		} else {
+			pay.Captured = true
+		}
 		return pay, err
 	} else {
 		return pay, ChargeNotApprovedError
@@ -552,17 +577,101 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	oldTransaction := PaymentToPreviousTransaction(pay)
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	response, err := oldTransaction.Capture()
+	AuthorizeCIM.SetHTTPClient(c.client)
+	response, err := Capture(c.ctx, *oldTransaction)
 
 	if err != nil {
+		log.Error("Authorize.net Capture 1 %v", err, c.ctx)
 		return pay, err
 	}
 
 	if response.Approved() {
 		pay, err = PopulatePaymentWithResponse(pay,response)
+		if err != nil {
+			log.Error("Authorize.net Capture 2 %v", err, c.ctx)
+		} else {
+			pay.Captured = true
+		}
 		return pay, err
 	} else {
 		return pay, CaptureNotApprovedError
 	}
 
+}
+
+func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction) (*AuthorizeCIM.TransactionResponse, error) {
+	var new AuthorizeCIM.TransactionRequest
+	new = AuthorizeCIM.TransactionRequest{
+		TransactionType: "authOnlyTransaction",
+		Amount:          tranx.Amount,
+		Payment: &AuthorizeCIM.Payment{
+			CreditCard: tranx.CreditCard,
+		},
+	}
+	response, err := SendTransactionRequest(ctx, new)
+	return response, err
+}
+
+func Capture(ctx context.Context, tranx AuthorizeCIM.PreviousTransaction) (*AuthorizeCIM.TransactionResponse, error) {
+	var new AuthorizeCIM.TransactionRequest
+	new = AuthorizeCIM.TransactionRequest{
+		TransactionType: "priorAuthCaptureTransaction",
+		RefTransId:      tranx.RefId,
+	}
+	response, err := SendTransactionRequest(ctx, new)
+	return response, err
+}
+
+func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionRequest) (*AuthorizeCIM.TransactionResponse, error) {
+	action := AuthorizeCIM.CreatePayment{
+		CreateTransactionRequest: AuthorizeCIM.CreateTransactionRequest{
+			MerchantAuthentication: AuthorizeCIM.GetAuthentication(),
+			TransactionRequest:     input,
+		},
+	}
+
+	jsoned, err := json.Marshal(action)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := SendRequest(ctx, jsoned)
+	if err != nil {
+		return nil, err
+	}
+
+	var dat AuthorizeCIM.TransactionResponse
+
+	log.Warn("Returned Data: %s",response, ctx)
+	err = json.Unmarshal(response, &dat)
+	if err != nil {
+		return nil, err
+	}
+	return &dat, err
+}
+
+func SendRequest(ctx context.Context, input []byte) ([]byte, error) {
+	api_endpoint := "https://apitest.authorize.net/xml/v1/request.api"
+	req, err := http.NewRequest("POST", api_endpoint, bytes.NewBuffer(input))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context: ctx,
+		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	dump, _ := httputil.DumpResponse(resp, true)
+	log.Warn("Response %s", string(dump), ctx)
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
+	return body, err
 }
