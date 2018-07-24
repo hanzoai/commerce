@@ -35,6 +35,10 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Website = "http://beta.halcyon.bio"
 	org.SecretKey = []byte("VwqutxegjNfz3kTo6LYMJIDQlUHxPFXHdLdiUdPdrS7v2L7fkmfn8ltqzrUmw58V")
 
+	org.AuthorizeNet.Sandbox.LoginId = ""
+	org.AuthorizeNet.Sandbox.TransactionKey = ""
+	org.AuthorizeNet.Sandbox.Key = "Simon"
+
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
 	org.Fees.Affiliate.Flat = 0
