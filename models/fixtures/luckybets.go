@@ -8,6 +8,7 @@ import (
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/types/email"
 )
 
 var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization {
@@ -43,12 +44,14 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 	// Email configuration
 	org.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Admin"
-	org.Email.Defaults.FromEmail = "noreply@hanzo.io"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Admin",
+		Address: "noreply@hanzo.io",
+	}
 
-	org.Email.OrderConfirmation.Subject = "Deposit confirmation"
-	org.Email.OrderConfirmation.Enabled = true
+	org.Email.Order.Confirmation.Subject = "Deposit confirmation"
+	org.Email.Order.Confirmation.Enabled = true
 
 	org.Email.User.PasswordReset.Subject = "Reset your password"
 	org.Email.User.PasswordReset.Enabled = true
