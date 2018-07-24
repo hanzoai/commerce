@@ -56,8 +56,7 @@ func PasswordResetSubmit(c *gin.Context) {
 		Name:    usr.Name(),
 	})
 	message.Substitutions["resetUrl"] = resetUrl
-	message.TemplatePath = "email/password-reset.html"
-	email.Send(c, message, nil)
+	email.SendResetPassword(c, nil, usr, token)
 	template.Render(c, "login/password-reset-sent.html")
 }
 
@@ -131,8 +130,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 		Address: usr.Email,
 		Name:    usr.Name(),
 	})
-	message.TemplatePath = "email/password-updated.html"
-	email.Send(ctx, message, nil)
+	email.SendUpdatePassword(ctx, nil, usr, token)
 
 	// Login user
 	auth.Login(c, usr)
