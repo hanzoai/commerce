@@ -16,6 +16,7 @@ const (
 	UserActivated      Type = "user.activated"
 	UserConfirmEmail   Type = "user.confirmemail"
 	UserResetPassword  Type = "user.resetPassword"
+	UserUpdatePassword Type = "user.updatePassword"
 	UserWelcome        Type = "user.welcome"
 	SubscriberWelcome  Type = "subscriber.welcome"
 )
@@ -57,10 +58,11 @@ type Settings struct {
 	} `json:"order"`
 
 	User struct {
-		Welcome       Setting `json:"welcome`
-		ConfirmEmail  Setting `json:"confirmEmail"`
-		Activated     Setting `json:"activated"`
-		ResetPassword Setting `json:"ResetPassword"`
+		Welcome        Setting `json:"welcome`
+		ConfirmEmail   Setting `json:"confirmEmail"`
+		Activated      Setting `json:"activated"`
+		ResetPassword  Setting `json:"resetPassword"`
+		UpdatePassword Setting `json:"updatePassword"`
 	} `json:"user"`
 
 	Subscriber struct {
@@ -92,6 +94,8 @@ func (s Settings) Get(typ Type) Setting {
 		setting = s.User.Activated
 	case UserResetPassword:
 		setting = s.User.ResetPassword
+	case UserUpdatePassword:
+		setting = s.User.UpdatePassword
 
 	// Subscriber emails
 	case SubscriberWelcome:
