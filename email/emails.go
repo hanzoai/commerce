@@ -145,6 +145,19 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 	SendTemplate("password-reset", c, message, org)
 }
 
+func SendUpdatePassword(c context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
+	// Get configuration for this email
+	settings := org.Email.Get(email.UserResetPassword)
+	if !settings.Enabled {
+		return
+	}
+
+	message := userMessage(settings, usr)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = tok
+	SendTemplate("password-update", c, message, org)
+}
+
 // Send email asking for user to confirm email address
 func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr *user.User) {
 	settings := org.Email.Get(email.UserConfirmEmail)
