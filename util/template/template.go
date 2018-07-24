@@ -16,7 +16,28 @@ import (
 
 var cwd, _ = os.Getwd()
 
-func TemplateSet() *pongo2.TemplateSet {
+func createMap(pairs []interface{}) map[string]interface{} {
+	// Create map from pairs
+	m := make(map[string]interface{})
+
+	for i := 0; i < len(pairs); i = i + 2 {
+		m[pairs[i].(string)] = pairs[i+1]
+	}
+
+	return m
+}
+
+func createContext(pairs []interface{}) pongo2.Context {
+	ctx := pongo2.Context{}
+	m := createMap(pairs)
+	for k, v := range m {
+		ctx[k] = v
+	}
+
+	return ctx
+}
+
+func createTemplateSet() *pongo2.TemplateSet {
 	loader := pongo2.MustNewLocalFileSystemLoader("")
 	set := pongo2.NewSet("default", loader)
 
@@ -55,25 +76,9 @@ func TemplateSet() *pongo2.TemplateSet {
 	return set
 }
 
-var templateSet = TemplateSet()
+var templateSet = createTemplateSet()
 
-func createContext(c *gin.Context, pairs ...interface{}) pongo2.Context {
-	// Create context from pairs
-	ctx := pongo2.Context{}
-
-	if c != nil {
-		// Make gin context available
-		ctx["ctx"] = c.Keys
-	}
-
-	for i := 0; i < len(pairs); i = i + 2 {
-		ctx[pairs[i].(string)] = pairs[i+1]
-	}
-
-	return ctx
-}
-
-func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
+func getTemplate(path string) *pongo2.Template {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
 
@@ -83,8 +88,15 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
-	// Create context
-	ctx := createContext(c, pairs...)
+	return template
+}
+
+func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
+	// Get template
+	template := getTemplate(path)
+
+	// Create pongo context
+	ctx := createContext(pairs)
 
 	// Render template
 	if err := template.ExecuteWriter(ctx, c.Writer); err != nil {
@@ -97,18 +109,15 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	return
 }
 
-func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
-	// All templates are expected to be in templates dir
-	templatePath := cwd + "/templates/" + path
+func RenderEmail(path string, data map[string]interface{}) string {
+	// Get template
+	template := getTemplate(path)
 
-	// Get template from cache
-	template, err := templateSet.FromCache(templatePath)
-	if err != nil {
-		log.Panic("Unable to render template: %v\n\n%v", path, err)
+	// Create pongo context
+	ctx := pongo2.Context{}
+	for k, v := range data {
+		ctx[k] = v
 	}
-
-	// Create context
-	ctx := createContext(c, pairs...)
 
 	// Render template
 	out, err := template.Execute(ctx)
@@ -119,11 +128,30 @@ func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 	return out
 }
 
-func RenderStringFromString(template string, pairs ...interface{}) string {
-	ctx := createContext(nil, pairs...)
+func RenderPath(path string, pairs ...interface{}) string {
+	// Get template
+	template := getTemplate(path)
+
+	// Create pongo context
+	ctx := createContext(pairs)
+
+	// Render template
+	out, err := template.Execute(ctx)
+	if err != nil {
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
+	}
+
+	return out
+}
+
+func RenderString(template string, pairs ...interface{}) string {
+	// Create pongo context
+	ctx := createContext(pairs)
+
+	// Render template
 	str, err := pongo2.RenderTemplateString(template, ctx)
 	if err != nil {
-		panic(err)
+		log.Panic("Unable to render template: %v", err)
 	}
 	return str
 }

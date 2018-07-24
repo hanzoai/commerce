@@ -6,6 +6,9 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 )
 
 var demoMode = true
@@ -39,6 +42,12 @@ type Config struct {
 	SentryDSN         string
 	SiteTitle         string
 	StaticUrl         string
+
+	Email struct {
+		From     email.Email
+		ReplyTo  email.Email
+		Provider integration.Integration
+	}
 
 	Ethereum struct {
 		TestPassword    string
@@ -258,6 +267,7 @@ var Cloudflare = config.Cloudflare
 var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
+var Email = config.Email
 var Ethereum = config.Ethereum
 var Facebook = config.Facebook
 var Fee = config.Fee

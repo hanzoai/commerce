@@ -2,140 +2,148 @@ package email
 
 import (
 	"context"
-	// "strconv"
-	// "strings"
+	"strings"
 	"time"
 
-	// "hanzo.io/log"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	// "hanzo.io/models/referrer"
+	"hanzo.io/models/referrer"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
-	// "hanzo.io/models/types/country"
+	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
-	// mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
-func SendPasswordResetEmail(ctx context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
+// Create new message using provided defaults
+func message(settings email.Setting) *email.Message {
+	m := email.NewMessage()
+	m.From = settings.From
+	m.ReplyTo = settings.ReplyTo
+	m.Subject = settings.Subject
+	return m
+}
+
+// Transactional email for user
+func userMessage(settings email.Setting, usr *user.User) *email.Message {
+	m := message(settings)
+	m.AddTos(email.Email{usr.Name(), usr.Email})
+	m.Substitutions["USER_ID"] = usr.Id()
+	m.Substitutions["FIRST_NAME"] = usr.FirstName
+	m.Substitutions["LAST_NAME"] = usr.LastName
+	m.TemplateData["user"] = usr
+	return m
+}
+
+// Transactional email for subscriber
+func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber) *email.Message {
+	m := message(settings)
+	m.AddTos(email.Email{sub.Name(), sub.Email})
+	m.Substitutions["SUBSCRIBER_ID"] = sub.Id()
+	m.Substitutions["NAME"] = sub.Name()
+	m.TemplateData["subscriber"] = sub
+	return m
+}
+
+// Transactional email related to an order
+func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay *payment.Payment) *email.Message {
+	m := userMessage(settings, usr)
+
+	currencyCode := strings.ToUpper(ord.Currency.Code())
+	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
+	stateName := ord.ShippingAddress.State
+	if len(stateName) <= 2 {
+		stateName = strings.ToUpper(stateName)
+	}
+	items := make([]map[string]interface{}, len(ord.Items))
+
+	for i, item := range ord.Items {
+		items[i] = map[string]interface{}{
+			"productName":  item.ProductName,
+			"quantity":     item.Quantity,
+			"price":        item.DisplayPrice(ord.Currency),
+			"currencyCode": currencyCode,
+		}
+	}
+
+	// Include all relevant order information
+	order := map[string]interface{}{
+		"number":    ord.Number,
+		"id":        ord.DisplayId(),
+		"subtotal":  ord.DisplaySubtotal(),
+		"tax":       ord.DisplayTax(),
+		"shipping":  ord.DisplayShipping(),
+		"total":     ord.DisplayTotal(),
+		"refunded":  ord.DisplayRefunded(),
+		"remaining": ord.DisplayRemaining(),
+		"currency":  currencyCode,
+		"items":     items,
+		"billingAddress": map[string]interface{}{
+			"name":       strings.Title(ord.BillingAddress.Name),
+			"line1":      strings.Title(ord.BillingAddress.Line1),
+			"line2":      strings.Title(ord.BillingAddress.Line2),
+			"postalCode": ord.BillingAddress.PostalCode,
+			"city":       strings.Title(ord.BillingAddress.City),
+			"state":      stateName,
+			"country":    countryName,
+		},
+		"shippingAddress": map[string]interface{}{
+			"name":       strings.Title(ord.ShippingAddress.Name),
+			"line1":      strings.Title(ord.ShippingAddress.Line1),
+			"line2":      strings.Title(ord.ShippingAddress.Line2),
+			"postalCode": ord.ShippingAddress.PostalCode,
+			"city":       strings.Title(ord.ShippingAddress.City),
+			"state":      stateName,
+			"country":    countryName,
+		},
+		"day":       ord.CreatedAt.Day(),
+		"month":     ord.CreatedAt.Month(),
+		"monthName": ord.CreatedAt.Month().String(),
+		"year":      ord.CreatedAt.Year(),
+		"fulfillment": map[string]interface{}{
+			"trackingnumber": ord.Fulfillment.Trackings[0],
+			"service":        ord.Fulfillment.Service,
+			"carrier":        ord.Fulfillment.Carrier,
+		},
+		"storeId": ord.StoreId,
+	}
+
+	// Include discount
+	if ord.Discount != 0 {
+		order["discount"] = ord.DisplayDiscount()
+	}
+
+	// Include payment data if available
+	if pay != nil {
+		m.TemplateData["payment"] = map[string]interface{}{
+			"lastFour": pay.Account.LastFour,
+		}
+	}
+
+	m.TemplateData["order"] = order
+	return m
+}
+
+// Send reset password email
+func SendResetPassword(c context.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
 	// Get configuration for this email
-	conf := org.Email.Get(email.UserPasswordReset)
-	if !conf.Enabled {
+	settings := org.Email.Get(email.UserResetPassword)
+	if !settings.Enabled {
 		return
 	}
 
-	// from := conf.From
-
-	// // To
-	// to := email.Email{
-	// 	Name:    usr.Name(),
-	// 	Address: usr.Email,
-	// }
-
-	// // Subject
-	// subject := conf.Subject
-
-	// // Create Merge Vars
-	// vars := map[string]interface{}{
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
-	// 	"token": map[string]interface{}{
-	// 		"id": tok.Id(),
-	// 	},
-
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
-	// 	"TOKEN_ID":       strings.Title(tok.Id()),
-	// }
-
-	// Get Email integration
-	// Send Email
-	// mandrill.SendTemplate(ctx, "password-reset", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := userMessage(settings, usr)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = tok
+	SendTemplate("password-reset", c, message, org)
 }
 
-// SendEmailConfirmedEmail is gay
-func SendEmailConfirmedEmail(c context.Context, org *organization.Organization, usr *user.User) {
-	s := org.Email.Get(email.UserEmailConfirmed)
-
-	if !s.Enabled {
-		return
-	}
-
-	// Create email message
-	message := new(email.Message)
-	message.From = s.From
-	message.ReplyTo = s.ReplyTo
-	message.Subject = s.Subject
-	message.AddTos(email.Email{usr.Name(), usr.Email})
-
-	subs := make(map[string]string)
-	subs["userId"] = usr.Id()
-	subs["firstName"] = usr.FirstName
-	subs["lastName"] = usr.LastName
-	message.Substitutions = subs
-
-	SendEmail(c, org, message)
-}
-
-func SendSubscriberWelcome(ctx context.Context, org *organization.Organization, s *subscriber.Subscriber) {
-	conf := org.Email.Get(email.SubscriberWelcome)
-	if !conf.Enabled {
-		return
-	}
-
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := s.Email
-	// toName := s.Name()
-
-	// // Subject
-	// subject := conf.Subject
-
-	// // Send Email
-	// mandrill.SendTemplate(ctx, "subscriber-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, s.Metadata)
-}
-
-func SendUserWelcome(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Get(email.UserWelcome)
-	if !conf.Enabled {
-		return
-	}
-
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
-
-	// // Subject
-	// subject := conf.Subject
-
-	// // Create Merge Vars
-	// vars := map[string]interface{}{
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
-	// }
-
-	// // Send Email
-	// mandrill.SendTemplate(ctx, "user-welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
-}
-
-func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.Get(email.UserEmailConfirmed)
-	if !conf.Enabled {
+// Send email asking for user to confirm email address
+func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserConfirmEmail)
+	if !settings.Enabled {
 		return
 	}
 
@@ -150,485 +158,97 @@ func SendAccountCreationConfirmationEmail(ctx context.Context, org *organization
 		panic(err)
 	}
 
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
-
-	// // Subject
-	// subject := conf.Subject
-
-	// // Create Merge Vars
-	// vars := map[string]interface{}{
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
-	// 	"token": map[string]interface{}{
-	// 		"id": tok.Id(),
-	// 	},
-
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
-	// 	"TOKEN_ID":       tok.Id(),
-	// }
-
-	// // Send Email
-	// mandrill.SendTemplate(ctx, "user-email-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := userMessage(settings, usr)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = tok
+	SendTemplate("user-email-confirmation", c, message, org)
 }
 
-func SendOrderConfirmationEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
-	conf := org.Email.Get(email.OrderConfirmation)
-	if !conf.Enabled {
+// Send email confirming email address is confirmed
+func SendUserActivated(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserActivated)
+	if !settings.Enabled {
 		return
 	}
 
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
-
-	// // Subject, HTML
-
-	// // order.number
-	// // order.items.productName
-	// // order.items.quantity
-	// // order.items.displayPrice
-	// // order.displaySubtotal
-	// // order.displayDiscount
-	// // order.displayTax
-	// // order.displayShipping
-	// // order.currency
-	// // order.displayTotal
-	// // order.shippingAddress.line1
-	// // order.shippingAddress.line2
-	// // order.shippingAddress.postalCode
-	// // order.shippingAddress.state
-	// // order.shippingAddress.country
-	// // order.orderDay
-	// // order.orderMonthName
-	// // order.orderYear
-	// subject := conf.Subject
-
-	// referralCode := ""
-	// referrers := make([]referrer.Referrer, 0)
-	// if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
-	// 	log.Warn("Failed to load referrals for user: %v", err, ctx)
-	// }
-
-	// if len(referrers) > 0 {
-	// 	referralCode = referrers[0].Id_
-	// }
-
-	// currencyCode := strings.ToUpper(ord.Currency.Code())
-	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	// stateName := ord.ShippingAddress.State
-	// if len(stateName) <= 2 {
-	// 	stateName = strings.ToUpper(stateName)
-	// }
-	// items := make([]map[string]interface{}, len(ord.Items))
-	// vars := map[string]interface{}{
-	// 	"order": map[string]interface{}{
-	// 		"number":          ord.DisplayId(),
-	// 		"displaysubtotal": ord.DisplaySubtotal(),
-	// 		"displaytax":      ord.DisplayTax(),
-	// 		"displayshipping": ord.DisplayShipping(),
-	// 		"displaytotal":    ord.DisplayTotal(),
-	// 		"currency":        currencyCode,
-	// 		"items":           items,
-	// 		"shippingaddress": map[string]interface{}{
-	// 			"name":       strings.Title(ord.ShippingAddress.Name),
-	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
-	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
-	// 			"postalcode": ord.ShippingAddress.PostalCode,
-	// 			"city":       strings.Title(ord.ShippingAddress.City),
-	// 			"state":      stateName,
-	// 			"country":    countryName,
-	// 		},
-	// 		"createdday":       ord.CreatedAt.Day(),
-	// 		"createdmonthname": ord.CreatedAt.Month().String(),
-	// 		"createdyear":      ord.CreatedAt.Year(),
-	// 		"referral":         referralCode,
-	// 		"storeid":          ord.StoreId,
-	// 	},
-	// 	"ORDER_NUMBER":                      ord.DisplayId(),
-	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-	// 	"ORDER_CURRENCY":                    currencyCode,
-	// 	"ORDER_SHIPPING_ADDRESS_NAME":       strings.Title(ord.ShippingAddress.Name),
-	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
-	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
-	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-	// 	"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
-	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-	// 	"ORDER_REFERRAL":                    referralCode,
-	// 	"ORDER_STOREID":                     ord.StoreId,
-
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
-
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
-	// }
-
-	// if ord.Discount != 0 {
-	// 	ordVars := vars["order"].(map[string]interface{})
-	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
-	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	// }
-
-	// for i, item := range ord.Items {
-	// 	items[i] = map[string]interface{}{
-	// 		"productname":  item.ProductName,
-	// 		"quantity":     item.Quantity,
-	// 		"displayprice": item.DisplayPrice(ord.Currency),
-	// 		"currency":     currencyCode,
-	// 	}
-
-	// 	idx := strconv.Itoa(i)
-	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	// }
-
-	// mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := userMessage(settings, usr)
+	SendTemplate("user-email-confirmed", c, message, org)
 }
 
-func SendPartialRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Get(email.OrderConfirmation)
-	if !conf.Enabled {
+// Send welcome email to subscriber
+func SendSubscriberWelcome(c context.Context, org *organization.Organization, s *subscriber.Subscriber) {
+	settings := org.Email.Get(email.SubscriberWelcome)
+	if !settings.Enabled {
 		return
 	}
 
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
-
-	// // Subject, HTML
-	// subject := conf.Subject
-
-	// currencyCode := strings.ToUpper(ord.Currency.Code())
-	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	// stateName := ord.ShippingAddress.State
-	// if len(stateName) <= 2 {
-	// 	stateName = strings.ToUpper(stateName)
-	// }
-	// items := make([]map[string]interface{}, len(ord.Items))
-	// vars := map[string]interface{}{
-	// 	"order": map[string]interface{}{
-	// 		"number":           ord.DisplayId(),
-	// 		"displaysubtotal":  ord.DisplaySubtotal(),
-	// 		"displaytax":       ord.DisplayTax(),
-	// 		"displayshipping":  ord.DisplayShipping(),
-	// 		"displaytotal":     ord.DisplayTotal(),
-	// 		"displayrefunded":  ord.DisplayRefunded(),
-	// 		"displayremaining": ord.DisplayRemaining(),
-	// 		"currency":         currencyCode,
-	// 		"items":            items,
-	// 		"shippingaddress": map[string]interface{}{
-	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
-	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
-	// 			"postalcode": ord.ShippingAddress.PostalCode,
-	// 			"city":       strings.Title(ord.ShippingAddress.City),
-	// 			"state":      stateName,
-	// 			"country":    countryName,
-	// 		},
-	// 		"createdday":       ord.CreatedAt.Day(),
-	// 		"createdmonthname": ord.CreatedAt.Month().String(),
-	// 		"createdyear":      ord.CreatedAt.Year(),
-	// 		"storeid":          ord.StoreId,
-	// 	},
-	// 	"ORDER_NUMBER":                      ord.DisplayId(),
-	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-	// 	"ORDER_CURRENCY":                    currencyCode,
-	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      strings.Title(ord.ShippingAddress.Line1),
-	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      strings.Title(ord.ShippingAddress.Line2),
-	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-	// 	"ORDER_SHIPPING_ADDRESS_CITY":       strings.Title(ord.ShippingAddress.City),
-	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-	// 	"ORDER_STOREID":                     ord.StoreId,
-
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
-
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
-
-	// 	"payment": map[string]interface{}{
-	// 		"lastfour": pay.Account.LastFour,
-	// 	},
-
-	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	// }
-
-	// if ord.Discount != 0 {
-	// 	ordVars := vars["order"].(map[string]interface{})
-	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
-	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	// }
-
-	// for i, item := range ord.Items {
-	// 	items[i] = map[string]interface{}{
-	// 		"productname":  item.ProductName,
-	// 		"quantity":     item.Quantity,
-	// 		"displayprice": item.DisplayPrice(ord.Currency),
-	// 		"currency":     currencyCode,
-	// 	}
-
-	// 	idx := strconv.Itoa(i)
-	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	// }
-
-	// mandrill.SendTemplate(ctx, "order-partially-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := subscriberMessage(settings, s)
+	SendTemplate("subscriber-welcome", c, message, org)
 }
 
-func SendFullRefundEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Get(email.OrderConfirmation)
-	if !conf.Enabled {
+// Send welcome email to user
+func SendUserWelcome(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.UserWelcome)
+	if !settings.Enabled {
 		return
 	}
 
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
-
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
-
-	// // Subject, HTML
-	// subject := conf.Subject
-
-	// currencyCode := strings.ToUpper(ord.Currency.Code())
-	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	// stateName := ord.ShippingAddress.State
-	// if len(stateName) <= 2 {
-	// 	stateName = strings.ToUpper(stateName)
-	// }
-	// items := make([]map[string]interface{}, len(ord.Items))
-	// vars := map[string]interface{}{
-	// 	"order": map[string]interface{}{
-	// 		"number":           ord.DisplayId(),
-	// 		"displaysubtotal":  ord.DisplaySubtotal(),
-	// 		"displaytax":       ord.DisplayTax(),
-	// 		"displayshipping":  ord.DisplayShipping(),
-	// 		"displaytotal":     ord.DisplayTotal(),
-	// 		"displayrefunded":  ord.DisplayRefunded(),
-	// 		"displayremaining": ord.DisplayRemaining(),
-	// 		"currency":         currencyCode,
-	// 		"items":            items,
-	// 		"shippingaddress": map[string]interface{}{
-	// 			"line1":      ord.ShippingAddress.Line1,
-	// 			"line2":      ord.ShippingAddress.Line2,
-	// 			"postalcode": ord.ShippingAddress.PostalCode,
-	// 			"city":       ord.ShippingAddress.City,
-	// 			"state":      stateName,
-	// 			"country":    countryName,
-	// 		},
-	// 		"createdday":       ord.CreatedAt.Day(),
-	// 		"createdmonthname": ord.CreatedAt.Month().String(),
-	// 		"createdyear":      ord.CreatedAt.Year(),
-	// 		"storeid":          ord.StoreId,
-	// 	},
-	// 	"ORDER_NUMBER":                      ord.DisplayId(),
-	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-	// 	"ORDER_CURRENCY":                    currencyCode,
-	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
-	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-	// 	"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
-	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-	// 	"ORDER_STOREID":                     ord.StoreId,
-
-	// 	"user": map[string]interface{}{
-	// 		"firstname": usr.FirstName,
-	// 		"lastname":  usr.LastName,
-	// 	},
-
-	// 	"USER_FIRSTNAME": usr.FirstName,
-	// 	"USER_LASTNAME":  usr.LastName,
-
-	// 	"payment": map[string]interface{}{
-	// 		"lastfour": pay.Account.LastFour,
-	// 	},
-
-	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	// }
-
-	// if ord.Discount != 0 {
-	// 	ordVars := vars["order"].(map[string]interface{})
-	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
-	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	// }
-
-	// for i, item := range ord.Items {
-	// 	items[i] = map[string]interface{}{
-	// 		"productname":  item.ProductName,
-	// 		"quantity":     item.Quantity,
-	// 		"displayprice": item.DisplayPrice(ord.Currency),
-	// 		"currency":     currencyCode,
-	// 	}
-
-	// 	idx := strconv.Itoa(i)
-	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	// }
-
-	// mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := userMessage(settings, usr)
+	SendTemplate("subscriber-welcome", c, message, org)
 }
 
-func SendFulfillmentEmail(ctx context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	conf := org.Email.Get(email.OrderConfirmation)
-	if !conf.Enabled {
+func SendOrderConfirmation(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
+	settings := org.Email.Get(email.OrderConfirmation)
+	if !settings.Enabled {
 		return
 	}
 
-	// // From
-	// fromName := conf.FromName
-	// fromEmail := conf.FromEmail
+	message := orderMessage(settings, ord, usr, nil)
 
-	// // To
-	// toEmail := usr.Email
-	// toName := usr.Name()
+	referralCode := ""
+	referrers := make([]referrer.Referrer, 0)
+	if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+		log.Warn("Failed to load referrals for user: %v", err, c)
+	}
 
-	// // Subject, HTML
-	// subject := conf.Subject
+	if len(referrers) > 0 {
+		referralCode = referrers[0].Id_
+	}
+	order := message.TemplateData["order"].(map[string]interface{})
+	order["referralCode"] = referralCode
 
-	// currencyCode := strings.ToUpper(ord.Currency.Code())
-	// countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
-	// stateName := ord.ShippingAddress.State
-	// if len(stateName) <= 2 {
-	// 	stateName = strings.ToUpper(stateName)
-	// }
-	// items := make([]map[string]interface{}, len(ord.Items))
-	// vars := map[string]interface{}{
-	// 	"order": map[string]interface{}{
-	// 		"number":           ord.DisplayId(),
-	// 		"displaysubtotal":  ord.DisplaySubtotal(),
-	// 		"displaytax":       ord.DisplayTax(),
-	// 		"displayshipping":  ord.DisplayShipping(),
-	// 		"displaytotal":     ord.DisplayTotal(),
-	// 		"displayrefunded":  ord.DisplayRefunded(),
-	// 		"displayremaining": ord.DisplayRemaining(),
-	// 		"currency":         currencyCode,
-	// 		"items":            items,
-	// 		"shippingaddress": map[string]interface{}{
-	// 			"line1":      strings.Title(ord.ShippingAddress.Line1),
-	// 			"line2":      strings.Title(ord.ShippingAddress.Line2),
-	// 			"postalcode": ord.ShippingAddress.PostalCode,
-	// 			"city":       strings.Title(ord.ShippingAddress.City),
-	// 			"state":      stateName,
-	// 			"country":    countryName,
-	// 		},
-	// 		"createdday":       ord.CreatedAt.Day(),
-	// 		"createdmonthname": ord.CreatedAt.Month().String(),
-	// 		"createdyear":      ord.CreatedAt.Year(),
-	// 		"fulfillment": map[string]interface{}{
-	// 			"trackingnumber": "",
-	// 			"service":        ord.Fulfillment.Service,
-	// 			"carrier":        ord.Fulfillment.Carrier,
-	// 		},
-	// 	},
-	// 	"ORDER_NUMBER":                      ord.DisplayId(),
-	// 	"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-	// 	"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
-	// 	"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
-	// 	"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
-	// 	"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
-	// 	"ORDER_DISPLAY_REMAINING":           ord.DisplayRemaining(),
-	// 	"ORDER_CURRENCY":                    currencyCode,
-	// 	"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
-	// 	"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
-	// 	"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-	// 	"ORDER_SHIPPING_ADDRESS_CITY":       ord.ShippingAddress.City,
-	// 	"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
-	// 	"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
-	// 	"ORDER_CREATED_DAY":                 ord.CreatedAt.Day(),
-	// 	"ORDER_CREATED_MONTH_NAME":          ord.CreatedAt.Month().String(),
-	// 	"ORDER_CREATED_YEAR":                ord.CreatedAt.Year(),
-	// 	"ORDER_FULFILLMENT_TRACKING_NUMBER": "",
-	// 	"ORDER_FULFILLMENT_SERVICE":         ord.Fulfillment.Service,
-	// 	"ORDER_FULFILLMENT_CARRIER":         ord.Fulfillment.Carrier,
+	SendTemplate("order-confirmation", c, message, org)
+}
 
-	// 	"user": map[string]interface{}{
-	// 		"firstname": strings.Title(usr.FirstName),
-	// 		"lastname":  strings.Title(usr.LastName),
-	// 	},
+func SendOrderPartiallyRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderPartialRefund)
+	if !settings.Enabled {
+		return
+	}
 
-	// 	"USER_FIRSTNAME": strings.Title(usr.FirstName),
-	// 	"USER_LASTNAME":  strings.Title(usr.LastName),
+	message := orderMessage(settings, ord, usr, pay)
+	message.TemplateData["payment"] = map[string]interface{}{
+		"lastFour": pay.Account.LastFour,
+	}
+	SendTemplate("order-partially-refunded", c, message, org)
+}
 
-	// 	"payment": map[string]interface{}{
-	// 		"lastfour": pay.Account.LastFour,
-	// 	},
+func SendOrderRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderRefund)
+	if !settings.Enabled {
+		return
+	}
 
-	// 	"PAYMENT_LASTFOUR": pay.Account.LastFour,
-	// }
+	message := orderMessage(settings, ord, usr, pay)
+	SendTemplate("order-refunded", c, message, org)
+}
 
-	// if ord.Discount != 0 {
-	// 	ordVars := vars["order"].(map[string]interface{})
-	// 	ordVars["displaydiscount"] = ord.DisplayDiscount()
-	// 	vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
-	// }
+func SendOrderShipped(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
+	settings := org.Email.Get(email.OrderShipped)
+	if !settings.Enabled {
+		return
+	}
 
-	// for i, item := range ord.Items {
-	// 	items[i] = map[string]interface{}{
-	// 		"productname":  item.ProductName,
-	// 		"quantity":     item.Quantity,
-	// 		"displayprice": item.DisplayPrice(ord.Currency),
-	// 		"currency":     currencyCode,
-	// 	}
-
-	// 	idx := strconv.Itoa(i)
-	// 	vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
-	// 	vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
-	// 	vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
-	// 	vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
-	// }
-
-	// mandrill.SendTemplate(ctx, "order-shipped", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	message := orderMessage(settings, ord, usr, pay)
+	SendTemplate("order-shipped", c, message, org)
 }
