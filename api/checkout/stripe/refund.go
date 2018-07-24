@@ -3,6 +3,8 @@ package stripe
 import (
 	"errors"
 
+	"hanzo.io/email"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -11,8 +13,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/email"
-	"hanzo.io/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")
@@ -98,7 +98,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	if ord.Total == ord.Refunded {
-		email.SendFullRefundEmail(ctx, org, ord, usr, payments[0])
+		email.SendOrderRefunded(ctx, org, ord, usr, payments[0])
 
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
@@ -111,7 +111,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		ord.PaymentStatus = payment.Refunded
 		ord.Status = order.Cancelled
 	} else {
-		email.SendPartialRefundEmail(ctx, org, ord, usr, payments[0])
+		email.SendOrderRefunded(ctx, org, ord, usr, payments[0])
 	}
 
 	return ord.Put()
