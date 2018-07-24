@@ -8,15 +8,16 @@ import (
 type Type string
 
 const (
-	OrderConfirmation     Type = "order.confirmation"
-	OrderRefunded         Type = "order.refunded"
-	OrderShipped          Type = "order.shipped"
-	OrderUpdated          Type = "order.updated"
-	UserWelcome           Type = "user.welcome"
-	UserEmailConfirmation Type = "user.emailConfirmation"
-	UserEmailConfirmed    Type = "user.emailConfirmed"
-	UserPasswordReset     Type = "user.passwordReset"
-	SubscriberWelcome     Type = "subscriber.welcome"
+	OrderConfirmation  Type = "order.confirmation"
+	OrderPartialRefund Type = "order.partialrefund"
+	OrderRefund        Type = "order.refund"
+	OrderShipped       Type = "order.shipped"
+	OrderUpdated       Type = "order.updated"
+	UserActivated      Type = "user.activated"
+	UserConfirmEmail   Type = "user.confirmemail"
+	UserResetPassword  Type = "user.resetPassword"
+	UserWelcome        Type = "user.welcome"
+	SubscriberWelcome  Type = "subscriber.welcome"
 )
 
 type Setting struct {
@@ -48,17 +49,18 @@ type Settings struct {
 
 	// Per-email configuration
 	Order struct {
-		Confirmation Setting `json:"confirmation"`
-		Refunded     Setting `json:"refunded"`
-		Shipped      Setting `json:"shipped"`
-		Updated      Setting `json:"updated"`
+		Confirmation  Setting `json:"confirmation"`
+		Refund        Setting `json:"refund"`
+		PartialRefund Setting `json:"partialRefund"`
+		Shipped       Setting `json:"shipped"`
+		Updated       Setting `json:"updated"`
 	} `json:"order"`
 
 	User struct {
-		Welcome           Setting `json:"welcome`
-		EmailConfirmation Setting `json:"emailConfirmation"`
-		EmailConfirmed    Setting `json:"emailConfirmed"`
-		PasswordReset     Setting `json:"PasswordReset"`
+		Welcome       Setting `json:"welcome`
+		ConfirmEmail  Setting `json:"confirmEmail"`
+		Activated     Setting `json:"activated"`
+		ResetPassword Setting `json:"ResetPassword"`
 	} `json:"user"`
 
 	Subscriber struct {
@@ -71,16 +73,27 @@ func (s Settings) Get(typ Type) Setting {
 	setting := Setting{}
 
 	switch typ {
+	// Order emails
 	case OrderConfirmation:
 		setting = s.Order.Confirmation
+	case OrderShipped:
+		setting = s.Order.Shipped
+	case OrderRefund:
+		setting = s.Order.Refund
+	case OrderPartialRefund:
+		setting = s.Order.PartialRefund
+
+	// User emails
 	case UserWelcome:
 		setting = s.User.Welcome
-	case UserEmailConfirmation:
-		setting = s.User.EmailConfirmation
-	case UserEmailConfirmed:
-		setting = s.User.EmailConfirmed
-	case UserPasswordReset:
-		setting = s.User.PasswordReset
+	case UserConfirmEmail:
+		setting = s.User.ConfirmEmail
+	case UserActivated:
+		setting = s.User.Activated
+	case UserResetPassword:
+		setting = s.User.ResetPassword
+
+	// Subscriber emails
 	case SubscriberWelcome:
 		setting = s.Subscriber.Welcome
 	}
