@@ -7,9 +7,9 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
+	"github.com/hanzoai/sendgrid-go"
+	"github.com/hanzoai/sendgrid-go/helpers/mail"
 	"github.com/sendgrid/rest"
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 
 	"hanzo.io/log"
 	"hanzo.io/types/email"
@@ -35,10 +35,10 @@ func newEmail(email email.Email) *mail.Email {
 	}
 }
 
-func addSubsitutions(message *email.Message, address string, personalization *mail.Personalization) {
+func addSubsitutions(p *mail.Personalization, message *email.Message, address string) {
 	if v, ok := message.Personalizations[address]; ok {
 		for k, v := range v.Substitutions {
-			personalization.SetSubstitution("-"+k+"-", v)
+			p.SetSubstitution("-"+k+"-", v)
 		}
 	}
 }
@@ -58,19 +58,24 @@ func newMessage(message *email.Message) *mail.SGMailV3 {
 	for _, to := range message.To {
 		p := mail.NewPersonalization()
 		p.AddTos(newEmail(to))
-		addSubsitutions(message, to.Address, p)
+		p.DynamicTemplateData = message.TemplateData
+		addSubsitutions(p, message, to.Address)
 		m.AddPersonalizations(p)
 	}
 
 	for _, cc := range message.CC {
 		p := mail.NewPersonalization()
 		p.AddCCs(newEmail(cc))
+		p.DynamicTemplateData = message.TemplateData
+		addSubsitutions(p, message, cc.Address)
 		m.AddPersonalizations(p)
 	}
 
 	for _, bcc := range message.BCC {
 		p := mail.NewPersonalization()
 		p.AddBCCs(newEmail(bcc))
+		p.DynamicTemplateData = message.TemplateData
+		addSubsitutions(p, message, bcc.Address)
 		m.AddPersonalizations(p)
 	}
 
