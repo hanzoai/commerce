@@ -110,15 +110,6 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Email.Order.Confirmation.Subject = "LuDela Order Confirmation"
 	org.Email.Order.Confirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Subject = "Reset your LuDela password"
-	org.Email.User.PasswordReset.Enabled = true
-
-	// org.Email.User.EmailConfirmation.Subject = ""
-	org.Email.User.EmailConfirmation.Enabled = false
-
-	org.Email.User.EmailConfirmed.Subject = "Complete LuDela Registration"
-	org.Email.User.EmailConfirmed.Enabled = true
-
 	// Save org into default namespace
 	org.Put()
 

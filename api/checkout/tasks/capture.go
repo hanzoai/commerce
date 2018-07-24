@@ -56,5 +56,5 @@ var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx conte
 	usr.Db = ord.Db
 	usr.Entity = usr
 
-	email.SendOrderConfirmationEmail(ctx, org, ord, usr)
+	email.SendOrderConfirmation(ctx, org, ord, usr)
 })
