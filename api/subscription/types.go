@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
-	"hanzo.io/models/subscription"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/user"
 )
 

@@ -6,6 +6,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/types/productcachedvalues"
 
 	. "hanzo.io/models/lineitem"
 )
@@ -35,8 +36,10 @@ var Order = New("order", func(c *gin.Context) *order.Order {
 	ord.Currency = currency.USD
 	ord.Items = []LineItem{
 		LineItem{
+			ProductCachedValues: productcachedvalues.ProductCachedValues{
+				Price:     currency.Cents(100),
+			},
 			ProductId: p.Id(),
-			Price:     currency.Cents(100),
 			Quantity:  20,
 		},
 	}

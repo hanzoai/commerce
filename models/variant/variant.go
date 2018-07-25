@@ -2,9 +2,7 @@ package variant
 
 import (
 	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/dimensions"
-	"hanzo.io/models/types/weight"
+	"hanzo.io/models/types/productcachedvalues"
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
@@ -13,6 +11,7 @@ import (
 type Variant struct {
 	mixin.Model
 	mixin.Salesforce
+	productcachedvalues.ProductCachedValues
 
 	ProductId string `json:"productId"`
 
@@ -20,10 +19,6 @@ type Variant struct {
 	UPC string `json:"upc,omitempty"`
 
 	Name string `json:"name"`
-
-	// 3-letter ISO currency code (lowercase).
-	Currency currency.Type  `json:"currency"`
-	Price    currency.Cents `json:"price"`
 
 	// Variant Media
 	Header Media   `json:"header"`
@@ -39,13 +34,6 @@ type Variant struct {
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
-
-	Weight         weight.Mass     `json:"weight"`
-	WeightUnit     weight.Unit     `json:"weightUnit"`
-	Dimensions     dimensions.Size `json:"dimensions"`
-	DimensionUnits dimensions.Unit `json:"dimensionsUnit"`
-
-	Taxable bool `json:"taxable"`
 
 	Options []Option `json:"options"`
 }

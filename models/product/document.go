@@ -23,7 +23,7 @@ type Document struct {
 	ListPrice     float64
 	InventoryCost float64
 
-	Shipping  float64
+	// Shipping  float64
 	Inventory float64
 
 	Weight     float64
@@ -83,7 +83,7 @@ func (p Product) Document() mixin.Document {
 	doc.ListPrice = p.Currency.ToFloat(p.ListPrice)
 	doc.InventoryCost = p.Currency.ToFloat(p.InventoryCost)
 
-	doc.Shipping = float64(p.Shipping)
+	// doc.Shipping = float64(p.Shipping)
 	doc.Inventory = float64(p.Inventory)
 
 	doc.Weight = float64(p.Weight)

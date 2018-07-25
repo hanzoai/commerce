@@ -21,7 +21,6 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(user.User{})
 	api.GET("/:userid/password/reset", writeUserRequired, resetPassword)
 	api.GET("/:userid/orders", readUserRequired, readOrderOrSubscriptionRequired, getOrders)
-	api.GET("/:userid/subscriptions", readUserRequired, readOrderOrSubscriptionRequired, getOrders)
 	api.GET("/:userid/referrals", readUserRequired, readReferralRequired, getReferrals)
 	api.GET("/:userid/referrers", readUserRequired, readReferrerRequired, getReferrers)
 	api.GET("/:userid/transactions", readUserRequired, getTransactions)

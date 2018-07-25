@@ -42,10 +42,10 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 			// Charge failed for some reason, bail
 			if err != nil {
-				return nil, payments, err
+				return ord, payments, err
 			}
 			if !p2.Captured {
-				return nil, payments, FailedToCaptureCharge
+				return ord, payments, FailedToCaptureCharge
 			}
 
 			// Update payment
@@ -56,6 +56,15 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			// p.AmountTransferred = currency.Cents(ch.Tx.Amount)
 			// p.CurrencyTransferred = currency.Type(ch.Tx.Currency)
 		}
+	}
+
+	for i, sub := range ord.Subscriptions {
+		sub2, err := client.NewSubscription(&sub)
+		if err != nil {
+			return ord, payments, err
+		}
+
+		ord.Subscriptions[i] = *sub2
 	}
 
 	return ord, payments, nil
