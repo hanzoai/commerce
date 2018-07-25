@@ -8,8 +8,8 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/dimensions"
-	"hanzo.io/models/types/weight"
+	"hanzo.io/models/types/productcachedvalues"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
@@ -29,31 +29,14 @@ type Option struct {
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
 	mixin.Model
+	productcachedvalues.ProductCachedValues
+
+	Ref refs.EcommerceRef `json:"ref,omitempty"`
 
 	// Unique human readable id
 	Slug string `json:"slug"`
 	SKU  string `json:"sku,omitempty"`
 	UPC  string `json:"upc,omitempty"`
-
-	// 3-letter ISO currency code (lowercase).
-	Currency      currency.Type  `json:"currency"`
-	Price         currency.Cents `json:"price"`
-	MSRP		  currency.Cents `json:"msrp,omitempty"`
-	InventoryCost currency.Cents `json:"-"`
-
-	SubscriptionPlan SubscriptionPlan `json:"subscriptionPlan,omitempty"`
-
-	// Basic cost for shipping this product
-	Shipping currency.Cents `json:"shipping"`
-
-	Inventory int `json:"inventory"`
-
-	Weight         weight.Mass     `json:"weight"`
-	WeightUnit     weight.Unit     `json:"weightUnit"`
-	Dimensions     dimensions.Size `json:"dimensions"`
-	DimensionsUnit dimensions.Unit `json:"dimensionsUnit"`
-
-	Taxable bool `json:"taxable"`
 
 	// Product Name
 	Name string `json:"name"`
@@ -88,9 +71,6 @@ type Product struct {
 	// Pre-order now or Add to cart
 	AddLabel string `json:"addLabel"`
 
-	// Optional Estimated Delivery line
-	EstimatedDelivery string `json:"estimatedDelivery"`
-
 	// List of variants
 	Variants  []*variant.Variant `json:"variants" datastore:"-"`
 	Variants_ string             `json:"-" datastore:",noindex"`
@@ -98,10 +78,6 @@ type Product struct {
 	// Reference to options used
 	Options  []*Option `json:"options" datastore:"-"`
 	Options_ string    `json:"-" datastore:",noindex"`
-
-	// Deprecated because people keep getting confused that its hte display
-	// price
-	ListPrice     currency.Cents `json:"listPrice,omitempty"`
 }
 
 func (p *Product) Validator() *val.Validator {
