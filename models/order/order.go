@@ -515,9 +515,9 @@ func (o *Order) GetItemEntities() error {
 			return err
 		}
 		keys[i] = key
-		log.Debug("key %v", key)
+		log.Warn("key %v", key)
 		vals[i] = dst
-		log.Debug("dst %v", json.Encode(dst))
+		log.Warn("dst %v", json.Encode(dst))
 	}
 
 	return db.GetMulti(keys, vals)
