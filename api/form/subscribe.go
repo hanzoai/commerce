@@ -12,7 +12,7 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/counter"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 	"hanzo.io/log"
@@ -58,7 +58,7 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Send welcome email
-	emails.SendSubscriberWelcome(ctx, org, s)
+	email.SendSubscriberWelcome(ctx, org, s)
 
 	// Forward subscriber (if enabled)
 	forward(ctx, org, ml, s)
