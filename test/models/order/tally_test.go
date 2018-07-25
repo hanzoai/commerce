@@ -9,7 +9,7 @@ import (
 	. "hanzo.io/util/test/ginkgo"
 )
 
-var _ = Describe("Order", func() {
+var _ = Describe("Order.UpdateAndTally", func() {
 	Context("Storeless (Deprecated)", func() {
 		// Make sure out of order execution works because tax is left alone in
 		// deprecated flow

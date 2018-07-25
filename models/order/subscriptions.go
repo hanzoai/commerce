@@ -1,6 +1,7 @@
 package order
 
 import (
+	"errors"
 	"time"
 
 	"hanzo.io/log"
@@ -10,7 +11,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/productcachedvalues"
 	"hanzo.io/models/types/refs"
-	"hanzo.io/util/json"
 	"hanzo.io/util/timeutil"
 
 	. "hanzo.io/models"
@@ -104,7 +104,9 @@ func (s Subscription) PeriodsRemaining() int {
 func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item lineitem.LineItem) Subscription {
 	sub := Subscription{}
 	sub.ProductCachedValues = item.ProductCachedValues
+	sub.ProductId = item.ProductId
 	sub.Currency = stor.Currency
+	sub.Status = UnpaidSubscriptionStatus
 
 	ctx := o.Context()
 
@@ -150,17 +152,24 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 		log.Warn("Fallback: Using client tax and shipping values.", ctx)
 	}
 
+	log.Info("Order Mode: '%v'\nTokenSaleId: '%s'", o.Mode, o.TokenSaleId, ctx)
+	// Tokensales and contributions have no items
+	if o.Mode != DepositMode && o.Mode != ContributionMode && o.TokenSaleId == "" {
+		// Get underlying product/variant entities
+		log.Debug("Fetching underlying line items")
+		if err := o.GetItemEntities(); err != nil {
+			log.Error(err, ctx)
+			return errors.New("Failed to get all underlying line items")
+		}
+	}
+
 	// Update against store listings
 	if stor != nil {
 		o.UpdateEntitiesFromStore(stor)
 	}
 
-	log.Info("Order Before Updating From Entities: '%v'", json.Encode(o.Items), ctx)
-
 	// Update line items using that information
-	log.Debug("Updating line items")
-
-	o.UpdateItemsFromEntities()
+	o.SyncItems(stor)
 
 	// Loop over all items looking for subscribeables
 	for _, item := range o.Items {
@@ -175,8 +184,6 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 		}
 
 		sub := o.CreateAndTallySubscriptionFromItem(stor, item)
-		sub.ProductId = item.ProductId
-		sub.Currency = o.Currency
 
 		for i := 0; i < item.Quantity; i++ {
 			o.Subscriptions = append(o.Subscriptions, sub)

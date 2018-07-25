@@ -25,12 +25,13 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx   ae.Context
-	db    *datastore.Datastore
-	ord   *order.Order
-	stor  *store.Store
-	stor2 *store.Store
-	stor3 *store.Store
+	ctx     ae.Context
+	db      *datastore.Datastore
+	ord     *order.Order
+	stor    *store.Store
+	stor2   *store.Store
+	stor3   *store.Store
+	subProd *product.Product
 )
 
 // Setup appengine context and datastore before tests
@@ -42,7 +43,8 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 	ord = fixtures.Order(c).(*order.Order)
 
-	subProd := product.Fake(ord.Db)
+	// Add a subscription item
+	subProd = product.Fake(ord.Db)
 	subProd.IsSubscribeable = true
 	subProd.Interval = Monthly
 	subProd.IntervalCount = 1
