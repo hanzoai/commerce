@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/product"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/weight"
+	"hanzo.io/models/types/productcachedvalues"
 	"hanzo.io/models/variant"
 
 	. "hanzo.io/models"
@@ -15,6 +15,7 @@ import (
 
 type LineItem struct {
 	mixin.Salesforce
+	productcachedvalues.ProductCachedValues
 
 	CollectionId string `json:"collectionId,omitempty"`
 
@@ -31,18 +32,8 @@ type LineItem struct {
 	VariantName string           `json:"variantName,omitempty"`
 	VariantSKU  string           `json:"variantSKU,omitempty"`
 
-	// Unit price
-	Price currency.Cents `json:"price"`
-
 	// Number of units
 	Quantity int `json:"quantity"`
-
-	// Unit weight
-	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit,omitempty"`
-
-	// Whether taxes apply to this line item
-	Taxable bool `json:"taxable"`
 
 	// Item should be considered free due to coupon being applied or whatnot.
 	Free bool `json:"free,omitempty"`
@@ -76,6 +67,11 @@ func (li LineItem) ToMap() map[string]interface{} {
 	vals["Taxable"] = li.Taxable
 	vals["Free"] = li.Free
 	vals["AddedBy"] = li.AddedBy
+
+	vals["IsSubscribeable"] = bool(li.IsSubscribeable)
+	vals["Interval"] = string(li.Interval)
+	vals["IntervalCount"] = int64(li.IntervalCount)
+	vals["TrialPeriodDays"] = int64(li.TrialPeriodDays)
 
 	return vals
 }
@@ -179,7 +175,7 @@ func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int)
 	li.ProductName = prod.Name
 	li.ProductSlug = prod.Slug
 	li.Quantity = quantity
-	li.Price = prod.Price
+	li.ProductCachedValues = prod.ProductCachedValues
 
 	return nil
 }
@@ -196,31 +192,18 @@ func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int)
 	li.VariantName = vari.Name
 	li.VariantSKU = vari.SKU
 	li.Quantity = quantity
-	li.Price = vari.Price
+	li.ProductCachedValues = vari.ProductCachedValues
 
 	return nil
 }
 
 func (li *LineItem) Update() {
 	if li.Product != nil {
-		li.Price = li.Product.Price
-		li.ProductId = li.Product.Id()
-		li.ProductName = li.Product.Name
-		li.ProductSlug = li.Product.Slug
-		li.ProductSKU = li.Product.SKU
-		li.Taxable = li.Product.Taxable
-		li.Weight = li.Product.Weight
-		li.WeightUnit = li.Product.WeightUnit
+		li.ProductCachedValues = li.Product.ProductCachedValues
 	}
 
 	if li.Variant != nil {
-		li.Price = li.Variant.Price
-		li.VariantId = li.Variant.Id()
-		li.VariantName = li.Variant.Name
-		li.VariantSKU = li.Variant.SKU
-		li.Taxable = li.Variant.Taxable
-		li.Weight = li.Variant.Weight
-		li.WeightUnit = li.Variant.WeightUnit
+		li.ProductCachedValues = li.Variant.ProductCachedValues
 	}
 }
 
