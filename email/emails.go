@@ -239,7 +239,7 @@ func SendOrderConfirmation(c context.Context, org *organization.Organization, or
 }
 
 func SendOrderPartiallyRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
-	settings := org.Email.Get(email.OrderPartialRefund)
+	settings := org.Email.Get(email.OrderRefundPartial)
 	if !settings.Enabled {
 		return
 	}

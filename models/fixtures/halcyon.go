@@ -12,6 +12,8 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+
+	. "hanzo.io/models"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -77,6 +79,8 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	prod2.SKU = "865524000406-sub"
 	prod2.Price = currency.Cents(6997)
 	prod2.Hidden = false
+	prod2.IsSubscribeable = true
+	prod2.Interval = Monthly
 	prod2.MustUpdate()
 
 	// Create earphone product
