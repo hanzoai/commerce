@@ -34,13 +34,22 @@ var _ = Describe("Order.Subscription", func() {
 			ord.Subscriptions = make([]order.Subscription, 0)
 		})
 
-		It("Should Create Subscriptions From Items", func () {
+		FIt("Should Create Subscriptions From Items", func () {
 			err := ord.CreateSubscriptionsFromItems(stor)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(ord.Subscriptions)).To(Equal(1))
 			sub := ord.Subscriptions[0]
 			Expect(sub.Status).To(Equal(order.UnpaidSubscriptionStatus))
 			Expect(sub.ProductCachedValues).To(Equal(subProd.ProductCachedValues))
+
+			Expect(sub.Price).To(Equal(subProd.Price))
+
+			tax := 1 + currency.Cents(float64(sub.Price)*0.0885)
+			shipping := 499 + currency.Cents(float64(sub.Price)*0.1)
+
+			Expect(sub.Tax).To(Equal(tax))
+			Expect(sub.Shipping).To(Equal(shipping))
+			Expect(sub.Total).To(Equal(sub.Price + tax + shipping))
 		})
 
 		It("Should Create Multiple Subscriptions From Item Quantities", func () {
