@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 )
 
 func SendOrderConfirmation(c *gin.Context) {
@@ -22,7 +22,7 @@ func SendOrderConfirmation(c *gin.Context) {
 	u := user.New(db)
 	u.MustGetById(o.UserId)
 
-	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
+	email.SendOrderConfirmation(db.Context, org, o, u)
 
 	c.Writer.WriteHeader(204)
 }
@@ -41,7 +41,7 @@ func SendFulfillmentConfirmation(c *gin.Context) {
 	p := payment.New(db)
 	p.MustGetById(o.PaymentIds[0])
 
-	emails.SendFulfillmentEmail(db.Context, org, o, u, p)
+	email.SendOrderShipped(db.Context, org, o, u, p)
 
 	c.Writer.WriteHeader(204)
 }
@@ -61,9 +61,9 @@ func SendRefundConfirmation(c *gin.Context) {
 	p.MustGetById(o.PaymentIds[0])
 
 	if o.Refunded == o.Paid {
-		emails.SendFullRefundEmail(db.Context, org, o, u, p)
+		email.SendOrderRefunded(db.Context, org, o, u, p)
 	} else if o.Refunded > 0 {
-		emails.SendPartialRefundEmail(db.Context, org, o, u, p)
+		email.SendOrderPartiallyRefunded(db.Context, org, o, u, p)
 	}
 
 	c.Writer.WriteHeader(204)
