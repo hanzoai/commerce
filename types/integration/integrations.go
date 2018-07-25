@@ -1,4 +1,4 @@
-package integrations
+package integration
 
 import (
 	"errors"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 
@@ -44,6 +43,10 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.Mailchimp)
 	case MandrillType:
 		dst.Data = json.EncodeBytes(src.Mandrill)
+	case SendGridType:
+		dst.Data = json.EncodeBytes(src.SendGrid)
+	case SMTPRelayType:
+		dst.Data = json.EncodeBytes(src.SMTPRelay)
 	case NetlifyType:
 		dst.Data = json.EncodeBytes(src.Netlify)
 	case PaypalType:
@@ -97,6 +100,10 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.Ethereum = src.Ethereum
 	case MailchimpType:
 		dst.Mailchimp = src.Mailchimp
+	case SendGridType:
+		dst.SendGrid = src.SendGrid
+	case SMTPRelayType:
+		dst.SMTPRelay = src.SMTPRelay
 	case MandrillType:
 		dst.Mandrill = src.Mandrill
 	case NetlifyType:
@@ -142,6 +149,10 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.Mailchimp)
 		case MandrillType:
 			json.DecodeBytes(src.Data, &dst.Mandrill)
+		case SendGridType:
+			json.DecodeBytes(src.Data, &dst.SendGrid)
+		case SMTPRelayType:
+			json.DecodeBytes(src.Data, &dst.SMTPRelay)
 		case NetlifyType:
 			json.DecodeBytes(src.Data, &dst.Netlify)
 		case PaypalType:
@@ -197,14 +208,7 @@ func (i Integrations) Append(src *Integration) (Integrations, error) {
 		return i, err
 	}
 
-	log.Debug("Length %v", len(i))
-	// log.Warn("Appending %s", dst.Type)
 	ins := append(i, dst)
-	// log.Warn("List")
-	// for _, in := range ins {
-	// 	log.Warn("%s", in.Type)
-	// }
-	log.Debug("Length %v", len(i))
 	src.Id = dst.Id
 	src.Data = dst.Data
 	src.CreatedAt = dst.CreatedAt
@@ -236,7 +240,6 @@ func (i Integrations) Update(src *Integration) (Integrations, error) {
 				ins = append(ins, in)
 			}
 		}
-		log.Debug("Before %s\nAfter %s", dst, src)
 		src.Data = dst.Data
 		src.UpdatedAt = dst.UpdatedAt
 		return ins, err
@@ -282,22 +285,14 @@ func (i Integrations) Remove(id string) (Integrations, error) {
 }
 
 func (i Integrations) MustRemove(id string) Integrations {
-	// log.Warn("ListB.1")
-	// for _, in := range i {
-	// 	log.Warn("%s - %s", in.Id, in.Type)
-	// }
 	if ins, err := i.Remove(id); err != nil {
 		panic(err)
 	} else {
-		// log.Warn("ListB.2")
-		// for _, in := range i {
-		// 	log.Warn("%s - %s", in.Id, in.Type)
-		// }
 		return ins
 	}
 }
 
-func (i Integrations) FilterByType(typ IntegrationType) Integrations {
+func (i Integrations) FilterByType(typ Type) Integrations {
 	ins := Integrations{}
 	for _, in := range i {
 		if in.Type == typ {
@@ -310,6 +305,26 @@ func (i Integrations) FilterByType(typ IntegrationType) Integrations {
 func (i Integrations) FindById(id string) (*Integration, error) {
 	for _, in := range i {
 		if in.Id == id {
+			return &in, nil
+		}
+	}
+
+	return nil, ErrorNotFound
+}
+
+func (i Integrations) EmailProvider() (*Integration, error) {
+	for _, in := range i {
+		if in.Type == MandrillType || in.Type == SendGridType || in.Type == SMTPRelayType {
+			return &in, nil
+		}
+	}
+
+	return nil, ErrorNotFound
+}
+
+func (i Integrations) EmailProviderByType(typ Type) (*Integration, error) {
+	for _, in := range i {
+		if in.Type == typ {
 			return &in, nil
 		}
 	}
