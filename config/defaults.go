@@ -1,6 +1,11 @@
 package config
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
+)
 
 // Default settings
 func Defaults() *Config {
@@ -18,6 +23,26 @@ func Defaults() *Config {
 	config.SessionName = "session"
 
 	config.DemoMode = demoMode
+
+	config.Email = struct {
+		From     email.Email
+		ReplyTo  email.Email
+		Provider integration.Integration
+	}{
+		email.Email{
+			Name:    "Hanzo",
+			Address: "platform@hanzo.ai",
+		},
+		email.Email{
+			Name:    "Hanzo",
+			Address: "noreply@hanzo.ai",
+		},
+		integration.Integration{
+			Mandrill: integration.Mandrill{
+				APIKey: "",
+			},
+		},
+	}
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
@@ -65,6 +90,10 @@ func Defaults() *Config {
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""
 	config.Cloudflare.Zone = "hanzo.io"
+
+	config.SMTPRelay.Endpoint = "https://smtprelay.hanzo.ai"
+	config.SMTPRelay.Username = "admin@hanzo.ai"
+	config.SMTPRelay.Password = ""
 
 	return config
 }
