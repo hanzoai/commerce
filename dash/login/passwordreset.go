@@ -7,13 +7,12 @@ import (
 	"hanzo.io/auth/password"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/email"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 	"hanzo.io/util/template"
-
-	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
 // GET /password-reset
@@ -33,16 +32,16 @@ func PasswordResetSubmit(c *gin.Context) {
 	db := datastore.New(ctx)
 
 	// Lookup email
-	user := user.New(db)
-	if err := user.GetByEmail(form.Email); err != nil {
+	usr := user.New(db)
+	if err := usr.GetByEmail(form.Email); err != nil {
 		template.Render(c, "login/password-reset.html", "error", "No account associated with that email.")
 		return
 	}
 
 	// Save reset token
 	token := token.New(db)
-	token.UserId = user.Id()
-	token.Email = user.Email
+	token.UserId = usr.Id()
+	token.Email = usr.Email
 	if err := token.Put(); err != nil {
 		template.Render(c, "login/password-reset.html", "error", "Failed to create reset token, please try again later.")
 		return
@@ -50,12 +49,14 @@ func PasswordResetSubmit(c *gin.Context) {
 
 	resetUrl := config.AbsoluteUrlFor("dash", "/password-reset/") + token.Id()
 
-	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
-		user.Email,
-		user.Name(),
-		"Reset your Crowdstart password",
-		"resetUrl", resetUrl)
-
+	message := email.NewMessage()
+	message.Subject = "Reset your Hanzo password"
+	message.AddTos(email.Email{
+		Address: usr.Email,
+		Name:    usr.Name(),
+	})
+	message.Substitutions["resetUrl"] = resetUrl
+	email.SendResetPassword(c, nil, usr, token)
 	template.Render(c, "login/password-reset-sent.html")
 }
 
@@ -97,8 +98,8 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	// Lookup user by email
-	user := user.New(db)
-	if err := user.GetById(token.UserId); err != nil {
+	usr := user.New(db)
+	if err := usr.GetById(token.UserId); err != nil {
 		template.Render(c, "login/password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
@@ -111,25 +112,28 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	if form.NewPassword == form.ConfirmPassword {
-		user.PasswordHash, _ = password.Hash(form.NewPassword)
+		usr.PasswordHash, _ = password.Hash(form.NewPassword)
 	} else {
 		template.Render(c, "login/password-reset-confirm.html", "error", "Passwords to not match")
 		return
 	}
 
 	// Update user
-	if err := user.Put(); err != nil {
+	if err := usr.Put(); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 
 	// Notify user of password reset
-	mandrill.SendTransactional.Call(ctx, "email/password-updated.html",
-		user.Email,
-		user.Name(),
-		"Crowdstart password changed")
+	message := email.NewMessage()
+	message.Subject = "Hanzo password changed"
+	message.AddTos(email.Email{
+		Address: usr.Email,
+		Name:    usr.Name(),
+	})
+	email.SendUpdatePassword(ctx, nil, usr, token)
 
 	// Login user
-	auth.Login(c, user)
+	auth.Login(c, usr)
 
 	// Redirect to profile
 	c.Redirect(302, config.UrlFor("dash"))
