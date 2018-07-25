@@ -5,10 +5,11 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
+	"hanzo.io/types/email"
 )
 
 var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
@@ -41,9 +42,11 @@ var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "K-pak"
-	org.Email.Defaults.FromEmail = "hi@kpakcase.com"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "K-pak",
+		Address: "hi@kpakcase.com",
+	}
 
 	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
 	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")

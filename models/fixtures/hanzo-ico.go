@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
+	"hanzo.io/types/email"
 	// "hanzo.io/models/webhook"
 )
 
@@ -43,9 +44,11 @@ var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Hanzo ICO"
-	org.Email.Defaults.FromEmail = "hi@hanzo.ai"
+	org.Email.Enabled = true
+	org.Email.Defaults.From = email.Email{
+		Name:    "Hanzo ICO",
+		Address: "hi@hanzo.ai",
+	}
 
 	// Save org into default namespace
 	org.MustUpdate()
