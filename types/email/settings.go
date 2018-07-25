@@ -8,17 +8,19 @@ import (
 type Type string
 
 const (
-	OrderConfirmation  Type = "order.confirmation"
-	OrderPartialRefund Type = "order.partialrefund"
-	OrderRefund        Type = "order.refund"
-	OrderShipped       Type = "order.shipped"
-	OrderUpdated       Type = "order.updated"
-	UserActivated      Type = "user.activated"
-	UserConfirmEmail   Type = "user.confirmemail"
-	UserResetPassword  Type = "user.resetPassword"
-	UserUpdatePassword Type = "user.updatePassword"
-	UserWelcome        Type = "user.welcome"
-	SubscriberWelcome  Type = "subscriber.welcome"
+	OrderConfirmation   Type = "order.confirmation"
+	OrderRefund         Type = "order.refund"
+	OrderRefundPartial  Type = "order.refund-partial"
+	OrderShipped        Type = "order.shipped"
+	OrderUpdated        Type = "order.updated"
+	ReferralSignup      Type = "referral.signup"
+	SubscriberWelcome   Type = "subscriber.welcome"
+	UserActivated       Type = "user.activated"
+	UserConfirmEmail    Type = "user.confirmemail"
+	UserPasswordUpdated Type = "user.passwordUpdated"
+	UserResetPassword   Type = "user.resetPassword"
+	UserUpdated         Type = "user.updated"
+	UserWelcome         Type = "user.welcome"
 )
 
 type Setting struct {
@@ -52,17 +54,17 @@ type Settings struct {
 	Order struct {
 		Confirmation  Setting `json:"confirmation"`
 		Refund        Setting `json:"refund"`
-		PartialRefund Setting `json:"partialRefund"`
+		RefundPartial Setting `json:"refundPartial"`
 		Shipped       Setting `json:"shipped"`
 		Updated       Setting `json:"updated"`
 	} `json:"order"`
 
 	User struct {
-		Welcome        Setting `json:"welcome`
-		ConfirmEmail   Setting `json:"confirmEmail"`
-		Activated      Setting `json:"activated"`
-		ResetPassword  Setting `json:"resetPassword"`
-		UpdatePassword Setting `json:"updatePassword"`
+		Welcome         Setting `json:"welcome`
+		ConfirmEmail    Setting `json:"confirmEmail"`
+		Activated       Setting `json:"activated"`
+		ResetPassword   Setting `json:"resetPassword"`
+		PasswordUpdated Setting `json:"updatePassword"`
 	} `json:"user"`
 
 	Subscriber struct {
@@ -82,8 +84,8 @@ func (s Settings) Get(typ Type) Setting {
 		setting = s.Order.Shipped
 	case OrderRefund:
 		setting = s.Order.Refund
-	case OrderPartialRefund:
-		setting = s.Order.PartialRefund
+	case OrderRefundPartial:
+		setting = s.Order.RefundPartial
 
 	// User emails
 	case UserWelcome:
@@ -94,8 +96,8 @@ func (s Settings) Get(typ Type) Setting {
 		setting = s.User.Activated
 	case UserResetPassword:
 		setting = s.User.ResetPassword
-	case UserUpdatePassword:
-		setting = s.User.UpdatePassword
+	case UserPasswordUpdated:
+		setting = s.User.PasswordUpdated
 
 	// Subscriber emails
 	case SubscriberWelcome:
