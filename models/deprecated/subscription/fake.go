@@ -5,7 +5,7 @@ import (
 	"math/rand"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/plan"
+	"hanzo.io/models/deprecated/plan"
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/util/fake"
 
