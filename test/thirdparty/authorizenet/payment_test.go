@@ -49,7 +49,7 @@ var _ = Describe("thirdparty.authorizenet.payments", func() {
 			// At least understood our request.
 		})
 
-		FIt("Should authorize a simple payment", func() {
+		It("Should authorize a simple payment", func() {
 			pay := payment.New(db)
 			pay.Amount = 2000
 			pay.Account.Name = "Test"

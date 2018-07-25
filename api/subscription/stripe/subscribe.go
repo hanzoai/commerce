@@ -2,7 +2,7 @@ package stripe
 
 import (
 	"hanzo.io/models/organization"
-	"hanzo.io/models/subscription"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/log"

@@ -18,11 +18,11 @@ import (
 	"github.com/hunterlong/authorizecim"
 
 	"hanzo.io/log"
+	"hanzo.io/models"
+	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/subscription"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/refs"
-	"hanzo.io/models/plan"
 	json2 "hanzo.io/util/json"
 )
 
@@ -73,15 +73,15 @@ func ToStringExpirationDate(month int, year int) string {
 	return strconv.Itoa(month) + "/" + twoDigitYear
 }
 
-func HanzoToAuthorizeSubscription(sub *subscription.Subscription) *AuthorizeCIM.Subscription {
+func HanzoToAuthorizeSubscription(sub *order.Subscription) *AuthorizeCIM.Subscription {
 
 	interval := AuthorizeCIM.IntervalMonthly()
-	if sub.Plan.Interval == plan.Yearly {
+	if sub.Interval == models.Yearly {
 		interval = AuthorizeCIM.IntervalYearly()
 	}
 	subscription := AuthorizeCIM.Subscription{
-		Name:		 sub.Plan.Name,
-		Amount:      sub.Plan.Currency.ToStringNoSymbol(sub.Plan.Price),
+		Name:		 sub.ProductId + sub.PlanId,
+		Amount:      sub.Currency.ToStringNoSymbol(sub.Price),
 		TrialAmount: "0.00",
 		PaymentSchedule: &AuthorizeCIM.PaymentSchedule{
 			StartDate:        sub.PeriodStart.Format("2006-01-02"),
@@ -160,17 +160,17 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 	pay.Account.TestRequest = tran.Response.TestRequest
 	pay.Account.AccountNumber = tran.Response.AccountNumber
 	pay.Account.AccountType = tran.Response.AccountType
-	pay.Account.Messages = msgs
-	pay.Account.ErrorMessages = errMsgs
+	pay.Account.Messages = strings.Join(msgs, ", ")
+	pay.Account.ErrorMessages = strings.Join(errMsgs, ", ")
 
 	if len(errMsgs) > 0 {
-		return pay, errors.New(strings.Join(errMsgs, ", "))
+		return pay, errors.New(pay.Account.ErrorMessages)
 	}
 
 	return pay, nil
 }
 
-func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *subscription.Subscription {
+func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *order.Subscription {
 	if(tran.SubscriptionID != "") {
 		sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
 	}
@@ -202,9 +202,7 @@ func PopulateSubscriptionWithResponse(sub *subscription.Subscription, tran *Auth
 }*/
 
 
-func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
-	log.Debug("sub.Plan %v", sub.Plan)
-
+func (c Client) NewSubscription(sub *order.Subscription) (*order.Subscription, error) {
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	subscription := HanzoToAuthorizeSubscription(sub)
@@ -222,9 +220,7 @@ func (c Client) NewSubscription(sub *subscription.Subscription) (*subscription.S
 }
 
 // Update subscribe to a plan
-func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
-	log.Debug("sub.Plan %v", sub.Plan)
-
+func (c Client) UpdateSubscription(sub *order.Subscription) (*order.Subscription, error) {
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	subscription := HanzoToAuthorizeSubscription(sub)
@@ -239,9 +235,7 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*subscriptio
 }
 
 // Subscribe to a plan
-func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscription.Subscription, error) {
-	log.Debug("sub.Plan %v", sub.Plan)
-
+func (c Client) CancelSubscription(sub *order.Subscription) (*order.Subscription, error) {
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 
 	s := AuthorizeCIM.SetSubscription{
@@ -251,7 +245,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*subscriptio
 
 	if err == nil {
 		sub.Canceled = true
-		sub.Status = subscription.Canceled
+		sub.Status = order.CancelledSubscriptionStatus
 		return sub, nil
 	}
 	return sub, err
