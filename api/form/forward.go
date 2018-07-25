@@ -4,25 +4,27 @@ import (
 	"context"
 	"fmt"
 
-	"hanzo.io/config"
+	"hanzo.io/email"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 
 	. "hanzo.io/models"
-
-	mandrill "hanzo.io/thirdparty/mandrill/tasks"
 )
 
+var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}
+
 // Add subscriber to mailing list
-func forward(ctx context.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
+func forward(c context.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
 	if !ml.Forward.Enabled {
 		return
 	}
 
-	replyTo := ""
 	metadata := make(Map)
+
+	// Determine where to send replies
+	replyTo := ""
 
 	switch v := s.(type) {
 	case *subscriber.Subscriber:
@@ -34,16 +36,17 @@ func forward(ctx context.Context, org *organization.Organization, ml *mailinglis
 	}
 
 	// Forward form submission
-	toEmail := ml.Forward.Email
-	toName := ml.Forward.Name
-	fromEmail := "noreply@hanzo.io"
-	fromName := "Hanzo"
-	subject := "New submission for form " + ml.Name
-
 	html := ""
 	for k, v := range metadata {
 		html += fmt.Sprintf("<b>%s</b>: %s<br><br>", k, v)
 	}
 
-	mandrill.Forward.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html)
+	// Setup email message
+	message := email.NewMessage()
+	message.Subject = "New submission for form " + ml.Name
+	message.From = hanzoEmail
+	message.AddTos(email.Email{Address: ml.Forward.Email, Name: ml.Forward.Name})
+	message.ReplyTo = email.Email{Address: replyTo}
+	message.HTML = html
+	email.Send(c, message, nil)
 }
