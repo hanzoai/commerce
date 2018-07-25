@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/util/emails"
+	"hanzo.io/email"
 )
 
 var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId string, ordId string) {
@@ -39,7 +39,7 @@ var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId s
 	// updateMailchimp(ctx, org, ord)
 })
 
-var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx context.Context, orgId, ordId, email, firstName, lastName string) {
+var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx context.Context, orgId, ordId, emailAddress, firstName, lastName string) {
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	org.MustGetById(orgId)
@@ -50,11 +50,11 @@ var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx conte
 
 	// Send Create user
 	usr := new(user.User)
-	usr.Email = email
+	usr.Email = emailAddress
 	usr.FirstName = firstName
 	usr.LastName = lastName
 	usr.Db = ord.Db
 	usr.Entity = usr
 
-	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
+	email.SendOrderConfirmation(ctx, org, ord, usr)
 })
