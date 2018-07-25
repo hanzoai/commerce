@@ -1,6 +1,10 @@
 package order
 
 import (
+	"time"
+
+	"hanzo.io/models/types/accounts"
+
 	"hanzo.io/datastore"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/payment"
@@ -30,4 +34,35 @@ func Fake(db *datastore.Datastore, lis ...lineitem.LineItem) *Order {
 	o.ShippingAddress = Address{Line1: fake.Street(), City: fake.City(), State: fake.State(), PostalCode: fake.Zip(), Country: "US"}
 
 	return o
+}
+
+func FakeSubscription(db *datastore.Datastore) *Subscription {
+	sub := &Subscription{}
+	sub.PlanId = fake.Id()
+	sub.UserId = fake.Id()
+	sub.FeePercent = fake.Percent
+	sub.PeriodStart = time.Now()
+	sub.PeriodEnd = time.Now().AddDate(0,0,30)
+	sub.Canceled = false
+	sub.Status = ActiveSubscriptionStatus
+	sub.Buyer = Buyer{
+		Email:     fake.EmailAddress(),
+		FirstName: fake.FirstName(),
+		LastName:  fake.LastName(),
+		Address: Address{
+			Line1:      fake.Street(),
+			City:       fake.City(),
+			State:      fake.State(),
+			PostalCode: fake.Zip(),
+			Country:    "US",
+		},
+	}
+
+	sub.Account.Type = accounts.StripeType
+	sub.Account.Number = "4242424242424242"
+	sub.Account.CVC = "424"
+	sub.Account.Month = 12
+	sub.Account.Year = 2024
+
+	return sub
 }
