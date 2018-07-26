@@ -49,23 +49,35 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 		Name:    "Halcyon Bio",
 		Address: "hi@halcyon.bio",
 	}
-	org.Email.Order.Confirmation = email.Email{
-		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02"
+	org.Email.Order.Confirmation = email.Setting{
+		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02",
 	}
-	org.Email.User.Welcome= email.Email{
-		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8"
+	org.Email.Order.Refund= email.Setting{
+		TemplateId: "d-ee5f9eedefd34e8c9d875f5629670047",
 	}
-	org.Email.User.EmailConfirmation = email.Email{
-		TemplateId: "d-23166776363e489e898b73c7ec208ebe"
+	org.Email.Order.RefundPartial= email.Setting{
+		TemplateId: "d-d444b9a1d1b84df0aa8a96fa52010116",
 	}
-	org.Email.User.EmailConfirmed = email.Email{
-		TemplateId: "d-b2b35a2f612c4dfebdf318a4e88737f2"
+	org.Email.Order.Shipped= email.Setting{
+		TemplateId: "d-78f0f304bb17428eaffa8ff1504ad124",
 	}
-	org.Email.User.PasswordReset = email.Email{
-		TemplateId: "d-aae4b56c34a24cd78408e9ae58a75655"
+	org.Email.Order.Updated = email.Setting{
+		TemplateId: "d-cfe9717a682e47a5b70f16fd794bca45",
 	}
-	org.Email.Subscriber.Welcome = email.Email{
-		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8"
+	org.Email.User.Welcome= email.Setting{
+		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
+	}
+	org.Email.User.ConfirmEmail= email.Setting{
+		TemplateId: "d-23166776363e489e898b73c7ec208ebe",
+	}
+	org.Email.User.Activated= email.Setting{
+		TemplateId: "d-b2b35a2f612c4dfebdf318a4e88737f2",
+	}
+	org.Email.User.ResetPassword= email.Setting{
+		TemplateId: "d-aae4b56c34a24cd78408e9ae58a75655",
+	}
+	org.Email.Subscriber.Welcome = email.Setting{
+		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
 	}
 
 	org.SignUpOptions.ImmediateLogin = true
