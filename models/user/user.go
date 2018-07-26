@@ -83,6 +83,8 @@ type User struct {
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 
+	IsAffiliate bool `json:"isAffiliate,omitempty"`
+
 	AffiliateId string `json:"affiliateId,omitempty"`
 }
 
