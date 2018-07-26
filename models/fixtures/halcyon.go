@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/email/provider"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -50,8 +51,8 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.From = email.Email{
 		Name:    "Halcyon Bio",
 		Address: "hi@halcyon.bio",
-		ProviderId: "sendgrid",
 	}
+	org.Email.Defaults.ProviderId = string(provider.SendGrid)
 	org.Email.Order.Confirmation = email.Setting{
 		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02",
 	}
