@@ -61,7 +61,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	// Create earphone product
 	prod1 := product.New(nsdb)
-	prod1.Slug = "earphone"
+	prod1.Slug = "60-caps"
 	prod1.GetOrCreate("Slug=", prod1.Slug)
 	prod1.Name = "Bottle - 60 Capsules"
 	prod1.Description = "30 Day Supply"
@@ -72,7 +72,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	// Create earphone product
 	prod2 := product.New(nsdb)
-	prod2.Slug = "60caps"
+	prod2.Slug = "60-caps-sub"
 	prod2.GetOrCreate("Slug=", prod2.Slug)
 	prod2.Name = "Bottle - 60 Capsules - Subscription"
 	prod2.Description = "30 Day Supply"
