@@ -49,6 +49,7 @@ type Referrer struct {
 type Referrent interface {
 	Id() string
 	Kind() string
+	Total() currency.Cents
 }
 
 func (r *Referrer) Save() (ps []aeds.Property, err error) {
@@ -112,7 +113,7 @@ func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referra
 	}
 
 	// Apply any program actions if applicable
-	if err := r.ApplyActions(ctx, orgId, event, &r.Program); err != nil {
+	if err := r.ApplyActions(ctx, orgId, event, &r.Program, rfn); err != nil {
 		return rfl, err
 	}
 
@@ -230,7 +231,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram) error {
+func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram, rfn Referrent) error {
 	old := len(r.Program.Triggers) > 0
 	if old {
 		log.Debug("Old Triggers")
@@ -263,8 +264,14 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 				r.MustUpdate()
 			}
 
+			amount := action.Amount
+
+			if amount == 0 {
+				amount = rfn.Total()
+			}
+
 			log.Debug("Saving store credit.")
-			if err := saveStoreCredit(r, action.Amount, action.Currency); err != nil {
+			if err := saveStoreCredit(r, amount, action.Currency); err != nil {
 				return err
 			}
 		// case referralprogram.Refund:
