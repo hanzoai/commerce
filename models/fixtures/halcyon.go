@@ -39,6 +39,8 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.AuthorizeNet.Sandbox.TransactionKey = ""
 	org.AuthorizeNet.Sandbox.Key = "Simon"
 
+	org.SendGrid.APIKey = "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"
+
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
 	org.Fees.Affiliate.Flat = 0
@@ -48,6 +50,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.From = email.Email{
 		Name:    "Halcyon Bio",
 		Address: "hi@halcyon.bio",
+		ProviderId: "sendgrid",
 	}
 	org.Email.Order.Confirmation = email.Setting{
 		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02",
