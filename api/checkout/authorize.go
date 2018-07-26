@@ -102,6 +102,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	log.Info("Order After Tally: '%v'", json.Encode(ord), c)
 
+	// Update order with information from datastore, and tally
+	if err := ord.CreateSubscriptionsFromItems(stor); err != nil {
+		log.Error("Invalid or incomplete order error: %v", err, c)
+		return nil, err
+	}
+
+	log.Info("Order After CreateSubscriptions: '%v'", json.Encode(ord), c)
+
 	// Validate token sale only if both password and id are set
 	if (ord.TokenSaleId != "") && (tsPass != nil) {
 		ts := tokensale.New(ord.Db)

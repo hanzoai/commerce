@@ -1,6 +1,8 @@
 package authorizenet
 
 import (
+	"errors"
+
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -8,6 +10,8 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/authorizenet"
 )
+
+var NothingToAuthorizeError = errors.New("Nothing to Authorize (Items or Subscriptions)")
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	ctx := ord.Db.Context
@@ -26,12 +30,16 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
 
-	// Do authorization
-	_, err := client.Authorize(pay)
-	if err != nil {
-		log.Error("Failed to authorize payment '%s'", pay.Id(), ctx)
-		log.JSON(pay)
-		return err
+	if ord.Total > 0 {
+		// Do authorization
+		_, err := client.Authorize(pay)
+		if err != nil {
+			log.Error("Failed to authorize payment '%s'", pay.Id(), ctx)
+			log.JSON(pay)
+			return err
+		}
+	} else if len(ord.Subscriptions) == 0 {
+		return NothingToAuthorizeError
 	}
 
 	usr.Accounts.AuthorizeNet = pay.Account.AuthorizeNet
