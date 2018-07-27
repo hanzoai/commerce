@@ -151,7 +151,9 @@ func (u User) Buyer() Buyer {
 		LastName:  u.LastName,
 		Company:   u.Company,
 		Phone:     u.Phone,
-		Address:   u.BillingAddress,
+
+		ShippingAddress:  u.ShippingAddress,
+		BillingAddress:   u.BillingAddress,
 	}
 }
 
