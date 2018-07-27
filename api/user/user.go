@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
-	"hanzo.io/models/subscription"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"

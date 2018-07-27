@@ -12,7 +12,6 @@ import (
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/plan"
 	"hanzo.io/models/product"
 	"hanzo.io/models/store"
 	"hanzo.io/models/subscriber"
@@ -88,10 +87,6 @@ var _ = New("namespace-rename", setupNamespaceRename,
 	func(db *ds.Datastore, payment *payment.Payment) {
 		payment.SetNamespace(newNamespace)
 		payment.Put()
-	},
-	func(db *ds.Datastore, plan *plan.Plan) {
-		plan.SetNamespace(newNamespace)
-		plan.Put()
 	},
 	func(db *ds.Datastore, product *product.Product) {
 		product.SetNamespace(newNamespace)

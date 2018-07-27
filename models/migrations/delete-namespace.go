@@ -9,7 +9,6 @@ import (
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/plan"
 	"hanzo.io/models/product"
 	"hanzo.io/models/store"
 	"hanzo.io/models/subscriber"
@@ -45,9 +44,6 @@ var _ = New("namespace-delete", setupNamespaceDelete,
 	},
 	func(db *ds.Datastore, payment *payment.Payment) {
 		payment.Delete()
-	},
-	func(db *ds.Datastore, plan *plan.Plan) {
-		plan.Delete()
 	},
 	func(db *ds.Datastore, product *product.Product) {
 		product.Delete()
