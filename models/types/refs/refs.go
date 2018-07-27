@@ -16,17 +16,17 @@ const (
 )
 
 type StripeRef struct {
-	Id string `json:"id"`
+	Id string `json:"id,omitempty"`
 }
 
 type AffirmRef struct {
-	Id string `json:"id"`
+	Id string `json:"id,omitempty"`
 }
 
 type AuthorizeNetRef struct {
-	SubscriptionId string `json:"subscriptionId"`
-	CustomerProfileId string `json:"customerProfileId"`
-	CustomerPaymentProfileId string `json:"customerPaymentProfileId"`
+	SubscriptionId string `json:"subscriptionId,omitempty"`
+	CustomerProfileId string `json:"customerProfileId,omitempty"`
+	CustomerPaymentProfileId string `json:"customerPaymentProfileId,omitempty"`
 }
 
 type EcommerceRef struct {

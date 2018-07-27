@@ -44,7 +44,7 @@ var _ = New("add-stripe-fix-mysterious",
 			usr.LastName = buyer.LastName
 			usr.Company = buyer.Company
 			usr.Phone = buyer.Phone
-			usr.ShippingAddress = buyer.Address
+			usr.ShippingAddress = buyer.ShippingAddress
 			usr.History = []models.Event{models.Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
 			usr.Accounts.Stripe = pay.Account.Stripe
 
@@ -61,7 +61,7 @@ var _ = New("add-stripe-fix-mysterious",
 			}
 
 			log.Debug("Order Is Missing", db.Context)
-			ord.ShippingAddress = pay.Buyer.Address
+			ord.ShippingAddress = pay.Buyer.ShippingAddress
 			ord.Subtotal = pay.Amount
 			ord.Total = pay.Amount
 			ord.Currency = pay.Currency

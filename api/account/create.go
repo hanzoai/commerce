@@ -16,6 +16,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/recaptcha"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/util/counter"
 	"hanzo.io/email"
 	"hanzo.io/util/json"
@@ -37,6 +38,23 @@ type createReq struct {
 type createRes struct {
 	*user.User
 	Token string `json:"token,omitempty"`
+}
+
+type Referrent struct {
+	id string
+	kind string
+}
+
+func (r *Referrent) Id() string {
+	return r.id
+}
+
+func (r *Referrent) Kind() string {
+	return r.kind
+}
+
+func (r *Referrent) Total() currency.Cents {
+	return currency.Cents(1)
 }
 
 func create(c *gin.Context) {
@@ -117,6 +135,10 @@ func create(c *gin.Context) {
 		}
 	} else {
 		log.Info("Sign up does not require Name", c)
+	}
+
+	if org.SignUpOptions.AllowAffiliateSignup {
+		usr.IsAffiliate = req.User.IsAffiliate
 	}
 
 	if un == "\u263A" {
@@ -223,7 +245,10 @@ func create(c *gin.Context) {
 			usr.ReferrerId = ""
 		} else {
 			// Try to save referral, save updated referrer
-			if _, err := ref.SaveReferral(org.Db.Context, org.Id(), referral.NewUser, usr); err != nil {
+			if _, err := ref.SaveReferral(org.Db.Context, org.Id(), referral.NewUser, &Referrent{
+				usr.Id(),
+				usr.Kind(),
+			}); err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
 			}
 		}

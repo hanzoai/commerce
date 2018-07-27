@@ -20,7 +20,6 @@ import (
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
-	"hanzo.io/models/plan"
 	// "hanzo.io/models/transaction"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
@@ -110,7 +109,6 @@ func Route(api router.Router) {
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
 	rest.New(media.Media{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
-	rest.New(plan.Plan{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(return_.Return{}).Route(api, tokenRequired)

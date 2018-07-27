@@ -6,7 +6,7 @@ import (
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
-	"hanzo.io/models/subscription"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/api/subscription/stripe"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/permission"
