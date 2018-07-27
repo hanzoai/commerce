@@ -12,8 +12,9 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/email/provider"
 
-	. "hanzo.io/models"
+  . "hanzo.io/models"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -41,6 +42,8 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.AuthorizeNet.Sandbox.TransactionKey = ""
 	org.AuthorizeNet.Sandbox.Key = "Simon"
 
+	org.SendGrid.APIKey = "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"
+
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
 	org.Fees.Affiliate.Flat = 0
@@ -50,6 +53,37 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.From = email.Email{
 		Name:    "Halcyon Bio",
 		Address: "hi@halcyon.bio",
+	}
+	org.Email.Defaults.ProviderId = string(provider.SendGrid)
+	org.Email.Order.Confirmation = email.Setting{
+		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02",
+	}
+	org.Email.Order.Refund= email.Setting{
+		TemplateId: "d-ee5f9eedefd34e8c9d875f5629670047",
+	}
+	org.Email.Order.RefundPartial= email.Setting{
+		TemplateId: "d-d444b9a1d1b84df0aa8a96fa52010116",
+	}
+	org.Email.Order.Shipped= email.Setting{
+		TemplateId: "d-78f0f304bb17428eaffa8ff1504ad124",
+	}
+	org.Email.Order.Updated = email.Setting{
+		TemplateId: "d-cfe9717a682e47a5b70f16fd794bca45",
+	}
+	org.Email.User.Welcome= email.Setting{
+		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
+	}
+	org.Email.User.ConfirmEmail= email.Setting{
+		TemplateId: "d-23166776363e489e898b73c7ec208ebe",
+	}
+	org.Email.User.Activated= email.Setting{
+		TemplateId: "d-b2b35a2f612c4dfebdf318a4e88737f2",
+	}
+	org.Email.User.ResetPassword= email.Setting{
+		TemplateId: "d-aae4b56c34a24cd78408e9ae58a75655",
+	}
+	org.Email.Subscriber.Welcome = email.Setting{
+		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
 	}
 
 	org.SignUpOptions.ImmediateLogin = true
