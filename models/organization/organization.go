@@ -83,6 +83,9 @@ type Organization struct {
 		// Controls the enabled status of account after creation
 		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
 
+		// Allow direct affiliate sign up
+		AllowAffiliateSignup	 bool `json:"allowAffiliateSignup"`
+
 		// Turns off required backend checks
 		NoNameRequired     bool `json:"noNameRequired"`
 		NoPasswordRequired bool `json:"noPasswordRequired"`

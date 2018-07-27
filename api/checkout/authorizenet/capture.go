@@ -11,6 +11,7 @@ import (
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
+var NothingToCaptureError = errors.New("Nothing to Capture (Items or Subscriptions)")
 
 func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	// Get namespaced context off order
@@ -34,28 +35,32 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	client := authorizenet.New(ctx, loginId, transactionKey, key, false)
 
-	// Capture any uncaptured payments
-	for _, p := range payments {
+	if ord.Total > 0 {
+		// Capture any uncaptured payments
+		for _, p := range payments {
 
-		if !p.Captured {
-			p2, err := client.Capture(p)
+			if !p.Captured {
+				p2, err := client.Capture(p)
 
-			// Charge failed for some reason, bail
-			if err != nil {
-				return nil, payments, err
+				// Charge failed for some reason, bail
+				if err != nil {
+					return ord, payments, err
+				}
+				if !p2.Captured {
+					return ord, payments, FailedToCaptureCharge
+				}
+
+				// Update payment
+				p2.Captured = true
+				// p.Amount = currency.Cents(ord.Amount)
+				// p.AmountRefunded = currency.Cents(p2ch.AmountRefunded)
+				// p.Account.BalanceTransactionId = ch.Tx.ID
+				// p.AmountTransferred = currency.Cents(ch.Tx.Amount)
+				// p.CurrencyTransferred = currency.Type(ch.Tx.Currency)
 			}
-			if !p2.Captured {
-				return nil, payments, FailedToCaptureCharge
-			}
-
-			// Update payment
-			p2.Captured = true
-			// p.Amount = currency.Cents(ord.Amount)
-			// p.AmountRefunded = currency.Cents(p2ch.AmountRefunded)
-			// p.Account.BalanceTransactionId = ch.Tx.ID
-			// p.AmountTransferred = currency.Cents(ch.Tx.Amount)
-			// p.CurrencyTransferred = currency.Type(ch.Tx.Currency)
 		}
+	} else if len(ord.Subscriptions) == 0 {
+		return ord, payments, NothingToCaptureError
 	}
 
 	return ord, payments, nil
