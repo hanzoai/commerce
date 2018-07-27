@@ -62,7 +62,7 @@ type Settings struct {
 		Welcome           Email `json:"welcome`
 		EmailConfirmation Email `json:"emailConfirmation"`
 		EmailConfirmed    Email `json:"emailConfirmed"`
-		PasswordReset     Email `json:"PasswordReset"`
+		PasswordReset     Email `json:"passwordReset"`
 	} `json:"user"`
 
 	Subscriber struct {
