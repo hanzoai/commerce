@@ -100,6 +100,15 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.SignUpOptions.ImmediateLogin = true
 	org.SignUpOptions.AccountsEnabledByDefault = true
 
+	sendgrid := &integration.Integration{
+		Type: integration.SendGridType,
+		SendGrid: integration.SendGrid {
+			APIKey: "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",
+		},
+	}
+
+	org.Integrations.MustAppend(sendgrid)
+
 	org.MustUpdate()
 
 	nsdb := datastore.New(org.Namespaced(db.Context))
@@ -175,15 +184,6 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 			},
 		},
 	}
-
-	sendgrid := &integration.Integration{
-		Type: integration.SendGridType,
-		SendGrid: integration.SendGrid {
-			APIKey: "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",
-		},
-	}
-
-	org.Integrations.MustAppend(sendgrid)
 
 	rp.MustUpdate()
 
