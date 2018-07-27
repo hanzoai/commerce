@@ -76,7 +76,7 @@ func (r *Referrer) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent, test bool) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
@@ -113,7 +113,7 @@ func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referra
 	}
 
 	// Apply any program actions if applicable
-	if err := r.ApplyActions(ctx, orgId, event, &r.Program, rfn); err != nil {
+	if err := r.ApplyActions(ctx, orgId, event, &r.Program, rfn, test); err != nil {
 		return rfl, err
 	}
 
@@ -231,7 +231,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram, rfn Referrent) error {
+func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram, rfn Referrent, test bool) error {
 	old := len(r.Program.Triggers) > 0
 	if old {
 		log.Debug("Old Triggers")
@@ -258,7 +258,7 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 
 		switch action.Type {
 		case referralprogram.StoreCredit:
-			log.Debug("Applying store credit.")
+			log.Info("Applying store credit.", r.Context())
 			if !done && action.Once {
 				r.State[action.Name+"_done"] = true
 				r.MustUpdate()
@@ -270,8 +270,8 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 				amount = rfn.Total()
 			}
 
-			log.Debug("Saving store credit.")
-			if err := saveStoreCredit(r, amount, action.Currency); err != nil {
+			log.Info("Saving store credit %v", rfn.Total(), r.Context())
+			if err := saveStoreCredit(r, amount, action.Currency, test); err != nil {
 				return err
 			}
 		// case referralprogram.Refund:
@@ -297,7 +297,7 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 }
 
 // Credit user with store credit by saving transaction
-func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) error {
+func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type, test bool) error {
 	trans := transaction.New(r.Db)
 	trans.Type = transaction.Deposit
 	trans.Amount = amount
@@ -308,6 +308,7 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) erro
 	trans.DestinationKind = "user"
 	trans.Notes = "Deposit due to referral"
 	trans.Tags = "referral"
+	trans.Test = test
 	log.Debug("Deposit type: %v", trans.Currency)
 	log.Debug("Currency amount: %v", trans.Amount)
 	log.Debug("Destination ID: %v", trans.DestinationId)
