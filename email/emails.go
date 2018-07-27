@@ -122,7 +122,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 
 	// Include tracking number if it exists
 	if len(ord.Fulfillment.Trackings) > 0 {
-		order["fulfillment"] = ord.Fulfillment.Trackings[0]
+		order["fulfillment"] = ord.Fulfillment.Trackings
 	}
 
 	// Include payment data if available
