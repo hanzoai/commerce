@@ -13,6 +13,8 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/types/email/provider"
+
+  . "hanzo.io/models"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -93,7 +95,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	// Create earphone product
 	prod1 := product.New(nsdb)
-	prod1.Slug = "earphone"
+	prod1.Slug = "60-caps"
 	prod1.GetOrCreate("Slug=", prod1.Slug)
 	prod1.Name = "Bottle - 60 Capsules"
 	prod1.Description = "30 Day Supply"
@@ -104,13 +106,15 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	// Create earphone product
 	prod2 := product.New(nsdb)
-	prod2.Slug = "60caps"
+	prod2.Slug = "60-caps-sub"
 	prod2.GetOrCreate("Slug=", prod2.Slug)
 	prod2.Name = "Bottle - 60 Capsules - Subscription"
 	prod2.Description = "30 Day Supply"
 	prod2.SKU = "865524000406-sub"
 	prod2.Price = currency.Cents(6997)
 	prod2.Hidden = false
+	prod2.IsSubscribeable = true
+	prod2.Interval = Monthly
 	prod2.MustUpdate()
 
 	// Create earphone product

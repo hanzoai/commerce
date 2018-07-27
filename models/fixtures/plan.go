@@ -3,8 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/plan"
+	"hanzo.io/models/deprecated/plan"
 	"hanzo.io/models/types/currency"
+
+	. "hanzo.io/models"
 )
 
 var Plan = New("plan", func(c *gin.Context) *plan.Plan {
@@ -28,7 +30,7 @@ var Plan = New("plan", func(c *gin.Context) *plan.Plan {
 	`
 	pln.Price = 2000
 	pln.Currency = currency.USD
-	pln.Interval = plan.Monthly
+	pln.Interval = Monthly
 	pln.IntervalCount = 1
 	// manually made in stripe test dashboard
 

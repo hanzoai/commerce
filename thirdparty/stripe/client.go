@@ -11,11 +11,11 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
-	"hanzo.io/models/subscription"
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/refs"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/plan"
+	"hanzo.io/models/deprecated/subscription"
+	"hanzo.io/models/deprecated/plan"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
@@ -34,12 +34,12 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card.CVC = pay.Account.CVC
 	card.Month = strconv.Itoa(pay.Account.Month)
 	card.Year = strconv.Itoa(pay.Account.Year)
-	card.Address1 = pay.Buyer.Address.Line1
-	card.Address2 = pay.Buyer.Address.Line2
-	card.City = pay.Buyer.Address.City
-	card.State = pay.Buyer.Address.State
-	card.Zip = pay.Buyer.Address.PostalCode
-	card.Country = pay.Buyer.Address.Country
+	card.Address1 = pay.Buyer.BillingAddress.Line1
+	card.Address2 = pay.Buyer.BillingAddress.Line2
+	card.City = pay.Buyer.BillingAddress.City
+	card.State = pay.Buyer.BillingAddress.State
+	card.Zip = pay.Buyer.BillingAddress.PostalCode
+	card.Country = pay.Buyer.BillingAddress.Country
 	return &card
 }
 
@@ -50,12 +50,12 @@ func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 	card.CVC = sub.Account.CVC
 	card.Month = strconv.Itoa(sub.Account.Month)
 	card.Year = strconv.Itoa(sub.Account.Year)
-	card.Address1 = sub.Buyer.Address.Line1
-	card.Address2 = sub.Buyer.Address.Line2
-	card.City = sub.Buyer.Address.City
-	card.State = sub.Buyer.Address.State
-	card.Zip = sub.Buyer.Address.PostalCode
-	card.Country = sub.Buyer.Address.Country
+	card.Address1 = sub.Buyer.BillingAddress.Line1
+	card.Address2 = sub.Buyer.BillingAddress.Line2
+	card.City = sub.Buyer.BillingAddress.City
+	card.State = sub.Buyer.BillingAddress.State
+	card.Zip = sub.Buyer.BillingAddress.PostalCode
+	card.Country = sub.Buyer.BillingAddress.Country
 	return &card
 }
 

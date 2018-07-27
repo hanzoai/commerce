@@ -58,6 +58,24 @@ func SaveRedemptions(ctx context.Context, ord *order.Order) {
 	}
 }
 
+type Referrent struct {
+	id string
+	kind string
+	total currency.Cents
+}
+
+func (r *Referrent) Id() string {
+	return r.id
+}
+
+func (r *Referrent) Kind() string {
+	return r.kind
+}
+
+func (r *Referrent) Total() currency.Cents {
+	return r.total
+}
+
 func UpdateReferral(org *organization.Organization, ord *order.Order) {
 	ctx := org.Context()
 	db := ord.Db
@@ -75,8 +93,19 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 		return
 	}
 
+	// Total the order
+	total := ord.Total
+	for _, sub := range(ord.Subscriptions) {
+		total += sub.Total
+	}
+
 	// Save referral
-	rfl, err := ref.SaveReferral(ctx, org.Id(), referral.NewOrder, ord)
+	rfl, err := ref.SaveReferral(ctx, org.Id(), referral.NewOrder, &Referrent{
+		ord.Id(),
+		ord.Kind(),
+		ord.Total,
+	})
+
 	if err != nil {
 		log.Warn("Unable to save referral: %v", err, ctx)
 		return
@@ -180,7 +209,8 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 			FirstName: usr.FirstName,
 			LastName:  usr.LastName,
 			Phone:     usr.Phone,
-			Address:   ord.ShippingAddress,
+			BillingAddress:   ord.BillingAddress,
+			ShippingAddress:  ord.ShippingAddress,
 		}
 
 		referralLink := ""

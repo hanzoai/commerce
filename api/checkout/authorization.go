@@ -110,8 +110,17 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 	if ord.ShippingAddress.Empty() {
 		ord.ShippingAddress = usr.ShippingAddress
 	}
+
+	if ord.ShippingAddress.Empty() {
+		ord.ShippingAddress = ord.BillingAddress
+	}
+
 	if ord.BillingAddress.Empty() {
 		ord.BillingAddress = usr.BillingAddress
+	}
+
+	if ord.BillingAddress.Empty() {
+		ord.BillingAddress = ord.ShippingAddress
 	}
 
 	// Normalize country

@@ -18,6 +18,7 @@ func (p *Product) Init(db *datastore.Datastore) {
 func (p *Product) Defaults() {
 	p.Variants = make([]*variant.Variant, 0)
 	p.Options = make([]*Option, 0)
+	p.Taxable = true
 }
 
 func New(db *datastore.Datastore) *Product {

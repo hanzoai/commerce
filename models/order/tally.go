@@ -4,38 +4,71 @@ import (
 	"errors"
 	"fmt"
 
+	"hanzo.io/log"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 // Calculates order totals
-func (o *Order) Tally() {
-	o.TallySubtotal()
-	o.TallyTotal()
+func (o *Order) TallyWithoutSubscriptions() {
+	o.TallySubtotalWithoutSubscriptions()
+	o.TallyTotalWithoutSubscriptions()
 }
 
-func (o *Order) TallySubtotal() {
+func (o *Order) TallySubtotalWithoutSubscriptions() {
 	// Contributions do not have items
 	if o.Mode == DepositMode || o.Mode == ContributionMode || o.TokenSaleId != "" {
+		// Contributions just take subtotal into account
+		o.TaxableLineTotal = o.Subtotal
 		return
 	}
 
 	log.Debug("Tallying up order subtotal")
 
 	// Update total
-	linetotal := 0
+	lineTotal := 0
+	taxableLineTotal := 0
 	for _, item := range o.Items {
-		linetotal += item.Quantity * int(item.Price)
+		// Skip subscribeables
+		if item.Product != nil && item.Product.IsSubscribeable {
+			continue
+		}
+
+		if item.Taxable {
+			taxableLineTotal += item.Quantity * int(item.Price)
+		}
+
+		lineTotal += item.Quantity * int(item.Price)
 	}
-	o.LineTotal = currency.Cents(linetotal)
+	o.LineTotal = currency.Cents(lineTotal)
+	o.TaxableLineTotal = currency.Cents(taxableLineTotal)
 	o.Subtotal = o.LineTotal - o.Discount
 }
 
-func (o *Order) TallyTotal() {
+func (o *Order) TallyTotalWithoutSubscriptions() {
 	log.Debug("Tallying up order total")
 	o.Total = o.Subtotal + o.Tax + o.Shipping
+}
+
+func (o *Order) SyncItems(stor *store.Store) {
+	ctx := o.Context()
+
+	log.Info("Order Before Updating Entities: '%v'", json.Encode(o.Items), ctx)
+
+	// Update against store listings
+	log.Debug("Updating items against store listing")
+	if stor != nil {
+		o.UpdateEntitiesFromStore(stor)
+	}
+
+	log.Info("Order Before Updating From Entities: '%v'", json.Encode(o.Items), ctx)
+
+	// Update line items using that information
+	log.Debug("Updating line items")
+	o.UpdateItemsFromEntities()
+
+	log.Info("Order After Updating From Entities: '%v'", json.Encode(o.Items), ctx)
 }
 
 // Update order with information from datastore and tally
@@ -78,21 +111,8 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		}
 	}
 
-	log.Info("Order Before Updating Entities: '%v'", json.Encode(o.Items), ctx)
-
-	// Update against store listings
-	log.Debug("Updating items against store listing")
-	if stor != nil {
-		o.UpdateEntities(stor)
-	}
-
-	log.Info("Order Before Updating From Entities: '%v'", json.Encode(o.Items), ctx)
-
-	// Update line items using that information
-	log.Debug("Updating line items")
-	o.UpdateFromEntities()
-
-	log.Info("Order After Updating From Entities: '%v'", json.Encode(o.Items), ctx)
+	// Update lineitems with current product info
+	o.SyncItems(stor)
 
 	// Calculate applicable discount from discount rules
 	log.Debug("Calculating discount from discount rules")
@@ -110,7 +130,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	o.Discount = discount
 
 	// Tally up order again
-	o.TallySubtotal()
+	o.TallySubtotalWithoutSubscriptions()
 
 	// If not using fallback mode, skip taxes
 	if !useFallback {
@@ -133,14 +153,14 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
 		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
 			if match.TaxShipping {
-				o.Tax = match.Cost + currency.Cents(float64(o.Subtotal+o.Shipping)*match.Percent)
+				o.Tax = match.Cost + currency.Cents(float64(o.TaxableLineTotal+o.Shipping)*match.Percent)
 			} else {
-				o.Tax = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
+				o.Tax = match.Cost + currency.Cents(float64(o.TaxableLineTotal)*match.Percent)
 			}
 		}
 	}
 
-	o.TallyTotal()
+	o.TallyTotalWithoutSubscriptions()
 
 	return nil
 }
