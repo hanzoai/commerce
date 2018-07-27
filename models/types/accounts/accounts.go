@@ -36,8 +36,8 @@ type AuthorizeNetAccount struct {
 	TestRequest    string `json:"testRequest,omitempty"`
 	AccountNumber  string `json:"accountNumber,omitempty"`
 	AccountType    string `json:"accountType,omitempty"`
-	Messages	   []string `json:"message,omitempty"`
-	ErrorMessages  []string `json:"errorMessage,omitempty"`
+	Messages	   string `json:"message,omitempty"`
+	ErrorMessages  string `json:"errorMessage,omitempty"`
 }
 
 type PayPalAccount struct {
