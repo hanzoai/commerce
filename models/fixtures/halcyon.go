@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/integration"
 	"hanzo.io/types/email/provider"
 
   . "hanzo.io/models"
@@ -174,6 +175,15 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 			},
 		},
 	}
+
+	sendgrid := &integration.Integration{
+		Type: integration.SendGridType,
+		SendGrid: integration.SendGrid {
+			APIKey: "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",
+		},
+	}
+
+	org.Integrations.MustAppend(sendgrid)
 
 	rp.MustUpdate()
 
