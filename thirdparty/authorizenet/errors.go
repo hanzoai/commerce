@@ -13,4 +13,6 @@ var (
 	ChargeNotApprovedError				 = errors.New("Capture attempt rejected")
 	RefundGreaterThanPaymentError        = errors.New("The requested refund amount is greater than the paid amount")
 	UnableToRefundUnpaidTransactionError = errors.New("Unable to refund unpaid transaction")
+	NewSubscriptionFailedError			 = errors.New("NewSubscription Failed Error")
+	UpdateSubscriptionFailedError		 = errors.New("UpdateSubscription Failed Error")
 )
