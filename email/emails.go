@@ -109,7 +109,6 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		"monthName": ord.CreatedAt.Month().String(),
 		"year":      ord.CreatedAt.Year(),
 		"fulfillment": map[string]interface{}{
-			"trackingnumber": ord.Fulfillment.Trackings[0],
 			"service":        ord.Fulfillment.Service,
 			"carrier":        ord.Fulfillment.Carrier,
 		},
@@ -119,6 +118,11 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 	// Include discount
 	if ord.Discount != 0 {
 		order["discount"] = ord.DisplayDiscount()
+	}
+
+	// Include tracking number if it exists
+	if len(ord.Fulfillment.Trackings) > 0 {
+		order["fulfillment"] = ord.Fulfillment.Trackings[0]
 	}
 
 	// Include payment data if available
