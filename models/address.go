@@ -15,9 +15,5 @@ func (a Address) Line() string {
 }
 
 func (a Address) Empty() bool {
-	if a.Line1 == "" && a.Line2 == "" && a.City == "" && a.State == "" && a.PostalCode == "" && a.Country == "" {
-		return true
-	}
-
-	return false
+	return a.Line1 == "" && a.Line2 == "" && a.City == "" && a.State == "" && a.PostalCode == "" && a.Country == ""
 }
