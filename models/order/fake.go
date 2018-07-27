@@ -49,7 +49,14 @@ func FakeSubscription(db *datastore.Datastore) *Subscription {
 		Email:     fake.EmailAddress(),
 		FirstName: fake.FirstName(),
 		LastName:  fake.LastName(),
-		Address: Address{
+		BillingAddress: Address{
+			Line1:      fake.Street(),
+			City:       fake.City(),
+			State:      fake.State(),
+			PostalCode: fake.Zip(),
+			Country:    "US",
+		},
+		ShippingAddress: Address{
 			Line1:      fake.Street(),
 			City:       fake.City(),
 			State:      fake.State(),
