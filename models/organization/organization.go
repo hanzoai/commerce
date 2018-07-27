@@ -139,6 +139,8 @@ type Organization struct {
 	// Salesforce settings
 	Salesforce integration.Salesforce `json:"-"`
 
+	SendGrid integration.SendGrid `json:"-"`
+
 	// Shipwire settings
 	Shipwire integration.Shipwire `json:"-"`
 
