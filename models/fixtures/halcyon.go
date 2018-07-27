@@ -141,7 +141,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	prod3.MustUpdate()
 
 	rp := referralprogram.New(nsdb)
-	rp.Name = "Cover Referral Program"
+	rp.Name = "Halcyon Referral Program"
 	rp.GetOrCreate("Name=", rp.Name)
 
 	rp.Actions = []referralprogram.Action{
@@ -165,7 +165,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 			CreditAction: referralprogram.CreditAction{
 				Currency: currency.PNT,
-				Amount:   currency.Cents(1),
+				Amount:   currency.Cents(0),
 			},
 
 			Trigger: referralprogram.Trigger{
@@ -174,6 +174,8 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 			},
 		},
 	}
+
+	rp.MustUpdate()
 
 	// Create earphone product
 	return org
