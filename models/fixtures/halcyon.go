@@ -42,7 +42,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.AuthorizeNet.Sandbox.TransactionKey = ""
 	org.AuthorizeNet.Sandbox.Key = "Simon"
 
-	org.SendGrid.APIKey = "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"
+	//org.SendGrid.APIKey = "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"
 
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
