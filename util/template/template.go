@@ -113,7 +113,10 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 func RenderEmail(path string, data map[string]interface{}) string {
 	// Get template
-	template := fs.ReadFile(path)
+
+	templatePath := cwd + "/templates/email/" + path + ".html"
+
+	template := fs.ReadFile(templatePath)
 
 	// Render template
 	out := raymond.MustRender(string(template),data)

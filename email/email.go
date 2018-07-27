@@ -34,7 +34,9 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 
 // Send email using server-side template
 func SendTemplate(templatePath string, c context.Context, message *email.Message, org *organization.Organization) (err error) {
-	// Built-in tempate, we should render with handlebars
-	message.HTML = template.RenderEmail(templatePath, message.TemplateData)
+	if(message.HTML == "" && message.TemplateID == "") {
+		// Built-in tempate, we should render with handlebars
+		message.HTML = template.RenderEmail(templatePath, message.TemplateData)
+	}
 	return Send(c, message, org)
 }
