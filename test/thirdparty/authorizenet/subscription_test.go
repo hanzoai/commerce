@@ -1,9 +1,9 @@
 package test
 
 import (
-	"hanzo.io/models/subscription"
 	"hanzo.io/log"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/order"
 	//"hanzo.io/thirdparty/authorizenet"
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -11,8 +11,8 @@ import (
 var _ = Describe("thirdparty.authorizenet.subscription", func() {
 	Context("Subscription", func() {
 		It("Should make new subscription", func() {
-			sub := subscription.Fake(db)
-			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
+			sub := order.FakeSubscription(db)
+			sub.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
 			retSub, err := client.NewSubscription(sub)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retSub.Account.TransId).NotTo(BeNil())
@@ -21,8 +21,8 @@ var _ = Describe("thirdparty.authorizenet.subscription", func() {
 			Expect(retSub.Ref.AuthorizeNet.CustomerPaymentProfileId).NotTo(Equal(""))
 		})
 		It("Should cancel subscription", func() {
-			sub := subscription.Fake(db)
-			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
+			sub := order.FakeSubscription(db)
+			sub.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
 			retSub, err := client.NewSubscription(sub)
 			Expect(err).ToNot(HaveOccurred())
 			canceledSub, err := client.CancelSubscription(retSub)
@@ -30,8 +30,8 @@ var _ = Describe("thirdparty.authorizenet.subscription", func() {
 			Expect(canceledSub.Canceled).To(BeTrue())
 		})
 		It("Should update subscription", func() {
-			sub := subscription.Fake(db)
-			sub.Plan.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
+			sub := order.FakeSubscription(db)
+			sub.Price += currency.Cents(1) // a.net thinks a subscription worth nothing makes no sense.
 			retSub, err := client.NewSubscription(sub)
 			Expect(err).ToNot(HaveOccurred())
 			retSub.Account.Number = "5555555555554444"

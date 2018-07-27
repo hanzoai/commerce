@@ -18,6 +18,7 @@ import (
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/discount"
 	"hanzo.io/models/fee"
+	"hanzo.io/models/lineitem"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/referrer"
@@ -32,7 +33,6 @@ import (
 	"hanzo.io/util/val"
 
 	. "hanzo.io/models"
-	"hanzo.io/models/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -116,6 +116,9 @@ type Order struct {
 	// Sum of the line item amounts. Amount in cents.
 	LineTotal currency.Cents `json:"lineTotal"`
 
+	// Sum of line totals less discount. Amount in cents.
+	TaxableLineTotal currency.Cents `json:"taxableLineTotal"`
+
 	// Discount amount applied to the order. Amount in cents.
 	Discount currency.Cents `json:"discount"`
 
@@ -197,6 +200,8 @@ type Order struct {
 
 	// Passphrase for the wallet accounts the order controls, never send to the client
 	WalletPassphrase string `json:"-"`
+
+	Subscriptions []Subscription `json:"subscriptions,omitempty"`
 
 	// At what point do we stop taking payments
 	// PaymentStop time.Time `json:"paymentStop"`
@@ -510,16 +515,16 @@ func (o *Order) GetItemEntities() error {
 			return err
 		}
 		keys[i] = key
-		log.Debug("key %v", key)
+		log.Warn("key %v", key)
 		vals[i] = dst
-		log.Debug("dst %v", json.Encode(dst))
+		log.Warn("dst %v", json.Encode(dst))
 	}
 
 	return db.GetMulti(keys, vals)
 }
 
 // Update underlying line item entities using store listings
-func (o *Order) UpdateEntities(stor *store.Store) {
+func (o *Order) UpdateEntitiesFromStore(stor *store.Store) {
 	nItems := len(o.Items)
 	for i := 0; i < nItems; i++ {
 		if o.Items[i].Product != nil {
@@ -536,7 +541,7 @@ func (o *Order) UpdateEntities(stor *store.Store) {
 }
 
 // Update line items from underlying entities
-func (o *Order) UpdateFromEntities() {
+func (o *Order) UpdateItemsFromEntities() {
 	nItems := len(o.Items)
 	for i := 0; i < nItems; i++ {
 		(&o.Items[i]).Update()

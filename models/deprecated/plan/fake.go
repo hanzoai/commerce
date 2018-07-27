@@ -4,6 +4,8 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/util/fake"
 	"hanzo.io/models/types/currency"
+
+	. "hanzo.io/models"
 )
 
 func Fake(db *datastore.Datastore) *Plan {
