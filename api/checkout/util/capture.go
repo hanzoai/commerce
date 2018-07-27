@@ -103,7 +103,7 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 	rfl, err := ref.SaveReferral(ctx, org.Id(), referral.NewOrder, &Referrent{
 		ord.Id(),
 		ord.Kind(),
-		ord.Total,
+		total,
 	})
 
 	if err != nil {
