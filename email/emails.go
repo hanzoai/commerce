@@ -23,6 +23,7 @@ func message(settings email.Setting) *email.Message {
 	m.From = settings.From
 	m.ReplyTo = settings.ReplyTo
 	m.Subject = settings.Subject
+	m.TemplateID = settings.TemplateId
 	return m
 }
 
