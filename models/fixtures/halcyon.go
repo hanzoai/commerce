@@ -102,6 +102,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	sendgrid := &integration.Integration{
 		Type: integration.SendGridType,
+		Enabled: true,
 		SendGrid: integration.SendGrid {
 			APIKey: "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",
 		},
