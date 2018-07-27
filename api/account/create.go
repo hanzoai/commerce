@@ -266,7 +266,6 @@ func create(c *gin.Context) {
 
 	counter.IncrUser(usr.Context(), usr.CreatedAt)
 	// Render user
-	http.Render(c, 201, createRes{User: usr, Token: tokStr})
 
 	// Don't send email confirmation if test key is used
 	// if org.Live {
@@ -291,4 +290,6 @@ func create(c *gin.Context) {
 	} else {
 		log.Info("Skip saving User to Mailchimp: %s", usr, c)
 	}
+
+	http.Render(c, 201, createRes{User: usr, Token: tokStr})
 }
