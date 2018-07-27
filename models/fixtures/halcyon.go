@@ -108,7 +108,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
-	org.Integrations.MustAppend(sendgrid)
+	org.Integrations = org.Integrations.MustAppend(sendgrid)
 
 	org.MustUpdate()
 
