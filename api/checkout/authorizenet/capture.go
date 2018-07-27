@@ -63,15 +63,6 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		return ord, payments, NothingToCaptureError
 	}
 
-	for i, sub := range ord.Subscriptions {
-		sub2, err := client.NewSubscription(&sub)
-		if err != nil {
-			return ord, payments, err
-		}
-
-		ord.Subscriptions[i] = *sub2
-	}
-
 	return ord, payments, nil
 }
 

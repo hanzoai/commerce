@@ -209,7 +209,8 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 			FirstName: usr.FirstName,
 			LastName:  usr.LastName,
 			Phone:     usr.Phone,
-			Address:   ord.ShippingAddress,
+			BillingAddress:   ord.BillingAddress,
+			ShippingAddress:  ord.ShippingAddress,
 		}
 
 		referralLink := ""

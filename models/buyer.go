@@ -11,7 +11,9 @@ type Buyer struct {
 	LastName  string  `json:"lastName,omitempty"`
 	Company   string  `json:"company,omitempty"`
 	Phone     string  `json:"phone,omitempty"`
-	Address   Address `json:"address,omitempty"`
+	// Address   Address `json:"address,omitempty"`
+	ShippingAddress  Address `json:"shippingAddress,omitempty"`
+	BillingAddress   Address `json:"billingAddress,omitempty"`
 }
 
 func (b Buyer) Name() string {
