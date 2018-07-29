@@ -26,7 +26,11 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 	m.Subject = settings.Subject
 	m.TemplateID = settings.TemplateId
 	if (org != nil) {
-		m.TemplateData["organization"] = org
+		m.TemplateData["organization"] = map[string]interface{}{
+			"id": org.Id(),
+			"name": org.Name,
+		}
+
 	}
 	return m
 }
