@@ -138,6 +138,7 @@ func create(c *gin.Context) {
 	}
 
 	if org.SignUpOptions.AllowAffiliateSignup {
+		log.Info("Signining up as Affiliate? %v", req.User.IsAffiliate, c)
 		usr.IsAffiliate = req.User.IsAffiliate
 	}
 
@@ -279,7 +280,7 @@ func create(c *gin.Context) {
 
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
-		log.Info("Saving User to Mailchimp: %s", usr, c)
+		log.Info("Saving User to Mailchimp: %v", usr, c)
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
@@ -288,7 +289,7 @@ func create(c *gin.Context) {
 			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
 		}
 	} else {
-		log.Info("Skip saving User to Mailchimp: %s", usr, c)
+		log.Info("Skip saving User to Mailchimp: %v", usr, c)
 	}
 
 	http.Render(c, 201, createRes{User: usr, Token: tokStr})

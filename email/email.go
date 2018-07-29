@@ -28,11 +28,13 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 		if in, err = org.Integrations.EmailProvider(); err != nil {
 			log.Error("Could not get Email Provider from org %v: %v", org.Name, err, c)
 			return err
+		} else if in == nil {
+			return IntegrationShouldNotBeNilError
 		}
 	}
 
 	// Fire off task to send email
-	return tasks.Send.Call(c, in, message)
+	return tasks.Send.Call(c, *in, *message)
 }
 
 // Send email using server-side template
@@ -42,5 +44,7 @@ func SendTemplate(templatePath string, c context.Context, message *email.Message
 		log.Info("Using built in template %v", templatePath, c)
 		message.HTML = template.RenderEmail(templatePath, message.TemplateData)
 	}
+
+	log.Info("Sending template %v", templatePath + "/" + message.TemplateID, c)
 	return Send(c, message, org)
 }
