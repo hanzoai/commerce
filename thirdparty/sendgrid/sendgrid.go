@@ -119,7 +119,7 @@ func newMessage(message *email.Message) *mail.SGMailV3 {
 func (c *Client) Send(message *email.Message) error {
 	res, err := c.client.Send(newMessage(message))
 	if err != nil {
-		log.Error(err)
+		log.Error("SendGrid Could Not Send", err, c.ctx)
 		return err
 	}
 	log.Info(res.StatusCode, c.ctx)
