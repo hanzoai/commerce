@@ -144,9 +144,15 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 		return
 	}
 
+	toke := map[string]interface{}{
+		"email":   tok.Email,
+		"userId":  tok.UserId,
+		"used":    tok.Used,
+	}
+
 	message := userMessage(settings, usr)
 	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = tok
+	message.TemplateData["token"] = toke
 	SendTemplate("password-reset", c, message, org)
 }
 
@@ -157,9 +163,15 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 		return
 	}
 
+	toke := map[string]interface{}{
+		"email":   tok.Email,
+		"userId":  tok.UserId,
+		"used":    tok.Used,
+	}
+
 	message := userMessage(settings, usr)
 	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = tok
+	message.TemplateData["token"] = toke
 	SendTemplate("password-update", c, message, org)
 }
 
@@ -183,9 +195,16 @@ func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr
 		panic(err)
 	}
 
+	toke := map[string]interface{}{
+		"email":   tok.Email,
+		"userId":  tok.UserId,
+		"used":    tok.Used,
+	}
+
 	message := userMessage(settings, usr)
 	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = tok
+	message.TemplateData["token"] = toke
+
 	SendTemplate("user-email-confirmation", c, message, org)
 }
 
