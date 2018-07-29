@@ -157,8 +157,9 @@ func New(ctx context.Context, settings integration.SendGrid) *Client {
 		Context: ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
-	rest.DefaultClient = &rest.Client{HTTPClient: httpClient}
+	sendgrid.DefaultClient = &rest.Client{HTTPClient: httpClient}
 	client := sendgrid.NewSendClient(settings.APIKey)
+	// client.HTTPClient = httpClient
 
 	return &Client{ctx, client}
 }
