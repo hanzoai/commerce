@@ -19,18 +19,21 @@ import (
 )
 
 // Create new message using provided defaults
-func message(settings email.Setting) *email.Message {
+func message(settings email.Setting, org *organization.Organization) *email.Message {
 	m := email.NewMessage()
 	m.From = settings.From
 	m.ReplyTo = settings.ReplyTo
 	m.Subject = settings.Subject
 	m.TemplateID = settings.TemplateId
+	if (org != nil) {
+		m.TemplateData["organization"] = org
+	}
 	return m
 }
 
 // Transactional email for user
-func userMessage(settings email.Setting, usr *user.User) *email.Message {
-	m := message(settings)
+func userMessage(settings email.Setting, usr *user.User, org *organization.Organization) *email.Message {
+	m := message(settings, org)
 	m.AddTos(email.Email{usr.Name(), usr.Email})
 	user := map[string]interface{}{
 		"id":        usr.Id(),
@@ -43,8 +46,8 @@ func userMessage(settings email.Setting, usr *user.User) *email.Message {
 }
 
 // Transactional email for subscriber
-func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber) *email.Message {
-	m := message(settings)
+func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber, org *organization.Organization) *email.Message {
+	m := message(settings, org)
 	m.AddTos(email.Email{sub.Name(), sub.Email})
 	subscriber := map[string]interface{}{
 		"id":   sub.Id(),
@@ -55,8 +58,8 @@ func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber) *emai
 }
 
 // Transactional email related to an order
-func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay *payment.Payment) *email.Message {
-	m := userMessage(settings, usr)
+func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay *payment.Payment, org *organization.Organization) *email.Message {
+	m := userMessage(settings, usr, org)
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
 	countryName := country.ByISO3166_2[ord.ShippingAddress.Country].Name.Common
@@ -144,15 +147,13 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 		return
 	}
 
-	toke := map[string]interface{}{
+	message := userMessage(settings, usr, org)
+	message.TemplateData["token"] = map[string]interface{}{
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
 	}
 
-	message := userMessage(settings, usr)
-	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = toke
 	SendTemplate("password-reset", c, message, org)
 }
 
@@ -163,15 +164,14 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 		return
 	}
 
-	toke := map[string]interface{}{
+	message := userMessage(settings, usr, org)
+	message.Substitutions["TOKEN_ID"] = tok.Id()
+	message.TemplateData["token"] = map[string]interface{}{
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
 	}
 
-	message := userMessage(settings, usr)
-	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = toke
 	SendTemplate("password-update", c, message, org)
 }
 
@@ -195,15 +195,14 @@ func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr
 		panic(err)
 	}
 
-	toke := map[string]interface{}{
+	message := userMessage(settings, usr, org)
+	message.TemplateData["token"] = map[string]interface{}{
+		"id":	   tok.Id,
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
 	}
 
-	message := userMessage(settings, usr)
-	message.Substitutions["TOKEN_ID"] = tok.Id()
-	message.TemplateData["token"] = toke
 
 	SendTemplate("user-email-confirmation", c, message, org)
 }
@@ -215,7 +214,7 @@ func SendUserActivated(c context.Context, org *organization.Organization, usr *u
 		return
 	}
 
-	message := userMessage(settings, usr)
+	message := userMessage(settings, usr, org)
 	SendTemplate("user-email-confirmed", c, message, org)
 }
 
@@ -226,7 +225,7 @@ func SendSubscriberWelcome(c context.Context, org *organization.Organization, s 
 		return
 	}
 
-	message := subscriberMessage(settings, s)
+	message := subscriberMessage(settings, s, org)
 	SendTemplate("subscriber-welcome", c, message, org)
 }
 
@@ -239,7 +238,7 @@ func SendUserWelcome(c context.Context, org *organization.Organization, usr *use
 		return
 	}
 
-	message := userMessage(settings, usr)
+	message := userMessage(settings, usr, org)
 	SendTemplate("subscriber-welcome", c, message, org)
 }
 
@@ -249,7 +248,7 @@ func SendOrderConfirmation(c context.Context, org *organization.Organization, or
 		return
 	}
 
-	message := orderMessage(settings, ord, usr, nil)
+	message := orderMessage(settings, ord, usr, nil, org)
 
 	referralCode := ""
 	referrers := make([]referrer.Referrer, 0)
@@ -272,7 +271,7 @@ func SendOrderPartiallyRefunded(c context.Context, org *organization.Organizatio
 		return
 	}
 
-	message := orderMessage(settings, ord, usr, pay)
+	message := orderMessage(settings, ord, usr, pay, org)
 	message.TemplateData["payment"] = map[string]interface{}{
 		"lastFour": pay.Account.LastFour,
 	}
@@ -285,7 +284,7 @@ func SendOrderRefunded(c context.Context, org *organization.Organization, ord *o
 		return
 	}
 
-	message := orderMessage(settings, ord, usr, pay)
+	message := orderMessage(settings, ord, usr, pay, org)
 	SendTemplate("order-refunded", c, message, org)
 }
 
@@ -295,6 +294,6 @@ func SendOrderShipped(c context.Context, org *organization.Organization, ord *or
 		return
 	}
 
-	message := orderMessage(settings, ord, usr, pay)
+	message := orderMessage(settings, ord, usr, pay, org)
 	SendTemplate("order-shipped", c, message, org)
 }
