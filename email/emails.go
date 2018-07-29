@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -15,6 +14,8 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+
+	"hanzo.io/log"
 )
 
 // Create new message using provided defaults
@@ -166,6 +167,7 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr *user.User) {
 	settings := org.Email.Get(email.UserConfirmEmail)
 	if !settings.Enabled {
+		log.Info("UserConfirmEmail disabled", c)
 		return
 	}
 
