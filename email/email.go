@@ -8,6 +8,8 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/types/email"
 	"hanzo.io/util/template"
+
+	"hanzo.io/log"
 )
 
 // Alias common types from "hanzo.io/types/email"
@@ -24,6 +26,7 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 	// If org is provider use their email provider
 	if org != nil {
 		if in, err = org.Integrations.EmailProvider(); err != nil {
+			log.Error("Could not get Email Provider from org %v: %v", org.Name, err, c)
 			return err
 		}
 	}
@@ -36,6 +39,7 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 func SendTemplate(templatePath string, c context.Context, message *email.Message, org *organization.Organization) (err error) {
 	if(message.HTML == "" && message.TemplateID == "") {
 		// Built-in tempate, we should render with handlebars
+		log.Info("Using built in template %v", templatePath, c)
 		message.HTML = template.RenderEmail(templatePath, message.TemplateData)
 	}
 	return Send(c, message, org)
