@@ -2,7 +2,12 @@ package email
 
 import (
 	"time"
+	"encoding/gob"
 )
+
+func init() {
+	gob.Register(map[string]interface{}{})
+}
 
 // Email name and address for sender, recpient, etc
 type Email struct {
