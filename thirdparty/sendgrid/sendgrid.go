@@ -122,9 +122,9 @@ func (c *Client) Send(message *email.Message) error {
 		log.Error(err)
 		return err
 	}
-	log.Info(res.StatusCode)
-	log.Info(res.Body)
-	log.Info(res.Headers)
+	log.Info(res.StatusCode, c.ctx)
+	log.Info(res.Body, c.ctx)
+	log.Info(res.Headers, c.ctx)
 	return nil
 }
 
