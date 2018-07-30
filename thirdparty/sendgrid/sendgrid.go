@@ -122,9 +122,9 @@ func (c *Client) Send(message *email.Message) error {
 		log.Error("SendGrid Could Not Send", err, c.ctx)
 		return err
 	}
-	log.Info(res.StatusCode, c.ctx)
-	log.Info(res.Body, c.ctx)
-	log.Info(res.Headers, c.ctx)
+	log.Info("StatusCode: %v", res.StatusCode, c.ctx)
+	log.Info("Body: %v", res.Body, c.ctx)
+	log.Info("Headers: %v", res.Headers, c.ctx)
 	return nil
 }
 
