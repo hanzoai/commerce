@@ -36,6 +36,8 @@ const (
 type Subscription struct {
 	productcachedvalues.ProductCachedValues
 
+	Subtotal currency.Cents `json:"subtotal"`
+
 	// Discount amount applied to the order. Amount in cents.
 	Discount currency.Cents `json:"discount"`
 
@@ -107,6 +109,7 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 	sub.ProductId = item.ProductId
 	sub.Currency = stor.Currency
 	sub.Status = UnpaidSubscriptionStatus
+	sub.Subtotal = currency.Cents(int(item.Price) * item.Quantity)
 
 	ctx := o.Context()
 
@@ -116,7 +119,7 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 	if srs, err := stor.GetShippingRates(); srs == nil {
 		log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
 	} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
-		sub.Shipping = match.Cost + currency.Cents(float64(item.Price)*match.Percent)
+		sub.Shipping = match.Cost + currency.Cents(float64(sub.Subtotal)*match.Percent)
 	}
 
 	sub.Tax = 0
@@ -125,13 +128,13 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 		log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
 	} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
 		if match.TaxShipping {
-			sub.Tax = match.Cost + currency.Cents(float64(sub.Price+sub.Shipping)*match.Percent)
+			sub.Tax = match.Cost + currency.Cents(float64(sub.Subtotal+sub.Shipping)*match.Percent)
 		} else {
-			sub.Tax = match.Cost + currency.Cents(float64(sub.Price)*match.Percent)
+			sub.Tax = match.Cost + currency.Cents(float64(sub.Subtotal)*match.Percent)
 		}
 	}
 
-	sub.Total = sub.Price + sub.Shipping + sub.Tax
+	sub.Total = sub.Subtotal + sub.Shipping + sub.Tax
 
 	return sub
 }
@@ -185,9 +188,7 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 
 		sub := o.CreateAndTallySubscriptionFromItem(stor, item)
 
-		for i := 0; i < item.Quantity; i++ {
-			o.Subscriptions = append(o.Subscriptions, sub)
-		}
+		o.Subscriptions = append(o.Subscriptions, sub)
 	}
 
 	return nil
