@@ -14,6 +14,7 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/util/json"
 
 	"hanzo.io/log"
 )
@@ -182,7 +183,7 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 // Send email asking for user to confirm email address
 func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr *user.User) {
 	settings := org.Email.Get(email.UserConfirmEmail)
-	log.Info("Try sending UserConfirmEmail with settings: %v", settings, c)
+	log.Info("Try sending UserConfirmEmail with settings: %v", json.Encode(settings), c)
 	if !settings.Enabled {
 		log.Info("UserConfirmEmail disabled", c)
 		return
@@ -236,7 +237,7 @@ func SendSubscriberWelcome(c context.Context, org *organization.Organization, s 
 // Send welcome email to user
 func SendUserWelcome(c context.Context, org *organization.Organization, usr *user.User) {
 	settings := org.Email.Get(email.UserWelcome)
-	log.Info("Try sending UserWelcome with settings: %v", settings, c)
+	log.Info("Try sending UserWelcome with settings: %v", json.Encode(settings), c)
 	if !settings.Enabled {
 		log.Info("UserWelcome disabled", c)
 		return

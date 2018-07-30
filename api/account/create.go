@@ -80,7 +80,7 @@ func create(c *gin.Context) {
 	// Pull out user
 	usr := req.User
 
-	log.Info("Fetching User Request: %v", usr, c)
+	log.Info("Fetching User Request: %v", json.Encode(usr), c)
 	// Email is required
 	if usr.Email == "" || usr.Email == "\u263A" {
 		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
@@ -241,7 +241,7 @@ func create(c *gin.Context) {
 
 	// if ReferrerId refers to non-existing token, then remove from order
 	if usr.ReferrerId != "" {
-		log.Info("User is attributed to Referrer %s: %v", usr.ReferrerId, c)
+		log.Info("User is attributed to Referrer %s", usr.ReferrerId, c)
 		if err := ref.GetById(usr.ReferrerId); err != nil {
 			usr.ReferrerId = ""
 		} else {
@@ -280,7 +280,7 @@ func create(c *gin.Context) {
 
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
-		log.Info("Saving User to Mailchimp: %v", usr, c)
+		log.Info("Saving User to Mailchimp: %v", json.Encode(usr), c)
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
 
@@ -289,7 +289,7 @@ func create(c *gin.Context) {
 			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
 		}
 	} else {
-		log.Info("Skip saving User to Mailchimp: %v", usr, c)
+		log.Info("Skip saving User to Mailchimp: %v", json.Encode(usr), c)
 	}
 
 	http.Render(c, 201, createRes{User: usr, Token: tokStr})

@@ -34,13 +34,13 @@ func Challenge(ctx context.Context, privateKey, response string) bool {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	log.Warn("Captcha %s", body, ctx)
+	log.Info("Captcha %s", body, ctx)
 	if err != nil {
 		log.Error("Read error: could not read body: %s", err, ctx)
 		return false
 	}
 	err = json.Unmarshal(body, &r)
-	log.Warn("Captcha %v", r, ctx)
+	log.Info("Captcha %v", json.Encode(r), ctx)
 	if err != nil {
 		log.Error("Read error: got invalid JSON: %s", err, ctx)
 		return false
