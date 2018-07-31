@@ -138,7 +138,7 @@ func create(c *gin.Context) {
 	}
 
 	if org.SignUpOptions.AllowAffiliateSignup {
-		log.Info("Signining up as Affiliate? %v", req.User.IsAffiliate, c)
+		log.Info("Signing up as Affiliate? %v", req.User.IsAffiliate, c)
 		usr.IsAffiliate = req.User.IsAffiliate
 	}
 
