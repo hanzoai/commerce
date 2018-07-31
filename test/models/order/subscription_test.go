@@ -9,7 +9,7 @@ import (
 )
 
 var _ = Describe("Order.Subscription", func() {
-	Context("CreateSubscriptionsFromItems", func() {
+	FContext("CreateSubscriptionsFromItems", func() {
 		BeforeEach(func() {
 			// Scramble currency values so we know they are being replaced
 			for i, _ := range ord.Coupons {
