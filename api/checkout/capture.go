@@ -3,6 +3,7 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/email"
 	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/balance"
 	"hanzo.io/api/checkout/null"
@@ -13,7 +14,10 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/user"
 	"hanzo.io/util/webhook"
+
+	"hanzo.io/log"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
@@ -38,6 +42,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	}
 
 	if err != nil {
+		log.Error("Capture failed: %v", err, c)
 		return err
 	}
 
@@ -46,6 +51,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateOrder(ctx, ord, payments)
 
 	if err := util.UpdateOrderPayments(ctx, ord, payments); err != nil {
+		log.Error("Capture could not update order/payments: %v", err, c)
 		return err
 	}
 
@@ -56,10 +62,16 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateStats(ctx, org, ord, payments)
 	util.HandleDeposit(ord)
 
-	buyer := payments[0].Buyer
-
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
-	tasks.SendOrderConfirmation.Call(org.Context(), org.Id(), ord.Id(), buyer.Email, buyer.FirstName, buyer.LastName)
+
+	usr := user.New(ord.Db)
+	err = usr.GetById(ord.UserId)
+	if err != nil {
+		log.Error("Capture could not find User %v: %v", usr.Id(), err, c)
+		return err
+	}
+
+	email.SendOrderConfirmation(org.Context(), org, ord, usr)
 
 	webhook.Emit(ctx, org.Name, "order.paid", ord)
 	return nil
