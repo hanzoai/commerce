@@ -9,7 +9,7 @@ import (
 )
 
 var _ = Describe("Order.Subscription", func() {
-	FContext("CreateSubscriptionsFromItems", func() {
+	Context("CreateSubscriptionsFromItems", func() {
 		BeforeEach(func() {
 			// Scramble currency values so we know they are being replaced
 			for i, _ := range ord.Coupons {
@@ -34,7 +34,7 @@ var _ = Describe("Order.Subscription", func() {
 			ord.Subscriptions = make([]order.Subscription, 0)
 		})
 
-		FIt("Should Create Subscriptions From Items", func () {
+		It("Should Create Subscriptions From Items", func () {
 			err := ord.CreateSubscriptionsFromItems(stor)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(ord.Subscriptions)).To(Equal(1))
