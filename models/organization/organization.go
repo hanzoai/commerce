@@ -49,7 +49,7 @@ type Organization struct {
 	Phone            string  `json:"phone,omitempty"`
 	Address          Address `json:"address,omitempty"`
 	SocialMedia		 socialmedia.SocialMedia `json:"socialMedia, omitEmpty"`
-	Website			 website.Website `json:"website, omitEmpty"`
+	Websites		 []website.Website `json:"websites, omitEmpty"`
 	WalletPassphrase string  `json:"-"`
 
 	Timezone string `json:"timezone"`

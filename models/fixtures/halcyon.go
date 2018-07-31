@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
+	"hanzo.io/types/website"
 	"hanzo.io/types/email/provider"
 
   . "hanzo.io/models"
@@ -36,7 +37,11 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Halcyon Bio"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://beta.halcyon.bio"
+	org.Websites = []website.Website{
+		website.Website{Type: website.Production, Url: "http://halcyon.bio"},
+		website.Website{Type: website.Staging, Url: "http://beta.halcyon.bio"},
+		website.Website{Type: website.Test, Url: "http://360.halcyon.bio", PasswordResetPath: "", EmailConfirmPath: "http://360.halcyon.bio/account/registrationsuccess?token="},
+	}
 	org.SecretKey = []byte("VwqutxegjNfz3kTo6LYMJIDQlUHxPFXHdLdiUdPdrS7v2L7fkmfn8ltqzrUmw58V")
 
 	org.AuthorizeNet.Sandbox.LoginId = ""

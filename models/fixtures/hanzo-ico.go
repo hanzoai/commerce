@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 	// "hanzo.io/models/webhook"
 )
 
@@ -31,7 +32,7 @@ var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization 
 
 	org.FullName = "Hanzo ICO"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://ico.hanzo.ai"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ico.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
 
 	org.Fees.Card.Flat = 50

@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 )
 
 var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
@@ -33,7 +34,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Stoned, LLC"
 	org.Owners = []string{usr.Id()}
-	org.Website = "http://www.stoned.audio"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://www.stoned.audio"}}
 	org.SecretKey = []byte("EK9E344442BI5nia9i82pdi98ip0jvqz")
 	org.AddDefaultTokens()
 

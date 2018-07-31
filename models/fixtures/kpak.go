@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 )
 
 var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
@@ -30,7 +31,7 @@ var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "K-Pak, Inc"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.kpakcase.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.kpakcase.com"}}
 	org.SecretKey = []byte("EU8E022iX2Bp5lv931N2STd1d777cU58")
 	org.AddDefaultTokens()
 
