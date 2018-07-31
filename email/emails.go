@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"encoding/gob"
 
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -250,7 +251,9 @@ func SendUserWelcome(c context.Context, org *organization.Organization, usr *use
 
 func SendOrderConfirmation(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	settings := org.Email.Get(email.OrderConfirmation)
+	log.Info("Try sending OrderConfirmation with settings: %v", json.Encode(settings), c)
 	if !settings.Enabled {
+		log.Info("OrderConfirmation disabled", c)
 		return
 	}
 
@@ -302,4 +305,8 @@ func SendOrderShipped(c context.Context, org *organization.Organization, ord *or
 
 	message := orderMessage(settings, ord, usr, pay, org)
 	SendTemplate("order-shipped", c, message, org)
+}
+
+func init() {
+	gob.Register([]map[string]interface{}{})
 }
