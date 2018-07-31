@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 	// "hanzo.io/models/webhook"
 )
 
@@ -31,7 +32,7 @@ var Palladium46 = New("palladium46", func(c *gin.Context) *organization.Organiza
 
 	org.FullName = "Palladium46"
 	org.Owners = []string{u.Id()}
-	org.Website = "https://palladium46.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://palladium46.com"}}
 	org.SecretKey = []byte("fAW5yilqBpvOpUElgxMzjntj9Hq4vtCi9P9X6IA974z348ayUEfkkeJRBSSnwyMK")
 
 	org.Fees.Card.Flat = 50
