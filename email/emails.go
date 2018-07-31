@@ -114,7 +114,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 			"country":    countryName,
 		},
 		"day":       ord.CreatedAt.Day(),
-		"month":     ord.CreatedAt.Month(),
+		"month":     int(ord.CreatedAt.Month()),
 		"monthName": ord.CreatedAt.Month().String(),
 		"year":      ord.CreatedAt.Year(),
 		"storeId": ord.StoreId,
@@ -154,6 +154,7 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 
 	message := userMessage(settings, usr, org)
 	message.TemplateData["token"] = map[string]interface{}{
+		"id":	   tok.Id(),
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
@@ -170,8 +171,8 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 	}
 
 	message := userMessage(settings, usr, org)
-	message.Substitutions["TOKEN_ID"] = tok.Id()
 	message.TemplateData["token"] = map[string]interface{}{
+		"id":	   tok.Id(),
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
@@ -202,7 +203,7 @@ func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr
 
 	message := userMessage(settings, usr, org)
 	message.TemplateData["token"] = map[string]interface{}{
-		"id":	   tok.Id,
+		"id":	   tok.Id(),
 		"email":   tok.Email,
 		"userId":  tok.UserId,
 		"used":    tok.Used,
