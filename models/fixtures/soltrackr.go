@@ -8,6 +8,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 	"hanzo.io/log"
 )
 
@@ -29,7 +30,7 @@ var _ = New("soltrackr", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "SolTrackr Inc"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.soltrackr.com/"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.soltrackr.com/"}}
 	org.SecretKey = []byte("KuMWsRq26FzRYO9NzsXRXwH35YAX2X5F")
 	org.AddDefaultTokens()
 
