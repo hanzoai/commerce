@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/taxrates"
 	"hanzo.io/models/types/georate"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 
 	. "hanzo.io/models/types/analytics"
 )
@@ -31,7 +32,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	org.FullName = "Such Tees, Inc."
 	org.Owners = []string{usr.Id()}
-	org.Website = "http://suchtees.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://suchtees.com"}}
 	org.SecretKey = []byte("prettyprettyteesplease")
 
 	// Saved stripe tokens

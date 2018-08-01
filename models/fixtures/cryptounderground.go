@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/wallet"
 	"hanzo.io/models/webhook"
+	"hanzo.io/types/website"
 )
 
 var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
@@ -30,7 +31,7 @@ var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organizat
 
 	org.FullName = "Crypto Underground"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.cryptounderground.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.cryptounderground.com"}}
 	org.SecretKey = []byte("EGtFY6kqvTuMHsuSW6Qk5NduE22Xk39S")
 
 	org.Fees.Card.Flat = 50

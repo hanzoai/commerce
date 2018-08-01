@@ -7,6 +7,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 )
 
 var AmazingAirfare = New("amazingairfare", func(c *gin.Context) *organization.Organization {
@@ -27,7 +28,7 @@ var AmazingAirfare = New("amazingairfare", func(c *gin.Context) *organization.Or
 
 	org.FullName = "Amazing Airfare"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://amazingairfare.net"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://amazingairfare.net"}}
 	org.SecretKey = []byte("8z317zTRE005g4Am2kt19a1a56aS5969")
 	org.AddDefaultTokens()
 
