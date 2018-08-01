@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 	"hanzo.io/log"
 )
 
@@ -28,7 +29,7 @@ var MakeupFit = New("makeupfit", func(c *gin.Context) *organization.Organization
 	// Configure org
 	org.FullName = "makeupfit"
 	org.AddOwner(u.Id())
-	org.Website = "https://makeupfit.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://makeupfit.com"}}
 	org.SecretKey = []byte("42j32ti0DkT3KIMEAD7fseB8CbynO8z9")
 	org.AddDefaultTokens()
 

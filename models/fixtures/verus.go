@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 )
 
 var Verus = New("verus", func(c *gin.Context) *organization.Organization {
@@ -78,7 +79,7 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "verus"
 	org.Owners = []string{u.Id(), u2.Id(), u3.Id(), u4.Id()}
-	org.Website = "http://www.verus.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.verus.com"}}
 	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
 	org.AddDefaultTokens()
 

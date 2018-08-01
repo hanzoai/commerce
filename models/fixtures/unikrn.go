@@ -8,6 +8,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/log"
+	"hanzo.io/types/website"
 )
 
 var Unikrn = New("unikrn", func(c *gin.Context) *organization.Organization {
@@ -28,7 +29,7 @@ var Unikrn = New("unikrn", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "unikrn"
 	org.AddOwner(u.Id())
-	org.Website = "http://unikrn.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://unikrn.com"}}
 	org.SecretKey = []byte("75k33uj1ElU4LJNFAE8gtfC9DczoP9z0")
 	org.AddDefaultTokens()
 

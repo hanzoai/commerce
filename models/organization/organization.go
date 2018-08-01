@@ -24,6 +24,8 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
+	"hanzo.io/types/socialmedia"
+	"hanzo.io/types/website"
 	"hanzo.io/util/json"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
@@ -46,13 +48,17 @@ type Organization struct {
 	BillingEmail     string  `json:"billingEmail,omitempty"`
 	Phone            string  `json:"phone,omitempty"`
 	Address          Address `json:"address,omitempty"`
-	Website          string  `json:"website,omitempty"`
+	SocialMedia		 socialmedia.SocialMedia `json:"socialMedia, omitEmpty"`
+	Websites		 []website.Website `json:"websites, omitEmpty"`
 	WalletPassphrase string  `json:"-"`
 
 	Timezone string `json:"timezone"`
 
 	Country string `json:"country"`
 	TaxId   string `json:"taxId"`
+
+	// Used in generating email templates
+	LogoUrl string `json:"logoUrl"`
 
 	// Fee structure for this organization
 	Fees pricing.Fees `json:"fees" datastore:",noindex"`
