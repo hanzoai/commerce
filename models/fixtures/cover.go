@@ -8,6 +8,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 	"hanzo.io/log"
 )
 
@@ -30,7 +31,7 @@ var Cover = New("cover", func(c *gin.Context) *organization.Organization {
 	// Configure org
 	org.FullName = "Cover"
 	org.AddOwner(u.Id())
-	org.Website = "http://cover.build"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://cover.build"}}
 	org.SecretKey = []byte("95j23Am4ivn23HitHE1g9fC31cfwP4d5")
 	org.AddDefaultTokens()
 

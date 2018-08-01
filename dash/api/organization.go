@@ -41,7 +41,7 @@ func Organization(c *gin.Context) {
 	org := new(organization.Organization)
 	org.Name = o.Name
 	org.FullName = o.FullName
-	org.Website = o.Website
+	org.Websites = o.Websites
 	org.EmailWhitelist = o.EmailWhitelist
 
 	http.Render(c, 200, org)
@@ -57,7 +57,7 @@ func UpdateOrganization(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
 	org.FullName = o.FullName
-	org.Website = o.Website
+	org.Websites = o.Websites
 	org.EmailWhitelist = o.EmailWhitelist
 
 	org.Put()

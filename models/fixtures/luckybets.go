@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 )
 
 var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization {
@@ -29,7 +30,7 @@ var LuckyBets = New("luckybets", func(c *gin.Context) *organization.Organization
 
 	org.FullName = "Lucky Bets"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.luckybets.co"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.luckybets.co"}}
 	org.SecretKey = []byte("iBuGZ6krwUvMItvTX7Rl6OevF23Yl40T")
 
 	org.Fees.Card.Flat = 0

@@ -8,6 +8,7 @@ import (
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
+	"hanzo.io/types/website"
 
 	"hanzo.io/log"
 )
@@ -30,7 +31,7 @@ var Cove = New("cove", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Cove Inc Limited"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://drinkcove.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://drinkcove.com"}}
 	org.SecretKey = []byte("IZ6E014iX5Cr5mv151P4TTg1f583cW59")
 	org.AddDefaultTokens()
 	// org.Fee = 0.05
