@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
+	"hanzo.io/types/website"
 )
 
 var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
@@ -16,7 +17,7 @@ var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Seaval BeachStyle"
 	// org.Owners = []string{u.Id()}
-	org.Website = "http://www.seavalshop.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://www.seavalshop.com"}}
 	org.SecretKey = []byte("81vHRE006iW4Ap4lu148M2Pc1b57cT57")
 	org.AddDefaultTokens()
 
