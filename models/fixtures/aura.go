@@ -9,6 +9,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/log"
+	"hanzo.io/types/website"
 )
 
 var Aura = New("aura", func(c *gin.Context) *organization.Organization {
@@ -29,7 +30,7 @@ var Aura = New("aura", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Aura Accessories"
 	org.Owners = []string{u.Id()}
-	org.Website = "https://www.smokeaura.com"
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://www.smokeaura.com"}}
 	org.SecretKey = []byte("7Z2e011iX2bp51lv592sTd1d589cu588")
 	org.AddDefaultTokens()
 
