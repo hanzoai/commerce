@@ -114,7 +114,7 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
-	if len(i.FilterByType(sendgrid).Type)) == 0 {
+	if len(org.Integrations.FilterByType(sendgrid.Type)) == 0 {
 		org.Integrations = org.Integrations.MustAppend(sendgrid)
 	}
 
