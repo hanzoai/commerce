@@ -119,7 +119,6 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 		org.Integrations = org.Integrations.MustAppend(sendgrid)
 	}
 
-	ans := analytics.Analytics{}
 	an := analytics.Integration{}
 	an.Type = "google-analytics"
 	an.Id = "UA-123218175-1"
@@ -127,6 +126,9 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	an.Sampling = 0
 	an.Disabled = false
 	an.IntegrationId = "_BNIFVhpgac"
+
+	ans := analytics.Analytics{}
+	ans.Integrations = append(ans.Integrations, an)
 	org.Analytics = ans
 
 	org.MustUpdate()
