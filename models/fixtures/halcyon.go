@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referralprogram"
+	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
@@ -117,6 +118,16 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	if len(org.Integrations.FilterByType(sendgrid.Type)) == 0 {
 		org.Integrations = org.Integrations.MustAppend(sendgrid)
 	}
+
+	ans := analytics.Analytics{}
+	an := analytics.Integration{}
+	an.Type = "google-analytics"
+	an.Id = "UA-123218175-1"
+	an.Event = ""
+	an.Sampling = 0
+	an.Disabled = false
+	an.IntegrationId = "_BNIFVhpgac"
+	org.Analytics = ans
 
 	org.MustUpdate()
 
