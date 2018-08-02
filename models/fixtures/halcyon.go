@@ -5,6 +5,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
@@ -118,6 +119,13 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	org.MustUpdate()
 
 	nsdb := datastore.New(org.Namespaced(db.Context))
+
+	// Create mailinglist
+	ml := mailinglist.New(nsdb)
+	ml.Name = "Mini-launch List"
+	ml.GetOrCreate("Name=", ml.Name)
+	ml.SendWelcome = false
+	ml.MustUpdate()
 
 	// Create earphone product
 	prod1 := product.New(nsdb)
