@@ -64,7 +64,7 @@
                                                    <tr>
                                                       <td style="word-wrap:break-word;font-size:0px;padding:0px 20px 0px 20px;" align="center">
                                                          <div style="cursor:auto;color:#000000;font-family:Ubuntu, Helvetica, Arial, sans-serif;font-size:11px;line-height:22px;text-align:center;">
-                                                            <p><strong>THIS EMAIL IS TO CONFIRM CHANGES MADE TO YOUR ACCOUNT</strong></p>
+                                                            <p><strong>Thank you for ordering!</strong></p>
                                                          </div>
                                                       </td>
                                                    </tr>
@@ -83,8 +83,67 @@
                                                    <tr>
                                                       <td style="word-wrap:break-word;font-size:0px;padding:0px 20px 0px 20px;" align="left">
                                                          <div style="cursor:auto;color:#000000;font-family:Ubuntu, Helvetica, Arial, sans-serif;font-size:11px;line-height:22px;text-align:left;">
-                                                            <p>You have successfully changed your account details with {{organization.name}}. If this is an error, please contact support immediately.</p>
-                                                            <p>Do not hesitate to reach out to us with any comments, questions or suggestions that you might have.<br>&#xA0;</p>
+<table border="0" cellpadding="0" width="100%">
+    <tbody>
+        <tr style="border-bottom: 4px solid rgb(230,230,230)">
+            <td colspan="6" align="left" style="padding-bottom: 16px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Order #: <strong style="color: rgb(85,85,85);">{{ order.number }}</strong> </td>
+        </tr>
+        {{#each order.items}}
+        <tr style="border-bottom: 1px solid rgb(230,230,230)">
+            <td style="text-transform: uppercase;padding: 19px 0;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ productname }}</strong> </td>
+            <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ quantity }}</strong> </td>
+            <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt; padding-right:5px"> x </td>
+            <td align="right" style="width: 120px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ displayprice }}</strong> </td>
+        </tr>
+        {{/each}}
+
+    </tbody>
+</table>
+<table border="0" cellpadding="0" width="100%">
+    <tbody>
+        <tr>
+            <td align="right" style="padding: 10px 0;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Subtotal: </td>
+            <td align="right" style="width: 120px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ order.displaysubtotal }} {{ order.currency }} </strong> </td>
+        </tr> {{#if order.displayDiscount}}
+        <tr>
+            <td align="right" style="padding-bottom: 10px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Discount: </td>
+            <td align="right" style="width: 120px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">-{{ order.displaydiscount }}</strong> </td>
+        </tr> {{/if}}
+        <tr>
+            <td align="right" style="padding-bottom: 10px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Tax: </td>
+            <td align="right" style="width: 120px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ order.displaytax }}</strong> </td>
+        </tr>
+        <tr>
+            <td align="right" style="padding-bottom: 10px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Shipping: </td>
+            <td align="right" style="width: 120px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ order.displayshipping }} </strong> </td>
+        </tr>
+        <tr>
+            <td align="right" style="padding-bottom: 50px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> Total: </td>
+            <td align="right" style="width: 120px;padding-bottom: 50px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;"> <strong style="color: rgb(85,85,85);">{{ order.displaytotal }}</strong> </td>
+        </tr>
+    </tbody>
+</table>
+<table  border="0" cellpadding="0" width="395">
+    <tbody>
+        <tr>
+            <td align="left" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
+                <div> Shipping Address </div>
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.line1 }}</strong> </div> {{#if order.shippingaddress.line2}}
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.line2 }}</strong> </div> {{/if}}
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.city }}</strong> </div> {{#if order.shippingaddress.postalCode}}
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.postalCode }}</strong> </div> {{/if}}
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.state }}</strong> </div>
+                <div> <strong style="color: rgb(85,85,85);">{{ order.shippingaddress.country }}</strong> </div>
+            </td>
+            <td align="right" style="vertical-align: top; -webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;text-align:left">
+                <div> Purchase Date </div>
+                <div> <strong style="color: rgb(85,85,85);">{{
+                    order.day}}&nbsp;{{ order.monthName}}&nbsp;{{ order.year}}</strong> </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
                                                          </div>
                                                       </td>
                                                    </tr>
@@ -231,3 +290,5 @@
       </div>
    </body>
 </html>
+
+
