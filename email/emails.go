@@ -172,6 +172,14 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 		"used":    tok.Used,
 	}
 
+	if(len(org.Websites) > 1) {
+		message.TemplateData["website"] = map[string]interface{} {
+			"url": org.Websites[0].Url,
+			"passwordResetPath": org.Websites[0].PasswordResetPath,
+			"emailConfirmPath": org.Websites[0].EmailConfirmPath,
+		}
+	}
+
 	SendTemplate("password-reset", c, message, org)
 }
 
