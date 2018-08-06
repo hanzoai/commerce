@@ -29,8 +29,22 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 		m.TemplateData["organization"] = map[string]interface{}{
 			"id": org.Id(),
 			"name": org.Name,
+			"logourl": org.LogoUrl,
+			"socialmedia": map[string]interface{}{
+				"facebook": org.SocialMedia.Facebook,
+				"twitter": org.SocialMedia.Twitter,
+				"instagram": org.SocialMedia.Instagram,
+				"gplus": org.SocialMedia.Gplus,
+			},
+			"address": map[string]interface{}{
+				"line1": org.Address.Line1,
+				"line2": org.Address.Line2,
+				"city": org.Address.City,
+				"state": org.Address.State,
+				"zip": org.Address.PostalCode,
+				"country": org.Address.Country,
+			},
 		}
-
 	}
 	return m
 }
