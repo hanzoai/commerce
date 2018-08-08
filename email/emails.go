@@ -259,7 +259,7 @@ func SendAffiliateWelcome(c context.Context, org *organization.Organization, usr
 	}
 
 	message := userMessage(settings, usr, org)
-	SendTemplate("subscriber-welcome", c, message, org)
+	SendTemplate("affiliate-welcome", c, message, org)
 }
 
 func SendOrderConfirmation(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
