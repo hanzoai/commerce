@@ -17,6 +17,22 @@ var NewMessage = email.NewMessage
 var NewPersonalization = email.NewPersonalization
 
 type Email = email.Email
+type Setting email.Setting
+
+const AffiliateWelcome = email.AffiliateWelcome
+const OrderConfirmation = email.OrderConfirmation
+const OrderRefund = email.OrderRefund
+const OrderRefundPartial = email.OrderRefundPartial
+const OrderShipped = email.OrderShipped
+const OrderUpdated = email.OrderUpdated
+const ReferralSignup = email.ReferralSignup
+const SubscriberWelcome = email.SubscriberWelcome
+const UserActivated = email.UserActivated
+const UserConfirmEmail = email.UserConfirmEmail
+const UserPasswordUpdated = email.UserPasswordUpdated
+const UserResetPassword = email.UserResetPassword
+const UserUpdated = email.UserUpdated
+const UserWelcome = email.UserWelcome
 
 // Send email
 func Send(c context.Context, message *email.Message, org *organization.Organization) (err error) {
@@ -39,12 +55,12 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 
 // Send email using server-side template
 func SendTemplate(templatePath string, c context.Context, message *email.Message, org *organization.Organization) (err error) {
-	if(message.HTML == "" && message.TemplateID == "") {
+	if message.HTML == "" && message.TemplateID == "" {
 		// Built-in tempate, we should render with handlebars
 		log.Info("Using built in template %v", templatePath, c)
 		message.HTML = template.RenderEmail(templatePath, message.TemplateData)
 	}
 
-	log.Info("Sending template %v", templatePath + "/" + message.TemplateID, c)
+	log.Info("Sending template %v", templatePath+"/"+message.TemplateID, c)
 	return Send(c, message, org)
 }

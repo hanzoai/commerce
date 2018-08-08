@@ -10,18 +10,18 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/email"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/recaptcha"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/util/counter"
-	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
@@ -41,7 +41,7 @@ type createRes struct {
 }
 
 type Referrent struct {
-	id string
+	id   string
 	kind string
 }
 
@@ -266,21 +266,16 @@ func create(c *gin.Context) {
 	}
 
 	counter.IncrUser(usr.Context(), usr.CreatedAt)
-	// Render user
 
-	// Don't send email confirmation if test key is used
-	// if org.Live {
 	log.Info("Sending Emails", c)
+
 	// Send welcome, email confirmation emails
 	email.SendUserConfirmEmail(ctx, org, usr)
-	if usr.IsAffiliate {
+	if usr.IsAffiliate && org.Email.Get(email.AffiliateWelcome).Enabled {
 		email.SendAffiliateWelcome(ctx, org, usr)
 	} else {
 		email.SendUserWelcome(ctx, org, usr)
 	}
-	// } else {
-	// 	log.Info("Organization %v is not live.  No emails sent.", org.Name, c)
-	// }
 
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
