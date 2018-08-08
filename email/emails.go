@@ -249,6 +249,19 @@ func SendUserWelcome(c context.Context, org *organization.Organization, usr *use
 	SendTemplate("subscriber-welcome", c, message, org)
 }
 
+// Send welcome email to user
+func SendAffiliateWelcome(c context.Context, org *organization.Organization, usr *user.User) {
+	settings := org.Email.Get(email.AffiliateWelcome)
+	log.Info("Try sending UserAffiliate with settings: %v", json.Encode(settings), c)
+	if !settings.Enabled {
+		log.Info("UserAffiliate disabled", c)
+		return
+	}
+
+	message := userMessage(settings, usr, org)
+	SendTemplate("subscriber-welcome", c, message, org)
+}
+
 func SendOrderConfirmation(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	settings := org.Email.Get(email.OrderConfirmation)
 	log.Info("Try sending OrderConfirmation with settings: %v", json.Encode(settings), c)
