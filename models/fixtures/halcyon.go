@@ -14,11 +14,11 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
+	"hanzo.io/types/email/provider"
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
-	"hanzo.io/types/email/provider"
 
-  . "hanzo.io/models"
+	. "hanzo.io/models"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -64,53 +64,57 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	}
 	org.Email.Defaults.ProviderId = string(provider.SendGrid)
 	org.Email.Order.Confirmation = email.Setting{
-		Enabled: true,
+		Enabled:    true,
 		TemplateId: "d-57f034971aec4beb8137c17b1eb71b02",
 	}
-	org.Email.Order.Refund= email.Setting{
-		Enabled: true,
+	org.Email.Order.Refund = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-ee5f9eedefd34e8c9d875f5629670047",
 	}
-	org.Email.Order.RefundPartial= email.Setting{
-		Enabled: true,
+	org.Email.Order.RefundPartial = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-d444b9a1d1b84df0aa8a96fa52010116",
 	}
-	org.Email.Order.Shipped= email.Setting{
-		Enabled: true,
+	org.Email.Order.Shipped = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-78f0f304bb17428eaffa8ff1504ad124",
 	}
 	org.Email.Order.Updated = email.Setting{
-		Enabled: true,
+		Enabled:    true,
 		TemplateId: "d-cfe9717a682e47a5b70f16fd794bca45",
 	}
-	org.Email.User.Welcome= email.Setting{
-		Enabled: true,
+	org.Email.User.Welcome = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
 	}
-	org.Email.User.ConfirmEmail= email.Setting{
-		Enabled: true,
+	org.Email.User.ConfirmEmail = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-23166776363e489e898b73c7ec208ebe",
 	}
-	org.Email.User.Activated= email.Setting{
-		Enabled: true,
+	org.Email.User.Activated = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-b2b35a2f612c4dfebdf318a4e88737f2",
 	}
-	org.Email.User.ResetPassword= email.Setting{
-		Enabled: true,
+	org.Email.User.ResetPassword = email.Setting{
+		Enabled:    true,
 		TemplateId: "d-aae4b56c34a24cd78408e9ae58a75655",
 	}
 	org.Email.Subscriber.Welcome = email.Setting{
-		Enabled: true,
+		Enabled:    true,
 		TemplateId: "d-21fd5d07d12d4e5284d5e1986dc0b4e8",
+	}
+	org.Email.Affiliate.Welcome = email.Setting{
+		Enabled:    true,
+		TemplateId: "d-9f991d70e4124d019ffae88aa1b6f902",
 	}
 
 	org.SignUpOptions.ImmediateLogin = true
 	org.SignUpOptions.AccountsEnabledByDefault = true
 
 	sendgrid := &integration.Integration{
-		Type: integration.SendGridType,
+		Type:    integration.SendGridType,
 		Enabled: true,
-		SendGrid: integration.SendGrid {
+		SendGrid: integration.SendGrid{
 			APIKey: "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",
 		},
 	}
