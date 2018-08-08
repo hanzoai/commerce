@@ -3,12 +3,11 @@ package email
 import (
 	"context"
 
+	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/subscriber"
 	"hanzo.io/types/email"
 )
 
 type Subscriber interface {
-	SubscriberGet(c context.Context, id string)
-	SubscriberCreate(context.Context, email.Email)
-	SubscriberUpdate(context.Context, email.Email)
-	SubscriberDelete(context.Context, email.Email)
+	Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error
 }
