@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/mailchimp"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {

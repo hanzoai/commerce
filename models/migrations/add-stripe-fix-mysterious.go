@@ -6,16 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models"
+	"hanzo.io/log"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
+
+	. "hanzo.io/types"
 )
 
 var _ = New("add-stripe-fix-mysterious",
@@ -45,7 +46,7 @@ var _ = New("add-stripe-fix-mysterious",
 			usr.Company = buyer.Company
 			usr.Phone = buyer.Phone
 			usr.ShippingAddress = buyer.ShippingAddress
-			usr.History = []models.Event{models.Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
+			usr.History = []Event{Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
 			usr.Accounts.Stripe = pay.Account.Stripe
 
 			usr.MustPut()
@@ -65,7 +66,7 @@ var _ = New("add-stripe-fix-mysterious",
 			ord.Subtotal = pay.Amount
 			ord.Total = pay.Amount
 			ord.Currency = pay.Currency
-			ord.History = []models.Event{models.Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
+			ord.History = []Event{Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
 
 			descs := strings.Split(charge.Desc, ",")
 			ord.Items = make([]lineitem.LineItem, len(descs))

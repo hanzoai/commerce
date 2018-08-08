@@ -1,4 +1,4 @@
-package models
+package types
 
 type Event struct {
 	Type string `json:"type"`

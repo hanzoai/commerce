@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 	. "hanzo.io/util/strings"
 )
 

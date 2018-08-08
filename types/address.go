@@ -1,4 +1,4 @@
-package models
+package types
 
 type Address struct {
 	Name       string `json:"name,omitempty"`

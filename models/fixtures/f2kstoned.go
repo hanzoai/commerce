@@ -11,7 +11,7 @@ package fixtures
 // 	"hanzo.io/models/product"
 // 	"hanzo.io/models/user"
 
-// 	. "hanzo.io/models"
+// 	. "hanzo.io/types"
 // )
 
 // var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {

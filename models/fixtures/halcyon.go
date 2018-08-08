@@ -18,7 +18,7 @@ import (
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {

@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/productcachedvalues"
 	"hanzo.io/models/variant"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type LineItem struct {

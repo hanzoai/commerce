@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/mailchimp"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product {

@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/util/fake"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 func Fake(db *datastore.Datastore) *Payment {

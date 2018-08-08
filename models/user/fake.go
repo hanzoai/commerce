@@ -2,7 +2,7 @@ package user
 
 import (
 	"hanzo.io/datastore"
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 	"hanzo.io/util/fake"
 )
 

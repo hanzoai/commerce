@@ -3,10 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models"
 	"hanzo.io/models/product"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
+
+	. "hanzo.io/types"
 )
 
 var Store = New("store", func(c *gin.Context) *store.Store {
@@ -21,7 +22,7 @@ var Store = New("store", func(c *gin.Context) *store.Store {
 	stor.Domain = "suchtees.com"
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
-	stor.TaxNexus = []models.Address{models.Address{Line1: "123 Such St", City: "Tee City"}, models.Address{Line1: "456 Noo Ln", City: "Memetown"}}
+	stor.TaxNexus = []Address{Address{Line1: "123 Such St", City: "Tee City"}, Address{Line1: "456 Noo Ln", City: "Memetown"}}
 
 	// Fetch first product
 	prod := Product(c).(*product.Product)

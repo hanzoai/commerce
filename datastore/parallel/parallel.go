@@ -12,7 +12,6 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/delay"
 	"hanzo.io/log"
-	"hanzo.io/models"
 	"hanzo.io/models/mixin"
 )
 
@@ -158,7 +157,7 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 
 	// Use all namespaces
 	if len(namespaces) == 0 {
-		namespaces = models.GetNamespaces(ctx)
+		namespaces = datastore.GetNamespaces(ctx)
 	}
 
 	log.Debug("executing across namespaces: %v", namespaces)
