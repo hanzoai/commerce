@@ -1,5 +1,10 @@
 package email
 
+// you refuse to work with me
+// all you ever do is look for perceived shortcomings, a better approach would be
+// to just ask me to do things that would be helpful i would have very happily sat
+// down and designed a routine that would work for you
+
 import (
 	"context"
 
