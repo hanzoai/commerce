@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}

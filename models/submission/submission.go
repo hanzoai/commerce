@@ -9,7 +9,7 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Submission struct {

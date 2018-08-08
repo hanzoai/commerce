@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Status string
