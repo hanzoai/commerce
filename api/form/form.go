@@ -23,21 +23,28 @@ func handleForm(c *gin.Context) {
 	// Set mailinglist key
 	ml.SetKey(id)
 
-	// Reset namespace to organization's
-	ml.SetNamespace(ml.Key().Namespace())
-
-	// Get namespaced db
-	db = ml.Datastore()
+	// Get namepsace
+	ns := ml.Key().Namespace()
 
 	// Get organization for mailinglist
-	org.GetById(ml.Key().Namespace())
-	log.Info("Organization: %v, %v", ml.Key().Namespace(), org.Name, c)
+	if err := org.GetById(ns); err != nil {
+		log.Error("Organization not found: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", ns, err), err)
+		return
+	}
+	log.Info("Organization: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
+
+	// Reset namespace to organization's
+	ml.SetNamespace(ns)
 
 	// Mailing list doesn't exist
 	if err := ml.Get(nil); err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
 		return
 	}
+
+	// Get namespaced db
+	db = ml.Datastore()
 
 	switch ml.Type {
 	case form.Submit:
