@@ -155,7 +155,7 @@ var _ = New("load-counter-users",
 
 var _ = New("load-counter-subscribers",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "halcyon")
 
 		return NoArgs
 	},
