@@ -8,6 +8,7 @@ import (
 type Type string
 
 const (
+	AffiliateWelcome    Type = "affiliate.welcome"
 	OrderConfirmation   Type = "order.confirmation"
 	OrderRefund         Type = "order.refund"
 	OrderRefundPartial  Type = "order.refund-partial"
@@ -51,6 +52,10 @@ type Settings struct {
 	} `json:"defaults`
 
 	// Per-email configuration
+	Affiliate struct {
+		Welcome Setting `json:"welcome"`
+	} `json:"affiliate"`
+
 	Order struct {
 		Confirmation  Setting `json:"confirmation"`
 		Refund        Setting `json:"refund"`
@@ -78,6 +83,8 @@ func (s Settings) Get(typ Type) Setting {
 
 	switch typ {
 	// Order emails
+	case AffiliateWelcome:
+		setting = s.Affiliate.Welcome
 	case OrderConfirmation:
 		setting = s.Order.Confirmation
 	case OrderShipped:
