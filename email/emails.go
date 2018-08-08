@@ -2,9 +2,9 @@ package email
 
 import (
 	"context"
+	"encoding/gob"
 	"strings"
 	"time"
-	"encoding/gob"
 
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -27,13 +27,14 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 	m.ReplyTo = settings.ReplyTo
 	m.Subject = settings.Subject
 	m.TemplateID = settings.TemplateId
-	if (org != nil) {
+
+	if org != nil {
 		m.TemplateData["organization"] = map[string]interface{}{
-			"id": org.Id(),
+			"id":   org.Id(),
 			"name": org.Name,
 		}
-
 	}
+
 	return m
 }
 
@@ -41,6 +42,7 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 func userMessage(settings email.Setting, usr *user.User, org *organization.Organization) *email.Message {
 	m := message(settings, org)
 	m.AddTos(email.Email{usr.Name(), usr.Email})
+
 	user := map[string]interface{}{
 		"id":        usr.Id(),
 		"name":      usr.Name(),
@@ -48,6 +50,7 @@ func userMessage(settings email.Setting, usr *user.User, org *organization.Organ
 		"lastName":  usr.LastName,
 	}
 	m.TemplateData["user"] = user
+
 	return m
 }
 
@@ -55,11 +58,13 @@ func userMessage(settings email.Setting, usr *user.User, org *organization.Organ
 func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber, org *organization.Organization) *email.Message {
 	m := message(settings, org)
 	m.AddTos(email.Email{sub.Name(), sub.Email})
+
 	subscriber := map[string]interface{}{
 		"id":   sub.Id(),
 		"name": sub.Name(),
 	}
 	m.TemplateData["subscriber"] = subscriber
+
 	return m
 }
 
@@ -118,7 +123,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		"month":     int(ord.CreatedAt.Month()),
 		"monthName": ord.CreatedAt.Month().String(),
 		"year":      ord.CreatedAt.Year(),
-		"storeId": ord.StoreId,
+		"storeId":   ord.StoreId,
 	}
 
 	// Include discount
@@ -129,11 +134,14 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 	// Include fulfillment data if it exists
 	if len(ord.Fulfillment.Trackings) > 0 {
 		order["fulfillment"] = map[string]interface{}{
-			"trackingNumber":       ord.Fulfillment.Trackings[0],
+			"trackingNumber": ord.Fulfillment.Trackings[0],
 			"service":        ord.Fulfillment.Service,
 			"carrier":        ord.Fulfillment.Carrier,
 		}
 	}
+
+	m.TemplateData["order"] = order
+
 	// Include payment data if available
 	if pay != nil {
 		m.TemplateData["payment"] = map[string]interface{}{
@@ -141,7 +149,6 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		}
 	}
 
-	m.TemplateData["order"] = order
 	return m
 }
 
@@ -155,10 +162,10 @@ func SendResetPassword(c context.Context, org *organization.Organization, usr *u
 
 	message := userMessage(settings, usr, org)
 	message.TemplateData["token"] = map[string]interface{}{
-		"id":	   tok.Id(),
-		"email":   tok.Email,
-		"userId":  tok.UserId,
-		"used":    tok.Used,
+		"id":     tok.Id(),
+		"email":  tok.Email,
+		"userId": tok.UserId,
+		"used":   tok.Used,
 	}
 
 	SendTemplate("password-reset", c, message, org)
@@ -173,10 +180,10 @@ func SendUpdatePassword(c context.Context, org *organization.Organization, usr *
 
 	message := userMessage(settings, usr, org)
 	message.TemplateData["token"] = map[string]interface{}{
-		"id":	   tok.Id(),
-		"email":   tok.Email,
-		"userId":  tok.UserId,
-		"used":    tok.Used,
+		"id":     tok.Id(),
+		"email":  tok.Email,
+		"userId": tok.UserId,
+		"used":   tok.Used,
 	}
 
 	SendTemplate("password-update", c, message, org)
@@ -204,12 +211,11 @@ func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr
 
 	message := userMessage(settings, usr, org)
 	message.TemplateData["token"] = map[string]interface{}{
-		"id":	   tok.Id(),
-		"email":   tok.Email,
-		"userId":  tok.UserId,
-		"used":    tok.Used,
+		"id":     tok.Id(),
+		"email":  tok.Email,
+		"userId": tok.UserId,
+		"used":   tok.Used,
 	}
-
 
 	SendTemplate("user-email-confirmation", c, message, org)
 }
