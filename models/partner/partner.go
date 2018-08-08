@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/types/schedule"
 	"hanzo.io/thirdparty/stripe/connect"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Partner struct {

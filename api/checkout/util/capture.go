@@ -18,7 +18,7 @@ import (
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 func UpdateOrder(ctx context.Context, ord *order.Order, payments []*payment.Payment) {
@@ -59,8 +59,8 @@ func SaveRedemptions(ctx context.Context, ord *order.Order) {
 }
 
 type Referrent struct {
-	id string
-	kind string
+	id    string
+	kind  string
 	total currency.Cents
 }
 
@@ -95,7 +95,7 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 
 	// Total the order
 	total := ord.Total
-	for _, sub := range(ord.Subscriptions) {
+	for _, sub := range ord.Subscriptions {
 		total += sub.Total
 	}
 
@@ -205,12 +205,12 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 
 		// Subscribe user to list
 		buy := Buyer{
-			Email:     usr.Email,
-			FirstName: usr.FirstName,
-			LastName:  usr.LastName,
-			Phone:     usr.Phone,
-			BillingAddress:   ord.BillingAddress,
-			ShippingAddress:  ord.ShippingAddress,
+			Email:           usr.Email,
+			FirstName:       usr.FirstName,
+			LastName:        usr.LastName,
+			Phone:           usr.Phone,
+			BillingAddress:  ord.BillingAddress,
+			ShippingAddress: ord.ShippingAddress,
 		}
 
 		referralLink := ""

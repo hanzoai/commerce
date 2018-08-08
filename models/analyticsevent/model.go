@@ -3,7 +3,7 @@ package analyticsevent
 import (
 	"hanzo.io/datastore"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var kind = "analyticsevent"
