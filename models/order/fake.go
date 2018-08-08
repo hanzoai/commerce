@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/fake"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 func Fake(db *datastore.Datastore, lis ...lineitem.LineItem) *Order {
