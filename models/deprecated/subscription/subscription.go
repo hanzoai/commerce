@@ -16,7 +16,7 @@ import (
 	"hanzo.io/util/val"
 	"hanzo.io/util/timeutil"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 // Based On Stripe Subscription

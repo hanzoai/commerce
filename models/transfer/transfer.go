@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/currency"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Type string

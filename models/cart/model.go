@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/coupon"
 	"hanzo.io/models/lineitem"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var kind = "cart"

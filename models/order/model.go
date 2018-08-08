@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/fulfillment"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 	"hanzo.io/models/lineitem"
 )
 

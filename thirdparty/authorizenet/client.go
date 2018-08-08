@@ -7,32 +7,33 @@ import (
 	"strings"
 	"time"
 
+	"bytes"
 	"encoding/json"
-	"net/http"
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
-	"net/http/httputil"
-	"bytes"
 	"io/ioutil"
+	"net/http"
+	"net/http/httputil"
 
 	"github.com/hanzoai/goauthorizenet"
 
 	"hanzo.io/log"
-	"hanzo.io/models"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/refs"
 	json2 "hanzo.io/util/json"
+
+	. "hanzo.io/types"
 )
 
 type Client struct {
-	client *http.Client
-	ctx context.Context
-	loginId string
+	client         *http.Client
+	ctx            context.Context
+	loginId        string
 	transactionKey string
-	Key string
-	test bool
+	Key            string
+	test           bool
 }
 
 func New(ctx context.Context, loginId string, transactionKey string, key string, test bool) *Client {
@@ -53,7 +54,7 @@ func New(ctx context.Context, loginId string, transactionKey string, key string,
 }
 
 func (c Client) getTestValue() string {
-	if(c.test) {
+	if c.test {
 		return "test"
 	}
 	return "live"
@@ -64,11 +65,11 @@ func ToStringExpirationDate(month int, year int) string {
 	y := strconv.Itoa(year)
 	l := len(y)
 	twoDigitYear := y
-	if  l > 2 {
+	if l > 2 {
 		twoDigitYear = y[l-2:]
 	}
 
-	if(month < 10) {
+	if month < 10 {
 		return "0" + strconv.Itoa(month) + "/" + twoDigitYear
 	}
 	return strconv.Itoa(month) + "/" + twoDigitYear
@@ -77,78 +78,79 @@ func ToStringExpirationDate(month int, year int) string {
 func HanzoToAuthorizeSubscription(sub *order.Subscription) *AuthorizeCIM.Subscription {
 
 	interval := AuthorizeCIM.IntervalMonthly()
-	if sub.Interval == models.Yearly {
+	if sub.Interval == Yearly {
 		interval = AuthorizeCIM.IntervalYearly()
 	}
 	subscription := AuthorizeCIM.Subscription{
-		Name:		 sub.ProductId + sub.PlanId,
+		Name:        sub.ProductId + sub.PlanId,
 		Amount:      sub.Currency.ToStringNoSymbol(sub.Price),
 		TrialAmount: "0.00",
 		PaymentSchedule: &AuthorizeCIM.PaymentSchedule{
 			StartDate:        sub.PeriodStart.Format("2006-01-02"),
 			TotalOccurrences: "9999",
 			TrialOccurrences: strconv.Itoa(sub.TrialPeriodsRemaining()),
-			Interval:		  interval,
+			Interval:         interval,
 		},
 		Payment: &AuthorizeCIM.Payment{
 			CreditCard: AuthorizeCIM.CreditCard{
 				CardNumber:     sub.Account.Number,
 				ExpirationDate: ToStringExpirationDate(sub.Account.Month, sub.Account.Year),
-				CardCode:		sub.Account.CVC,
+				CardCode:       sub.Account.CVC,
 			},
 		},
 		BillTo: &AuthorizeCIM.BillTo{
-			FirstName:	 sub.Buyer.FirstName,
-			LastName:	 sub.Buyer.LastName,
-			Address:     sub.Buyer.BillingAddress.Line1,
-			City:        sub.Buyer.BillingAddress.City,
-			State:       sub.Buyer.BillingAddress.State,
-			Zip:         sub.Buyer.BillingAddress.PostalCode,
-			Country:     sub.Buyer.BillingAddress.Country,
+			FirstName: sub.Buyer.FirstName,
+			LastName:  sub.Buyer.LastName,
+			Address:   sub.Buyer.BillingAddress.Line1,
+			City:      sub.Buyer.BillingAddress.City,
+			State:     sub.Buyer.BillingAddress.State,
+			Zip:       sub.Buyer.BillingAddress.PostalCode,
+			Country:   sub.Buyer.BillingAddress.Country,
 		},
 	}
 	return &subscription
 }
+
 // Covert a payment model into a card card we can use for authorization
-func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction{
+func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction {
 	newTransaction := AuthorizeCIM.NewTransaction{
-				Amount: pay.Currency.ToStringNoSymbol(pay.Amount),
-				RefTransId: pay.Account.RefTransId,
-				CreditCard: AuthorizeCIM.CreditCard{
-					CardNumber:     pay.Account.Number,
-					ExpirationDate: ToStringExpirationDate(pay.Account.Month, pay.Account.Year),
-					CardCode:		pay.Account.CVC,
-				},
-				BillTo: &AuthorizeCIM.BillTo{
-					Address:     pay.Buyer.BillingAddress.Line1,
-					City:        pay.Buyer.BillingAddress.City,
-					State:       pay.Buyer.BillingAddress.State,
-					Zip:         pay.Buyer.BillingAddress.PostalCode,
-					Country:     pay.Buyer.BillingAddress.Country,
-				},
-			}
+		Amount:     pay.Currency.ToStringNoSymbol(pay.Amount),
+		RefTransId: pay.Account.RefTransId,
+		CreditCard: AuthorizeCIM.CreditCard{
+			CardNumber:     pay.Account.Number,
+			ExpirationDate: ToStringExpirationDate(pay.Account.Month, pay.Account.Year),
+			CardCode:       pay.Account.CVC,
+		},
+		BillTo: &AuthorizeCIM.BillTo{
+			Address: pay.Buyer.BillingAddress.Line1,
+			City:    pay.Buyer.BillingAddress.City,
+			State:   pay.Buyer.BillingAddress.State,
+			Zip:     pay.Buyer.BillingAddress.PostalCode,
+			Country: pay.Buyer.BillingAddress.Country,
+		},
+	}
 	log.Warn("Payment %v", json2.Encode(pay), pay.Db.Context)
 	log.Warn("New Transaction %v", json2.Encode(newTransaction), pay.Db.Context)
 	return &newTransaction
 }
 
-func PaymentToPreviousTransaction(pay *payment.Payment) *AuthorizeCIM.PreviousTransaction{
+func PaymentToPreviousTransaction(pay *payment.Payment) *AuthorizeCIM.PreviousTransaction {
 	prevTransaction := AuthorizeCIM.PreviousTransaction{
-				Amount: pay.Currency.ToStringNoSymbol(pay.Amount),
-				RefId: pay.Account.TransId,
-			}
+		Amount: pay.Currency.ToStringNoSymbol(pay.Amount),
+		RefId:  pay.Account.TransId,
+	}
 	return &prevTransaction
 }
 
 func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.TransactionResponse) (*payment.Payment, error) {
 	msgs := make([]string, 0)
-	for _, msg := range(tran.Response.Message.Message) {
-		msgs = append(msgs, "Code: " + msg.Code + ", " + msg.Description)
+	for _, msg := range tran.Response.Message.Message {
+		msgs = append(msgs, "Code: "+msg.Code+", "+msg.Description)
 	}
 
 	errMsgs := make([]string, 0)
-	for _, msg := range(tran.Response.Errors) {
-		errMsgs = append(errMsgs, "Code: " + msg.ErrorCode + ", " + msg.ErrorText)
+	for _, msg := range tran.Response.Errors {
+		errMsgs = append(errMsgs, "Code: "+msg.ErrorCode+", "+msg.ErrorText)
 	}
 
 	pay.Account.AuthCode = tran.Response.AuthCode
@@ -172,13 +174,13 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 }
 
 func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *order.Subscription {
-	if(tran.SubscriptionID != "") {
+	if tran.SubscriptionID != "" {
 		sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
 	}
-	if(tran.Profile.CustomerProfileID != "") {
+	if tran.Profile.CustomerProfileID != "" {
 		sub.Ref.AuthorizeNet.CustomerProfileId = tran.Profile.CustomerProfileID
 	}
-	if(tran.Profile.CustomerPaymentProfileID != "") {
+	if tran.Profile.CustomerPaymentProfileID != "" {
 		sub.Ref.AuthorizeNet.CustomerPaymentProfileId = tran.Profile.CustomerPaymentProfileID
 	}
 	sub.Ref.Type = refs.AuthorizeNetRefType
@@ -201,7 +203,6 @@ func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *AuthorizeCI
 	card.Country = sub.Buyer.Address.Country
 	return &card
 }*/
-
 
 func (c Client) NewSubscription(sub *order.Subscription) (*order.Subscription, error) {
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
@@ -298,7 +299,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	log.Debug("Authorize: Returned from Authorize.net API")
 	if response.Approved() {
 		log.Warn("Approved")
-		pay, err := PopulatePaymentWithResponse(pay,response)
+		pay, err := PopulatePaymentWithResponse(pay, response)
 		if err != nil {
 			log.Error("Authorize.net Authorize 2 %v", err, c.ctx)
 		}
@@ -575,7 +576,7 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 	}
 
 	if response.Approved() {
-		pay, err = PopulatePaymentWithResponse(pay,response)
+		pay, err = PopulatePaymentWithResponse(pay, response)
 		if err != nil {
 			log.Error("Authorize.net Charge 2 %v", err, c.ctx)
 		} else {
@@ -602,7 +603,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	}
 
 	if response.Approved() {
-		pay, err = PopulatePaymentWithResponse(pay,response)
+		pay, err = PopulatePaymentWithResponse(pay, response)
 		if err != nil {
 			log.Error("Authorize.net Capture 2 %v", err, c.ctx)
 		} else {
@@ -657,7 +658,7 @@ func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionR
 
 	var dat AuthorizeCIM.TransactionResponse
 
-	log.Warn("Returned Data: %s",response, ctx)
+	log.Warn("Returned Data: %s", response, ctx)
 	err = json.Unmarshal(response, &dat)
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ import (
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 func centsToFloat(cents currency.Cents, typ currency.Type) float64 {
