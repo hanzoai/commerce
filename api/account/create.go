@@ -273,7 +273,11 @@ func create(c *gin.Context) {
 	log.Info("Sending Emails", c)
 	// Send welcome, email confirmation emails
 	email.SendUserConfirmEmail(ctx, org, usr)
-	email.SendUserWelcome(ctx, org, usr)
+	if usr.IsAffiliate {
+		email.SendAffiliateWelcome(ctx, org, usr)
+	} else {
+		email.SendUserWelcome(ctx, org, usr)
+	}
 	// } else {
 	// 	log.Info("Organization %v is not live.  No emails sent.", org.Name, c)
 	// }
