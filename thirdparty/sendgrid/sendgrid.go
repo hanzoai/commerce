@@ -128,6 +128,12 @@ func (c *Client) Send(message *email.Message) error {
 	return nil
 }
 
+// Send email
+func (c *Client) Subscribe(listid string, subscriber *email.Subscriber) error {
+	// TODO: Implement
+	return nil
+}
+
 // func (c *Client) SendCampaign(id string) {
 
 // }
