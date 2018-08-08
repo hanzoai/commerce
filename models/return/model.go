@@ -4,7 +4,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/lineitem"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var kind = "return"

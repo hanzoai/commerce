@@ -2,7 +2,7 @@ package cart
 
 import (
 	"hanzo.io/datastore"
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/fake"
 )

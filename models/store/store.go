@@ -15,7 +15,7 @@ import (
 	"hanzo.io/util/reflect"
 	"hanzo.io/util/val"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 // Everything is a pointer, which allows fields to be nil. This way when we

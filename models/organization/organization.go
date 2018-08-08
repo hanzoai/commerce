@@ -30,7 +30,7 @@ import (
 	"hanzo.io/util/permission"
 	"hanzo.io/util/val"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Organization struct {

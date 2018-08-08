@@ -1,4 +1,4 @@
-package models
+package types
 
 import "hanzo.io/models/types/currency"
 
