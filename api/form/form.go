@@ -10,6 +10,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/form"
 	"hanzo.io/util/json/http"
+	"hanzo.io/log"
 )
 
 // handle form submissions
@@ -30,6 +31,7 @@ func handleForm(c *gin.Context) {
 
 	// Get organization for mailinglist
 	org.GetById(ml.Key().Namespace())
+	log.Info("Organization: %v, %v", ml.Key().Namespace(), org.Name, c)
 
 	// Mailing list doesn't exist
 	if err := ml.Get(nil); err != nil {
