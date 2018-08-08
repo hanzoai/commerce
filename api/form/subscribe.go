@@ -48,6 +48,8 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Increment subscribers
+	counter.IncrSubscriber(ctx, time.Now())
+
 	if err := counter.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
 		log.Error("IncrSubscriber Error: %v", err, c)
 	}
