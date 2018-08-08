@@ -54,7 +54,7 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 
 	// Add subscriber to Mailchimp
 	if ml.Mailchimp.Enabled {
-		mailchimp.Subscribe.Call(db.Context, ml.JSON(), s.JSON())
+		mailchimp.Subscribe.Call(ctx, ml.JSON(), s.JSON())
 	}
 
 	// Send welcome email
