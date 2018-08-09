@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"hanzo.io/email"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/submission"
 	"hanzo.io/models/subscriber"
@@ -15,8 +15,8 @@ import (
 
 var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}
 
-// Add subscriber to mailing list
-func forward(c context.Context, org *organization.Organization, ml *mailinglist.MailingList, s interface{}) {
+// Forward email to configured recpeients
+func forward(c context.Context, org *organization.Organization, f *form.Form, s interface{}) {
 	if !ml.Forward.Enabled {
 		return
 	}
@@ -45,7 +45,7 @@ func forward(c context.Context, org *organization.Organization, ml *mailinglist.
 	message := email.NewMessage()
 	message.Subject = "New submission for form " + ml.Name
 	message.From = hanzoEmail
-	message.AddTos(email.Email{Address: ml.Forward.Email, Name: ml.Forward.Name})
+	message.AddTos(email.Email{Address: f.Forward.Email, Name: f.Forward.Name})
 	message.ReplyTo = email.Email{Address: replyTo}
 	message.HTML = html
 	email.Send(c, message, nil)

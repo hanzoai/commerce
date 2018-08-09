@@ -11,7 +11,7 @@ import (
 
 	"hanzo.io/log"
 	"hanzo.io/models/cart"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/order"
 	"hanzo.io/models/product"
 	"hanzo.io/models/store"
@@ -60,21 +60,21 @@ func New(ctx context.Context, apiKey string) *API {
 	return api
 }
 
-func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) *Error {
+func (api API) Subscribe(f *form.Form, s *subscriber.Subscriber) *Error {
 	return wrapError(func() error {
-		if ml.Mailchimp.ListId == "" {
-			log.Warn("Failed to subscribe, list ID missing: %v", ml, api.ctx)
+		if f.EmailList.Id == "" {
+			log.Warn("Failed to subscribe, list ID missing: %v", f, api.ctx)
 			return nil
 		}
 
-		list, err := api.client.GetList(ml.Mailchimp.ListId, nil)
+		list, err := api.client.GetList(f.EmailList.Id, nil)
 		if err != nil {
 			log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
 			return err
 		}
 
 		status := "subscribed"
-		if ml.Mailchimp.DoubleOptin {
+		if f.EmailList.DoubleOptin {
 			status = "pending"
 		}
 
@@ -114,8 +114,8 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 
 func (api API) SubscribeCustomer(listId string, buy Buyer, referralUrl string) *Error {
 	return wrapError(func() error {
-		ml := new(mailinglist.MailingList)
-		ml.Mailchimp.ListId = listId
+		f := new(form.Form)
+		f.EmailList.Id = listId
 		s := &subscriber.Subscriber{
 			Email:  buy.Email,
 			UserId: idOrEmail(buy.UserId, buy.Email),
@@ -135,7 +135,7 @@ func (api API) SubscribeCustomer(listId string, buy Buyer, referralUrl string) *
 				"REFERRAL": referralUrl,
 			},
 		}
-		return api.Subscribe(ml, s)
+		return api.Subscribe(f, s)
 	})
 }
 
