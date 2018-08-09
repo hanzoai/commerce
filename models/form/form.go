@@ -1,4 +1,4 @@
-package mailinglist
+package form
 
 import (
 	"fmt"
@@ -39,20 +39,16 @@ type ThankYou struct {
 }
 
 // Mailchimp configuration
-type MailChimp struct {
-	ListId           string `json:"listId"`
-	APIKey           string `json:"apiKey"`
+type EmailList struct {
+	Id               string `json:"id"`
+	ProviderId       string `json:"providerId,omitempty"`
 	DoubleOptin      bool   `json:"doubleOptin"`
 	UpdateExisting   bool   `json:"updateExisting"`
 	ReplaceInterests bool   `json:"replaceInterests"`
-
-	// Whether to have Mailchimp send email confirmation
-	SendWelcome bool `json:"sendWelcome"`
-
-	Enabled bool `json:"enabled"`
+	Enabled          bool   `json:"enabled"`
 }
 
-type MailingList struct {
+type Form struct {
 	mixin.Model
 
 	// Name of list
@@ -64,8 +60,8 @@ type MailingList struct {
 	// Whether to send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
 
-	// Mailchimp settings for this list
-	Mailchimp MailChimp `json:"mailchimp,omitempty"`
+	// Email list settings for this list
+	EmailList EmailList `json:"emailList,omitempty"`
 
 	// Email forwarding
 	Forward struct {
@@ -90,18 +86,18 @@ type MailingList struct {
 	} `json:"google"`
 }
 
-func (m *MailingList) Validator() *val.Validator {
+func (f *Form) Validator() *val.Validator {
 	return val.New()
 }
 
-func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
-	mkey := m.Key()
-	s.MailingListId = m.Id()
-	s.Parent = mkey
+func (f *Form) AddSubscriber(s *subscriber.Subscriber) error {
+	fkey := f.Key()
+	s.FormId = f.Id()
+	s.Parent = fkey
 	s.Normalize()
 
-	return m.Db.RunInTransaction(func(db *datastore.Datastore) error {
-		keys, err := subscriber.Query(db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
+	return f.Db.RunInTransaction(func(db *datastore.Datastore) error {
+		keys, err := subscriber.Query(db).Ancestor(fkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists
@@ -115,26 +111,26 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	}, nil)
 }
 
-func (m *MailingList) Js() string {
+func (f *Form) Js() string {
 	if jsTemplate == "" {
 		var cwd, _ = os.Getwd()
-		jsTemplate = string(fs.ReadFile(cwd + "/resources/mailinglist.js"))
+		jsTemplate = string(fs.ReadFile(cwd + "/resources/form.js"))
 
 	}
 
 	// Endpoint for subscription
-	endpoint := config.UrlFor("api", "/mailinglist/", m.Id(), "/subscribe")
+	endpoint := config.UrlFor("api", "/form/", f.Id(), "/subscribe")
 	if appengine.IsDevAppServer() {
 		endpoint = "http://localhost:8080" + endpoint
 	} else {
 		endpoint = "https:" + endpoint
 	}
 
-	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{m.Name, m.Type, m.ThankYou}))
+	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{f.Name, f.Type, f.ThankYou}))
 }
 
-func FromJSON(db *datastore.Datastore, data []byte) *MailingList {
-	ml := New(db)
-	json.DecodeBytes(data, ml)
-	return ml
+func FromJSON(db *datastore.Datastore, data []byte) *Form {
+	f := New(db)
+	json.DecodeBytes(data, f)
+	return f
 }

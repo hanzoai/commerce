@@ -7,16 +7,16 @@ import (
 
 	"hanzo.io/datastore"
 	"hanzo.io/log"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
 )
 
-var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, mlJSON []byte, sJSON []byte) error {
+var Subscribe = delay.Func("mailchimp-subscribe", func(ctx context.Context, fJSON []byte, sJSON []byte) error {
 	db := datastore.New(ctx)
-	ml := mailinglist.FromJSON(db, mlJSON)
+	f := form.FromJSON(db, fJSON)
 	s := subscriber.FromJSON(db, sJSON)
-	api := mailchimp.New(ctx, ml.Mailchimp.APIKey)
+	api := mailchimp.New(ctx, f.Mailchimp.APIKey)
 	if err := api.Subscribe(ml, s); err != nil {
 		log.Error("Subscribe Error %v", err, ctx)
 		log.Error("Mailinglist %v", ml, ctx)
