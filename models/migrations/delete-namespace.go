@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/bundle"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/coupon"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
@@ -60,8 +60,8 @@ var _ = New("namespace-delete", setupNamespaceDelete,
 	func(db *ds.Datastore, user *user.User) {
 		user.Delete()
 	},
-	func(db *ds.Datastore, mailinglist *mailinglist.MailingList) {
-		mailinglist.Delete()
+	func(db *ds.Datastore, form *form.Form) {
+		form.Delete()
 	},
 	func(db *ds.Datastore, subscriber *subscriber.Subscriber) {
 		subscriber.Delete()

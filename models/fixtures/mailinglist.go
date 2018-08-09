@@ -3,37 +3,37 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/types/thankyou"
 )
 
-var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingList {
+var Form = New("form", func(c *gin.Context) *form.Form {
 	db := getNamespaceDb(c)
 
-	mailingList := mailinglist.New(db)
+	f := form.New(db)
 
-	mailingList.Name = "Such Tees Newsletter"
-	mailingList.SendWelcome = true
-	mailingList.Type = "signup"
+	f.Name = "Such Tees Newsletter"
+	f.SendWelcome = true
+	f.Type = "signup"
 
-	mailingList.Mailchimp.ListId = "cc383800a7"
-	mailingList.Mailchimp.APIKey = "4a241ef914c2b098a3965d718c8f7f7e-us13"
-	mailingList.Mailchimp.DoubleOptin = false
-	mailingList.Mailchimp.UpdateExisting = true
-	mailingList.Mailchimp.ReplaceInterests = false
-	mailingList.Mailchimp.SendWelcome = false
-	mailingList.Mailchimp.Enabled = true
+	f.Mailchimp.ListId = "cc383800a7"
+	f.Mailchimp.APIKey = "4a241ef914c2b098a3965d718c8f7f7e-us13"
+	f.Mailchimp.DoubleOptin = false
+	f.Mailchimp.UpdateExisting = true
+	f.Mailchimp.ReplaceInterests = false
+	f.Mailchimp.SendWelcome = false
+	f.Mailchimp.Enabled = true
 
-	mailingList.ThankYou.Type = thankyou.Redirect
-	mailingList.ThankYou.Url = "http://suchtees.com/thanks/"
-	mailingList.Facebook.Id = "6031480185266"
-	mailingList.Facebook.Value = "0.00"
-	mailingList.Facebook.Currency = "USD"
+	f.ThankYou.Type = thankyou.Redirect
+	f.ThankYou.Url = "http://suchtees.com/thanks/"
+	f.Facebook.Id = "6031480185266"
+	f.Facebook.Value = "0.00"
+	f.Facebook.Currency = "USD"
 
-	mailingList.Google.Category = "Subscription"
-	mailingList.Google.Name = "Newsletter Sign-up"
+	f.Google.Category = "Subscription"
+	f.Google.Name = "Newsletter Sign-up"
 
-	mailingList.MustPut()
+	f.MustPut()
 
-	return mailingList
+	return f
 })

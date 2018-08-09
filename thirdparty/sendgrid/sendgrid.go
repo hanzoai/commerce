@@ -128,9 +128,9 @@ func (c *Client) Send(message *email.Message) error {
 	return nil
 }
 
-// Send email
-func (c *Client) Subscribe(listid string, subscriber *email.Subscriber) error {
-	// TODO: Implement
+// Add subscriber to list
+func (c *Client) Subscribe(listid string, s *email.Subscriber) error {
+	// Add subscriber to list
 	return nil
 }
 

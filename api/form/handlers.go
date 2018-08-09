@@ -4,26 +4,28 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
 
-	ml "hanzo.io/api/cdn/mailinglist"
+	f "hanzo.io/api/cdn/form"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	rest.New(mailinglist.MailingList{}).Route(router, args...)
+	rest.New(form.Form{}).Route(router, args...)
 
-	group := router.Group("form")
-	group.Use(middleware.AccessControl("*"))
+	f := router.Group("form")
+	f.Use(middleware.AccessControl("*"))
 
-	group.POST("/:formid/submit", handleForm)
-	group.POST("/:formid/subscribe", handleForm)
-	group.GET("/:formid/js", ml.Js)
+	f.POST("/:formid/submit", handleForm)
+	f.POST("/:formid/subscribe", handleForm)
+	f.GET("/:formid/js", f.Js)
 
-	group = router.Group("mailinglist")
-	group.Use(middleware.AccessControl("*"))
+	// DEPRECATED
+	m := router.Group("mailinglist")
+	m.Use(middleware.AccessControl("*"))
 
-	group.POST("/:mailinglistid/subscribe", handleForm)
-	group.GET("/:mailinglistid/js", ml.Js)
+	m.POST("/:formid/submit", handleForm)
+	m.POST("/:formid/subscribe", handleForm)
+	m.GET("/:formid/js", f.Js)
 }
