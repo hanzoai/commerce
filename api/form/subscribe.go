@@ -7,15 +7,15 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/email"
+	"hanzo.io/log"
 	"hanzo.io/models/mailinglist"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/counter"
-	"hanzo.io/email"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 
 	mailchimp "hanzo.io/thirdparty/mailchimp/tasks"
 )
@@ -60,7 +60,9 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Send welcome email
-	email.SendSubscriberWelcome(ctx, org, s)
+	if ml.SendWelcome {
+		email.SendSubscriberWelcome(ctx, org, s)
+	}
 
 	// Forward subscriber (if enabled)
 	forward(ctx, org, ml, s)
