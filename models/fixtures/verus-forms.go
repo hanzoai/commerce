@@ -4,17 +4,17 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 )
 
-var _ = New("verus-forms", func(c *gin.Context) *mailinglist.MailingList {
+var _ = New("verus-forms", func(c *gin.Context) *form.Form {
 	db := datastore.New(c)
 
-	ml := mailinglist.New(db)
-	ml.MustGetById("NEu14x75uv0Z6B")
-	ml.Forward.Name = "Sales"
-	ml.Forward.Email = "dev@hanzo.ai"
-	ml.Forward.Enabled = true
+	f := form.New(db)
+	f.MustGetById("NEu14x75uv0Z6B")
+	f.Forward.Name = "Sales"
+	f.Forward.Email = "dev@hanzo.ai"
+	f.Forward.Enabled = true
 
-	return ml
+	return f
 })
