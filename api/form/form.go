@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/form"
@@ -19,23 +20,31 @@ func handleForm(c *gin.Context) {
 	org := organization.New(db)
 	f := form.New(db)
 
-	// Set mailinglist key
+	// Set form key
 	f.SetKey(id)
 
-	// Reset namespace to organization's
-	f.SetNamespace(f.Key().Namespace())
+	// Get namepsace
+	ns := f.Key().Namespace()
 
-	// Get namespaced db
-	db = f.Datastore()
+	// Get organization for form
+	if err := org.GetById(ns); err != nil {
+		log.Error("Organization not found: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", ns, err), err)
+		return
+	}
+	log.Info("Organization: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
 
-	// Get organization for mailinglist
-	org.GetById(f.Key().Namespace())
+	// Set namespace to match organization's
+	f.SetNamespace(ns)
 
 	// Mailing list doesn't exist
 	if err := f.Get(nil); err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve form '%v': %v", id, err), err)
 		return
 	}
+
+	// Get namespaced db
+	db = f.Datastore()
 
 	switch f.Type {
 	case form.Submit:

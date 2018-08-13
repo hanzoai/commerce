@@ -48,17 +48,20 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Increment subscribers
+	counter.IncrSubscriber(ctx, time.Now())
+
 	if err := counter.IncrSubscribers(ctx, org, f.Id(), time.Now()); err != nil {
 		log.Error("IncrSubscriber Error: %v", err, c)
 	}
 
-	// Add subscriber to Mailchimp
 	if f.Mailchimp.Enabled {
-		mailchimp.Subscribe.Call(db.Context, f.JSON(), s.JSON())
+		mailchimp.Subscribe.Call(ctx, f.JSON(), s.JSON())
 	}
 
 	// Send welcome email
-	email.SendSubscriberWelcome(ctx, org, s)
+	if f.SendWelcome {
+		email.SendSubscriberWelcome(ctx, org, s)
+	}
 
 	// Forward subscriber (if enabled)
 	forward(ctx, org, f, s)

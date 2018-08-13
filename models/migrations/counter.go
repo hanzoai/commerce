@@ -130,7 +130,7 @@ var _ = New("load-counter-product-orders",
 
 var _ = New("load-counter-users",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "halcyon")
 
 		return NoArgs
 	},
@@ -155,7 +155,7 @@ var _ = New("load-counter-users",
 
 var _ = New("load-counter-subscribers",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+		c.Set("namespace", "halcyon")
 
 		return NoArgs
 	},
@@ -172,7 +172,7 @@ var _ = New("load-counter-subscribers",
 
 		t := sub.CreatedAt
 
-		if err := counter.IncrUsers(ctx, org, t); err != nil {
+		if err := counter.IncrSubscribers(ctx, org, "94uloYDqfDKlbJ", t); err != nil {
 			log.Warn("Counter Error %s", err, ctx)
 		}
 	},
