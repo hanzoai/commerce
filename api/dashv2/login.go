@@ -12,6 +12,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/models/store"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -95,9 +96,25 @@ func login(c *gin.Context) {
 	}
 
 	for i, org := range orgs {
+		nsCtx := org.Namespaced(db.Context)
+		nsDb := datastore.New(nsCtx)
+
 		cur := org.Currency
 		if cur == "" {
-			cur = currency.USD
+			// Get Default Store's Currency
+			if org.DefaultStore != "" {
+				stor := store.New(nsDb)
+				err := stor.GetById(org.DefaultStore)
+				if err != nil {
+					log.Error("Could not get Default Organization Store with Error %v", err, c)
+					http.Fail(c, 401, "Could not get Default Organization Store", err)
+					return
+				}
+				cur = stor.Currency
+			// Deprecated Old Default
+			} else {
+				cur = currency.USD
+			}
 		}
 
 		res.Organizations[i] = organizationRes{
