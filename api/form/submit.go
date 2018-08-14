@@ -12,7 +12,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f form.Form) {
+func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f *form.Form) {
 	ctx := db.Context
 
 	// Make sure Subscriber is created with the right context
