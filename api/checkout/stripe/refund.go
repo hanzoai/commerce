@@ -101,7 +101,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		email.SendOrderRefunded(ctx, org, ord, usr, payments[0])
 
 		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		client := mailchimp.New(ctx, org.Mailchimp)
 
 		// Delete refunded order in mailchimp
 		if err := client.DeleteOrder(storeId, ord); err != nil {
