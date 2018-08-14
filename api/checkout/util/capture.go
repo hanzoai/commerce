@@ -178,7 +178,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 	// Save user as customer in Mailchimp if configured
 	if org.Mailchimp.APIKey != "" {
 		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		client := mailchimp.New(ctx, org.Mailchimp)
 
 		// Update cart
 		car := cart.New(ord.Db)

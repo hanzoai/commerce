@@ -6,21 +6,23 @@ import (
 )
 
 // Add subscriber to list
-func (c *Client) Subscribe(listid string, s *email.Subscriber) error {
+func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {
+	c := api.Context
+
 	// Ensure contact exists
-	contact, err := c.UpdateContact(s)
+	contact, err := api.UpdateContact(sub)
 	if err != nil {
 		return err
 	}
 
 	// Add contact to list
-	res, err := c.Request("POST", "/v3/contactdb/lists/"+listid+"/recipients/"+contact.Id, nil, nil)
+	res, err := api.Request("POST", "/v3/contactdb/lists/"+list.Id+"/recipients/"+contact.Id, nil, nil)
 	if err != nil {
-		return log.Error("Failed to add contact to list: %v", err, c.ctx)
+		return log.Error("Failed to add contact to list: %v", err, c)
 	}
-	log.Info(res.StatusCode, c.ctx)
-	log.Info(res.Body, c.ctx)
-	log.Info(res.Headers, c.ctx)
+	log.Info(res.StatusCode, c)
+	log.Info(res.Body, c)
+	log.Info(res.Headers, c)
 
 	return nil
 }

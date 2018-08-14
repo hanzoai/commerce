@@ -32,14 +32,16 @@ func newContact(s *email.Subscriber) []byte {
 }
 
 // Update or create contact if it doesn't exist
-func (c *Client) UpdateContact(s *email.Subscriber) (*Contact, error) {
-	res, err := c.Request("PATCH", "/v3/contactdb/recipients", nil, newContact(s))
+func (api API) UpdateContact(sub *email.Subscriber) (*Contact, error) {
+	c := api.Context
+
+	res, err := api.Request("PATCH", "/v3/contactdb/recipients", nil, newContact(sub))
 	if err != nil {
-		return nil, log.Error("Failed to create contact: %v", err)
+		return nil, log.Error("Failed to create contact: %v", err, c)
 	}
-	log.Info(res.StatusCode)
-	log.Info(res.Body)
-	log.Info(res.Headers)
+	log.Info(res.StatusCode, c)
+	log.Info(res.Body, c)
+	log.Info(res.Headers, c)
 
 	// Decode response and get contact details
 	contactRes := new(ContactResponse)

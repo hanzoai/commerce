@@ -16,13 +16,8 @@ var Form = New("form", func(c *gin.Context) *form.Form {
 	f.SendWelcome = true
 	f.Type = "signup"
 
-	f.Mailchimp.ListId = "cc383800a7"
-	f.Mailchimp.APIKey = "4a241ef914c2b098a3965d718c8f7f7e-us13"
-	f.Mailchimp.DoubleOptin = false
-	f.Mailchimp.UpdateExisting = true
-	f.Mailchimp.ReplaceInterests = false
-	f.Mailchimp.SendWelcome = false
-	f.Mailchimp.Enabled = true
+	f.EmailList.Id = "cc383800a7"
+	f.EmailList.Enabled = true
 
 	f.ThankYou.Type = thankyou.Redirect
 	f.ThankYou.Url = "http://suchtees.com/thanks/"

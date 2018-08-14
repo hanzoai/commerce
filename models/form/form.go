@@ -12,12 +12,15 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/form"
 	"hanzo.io/models/types/thankyou"
+	"hanzo.io/types/email"
 	"hanzo.io/util/fs"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
 )
 
 var jsTemplate = ""
+var Submit = form.Submit
+var Subscribe = form.Subscribe
 
 // Settings used for injection into form.js
 type Settings struct {
@@ -38,16 +41,6 @@ type ThankYou struct {
 	HTML string        `json:"html,omitempty"`
 }
 
-// Mailchimp configuration
-type EmailList struct {
-	Id               string `json:"id"`
-	ProviderId       string `json:"providerId,omitempty"`
-	DoubleOptin      bool   `json:"doubleOptin"`
-	UpdateExisting   bool   `json:"updateExisting"`
-	ReplaceInterests bool   `json:"replaceInterests"`
-	Enabled          bool   `json:"enabled"`
-}
-
 type Form struct {
 	mixin.Model
 
@@ -61,7 +54,7 @@ type Form struct {
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Email list settings for this list
-	EmailList EmailList `json:"emailList,omitempty"`
+	EmailList email.List `json:"emailList,omitempty"`
 
 	// Email forwarding
 	Forward struct {

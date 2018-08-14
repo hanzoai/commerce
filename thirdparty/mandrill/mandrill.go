@@ -8,7 +8,6 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	iface "hanzo.io/iface/email"
 	"hanzo.io/log"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
@@ -85,7 +84,7 @@ func (c *Client) Send(message *email.Message) error {
 	return nil
 }
 
-func New(c context.Context, in integration.Mandrill) iface.Provider {
+func New(c context.Context, in integration.Mandrill) *Client {
 	// Set deadline
 	c, _ = context.WithTimeout(c, time.Second*55)
 

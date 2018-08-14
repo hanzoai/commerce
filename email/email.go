@@ -10,7 +10,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/email/tasks"
-	"hanzo.io/models/form"
+	// "hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/types/email"
 	"hanzo.io/util/template"
@@ -23,6 +23,7 @@ var NewMessage = email.NewMessage
 var NewPersonalization = email.NewPersonalization
 
 type Email = email.Email
+type List = email.List
 type Setting email.Setting
 
 const AffiliateWelcome = email.AffiliateWelcome
@@ -69,24 +70,4 @@ func SendTemplate(templatePath string, c context.Context, message *email.Message
 
 	log.Info("Sending template %v", templatePath+"/"+message.TemplateID, c)
 	return Send(c, message, org)
-}
-
-// Add subscriber to a list
-func Subscribe(c context.Context, f *form.Form, org *organization.Organization, sub *email.Subscriber) (err error) {
-	return nil
-	// // Default to built-in email provider
-	// in := &config.Email.Provider
-
-	// // If org is provider use their email provider
-	// if org != nil {
-	// 	if in, err = org.Integrations.EmailMarketingProvider(); err != nil {
-	// 		log.Error("Could not get Email Marketing Provider from org %v: %v", org.Name, err, c)
-	// 		return err
-	// 	} else if in == nil {
-	// 		return IntegrationShouldNotBeNilError
-	// 	}
-	// }
-
-	// // Fire off task to send email
-	// return tasks.Subscribe.Call(c, *in, message)
 }
