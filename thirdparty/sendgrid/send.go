@@ -103,14 +103,16 @@ func newMessage(message *email.Message) []byte {
 }
 
 // Send email
-func (c *Client) Send(message *email.Message) error {
+func (api API) Send(message *email.Message) error {
 	body := newMessage(message)
-	res, err := c.Request("POST", "/v3/mail/send", nil, body)
+	c := api.Context
+
+	res, err := api.Request("POST", "/v3/mail/send", nil, body)
 	if err != nil {
-		return log.Error("Failed to send email: %v", err, c.ctx)
+		return log.Error("Failed to send email: %v", err, c)
 	}
-	log.Info("StatusCode: %v", res.StatusCode, c.ctx)
-	log.Info("Body: %v", res.Body, c.ctx)
-	log.Info("Headers: %v", res.Headers, c.ctx)
+	log.Info("StatusCode: %v", res.StatusCode, c)
+	log.Info("Body: %v", res.Body, c)
+	log.Info("Headers: %v", res.Headers, c)
 	return nil
 }

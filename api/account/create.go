@@ -281,7 +281,7 @@ func create(c *gin.Context) {
 	if org.Mailchimp.APIKey != "" {
 		log.Info("Saving User to Mailchimp: %v", json.Encode(usr), c)
 		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		client := mailchimp.New(ctx, org.Mailchimp)
 
 		// Create customer in mailchimp for this user
 		if err := client.CreateCustomer(storeId, usr); err != nil {

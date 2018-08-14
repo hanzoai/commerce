@@ -3,10 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/store"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/log"
+	"hanzo.io/types/integration"
 
 	ds "hanzo.io/datastore"
 )
@@ -28,7 +29,10 @@ var _ = New("cover-mailchimp-store",
 			return
 		}
 
-		client := mailchimp.New(db.Context, apiKey)
+		mc := integration.Mailchimp{
+			APIKey: apiKey,
+		}
+		client := mailchimp.New(db.Context, mc)
 
 		// Create new store
 		if stor.Id() == defaultStore {

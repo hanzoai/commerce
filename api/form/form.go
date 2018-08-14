@@ -9,7 +9,6 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/types/form"
 	"hanzo.io/util/json/http"
 )
 
@@ -48,9 +47,9 @@ func handleForm(c *gin.Context) {
 
 	switch f.Type {
 	case form.Submit:
-		submit(c, db, org, ml)
+		submit(c, db, org, f)
 	default:
 		//case form.Subscribe:
-		subscribe(c, db, org, ml)
+		subscribe(c, db, org, f)
 	}
 }
