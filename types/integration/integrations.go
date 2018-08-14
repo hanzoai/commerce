@@ -322,9 +322,9 @@ func (i Integrations) EmailProvider() (*Integration, error) {
 	return nil, ErrorNotFound
 }
 
-func (i Integrations) EmailProviderByType(typ Type) (*Integration, error) {
+func (i Integrations) EmailMarketingProvider() (*Integration, error) {
 	for _, in := range i {
-		if in.Type == typ {
+		if in.Type == MailchimpType || in.Type == SendGridType {
 			return &in, nil
 		}
 	}
