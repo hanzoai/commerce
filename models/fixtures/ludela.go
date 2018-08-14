@@ -18,8 +18,8 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/types/website"
 	"hanzo.io/types/email"
+	"hanzo.io/types/website"
 	token "hanzo.io/util/oldjwt"
 )
 
@@ -193,7 +193,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	prod.MustUpdate()
 
 	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client := mailchimp.New(db.Context, org.Mailchimp)
 	client.CreateStore(stor)
 	client.CreateProduct(stor.Id(), prod)
 

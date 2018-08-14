@@ -17,7 +17,7 @@ var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}
 
 // Forward email to configured recpeients
 func forward(c context.Context, org *organization.Organization, f *form.Form, s interface{}) {
-	if !ml.Forward.Enabled {
+	if !f.Forward.Enabled {
 		return
 	}
 
@@ -43,7 +43,7 @@ func forward(c context.Context, org *organization.Organization, f *form.Form, s 
 
 	// Setup email message
 	message := email.NewMessage()
-	message.Subject = "New submission for form " + ml.Name
+	message.Subject = "New submission for form " + f.Name
 	message.From = hanzoEmail
 	message.AddTos(email.Email{Address: f.Forward.Email, Name: f.Forward.Name})
 	message.ReplyTo = email.Email{Address: replyTo}

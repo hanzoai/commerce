@@ -16,13 +16,11 @@ import (
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-
-	mailchimp "hanzo.io/thirdparty/mailchimp/tasks"
 )
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
-func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f form.Form) {
+func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f *form.Form) {
 	ctx := db.Context
 
 	// Make sure Subscriber is created with the right context
@@ -39,7 +37,7 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 
 	// Save subscriber to mailing list
 	if err := f.AddSubscriber(s); err != nil {
-		if err == mailinglist.SubscriberAlreadyExists {
+		if err == form.SubscriberAlreadyExists {
 			http.Fail(c, 409, "Subscriber already exists", nil)
 			return
 		}
@@ -54,8 +52,8 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 		log.Error("IncrSubscriber Error: %v", err, c)
 	}
 
-	if f.Mailchimp.Enabled {
-		mailchimp.Subscribe.Call(ctx, f.JSON(), s.JSON())
+	if f.EmailList.Enabled {
+		email.Subscribe(ctx, f, s, org)
 	}
 
 	// Send welcome email

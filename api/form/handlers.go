@@ -3,12 +3,11 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
+	cdn "hanzo.io/api/cdn/form"
 	"hanzo.io/middleware"
 	"hanzo.io/models/form"
 	"hanzo.io/util/rest"
 	"hanzo.io/util/router"
-
-	f "hanzo.io/api/cdn/form"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -19,7 +18,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	f.POST("/:formid/submit", handleForm)
 	f.POST("/:formid/subscribe", handleForm)
-	f.GET("/:formid/js", f.Js)
+	f.GET("/:formid/js", cdn.Js)
 
 	// DEPRECATED
 	m := router.Group("mailinglist")
@@ -27,5 +26,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	m.POST("/:formid/submit", handleForm)
 	m.POST("/:formid/subscribe", handleForm)
-	m.GET("/:formid/js", f.Js)
+	m.GET("/:formid/js", cdn.Js)
 }

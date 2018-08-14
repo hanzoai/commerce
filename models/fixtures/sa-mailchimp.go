@@ -49,7 +49,7 @@ var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {
 	prod.Image = Media{Type: MediaImage, Alt: "", Url: "https://gallery.mailchimp.com/0f2d8a2923efe4ed120afdd91/images/aa0dcac6-26ec-417a-82f7-34da109a2542.jpg", X: 643, Y: 336}
 
 	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client := mailchimp.New(db.Context, org.Mailchimp)
 	client.CreateStore(stor)
 	client.CreateProduct(stor.Id(), prod)
 
