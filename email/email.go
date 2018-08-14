@@ -24,7 +24,8 @@ var NewPersonalization = email.NewPersonalization
 
 type Email = email.Email
 type List = email.List
-type Setting email.Setting
+type Setting = email.Setting
+type Subscriber = email.Subscriber
 
 const AffiliateWelcome = email.AffiliateWelcome
 const OrderConfirmation = email.OrderConfirmation
