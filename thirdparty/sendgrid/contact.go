@@ -38,7 +38,10 @@ func newContact(s *email.Subscriber) []byte {
 func (api API) UpdateContact(sub *email.Subscriber) (*Contact, error) {
 	c := api.Context
 
-	res, err := api.Request("PATCH", "/v3/contactdb/recipients", nil, newContact(sub))
+	cont := newContact(sub)
+	log.Info("New Contact %s", cont, c)
+
+	res, err := api.Request("PATCH", "/v3/contactdb/recipients", nil, newContact(cont))
 	if err != nil {
 		return nil, log.Error("Failed to create contact: %v", err, c)
 	}
