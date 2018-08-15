@@ -148,6 +148,14 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	f.EmailList.Id = "4534419"
 	f.MustUpdate()
 
+	f = form.New(nsdb)
+	f.Name = "Affiliates"
+	f.GetOrCreate("Name=", f.Name)
+	f.SendWelcome = false
+	f.EmailList.Enabled = true
+	f.EmailList.Id = "4780161"
+	f.MustUpdate()
+
 	// Create earphone product
 	prod1 := product.New(nsdb)
 	prod1.Slug = "60-caps"
