@@ -6,12 +6,13 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
-	"hanzo.io/models"
 	"hanzo.io/models/transaction"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
+
+	. "hanzo.io/types"
 )
 
 type CreateHoldReq struct {
@@ -22,7 +23,7 @@ type CreateHoldReq struct {
 	Notes      string         `json:"notes"`
 	Tags       string         `json:"tags"`
 	Event      string         `json:"event"`
-	Metadata   models.Map     `json:"metadata"`
+	Metadata   Map            `json:"metadata"`
 }
 
 func CreateHold(c *gin.Context) {

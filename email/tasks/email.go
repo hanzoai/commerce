@@ -6,7 +6,6 @@ import (
 
 	"hanzo.io/delay"
 
-	iface "hanzo.io/iface/email"
 	"hanzo.io/log"
 	"hanzo.io/thirdparty/mandrill"
 	"hanzo.io/thirdparty/sendgrid"
@@ -16,7 +15,7 @@ import (
 	"hanzo.io/util/json"
 )
 
-func getProvider(c context.Context, in integration.Integration) (iface.Provider, error) {
+func getEmailSender(c context.Context, in integration.Integration) (email.Sender, error) {
 	switch in.Type {
 	case integration.MandrillType:
 		log.Info("Using Mandrill: %v", json.Encode(in.Mandrill), c)
@@ -34,16 +33,18 @@ func getProvider(c context.Context, in integration.Integration) (iface.Provider,
 }
 
 // Send email with appropriate provider
-var Send = delay.Func("send-email", func(c context.Context, in integration.Integration, message email.Message) {
-	log.Debug("Sending email to %s, %v", message.To[0], c)
-	provider, err := getProvider(c, in)
+var Send = delay.Func("email-send", func(c context.Context, in integration.Integration, message *email.Message) error {
+	log.Debug("Sending email to %s, %v", message.To[0], message, c)
+
+	provider, err := getEmailSender(c, in)
 	if err != nil {
-		log.Error("Email provider integration not found: %v", err, c)
-		panic(err)
+		return log.Error("Email provider integration not found: %v", err, c)
 	}
-	err = provider.Send(&message)
+
+	err = provider.Send(message)
 	if err != nil {
-		log.Error("Email provider error: %v", err, c)
-		panic(err)
+		return log.Error("Email provider error: %v", err, c)
 	}
+
+	return nil
 })

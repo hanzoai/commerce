@@ -5,7 +5,6 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/util/csv"
 
-	. "hanzo.io/models"
 	"hanzo.io/models/user"
 )
 

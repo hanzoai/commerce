@@ -1,3 +1,3 @@
-package models
+package types
 
 type Map map[string]interface{}

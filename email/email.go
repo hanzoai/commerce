@@ -1,10 +1,16 @@
 package email
 
+// you refuse to work with me
+// all you ever do is look for perceived shortcomings, a better approach would be
+// to just ask me to do things that would be helpful i would have very happily sat
+// down and designed a routine that would work for you
+
 import (
 	"context"
 
 	"hanzo.io/config"
 	"hanzo.io/email/tasks"
+	// "hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/types/email"
 	"hanzo.io/util/template"
@@ -17,7 +23,9 @@ var NewMessage = email.NewMessage
 var NewPersonalization = email.NewPersonalization
 
 type Email = email.Email
-type Setting email.Setting
+type List = email.List
+type Setting = email.Setting
+type Subscriber = email.Subscriber
 
 const AffiliateWelcome = email.AffiliateWelcome
 const OrderConfirmation = email.OrderConfirmation

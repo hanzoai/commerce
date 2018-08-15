@@ -28,7 +28,6 @@ import (
 	_ "hanzo.io/models/migrations"
 	_ "hanzo.io/models/referrer/tasks"
 	_ "hanzo.io/models/webhook/tasks"
-	_ "hanzo.io/thirdparty/mailchimp/tasks"
 	_ "hanzo.io/util/aggregate/tasks"
 	_ "hanzo.io/util/analytics/tasks"
 	// _ "hanzo.io/thirdparty/salesforce/tasks"

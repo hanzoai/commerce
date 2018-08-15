@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/mixin"
 	"hanzo.io/util/val"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

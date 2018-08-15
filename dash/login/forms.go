@@ -7,10 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
-	"hanzo.io/models"
 	"hanzo.io/models/user"
 	"hanzo.io/util/form"
 	"hanzo.io/util/val"
+
+	. "hanzo.io/types"
 )
 
 type LoginForm struct {
@@ -53,7 +54,7 @@ func (f *ContactForm) Validate() []string {
 
 // User profile form (billing)
 type BillingForm struct {
-	BillingAddress models.Address
+	BillingAddress Address
 }
 
 func (f *BillingForm) Parse(c *gin.Context) error {

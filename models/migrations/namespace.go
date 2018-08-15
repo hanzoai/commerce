@@ -4,10 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/bundle"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/coupon"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -18,7 +19,6 @@ import (
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
-	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )
@@ -109,9 +109,9 @@ var _ = New("namespace-rename", setupNamespaceRename,
 		user.SetNamespace(newNamespace)
 		user.Put()
 	},
-	func(db *ds.Datastore, mailinglist *mailinglist.MailingList) {
-		mailinglist.SetNamespace(newNamespace)
-		mailinglist.Put()
+	func(db *ds.Datastore, form *form.Form) {
+		form.SetNamespace(newNamespace)
+		form.Put()
 	},
 	func(db *ds.Datastore, subscriber *subscriber.Subscriber) {
 		subscriber.SetNamespace(newNamespace)

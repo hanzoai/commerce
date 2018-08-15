@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/types/refs"
 	"hanzo.io/util/timeutil"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type SubscriptionBillingType string

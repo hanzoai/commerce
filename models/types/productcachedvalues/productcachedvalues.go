@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/types/dimensions"
 	"hanzo.io/models/types/weight"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 // Values on product that need to be cached on the lineitem

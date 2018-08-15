@@ -5,11 +5,11 @@ import (
 
 	"hanzo.io/datastore"
 
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/log"
 
 	ds "hanzo.io/datastore"
 )
@@ -29,7 +29,7 @@ var _ = New("mailchimp-store",
 			return
 		}
 
-		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client := mailchimp.New(db.Context, org.Mailchimp)
 
 		if org.DefaultStore == "" {
 			log.Warn("Default Store does not exist for %s", db.Context)
