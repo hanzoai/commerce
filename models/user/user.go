@@ -86,6 +86,8 @@ type User struct {
 	IsAffiliate bool `json:"isAffiliate,omitempty"`
 
 	AffiliateId string `json:"affiliateId,omitempty"`
+
+	FormId string `json:"formId,omitempty"`
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
