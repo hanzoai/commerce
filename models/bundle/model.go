@@ -3,7 +3,7 @@ package bundle
 import (
 	"hanzo.io/datastore"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var kind = "bundle"

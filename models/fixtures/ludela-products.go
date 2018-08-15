@@ -8,8 +8,9 @@ import (
 	"hanzo.io/models/product"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/types/integration"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product {
@@ -815,7 +816,8 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod32.EstimatedDelivery = "Early 2017"
 	prod32.Update()
 
-	client := mailchimp.New(db.Context, "")
+	mc := integration.Mailchimp{APIKey: ""}
+	client := mailchimp.New(db.Context, mc)
 	//developmentStoreId := "ODtkkYuooO"
 	defaultStoreId := "ldt6eeKINN5"
 	client.CreateProduct(defaultStoreId, prod1)

@@ -1,30 +1,30 @@
-package mailinglist
+package form
 
 import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/types/thankyou"
 )
 
-var kind = "mailinglist"
+var kind = "form"
 
-func (m MailingList) Kind() string {
+func (m Form) Kind() string {
 	return kind
 }
 
-func (m *MailingList) Init(db *datastore.Datastore) {
+func (m *Form) Init(db *datastore.Datastore) {
 	m.Model.Init(db, m)
 }
 
-func (m *MailingList) Defaults() {
+func (m *Form) Defaults() {
 	m.Facebook.Value = "0.00"
 	m.Facebook.Currency = "USD"
 	m.ThankYou.Type = thankyou.Disabled
-	m.Mailchimp.Enabled = true
+	m.EmailList.Enabled = true
 	m.Type = "subscribe"
 }
 
-func New(db *datastore.Datastore) *MailingList {
-	m := new(MailingList)
+func New(db *datastore.Datastore) *Form {
+	m := new(Form)
 	m.Init(db)
 	m.Defaults()
 	return m

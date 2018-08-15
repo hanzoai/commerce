@@ -1,4 +1,4 @@
-package mailinglist
+package form
 
 import "errors"
 

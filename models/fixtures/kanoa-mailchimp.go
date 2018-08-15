@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/mailchimp"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
@@ -49,7 +49,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	prod.Image = Media{Type: MediaImage, Alt: "", Url: "https://d33wubrfki0l68.cloudfront.net/7cd9a799b858535a729417c142a9465e70255a79/80015/img/batch1coda.png", X: 1252, Y: 1115}
 
 	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client := mailchimp.New(db.Context, org.Mailchimp)
 	client.CreateStore(stor)
 	client.CreateProduct(stor.Id(), prod)
 

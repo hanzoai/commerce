@@ -15,7 +15,7 @@ import (
 	"hanzo.io/models/types/client"
 	"hanzo.io/util/json"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 	. "hanzo.io/util/strings"
 )
 
@@ -46,9 +46,9 @@ func normalizeName(s string) string {
 type Subscriber struct {
 	mixin.Model
 
-	Email         string `json:"email"`
-	MailingListId string `json:"mailingListId"`
-	UserId        string `json:"userId,omitempty"`
+	Email  string `json:"email"`
+	FormId string `json:"formId"`
+	UserId string `json:"userId,omitempty"`
 
 	Unsubscribed    bool      `json:"unsubscribed"`
 	UnsubscribeDate time.Time `json:"unsubscribeDate,omitempty"`
