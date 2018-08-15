@@ -26,8 +26,8 @@ type Contact struct {
 
 func newContact(s *email.Subscriber) []byte {
 	m := []map[string]interface{}{s.Metadata}
-	if m == nil {
-		m = []map[string]interface{}{map[string]interface{}{}}
+	if m[0] == nil {
+		m[0] = map[string]interface{}{}
 	}
 	m[0]["email"] = s.Email.Address
 
