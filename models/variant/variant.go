@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/types/productcachedvalues"
 	"hanzo.io/util/val"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 type Variant struct {
