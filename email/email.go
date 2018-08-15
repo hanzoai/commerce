@@ -58,7 +58,7 @@ func Send(c context.Context, message *email.Message, org *organization.Organizat
 	}
 
 	// Fire off task to send email
-	return tasks.Send.Call(c, *in, *message)
+	return tasks.Send.Call(c, *in, message)
 }
 
 // Send email using server-side template
