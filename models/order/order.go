@@ -205,6 +205,8 @@ type Order struct {
 
 	// At what point do we stop taking payments
 	// PaymentStop time.Time `json:"paymentStop"`
+
+	FormId string `json:"formId,omitempty"`
 }
 
 func (o *Order) Validator() *val.Validator {
