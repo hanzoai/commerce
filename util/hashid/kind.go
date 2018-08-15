@@ -19,7 +19,7 @@ var kinds = map[string]int{
 	"token":               12,
 	"user":                13,
 	"variant":             14,
-	"form":                15,
+	"mailinglist":         15,
 	"subscriber":          16,
 	"referral":            17,
 	"referrer":            18,
