@@ -5,7 +5,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/models/mailinglist"
+	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
@@ -18,7 +18,7 @@ import (
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
@@ -140,11 +140,13 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 	nsdb := datastore.New(org.Namespaced(db.Context))
 
 	// Create mailinglist
-	ml := mailinglist.New(nsdb)
-	ml.Name = "Mini-launch List"
-	ml.GetOrCreate("Name=", ml.Name)
-	ml.SendWelcome = false
-	ml.MustUpdate()
+	f := form.New(nsdb)
+	f.Name = "Mini-launch List"
+	f.GetOrCreate("Name=", f.Name)
+	f.SendWelcome = false
+	f.EmailList.Enabled = true
+	f.EmailList.Id = "4534419"
+	f.MustUpdate()
 
 	// Create earphone product
 	prod1 := product.New(nsdb)

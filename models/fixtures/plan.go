@@ -6,7 +6,7 @@ import (
 	"hanzo.io/models/deprecated/plan"
 	"hanzo.io/models/types/currency"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 var Plan = New("plan", func(c *gin.Context) *plan.Plan {
