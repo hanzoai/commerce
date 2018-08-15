@@ -13,8 +13,10 @@ import (
 	"hanzo.io/email"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
+	"hanzo.io/models/form"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
+	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
@@ -69,6 +71,7 @@ func create(c *gin.Context) {
 	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
+	req.FormId = "\u263A"
 
 	log.Info("Decoding User Creation Request", c)
 	// Decode response body to create new user
@@ -97,6 +100,7 @@ func create(c *gin.Context) {
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
 	un := usr.Username
+	uf := usr.FormId
 
 	usr2 := user.New(db)
 	// Email can't already exist or if it does, can't have a password
@@ -116,6 +120,10 @@ func create(c *gin.Context) {
 			// Username isn't set in stone until actually registered
 			if un != "" && un != "\u263A" {
 				usr2.Username = un
+			}
+			// Username isn't set in stone until actually registered
+			if uf != "" && uf != "\u263A" {
+				usr2.FormId = uf
 			}
 
 			usr = usr2
@@ -140,6 +148,10 @@ func create(c *gin.Context) {
 	if org.SignUpOptions.AllowAffiliateSignup {
 		log.Info("Signing up as Affiliate? %v", req.User.IsAffiliate, c)
 		usr.IsAffiliate = req.User.IsAffiliate
+	}
+
+	if uf == "\u263A" {
+		usr.FormId = ""
 	}
 
 	if un == "\u263A" {
@@ -268,6 +280,23 @@ func create(c *gin.Context) {
 	counter.IncrUser(usr.Context(), usr.CreatedAt)
 
 	log.Info("Sending Emails", c)
+
+	if usr.FormId != "" {
+		log.Info("Adding User %v To Form %v", usr.Id(), usr.FormId, c)
+		f := form.New(usr.Db)
+
+		s := subscriber.New(db)
+		s.Email = usr.Email
+		s.UserId = usr.Id()
+
+		if err := f.AddSubscriber(s); err != nil {
+			log.Info("Subscriber %v Encountered Non-Fatal Error: %v", usr.Id(), err, c)
+		}
+
+		if f.EmailList.Enabled {
+			email.Subscribe(ctx, f, s, org)
+		}
+	}
 
 	// Send welcome, email confirmation emails
 	email.SendUserConfirmEmail(ctx, org, usr)
