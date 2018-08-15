@@ -36,7 +36,7 @@ var Subscribe = delay.Func("email-subscribe", func(c context.Context, in integra
 		log.Error("Email provider integration not found: %v", err, c)
 		panic(err)
 	}
-	err = provider.Subscribe(l, sub)
+	err = provider.Subscribe(&l, &sub)
 	if err != nil {
 		log.Error("Email provider error: %v", err, c)
 		panic(err)
