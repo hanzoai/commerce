@@ -29,7 +29,7 @@ func getEmailMarketer(c context.Context, in integration.Integration) (email.Mark
 }
 
 // Subscribe contact to mailing list with appropriate provider
-var Subscribe = delay.Func("email-subscribe", func(c context.Context, in integration.Integration, l *email.List, sub *email.Subscriber) {
+var Subscribe = delay.Func("email-subscribe", func(c context.Context, in integration.Integration, l email.List, sub email.Subscriber) {
 	log.Debug("Adding subscriber %s to external email list %s", sub.Email, l, c)
 	provider, err := getEmailMarketer(c, in)
 	if err != nil {
