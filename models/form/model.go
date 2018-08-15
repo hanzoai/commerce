@@ -5,7 +5,7 @@ import (
 	"hanzo.io/models/types/thankyou"
 )
 
-var kind = "form"
+var kind = "mailinglist"
 
 func (m Form) Kind() string {
 	return kind
