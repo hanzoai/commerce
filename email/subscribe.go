@@ -29,5 +29,5 @@ func Subscribe(c context.Context, f *form.Form, s *subscriber.Subscriber, org *o
 		},
 	}
 
-	return tasks.Subscribe.Call(c, in, list, sub)
+	return tasks.Subscribe.Call(c, *in, list, sub)
 }
