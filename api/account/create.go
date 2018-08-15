@@ -285,7 +285,7 @@ func create(c *gin.Context) {
 		log.Info("Adding User %v To Form %v", usr.Id(), usr.FormId, c)
 		f := form.New(usr.Db)
 
-		if err != nil; f.GetById(usr.FormId) {
+		if err := f.GetById(usr.FormId); err != nil {
 			log.Warn("Form %v does not exist.", usr.FormId, c)
 		}
 
