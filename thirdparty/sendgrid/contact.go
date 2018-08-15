@@ -25,11 +25,11 @@ type Contact struct {
 }
 
 func newContact(s *email.Subscriber) []byte {
-	m := s.Metadata
+	m := []map[string]interface{}{s.Metadata}
 	if m == nil {
-		m = make(map[string]interface{})
+		m = []map[string]interface{}{map[string]interface{}{}}
 	}
-	m["email"] = s.Email.Address
+	m[0]["email"] = s.Email.Address
 
 	return json.EncodeBytes(m)
 }
@@ -41,7 +41,7 @@ func (api API) UpdateContact(sub *email.Subscriber) (*Contact, error) {
 	cont := newContact(sub)
 	log.Info("New Contact %s", cont, c)
 
-	res, err := api.Request("PATCH", "/v3/contactdb/recipients", nil, newContact(cont))
+	res, err := api.Request("PATCH", "/v3/contactdb/recipients", nil, cont)
 	if err != nil {
 		return nil, log.Error("Failed to create contact: %v", err, c)
 	}
