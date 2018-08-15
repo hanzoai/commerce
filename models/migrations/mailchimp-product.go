@@ -3,10 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/product"
 	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/log"
+	"hanzo.io/types/integration"
 
 	ds "hanzo.io/datastore"
 )
@@ -38,7 +39,11 @@ var _ = New("mailchimp-products",
 			return
 		}
 
-		client := mailchimp.New(db.Context, apiKey)
+		mc := integration.Mailchimp{
+			APIKey: apiKey,
+		}
+
+		client := mailchimp.New(db.Context, mc)
 		// Create order in mailchimp
 		if err := client.CreateProduct("rdtXY3AUj3zbX", prod); err != nil {
 			log.Warn("Failed to create Mailchimp product: %v", err, db.Context)

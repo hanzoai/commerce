@@ -6,6 +6,7 @@ import (
 	"hanzo.io/models/cart"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/types/integration"
 
 	ds "hanzo.io/datastore"
 )
@@ -24,9 +25,12 @@ var _ = New("sync-carts",
 			return
 		}
 
+		mc := integration.Mailchimp{
+			APIKey: apiKey,
+		}
 		// Update Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			client := mailchimp.New(db.Context, apiKey)
+			client := mailchimp.New(db.Context, mc)
 			client.UpdateOrCreateCart(defaultStore, car)
 		}
 	},
