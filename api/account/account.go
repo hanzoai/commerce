@@ -93,7 +93,7 @@ func patch(c *gin.Context) {
 		http.Fail(c, 400, "Failed to update user", err)
 	} else {
 		// Create new mailchimp client
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		client := mailchimp.New(ctx, org.Mailchimp)
 
 		// Determine store to use
 		storeId := usr.StoreId

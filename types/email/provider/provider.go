@@ -4,6 +4,7 @@ package provider
 type Type string
 
 const (
+	Mailchimp Type = "mailchimp"
 	Mandrill  Type = "mandrill"
 	SendGrid  Type = "sendgrid"
 	SmtpRelay Type = "smtprelay"

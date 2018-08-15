@@ -21,7 +21,7 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/timeutil"
 
-	. "hanzo.io/models"
+	. "hanzo.io/types"
 )
 
 // Is a link that can refer customers to buy products

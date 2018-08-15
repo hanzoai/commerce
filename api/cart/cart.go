@@ -96,7 +96,7 @@ func Set(c *gin.Context) {
 
 	// Update Mailchimp cart
 	if car.UserId != "" || car.Email != "" {
-		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client := mailchimp.New(db.Context, org.Mailchimp)
 		client.UpdateOrCreateCart(storeId, car)
 	}
 }
@@ -132,7 +132,7 @@ func Discard(c *gin.Context) {
 
 	// Update Mailchimp cart
 	if car.UserId != "" || car.Email != "" {
-		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client := mailchimp.New(db.Context, org.Mailchimp)
 		client.DeleteCart(storeId, car)
 	}
 }
@@ -170,7 +170,7 @@ func create(r *rest.Rest) func(*gin.Context) {
 
 		// Create Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client := mailchimp.New(db.Context, org.Mailchimp)
 			client.CreateCart(storeId, car)
 		}
 
@@ -233,7 +233,7 @@ func update(r *rest.Rest) func(*gin.Context) {
 
 		// Update Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client := mailchimp.New(db.Context, org.Mailchimp)
 			client.UpdateOrCreateCart(storeId, car)
 		}
 	}
@@ -283,7 +283,7 @@ func patch(r *rest.Rest) func(*gin.Context) {
 
 		// Update Mailchimp cart
 		if car.UserId != "" || car.Email != "" {
-			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client := mailchimp.New(db.Context, org.Mailchimp)
 			client.UpdateOrCreateCart(storeId, car)
 		}
 	}
