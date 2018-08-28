@@ -20,6 +20,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
 
+	// Fix this stuff so its secure
 	api := rest.New(organization.Organization{})
 	api.DefaultNamespace = true
 	// Older stuff
