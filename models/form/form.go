@@ -53,6 +53,9 @@ type Form struct {
 	// Whether to send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
 
+	// Overwrites default Template Id
+	WelcomeTemplateId string `json:"welcomeTemplateId"`
+
 	// Email list settings for this list
 	EmailList email.List `json:"emailList,omitempty"`
 
