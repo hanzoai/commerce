@@ -257,7 +257,7 @@ func SendUserWelcome(c context.Context, org *organization.Organization, usr *use
 	}
 
 	message := userMessage(settings, usr, org)
-	SendTemplate("subscriber-welcome", c, message, org)
+	SendTemplate("user-welcome", c, message, org)
 }
 
 // Send welcome email to user
