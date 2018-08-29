@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"hanzo.io/models/form"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -232,10 +233,14 @@ func SendUserActivated(c context.Context, org *organization.Organization, usr *u
 }
 
 // Send welcome email to subscriber
-func SendSubscriberWelcome(c context.Context, org *organization.Organization, s *subscriber.Subscriber) {
+func SendSubscriberWelcome(c context.Context, org *organization.Organization, s *subscriber.Subscriber, f *form.Form) {
 	settings := org.Email.Get(email.SubscriberWelcome)
 	if !settings.Enabled {
 		return
+	}
+
+	if f.WelcomeTemplateId != "" {
+		settings.TemplateId = f.WelcomeTemplateId
 	}
 
 	message := subscriberMessage(settings, s, org)
