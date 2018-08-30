@@ -113,6 +113,8 @@ type EthereumTransaction struct {
 	EthereumTransactionHash string                `json:"ethereumTransactionHash,omitempty"`
 	EthereumChainType       blockchains.Type      `json:"ethereumChainType,omitempty"`
 	EthereumAmount          blockchains.BigNumber `json:"ethereumAmount,omitempty"`
+	EthereumFromAddress     string                `json:"ethereumFromAddress,omitempty"`
+	EthereumToAddress       string                `json:"ethereumToAddress,omitempty"`
 
 	// Denotes whether or not a successful transfer occurred
 	EthereumTransferred bool `json:"ethereumTransfered"`
