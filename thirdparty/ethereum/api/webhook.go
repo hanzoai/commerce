@@ -117,6 +117,8 @@ func Webhook(c *gin.Context) {
 				ctx, ba.WalletNamespace,
 				ba.WalletId,
 				bt.EthereumTransactionHash,
+				bt.EthereumTransactionFrom,
+				bt.EthereumTransactionTo,
 				string(bt.Type),
 				bi,
 			); err != nil {

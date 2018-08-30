@@ -43,10 +43,12 @@ var EthereumProcessPayment = delay.Func(
 		orgName,
 		walletId,
 		txHash,
+		from,
+		to,
 		chainType string,
 		amount *big.Int,
 	) {
-		if err := EthereumProcessPaymentImpl(ctx, orgName, walletId, txHash, chainType, amount); err != nil {
+		if err := EthereumProcessPaymentImpl(ctx, orgName, walletId, txHash, from, to, chainType, amount); err != nil {
 			panic(err)
 		}
 	})
@@ -56,6 +58,8 @@ func EthereumProcessPaymentImpl(
 	orgName,
 	walletId,
 	txHash,
+	from,
+	to,
 	ct string,
 	amount *big.Int,
 ) error {
@@ -100,6 +104,8 @@ func EthereumProcessPaymentImpl(
 		}
 
 		pay.Account.EthereumTransactionHash = txHash
+		pay.Account.EthereumFromAddress = from
+		pay.Account.EthereumToAddress = to
 		pay.Account.EthereumChainType = chainType
 		pay.Account.EthereumAmount = blockchains.BigNumber(amount.String())
 
