@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/config"
+	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
 	"hanzo.io/models/order"
@@ -139,6 +140,7 @@ func Confirm(c *gin.Context) {
 }
 
 func route(router router.Router, prefix string) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := router.Group(prefix)
@@ -158,6 +160,8 @@ func route(router router.Router, prefix string) {
 	// Deprecated (should use normal authorization flow to initiate)
 	api.POST("/paypal", publishedRequired, Authorize)
 	api.POST("/paypal/pay", publishedRequired, Authorize)
+
+	api.POST("/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
