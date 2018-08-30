@@ -159,6 +159,7 @@ func EthereumProcessPaymentImpl(
 			switch chainType {
 			case blockchains.EthereumType:
 				if org.Ethereum.Address == "" {
+					log.Error("Ethereum Integration not initialized for %v", org.FullName, ctx)
 					return IntegrationNotInitialized
 				}
 				address = config.Ethereum.MainNetNodes[0]
@@ -171,6 +172,7 @@ func EthereumProcessPaymentImpl(
 				}
 			case blockchains.EthereumRopstenType:
 				if org.Ethereum.Address == "" && org.Ethereum.TestAddress == "" {
+					log.Error("Ethereum Integration not initialized for %v", org.FullName, ctx)
 					return IntegrationNotInitialized
 				}
 				address = config.Ethereum.TestNetNodes[0]
