@@ -52,6 +52,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txHash,
+				"123",
+				"456",
 				string(chainType),
 				totalInt1,
 			)
@@ -77,7 +79,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 			Expect(pay2.Account.EthereumChainType).To(Equal(chainType))
 			Expect(pay2.Account.EthereumAmount).To(Equal(blockchains.BigNumber(totalInt1.String())))
 
-			Expect(pay2.Account.EthereumFinalTransactionHash).To(Equal("0x0"))
+			Expect(pay2.Account.EthereumFromAddress).To(Equal("123"))
+			Expect(pay2.Account.EthereumToAddress).To(Equal("456"))
 			Expect(pay2.Account.EthereumFinalTransactionCost).To(Equal(blockchains.BigNumber(totalGas.String())))
 			Expect(pay2.Account.EthereumFinalAddress).To(Equal("0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"))
 			Expect(pay2.Account.EthereumFinalAmount).To(Equal(blockchains.BigNumber(NewInt().Sub(MulFraction(totalInt1, 19, 20), totalGas).String())))
@@ -119,6 +122,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txHash1,
+				"123",
+				"456",
 				string(chainType),
 				totalInt1,
 			)
@@ -130,6 +135,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txHash2,
+				"123",
+				"456",
 				string(chainType),
 				totalInt2,
 			)
@@ -155,6 +162,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 			Expect(pay1.Account.EthereumChainType).To(Equal(chainType))
 			Expect(pay1.Account.EthereumAmount).To(Equal(blockchains.BigNumber(totalInt1.String())))
 
+			Expect(pay1.Account.EthereumFromAddress).To(Equal("123"))
+			Expect(pay1.Account.EthereumToAddress).To(Equal("456"))
 			Expect(pay1.Account.EthereumFinalTransactionHash).To(Equal("0x0"))
 			Expect(pay1.Account.EthereumFinalTransactionCost).To(Equal(blockchains.BigNumber(totalGas.String())))
 			Expect(pay1.Account.EthereumFinalAddress).To(Equal("0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"))
@@ -194,6 +203,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 			Expect(pay2.Account.EthereumChainType).To(Equal(chainType))
 			Expect(pay2.Account.EthereumAmount).To(Equal(blockchains.BigNumber(totalInt2.String())))
 
+			Expect(pay2.Account.EthereumFromAddress).To(Equal("123"))
+			Expect(pay2.Account.EthereumToAddress).To(Equal("456"))
 			Expect(pay2.Account.EthereumFinalTransactionHash).To(Equal(""))
 			Expect(pay2.Account.EthereumFinalTransactionCost).To(Equal(blockchains.BigNumber("")))
 			Expect(pay2.Account.EthereumFinalAddress).To(Equal(""))
@@ -225,6 +236,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txHash1,
+				"123",
+				"456",
 				string(chainType),
 				totalInt1,
 			)
@@ -236,6 +249,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txHash2,
+				"123",
+				"456",
 				string(chainType),
 				totalInt2,
 			)
@@ -261,6 +276,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 			Expect(pay1.Account.EthereumChainType).To(Equal(chainType))
 			Expect(pay1.Account.EthereumAmount).To(Equal(blockchains.BigNumber(totalInt1.String())))
 
+			Expect(pay1.Account.EthereumFromAddress).To(Equal("123"))
+			Expect(pay1.Account.EthereumToAddress).To(Equal("456"))
 			Expect(pay1.Account.EthereumFinalTransactionHash).To(Equal(""))
 			Expect(pay1.Account.EthereumFinalTransactionCost).To(Equal(blockchains.BigNumber("")))
 			Expect(pay1.Account.EthereumFinalAddress).To(Equal(""))
@@ -288,6 +305,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 			Expect(pay2.Account.EthereumChainType).To(Equal(chainType))
 			Expect(pay2.Account.EthereumAmount).To(Equal(blockchains.BigNumber(totalInt2.String())))
 
+			Expect(pay2.Account.EthereumFromAddress).To(Equal("123"))
+			Expect(pay2.Account.EthereumToAddress).To(Equal("456"))
 			Expect(pay2.Account.EthereumFinalTransactionHash).To(Equal("0x0"))
 			Expect(pay2.Account.EthereumFinalTransactionCost).To(Equal(blockchains.BigNumber(totalGas.String())))
 			Expect(pay2.Account.EthereumFinalAddress).To(Equal("0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"))
@@ -328,6 +347,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txId,
+				"123",
+				"456",
 				string(chainType),
 				big.NewInt(1e9),
 			)
@@ -339,6 +360,8 @@ var _ = Describe("thirdparty/ethereum/tasks/pay.go", func() {
 				"suchtees",
 				w.Id(),
 				txId,
+				"123",
+				"456",
 				string(chainType),
 				totalInt1,
 			)
