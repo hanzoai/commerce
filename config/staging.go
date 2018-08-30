@@ -24,7 +24,8 @@ func Staging() *Config {
 	// config.Ethereum.MainNetNodes = []string{"http://35.192.92.62:13264"}
 	// Geth
 	config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:13264"}
-	config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:13264"}
+	config.Ethereum.TestNetNodes = []string{"https://api.infura.io/v1/jsonrpc/ropsten"}
+	// config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:13264"}
 	config.Ethereum.WebhookPassword = ""
 
 	config.Bitcoin.TestPassword = ""
