@@ -14,11 +14,11 @@ import (
 	// "hanzo.io/models/webhook"
 )
 
-var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization {
+var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "hanzo-ico"
+	org.Name = "swap-demo"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
@@ -30,7 +30,7 @@ var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization 
 	u.PasswordHash, _ = password.Hash("dWcSGthgDpT5B73p")
 	u.Put()
 
-	org.FullName = "Hanzo ICO"
+	org.FullName = "SWAP DEMO"
 	org.Owners = []string{u.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ico.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
@@ -55,18 +55,18 @@ var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization 
 	org.MustUpdate()
 
 	w := wallet.New(db)
-	w.Id_ = "hanzo-ico-wallet"
+	w.Id_ = "swap-demo-wallet"
 	w.UseStringKey = true
-	w.GetOrCreate("Id_=", "hanzo-ico-wallet")
+	w.GetOrCreate("Id_=", "swap-demo-wallet")
 
-	if a, _ := w.GetAccountByName("hanzo-ico-test"); a == nil {
-		if _, err := w.CreateAccount("hanzo-ico-test", blockchains.EthereumRopstenType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
+	if a, _ := w.GetAccountByName("swap-demo-test"); a == nil {
+		if _, err := w.CreateAccount("swap-demo-test", blockchains.EthereumRopstenType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
 			panic(err)
 		}
 	}
 
-	if a, _ := w.GetAccountByName("hanzo-ico"); a == nil {
-		if _, err := w.CreateAccount("hanzo-ico", blockchains.EthereumType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
+	if a, _ := w.GetAccountByName("swap-demo"); a == nil {
+		if _, err := w.CreateAccount("swap-demo", blockchains.EthereumType, []byte("G9wPCV39uaXWUW5SUSCzjTEEUA2pbzmZaX27pCYndJYarALD2pNUyNKEgkGewr3p")); err != nil {
 			panic(err)
 		}
 	}
