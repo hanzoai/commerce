@@ -16,6 +16,7 @@ import (
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/types/commission"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
@@ -88,6 +89,9 @@ type User struct {
 	AffiliateId string `json:"affiliateId,omitempty"`
 
 	FormId string `json:"formId,omitempty"`
+
+	// For Halcyon
+	Commission commission.Commission `json:"commission"`
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
