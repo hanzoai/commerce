@@ -12,6 +12,7 @@ import (
 	"hanzo.io/models/referralprogram"
 	"hanzo.io/models/types/analytics"
 	"hanzo.io/models/types/currency"
+	"hanzo.io/types/socialmedia"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/types/email/provider"
@@ -26,6 +27,12 @@ var Halcyon = New("halcyon", func(c *gin.Context) *organization.Organization {
 
 	org := organization.New(db)
 	org.Name = "halcyon"
+	org.SocialMedia = socialmedia.SocialMedia{
+		Facebook: "https://www.facebook.com/HalcyonBiotech",
+		Twitter: "https://twitter.com/halcyon_biotech",
+		Instagram: "https://www.instagram.com/halcyon_biotech",
+	}
+	org.LogoUrl = "https://neuromethod.halcyon.bio/img/large-logo-sq-blue.png"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
