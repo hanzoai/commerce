@@ -3,22 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
 	"hanzo.io/models/form"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/referralprogram"
-	"hanzo.io/models/types/analytics"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/types/email"
-	"hanzo.io/types/email/provider"
-	"hanzo.io/types/integration"
-	"hanzo.io/types/website"
-
-	. "hanzo.io/types"
 )
 
 var HalcyonFixtures = New("halcyon", func(c *gin.Context) *organization.Organization {
