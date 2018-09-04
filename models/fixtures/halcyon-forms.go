@@ -8,7 +8,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-var HalcyonFixtures = New("halcyon", func(c *gin.Context) *organization.Organization {
+var HalcyonForms = New("halcyon-forms", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
