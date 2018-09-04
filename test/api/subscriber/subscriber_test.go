@@ -3,9 +3,9 @@ package test
 import (
 	"strings"
 
+	"github.com/icrowley/fake"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/user"
-	"github.com/icrowley/fake"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -32,7 +32,7 @@ var _ = Describe("subscriber", func() {
 		It("Should create new subscribers", func() {
 			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.UserId).To(Equal(req.UserId))
-			Expect(res.MailingListId).To(Equal(req.MailingListId))
+			Expect(res.FormId).To(Equal(req.FormId))
 			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
 		})
 	})
@@ -55,7 +55,7 @@ var _ = Describe("subscriber", func() {
 		It("Should create new subscribers", func() {
 			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.UserId).To(Equal(req.UserId))
-			Expect(res.MailingListId).To(Equal(req.MailingListId))
+			Expect(res.FormId).To(Equal(req.FormId))
 			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
 		})
 	})

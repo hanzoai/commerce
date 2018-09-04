@@ -202,14 +202,10 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 		filter = "Slug="
 	case "variant":
 		filter = "SKU="
-	case "organization", "mailinglist":
+	case "form", "namespace", "organization", "site":
 		filter = "Name="
 	case "aggregate":
 		filter = "Instance="
-	case "site":
-		filter = "Name="
-	case "namespace":
-		filter = "Name="
 	case "user":
 		if strings.Contains(id, "@") {
 			filter = "Email="
