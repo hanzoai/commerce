@@ -24,7 +24,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	m := router.Group("mailinglist")
 	m.Use(middleware.AccessControl("*"))
 
-	// m.POST("/:formid/submit", handleForm)
-	// m.POST("/:formid/subscribe", handleForm)
-	// m.GET("/:formid/js", cdn.Js)
+	m.POST("/:formid/submit", handleForm)
+	m.POST("/:formid/subscribe", handleForm)
+	m.GET("/:formid/js", cdn.Js)
 }

@@ -5,9 +5,8 @@ import (
 
 	"hanzo.io/log"
 	"hanzo.io/models/fixtures"
-	"hanzo.io/models/mailinglist"
-	"hanzo.io/models/subscriber"
 	"hanzo.io/thirdparty/mailchimp"
+	"hanzo.io/types/email"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
@@ -21,7 +20,6 @@ func Test(t *testing.T) {
 
 var (
 	ctx ae.Context
-	ml  *mailinglist.MailingList
 )
 
 var _ = BeforeSuite(func() {
@@ -31,7 +29,6 @@ var _ = BeforeSuite(func() {
 
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
-	ml = fixtures.Mailinglist(c).(*mailinglist.MailingList)
 })
 
 var _ = AfterSuite(func() {
@@ -42,7 +39,10 @@ var _ = Describe("ListSubscribe", func() {
 	It("Should subscribe user to Mailchimp list", func() {
 		sub := &subscriber.Subscriber{Email: "dev@hanzo.ai"}
 		api := mailchimp.New(ctx, ml.Mailchimp.APIKey)
-		err := api.Subscribe(ml, sub)
+
+		l := new(email.List)
+		sub := new(email.Subscriber)
+		err := api.Subscribe(l, sub)
 		Expect(err).NotTo(HaveOccurred())
 	})
 })

@@ -30,7 +30,7 @@ const (
 	Campaign
 	Collection
 	Coupon
-	MailingList
+	Form
 	Order
 	Organization
 	Payment
@@ -48,7 +48,7 @@ const (
 	ReadCampaign
 	ReadCollection
 	ReadCoupon
-	ReadMailingList
+	ReadForm
 	ReadOrder
 	ReadOrganization
 	ReadPayment
@@ -66,7 +66,7 @@ const (
 	WriteCampaign
 	WriteCollection
 	WriteCoupon
-	WriteMailingList
+	WriteForm
 	WriteOrder
 	WriteOrganization
 	WritePayment
