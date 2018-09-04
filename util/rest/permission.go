@@ -57,13 +57,13 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Coupon),
 	},
 
-	"mailinglist": Permissions{
-		"create": masks(Admin, WriteMailingList),
-		"delete": masks(Admin, WriteMailingList),
-		"patch":  masks(Admin, ReadMailingList|WriteMailingList),
-		"update": masks(Admin, ReadMailingList|WriteMailingList),
-		"get":    masks(Admin, ReadMailingList),
-		"list":   masks(Admin, MailingList),
+	"form": Permissions{
+		"create": masks(Admin, WriteForm),
+		"delete": masks(Admin, WriteForm),
+		"patch":  masks(Admin, ReadForm|WriteForm),
+		"update": masks(Admin, ReadForm|WriteForm),
+		"get":    masks(Admin, ReadForm),
+		"list":   masks(Admin, Form),
 	},
 
 	"order": Permissions{
