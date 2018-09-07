@@ -107,7 +107,7 @@ func (api API) Send(message *email.Message) error {
 	body := newMessage(message)
 	c := api.Context
 
-	log.Info("Request Body: %v", body, c)
+	log.Info("Request Body: %v", string(body), c)
 
 	res, err := api.Request("POST", "/v3/mail/send", nil, body)
 	if err != nil {
