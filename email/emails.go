@@ -33,6 +33,7 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 		m.TemplateData["organization"] = map[string]interface{}{
 			"id":   org.Id(),
 			"name": org.Name,
+			"logourl": org.LogoUrl,
 		}
 	}
 
