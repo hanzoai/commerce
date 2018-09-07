@@ -12,19 +12,18 @@ import (
 	"hanzo.io/thirdparty/smtprelay"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
 )
 
 func getEmailSender(c context.Context, in integration.Integration) (email.Sender, error) {
 	switch in.Type {
 	case integration.MandrillType:
-		log.Info("Using Mandrill: %v", json.Encode(in.Mandrill), c)
+		log.Info("Using Mandrill", c)
 		return mandrill.New(c, in.Mandrill), nil
 	case integration.SendGridType:
-		log.Info("Using SendGrid: %v", json.Encode(in.SendGrid), c)
+		log.Info("Using SendGrid", c)
 		return sendgrid.New(c, in.SendGrid), nil
 	case integration.SMTPRelayType:
-		log.Info("Using SMTPRelay: %v", json.Encode(in.SMTPRelay), c)
+		log.Info("Using SMTPRelay", c)
 		return smtprelay.New(c, in.SMTPRelay), nil
 	default:
 		log.Error("Invalid Email Provider", c)
