@@ -126,6 +126,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		"monthName": ord.CreatedAt.Month().String(),
 		"year":      ord.CreatedAt.Year(),
 		"storeId":   ord.StoreId,
+		"metadata":	 ord.Metadata,
 	}
 
 	// Include discount
