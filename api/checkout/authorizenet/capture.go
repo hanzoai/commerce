@@ -3,11 +3,11 @@ package authorizenet
 import (
 	"errors"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/authorizenet"
-	"hanzo.io/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
@@ -27,13 +27,13 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 	log.Debug("payments %v", payments)
 
 	// Get client we can use for API calls
-	con := org.AuthorizeNetTokens()
+	con := org.AuthorizeNetToken(ord.Test)
 
 	loginId := con.LoginId
 	transactionKey := con.TransactionKey
 	key := con.Key
 
-	client := authorizenet.New(ctx, loginId, transactionKey, key, false)
+	client := authorizenet.New(ctx, loginId, transactionKey, key, ord.Test)
 
 	if ord.Total > 0 {
 		// Capture any uncaptured payments
@@ -65,4 +65,3 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	return ord, payments, nil
 }
-
