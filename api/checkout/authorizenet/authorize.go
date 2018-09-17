@@ -19,7 +19,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	ctx := ord.Db.Context
 
 	// Create stripe client
-	con := org.AuthorizeNetTokens()
+	con := org.AuthorizeNetToken(ord.Test)
 
 	log.Warn("Connection: %v", con, ctx)
 	log.Warn("Test?: %v", !org.Live, ctx)
@@ -30,7 +30,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	pay.Amount = ord.Total
 
-	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
+	client := authorizenet.New(ctx, loginId, transactionKey, key, ord.Test)
 
 	if ord.Total > 0 {
 		// Do authorization
