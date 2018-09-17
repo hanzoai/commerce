@@ -31,8 +31,8 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 
 	if org != nil {
 		m.TemplateData["organization"] = map[string]interface{}{
-			"id":   org.Id(),
-			"name": org.Name,
+			"id":      org.Id(),
+			"name":    org.Name,
 			"logourl": org.LogoUrl,
 		}
 	}
@@ -149,6 +149,11 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		m.TemplateData["payment"] = map[string]interface{}{
 			"lastFour": pay.Account.LastFour,
 		}
+	}
+
+	// Customize based on notification settings
+	if ord.Notifications.Email.TemplateId != "" {
+		m.TemplateID = ord.Notifications.Email.TemplateId
 	}
 
 	return m
