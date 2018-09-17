@@ -210,7 +210,7 @@ func (c Client) NewSubscription(sub *order.Subscription) (*order.Subscription, e
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 
-	response, err := ChargeSubscription(c.ctx, *subscription)
+	response, err := ChargeSubscription(c.ctx, *subscription, c.test)
 
 	if err != nil {
 		log.Error("Authorize.net NewSubscription 1 %v, Error %v", json2.Encode(sub), err, c.ctx)
@@ -289,7 +289,7 @@ func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
 	log.JSON(newTransaction)
 
 	log.Debug("Authorize: Invoking Authorize.net API")
-	response, err := AuthOnly(c.ctx, *newTransaction)
+	response, err := AuthOnly(c.ctx, *newTransaction, c.test)
 
 	if err != nil {
 		log.Error("Authorize.net Authorize 1 %v / %v, Error %v", json2.Encode(pay), json2.Encode(newTransaction), err, c.ctx)
@@ -357,7 +357,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		},
 	}
 
-	response, err := AuthorizeCIM.SendTransactionRequest(tr)
+	response, err := SendTransactionRequest(c.ctx, tr, c.test)
 
 	if err != nil {
 		return pay, err
@@ -566,7 +566,7 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 
 	newTransaction := PaymentToNewTransaction(pay)
 
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+		AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	AuthorizeCIM.SetHTTPClient(c.client)
 	response, err := newTransaction.Charge()
 
@@ -595,7 +595,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 
 	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	AuthorizeCIM.SetHTTPClient(c.client)
-	response, err := Capture(c.ctx, *oldTransaction)
+	response, err := Capture(c.ctx, *oldTransaction, c.test)
 
 	if err != nil {
 		log.Error("Authorize.net Capture 1 %v", err, c.ctx)
@@ -615,7 +615,7 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 	}
 }
 
-func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction) (*AuthorizeCIM.TransactionResponse, error) {
+func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction, test bool) (*AuthorizeCIM.TransactionResponse, error) {
 	var new AuthorizeCIM.TransactionRequest
 	new = AuthorizeCIM.TransactionRequest{
 		TransactionType: "authOnlyTransaction",
@@ -624,21 +624,21 @@ func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction) (*Authoriz
 			CreditCard: tranx.CreditCard,
 		},
 	}
-	response, err := SendTransactionRequest(ctx, new)
+	response, err := SendTransactionRequest(ctx, new, test)
 	return response, err
 }
 
-func Capture(ctx context.Context, tranx AuthorizeCIM.PreviousTransaction) (*AuthorizeCIM.TransactionResponse, error) {
+func Capture(ctx context.Context, tranx AuthorizeCIM.PreviousTransaction, test bool) (*AuthorizeCIM.TransactionResponse, error) {
 	var new AuthorizeCIM.TransactionRequest
 	new = AuthorizeCIM.TransactionRequest{
 		TransactionType: "priorAuthCaptureTransaction",
 		RefTransId:      tranx.RefId,
 	}
-	response, err := SendTransactionRequest(ctx, new)
+	response, err := SendTransactionRequest(ctx, new, test)
 	return response, err
 }
 
-func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionRequest) (*AuthorizeCIM.TransactionResponse, error) {
+func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionRequest, test bool) (*AuthorizeCIM.TransactionResponse, error) {
 	action := AuthorizeCIM.CreatePayment{
 		CreateTransactionRequest: AuthorizeCIM.CreateTransactionRequest{
 			MerchantAuthentication: AuthorizeCIM.GetAuthentication(),
@@ -651,7 +651,7 @@ func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionR
 		return nil, err
 	}
 
-	response, err := SendRequest(ctx, jsoned)
+	response, err := SendRequest(ctx, jsoned, test)
 	if err != nil {
 		return nil, err
 	}
@@ -666,8 +666,11 @@ func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionR
 	return &dat, err
 }
 
-func SendRequest(ctx context.Context, input []byte) ([]byte, error) {
+func SendRequest(ctx context.Context, input []byte, test bool) ([]byte, error) {
 	api_endpoint := "https://apitest.authorize.net/xml/v1/request.api"
+	if !test {
+		api_endpoint = "https://api.authorize.net/xml/v1/request.api"
+	}
 	req, err := http.NewRequest("POST", api_endpoint, bytes.NewBuffer(input))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -693,11 +696,11 @@ func SendRequest(ctx context.Context, input []byte) ([]byte, error) {
 	return body, err
 }
 
-func ChargeSubscription(ctx context.Context, sub AuthorizeCIM.Subscription) (*AuthorizeCIM.SubscriptionResponse, error) {
-	return SendSubscription(ctx, sub)
+func ChargeSubscription(ctx context.Context, sub AuthorizeCIM.Subscription, test bool) (*AuthorizeCIM.SubscriptionResponse, error) {
+	return SendSubscription(ctx, sub, test)
 }
 
-func SendSubscription(ctx context.Context, sub AuthorizeCIM.Subscription) (*AuthorizeCIM.SubscriptionResponse, error) {
+func SendSubscription(ctx context.Context, sub AuthorizeCIM.Subscription, test bool) (*AuthorizeCIM.SubscriptionResponse, error) {
 	action := AuthorizeCIM.CreateSubscriptionRequest{
 		ARBCreateSubscriptionRequest: AuthorizeCIM.ARBCreateSubscriptionRequest{
 			MerchantAuthentication: AuthorizeCIM.GetAuthentication(),
@@ -710,7 +713,7 @@ func SendSubscription(ctx context.Context, sub AuthorizeCIM.Subscription) (*Auth
 		return nil, err
 	}
 
-	response, err := SendRequest(ctx, jsoned)
+	response, err := SendRequest(ctx, jsoned, test)
 	if err != nil {
 		return nil, err
 	}
