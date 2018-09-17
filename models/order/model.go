@@ -6,8 +6,8 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/fulfillment"
 
-	. "hanzo.io/types"
 	"hanzo.io/models/lineitem"
+	. "hanzo.io/types"
 )
 
 var kind = "order"
@@ -28,6 +28,7 @@ func (o *Order) Defaults() {
 	o.History = make([]Event, 0)
 	o.Items = make([]lineitem.LineItem, 0)
 	o.Metadata = make(Map)
+	o.Notifications.Email.Enabled = true
 	o.Coupons = make([]coupon.Coupon, 0)
 }
 
