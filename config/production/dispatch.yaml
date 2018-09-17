@@ -19,5 +19,8 @@ dispatch:
   - url: "api.hanzo.io/*"
     module: api
 
+  - url: "x.hanzo.io/*"
+    module: api
+
   - url: "dash.hanzo.io/*"
     module: dash
