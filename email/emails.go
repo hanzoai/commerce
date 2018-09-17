@@ -17,8 +17,9 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/util/json"
-
 	"hanzo.io/log"
+
+	. "hanzo.io/types"
 )
 
 // Create new message using provided defaults
@@ -340,4 +341,5 @@ func SendOrderShipped(c context.Context, org *organization.Organization, ord *or
 
 func init() {
 	gob.Register([]map[string]interface{}{})
+	gob.Register(Map{})
 }
