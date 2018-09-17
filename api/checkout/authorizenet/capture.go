@@ -27,13 +27,13 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 	log.Debug("payments %v", payments)
 
 	// Get client we can use for API calls
-	con := org.AuthorizeNetToken(ord.Test)
+	con := org.AuthorizeNetToken(!org.Live)
 
 	loginId := con.LoginId
 	transactionKey := con.TransactionKey
 	key := con.Key
 
-	client := authorizenet.New(ctx, loginId, transactionKey, key, ord.Test)
+	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
 
 	if ord.Total > 0 {
 		// Capture any uncaptured payments

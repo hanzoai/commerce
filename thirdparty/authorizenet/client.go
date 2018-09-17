@@ -687,7 +687,7 @@ func SendRequest(ctx context.Context, input []byte, test bool) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// log.Warn("Request %s", string(input), ctx)
+	log.Warn("Request %s", string(input), ctx)
 
 	dump, _ := httputil.DumpResponse(resp, true)
 	log.Warn("Response %s", string(dump), ctx)
