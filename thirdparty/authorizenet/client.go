@@ -671,6 +671,8 @@ func SendRequest(ctx context.Context, input []byte, test bool) ([]byte, error) {
 	if !test {
 		api_endpoint = "https://api.authorize.net/xml/v1/request.api"
 	}
+	log.Warn("Using testmode %v to send to %s", test, api_endpoint, ctx)
+
 	req, err := http.NewRequest("POST", api_endpoint, bytes.NewBuffer(input))
 	req.Header.Set("Content-Type", "application/json")
 
