@@ -77,15 +77,10 @@ func Init() {
 	router.GET("/assets/*file", middleware.Static("assets/"))
 
 	// Warmup: automatically install fixtures, etc.
-	// router.GET("/_ah/warmup", func(c *gin.Context) {
-	// 	// Automatically load fixtures
-	// 	if config.AutoLoadFixtures {
-	// 		task.Run(c, "fixtures-all")
-	// 	}
-
-	// 	// Recompile static assets
-	// 	if config.AutoCompileAssets {
-	// 		exec.Run("make assets")
-	// 	}
-	// })
+	router.GET("/_ah/warmup", func(c *gin.Context) {
+		// Automatically load fixtures
+		if config.AutoLoadFixtures {
+			task.Run(c, "fixtures-all")
+		}
+	})
 }
