@@ -30,7 +30,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	pay.Amount = ord.Total
 
-	client := authorizenet.New(ctx, loginId, transactionKey, key, ord.Test)
+	client := authorizenet.New(ctx, loginId, transactionKey, key, !org.Live)
 
 	if ord.Total > 0 {
 		// Do authorization

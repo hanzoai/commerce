@@ -156,6 +156,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.Test = true
 		if pay != nil {
 			pay.Test = true
+			pay.Live = false
 		}
 	}
 
