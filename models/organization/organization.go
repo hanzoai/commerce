@@ -45,12 +45,12 @@ type Organization struct {
 	Moderators []string `json:"moderators,omitempty" datastore:",noindex"`
 	Enabled    bool     `json:"enabled"`
 
-	BillingEmail     string  `json:"billingEmail,omitempty"`
-	Phone            string  `json:"phone,omitempty"`
-	Address          Address `json:"address,omitempty"`
-	SocialMedia		 socialmedia.SocialMedia `json:"socialMedia, omitEmpty"`
-	Websites		 []website.Website `json:"websites, omitEmpty"`
-	WalletPassphrase string  `json:"-"`
+	BillingEmail     string                  `json:"billingEmail,omitempty"`
+	Phone            string                  `json:"phone,omitempty"`
+	Address          Address                 `json:"address,omitempty"`
+	SocialMedia      socialmedia.SocialMedia `json:"socialMedia, omitEmpty"`
+	Websites         []website.Website       `json:"websites, omitEmpty"`
+	WalletPassphrase string                  `json:"-"`
 
 	Timezone string `json:"timezone"`
 
@@ -90,7 +90,7 @@ type Organization struct {
 		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
 
 		// Allow direct affiliate sign up
-		AllowAffiliateSignup	 bool `json:"allowAffiliateSignup"`
+		AllowAffiliateSignup bool `json:"allowAffiliateSignup"`
 
 		// Turns off required backend checks
 		NoNameRequired     bool `json:"noNameRequired"`
@@ -104,7 +104,7 @@ type Organization struct {
 	} `json:"signUpOptions" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
-	Live bool `json:"-" datastore:"-"`
+	Live bool `json:"live"`
 
 	// TODO: Remain to PaymentWhitelist for clarity
 	// List of comma deliminated email globs that result in charges of 50 cents
@@ -354,12 +354,12 @@ func (o Organization) StripeToken() string {
 	return o.Stripe.Test.AccessToken
 }
 
-func (o Organization) AuthorizeNetTokens() integration.AuthorizeNetConnection {
-	if o.Live {
-		return o.AuthorizeNet.Live
+func (o Organization) AuthorizeNetToken(sandbox bool) integration.AuthorizeNetConnection {
+	if sandbox {
+		return o.AuthorizeNet.Sandbox
 	}
 
-	return o.AuthorizeNet.Sandbox
+	return o.AuthorizeNet.Live
 }
 
 func (o Organization) IsTestEmail(email string) bool {
