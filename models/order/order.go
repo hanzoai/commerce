@@ -189,6 +189,19 @@ type Order struct {
 		TrackingCode string `json:"trackingCode,omitempty" datastore:",noindex"`
 	} `json:"mailchimp,omitempty"`
 
+	// Notification preferences
+	Notifications struct {
+		Email struct {
+			Enabled    bool   `json:"disable"`
+			TemplateId string `json:"templateId"`
+			ProviderId string `json:"providerId"`
+		} `json:"email"`
+
+		SMS struct {
+			Enabled bool `json:"enabled"`
+		} `json:"sms"`
+	} `json:"notifications"`
+
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
