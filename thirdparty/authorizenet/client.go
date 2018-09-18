@@ -566,7 +566,7 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 
 	newTransaction := PaymentToNewTransaction(pay)
 
-		AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
 	AuthorizeCIM.SetHTTPClient(c.client)
 	response, err := newTransaction.Charge()
 
