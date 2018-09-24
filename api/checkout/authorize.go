@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"time"
+	"math/rand"
 
 	"github.com/gin-gonic/gin"
 
@@ -143,7 +144,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		case currency.ETH:
 			ord.Total = currency.Cents(1e7)
 		default:
-			ord.Total = currency.Cents(50)
+			ord.Total = currency.Cents(50 + rand.Int63n(50))
 		}
 
 		if pay != nil {
