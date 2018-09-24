@@ -161,7 +161,7 @@ func route(router router.Router, prefix string) {
 	api.POST("/paypal", publishedRequired, Authorize)
 	api.POST("/paypal/pay", publishedRequired, Authorize)
 
-	api.POST("/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
+	api.GET("/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
