@@ -28,7 +28,7 @@ func Lookup(c *gin.Context) {
 	proxyAddress := c.Params.ByName("proxyaddress")
 
 	pay := payment.New(db)
-	if ok, err := pay.Query().Filter("EthereumToAddress=", proxyAddress).Get(); !ok {
+	if ok, err := pay.Query().Filter("Account.EthereumToAddress=", proxyAddress).Get(); !ok {
 		http.Fail(c, 404, "Failed to find Ethereum Proxy Address", err)
 		log.Warn("Failed to find Ethereum Proxy Address", err, c)
 		return
