@@ -33,7 +33,7 @@ var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization 
 
 	u2 := user.New(db)
 	u2.Email = "phil@ar.ca"
-	u2.GetOrCreate("Email=", u.Email)
+	u2.GetOrCreate("Email=", u2.Email)
 	u2.FirstName = "Phil"
 	u2.LastName = "Liu"
 	u2.Organizations = []string{org.Id()}
