@@ -31,8 +31,17 @@ var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization 
 	u.PasswordHash, _ = password.Hash("dWcSGthgDpT5B73p")
 	u.Put()
 
-	org.FullName = "SWAP DEMO"
-	org.Owners = []string{u.Id()}
+	u2 := user.New(db)
+	u2.Email = "phil@ar.ca"
+	u2.GetOrCreate("Email=", u.Email)
+	u2.FirstName = "Phil"
+	u2.LastName = "Liu"
+	u2.Organizations = []string{org.Id()}
+	u2.PasswordHash, _ = password.Hash("ZIMwE8Z6q8Wo0otC")
+	u2.Put()
+
+	org.FullName = "TA DEMO"
+	org.Owners = []string{u.Id(),u2.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ico.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
 
