@@ -75,30 +75,30 @@ func ToStringExpirationDate(month int, year int) string {
 	return strconv.Itoa(month) + "/" + twoDigitYear
 }
 
-func HanzoToAuthorizeSubscription(sub *order.Subscription) *AuthorizeCIM.Subscription {
+func HanzoToAuthorizeSubscription(sub *order.Subscription) *authorizenet.Subscription {
 
-	interval := AuthorizeCIM.IntervalMonthly()
+	interval := authorizenet.IntervalMonthly()
 	if sub.Interval == Yearly {
-		interval = AuthorizeCIM.IntervalYearly()
+		interval = authorizenet.IntervalYearly()
 	}
-	subscription := AuthorizeCIM.Subscription{
+	subscription := authorizenet.Subscription{
 		Name:        sub.ProductId + sub.PlanId,
 		Amount:      sub.Currency.ToStringNoSymbol(sub.Price),
 		TrialAmount: "0.00",
-		PaymentSchedule: &AuthorizeCIM.PaymentSchedule{
+		PaymentSchedule: &authorizenet.PaymentSchedule{
 			StartDate:        sub.PeriodStart.Format("2006-01-02"),
 			TotalOccurrences: "9999",
 			TrialOccurrences: strconv.Itoa(sub.TrialPeriodsRemaining()),
 			Interval:         interval,
 		},
-		Payment: &AuthorizeCIM.Payment{
-			CreditCard: AuthorizeCIM.CreditCard{
+		Payment: &authorizenet.Payment{
+			CreditCard: authorizenet.CreditCard{
 				CardNumber:     sub.Account.Number,
 				ExpirationDate: ToStringExpirationDate(sub.Account.Month, sub.Account.Year),
 				CardCode:       sub.Account.CVC,
 			},
 		},
-		BillTo: &AuthorizeCIM.BillTo{
+		BillTo: &authorizenet.BillTo{
 			FirstName: sub.Buyer.FirstName,
 			LastName:  sub.Buyer.LastName,
 			Address:   sub.Buyer.BillingAddress.Line1,
@@ -112,16 +112,16 @@ func HanzoToAuthorizeSubscription(sub *order.Subscription) *AuthorizeCIM.Subscri
 }
 
 // Covert a payment model into a card card we can use for authorization
-func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction {
-	newTransaction := AuthorizeCIM.NewTransaction{
+func PaymentToNewTransaction(pay *payment.Payment) *authorizenet.NewTransaction {
+	newTransaction := authorizenet.NewTransaction{
 		Amount:     pay.Currency.ToStringNoSymbol(pay.Amount),
 		RefTransId: pay.Account.RefTransId,
-		CreditCard: AuthorizeCIM.CreditCard{
+		CreditCard: authorizenet.CreditCard{
 			CardNumber:     pay.Account.Number,
 			ExpirationDate: ToStringExpirationDate(pay.Account.Month, pay.Account.Year),
 			CardCode:       pay.Account.CVC,
 		},
-		BillTo: &AuthorizeCIM.BillTo{
+		BillTo: &authorizenet.BillTo{
 			Address: pay.Buyer.BillingAddress.Line1,
 			City:    pay.Buyer.BillingAddress.City,
 			State:   pay.Buyer.BillingAddress.State,
@@ -134,15 +134,15 @@ func PaymentToNewTransaction(pay *payment.Payment) *AuthorizeCIM.NewTransaction 
 	return &newTransaction
 }
 
-func PaymentToPreviousTransaction(pay *payment.Payment) *AuthorizeCIM.PreviousTransaction {
-	prevTransaction := AuthorizeCIM.PreviousTransaction{
+func PaymentToPreviousTransaction(pay *payment.Payment) *authorizenet.PreviousTransaction {
+	prevTransaction := authorizenet.PreviousTransaction{
 		Amount: pay.Currency.ToStringNoSymbol(pay.Amount),
 		RefId:  pay.Account.TransId,
 	}
 	return &prevTransaction
 }
 
-func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.TransactionResponse) (*payment.Payment, error) {
+func PopulatePaymentWithResponse(pay *payment.Payment, tran *authorizenet.TransactionResponse) (*payment.Payment, error) {
 	msgs := make([]string, 0)
 	for _, msg := range tran.Response.Message.Message {
 		msgs = append(msgs, "Code: "+msg.Code+", "+msg.Description)
@@ -173,7 +173,7 @@ func PopulatePaymentWithResponse(pay *payment.Payment, tran *AuthorizeCIM.Transa
 	return pay, nil
 }
 
-func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *AuthorizeCIM.SubscriptionResponse) *order.Subscription {
+func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *authorizenet.SubscriptionResponse) *order.Subscription {
 	if tran.SubscriptionID != "" {
 		sub.Ref.AuthorizeNet.SubscriptionId = tran.SubscriptionID
 	}
@@ -205,8 +205,8 @@ func PopulateSubscriptionWithResponse(sub *order.Subscription, tran *AuthorizeCI
 }*/
 
 func (c Client) NewSubscription(sub *order.Subscription) (*order.Subscription, error) {
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	//authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	//authorizenet.SetHTTPClient(c.client)
 
 	subscription := HanzoToAuthorizeSubscription(sub)
 
@@ -233,89 +233,98 @@ func (c Client) NewSubscription(sub *order.Subscription) (*order.Subscription, e
 
 // Update subscribe to a plan
 func (c Client) UpdateSubscription(sub *order.Subscription) (*order.Subscription, error) {
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	/*
+		//authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+		//authorizenet.SetHTTPClient(c.client)
 
-	subscription := HanzoToAuthorizeSubscription(sub)
-	subscription.SubscriptionId = sub.Ref.AuthorizeNet.SubscriptionId
+		subscription := HanzoToAuthorizeSubscription(sub)
+		subscription.SubscriptionId = sub.Ref.AuthorizeNet.SubscriptionId
 
-	response, err := subscription.Update()
+		response, err := subscription.Update()
 
-	if err != nil {
-		log.Error("Authorize.net UpdateSubscription 1 %v, Error %v", json2.Encode(sub), err, c.ctx)
-		return sub, err
-	}
-
-	if response.Approved() {
-		sub, err = PopulateSubscriptionWithResponse(sub, response), nil
 		if err != nil {
-			log.Error("Authorize.net NewSubscription 2 %v", err, c.ctx)
+			log.Error("Authorize.net UpdateSubscription 1 %v, Error %v", json2.Encode(sub), err, c.ctx)
+			return sub, err
+		}
+
+		if response.Approved() {
+			sub, err = PopulateSubscriptionWithResponse(sub, response), nil
+			if err != nil {
+				log.Error("Authorize.net NewSubscription 2 %v", err, c.ctx)
+			}
+			return sub, err
+		} else {
+			log.Warn("UpdateSubscription Failed")
+			log.Debug("Authorize: Authorize.Net API did not approve transaction")
+			return sub, UpdateSubscriptionFailedError
 		}
 		return sub, err
-	} else {
-		log.Warn("UpdateSubscription Failed")
-		log.Debug("Authorize: Authorize.Net API did not approve transaction")
-		return sub, UpdateSubscriptionFailedError
-	}
-	return sub, err
+	*/
+	return nil, nil
 }
 
 // Subscribe to a plan
 func (c Client) CancelSubscription(sub *order.Subscription) (*order.Subscription, error) {
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	/*
+		authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+		authorizenet.SetHTTPClient(c.client)
 
-	s := AuthorizeCIM.SetSubscription{
-		Id: sub.Ref.AuthorizeNet.SubscriptionId,
-	}
-	_, err := s.Cancel()
+		s := authorizenet.SetSubscription{
+			Id: sub.Ref.AuthorizeNet.SubscriptionId,
+		}
+		_, err := s.Cancel()
 
-	if err == nil {
-		sub.Canceled = true
-		sub.Status = order.CancelledSubscriptionStatus
-		return sub, nil
-	}
-	return sub, err
+		if err == nil {
+			sub.Canceled = true
+			sub.Status = order.CancelledSubscriptionStatus
+			return sub, nil
+		}
+		return sub, err
+	*/
+	return nil, nil
 }
 
 // Do authorization, return token
 func (c Client) Authorize(pay *payment.Payment) (*payment.Payment, error) {
-	newTransaction := PaymentToNewTransaction(pay)
+	/*
+		newTransaction := PaymentToNewTransaction(pay)
 
-	log.Debug("Authorize: Setting API Info")
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+		log.Debug("Authorize: Setting API Info")
+		authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+		authorizenet.SetHTTPClient(c.client)
 
-	log.JSON(newTransaction)
+		log.JSON(newTransaction)
 
-	log.Debug("Authorize: Invoking Authorize.net API")
-	response, err := AuthOnly(c.ctx, *newTransaction, c.test)
+		log.Debug("Authorize: Invoking Authorize.net API")
+		response, err := AuthOnly(c.ctx, *newTransaction, c.test)
 
-	if err != nil {
-		log.Error("Authorize.net Authorize 1 %v / %v, Error %v", json2.Encode(pay), json2.Encode(newTransaction), err, c.ctx)
-		return pay, err
-	}
-
-	log.Debug("Authorize: Returned from Authorize.net API")
-	if response.Approved() {
-		log.Warn("Approved")
-		pay, err := PopulatePaymentWithResponse(pay, response)
 		if err != nil {
-			log.Error("Authorize.net Authorize 2 %v", err, c.ctx)
+			log.Error("Authorize.net Authorize 1 %v / %v, Error %v", json2.Encode(pay), json2.Encode(newTransaction), err, c.ctx)
+			return pay, err
 		}
-		return pay, err
-	} else {
-		log.Warn("Not Approved")
-		log.Debug("Authorize: Authorize.Net API did not approve transaction")
-		log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
-		log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
-		log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
-		log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
-		return pay, AuthorizeNotApprovedError
-	}
+
+		log.Debug("Authorize: Returned from Authorize.net API")
+		if response.Approved() {
+			log.Warn("Approved")
+			pay, err := PopulatePaymentWithResponse(pay, response)
+			if err != nil {
+				log.Error("Authorize.net Authorize 2 %v", err, c.ctx)
+			}
+			return pay, err
+		} else {
+			log.Warn("Not Approved")
+			log.Debug("Authorize: Authorize.Net API did not approve transaction")
+			log.Debug("Authorize: Authorize.Net payment amount: %v", pay.Amount)
+			log.Debug("Authorize: Authorize.Net card number: %v", pay.Account.Number)
+			log.Debug("Authorize: Authorize.Net card expiration: %v", ToStringExpirationDate(pay.Account.Month, pay.Account.Year))
+			log.Debug("Authorize: Authorize.Net returned error: %v", err, c.ctx)
+			return pay, AuthorizeNotApprovedError
+		}
+	*/
+	return nil, nil
 }
 
-/*func (c Client) AuthorizeSubscription(sub *subscription.Subscription) (*AuthorizeCIM.TransactionResponse, error) {
+/*func (c Client) AuthorizeSubscription(sub *subscription.Subscription) (*authorizenet.TransactionResponse, error) {
 
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
 		Card: SubscriptionToCard(sub),
@@ -343,16 +352,16 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		return pay, UnableToRefundUnpaidTransactionError
 	}
 
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	//authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	//authorizenet.SetHTTPClient(c.client)
 	newTransaction := PaymentToNewTransaction(pay)
 	newTransaction.Amount = pay.Currency.ToStringNoSymbol(refundAmount)
 	newTransaction.RefTransId = pay.Account.TransId
-	var tr = AuthorizeCIM.TransactionRequest{
+	var tr = authorizenet.TransactionRequest{
 		TransactionType: "refundTransaction",
 		Amount:          newTransaction.Amount,
 		RefTransId:      newTransaction.RefTransId,
-		Payment: &AuthorizeCIM.Payment{
+		Payment: &authorizenet.Payment{
 			CreditCard: newTransaction.CreditCard,
 		},
 	}
@@ -564,10 +573,10 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 // Create new charge
 func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 
-	newTransaction := PaymentToNewTransaction(pay)
+	/*newTransaction := PaymentToNewTransaction(pay)
 
-		AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	authorizenet.SetHTTPClient(c.client)
 	response, err := newTransaction.Charge()
 
 	if err != nil {
@@ -585,16 +594,17 @@ func (c Client) Charge(pay *payment.Payment) (*payment.Payment, error) {
 		return pay, err
 	} else {
 		return pay, ChargeNotApprovedError
-	}
+	}*/
+	return nil, nil
 }
 
 // Capture charge
 func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
-	log.Debug("Capture charge '%s'", pay.Account.AuthCode)
+	/*log.Debug("Capture charge '%s'", pay.Account.AuthCode)
 	oldTransaction := PaymentToPreviousTransaction(pay)
 
-	AuthorizeCIM.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
-	AuthorizeCIM.SetHTTPClient(c.client)
+	authorizenet.SetAPIInfo(c.loginId, c.transactionKey, c.getTestValue())
+	authorizenet.SetHTTPClient(c.client)
 	response, err := Capture(c.ctx, *oldTransaction, c.test)
 
 	if err != nil {
@@ -612,15 +622,16 @@ func (c Client) Capture(pay *payment.Payment) (*payment.Payment, error) {
 		return pay, err
 	} else {
 		return pay, CaptureNotApprovedError
-	}
+	}*/
+	return nil, nil
 }
 
-func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction, test bool) (*AuthorizeCIM.TransactionResponse, error) {
-	var new AuthorizeCIM.TransactionRequest
-	new = AuthorizeCIM.TransactionRequest{
+func AuthOnly(ctx context.Context, tranx authorizenet.NewTransaction, test bool) (*authorizenet.TransactionResponse, error) {
+	var new authorizenet.TransactionRequest
+	new = authorizenet.TransactionRequest{
 		TransactionType: "authOnlyTransaction",
 		Amount:          tranx.Amount,
-		Payment: &AuthorizeCIM.Payment{
+		Payment: &authorizenet.Payment{
 			CreditCard: tranx.CreditCard,
 		},
 	}
@@ -628,9 +639,9 @@ func AuthOnly(ctx context.Context, tranx AuthorizeCIM.NewTransaction, test bool)
 	return response, err
 }
 
-func Capture(ctx context.Context, tranx AuthorizeCIM.PreviousTransaction, test bool) (*AuthorizeCIM.TransactionResponse, error) {
-	var new AuthorizeCIM.TransactionRequest
-	new = AuthorizeCIM.TransactionRequest{
+func Capture(ctx context.Context, tranx authorizenet.PreviousTransaction, test bool) (*authorizenet.TransactionResponse, error) {
+	var new authorizenet.TransactionRequest
+	new = authorizenet.TransactionRequest{
 		TransactionType: "priorAuthCaptureTransaction",
 		RefTransId:      tranx.RefId,
 	}
@@ -638,11 +649,11 @@ func Capture(ctx context.Context, tranx AuthorizeCIM.PreviousTransaction, test b
 	return response, err
 }
 
-func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionRequest, test bool) (*AuthorizeCIM.TransactionResponse, error) {
-	action := AuthorizeCIM.CreatePayment{
-		CreateTransactionRequest: AuthorizeCIM.CreateTransactionRequest{
-			MerchantAuthentication: AuthorizeCIM.GetAuthentication(),
-			TransactionRequest:     input,
+func SendTransactionRequest(ctx context.Context, input authorizenet.TransactionRequest, test bool) (*authorizenet.TransactionResponse, error) {
+	action := authorizenet.CreatePayment{
+		CreateTransactionRequest: authorizenet.CreateTransactionRequest{
+			//MerchantAuthentication: authorizenet.GetAuthentication(),
+			TransactionRequest: input,
 		},
 	}
 
@@ -656,7 +667,7 @@ func SendTransactionRequest(ctx context.Context, input AuthorizeCIM.TransactionR
 		return nil, err
 	}
 
-	var dat AuthorizeCIM.TransactionResponse
+	var dat authorizenet.TransactionResponse
 
 	log.Warn("Returned Data: %s", response, ctx)
 	err = json.Unmarshal(response, &dat)
@@ -698,15 +709,15 @@ func SendRequest(ctx context.Context, input []byte, test bool) ([]byte, error) {
 	return body, err
 }
 
-func ChargeSubscription(ctx context.Context, sub AuthorizeCIM.Subscription, test bool) (*AuthorizeCIM.SubscriptionResponse, error) {
+func ChargeSubscription(ctx context.Context, sub authorizenet.Subscription, test bool) (*authorizenet.SubscriptionResponse, error) {
 	return SendSubscription(ctx, sub, test)
 }
 
-func SendSubscription(ctx context.Context, sub AuthorizeCIM.Subscription, test bool) (*AuthorizeCIM.SubscriptionResponse, error) {
-	action := AuthorizeCIM.CreateSubscriptionRequest{
-		ARBCreateSubscriptionRequest: AuthorizeCIM.ARBCreateSubscriptionRequest{
-			MerchantAuthentication: AuthorizeCIM.GetAuthentication(),
-			Subscription:           sub,
+func SendSubscription(ctx context.Context, sub authorizenet.Subscription, test bool) (*authorizenet.SubscriptionResponse, error) {
+	action := authorizenet.CreateSubscriptionRequest{
+		ARBCreateSubscriptionRequest: authorizenet.ARBCreateSubscriptionRequest{
+			//MerchantAuthentication: authorizenet.GetAuthentication(),
+			Subscription: sub,
 		},
 	}
 
@@ -720,7 +731,7 @@ func SendSubscription(ctx context.Context, sub AuthorizeCIM.Subscription, test b
 		return nil, err
 	}
 
-	var dat AuthorizeCIM.SubscriptionResponse
+	var dat authorizenet.SubscriptionResponse
 	err = json.Unmarshal(response, &dat)
 	if err != nil {
 		return nil, err
