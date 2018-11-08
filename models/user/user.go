@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
+	"time"
 
 	. "hanzo.io/types"
 )
@@ -59,6 +60,18 @@ type User struct {
 		NameFormat  string `facebook:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
 		Email       string `facebook:"email" datastore:"-"`
 		Verified    bool   `facebook:"verified" datastore:"-"`
+	} `json:"-"`
+
+	KYC struct {
+		Approved  bool      `kyc:"approved"`
+		Flagged   bool      `kyc:"flagged"`
+		Frozen    bool      `kyc:"frozen"`
+		TaxId     string    `kyc:"taxId"`
+		Addresses []Address `kyc:"addresses"`
+		Documents []string  `kyc:"documents"`
+		Phone     string    `kyc:"phone"`
+		Birthdate time.Time `kyc:"birthdate"`
+		Gender    string    `kyc:"gender"`
 	} `json:"-"`
 
 	// Account to use for new orders when customer creates new orders
@@ -158,8 +171,8 @@ func (u User) Buyer() Buyer {
 		Company:   u.Company,
 		Phone:     u.Phone,
 
-		ShippingAddress:  u.ShippingAddress,
-		BillingAddress:   u.BillingAddress,
+		ShippingAddress: u.ShippingAddress,
+		BillingAddress:  u.BillingAddress,
 	}
 }
 
