@@ -46,6 +46,7 @@ func (t Transaction) Document() mixin.Document {
 
 	doc.CreatedAt = float64(t.CreatedAt.Unix())
 	doc.UpdatedAt = float64(t.UpdatedAt.Unix())
+	doc.Timestamp = float64(t.Timestamp.Unix())
 
 	doc.SendingAddress = t.SendingAddress
 	doc.ReceivingAddress = t.ReceivingAddress
