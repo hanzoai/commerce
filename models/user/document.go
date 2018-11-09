@@ -5,9 +5,9 @@ import (
 
 	"google.golang.org/appengine/search"
 
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
-	"hanzo.io/log"
 	"hanzo.io/util/searchpartial"
 )
 
@@ -56,6 +56,10 @@ type Document struct {
 	StripeChargeId             string
 	StripeCustomerId           string
 	StripeLastFour             string
+
+	KycTaxId  string
+	KycPhone  string
+	KycGender string
 }
 
 func (d Document) Id() string {
@@ -137,6 +141,10 @@ func (u User) Document() mixin.Document {
 	doc.StripeChargeId = u.Accounts.Stripe.ChargeId
 	doc.StripeCustomerId = u.Accounts.Stripe.CustomerId
 	doc.StripeLastFour = u.Accounts.Stripe.LastFour
+
+	doc.KycTaxId = u.KYC.TaxId
+	doc.KycPhone = u.KYC.Phone
+	doc.KycGender = u.KYC.Gender
 
 	return doc
 }
