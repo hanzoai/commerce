@@ -4,7 +4,7 @@ import (
 	"hanzo.io/datastore"
 )
 
-var kind = "transaction"
+var kind = "transaction-demo"
 
 func (t Transaction) Kind() string {
 	return kind
