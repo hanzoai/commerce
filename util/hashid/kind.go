@@ -59,7 +59,9 @@ var kinds = map[string]int{
 	"blockaddress":        57,
 	"blocktransaction":    58,
 	// virtual kind used for making ancestor keys to force data synchronization
-	"synckey": 59,
+	"synckey":          59,
+	"transaction-demo": 100,
+	"disclosure":       101,
 }
 
 var kindsReversed = make(map[int]string)
