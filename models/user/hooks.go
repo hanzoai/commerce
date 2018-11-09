@@ -3,6 +3,7 @@ package user
 import (
 	"strings"
 
+	"hanzo.io/util/crypto/md5"
 	"hanzo.io/util/webhook"
 )
 
@@ -16,6 +17,13 @@ func (u *User) BeforeCreate() error {
 func (u *User) BeforeUpdate(prev *User) error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
+
+	var hashed []string
+	for _, v := range u.KYC.Documents {
+		hashed = append(hashed, md5.Hash(v))
+	}
+	u.KYC.Documents = hashed
+
 	return nil
 }
 
