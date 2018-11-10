@@ -1,7 +1,7 @@
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.68
+sdk				= go_appengine_sdk_$(platform)-1.9.70
 sdk_path		= $(pwd)/sdk
 goroot			= $(sdk_path)/goroot-1.9
 gopath			= $(sdk_path)/gopath
