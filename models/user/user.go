@@ -63,16 +63,20 @@ type User struct {
 	} `json:"-"`
 
 	KYC struct {
-		Approved  bool      `kyc:"approved"`
-		Flagged   bool      `kyc:"flagged"`
-		Frozen    bool      `kyc:"frozen"`
-		TaxId     string    `kyc:"taxId"`
-		Addresses []Address `kyc:"addresses"`
-		Documents []string  `kyc:"documents"`
-		Phone     string    `kyc:"phone"`
-		Birthdate time.Time `kyc:"birthdate"`
-		Gender    string    `kyc:"gender"`
-	} `json:"-"`
+		Status       KYCStatus `json:"approved"`
+		Flagged      bool      `json:"flagged"`
+		Frozen       bool      `json:"frozen"`
+		DateApproved time.Time `json:"dateApproved"`
+
+		WalletAddresses []string `json:"walletAddresses"`
+		Address         Address  `json:"address"`
+		Documents       []string `json:"documents"`
+
+		TaxId     string `json:"taxId"`
+		Phone     string `json:"phone"`
+		Birthdate string `json:"birthdate"`
+		Gender    string `json:"gender"`
+	} `json:"kyc"`
 
 	// Account to use for new orders when customer creates new orders
 	Accounts accounts.Account `json:"-" datastore:",noindex"`

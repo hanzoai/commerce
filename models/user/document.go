@@ -57,9 +57,24 @@ type Document struct {
 	StripeCustomerId           string
 	StripeLastFour             string
 
-	KycTaxId  string
-	KycPhone  string
-	KycGender string
+	KYCStatus  string
+	KYCFlagged string
+	KYCFrozen  string
+
+	KYCWalletAddresses string
+
+	KYCLine1       string
+	KYCLine2       string
+	KYCCity        string
+	KYCStateCode   string
+	KYCState       string
+	KYCCountryCode string
+	KYCCountry     string
+	KYCPostalCode  string
+
+	KYCTaxId  string
+	KYCPhone  string
+	KYCGender string
 }
 
 func (d Document) Id() string {
@@ -142,9 +157,48 @@ func (u User) Document() mixin.Document {
 	doc.StripeCustomerId = u.Accounts.Stripe.CustomerId
 	doc.StripeLastFour = u.Accounts.Stripe.LastFour
 
-	doc.KycTaxId = u.KYC.TaxId
-	doc.KycPhone = u.KYC.Phone
-	doc.KycGender = u.KYC.Gender
+	doc.KYCStatus = u.KYC.Status
+
+	if u.KYC.Flagged {
+		doc.KYCFlagged = "true"
+	} else {
+		doc.KYCFlagged = "false"
+	}
+
+	if u.KYC.Frozen {
+		doc.KYCFrozen = "true"
+	} else {
+		doc.KYCFrozen = "false"
+	}
+
+	doc.KYCWalletAddresses = strings.Join(u.KYC, " ")
+
+	doc.KYCAddressName = u.KYCAddress.Name
+	doc.KYCAddressLine1 = u.KYCAddress.Line1
+	doc.KYCAddressLine2 = u.KYCAddress.Line2
+	doc.KYCAddressCity = u.KYCAddress.City
+	doc.KYCAddressStateCode = u.KYCAddress.State
+	doc.KYCAddressCountryCode = u.KYCAddress.Country
+	if u.KYCAddress.Country != "" {
+		if c, err := country.FindByISO3166_2(u.KYCAddress.Country); err == nil {
+			doc.KYCAddressCountry = c.Name.Common
+
+			if u.KYCAddress.State != "" {
+				if sd, err := c.FindSubDivision(u.KYCAddress.State); err == nil {
+					doc.KYCAddressState = sd.Name
+				} else {
+					log.Error("KYCAddress State Code '%s' caused an error: %s ", u.KYCAddress.State, err, u.Context())
+				}
+			}
+		} else {
+			log.Error("KYCAddress Country Code '%s' caused an error: %s", u.KYCAddress.Country, err, u.Context())
+		}
+	}
+	doc.KYCAddressPostalCode = u.KYCAddress.PostalCode
+
+	doc.KYCTaxId = u.KYC.TaxId
+	doc.KYCPhone = u.KYC.Phone
+	doc.KYCGender = u.KYC.Gender
 
 	return doc
 }

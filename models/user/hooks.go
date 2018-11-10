@@ -5,12 +5,15 @@ import (
 
 	"hanzo.io/util/crypto/md5"
 	"hanzo.io/util/webhook"
+
+	. "hanzo.io/types"
 )
 
 // Hooks
 func (u *User) BeforeCreate() error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
+	u.KYC.Status = KYCStatusInitiated
 	return nil
 }
 

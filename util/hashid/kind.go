@@ -60,7 +60,7 @@ var kinds = map[string]int{
 	"blocktransaction":    58,
 	// virtual kind used for making ancestor keys to force data synchronization
 	"synckey":          59,
-	"transaction-demo": 100,
+	"tokentransaction": 100,
 	"disclosure":       101,
 }
 
