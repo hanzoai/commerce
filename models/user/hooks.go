@@ -14,7 +14,6 @@ import (
 func (u *User) BeforeCreate() error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
-	u.KYC.Status = KYCStatusInitiated
 	return nil
 }
 

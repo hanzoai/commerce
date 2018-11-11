@@ -23,6 +23,7 @@ func (u *User) Defaults() {
 	u.History = make([]Event, 0)
 	u.Organizations = make([]string, 0)
 	u.KYC.Documents = make([]string, 0)
+	u.KYC.Status = KYCStatusInitiated
 }
 
 func New(db *datastore.Datastore) *User {
