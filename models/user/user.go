@@ -63,20 +63,20 @@ type User struct {
 	} `json:"-"`
 
 	KYC struct {
-		Status       KYCStatus `json:"approved"`
-		Flagged      bool      `json:"flagged"`
-		Frozen       bool      `json:"frozen"`
-		DateApproved time.Time `json:"dateApproved"`
+		Status       KYCStatus `json:"approved,omitempty"`
+		Flagged      bool      `json:"flagged,omitempty"`
+		Frozen       bool      `json:"frozen,omitempty"`
+		DateApproved time.Time `json:"dateApproved,omitempty"`
 
-		WalletAddresses []string `json:"walletAddresses"`
-		Address         Address  `json:"address"`
-		Documents       []string `json:"documents"`
+		WalletAddresses []string `json:"walletAddresses,omitempty"`
+		Address         Address  `json:"address,omitempty"`
+		Documents       []string `json:"documents,omitempty"`
 
-		TaxId     string `json:"taxId"`
-		Phone     string `json:"phone"`
-		Birthdate string `json:"birthdate"`
-		Gender    string `json:"gender"`
-	} `json:"kyc"`
+		TaxId     string `json:"taxId,omitempty"`
+		Phone     string `json:"phone,omitempty"`
+		Birthdate string `json:"birthdate,omitempty"`
+		Gender    string `json:"gender,omitempty"`
+	} `json:"kyc,omitempty"`
 
 	KYCHash string `json:"KYCHash"`
 
