@@ -63,14 +63,14 @@ type Document struct {
 
 	KYCWalletAddresses string
 
-	KYCLine1       string
-	KYCLine2       string
-	KYCCity        string
-	KYCStateCode   string
-	KYCState       string
-	KYCCountryCode string
-	KYCCountry     string
-	KYCPostalCode  string
+	KYCAddressLine1       string
+	KYCAddressLine2       string
+	KYCAddressCity        string
+	KYCAddressStateCode   string
+	KYCAddressState       string
+	KYCAddressCountryCode string
+	KYCAddressCountry     string
+	KYCAddressPostalCode  string
 
 	KYCTaxId  string
 	KYCPhone  string
@@ -157,7 +157,7 @@ func (u User) Document() mixin.Document {
 	doc.StripeCustomerId = u.Accounts.Stripe.CustomerId
 	doc.StripeLastFour = u.Accounts.Stripe.LastFour
 
-	doc.KYCStatus = u.KYC.Status
+	doc.KYCStatus = string(u.KYC.Status)
 
 	if u.KYC.Flagged {
 		doc.KYCFlagged = "true"
@@ -171,30 +171,29 @@ func (u User) Document() mixin.Document {
 		doc.KYCFrozen = "false"
 	}
 
-	doc.KYCWalletAddresses = strings.Join(u.KYC, " ")
+	doc.KYCWalletAddresses = strings.Join(u.KYC.WalletAddresses, " ")
 
-	doc.KYCAddressName = u.KYCAddress.Name
-	doc.KYCAddressLine1 = u.KYCAddress.Line1
-	doc.KYCAddressLine2 = u.KYCAddress.Line2
-	doc.KYCAddressCity = u.KYCAddress.City
-	doc.KYCAddressStateCode = u.KYCAddress.State
-	doc.KYCAddressCountryCode = u.KYCAddress.Country
-	if u.KYCAddress.Country != "" {
-		if c, err := country.FindByISO3166_2(u.KYCAddress.Country); err == nil {
+	doc.KYCAddressLine1 = u.KYC.Address.Line1
+	doc.KYCAddressLine2 = u.KYC.Address.Line2
+	doc.KYCAddressCity = u.KYC.Address.City
+	doc.KYCAddressStateCode = u.KYC.Address.State
+	doc.KYCAddressCountryCode = u.KYC.Address.Country
+	if u.KYC.Address.Country != "" {
+		if c, err := country.FindByISO3166_2(u.KYC.Address.Country); err == nil {
 			doc.KYCAddressCountry = c.Name.Common
 
-			if u.KYCAddress.State != "" {
-				if sd, err := c.FindSubDivision(u.KYCAddress.State); err == nil {
+			if u.KYC.Address.State != "" {
+				if sd, err := c.FindSubDivision(u.KYC.Address.State); err == nil {
 					doc.KYCAddressState = sd.Name
 				} else {
-					log.Error("KYCAddress State Code '%s' caused an error: %s ", u.KYCAddress.State, err, u.Context())
+					log.Error("KYCAddress State Code '%s' caused an error: %s ", u.KYC.Address.State, err, u.Context())
 				}
 			}
 		} else {
-			log.Error("KYCAddress Country Code '%s' caused an error: %s", u.KYCAddress.Country, err, u.Context())
+			log.Error("KYCAddress Country Code '%s' caused an error: %s", u.KYC.Address.Country, err, u.Context())
 		}
 	}
-	doc.KYCAddressPostalCode = u.KYCAddress.PostalCode
+	doc.KYCAddressPostalCode = u.KYC.Address.PostalCode
 
 	doc.KYCTaxId = u.KYC.TaxId
 	doc.KYCPhone = u.KYC.Phone
