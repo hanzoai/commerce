@@ -1,14 +1,14 @@
 package disclosure
 
 import (
-	"hanzo.io/util/crypto/md5"
+	"hanzo.io/util/crypto/sha256"
 	"hanzo.io/util/webhook"
 )
 
 // Hooks
 
 func (d *Disclosure) BeforeUpdate(prev *Disclosure) error {
-	d.Hash = md5.Hash(d.Publication + d.Type + d.Receiver + d.CreatedAt.String())
+	d.Hash = sha256.Hash(d.Publication + d.Type + d.Receiver + d.CreatedAt.String())
 
 	return nil
 }
