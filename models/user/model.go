@@ -20,6 +20,7 @@ func (u *User) Defaults() {
 	if u != nil {
 		u.Metadata = make(map[string]interface{})
 	}
+	u.KYC.Documents = make([]string, 0)
 	u.History = make([]Event, 0)
 	u.Organizations = make([]string, 0)
 }
