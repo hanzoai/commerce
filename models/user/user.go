@@ -28,6 +28,21 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+type KYCData struct {
+	Flagged      bool      `json:"flagged,omitempty"`
+	Frozen       bool      `json:"frozen,omitempty"`
+	DateApproved time.Time `json:"dateApproved,omitempty"`
+
+	WalletAddresses []string `json:"walletAddresses,omitempty"`
+	Address         Address  `json:"address,omitempty"`
+	Documents       []string `json:"documents,omitempty"`
+
+	TaxId     string `json:"taxId,omitempty"`
+	Phone     string `json:"phone,omitempty"`
+	Birthdate string `json:"birthdate,omitempty"`
+	Gender    string `json:"gender,omitempty"`
+}
+
 type User struct {
 	mixin.Model
 	mixin.Salesforce
@@ -63,22 +78,11 @@ type User struct {
 	} `json:"-"`
 
 	KYC struct {
-		Status       KYCStatus `json:"approved,omitempty"`
-		Flagged      bool      `json:"flagged,omitempty"`
-		Frozen       bool      `json:"frozen,omitempty"`
-		DateApproved time.Time `json:"dateApproved,omitempty"`
+		KYCData
 
-		WalletAddresses []string `json:"walletAddresses,omitempty"`
-		Address         Address  `json:"address,omitempty"`
-		Documents       []string `json:"documents,omitempty"`
-
-		TaxId     string `json:"taxId,omitempty"`
-		Phone     string `json:"phone,omitempty"`
-		Birthdate string `json:"birthdate,omitempty"`
-		Gender    string `json:"gender,omitempty"`
+		Status KYCStatus `json:"approved,omitempty"`
+		Hash   string    `json:"hash"`
 	} `json:"kyc,omitempty"`
-
-	KYCHash string `json:"KYCHash"`
 
 	// Account to use for new orders when customer creates new orders
 	Accounts accounts.Account `json:"-" datastore:",noindex"`
