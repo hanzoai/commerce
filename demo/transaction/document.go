@@ -19,14 +19,18 @@ type Document struct {
 
 	Timestamp float64
 
-	SendingAddress        string
-	ReceivingAddress      string
-	SendingName           string
-	ReceivingName         string
-	JuristictionSending   string
-	JuristictionReceiving string
-	Protocol              string
-	TransactionHash       string
+	SendingAddress   string
+	SendingUserId    string
+	SendingName      string
+	SendingState     string
+	SendingCountry   string
+	ReceivingAddress string
+	ReceivingUserId  string
+	ReceivingName    string
+	ReceivingState   string
+	ReceivingCountry string
+	Protocol         string
+	TransactionHash  string
 }
 
 func (d Document) Id() string {
@@ -49,11 +53,15 @@ func (t Transaction) Document() mixin.Document {
 	doc.Timestamp = float64(t.Timestamp.Unix())
 
 	doc.SendingAddress = t.SendingAddress
-	doc.ReceivingAddress = t.ReceivingAddress
+	doc.SendingUserId = t.SendingUserId
 	doc.SendingName = t.SendingName
+	doc.SendingState = t.SendingState
+	doc.SendingCountry = t.SendingCountry
+	doc.ReceivingAddress = t.ReceivingAddress
+	doc.ReceivingUserId = t.ReceivingUserId
 	doc.ReceivingName = t.ReceivingName
-	doc.JuristictionSending = t.JuristictionSending
-	doc.JuristictionReceiving = t.JuristictionReceiving
+	doc.ReceivingState = t.ReceivingState
+	doc.ReceivingCountry = t.ReceivingCountry
 	doc.Protocol = t.Protocol
 	doc.TransactionHash = t.TransactionHash
 
