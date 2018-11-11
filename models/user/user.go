@@ -35,7 +35,8 @@ type KYCData struct {
 
 	WalletAddresses []string `json:"walletAddresses,omitempty"`
 	Address         Address  `json:"address,omitempty"`
-	Documents       [][]byte `json:"documents,omitempty"`
+	Documents       []string `json:"documents,omitempty" datastore:"-"`
+	Documents_      []byte   `json:"-" datastore:",noindex"`
 
 	TaxId     string `json:"taxId,omitempty"`
 	Phone     string `json:"phone,omitempty"`
@@ -146,12 +147,18 @@ func (u *User) Load(ps []aeds.Property) (err error) {
 		err = json.DecodeBytes([]byte(u.Metadata_), &u.Metadata)
 	}
 
+	if len(u.KYC.Documents_) > 0 {
+		err = json.DecodeBytes([]byte(u.KYC.Documents_), &u.KYC.Documents)
+	}
+
 	return
 }
 
 func (u *User) Save() (ps []aeds.Property, err error) {
 	// Serialize unsupported properties
 	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
+
+	u.KYC.Documents_ = json.EncodeBytes(&u.KYC.Documents)
 
 	// sanitize email
 	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
