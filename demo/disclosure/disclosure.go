@@ -2,7 +2,6 @@ package disclosure
 
 import (
 	"hanzo.io/models/mixin"
-	"time"
 )
 
 // Datastructure for Bitcoin Transaction
