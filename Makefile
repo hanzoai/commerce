@@ -243,8 +243,7 @@ install:
 	$(goapp) install $(packages)
 
 # DEV SERVER
-serve: assets update-env
-	$(bebop) &
+serve: update-env
 	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: assets update-env
