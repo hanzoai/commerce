@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"hanzo.io/util/crypto/md5"
+	"hanzo.io/util/json"
 	"hanzo.io/util/webhook"
 
 	. "hanzo.io/types"
@@ -21,11 +22,7 @@ func (u *User) BeforeUpdate(prev *User) error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
 
-	var hashed []string
-	for _, v := range u.KYC.Documents {
-		hashed = append(hashed, md5.Hash(v))
-	}
-	u.KYC.Documents = hashed
+	u.KYCHash = md5.Hash(string(json.EncodeBytes(&u.KYC)))
 
 	return nil
 }
