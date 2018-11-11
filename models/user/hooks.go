@@ -3,7 +3,7 @@ package user
 import (
 	"strings"
 
-	"hanzo.io/util/crypto/md5"
+	"hanzo.io/util/crypto/sha256"
 	"hanzo.io/util/json"
 	"hanzo.io/util/webhook"
 
@@ -21,8 +21,7 @@ func (u *User) BeforeCreate() error {
 func (u *User) BeforeUpdate(prev *User) error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
-
-	u.KYCHash = md5.Hash(string(json.EncodeBytes(&u.KYC)))
+	u.KYC.Hash = sha256.Hash(string(json.EncodeBytes(&u.KYC.KYCData)))
 
 	return nil
 }
