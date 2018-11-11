@@ -17,9 +17,8 @@ type Document struct {
 	CreatedAt float64
 	UpdatedAt float64
 
-	Timestamp float64
-
 	Publication string
+	Hash        string
 	Type        string
 	Receiver    string
 }
@@ -41,7 +40,6 @@ func (d Disclosure) Document() mixin.Document {
 
 	doc.CreatedAt = float64(d.CreatedAt.Unix())
 	doc.UpdatedAt = float64(d.UpdatedAt.Unix())
-	doc.Timestamp = float64(d.Timestamp.Unix())
 
 	doc.Publication = d.Publication
 	doc.Type = d.Type
