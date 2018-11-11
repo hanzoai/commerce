@@ -22,7 +22,7 @@ func (u *User) BeforeUpdate(prev *User) error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
 
-	u.KYCHash = sha256.Hash(string(json.EncodeBytes(&u.KYC)))
+	u.KYC.Hash = sha256.Hash(string(json.EncodeBytes(&u.KYC.Data)))
 
 	return nil
 }
