@@ -18,8 +18,8 @@ github.com/davecgh/go-spew/spew                                 master
 github.com/dgrijalva/jwt-go                                     v2.7.0
 github.com/dustin/go-humanize                                   master
 github.com/flosch/pongo2                                        master
-github.com/gin-contrib/sse                                      22d885f9ecc78bf4ee5d72b937e4bbcdc58e8cae
-github.com/gin-gonic/gin                                        22d885f9ecc78bf4ee5d72b937e4bbcdc58e8ca
+github.com/gin-contrib/sse                                      51706735d1a0af58e8a10639e3d3875b00c358b1
+github.com/gin-gonic/gin                                        51706735d1a0af58e8a10639e3d3875b00c358b1
 github.com/golang/protobuf/proto                                master
 github.com/golang/protobuf/protoc-gen-go                        master
 github.com/gorilla/context                                      08b5f424b9271eedf6f9f0ce86cb9396ed337a42
