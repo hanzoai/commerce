@@ -21,7 +21,6 @@ func (u *User) BeforeCreate() error {
 func (u *User) BeforeUpdate(prev *User) error {
 	u.Username = strings.ToLower(u.Username)
 	u.Email = strings.ToLower(u.Email)
-
 	u.KYC.Hash = sha256.Hash(string(json.EncodeBytes(&u.KYC.KYCData)))
 
 	return nil

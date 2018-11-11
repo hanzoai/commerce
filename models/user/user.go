@@ -35,7 +35,7 @@ type KYCData struct {
 
 	WalletAddresses []string `json:"walletAddresses,omitempty"`
 	Address         Address  `json:"address,omitempty"`
-	Documents       []string `json:"documents,omitempty"`
+	Documents       [][]byte `json:"documents,omitempty"`
 
 	TaxId     string `json:"taxId,omitempty"`
 	Phone     string `json:"phone,omitempty"`
