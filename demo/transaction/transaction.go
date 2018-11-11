@@ -9,15 +9,19 @@ import (
 type Transaction struct {
 	mixin.Model
 
-	Timestamp             time.Time `json:"timestamp"`
-	SendingAddress        string    `json:"sendingAddress"`
-	ReceivingAddress      string    `json:"receivingAddress"`
-	SendingName           string    `json:"sendingName"`
-	ReceivingName         string    `json:"receivingName"`
-	SenderFlagged         bool      `json:"senderFlagged"`
-	ReceiverFlagged       bool      `json:"receiverFlagged"`
-	JuristictionSending   string    `json:"juristictionSending"`
-	JuristictionReceiving string    `json:"juristictionReceiving"`
-	Protocol              string    `json:"protocol"`
-	TransactionHash       string    `json:"transactionHash"`
+	Timestamp        time.Time `json:"timestamp"`
+	SendingAddress   string    `json:"sendingAddress"`
+	ReceivingAddress string    `json:"receivingAddress"`
+	SendingName      string    `json:"sendingName"`
+	SendingUserId    string    `json:"sendingUserId"`
+	SendingState     string    `json:"sendingState"`
+	SendingCountry   string    `json:"sendingCountry"`
+	ReceivingName    string    `json:"receivingName"`
+	ReceivingUserId  string    `json:"sendingUserId"`
+	ReceivingState   string    `json:"receivingState"`
+	ReceivingCountry string    `json:"receivingCountry"`
+	SenderFlagged    bool      `json:"senderFlagged"`
+	ReceiverFlagged  bool      `json:"receiverFlagged"`
+	Protocol         string    `json:"protocol"`
+	TransactionHash  string    `json:"transactionHash"`
 }
