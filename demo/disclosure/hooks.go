@@ -8,7 +8,7 @@ import (
 // Hooks
 
 func (d *Disclosure) BeforeUpdate(prev *Disclosure) error {
-	d.Publication = md5.Hash(d.Publication)
+	d.Hash = md5.Hash(d.Publication + d.Type + d.Receiver + d.CreatedAt.String())
 
 	return nil
 }

@@ -78,6 +78,8 @@ type User struct {
 		Gender    string `json:"gender"`
 	} `json:"kyc"`
 
+	KYCHash string `json:"KYCHash"`
+
 	// Account to use for new orders when customer creates new orders
 	Accounts accounts.Account `json:"-" datastore:",noindex"`
 
