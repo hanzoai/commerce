@@ -1,4 +1,4 @@
-package transaction
+package tokentransaction
 
 import (
 	"google.golang.org/appengine/search"

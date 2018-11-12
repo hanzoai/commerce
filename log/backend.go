@@ -2,7 +2,7 @@ package log
 
 import (
 	"context"
-	// "log"
+	"log"
 
 	aelog "google.golang.org/appengine/log"
 
@@ -25,13 +25,13 @@ func (b Backend) Verbose() bool {
 
 // Log implementation for local dev server only.
 func (b Backend) logToDevServer(level logging.Level, formatted string) error {
+	log.Println(formatted)
 	return b.logToAppEngine(level, formatted)
-	// log.Println(formatted)
-	// return nil
 }
 
 // Log implementation that uses App Engine's logging methods
 func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
+	log.Println(formatted)
 	switch level {
 	case logging.WARNING:
 		aelog.Warningf(b.context, formatted)
