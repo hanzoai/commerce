@@ -1,8 +1,8 @@
-package api
+package main
 
 import (
-	"hanzo.io/models/mixin"
 	"hanzo.io/log"
+	"hanzo.io/models/mixin"
 )
 
 func logApiRoutes(entities []mixin.Entity) {
