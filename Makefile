@@ -1,42 +1,21 @@
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
-platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.70
-sdk_path		= $(pwd)/sdk
-goroot			= $(sdk_path)/goroot-1.9
-gopath			= $(sdk_path)/gopath
-goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
-gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
-project_path 	= $(gopath)/src/hanzo.io
 current_date	= $(shell date +"%Y-%m-%d")
 
-appcfg.py 		= python2 $(sdk_path)/appcfg.py --skip_sdk_update_check
-bulkloader.py   = python2 $(sdk_path)/bulkloader.py
-goapp			= $(goroot)/bin/goapp
+gcloud_path     = $(shell dirname $(shell readlink $(shell which gcloud)))
+gopath          = $(HOME)/go
 
+go 				= go
+gpm 			= gpm
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
-gpm				= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
-ginkgo			= GOROOT=$(goroot) GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+ginkgo			= $(gopath)/bin/ginkgo
 
-modules	= hanzo.io/config \
-		  hanzo.io/dash \
-	      hanzo.io/api
-
-gae_development = config/development \
-				  dash/app.dev.yaml \
-				  api/app.dev.yaml
-
-gae_staging = config/staging \
-			  dash/app.staging.yaml \
-			  api/app.staging.yaml
-
-gae_production = config/production \
-				 dash \
-				 api
-
-gae_sandbox = config/sandbox \
-			  api/app.sandbox.yaml
+services 		= hanzo.io/config hanzo.io/api
+gae_development = config/development api/app.dev.yaml
+gae_staging     = config/staging api/app.staging.yaml
+gae_production  = config/production api
+gae_sandbox 	= config/sandbox api/app.sandbox.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
@@ -55,38 +34,14 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-bebop    = node_modules/.bin/bebop
-coffee	 = node_modules/.bin/coffee
-uglifyjs = node_modules/.bin/uglifyjs
-
-requisite	   = node_modules/.bin/requisite -g
-requisite_opts = assets/js/api/api.coffee \
-				 assets/js/dash/dash.coffee \
-				 -o static/js/api.js \
-				 -o static/js/dash.js
-
-# requisite_opts_min = --strip-debug --minifier uglify
-requisite_opts_min = --strip-debug
-
-stylus		= node_modules/.bin/stylus
-stylus_opts = assets/css/theme/theme.styl \
-			  assets/css/dash/dash.styl \
-			  -o static/css
-stylus_opts_min = -u csso-stylus -c
-
-autoprefixer = node_modules/.bin/autoprefixer-cli
-autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
-					static/css/theme.css \
-					static/css/dash.css
-
-dev_appserver = python2 $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --dev_appserver_log_level=debug \
-											 --datastore_path=$(sdk_path)/.datastore.bin \
-    										 --enable_task_running=true \
-											 --admin_port=8000 \
-											 --port=8080
-
-sdk_install_extra = rm -rf $(sdk_path)/demos
+dev_appserver = python2 $(gcloud_path)/dev_appserver.py
+					--skip_sdk_update_check \
+					--datastore_path=$(pwd)/.datastore.bin \
+					--enable_task_running=true \
+					--dev_appserver_log_level=debug \
+					--log_level=debug \
+					--admin_port=8000 \
+					--port=8080
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
@@ -107,7 +62,7 @@ else
 			   				  -not -path "./node_modules/*" \
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
-						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+						 curl $(mtime_file_watcher) > $(pwd)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip2 install macfsevents --upgrade
 	sed = @sed -i .bak -e
 endif
@@ -125,15 +80,15 @@ project_id  = None
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
 	project_env = production
-	project_id  = crowdstart-us
+	project_id  = arca-production
 	gae_config  = $(gae_production)
 else ifeq ($(sandbox), 1)
 	project_env = sandbox
-	project_id  = crowdstart-sandbox
+	project_id  = arca-sandbox
 	gae_config  = $(gae_sandbox)
 else
 	project_env = staging
-	project_id  = crowdstart-staging
+	project_id  = arca-staging
 	gae_config  = $(gae_staging)
 endif
 
@@ -155,103 +110,27 @@ ifdef test_batch
 	test_target=$(batch)
 endif
 
-export GOROOT := $(goroot)
-export GOPATH := $(gopath)
-
 all: deps test install
 
-# ASSETS
-assets: deps-assets compile-css compile-js
+build: deps
+	$(go) build $(modules)
 
-assets-min: deps-assets compile-css-min compile-js-min
-
-compile-js:
-	$(requisite) $(requisite_opts)
-	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(requisite) node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
-	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
-	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
-
-compile-js-min: compile-js
-	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c -m
-	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
-	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
-	$(uglifyjs) static/js/dash.js -o static/js/dash.min.js -c
-	@mv static/js/api.min.js static/js/api.js
-	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
-	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
-	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
-	@mv static/js/dash.min.js static/js/dash.js
-
-compile-css:
-	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
-
-compile-css-min:
-	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
-
-# BUILD
-build: deps assets
-	$(goapp) build $(modules)
-
-# CLEAN
-clean:
-	rm -rf sdk
-
-# DEPS
-deps: deps-assets deps-go
-
-# DEPS JS/CSS
-deps-assets:
-	npm update
-
-# DEPS GO
-deps-go: sdk sdk/go sdk/gopath/src/hanzo.io sdk/gopath/bin/ginkgo sdk/gopath/bin/gpm update-env
+deps:
 	$(gpm) get
-
-sdk:
-	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
-	unzip -q $(sdk).zip
-	mv go_appengine $(sdk_path)
-	rm $(sdk).zip
-	rm -rf sdk/goroot-1.6
-	rm -rf sdk/goroot-1.8
-	rm -rf sdk/php
-	sed -i.bak 's/15/120/g' sdk/goroot-1.9/src/appengine/aetest/instance.go
-	$(sdk_install_extra)
-
-sdk/go:
-	rm -f $(sdk_path)/go
-	ln -s goroot-1.9/bin/goapp $(sdk_path)/go
-
-sdk/gopath/src/hanzo.io:
-	mkdir -p $(sdk_path)/gopath/src
-	mkdir -p $(sdk_path)/gopath/bin
-	rm -f $(sdk_path)/gopath/src/hanzo.io
-	ln -s ../../../ $(sdk_path)/gopath/src/hanzo.io
-
-sdk/gopath/bin/ginkgo:
-	$(goapp) get -u github.com/onsi/ginkgo
-	$(goapp) install github.com/onsi/ginkgo/ginkgo
-
-sdk/gopath/bin/gpm:
-	curl https://raw.githubusercontent.com/pote/gpm/v1.4.0/bin/gpm > $(sdk_path)/gpm
-	chmod +x $(sdk_path)/gpm
+	# TODO: $(go) get ./...
 
 # INSTALL
 install:
-	$(goapp) install $(packages)
+	$(go) install $(packages)
 
 # DEV SERVER
 serve: update-env
 	$(dev_appserver) $(gae_development)
 
-serve-clear-datastore: assets update-env
-	$(bebop) &
+serve-clear-datastore: update-env
 	$(dev_appserver) --clear_datastore=true $(gae_development)
 
-serve-public: assets update-env
-	$(bebop) &
+serve-public: update-env
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 serve-no-reload: assets update-env
@@ -263,8 +142,8 @@ tools:
 	@echo "  rm sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
 	@echo "  rm sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
 	@echo
-	$(goapp) get $(tools)
-	$(goapp) install $(tools)
+	$(go) get $(tools)
+	$(go) install $(tools)
 	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
@@ -279,7 +158,7 @@ bench: update-env-test
 	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci: update-env-test
-	cd $(project_path); $(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
+	cd $(pwd); $(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
 
 coverage:
 	# $(gover) test/ coverage.out
@@ -289,34 +168,10 @@ coverage:
 auth:
 	@echo If you have issues authenticating try:
 	@echo "   gcloud components reinstall"
-	@echo "	 rm ~/.appcfg*"
 	gcloud auth login
-	$(appcfg.py) list_versions config/staging
 
-deploy: assets-min deploy-app
-
-deploy-debug: assets deploy-app
-
-deploy-app: update-env rollback
-	for module in $(gae_config); do \
-		$(appcfg.py) update $$module; \
-	done
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-default: update-env rollback
-	$(appcfg.py) update config/production
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-dash: update-env assets-min rollback
-	$(appcfg.py) update dash
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-deploy-api: update-env assets-min rollback
-	$(appcfg.py) update api
-	$(appcfg.py) update_indexes $(firstword $(gae_config))
-
-update-dispatch:
-	$(appcfg.py) update_dispatch config/$(project_env)
+deploy:
+	gcloud app deploy
 
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
