@@ -1,4 +1,4 @@
-package api
+package main
 
 import (
 	"google.golang.org/appengine"
@@ -209,9 +209,4 @@ func Route(api router.Router) {
 
 	// Ethereum webhook
 	ethereumApi.Route(api)
-}
-
-func init() {
-	api := router.New("api")
-	Route(api)
 }
