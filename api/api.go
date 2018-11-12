@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/delay"
+	"hanzo.io/demo/disclosure"
+	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/middleware"
 	"hanzo.io/models/collection"
 	"hanzo.io/models/copy"
@@ -21,8 +23,6 @@ import (
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/token"
 	// "hanzo.io/models/transaction"
-	"hanzo.io/demo/disclosure"
-	"hanzo.io/demo/transaction"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
@@ -124,7 +124,7 @@ func Route(api router.Router) {
 	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
 	rest.New(disclosure.Disclosure{}).Route(api, tokenRequired)
-	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
+	rest.New(tokentransaction.Transaction{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)

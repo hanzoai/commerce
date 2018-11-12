@@ -1,4 +1,4 @@
-package transaction
+package tokentransaction
 
 import (
 	"hanzo.io/models/mixin"
@@ -17,7 +17,7 @@ type Transaction struct {
 	SendingState     string    `json:"sendingState"`
 	SendingCountry   string    `json:"sendingCountry"`
 	ReceivingName    string    `json:"receivingName"`
-	ReceivingUserId  string    `json:"sendingUserId"`
+	ReceivingUserId  string    `json:"receivingUserId"`
 	ReceivingState   string    `json:"receivingState"`
 	ReceivingCountry string    `json:"receivingCountry"`
 	SenderFlagged    bool      `json:"senderFlagged"`

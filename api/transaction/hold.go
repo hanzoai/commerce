@@ -19,7 +19,7 @@ type CreateHoldReq struct {
 	SourceId   string         `json:"sourceId"`
 	SourceKind string         `json:"sourceKind"`
 	Currency   currency.Type  `json:"currency"`
-	Amount     currency.Cents `json:"amount`
+	Amount     currency.Cents `json:"amount"`
 	Notes      string         `json:"notes"`
 	Tags       string         `json:"tags"`
 	Event      string         `json:"event"`
