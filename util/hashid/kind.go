@@ -84,6 +84,6 @@ func decodeKind(encoded int) (string, error) {
 	if kind, ok := kindsReversed[encoded]; ok {
 		return kind, nil
 	} else {
-		return "", fmt.Errorf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded)
+		return "", fmt.Errorf("Unknown encoded kind '%d', register in util/hashid/kind.go", encoded)
 	}
 }

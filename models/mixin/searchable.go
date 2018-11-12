@@ -32,7 +32,7 @@ func (m Model) PutDocument() error {
 
 		_, err = index.Put(m.Db.Context, m.Id(), doc)
 		if err != nil {
-			log.Error("Could not save search document for model with id %v\nError: %s", m.Id(), err, m.Db.Context)
+			log.Error("Could not save search document for '%s' with id %s\nError: %s", m.Kind(), m.Id(), err, m.Db.Context)
 			return err
 		}
 	}

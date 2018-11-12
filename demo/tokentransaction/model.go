@@ -1,4 +1,4 @@
-package transaction
+package tokentransaction
 
 import (
 	"hanzo.io/datastore"
