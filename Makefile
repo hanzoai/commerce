@@ -12,10 +12,10 @@ goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
 
 services 		= hanzo.io/config hanzo.io/api
-gae_development = config/development api/app.dev.yaml
-gae_staging     = config/staging api/app.staging.yaml
-gae_production  = config/production api
-gae_sandbox 	= config/sandbox api/app.sandbox.yaml
+gae_development = $(pwd)/config/development $(pwd)/api/app.dev.yaml
+gae_staging     = $(pwd)config/staging $(pwd)/api/app.staging.yaml
+gae_production  = $(pwd)config/production $(pwd)/api
+gae_sandbox 	= $(pwd)config/sandbox $(pwd)/api/app.sandbox.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
