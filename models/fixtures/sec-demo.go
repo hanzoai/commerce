@@ -109,7 +109,9 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 	nsDb := datastore.New(org.Namespaced(c))
 
-	for i := 0; i < 100; i++ {
+	users := make([]*user.User, 0)
+
+	for i := 0; i < 103; i++ {
 		usr := user.New(nsDb)
 		usr.Email = fake.EmailAddress()
 		usr.GetOrCreate("Email=", usr.Email)
@@ -131,10 +133,14 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		usr.KYC.WalletAddresses = []string{fake.EOSAddress(), fake.EthereumAddress()}
 		usr.MustPut()
 		usr.MustUpdate()
+
+		users = append(users, usr)
 	}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 420; i++ {
 		tr := tokentransaction.New(nsDb)
+		usr := users[i]
+		usr2 := users[100-i]
 
 		if rand.Float64() > 0.7 {
 			tr.TransactionHash = fake.EthereumAddress()
@@ -152,19 +158,19 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 		tr.Amount = rand.Float64() * 1000
 		tr.Fees = rand.Float64() * 10
-		tr.SendingName = fake.FirstName() + " " + fake.LastName()
-		tr.SendingUserId = fake.Id()
+		tr.SendingName = usr.FirstName + " " + usr.LastName
+		tr.SendingUserId = usr.Id()
 		tr.SendingState = fake.State()
 		tr.SendingCountry = "US"
 
-		tr.ReceivingName = fake.FirstName() + " " + fake.LastName()
-		tr.ReceivingUserId = fake.Id()
+		tr.ReceivingName = usr2.FirstName + " " + usr2.LastName
+		tr.ReceivingUserId = usr2.Id()
 		tr.ReceivingState = fake.State()
 		tr.ReceivingCountry = "US"
 		tr.MustPut()
 	}
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 23; i++ {
 		d := disclosure.New(nsDb)
 		d.Publication = ""
 		d.Hash = fake.EOSTransactionHash()
