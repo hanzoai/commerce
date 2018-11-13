@@ -104,7 +104,7 @@ type User struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty" datastore",noindex"`
+	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 
