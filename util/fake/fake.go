@@ -94,3 +94,17 @@ func SKU() string {
 func Slug() string {
 	return slug.Slugify(ProductName())
 }
+
+func TaxID() string {
+	return RandSeq(3, []rune("1234567890")) + "-" + RandSeq(2, []rune("1234567890")) + "-" + RandSeq(4, []rune("1234567890"))
+}
+
+// 0xb1c0abd217193ffe64f97caedad8fa6f0f9c0265967d2ab9fb782280c928fb47
+func EthereumAddress() string {
+	return "0x" + RandSeq(63, []rune("abcdef1234567890"))
+}
+
+// EOS5krVucV7EL3Q7gdQSiWahM1YkjZ1WjVeaNsBwcAWn96rgdAfzP
+func EOSAddress() string {
+	return "EOS" + RandSeq(49, []rune("abcdefghijklmnopqrstuvwxyZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"))
+}
