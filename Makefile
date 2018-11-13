@@ -2,7 +2,7 @@ os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 current_date	= $(shell date +"%Y-%m-%d")
 
-gcloud_path     = $(shell dirname $(shell readlink $(shell which gcloud)))
+sdk     		= $(shell dirname $(shell readlink $(shell which gcloud)))
 gopath          = $(HOME)/go
 
 go 				= go
@@ -11,11 +11,10 @@ gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
 
-services 		= hanzo.io/config hanzo.io/api
-gae_development = $(pwd)/config/development $(pwd)/api/app.dev.yaml
-gae_staging     = $(pwd)config/staging $(pwd)/api/app.staging.yaml
-gae_production  = $(pwd)config/production $(pwd)/api
-gae_sandbox 	= $(pwd)config/sandbox $(pwd)/api/app.sandbox.yaml
+gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
+gae_production  = $(pwd)/config/production 	$(pwd)/api/app.production.yaml
+gae_sandbox 	= $(pwd)/config/sandbox 	$(pwd)/api/app.sandbox.yaml
+gae_staging     = $(pwd)/config/staging 	$(pwd)/api/app.staging.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
@@ -34,7 +33,7 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-dev_appserver = python2 $(gcloud_path)/dev_appserver.py \
+dev_appserver = python2 $(sdk)/dev_appserver.py \
 					--skip_sdk_update_check \
 					--datastore_path=$(pwd)/.datastore.bin \
 					--enable_task_running=true \
