@@ -81,7 +81,7 @@ type User struct {
 	KYC struct {
 		KYCData
 
-		Status KYCStatus `json:"approved,omitempty"`
+		Status KYCStatus `json:"status,omitempty"`
 		Hash   string    `json:"hash"`
 	} `json:"kyc,omitempty"`
 
