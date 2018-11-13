@@ -2,36 +2,22 @@ package fixtures
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/models/user"
 	"hanzo.io/util/fake"
 )
-
-// 'user.email':                   [ isRequired, isEmail ]
-// 'user.firstName':               [ isRequired ]
-// 'user.lastName':                [ isRequired ]
-// 'user.kyc.phone':               [ isRequired ]
-// 'user.kyc.birthdate':           [ isRequired ]
-// 'user.kyc.gender':              [ isRequired ]
-
-// 'user.kyc.address.name':        [ isRequired ]
-// 'user.kyc.address.line1':       [ isRequired ]
-// 'user.kyc.address.line2':       null
-// 'user.kyc.address.city':        [ isRequired ]
-// 'user.kyc.address.state':       [ isStateRequired ]
-// 'user.kyc.address.postalCode':  [ isPostalRequired ]
-// 'user.kyc.address.country':     [ isRequired ]
-
-// 'user.kyc.taxId':               [ isRequired ]
 
 var SECDemo = New("sec-demo", func(c *gin.Context) *user.User {
 	db := datastore.New(c)
 
 	for i := 0; i < 100; i++ {
-		// Such tees owner & operator
 		usr := user.New(db)
 		usr.Email = fake.EmailAddress()
 		usr.GetOrCreate("Email=", usr.Email)
@@ -52,8 +38,35 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *user.User {
 		usr.KYC.TaxId = fake.TaxID()
 		usr.KYC.WalletAddresses = []string{fake.EOSAddress(), fake.EthereumAddress()}
 		usr.MustPut()
+	}
 
-		return usr
+	for i := 0; i < 100; i++ {
+		tr := tokentransaction.New(db)
+
+		if rand.Float64() > 0.7 {
+			tr.TransactionHash = fake.EthereumAddress()
+			tr.SendingAddress = fake.EthereumAddress()
+			tr.ReceivingAddress = fake.EthereumAddress()
+			tr.Protocol = "ETH"
+		} else {
+			tr.TransactionHash = fake.EOSAddress()
+			tr.SendingAddress = fake.EOSAddress()
+			tr.ReceivingAddress = fake.EOSAddress()
+			tr.Protocol = "EOS"
+		}
+
+		tr.Timestamp = time.Now()
+
+		tr.SendingName = fake.FullName()
+		tr.SendingUserId = fake.Id()
+		tr.SendingState = fake.State()
+		tr.SendingCountry = "US"
+
+		tr.ReceivingName = fake.FullName()
+		tr.ReceivingUserId = fake.Id()
+		tr.ReceivingState = fake.State()
+		tr.ReceivingCountry = "US"
+		tr.MustPut()
 	}
 
 	return nil
