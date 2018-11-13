@@ -108,3 +108,8 @@ func EthereumAddress() string {
 func EOSAddress() string {
 	return "EOS" + RandSeq(49, []rune("abcdefghijklmnopqrstuvwxyZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"))
 }
+
+// 0xb1c0abd217193ffe64f97caedad8fa6f0f9c0265967d2ab9fb782280c928fb47
+func EOSTransactionHash() string {
+	return RandSeq(63, []rune("abcdef1234567890"))
+}
