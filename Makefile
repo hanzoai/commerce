@@ -3,13 +3,16 @@ pwd				= $(shell pwd)
 current_date	= $(shell date +"%Y-%m-%d")
 
 sdk     		= $(shell dirname $(shell readlink $(shell which gcloud)))
-gopath          = $(HOME)/go
+gopath          = $(shell go env GOPATH)
+goroot          = $(shell go env GOROOT)
 
 go 				= go
 gpm 			= gpm
 gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
+
+
 
 gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
 gae_production  = $(pwd)/config/production 	$(pwd)/api/app.production.yaml
@@ -137,14 +140,10 @@ serve-no-reload: assets update-env
 
 # GOLANG TOOLS
 tools:
-	@echo If you have issues building:
-	@echo "  rm sdk/gopath/src/golang.org/x/tools/imports/fastwalk_unix.go"
-	@echo "  rm sdk/gopath/src/github.com/alecthomas/gometalinter/vendor/gopkg.in/alecthomas/kingpin.v3-unstable/guesswidth_unix.go"
-	@echo
 	$(go) get $(tools)
 	$(go) install $(tools)
 	$(gopath)/bin/gocode set propose-builtins true
-	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
+	$(gopath)/bin/gocode set lib-path "$(gopath)/pkg:$(goroot)/pkg"
 
 # TEST/ BENCH
 test: update-env-test
