@@ -49,7 +49,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *user.User {
 			tr.ReceivingAddress = fake.EthereumAddress()
 			tr.Protocol = "ETH"
 		} else {
-			tr.TransactionHash = fake.EOSAddress()
+			tr.TransactionHash = fake.EOSTransactionHash()
 			tr.SendingAddress = fake.EOSAddress()
 			tr.ReceivingAddress = fake.EOSAddress()
 			tr.Protocol = "EOS"
