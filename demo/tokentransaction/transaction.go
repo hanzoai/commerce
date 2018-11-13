@@ -10,7 +10,7 @@ type Transaction struct {
 	mixin.Model
 
 	Amount           float64   `json:"amount"`
-	Fee              float64   `json:"fee"`
+	Fees             float64   `json:"fees"`
 	Timestamp        time.Time `json:"timestamp"`
 	SendingAddress   string    `json:"sendingAddress"`
 	ReceivingAddress string    `json:"receivingAddress"`

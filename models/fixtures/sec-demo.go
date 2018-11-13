@@ -9,6 +9,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/demo/disclosure"
 	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
@@ -129,6 +130,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		usr.KYC.TaxId = fake.TaxID()
 		usr.KYC.WalletAddresses = []string{fake.EOSAddress(), fake.EthereumAddress()}
 		usr.MustPut()
+		usr.MustUpdate()
 	}
 
 	for i := 0; i < 100; i++ {
@@ -148,16 +150,26 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 		tr.Timestamp = time.Now()
 
-		tr.SendingName = fake.FullName()
+		tr.Amount = rand.Float64() * 1000
+		tr.Fees = rand.Float64() * 10
+		tr.SendingName = fake.FirstName() + " " + fake.LastName()
 		tr.SendingUserId = fake.Id()
 		tr.SendingState = fake.State()
 		tr.SendingCountry = "US"
 
-		tr.ReceivingName = fake.FullName()
+		tr.ReceivingName = fake.FirstName() + " " + fake.LastName()
 		tr.ReceivingUserId = fake.Id()
 		tr.ReceivingState = fake.State()
 		tr.ReceivingCountry = "US"
 		tr.MustPut()
+	}
+
+	for i := 0; i < 20; i++ {
+		d := disclosure.New(nsDb)
+		d.Publication = ""
+		d.Hash = fake.EOSTransactionHash()
+		d.Type = "prospectus"
+		d.MustPut()
 	}
 
 	return org
