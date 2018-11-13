@@ -164,12 +164,12 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 
 	// Create Jamie's rules
 	rule1 := discount.Rule{
-		rule.Trigger{
+		Trigger: rule.Trigger{
 			Quantity: rule.Quantity{
 				Start: 2,
 			},
 		},
-		rule.Action{
+		Action: rule.Action{
 			Discount: rule.Discount{
 				Flat: 5,
 			},
