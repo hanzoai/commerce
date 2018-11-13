@@ -100,7 +100,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 			Id:   "UA-65099214-1",
 		},
 	}
-	org.Analytics = Analytics{integrations}
+	org.Analytics = Analytics{Integrations: integrations}
 
 	// Save org into default namespace
 	org.MustPut()
