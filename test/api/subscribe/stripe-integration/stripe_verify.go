@@ -1,12 +1,12 @@
 package test
 
 import (
-	"crowdstart.com/models/plan"
-	"crowdstart.com/models/subscription"
-	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"hanzo.io/models/plan"
+	"hanzo.io/models/subscription"
+	"hanzo.io/models/user"
+	"hanzo.io/util/log"
 
-	. "crowdstart.com/util/test/ginkgo"
+	. "hanzo.io/util/test/ginkgo"
 )
 
 func stripeVerifyUser(usr *user.User) {

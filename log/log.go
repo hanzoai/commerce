@@ -89,9 +89,11 @@ func Error(formatOrError interface{}, args ...interface{}) error {
 	switch v := formatOrError.(type) {
 	case error:
 		std.Errorf(errAndStack(v))
+		fmt.Println(v)
 		return v
 	case string:
 		std.Errorf(v, args...)
+		fmt.Println(v)
 		return fmt.Errorf(v, args...)
 	}
 	return nil
