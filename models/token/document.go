@@ -19,7 +19,7 @@ type Document struct {
 	Email         search.Atom
 	EmailPartials string
 	UserId        string
-	Expires       float64
+	// Expires       float64
 
 	CreatedAt float64
 	UpdatedAt float64
@@ -47,7 +47,7 @@ func (t Token) Document() mixin.Document {
 	doc.CreatedAt = float64(t.CreatedAt.Unix())
 	doc.UpdatedAt = float64(t.UpdatedAt.Unix())
 
-	doc.Expires = float64(t.Expires.Unix())
+	// doc.Expires = float64(t.Expires.Unix())
 
 	return doc
 }

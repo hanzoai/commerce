@@ -81,7 +81,7 @@ type User struct {
 	KYC struct {
 		KYCData
 
-		Status KYCStatus `json:"approved,omitempty"`
+		Status KYCStatus `json:"status,omitempty"`
 		Hash   string    `json:"hash"`
 	} `json:"kyc,omitempty"`
 
@@ -104,7 +104,7 @@ type User struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty" datastore",noindex"`
+	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 

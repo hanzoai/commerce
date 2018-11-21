@@ -46,12 +46,12 @@ var Discount = New("discount", func(c *gin.Context) *discount.Discount {
 	dis.Target.ProductId = prod.Id()
 
 	rule1 := discount.Rule{
-		rule.Trigger{
+		Trigger: rule.Trigger{
 			Quantity: rule.Quantity{
 				Start: 2,
 			},
 		},
-		rule.Action{
+		Action: rule.Action{
 			Discount: rule.Discount{
 				Flat: 5,
 			},
