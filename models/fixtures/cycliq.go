@@ -66,7 +66,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 			Event: "Completed Order",
 		},
 	}
-	org.Analytics = Analytics{integrations}
+	org.Analytics = Analytics{Integrations: integrations}
 
 	// Save org into default namespace
 	org.MustPut()

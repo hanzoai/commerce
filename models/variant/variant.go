@@ -32,8 +32,8 @@ type Variant struct {
 	// Available bool.
 	Availability Availability `json:"availability"`
 
-	Inventory int `json:"inventory"`
-	Sold      int `json:"sold"`
+	// Inventory int `json:"inventory"`
+	Sold int `json:"sold"`
 
 	Options []Option `json:"options"`
 }
