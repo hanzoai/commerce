@@ -169,7 +169,7 @@ auth:
 	gcloud auth login
 
 deploy:
-	gcloud app deploy
+	gcloud app deploy $(gae_config)
 
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
@@ -242,6 +242,6 @@ artifact-upload:
 .PHONY: all auth bench build buildkite-artifact-download \
 	buildkite-artifact-upload compile-js compile-js-min compile-css \
 	compile-css-min datastore-import datastore-export datastore-config \
-	deploy \ deploy-staging deploy-production deps deps-assets deps-go \
+	deploy deploy-staging deploy-production deps deps-assets deps-go \
 	live-reload serve serve-clear-datastore serve-public test \
 	test-integration test-watch tools
