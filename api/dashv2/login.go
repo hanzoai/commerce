@@ -10,13 +10,13 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/types/currency"
 	"hanzo.io/models/store"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.io$")
@@ -111,7 +111,7 @@ func login(c *gin.Context) {
 					return
 				}
 				cur = stor.Currency
-			// Deprecated Old Default
+				// Deprecated Old Default
 			} else {
 				cur = currency.USD
 			}
