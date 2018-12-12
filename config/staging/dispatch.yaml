@@ -1,5 +1,3 @@
-application: crowdstart-staging
-
 dispatch:
   - url: "default-staging.hanzo.io/*"
     service: default
