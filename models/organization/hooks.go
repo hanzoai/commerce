@@ -2,10 +2,10 @@ package organization
 
 import (
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/app"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/store"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 
