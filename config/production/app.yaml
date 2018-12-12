@@ -1,5 +1,5 @@
 application: crowdstart-us
-module: default
+service: default
 version: v1
 
 runtime: go

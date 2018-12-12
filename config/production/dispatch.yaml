@@ -2,25 +2,25 @@ application: crowdstart-us
 
 dispatch:
   - url: "default.hanzo.io/*"
-    module: default
+    service: default
 
   - url: "js.hanzo.io/*"
-    module: default
+    service: default
 
   - url: "static.hanzo.io/*"
-    module: default
+    service: default
 
   - url: "a.hanzo.io/*"
-    module: analytics
+    service: analytics
 
   - url: "cdn.hanzo.io/*"
-    module: api
+    service: api
 
   - url: "api.hanzo.io/*"
-    module: api
+    service: api
 
   - url: "x.hanzo.io/*"
-    module: api
+    service: api
 
   - url: "dash.hanzo.io/*"
-    module: dash
+    service: dash
