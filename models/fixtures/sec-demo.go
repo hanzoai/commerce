@@ -32,7 +32,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	u.FirstName = "SEC"
 	u.LastName = "User"
 	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("secdemo")
+	u.PasswordHash, _ = password.Hash("secdemo2")
 	u.Put()
 
 	org.FullName = "SEC DEMO"
