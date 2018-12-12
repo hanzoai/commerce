@@ -1,4 +1,3 @@
-application: crowdstart-staging
 service: api
 version: v1
 
