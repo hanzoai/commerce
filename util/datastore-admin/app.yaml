@@ -1,5 +1,5 @@
 application: crowdstart-staging
-module: datastore-admin
+service: datastore-admin
 version: v1
 
 runtime: python27
