@@ -1,5 +1,3 @@
-application: crowdstart-us
-
 dispatch:
   - url: "default.hanzo.io/*"
     service: default

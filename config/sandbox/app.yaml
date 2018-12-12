@@ -1,4 +1,3 @@
-application: crowdstart-sandbox
 service: default
 version: v1
 
