@@ -1,4 +1,3 @@
-application: crowdstart-us
 service: dash
 version: v1
 

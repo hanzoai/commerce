@@ -1,4 +1,3 @@
-application: crowdstart-staging
 service: dash
 version: v1
 
