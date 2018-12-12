@@ -2,4 +2,4 @@ application: crowdstart-sandbox
 
 dispatch:
   - url: "sandbox.hanzo.io/*"
-    module: api
+    service: api
