@@ -1,4 +1,3 @@
-application: crowdstart-us
 service: analytics
 version: v1
 
