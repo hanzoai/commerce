@@ -1,8 +1,6 @@
 service: analytics
-version: v1
 
-runtime: go
-api_version: go1.9
+runtime: go111
 threadsafe: true
 
 handlers:
