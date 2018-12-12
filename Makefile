@@ -82,15 +82,15 @@ project_id  = None
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
 	project_env = production
-	project_id  = arca-production
+	project_id  = crowdstart-us
 	gae_config  = $(gae_production)
 else ifeq ($(sandbox), 1)
 	project_env = sandbox
-	project_id  = arca-sandbox
+	project_id  = crowdstart-sandbox
 	gae_config  = $(gae_sandbox)
 else
 	project_env = staging
-	project_id  = arca-staging
+	project_id  = crowdstart-staging
 	gae_config  = $(gae_staging)
 endif
 
@@ -169,7 +169,7 @@ auth:
 	gcloud auth login
 
 deploy:
-	gcloud app deploy $(gae_config)
+	gcloud app deploy $(gae_config) --project $(project_id)
 
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go

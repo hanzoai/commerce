@@ -1,4 +1,3 @@
-application: crowdstart-us
 service: default
 version: v1
 

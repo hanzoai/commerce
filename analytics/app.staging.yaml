@@ -1,4 +1,3 @@
-application: crowdstart-staging
 service: analytics
 version: v1
 
