@@ -1,8 +1,6 @@
 service: dash
-version: v1
 
-runtime: go
-api_version: go1.9
+runtime: go111
 threadsafe: true
 
 manual_scaling:
