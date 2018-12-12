@@ -48,8 +48,8 @@ type Organization struct {
 	BillingEmail     string                  `json:"billingEmail,omitempty"`
 	Phone            string                  `json:"phone,omitempty"`
 	Address          Address                 `json:"address,omitempty"`
-	SocialMedia      socialmedia.SocialMedia `json:"socialMedia, omitEmpty"`
-	Websites         []website.Website       `json:"websites, omitEmpty"`
+	SocialMedia      socialmedia.SocialMedia `json:"socialMedia,omitEmpty"`
+	Websites         []website.Website       `json:"websites,omitEmpty"`
 	WalletPassphrase string                  `json:"-"`
 
 	Timezone string `json:"timezone"`
