@@ -1,8 +1,6 @@
 service: analytics
 
 runtime: go111
-threadsafe: true
-
 instance_class: F4
 
 automatic_scaling:
