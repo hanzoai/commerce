@@ -15,30 +15,30 @@ inbound_services:
 
 handlers:
 - url: /tasks
-  script: _go_app
+  script: auto
   login: admin
   secure: always
 
 - url: /task/.*
-  script: _go_app
+  script: auto
   login: admin
   secure: always
 
 - url: /execute-task/.*
-  script: _go_app
+  script: auto
   login: admin
   secure: always
 
 - url: /_ah/remote_api
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /_ah/queue/go/delay
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /_/queue/delay
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /*
