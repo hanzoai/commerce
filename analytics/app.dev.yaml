@@ -5,4 +5,4 @@ instance_class: F1
 
 handlers:
 - url: /.*
-  script: _go_app
+  script: auto

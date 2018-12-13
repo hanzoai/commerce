@@ -167,7 +167,7 @@ auth:
 	gcloud auth login
 
 deploy:
-	gcloud app deploy $(gae_config) --project $(project_id)
+	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
