@@ -1,4 +1,4 @@
-package config
+package main
 
 import "hanzo.io/util/default_"
 

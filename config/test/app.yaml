@@ -1,7 +1,7 @@
 service: default
 
 runtime: go111
-threadsafe: true
+instance_class: F1
 
 automatic_scaling:
   max_concurrent_requests: 100

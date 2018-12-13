@@ -12,8 +12,6 @@ gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
 
-
-
 gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
 gae_production  = $(pwd)/config/production 	$(pwd)/api/app.production.yaml
 gae_sandbox 	= $(pwd)/config/sandbox 	$(pwd)/api/app.sandbox.yaml
