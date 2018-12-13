@@ -9,39 +9,39 @@ automatic_scaling:
 
 handlers:
 - url: /_/queue/delay
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /_ah/queue/go/delay
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /hashid
-  script: _go_app
+  script: auto
 
 - url: /hashid/.*
-  script: _go_app
+  script: auto
 
 - url: /tasks
-  script: _go_app
+  script: auto
 
 - url: /task/.*
-  script: _go_app
+  script: auto
 
 - url: /execute-task/.*
-  script: _go_app
+  script: auto
 
 - url: /_ah/remote_api
-  script: _go_app
+  script: auto
 
 - url: /assets/.*
-  script: _go_app
+  script: auto
 
 - url: /static/.*
-  script: _go_app
+  script: auto
 
 - url: /_/queue/delay
-  script: _go_app
+  script: auto
   login: admin
 
 - url: /humans.txt
@@ -65,4 +65,4 @@ handlers:
   upload: ../../static/apple-touch-icon-precomposed.png
 
 - url: /*
-  script: _go_app
+  script: auto
