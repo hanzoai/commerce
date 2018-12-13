@@ -7,9 +7,6 @@ automatic_scaling:
   max_concurrent_requests: 100
   min_idle_instances: 0
 
-builtins:
-- remote_api: on
-
 inbound_services:
 - warmup
 
