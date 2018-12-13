@@ -6,8 +6,6 @@ import (
 	"hanzo.io/util/crypto/sha256"
 	"hanzo.io/util/json"
 	"hanzo.io/util/webhook"
-
-	. "hanzo.io/types"
 )
 
 // Hooks
