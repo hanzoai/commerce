@@ -1,5 +1,4 @@
 service: api
-version: v1
 
 runtime: go111
 threadsafe: true
