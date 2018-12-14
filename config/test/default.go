@@ -8,6 +8,6 @@ import (
 	_ "hanzo.io/test/util/task/integration/tasks"
 )
 
-func init() {
+func main() {
 	default_.Init()
 }
