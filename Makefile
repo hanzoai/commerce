@@ -167,7 +167,7 @@ auth:
 	gcloud auth login
 
 deploy:
-	cd $(gopath)/src/hanzo.io
+	@cd $(gopath)/src/hanzo.io
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 
 update-env:
