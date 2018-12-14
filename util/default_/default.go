@@ -83,4 +83,5 @@ func Init() {
 			task.Run(c, "fixtures-all")
 		}
 	})
+	appengine.Main()
 }
