@@ -12,10 +12,10 @@ gover 			= $(gopath)/bin/gover
 goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
 
-gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
-gae_production  = $(pwd)/config/production 	$(pwd)/api/app.production.yaml
-gae_sandbox 	= $(pwd)/config/sandbox 	$(pwd)/api/app.sandbox.yaml
-gae_staging     = $(pwd)/config/staging 	$(pwd)/api/app.staging.yaml
+gae_development = config/development api/app.development.yaml
+gae_production  = config/production api/app.production.yaml
+gae_sandbox 	= config/sandbox api/app.sandbox.yaml
+gae_staging     = config/staging api/app.staging.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
@@ -167,6 +167,7 @@ auth:
 	gcloud auth login
 
 deploy:
+	cd $(gopath)/src/hanzo.io
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 
 update-env:
