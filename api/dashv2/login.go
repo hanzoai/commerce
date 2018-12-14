@@ -117,6 +117,26 @@ func login(c *gin.Context) {
 			}
 		}
 
+		if _, err := org.GetTokenByName("live-secret-key"); err != nil {
+			log.Warn("org %s, has no live-secret-key", org.Name, c)
+			continue
+		}
+
+		if _, err := org.GetTokenByName("live-published-key"); err != nil {
+			log.Warn("org %s, has no live-published-key", org.Name, c)
+			continue
+		}
+
+		if _, err := org.GetTokenByName("test-secret-key"); err != nil {
+			log.Warn("org %s, has no test-secret-key", org.Name, c)
+			continue
+		}
+
+		if _, err := org.GetTokenByName("test-published-key"); err != nil {
+			log.Warn("org %s, has no test-published-key", org.Name, c)
+			continue
+		}
+
 		res.Organizations[i] = organizationRes{
 			Id:               org.Id(),
 			Name:             org.Name,
