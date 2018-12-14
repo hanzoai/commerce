@@ -5,9 +5,9 @@ import (
 	"encoding/gob"
 
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/analyticsidentifier"
-	"hanzo.io/delay"
 )
 
 func init() {

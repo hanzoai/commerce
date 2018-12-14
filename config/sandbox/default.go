@@ -6,7 +6,7 @@ import (
 	"hanzo.io/util/default_"
 )
 
-func init() {
+func main() {
 	default_.Init()
 
 	gin.SetMode(gin.ReleaseMode)
