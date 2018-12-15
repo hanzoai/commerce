@@ -8,9 +8,6 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /_ah/queue/go/delay
-  script: auto
-
 - url: /hashid
   script: auto
 
@@ -29,11 +26,12 @@ handlers:
 - url: /_ah/remote_api
   script: auto
 
-- url: /assets/.*
+- url: /_ah/queue/go/delay
   script: auto
 
-- url: /static/.*
+- url: /_ah/warmup
   script: auto
+  login: admin
 
 - url: /_/queue/delay
   script: auto
