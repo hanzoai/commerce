@@ -7,7 +7,7 @@ import (
 	"hanzo.io/models/organization"
 )
 
-var ResetKeys = New("sec-demo", func(c *gin.Context) *organization.Organization {
+var ResetKeys = New("reset-keys", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
