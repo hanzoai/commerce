@@ -46,6 +46,10 @@ handlers:
   script: auto
   login: admin
 
+- url: /_ah/warmup
+  script: auto
+  login: admin
+
 - url: /_/queue/delay
   script: auto
   login: admin

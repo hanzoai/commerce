@@ -1,6 +1,8 @@
 package main
 
 import (
+	"google.golang.org/appengine"
+
 	"hanzo.io/util/default_"
 
 	// Imported for side-effect, ensures tasks are registered
@@ -8,6 +10,10 @@ import (
 	_ "hanzo.io/test/util/task/integration/tasks"
 )
 
-func main() {
+func init() {
 	default_.Init()
+}
+
+func main() {
+	appengine.Main()
 }
