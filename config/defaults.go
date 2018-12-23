@@ -11,6 +11,7 @@ import (
 func Defaults() *Config {
 	config := new(Config)
 
+	config.ProjectId = "crowdstart-us"
 	config.Protocol = "//" // Protocol relative
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
