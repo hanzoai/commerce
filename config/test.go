@@ -4,6 +4,7 @@ package config
 func Test() *Config {
 	config := Defaults()
 
+	config.ProjectId = "crowdstart-test"
 	config.IsTest = true
 
 	config.AutoCompileAssets = false

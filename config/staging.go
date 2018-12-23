@@ -4,6 +4,7 @@ package config
 func Staging() *Config {
 	config := Production()
 
+	config.ProjectId = "crowdstart-staging"
 	config.IsStaging = true
 
 	config.Prefixes["analytics"] = "/"
