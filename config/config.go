@@ -37,6 +37,7 @@ type Config struct {
 	IsProduction      bool
 	IsSandbox         bool
 	IsStaging         bool
+	ProjectId         string
 	Protocol          string
 	RootDir           string
 	SentryDSN         string

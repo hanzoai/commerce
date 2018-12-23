@@ -4,6 +4,7 @@ package config
 func Development() *Config {
 	config := Defaults()
 
+	config.ProjectId = "crowdstart-dev"
 	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false

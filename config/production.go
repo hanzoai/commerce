@@ -4,6 +4,7 @@ package config
 func Production() *Config {
 	config := Defaults()
 
+	config.ProjectId = "crowdstart-us"
 	config.IsProduction = true
 
 	config.Prefixes["analytics"] = "/"
