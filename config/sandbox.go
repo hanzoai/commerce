@@ -4,6 +4,7 @@ package config
 func Sandbox() *Config {
 	config := Production()
 
+	config.ProjectId = "crowdstart-sandbox"
 	config.IsProduction = false
 	config.IsStaging = false
 	config.IsSandbox = true
