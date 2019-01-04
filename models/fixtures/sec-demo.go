@@ -27,7 +27,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
-	u.Email = "sec@ar.ca"
+	u.Email = "sec@hanzo.ai"
 	u.GetOrCreate("Email=", u.Email)
 	u.FirstName = "SEC"
 	u.LastName = "User"
@@ -37,7 +37,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "SEC DEMO"
 	org.Owners = []string{u.Id()}
-	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://sec.ar.ca"}}
+	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://sec.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
 
 	org.Fees.Card.Flat = 50
@@ -52,8 +52,8 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 	org.Email.Enabled = true
 	org.Email.Defaults.From = email.Email{
-		Name:    "Arca",
-		Address: "info@ar.ca",
+		Name:    "Hanzo",
+		Address: "info@hanzo.ai",
 	}
 
 	org.SignUpOptions.ImmediateLogin = true
