@@ -17,6 +17,7 @@ import (
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
 	"hanzo.io/util/fake"
+	"hanzo.io/util/log"
 )
 
 var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
@@ -139,8 +140,11 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 
 	for i := 0; i < 420; i++ {
 		tr := tokentransaction.New(nsDb)
-		usr := users[i]
-		usr2 := users[100-i]
+
+		usr := users[rand.Intn(100)]
+		usr2 := users[rand.Intn(100)]
+
+		log.Warn("HI %v, %v", usr.FirstName, usr.LastName, ctx)
 
 		if rand.Float64() > 0.7 {
 			tr.TransactionHash = fake.EthereumAddress()
