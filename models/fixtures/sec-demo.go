@@ -11,13 +11,13 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/demo/disclosure"
 	"hanzo.io/demo/tokentransaction"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
 	"hanzo.io/util/fake"
-	"hanzo.io/util/log"
 )
 
 var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
@@ -144,7 +144,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		usr := users[rand.Intn(100)]
 		usr2 := users[rand.Intn(100)]
 
-		log.Warn("HI %v, %v", usr.FirstName, usr.LastName, ctx)
+		log.Warn("HI %v, %v", usr.FirstName, usr.LastName, c)
 
 		if rand.Float64() > 0.7 {
 			tr.TransactionHash = fake.EthereumAddress()
