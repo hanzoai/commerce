@@ -127,7 +127,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		usr.KYC.Address.Name = usr.FirstName + " " + usr.LastName
 		usr.KYC.Address.Line1 = fake.StreetAddress()
 		usr.KYC.Address.City = fake.City()
-		usr.KYC.Address.State = fake.State()
+		usr.KYC.Address.State = fake.StateAbbrev()
 		usr.KYC.Address.PostalCode = fake.Zip()
 		usr.KYC.Address.Country = "US"
 		usr.KYC.TaxId = fake.TaxID()
@@ -164,13 +164,13 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		tr.Fees = rand.Float64() * 10
 		tr.SendingName = usr.FirstName + " " + usr.LastName
 		tr.SendingUserId = usr.Id()
-		tr.SendingState = fake.State()
-		tr.SendingCountry = "US"
+		tr.SendingState = usr.KYC.Address.State
+		tr.SendingCountry = usr.KYC.Address.Country
 
 		tr.ReceivingName = usr2.FirstName + " " + usr2.LastName
 		tr.ReceivingUserId = usr2.Id()
-		tr.ReceivingState = fake.State()
-		tr.ReceivingCountry = "US"
+		tr.ReceivingState = usr2.KYC.Address.State
+		tr.SendingCountry = usr2.KYC.Address.Country
 		tr.MustPut()
 	}
 
