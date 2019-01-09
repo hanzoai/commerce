@@ -24,6 +24,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:userid/referrals", readUserRequired, readReferralRequired, getReferrals)
 	api.GET("/:userid/referrers", readUserRequired, readReferrerRequired, getReferrers)
 	api.GET("/:userid/transactions", readUserRequired, getTransactions)
+	api.GET("/:userid/tokentransactions", readUserRequired, getTokenTransactions)
 	api.GET("/:userid/transfer", readUserRequired, getTransfers)
 	api.GET("/:userid/affiliate", readUserRequired, getAffiliate)
 

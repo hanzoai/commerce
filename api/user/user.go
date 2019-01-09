@@ -5,13 +5,14 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/affiliate"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/order"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
-	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/transaction/util"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/user"
@@ -115,6 +116,28 @@ func getTransactions(c *gin.Context) {
 	}
 
 	http.Render(c, 200, res)
+}
+
+func getTokenTransactions(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	tt := make([]*tokentransaction.Transaction, 0)
+	if _, err := tokentransaction.Query(db).Filter("SendingUserId=", id).GetAll(&tt); err != nil {
+		log.Error("tokentransaction/%v/%v error: '%v'", id, "user", err, c)
+		http.Fail(c, 400, err.Error(), err)
+	}
+
+	tt2 := make([]*tokentransaction.Transaction, 0)
+	if _, err := tokentransaction.Query(db).Filter("ReceivingUserId=", id).GetAll(&tt2); err != nil {
+		log.Error("tokentransaction/%v/%v error: '%v'", id, "user", err, c)
+		http.Fail(c, 400, err.Error(), err)
+	}
+
+	tt3 := append(tt, tt2...)
+
+	http.Render(c, 200, tt3)
 }
 
 func getTransfers(c *gin.Context) {
