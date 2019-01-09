@@ -7,6 +7,7 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/fee"
@@ -100,6 +101,8 @@ type User struct {
 	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
 	Transactions map[currency.Type]*util.TransactionData `json:"transactions" datastore:"-"`
+
+	TokenTransactions []*tokentransaction.Transaction `json:"tokenTransactions" datastore:"-"`
 
 	ReferrerId string `json:"referrerId,omitempty"`
 
@@ -320,6 +323,22 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (u *User) LoadTokenTransactions() error {
+	u.TokenTransactions = make([]*tokentransaction.Transaction, 0)
+	if _, err := tokentransaction.Query(u.Db).Filter("SendingUserId=", u.Id()).GetAll(&u.TokenTransactions); err != nil {
+		return err
+	}
+
+	tt := make([]*tokentransaction.Transaction, 0)
+	if _, err := tokentransaction.Query(u.Db).Filter("ReceivingUserId=", u.Id()).GetAll(&tt); err != nil {
+		return err
+	}
+
+	u.TokenTransactions = append(u.TokenTransactions, tt...)
 
 	return nil
 }
