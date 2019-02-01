@@ -55,6 +55,8 @@ func Defaults() *Config {
 	// config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:13264"}
 	config.Ethereum.WebhookPassword = ""
 
+	config.Infura.APIKey = "2uBFh7w8MRg4jILS4n2c"
+
 	config.Bitcoin.TestPassword = ""
 	config.Bitcoin.DepositPassword = ""
 	config.Bitcoin.MainNetNodes = []string{"http://35.192.49.112:19283"}

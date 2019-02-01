@@ -53,6 +53,7 @@ import (
 	referrerApi "hanzo.io/api/referrer"
 	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
+	smartcontractApi "hanzo.io/api/smartcontract"
 	storeApi "hanzo.io/api/store"
 	subscriptionApi "hanzo.io/api/subscription"
 	transactionApi "hanzo.io/api/transaction"
@@ -102,7 +103,6 @@ func Route(api router.Router) {
 
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
-
 	subscriptionApi.Route(api)
 
 	// Models with public RESTful API
@@ -140,6 +140,7 @@ func Route(api router.Router) {
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
+	smartcontractApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	transactionApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
