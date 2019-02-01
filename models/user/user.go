@@ -45,7 +45,7 @@ type KYCData struct {
 	Gender    string `json:"gender,omitempty"`
 
 	EthereumAddress string `json:"ethereumAddress,omitempty"`
-	EOSAddress      string `json:"eosAddress,omitempty"`
+	EOSPublicKey    string `json:"eosPublicKey,omitempty"`
 }
 
 type User struct {
