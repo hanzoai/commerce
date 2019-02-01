@@ -154,6 +154,8 @@ type Organization struct {
 	// AuthorizeNet connection
 	AuthorizeNet integration.AuthorizeNet `json:"-"`
 
+	SecurityToken integration.SecurityToken `json:"-"`
+
 	Currency currency.Type `json:"currency"`
 }
 

@@ -22,20 +22,21 @@ const (
 	AnalyticsSentryType              Type = "analytics-sentry"
 
 	// Others
-	AuthorizeNetType Type = "authorizeNet"
-	BitcoinType      Type = "bitcoin"
-	EthereumType     Type = "ethereum"
-	MailchimpType    Type = "mailchimp"
-	MandrillType     Type = "mandrill"
-	NetlifyType      Type = "netlify"
-	PaypalType       Type = "paypal"
-	ReamazeType      Type = "reamaze"
-	RecaptchaType    Type = "recaptcha"
-	SalesforceType   Type = "salesforce"
-	SendGridType     Type = "sendgrid"
-	ShipwireType     Type = "shipwire"
-	SMTPRelayType    Type = "smtprelay"
-	StripeType       Type = "stripe"
+	AuthorizeNetType  Type = "authorizeNet"
+	BitcoinType       Type = "bitcoin"
+	EthereumType      Type = "ethereum"
+	MailchimpType     Type = "mailchimp"
+	MandrillType      Type = "mandrill"
+	NetlifyType       Type = "netlify"
+	PaypalType        Type = "paypal"
+	ReamazeType       Type = "reamaze"
+	RecaptchaType     Type = "recaptcha"
+	SalesforceType    Type = "salesforce"
+	SecurityTokenType Type = "securityToken"
+	SendGridType      Type = "sendgrid"
+	ShipwireType      Type = "shipwire"
+	SMTPRelayType     Type = "smtprelay"
+	StripeType        Type = "stripe"
 )
 
 // Analytics
@@ -222,6 +223,24 @@ type Ethereum struct {
 	TestAddress string `json:"testAddress,omitempty"`
 }
 
+// Security Tokens
+type EthereumSecurityToken struct {
+	TokenAddress    string `json:"tokenAddress,omitempty"`
+	RegistryAddress string `json:"registryAddress,omitempty"`
+	PrivateKey      string `json:"-"`
+}
+
+type EOSSecurityToken struct {
+	TokenAccount    string `json:"tokenAccount,omitempty"`
+	RegistryAccount string `json:"registryAccount,omitempty"`
+	PrivateKey      string `json:"-"`
+}
+
+type SecurityToken struct {
+	Ethereum EthereumSecurityToken `json:"ethereum,omitempty"`
+	EOS      EOSSecurityToken      `json:"eos,omitempty"`
+}
+
 type Integration struct {
 	Type      Type            `json:"type,omitempty"`
 	Enabled   bool            `json:"enabled,omitempty"`
@@ -241,18 +260,19 @@ type Integration struct {
 	AnalyticsSentry              AnalyticsSentry              `json:"-"`
 
 	// Others
-	AuthorizeNet AuthorizeNet `json:"-"`
-	Bitcoin      Bitcoin      `json:"-"`
-	Ethereum     Ethereum     `json:"-"`
-	Mailchimp    Mailchimp    `json:"-"`
-	Mandrill     Mandrill     `json:"-"`
-	Netlify      Netlify      `json:"-"`
-	Paypal       Paypal       `json:"-"`
-	Reamaze      Reamaze      `json:"-"`
-	Recaptcha    Recaptcha    `json:"-"`
-	Salesforce   Salesforce   `json:"-"`
-	Shipwire     Shipwire     `json:"-"`
-	SendGrid     SendGrid     `json:"-"`
-	SMTPRelay    SMTPRelay    `json:"-"`
-	Stripe       Stripe       `json:"-"`
+	AuthorizeNet  AuthorizeNet  `json:"-"`
+	Bitcoin       Bitcoin       `json:"-"`
+	Ethereum      Ethereum      `json:"-"`
+	Mailchimp     Mailchimp     `json:"-"`
+	Mandrill      Mandrill      `json:"-"`
+	Netlify       Netlify       `json:"-"`
+	Paypal        Paypal        `json:"-"`
+	Reamaze       Reamaze       `json:"-"`
+	Recaptcha     Recaptcha     `json:"-"`
+	Salesforce    Salesforce    `json:"-"`
+	Shipwire      Shipwire      `json:"-"`
+	SendGrid      SendGrid      `json:"-"`
+	SMTPRelay     SMTPRelay     `json:"-"`
+	Stripe        Stripe        `json:"-"`
+	SecurityToken SecurityToken `json:"-"`
 }
