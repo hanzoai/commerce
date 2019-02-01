@@ -167,6 +167,10 @@ type Config struct {
 		Password string
 	}
 
+	Infura struct {
+		APIKey string
+	}
+
 	// Current working dir
 	WorkingDir string
 }
@@ -273,6 +277,7 @@ var Ethereum = config.Ethereum
 var Facebook = config.Facebook
 var Fee = config.Fee
 var Google = config.Google
+var Infura = config.Infura
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
