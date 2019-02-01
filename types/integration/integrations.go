@@ -57,6 +57,8 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.Recaptcha)
 	case SalesforceType:
 		dst.Data = json.EncodeBytes(src.Salesforce)
+	case SecurityTokenType:
+		dst.Data = json.EncodeBytes(src.SecurityToken)
 	case ShipwireType:
 		dst.Data = json.EncodeBytes(src.Shipwire)
 	case StripeType:
@@ -117,6 +119,8 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.Recaptcha.Enabled = src.Enabled
 	case SalesforceType:
 		dst.Salesforce = src.Salesforce
+	case SecurityTokenType:
+		dst.SecurityToken = src.SecurityToken
 	case ShipwireType:
 		dst.Shipwire = src.Shipwire
 	case StripeType:
@@ -164,6 +168,8 @@ func Decode(src *Integration, dst *Integration) error {
 			dst.Recaptcha.Enabled = src.Enabled
 		case SalesforceType:
 			json.DecodeBytes(src.Data, &dst.Salesforce)
+		case SecurityTokenType:
+			json.DecodeBytes(src.Data, &dst.SecurityToken)
 		case ShipwireType:
 			json.DecodeBytes(src.Data, &dst.Shipwire)
 		case StripeType:
