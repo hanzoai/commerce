@@ -13,7 +13,7 @@ import (
 	"hanzo.io/types/website"
 )
 
-var Verus = New("verus", func(c *gin.Context) *organization.Organization {
+var _ = New("verus", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization

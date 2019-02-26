@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var StonedShirts = New("stoned-shirts", func(c *gin.Context) *organization.Organization {
+var _ = New("stoned-shirts", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

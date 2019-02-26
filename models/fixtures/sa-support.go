@@ -9,7 +9,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var StonedSupport = New("stoned-support", func(c *gin.Context) *organization.Organization {
+var _ = New("stoned-support", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

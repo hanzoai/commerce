@@ -13,7 +13,7 @@ import (
 	"hanzo.io/types/website"
 )
 
-var CryptoUnderground = New("cryptounderground", func(c *gin.Context) *organization.Organization {
+var _ = New("cryptounderground", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
