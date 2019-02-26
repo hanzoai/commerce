@@ -5,14 +5,14 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 	"hanzo.io/types/website"
 )
 
-var Aura = New("aura", func(c *gin.Context) *organization.Organization {
+var _ = New("aura", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

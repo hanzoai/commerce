@@ -15,7 +15,7 @@ import (
 	"hanzo.io/types/website"
 )
 
-var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
+var _ = New("stoned", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
