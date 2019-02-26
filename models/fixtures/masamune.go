@@ -5,14 +5,14 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/website"
-	"hanzo.io/log"
 )
 
-var Masamune = New("masamune", func(c *gin.Context) *organization.Organization {
+var _ = New("masamune", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization
