@@ -4,14 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/namespace"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/website"
-	"hanzo.io/log"
 )
 
-var MakeupFit = New("makeupfit", func(c *gin.Context) *organization.Organization {
+var _ = New("makeupfit", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization
