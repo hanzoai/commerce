@@ -13,7 +13,7 @@ import (
 	. "hanzo.io/types"
 )
 
-var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product {
+var _ = New("ludela-products", func(c *gin.Context) []*product.Product {
 	db := datastore.New(c)
 
 	org := organization.New(db)

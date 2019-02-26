@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var StonedReferralProgram = New("stoned-referralprogram", func(c *gin.Context) *referralprogram.ReferralProgram {
+var _ = New("stoned-referralprogram", func(c *gin.Context) *referralprogram.ReferralProgram {
 	db := datastore.New(c)
 
 	org := organization.New(db)

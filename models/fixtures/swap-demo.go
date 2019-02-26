@@ -15,7 +15,7 @@ import (
 	// "hanzo.io/models/webhook"
 )
 
-var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization {
+var _ = New("swap-demo", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
@@ -41,7 +41,7 @@ var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization 
 	u2.Put()
 
 	org.FullName = "TA DEMO"
-	org.Owners = []string{u.Id(),u2.Id()}
+	org.Owners = []string{u.Id(), u2.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ico.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
 
@@ -68,7 +68,7 @@ var SwapDemo = New("swap-demo", func(c *gin.Context) *organization.Organization 
 		Type:    integration.EthereumType,
 		Enabled: true,
 		Ethereum: integration.Ethereum{
-			Address: "0xf8f59f0269c4f6d7b5c5ab98d70180eaa0c7507e",
+			Address:     "0xf8f59f0269c4f6d7b5c5ab98d70180eaa0c7507e",
 			TestAddress: "0xf8f59f0269c4f6d7b5c5ab98d70180eaa0c7507e",
 		},
 	}

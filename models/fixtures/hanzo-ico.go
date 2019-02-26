@@ -14,7 +14,7 @@ import (
 	// "hanzo.io/models/webhook"
 )
 
-var HanzoICO = New("hanzo-ico", func(c *gin.Context) *organization.Organization {
+var _ = New("hanzo-ico", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)

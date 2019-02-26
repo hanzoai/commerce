@@ -20,7 +20,7 @@ import (
 	"hanzo.io/util/fake"
 )
 
-var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
+var _ = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
