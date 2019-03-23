@@ -45,7 +45,12 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			c.Set("user", u)
 			c.Set("organization", org)
 			c.Set("active-organization", org.Id())
+
 			session.Set(c, "active-organization", org.Id())
+
+			// Set for our readme integration
+			c.Writer.Header().Set("x-readme-id", org.Id())
+			c.Writer.Header().Set("x-readme-label", org.Name)
 		}
 	}
 }
