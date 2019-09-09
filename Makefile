@@ -13,9 +13,9 @@ goveralls       = $(gopath)/bin/goveralls
 ginkgo			= $(gopath)/bin/ginkgo
 
 gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
-gae_production  = config/production api/app.production.yaml
-gae_sandbox 	= config/sandbox api/app.sandbox.yaml
-gae_staging     = config/staging api/app.staging.yaml
+gae_production  = config/production api/app.production.yaml analytics/app.production.yaml
+gae_sandbox 	= config/sandbox api/app.sandbox.yaml analytics/app.sandbox.yaml
+gae_staging     = config/staging api/app.staging.yaml analytics/app.staging.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
