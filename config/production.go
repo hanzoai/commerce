@@ -12,12 +12,12 @@ func Production() *Config {
 	config.Prefixes["dash"] = "/"
 	config.Prefixes["default"] = "/"
 
-	config.Hosts["analytics"] = "analytics.hanzo.io"
-	config.Hosts["api"] = "api.hanzo.io"
-	config.Hosts["dash"] = "dash.hanzo.io"
-	config.Hosts["default"] = "static.hanzo.io"
+	config.Hosts["analytics"] = "a.hanzo.ai"
+	config.Hosts["api"] = "api.hanzo.ai"
+	config.Hosts["dash"] = "dash.hanzo.ai"
+	config.Hosts["default"] = "static.hanzo.ai"
 
-	config.StaticUrl = "//static.hanzo.io"
+	config.StaticUrl = "//static.hanzo.ai"
 
 	config.DemoMode = false
 
@@ -43,7 +43,7 @@ func Production() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.paypal.com"
-	config.Paypal.IpnUrl = "https://api.hanzo.io/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
