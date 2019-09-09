@@ -12,12 +12,12 @@ func Staging() *Config {
 	config.Prefixes["dash"] = "/"
 	config.Prefixes["default"] = "/"
 
-	config.Hosts["analytics"] = "analytics-staging.hanzo.io"
-	config.Hosts["api"] = "api-staging.hanzo.io"
-	config.Hosts["dash"] = "dash-staging.hanzo.io"
-	config.Hosts["default"] = "default-staging.hanzo.io"
+	config.Hosts["analytics"] = "analytics-staging.hanzo.ai"
+	config.Hosts["api"] = "api-staging.hanzo.ai"
+	config.Hosts["dash"] = "dash-staging.hanzo.ai"
+	config.Hosts["default"] = "default-staging.hanzo.ai"
 
-	config.StaticUrl = "//static-staging.hanzo.io"
+	config.StaticUrl = "//static-staging.hanzo.ai"
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
@@ -41,7 +41,7 @@ func Staging() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://api-staging.hanzo.io/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api-staging.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId

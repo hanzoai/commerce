@@ -1,21 +1,21 @@
 dispatch:
-  - url: "default.hanzo.io/*"
+  - url: "default.hanzo.ai/*"
     service: default
 
-  - url: "js.hanzo.io/*"
+  - url: "js.hanzo.ai/*"
     service: default
 
-  - url: "static.hanzo.io/*"
+  - url: "static.hanzo.ai/*"
     service: default
 
-  - url: "a.hanzo.io/*"
+  - url: "a.hanzo.ai/*"
     service: analytics
 
-  - url: "cdn.hanzo.io/*"
+  - url: "api.hanzo.ai/*"
     service: api
 
-  - url: "api.hanzo.io/*"
+  - url: "cdn.hanzo.ai/*"
     service: api
 
-  - url: "x.hanzo.io/*"
+  - url: "x.hanzo.ai/*"
     service: api
