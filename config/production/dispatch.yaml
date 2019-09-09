@@ -19,6 +19,3 @@ dispatch:
 
   - url: "x.hanzo.io/*"
     service: api
-
-  - url: "dash.hanzo.io/*"
-    service: dash
