@@ -56,6 +56,6 @@ func (c Claims) JSON() string {
 
 type AccessClaims struct {
 	// Admin Dashboard Claims (for display)
-	FirstName string
-	LastName  string
+	FirstName string `json:"firstName,omitempty"`
+	LastName  string `json:"lastName,omitempty"`
 }
