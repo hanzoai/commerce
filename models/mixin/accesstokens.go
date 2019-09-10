@@ -35,8 +35,7 @@ func (at *AccessTokens) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
-	t.TokenString = t.String()
-	return t.TokenString
+	return t.String()
 }
 
 func (at *AccessTokens) CompareToken(tok1, tok2 *token.Token) error {
