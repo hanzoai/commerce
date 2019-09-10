@@ -3,8 +3,8 @@ package mixin
 import (
 	"errors"
 
-	"hanzo.io/util/bit"
 	"hanzo.io/log"
+	"hanzo.io/util/bit"
 	token "hanzo.io/util/oldjwt"
 )
 
@@ -35,7 +35,8 @@ func (at *AccessTokens) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
-	return t.String()
+	t.TokenString = t.String()
+	return t.TokenString
 }
 
 func (at *AccessTokens) CompareToken(tok1, tok2 *token.Token) error {
