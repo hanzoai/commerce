@@ -1,13 +1,14 @@
-package analytics
+package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"google.golang.org/appengine"
 
 	"hanzo.io/middleware"
 	"hanzo.io/util/router"
 )
 
-func init() {
+func main() {
 	analytics := router.New("analytics")
 
 	// Use permissive CORS policy for all API routes.
@@ -20,4 +21,6 @@ func init() {
 
 	analytics.GET("/", router.Ok)
 	analytics.HEAD("/", router.Empty)
+
+	appengine.Main()
 }
