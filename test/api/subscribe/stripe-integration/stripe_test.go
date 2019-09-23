@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/order"
@@ -21,7 +22,6 @@ import (
 	"hanzo.io/thirdparty/stripe"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/json"
-	"hanzo.io/util/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
