@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/copy"
 	"hanzo.io/models/discount"
 	"hanzo.io/models/media"
+	"hanzo.io/models/movie"
 	"hanzo.io/models/note"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
@@ -27,6 +28,7 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/models/wallet"
+	"hanzo.io/models/watchlist"
 	"hanzo.io/models/webhook"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/rest"
@@ -110,6 +112,7 @@ func Route(api router.Router) {
 	rest.New(copy.Copy{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
 	rest.New(media.Media{}).Route(api, tokenRequired)
+	rest.New(movie.Movie{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
@@ -121,6 +124,7 @@ func Route(api router.Router) {
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 	rest.New(wallet.Wallet{}).Route(api, adminRequired)
+	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
 	rest.New(disclosure.Disclosure{}).Route(api, tokenRequired)
