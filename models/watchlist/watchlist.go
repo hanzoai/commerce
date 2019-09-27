@@ -1,0 +1,152 @@
+package watchlist
+
+import (
+	"bytes"
+	"fmt"
+	"strconv"
+	"time"
+
+	aeds "google.golang.org/appengine/datastore"
+
+	"github.com/dustin/go-humanize"
+
+	"hanzo.io/datastore"
+	"hanzo.io/models/mixin"
+	"hanzo.io/models/movie"
+	"hanzo.io/util/json"
+	"hanzo.io/util/val"
+
+	. "hanzo.io/types"
+)
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+type Status string
+
+type Watchlist struct {
+	mixin.Model
+
+	// Associated user .
+	UserId string `json:"userId,omitempty"`
+
+	// Email of the user or someone else if no user id exists
+	Email string `json:"email,omitempty"`
+
+	// Individual line items
+	Movies  []movie.Movie `json:"movies" datastore:"-"`
+	Movies_ string        `json:"-" datastore:",noindex"`
+
+	// Arbitrary key/value pairs associated with this order
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
+}
+
+func (c *Watchlist) Validator() *val.Validator {
+	return val.New()
+}
+
+func (c *Watchlist) Load(ps []aeds.Property) (err error) {
+	// Prevent duplicate deserialization
+	if c.Loaded() {
+		return nil
+	}
+
+	// Ensure we're initialized
+	c.Defaults()
+
+	// Load supported properties
+	if err = datastore.LoadStruct(c, ps); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(c.Movies_) > 0 {
+		err = json.DecodeBytes([]byte(c.Movies_), &c.Movies)
+	}
+
+	if len(c.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(c.Metadata_), &c.Metadata)
+	}
+
+	return err
+}
+
+func (w *Watchlist) Save() (ps []aeds.Property, err error) {
+	// Serialize unsupported properties
+	w.Metadata_ = string(json.EncodeBytes(&w.Metadata))
+	w.Movies_ = string(json.EncodeBytes(w.Movies))
+
+	// Save properties
+	return datastore.SaveStruct(w)
+}
+
+func (w *Watchlist) SetItem(db *datastore.Datastore, id string) (err error) {
+	// Check if already exists
+	for _, mv := range w.Movies {
+		if mv.Id() == id {
+			return nil
+		}
+	}
+
+	// New movie
+	m := &movie.Movie{}
+	e := m.GetById(id)
+
+	if e != nil {
+		return e
+	}
+
+	w.Movies = append(w.Movies, *m)
+	return nil
+
+}
+
+func (w *Watchlist) RemoveItem(id string) (err error) {
+	mvs := make([]movie.Movie, 0)
+	for _, mv := range w.Movies {
+		if !(mv.Id() == id) {
+			mvs = append(mvs, mv)
+		}
+	}
+	w.Movies = mvs
+	return nil
+}
+
+func (w Watchlist) MoviesJSON() string {
+	return json.Encode(w.Movies)
+}
+
+func (c Watchlist) IntId() int {
+	return int(c.Key().IntID())
+}
+
+func (c Watchlist) DisplayId() string {
+	return strconv.Itoa(c.IntId())
+}
+
+func (c Watchlist) DisplayCreatedAt() string {
+	duration := time.Since(c.CreatedAt)
+
+	if duration.Hours() > 24 {
+		year, month, day := c.CreatedAt.Date()
+		return fmt.Sprintf("%s %s, %s", month.String(), strconv.Itoa(day), strconv.Itoa(year))
+	}
+
+	return humanize.Time(c.CreatedAt)
+}
+
+func (c Watchlist) Description() string {
+	if c.Movies == nil {
+		return ""
+	}
+
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range c.Movies {
+		if i > 0 {
+			buffer.WriteString(", ")
+		}
+		buffer.WriteString(item.Name)
+	}
+	return buffer.String()
+}
