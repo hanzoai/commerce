@@ -1,18 +1,19 @@
 package checkout
 
 import (
-	"time"
 	"math/rand"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/balance"
 	"hanzo.io/api/checkout/bitcoin"
 	"hanzo.io/api/checkout/ethereum"
 	"hanzo.io/api/checkout/null"
-	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/paypal"
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/multi"
@@ -27,8 +28,12 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 	"hanzo.io/util/reflect"
+
+	. "hanzo.io/api/checkout/types"
+
+	// temp to test go get ./...
+	_ "hanzo.io/thirdparty/paymentmethods/plaid"
 )
 
 // Decode authorization request, grab user and payment information off it

@@ -1,15 +1,15 @@
-package checkout
+package types
 
 import (
 	"strings"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
-	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/types/accounts"
+	"hanzo.io/models/types/fulfillment"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 
 	stringutil "hanzo.io/util/strings"
 )
