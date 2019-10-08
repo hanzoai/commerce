@@ -19,7 +19,7 @@ func New(ctx context.Context, accessToken string) *Client {
 	httpClient := urlfetch.Client(ctx)
 
 	httpClient.Transport = &urlfetch.Transport{
-		Context: ctx,
+		Context:                       ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 	stripe.SetBackend(stripe.APIBackend, nil)
