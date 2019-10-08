@@ -204,7 +204,6 @@ func CreateScriptPubKey(publicKeyBase58 string) ([]byte, error) {
 	address, err := btcutil.DecodeAddress(publicKeyBase58, &chaincfg.MainNetParams)
 	if err != nil {
 		log.Error("DecodeAddress '%s' Error: %v", publicKeyBase58, err)
-		panic(err)
 		return nil, err
 	}
 

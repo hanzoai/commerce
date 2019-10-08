@@ -8,14 +8,15 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/api/checkout"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
+
+	. "hanzo.io/api/checkout/types"
 )
 
 var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {
@@ -46,7 +47,7 @@ var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context)
 	ord.Subtotal = currency.Cents(100000000)
 	ord.Mode = order.ContributionMode
 
-	ch := checkout.Authorization{
+	ch := Authorization{
 		Order: ord,
 	}
 
