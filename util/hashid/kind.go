@@ -62,6 +62,8 @@ var kinds = map[string]int{
 	"synckey":          59,
 	"tokentransaction": 100,
 	"disclosure":       101,
+	"movie":            200,
+	"watchlist":        201,
 }
 
 var kindsReversed = make(map[int]string)

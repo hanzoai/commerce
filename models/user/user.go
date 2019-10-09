@@ -24,6 +24,7 @@ import (
 	"hanzo.io/util/val"
 	"time"
 
+	. "hanzo.io/thirdparty/paymentmethods"
 	. "hanzo.io/types"
 )
 
@@ -122,6 +123,8 @@ type User struct {
 
 	// For Halcyon
 	Commission commission.Commission `json:"commission"`
+
+	PaymentMethods []*PaymentMethodOutput `json:"paymentMethods"`
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
