@@ -13,9 +13,9 @@ import (
 type Environment plaid.Environment
 
 const (
-	Sandbox     Environment = Environment(plaid.Sandbox)
-	Development Environment = Environment(plaid.Development)
-	Production  Environment = Environment(plaid.Production)
+	SandboxEnvironment     Environment = Environment(plaid.Sandbox)
+	DevelopmentEnvironment Environment = Environment(plaid.Development)
+	ProductionEnvironment  Environment = Environment(plaid.Production)
 )
 
 func New(ctx context.Context, client_id, secret, pub_key string, env Environment) *Client {
