@@ -51,6 +51,8 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.Netlify)
 	case PaypalType:
 		dst.Data = json.EncodeBytes(src.Paypal)
+	case PlaidType:
+		dst.Data = json.EncodeBytes(src.Plaid)
 	case ReamazeType:
 		dst.Data = json.EncodeBytes(src.Reamaze)
 	case RecaptchaType:
@@ -112,6 +114,8 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.Netlify = src.Netlify
 	case PaypalType:
 		dst.Paypal = src.Paypal
+	case PlaidType:
+		dst.Plaid = src.Plaid
 	case ReamazeType:
 		dst.Reamaze = src.Reamaze
 	case RecaptchaType:
@@ -161,6 +165,8 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.Netlify)
 		case PaypalType:
 			json.DecodeBytes(src.Data, &dst.Paypal)
+		case PlaidType:
+			json.DecodeBytes(src.Data, &dst.Plaid)
 		case ReamazeType:
 			json.DecodeBytes(src.Data, &dst.Reamaze)
 		case RecaptchaType:
