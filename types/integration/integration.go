@@ -29,6 +29,7 @@ const (
 	MandrillType      Type = "mandrill"
 	NetlifyType       Type = "netlify"
 	PaypalType        Type = "paypal"
+	PlaidType         Type = "plaid"
 	ReamazeType       Type = "reamaze"
 	RecaptchaType     Type = "recaptcha"
 	SalesforceType    Type = "salesforce"
@@ -140,6 +141,13 @@ type Paypal struct {
 
 	ConfirmUrl string `json:"confirmUrl,omitempty" datastore:",noindex"`
 	CancelUrl  string `json:"cancelUrl,omitempty" datastore:",noindex"`
+}
+
+// Plaid keys
+type Plaid struct {
+	ClientId  string `json:"clientId,omitempty"`
+	Secret    string `json:"secret,omitempty" datastore:",noindex"`
+	PublicKey string `json:"pubKey,omitempty"`
 }
 
 // Affiliate configuration
@@ -267,6 +275,7 @@ type Integration struct {
 	Mandrill      Mandrill      `json:"-"`
 	Netlify       Netlify       `json:"-"`
 	Paypal        Paypal        `json:"-"`
+	Plaid         Plaid         `json:"-"`
 	Reamaze       Reamaze       `json:"-"`
 	Recaptcha     Recaptcha     `json:"-"`
 	Salesforce    Salesforce    `json:"-"`
