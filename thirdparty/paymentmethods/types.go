@@ -21,7 +21,7 @@ type PaymentMethodOutput struct {
 	PayTokenId string
 
 	// Reference to external user (if any)
-	// ExternalUserId string
+	ExternalUserId string
 
 	// Type of payment method
 	Type Type
