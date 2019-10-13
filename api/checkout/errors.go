@@ -18,6 +18,8 @@ var (
 	UnsupportedEthereumCurrency  = errors.New("Only ETH is supported for 'ethereum' payment method")
 	UnsupportedPaymentType       = errors.New("Unsupported payment type")
 	UnsupportedStripeCurrency    = errors.New("XBT(BTC), ETH not supported by 'stripe' payment method")
+	UserDoesNotExist             = errors.New("User does not exist")
+	UserNotProvided              = errors.New("None of User, User.id, Order.userId is set")
 	WalletCreationError          = errors.New("Failed to create wallet for user")
 	MissingTokenSaleOrPassphrase = errors.New("order.tokenSaleId or tokenSale.passphrase is missing")
 )

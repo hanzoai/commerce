@@ -8,21 +8,30 @@ import (
 	. "hanzo.io/thirdparty/paymentmethods"
 )
 
+type Environment plaid.Environment
+
+const (
+	SandboxEnvironment     Environment = Environment(plaid.Sandbox)
+	DevelopmentEnvironment Environment = Environment(plaid.Development)
+	ProductionEnvironment  Environment = Environment(plaid.Production)
+)
+
 type Client struct {
 	*plaid.Client
 	ctx context.Context
 }
 
 func (c Client) GetPayToken(p PaymentMethodParams) (*PaymentMethodOutput, error) {
-	res, err := c.ExchangePublicToken(p.PublicToken)
+	res, err := c.ExchangePublicToken(p.VerifierToken)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &PaymentMethodOutput{
-		PayToken:   res.AccessToken,
-		PayTokenId: res.ItemID,
-		Type:       PlaidType,
+		PaymentMethodParams: p,
+		PayToken:            res.AccessToken,
+		PayTokenId:          res.ItemID,
+		Type:                PlaidType,
 	}, nil
 }

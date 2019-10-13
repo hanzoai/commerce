@@ -1,22 +1,23 @@
 package accounts
 
 import (
+	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
 )
 
 type Type string
 
 const (
-	AffirmType   Type = "affirm"
+	AffirmType       Type = "affirm"
 	AuthorizeNetType Type = "authorizenet"
-	BalanceType  Type = "balance"
-	EthereumType Type = "ethereum"
-	BitcoinType  Type = "bitcoin"
-	NullType     Type = "null"
-	PayPalType   Type = "paypal"
-	StripeType   Type = "stripe"
+	BalanceType      Type = "balance"
+	EthereumType     Type = "ethereum"
+	BitcoinType      Type = "bitcoin"
+	NullType         Type = "null"
+	PayPalType       Type = "paypal"
+	StripeType       Type = "stripe"
+	PlaidType        Type = "plaid"
 )
 
 type AffirmAccount struct {
@@ -36,7 +37,7 @@ type AuthorizeNetAccount struct {
 	TestRequest    string `json:"testRequest,omitempty"`
 	AccountNumber  string `json:"accountNumber,omitempty"`
 	AccountType    string `json:"accountType,omitempty"`
-	Messages	   string `json:"message,omitempty"`
+	Messages       string `json:"message,omitempty"`
 	ErrorMessages  string `json:"errorMessage,omitempty"`
 }
 
@@ -95,6 +96,10 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	return true
 }
 
+type PlaidAccount struct {
+	StripeAccount
+}
+
 type BitcoinTransaction struct {
 	BitcoinTransactionTxId string           `json:"bitcoinTransactionTxId,omitempty"`
 	BitcoinChainType       blockchains.Type `json:"bitcoinChainType,omitempty"`
@@ -133,17 +138,18 @@ type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
+	PlaidAccount
 	BitcoinTransaction
 	EthereumTransaction
 	AuthorizeNetAccount
 
-	Affirm AffirmAccount				`json:"affirm,omitempty"`
-	PayPal PayPalAccount				`json:"paypal,omitempty"`
-	Stripe StripeAccount				`json:"stripe,omitempty"`
-	Bitcoin BitcoinTransaction			`json:"bitcoin,omitempty"`
-	Ethereum EthereumTransaction		`json:"ethereum,omitempty"`
-	AuthorizeNet AuthorizeNetAccount	`json:"authorizenet,omitempty"`
+	Affirm       AffirmAccount       `json:"affirm,omitempty"`
+	PayPal       PayPalAccount       `json:"paypal,omitempty"`
+	Stripe       StripeAccount       `json:"stripe,omitempty"`
+	Plaid        PlaidAccount        `json:"plaid,omitempty"`
+	Bitcoin      BitcoinTransaction  `json:"bitcoin,omitempty"`
+	Ethereum     EthereumTransaction `json:"ethereum,omitempty"`
+	AuthorizeNet AuthorizeNetAccount `json:"authorizenet,omitempty"`
 
 	Error string `json:"error,omitempty"`
 }
-

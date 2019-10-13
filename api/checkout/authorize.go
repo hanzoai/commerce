@@ -30,8 +30,6 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/reflect"
 
-	. "hanzo.io/api/checkout/types"
-
 	// temp to test go get ./...
 	_ "hanzo.io/thirdparty/paymentmethods/plaid"
 )
