@@ -7,12 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/token"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 // Copy to Hanzo
@@ -115,8 +115,8 @@ func confirm(c *gin.Context) {
 
 	// Return a new token with user id set
 	loginTok := middleware.GetToken(c)
-	loginTok.Set("user-id", usr.Id())
-	loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
+	loginTok.UserId = usr.Id()
+	loginTok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
 
-	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.String()})
+	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.Encode(org.SecretKey)})
 }
