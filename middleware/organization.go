@@ -8,7 +8,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	token "hanzo.io/util/oldjwt"
+	"hanzo.io/types/accesstoken"
 	"hanzo.io/util/session"
 )
 
@@ -69,8 +69,8 @@ func GetOrganization(c *gin.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
 }
 
-func GetToken(c *gin.Context) *token.Token {
-	return c.MustGet("token").(*token.Token)
+func GetToken(c *gin.Context) *accesstoken.AccessToken {
+	return c.MustGet("token").(*accesstoken.AccessToken)
 }
 
 func GetNamespace(c *gin.Context) context.Context {
