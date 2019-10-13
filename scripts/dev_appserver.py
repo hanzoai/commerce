@@ -2,11 +2,20 @@
 
 import os
 import sys
+import subprocess
+import json
 
+result = subprocess.check_output([
+        'gcloud',
+        'info',
+        "--format=json"
+    ])
 
+GCLOUD_PATH = json.loads(result)['installation']['sdk_root']
+SERVER_PATH = os.path.join(GCLOUD_PATH, 'bin/dev_appserver.py')
 PLATFORM_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-SDK_PATH      = os.path.join(PLATFORM_PATH, 'sdk')
-SERVER_PATH   = os.path.join(SDK_PATH, 'dev_appserver.py')
+
+print(SERVER_PATH)
 
 PORTS = {
     '--admin_port=0': int(os.environ['DEV_APPSERVER_ADMIN_PORT']),
@@ -27,7 +36,7 @@ if __name__ == '__main__':
         # '--dev_appserver_log_level=info',
         '--enable_task_running=true',
         os.path.join(PLATFORM_PATH, 'config/test'),
-        os.path.join(PLATFORM_PATH, 'api/app.dev.yaml'),
+        os.path.join(PLATFORM_PATH, 'api/app.development.yaml'),
     ])
 
     argv = 'python2 {} {}'.format(SERVER_PATH, ' '.join(sys.argv[1:]))

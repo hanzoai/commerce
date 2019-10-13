@@ -47,7 +47,7 @@ func NewContext(args ...Options) Context {
 	sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
 
 	// Derive project path from GOPATH
-	projectDir := filepath.Join(os.Getenv("GOPATH"), "../..")
+	projectDir := filepath.Join(os.Getenv("GOPATH"), "src/hanzo.io")
 
 	aetest.PrepareDevAppserver = func() error {
 		// Convert port into a string and update environment for dev_appserver
@@ -66,7 +66,7 @@ func NewContext(args ...Options) Context {
 	var inst aetest.Instance
 	err = retry.Retry(10, func() error {
 		inst, err = aetest.NewInstance(&aetest.Options{
-			AppID: opts.AppID,
+			AppID:                       opts.AppID,
 			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
 		})
 		if err != nil {
