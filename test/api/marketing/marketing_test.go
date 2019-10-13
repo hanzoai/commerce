@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/ads/adcampaign"
 	"hanzo.io/models/ads/adconfig"
@@ -14,7 +15,6 @@ import (
 	"hanzo.io/models/media"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
@@ -58,13 +58,13 @@ var _ = BeforeSuite(func() {
 	marketingApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
-	accessToken = org.AddToken("test-admin-key", permission.Admin)
+	accessToken, _ := org.GetTokenByName("test-secret-key")
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.Header.Set("Authorization", accessToken.String)
 	})
 })
 

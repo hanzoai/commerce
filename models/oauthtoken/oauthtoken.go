@@ -6,9 +6,9 @@ import (
 
 	"hanzo.io/models/mixin"
 
+	"hanzo.io/log"
 	"hanzo.io/util/bit"
 	"hanzo.io/util/jwt"
-	"hanzo.io/log"
 	"hanzo.io/util/rand"
 )
 

@@ -17,7 +17,9 @@ const (
 // Hooks
 func (o *Organization) BeforeCreate() error {
 	o.Fees.Id = o.Id()
-	o.SecretKey = []byte(rand.SecretKey())
+	if o.SecretKey == nil {
+		o.SecretKey = []byte(rand.SecretKey())
+	}
 	// Generate Tokens
 	o.AddDefaultTokens()
 
