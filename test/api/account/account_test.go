@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/transaction"
@@ -14,8 +15,6 @@ import (
 	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/thirdparty/ethereum"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/log"
-	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 
 	. "hanzo.io/util/test/ginclient"
@@ -55,7 +54,9 @@ var _ = BeforeSuite(func() {
 	accountApi.Route(cl.Router)
 
 	// Create organization for tests, accessToken
-	accessToken = org.AddToken("test-published-key", permission.Published)
+	tok, _ := org.GetTokenByName("test-published-key")
+	accessToken = tok.String
+
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -341,7 +342,8 @@ var _ = Describe("account", func() {
 
 	})
 
-	Context("Withdraw", func() {
+	// Reenable when we care about crypto again
+	XContext("Withdraw", func() {
 		It("Should withdraw ethereum", func() {
 			req := `{
 				"email": "dev@hanzo.ai",

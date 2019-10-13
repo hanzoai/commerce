@@ -10,7 +10,6 @@ import (
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 
@@ -39,7 +38,7 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
-	accessToken := org.AddToken("test-published-key", permission.Admin)
+	accessToken, _ := org.GetTokenByName("test-secret-key")
 	org.MustUpdate()
 
 	// Save namespaced db
@@ -50,7 +49,7 @@ var _ = BeforeSuite(func() {
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.Header.Set("Authorization", accessToken.String)
 	})
 
 	nsCtx, _ := appengine.Namespace(ctx, "_blockchains")
