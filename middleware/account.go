@@ -14,8 +14,8 @@ func AccountRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tok := GetToken(c)
 
-		id, ok := tok.Get("user-id").(string)
-		if !ok {
+		id := tok.UserId
+		if id == "" {
 			http.Fail(c, 403, "Access Denied", errors.New("Access Denied"))
 			return
 		}

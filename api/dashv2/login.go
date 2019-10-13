@@ -143,10 +143,10 @@ func login(c *gin.Context) {
 			Currency:         string(cur),
 			FullName:         org.FullName,
 			CreatedAt:        org.CreatedAt,
-			LiveSecretKey:    org.MustGetTokenByName("live-secret-key").String(),
-			LivePublishKey:   org.MustGetTokenByName("live-published-key").String(),
-			TestSecretKey:    org.MustGetTokenByName("test-secret-key").String(),
-			TestPublishedKey: org.MustGetTokenByName("test-published-key").String(),
+			LiveSecretKey:    org.MustGetTokenByName("live-secret-key").String,
+			LivePublishKey:   org.MustGetTokenByName("live-published-key").String,
+			TestSecretKey:    org.MustGetTokenByName("test-secret-key").String,
+			TestPublishedKey: org.MustGetTokenByName("test-published-key").String,
 		}
 	}
 

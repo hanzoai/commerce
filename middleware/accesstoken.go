@@ -10,10 +10,10 @@ import (
 	"google.golang.org/appengine"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/bit"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/session"
 )
@@ -122,7 +122,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Verify token signature
 		if ok, err := tok.Verify(org.SecretKey); !ok {
-			log.Error("Org '%s' == '%s', Token '%s' == '%s' == '%s', Verify error '%s'", org.Id(), tok.EntityId, tok.TokenString, tok.String(), accessToken, err, ctx)
+			log.Error("Org '%s' == '%s', Token '%s' == '%s', Verify error '%s'", org.Id(), tok.Subject, tok.String, accessToken, err, ctx)
 			http.Fail(c, 403, "Unable to verify token.", err)
 			return
 		}
