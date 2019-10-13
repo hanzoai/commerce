@@ -38,7 +38,7 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
-	accessToken := org.AddToken("test-published-key", permission.Admin)
+	accessToken, _ := org.GetTokenByName("test-secret-key")
 	org.MustUpdate()
 
 	// Save namespaced db
@@ -47,7 +47,7 @@ var _ = BeforeSuite(func() {
 	// Client for API calls
 	cl = ginclient.New(ctx)
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.Header.Set("Authorization", accessToken.String)
 	})
 
 	// Add API routes to clients

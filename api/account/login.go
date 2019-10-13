@@ -9,11 +9,11 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 type loginReq struct {
@@ -94,8 +94,8 @@ func login(c *gin.Context) {
 
 	// Return a new token with user id set
 	tok := middleware.GetToken(c)
-	tok.Set("user-id", usr.Id())
-	tok.Set("exp", time.Now().Add(time.Hour*24*7))
+	tok.UserId = usr.Id()
+	tok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
 
-	http.Render(c, 200, loginRes{tok.String()})
+	http.Render(c, 200, loginRes{tok.Encode(org.SecretKey)})
 }

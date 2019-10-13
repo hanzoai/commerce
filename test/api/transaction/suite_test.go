@@ -9,7 +9,6 @@ import (
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 
@@ -39,9 +38,12 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
-	accessToken = org.AddToken("test-admin-key", permission.Admin)
-	pAccessToken = org.AddToken("test-published-key", permission.Published)
+	tok1, _ := org.GetTokenByName("test-secret-key")
+	tok2, _ := org.GetTokenByName("test-published-key")
 	org.MustUpdate()
+
+	accessToken = tok1.String
+	pAccessToken = tok2.String
 
 	// Save namespaced db
 	db = datastore.New(org.Namespaced(ctx))

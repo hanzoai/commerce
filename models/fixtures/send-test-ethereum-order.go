@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
+	"hanzo.io/api/checkout"
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -15,8 +16,6 @@ import (
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/json"
-
-	. "hanzo.io/api/checkout"
 )
 
 var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {
@@ -47,7 +46,7 @@ var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context)
 	ord.Subtotal = currency.Cents(100000000)
 	ord.Mode = order.ContributionMode
 
-	ch := Authorization{
+	ch := checkout.Authorization{
 		Order: ord,
 	}
 
@@ -63,7 +62,7 @@ var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", accessToken.String())
+	req.Header.Set("Authorization", accessToken.String)
 
 	if res, err := client.Do(req); err != nil {
 		panic(err)

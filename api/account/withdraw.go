@@ -37,12 +37,12 @@ func withdraw(c *gin.Context) {
 
 	// Account on the org should be publically avaiable and withdrawable
 	account, success := orgWallet.GetAccountByName(request.Name)
-	if !success || (success && !account.Withdrawable) {
+	if !success || account != nil || (success && !account.Withdrawable) {
 		if !success {
 			log.Error("Account %s does not exist", request.Name, c)
 		}
-		if !account.Withdrawable {
-			log.Error("Account %s does is not withdrawable", request.Name, c)
+		if account != nil && !account.Withdrawable {
+			log.Error("Account %s is not withdrawable", request.Name, c)
 		}
 		http.Fail(c, 400, "Account not withdrawable", ErrorAccountNotWithdrawable)
 		return

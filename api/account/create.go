@@ -272,9 +272,9 @@ func create(c *gin.Context) {
 	if org.SignUpOptions.ImmediateLogin {
 		log.Info("User is being immediately logged in", c)
 		loginTok := middleware.GetToken(c)
-		loginTok.Set("user-id", usr.Id())
-		loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
-		tokStr = loginTok.String()
+		loginTok.UserId = usr.Id()
+		loginTok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
+		tokStr = loginTok.Encode(org.SecretKey)
 	}
 
 	counter.IncrUser(usr.Context(), usr.CreatedAt)
