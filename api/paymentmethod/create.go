@@ -13,6 +13,7 @@ import (
 
 func create(c *gin.Context) {
 	usr := middleware.GetUser(c)
+	org := middleware.GetOrganization(c)
 	usr.Id()
 
 	req := &CreateReq{}
@@ -28,13 +29,13 @@ func create(c *gin.Context) {
 	t := c.Params.ByName("paymentmethodtype")
 	switch t {
 	case "plaid":
-		pm = plaid.New(c, "", "", "", plaid.SandboxEnvironment)
+		pm = plaid.New(c, org.Plaid.ClientId, org.Plaid.Secret, org.Plaid.PublicKey, plaid.SandboxEnvironment)
 	default:
 		http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
 		return
 	}
 
-	out, err := pm.GetPayToken(PaymentMethodParams{req.Token})
+	out, err := pm.GetPayToken(PaymentMethodParams{req.PublicToken, req.AccountId, req.Metadata})
 	if err != nil {
 		http.Fail(c, 500, "Error while creating paykey for: "+t, err)
 		return

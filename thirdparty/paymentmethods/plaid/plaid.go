@@ -10,14 +10,6 @@ import (
 	"github.com/plaid/plaid-go/plaid"
 )
 
-type Environment plaid.Environment
-
-const (
-	SandboxEnvironment     Environment = Environment(plaid.Sandbox)
-	DevelopmentEnvironment Environment = Environment(plaid.Development)
-	ProductionEnvironment  Environment = Environment(plaid.Production)
-)
-
 func New(ctx context.Context, client_id, secret, pub_key string, env Environment) *Client {
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
