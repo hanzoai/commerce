@@ -74,12 +74,12 @@ var _ = BeforeSuite(func() {
 	stripeApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
-	accessToken = org.AddToken("test-published-key", permission.Admin)
+	accessToken, _ := org.GetTokenByName("test-secret-key")
 	org.MustPut()
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.Header.Set("Authorization", accessToken.String)
 	})
 
 	// Save namespaced db

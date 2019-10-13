@@ -32,17 +32,19 @@ func (b Backend) logToDevServer(level logging.Level, formatted string) error {
 // Log implementation that uses App Engine's logging methods
 func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
 	log.Println(formatted)
-	switch level {
-	case logging.WARNING:
-		aelog.Warningf(b.context, formatted)
-	case logging.ERROR:
-		aelog.Errorf(b.context, formatted)
-	case logging.CRITICAL:
-		aelog.Criticalf(b.context, formatted)
-	case logging.INFO:
-		aelog.Infof(b.context, formatted)
-	default:
-		aelog.Debugf(b.context, formatted)
+	if !config.IsTest {
+		switch level {
+		case logging.WARNING:
+			aelog.Warningf(b.context, formatted)
+		case logging.ERROR:
+			aelog.Errorf(b.context, formatted)
+		case logging.CRITICAL:
+			aelog.Criticalf(b.context, formatted)
+		case logging.INFO:
+			aelog.Infof(b.context, formatted)
+		default:
+			aelog.Debugf(b.context, formatted)
+		}
 	}
 
 	return nil
