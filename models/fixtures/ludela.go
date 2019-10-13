@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"time"
+	// "time"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,9 +18,9 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
+	// "hanzo.io/types/accesstoken"
 	"hanzo.io/types/email"
 	"hanzo.io/types/website"
-	token "hanzo.io/util/oldjwt"
 )
 
 var _ = New("ludela", func(c *gin.Context) *organization.Organization {
@@ -67,40 +67,40 @@ var _ = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.SignUpOptions.ImmediateLogin = true
 
 	// API Tokens
-	org.Tokens = []token.Token{
-		token.Token{
-			EntityId:    "V9OT22mI0a",
-			Id:          "XodGra0dirg",
-			IssuedAt:    time.Now(),
-			Name:        "live-secret-key",
-			Permissions: 20,
-			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
-		},
-		token.Token{
-			EntityId:    "V9OT22mI0a",
-			Id:          "z2ZCUCxkfhE",
-			IssuedAt:    time.Now(),
-			Name:        "live-published-key",
-			Permissions: 4503617075675172,
-			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
-		},
-		token.Token{
-			EntityId:    "V9OT22mI0a",
-			Id:          "hwsF9-4etJ4",
-			IssuedAt:    time.Now(),
-			Name:        "test-secret-key",
-			Permissions: 24,
-			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
-		},
-		token.Token{
-			EntityId:    "V9OT22mI0a",
-			Id:          "GjpBDnTuDUk",
-			IssuedAt:    time.Now(),
-			Name:        "test-published-key",
-			Permissions: 4503617075675176,
-			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
-		},
-	}
+	// org.Tokens = []accesstoken.AccessToken{
+	// 	accesstoken.AccessToken{
+	// 		EntityId:    "V9OT22mI0a",
+	// 		Id:          "XodGra0dirg",
+	// 		IssuedAt:    time.Now(),
+	// 		Name:        "live-secret-key",
+	// 		Permissions: 20,
+	// 		Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+	// 	},
+	// 	accesstoken.AccessToken{
+	// 		EntityId:    "V9OT22mI0a",
+	// 		Id:          "z2ZCUCxkfhE",
+	// 		IssuedAt:    time.Now(),
+	// 		Name:        "live-published-key",
+	// 		Permissions: 4503617075675172,
+	// 		Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+	// 	},
+	// 	accesstoken.AccessToken{
+	// 		EntityId:    "V9OT22mI0a",
+	// 		Id:          "hwsF9-4etJ4",
+	// 		IssuedAt:    time.Now(),
+	// 		Name:        "test-secret-key",
+	// 		Permissions: 24,
+	// 		Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+	// 	},
+	// 	accesstoken.AccessToken{
+	// 		EntityId:    "V9OT22mI0a",
+	// 		Id:          "GjpBDnTuDUk",
+	// 		IssuedAt:    time.Now(),
+	// 		Name:        "test-published-key",
+	// 		Permissions: 4503617075675176,
+	// 		Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+	// 	},
+	// }
 
 	org.Email.Enabled = true
 	org.Email.Defaults.From = email.Email{
