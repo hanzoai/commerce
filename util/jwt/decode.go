@@ -82,6 +82,7 @@ func Decode(tokenString string, secret []byte, algorithm string, claims Claimabl
 	// Perform validation
 	sig := parts[2]
 	if err = method.Verify(strings.Join(parts[0:2], "."), sig, secret); err != nil {
+		log.Warn("Verify %v, %v, %v, %v", claims, strings.Join(parts[0:2], "."), sig, string(secret))
 		return err
 	}
 

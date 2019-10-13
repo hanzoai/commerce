@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
@@ -16,7 +17,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/georate"
 	"hanzo.io/util/gincontext"
-	"hanzo.io/log"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
@@ -59,13 +59,13 @@ var _ = BeforeSuite(func() {
 	libraryApi.Route(cl.Router, publishedRequired)
 
 	// Create organization for tests, accessToken
-	accessToken = org.AddToken("test-published-key", permission.Published)
+	accessToken, _ := org.GetTokenByName("test-published-key")
 	err = org.Put()
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
-		r.Header.Set("Authorization", accessToken)
+		r.Header.Set("Authorization", accessToken.String)
 	})
 
 	// Save namespaced db
