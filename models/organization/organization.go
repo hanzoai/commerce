@@ -137,6 +137,9 @@ type Organization struct {
 	// Paypal connection
 	Paypal integration.Paypal `json:"-"`
 
+	// Plaid connection
+	Plaid integration.Plaid `json:"-"`
+
 	// ReAmaze settings
 	Reamaze integration.Reamaze `json:"-"`
 
