@@ -1,8 +1,8 @@
 package test
 
 import (
-	"hanzo.io/models/product"
 	"github.com/icrowley/fake"
+	"hanzo.io/models/product"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -27,7 +27,6 @@ var _ = Describe("product", func() {
 			Expect(res.Slug).To(Equal(req.Slug))
 			Expect(res.Currency).To(Equal(req.Currency))
 			Expect(res.Price).To(Equal(req.Price))
-			Expect(res.Shipping).To(Equal(req.Shipping))
 			Expect(res.ListPrice).To(Equal(req.ListPrice))
 		})
 	})
@@ -51,7 +50,6 @@ var _ = Describe("product", func() {
 			Expect(res.Slug).To(Equal(req.Slug))
 			Expect(res.Currency).To(Equal(req.Currency))
 			Expect(res.Price).To(Equal(req.Price))
-			Expect(res.Shipping).To(Equal(req.Shipping))
 			Expect(res.ListPrice).To(Equal(req.ListPrice))
 		})
 	})
@@ -85,7 +83,6 @@ var _ = Describe("product", func() {
 			Expect(res.Slug).To(Equal(prod.Slug))
 			Expect(res.Currency).To(Equal(prod.Currency))
 			Expect(res.Price).To(Equal(prod.Price))
-			Expect(res.Shipping).To(Equal(prod.Shipping))
 			Expect(res.ListPrice).To(Equal(prod.ListPrice))
 		})
 	})
@@ -114,7 +111,6 @@ var _ = Describe("product", func() {
 			Expect(res.Slug).To(Equal(req.Slug))
 			Expect(res.Currency).To(Equal(req.Currency))
 			Expect(res.Price).To(Equal(req.Price))
-			Expect(res.Shipping).To(Equal(req.Shipping))
 			Expect(res.ListPrice).To(Equal(req.ListPrice))
 		})
 	})
