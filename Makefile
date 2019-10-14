@@ -47,7 +47,7 @@ dev_appserver = python2 $(sdk)/dev_appserver.py \
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
-			   				  -not -path "./test/*" \
+			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
@@ -56,7 +56,7 @@ ifeq ($(os), linux)
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
-			   				  -not -path "./test/*" \
+			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
@@ -114,6 +114,9 @@ all: deps test install
 
 build: deps
 	$(go) build $(packages)
+
+clean:
+	$(go) clean -modcache
 
 deps:
 	export GO111MODULE=on
