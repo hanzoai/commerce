@@ -1,14 +1,13 @@
 package ginclient
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
-
-	"golang.org/x/net/context"
 
 	"github.com/gin-gonic/gin"
 

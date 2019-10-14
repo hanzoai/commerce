@@ -3,7 +3,7 @@ package gincontext
 import (
 	"testing"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/gin-gonic/gin"
 
