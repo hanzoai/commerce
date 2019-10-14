@@ -1,7 +1,7 @@
 package ae
 
 import (
-	ctx "golang.org/x/net/context"
+	ctx "context"
 	"google.golang.org/appengine/aetest"
 
 	"hanzo.io/log"
