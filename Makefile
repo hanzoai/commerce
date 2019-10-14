@@ -118,7 +118,7 @@ build: deps
 deps:
 	export GO111MODULE=on
 	$(go) list ./...
-	$(go) get
+	$(go) get ./...
 
 # INSTALL
 install:
