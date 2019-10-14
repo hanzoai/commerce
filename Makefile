@@ -116,8 +116,9 @@ build: deps
 	$(go) build $(modules)
 
 deps:
-	$(gpm) get
-	# TODO: $(go) get ./...
+	export GO111MODULE=on
+	$(go) list ./...
+	$(go) get
 
 # INSTALL
 install:
