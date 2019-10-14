@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/appengine/taskqueue"
 
+	// "hanzo.io/config"
 	"hanzo.io/log"
 )
 
@@ -120,6 +121,20 @@ func (f *Function) Call(c context.Context, args ...interface{}) error {
 	if f.name != "" {
 		t.Name = f.name
 	}
+
+	// For testing environments only
+	// if config.IsTest {
+	// 	vals := []reflect.Value{
+	// 		reflect.ValueOf(c),
+	// 	}
+
+	// 	for arg := range args {
+	// 		vals = append(vals, reflect.ValueOf(arg))
+	// 	}
+
+	// 	f.fv.Call(vals)
+	// 	return nil
+	// }
 
 	// Add to taskqueue
 	if _, err := taskqueue.Add(c, t, f.queue); err != nil {
