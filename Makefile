@@ -113,7 +113,7 @@ endif
 all: deps test install
 
 build: deps
-	$(go) build $(modules)
+	$(go) build $(packages)
 
 deps:
 	export GO111MODULE=on
