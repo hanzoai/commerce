@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/fee"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/order"
+	"hanzo.io/models/paymentmethod"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction/util"
@@ -24,7 +25,6 @@ import (
 	"hanzo.io/util/val"
 	"time"
 
-	. "hanzo.io/thirdparty/paymentmethods"
 	. "hanzo.io/types"
 )
 
@@ -98,11 +98,12 @@ type User struct {
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Referrals   []referral.Referral `json:"referrals,omitempty" datastore:"-"`
-	Referrers   []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
-	Orders      []order.Order       `json:"orders,omitempty" datastore:"-"`
-	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
-	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
+	Referrals      []referral.Referral           `json:"referrals,omitempty" datastore:"-"`
+	Referrers      []referrer.Referrer           `json:"referrers,omitempty" datastore:"-"`
+	Orders         []order.Order                 `json:"orders,omitempty" datastore:"-"`
+	PendingFees    []fee.Fee                     `json:"pendingFees,omitempty" datastore:"-"`
+	PaymentMethods []paymentmethod.PaymentMethod `json:"paymentMethod,omitempty" datastore:"-"`
+	Affiliate      affiliate.Affiliate           `json:"affiliate,omitempty" datastore:"-"`
 
 	Transactions map[currency.Type]*util.TransactionData `json:"transactions" datastore:"-"`
 
@@ -123,8 +124,6 @@ type User struct {
 
 	// For Halcyon
 	Commission commission.Commission `json:"commission"`
-
-	PaymentMethods []*PaymentMethodOutput `json:"paymentMethods"`
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
@@ -291,6 +290,17 @@ func (u *User) LoadReferrals() error {
 	}
 
 	log.Warn("Referrals %v", u.Referrals)
+
+	return nil
+}
+
+func (u *User) LoadPaymentMethods() error {
+	u.PaymentMethods = make([]paymentmethod.PaymentMethod, 0)
+	if _, err := paymentmethod.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.PaymentMethods); err != nil {
+		return err
+	}
+
+	log.Warn("PaymentMethods %v", u.PaymentMethods)
 
 	return nil
 }
