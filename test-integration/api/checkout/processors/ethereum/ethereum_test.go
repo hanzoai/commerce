@@ -1,13 +1,13 @@
-package test
+package integration
 
 import (
 	"fmt"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
-	"hanzo.io/test/api/checkout/integration/requests"
+	"hanzo.io/test/integration/api/checkout/processors/requests"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -16,8 +16,8 @@ var _ = Describe("/checkout/authorize", func() {
 	path := "/authorize"
 
 	Context("Authorize new user", func() {
-		It("Should work with Bitcoin Order", func() {
-			w := cl.Post(path, requests.ValidBitcoinOrder, nil)
+		It("Should work with Ethereum Order", func() {
+			w := cl.Post(path, requests.ValidEthereumOrder, nil)
 
 			Expect(w.Code).To(Equal(200))
 
@@ -46,8 +46,8 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(usr.Key()).ToNot(BeNil())
 		})
 
-		It("Should not work with Not-Bitcoin", func() {
-			w := cl.Post(path, requests.InvalidCurrencyBitcoinOrder, nil)
+		It("Should not work with Not-Ethereum", func() {
+			w := cl.Post(path, requests.InvalidCurrencyEthereumOrder, nil)
 			Expect(w.Code).To(Equal(400))
 		})
 
@@ -56,8 +56,8 @@ var _ = Describe("/checkout/authorize", func() {
 		//   Order Wallet w/1 Account
 		// User
 		//   User Wallet w/1 Account
-		It("Should work with Bitcoin TokenSale", func() {
-			w := cl.Post(path, fmt.Sprintf(requests.ValidBitcoinTokenSaleOrder, ts.Id()), nil)
+		It("Should work with Ethereum TokenSale", func() {
+			w := cl.Post(path, fmt.Sprintf(requests.ValidEthereumTokenSaleOrder, ts.Id()), nil)
 
 			Expect(w.Code).To(Equal(200))
 
@@ -119,12 +119,12 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should not work with Missing TokenSaleId", func() {
-			w := cl.Post(path, requests.InvalidBitcoinNoTokenSaleIdTokenSaleOrder, nil)
+			w := cl.Post(path, requests.InvalidEthereumNoTokenSaleIdTokenSaleOrder, nil)
 			Expect(w.Code).To(Equal(400))
 		})
 
 		It("Should not work with Missing TokenSale Passphrase", func() {
-			w := cl.Post(path, fmt.Sprintf(requests.InvalidBitcoinPassphraseTokenSaleOrder, ts.Id()), nil)
+			w := cl.Post(path, fmt.Sprintf(requests.InvalidEthereumPassphraseTokenSaleOrder, ts.Id()), nil)
 			Expect(w.Code).To(Equal(400))
 		})
 	})

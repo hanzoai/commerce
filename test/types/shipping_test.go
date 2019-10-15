@@ -3,6 +3,8 @@ package test
 import (
 	"hanzo.io/models/product"
 	"hanzo.io/models/types/currency"
+
+	. "hanzo.io/models/types/productcachedvalues"
 	. "hanzo.io/models/types/shipping"
 	. "hanzo.io/models/types/weight"
 
@@ -55,8 +57,10 @@ var _ = Describe("models/types/weight", func() {
 			}
 
 			p := product.Product{
-				Weight:     1,
-				WeightUnit: Pound,
+				ProductCachedValues: ProductCachedValues{
+					Weight:     1,
+					WeightUnit: Pound,
+				},
 			}
 
 			price, c := rates.GetPrice(&p)
@@ -89,8 +93,10 @@ var _ = Describe("models/types/weight", func() {
 			}
 
 			p := product.Product{
-				Weight:     100,
-				WeightUnit: Pound,
+				ProductCachedValues: ProductCachedValues{
+					Weight:     100,
+					WeightUnit: Pound,
+				},
 			}
 
 			price, c := rates.GetPrice(&p)
@@ -123,8 +129,10 @@ var _ = Describe("models/types/weight", func() {
 			}
 
 			p := product.Product{
-				Weight:     10000,
-				WeightUnit: Pound,
+				ProductCachedValues: ProductCachedValues{
+					Weight:     10000,
+					WeightUnit: Pound,
+				},
 			}
 
 			price, c := rates.GetPrice(&p)
@@ -157,8 +165,10 @@ var _ = Describe("models/types/weight", func() {
 			}
 
 			p := product.Product{
-				Weight:     10000,
-				WeightUnit: Gram,
+				ProductCachedValues: ProductCachedValues{
+					Weight:     10000,
+					WeightUnit: Gram,
+				},
 			}
 
 			price, c := rates.GetPrice(&p)
