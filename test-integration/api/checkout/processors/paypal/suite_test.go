@@ -1,4 +1,4 @@
-package paypal_test
+package integration
 
 import (
 	"net/http"

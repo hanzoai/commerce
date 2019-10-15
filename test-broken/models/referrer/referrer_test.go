@@ -73,7 +73,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -85,7 +85,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 

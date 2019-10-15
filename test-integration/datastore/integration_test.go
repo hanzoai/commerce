@@ -1,4 +1,4 @@
-package datastore_integration_test
+package integration
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/mixin"
-	"hanzo.io/test/datastore/integration/tasks"
+	"hanzo.io/test/integration/datastore/tasks"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
@@ -39,7 +39,7 @@ var _ = AfterSuite(func() {
 })
 
 func checkCountValue(entity mixin.Entity, numModels int, expected int) {
-	err := Retry(30, func() error {
+	err := Retry(3, func() error {
 		models := entity.Slice()
 		_, err := entity.Query().All().GetAll(models)
 		if err != nil {

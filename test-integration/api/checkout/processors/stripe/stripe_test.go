@@ -1,4 +1,4 @@
-package stripe_test
+package integration
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
-	"hanzo.io/test/api/checkout/integration/requests"
+	"hanzo.io/test/integration/api/checkout/processors/requests"
 	"hanzo.io/util/json"
 
 	. "hanzo.io/util/test/ginkgo"
