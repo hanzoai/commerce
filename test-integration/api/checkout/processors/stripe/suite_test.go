@@ -1,4 +1,4 @@
-package test
+package integration
 
 import (
 	"net/http"
@@ -8,23 +8,27 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/product"
+	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
-	"hanzo.io/models/tokensale"
 	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/bitcoin"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/test/ae"
 	"hanzo.io/util/test/ginclient"
 
 	checkoutApi "hanzo.io/api/checkout"
+	couponApi "hanzo.io/api/coupon"
+	orderApi "hanzo.io/api/order"
 	storeApi "hanzo.io/api/store"
+	stripeApi "hanzo.io/thirdparty/stripe/api"
 
+	_ "hanzo.io/thirdparty/stripe/tasks"
 	. "hanzo.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	Setup("api/checkout/integration/bitcoin", t)
+	Setup("api/checkout/integration/stripe", t)
 }
 
 var (
@@ -33,48 +37,53 @@ var (
 	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
+	prod        *product.Product
+	refIn       *referrer.Referrer
 	stor        *store.Store
 	u           *user.User
-	ts          *tokensale.TokenSale
 )
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	// Set BitcoinClient to Test Mode
-	bitcoin.Test(true)
-
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	ctx = ae.NewContext()
+	ctx = ae.NewContext(ae.Options{
+		Modules: []string{"default"},
+		Debug:   true,
+	})
 
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
+
+	// Run default fixtures to setup organization and store, etc
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	fixtures.PlatformWallet(c)
-
-	// Save namespaced db
-	db = datastore.New(org.Namespaced(ctx))
-
 	stor = fixtures.Store(c).(*store.Store)
-	ts = tokensale.Fake(db)
-	ts.MustCreate()
+	prod = fixtures.Product(c).(*product.Product)
+	fixtures.Variant(c)
+	fixtures.Coupon(c)
+	fixtures.Discount(c)
+	refIn = fixtures.Referrer(c).(*referrer.Referrer)
 
 	// Setup client and add routes for payment API tests.
 	cl = ginclient.New(ctx)
-	cl.IgnoreErrors(true)
 	checkoutApi.Route(cl.Router, adminRequired)
+	orderApi.Route(cl.Router, adminRequired)
 	storeApi.Route(cl.Router, adminRequired)
+	couponApi.Route(cl.Router, adminRequired)
+	stripeApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken, _ := org.GetTokenByName("test-secret-key")
-	err := org.Put()
-	Expect(err).NotTo(HaveOccurred())
+	org.MustPut()
 
 	// Set authorization header for subsequent requests
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken.String)
 	})
+
+	// Save namespaced db
+	db = datastore.New(org.Namespaced(ctx))
 })
 
 // Tear-down appengine context
