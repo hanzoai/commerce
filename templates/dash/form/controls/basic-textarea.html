@@ -1,9 +1,0 @@
-<div class="{has-error: hasError()}">
-  <label __for="{ model.name }" class="control-label { opts.labelclasses }">
-    <span>{ opts.label }</span>
-  </label>
-  <div class="section { opts.controlclasses }">
-    <textarea id="{ model.name }" name="{ model.name }" type="text"  onchange="{ change }" onblur="{ change }" placeholder="{ model.placeholder }" class="form-control">{ model.value }</textarea>
-    <div if="{hasError()}" class="error-container help-block animated fadeInUp">{ error }</div>
-  </div>
-</div>
