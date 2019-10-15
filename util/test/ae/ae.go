@@ -15,6 +15,13 @@ import (
 )
 
 func NewContext(args ...Options) Context {
+	// Share Context if possible
+	Counter++
+
+	if SharedContext != nil {
+		return SharedContext
+	}
+
 	var (
 		opts Options
 		err  error
@@ -93,5 +100,6 @@ func NewContext(args ...Options) Context {
 	ctx := appengine.NewContext(req)
 
 	// Return context lookalike with instance embedded
-	return &context{ctx, inst}
+	SharedContext = &context{ctx, inst}
+	return SharedContext
 }

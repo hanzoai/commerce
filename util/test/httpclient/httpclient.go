@@ -1,6 +1,6 @@
 package httpclient
 
-import "golang.org/x/net/context"
+import "context"
 
 func New(ctx context.Context, moduleName string) *Client {
 	client := new(Client)
