@@ -109,8 +109,8 @@ type Order struct {
 	Type accounts.Type `json:"type,omitempty"`
 
 	// Payment Method Id
-	PaymentMethodId string                       `json:"paymentMethodId,omitempty"`
-	PaymentMethod   *paymentmethod.PaymentMethod `json:"paymentMethod",datastore:"-"`
+	PaymentMethodId string                      `json:"paymentMethodId,omitempty"`
+	PaymentMethod   paymentmethod.PaymentMethod `json:"paymentMethod",datastore:"-"`
 
 	// Payment mode
 	Mode Mode `json:"mode,omitempty"`
@@ -652,11 +652,11 @@ func (o Order) DescriptionLong() string {
 }
 
 func (o Order) GetPaymentMethod() (*paymentmethod.PaymentMethod, error) {
-	o.PaymentMethod = paymentmethod.New(o.Db)
+	o.PaymentMethod = *paymentmethod.New(o.Db)
 	if err := o.PaymentMethod.GetById(o.PaymentMethodId); err != nil {
 		return nil, err
 	}
-	return o.PaymentMethod, nil
+	return &o.PaymentMethod, nil
 }
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {

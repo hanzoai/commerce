@@ -52,7 +52,6 @@ import (
 	namespaceApi "hanzo.io/api/namespace"
 	orderApi "hanzo.io/api/order"
 	organizationApi "hanzo.io/api/organization"
-	paymentMethodApi "hanzo.io/api/paymentmethod"
 	referrerApi "hanzo.io/api/referrer"
 	reviewApi "hanzo.io/api/review"
 	searchApi "hanzo.io/api/search"
@@ -105,9 +104,6 @@ func Route(api router.Router) {
 
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
-
-	// Paymenth Method APIS
-	paymentMethodApi.Route(api)
 
 	subscriptionApi.Route(api)
 
