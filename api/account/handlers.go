@@ -22,7 +22,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.GET("/order/:orderid", accountRequired, namespaced, getOrder)
 	api.PATCH("/order/:orderid", accountRequired, namespaced, patchOrder)
-	api.POST("/withdraw", namespaced, accountRequired, withdraw)
+	api.POST("/withdraw", accountRequired, namespaced, withdraw)
+	api.POST("/paymentmethod/:paymentmethodtype", accountRequired, namespaced, createPaymentMethod)
 
 	api.GET("/exists/:emailorusername", namespaced, exists)
 

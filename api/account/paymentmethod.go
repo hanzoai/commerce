@@ -1,4 +1,4 @@
-package paymentmethod
+package account
 
 import (
 	"github.com/gin-gonic/gin"
@@ -9,10 +9,17 @@ import (
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 
+	. "encoding/json"
 	. "hanzo.io/thirdparty/paymentmethods"
 )
 
-func create(c *gin.Context) {
+type CreateReq struct {
+	PublicToken string     `json:"public_token"`
+	AccountId   string     `json:"accountId"`
+	Metadata    RawMessage `json:"metadata"`
+}
+
+func createPaymentMethod(c *gin.Context) {
 	usr := middleware.GetUser(c)
 	org := middleware.GetOrganization(c)
 
