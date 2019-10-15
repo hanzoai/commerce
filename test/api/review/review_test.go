@@ -38,7 +38,6 @@ var _ = Describe("review", func() {
 
 	Context("Get review", func() {
 		req := new(review.Review)
-		res := new(review.Review)
 
 		Before(func() {
 			usr := user.Fake(db)
@@ -50,8 +49,6 @@ var _ = Describe("review", func() {
 			req = review.Fake(db, usr.Id(), prod.Id())
 			req.Enabled = false
 			req.MustCreate()
-
-			res = review.New(db)
 		})
 
 		It("Should not get disabled reviews", func() {
