@@ -16,8 +16,8 @@ import (
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
+	. "hanzo.io/types"
 	. "hanzo.io/util/test/ginkgo"
-	. "hanzo.io/models"
 )
 
 func Test(t *testing.T) {
@@ -52,8 +52,8 @@ var _ = BeforeSuite(func() {
 	subProd.MustPut()
 
 	ord.Items = append(ord.Items, lineitem.LineItem{
-		ProductId : subProd.Id(),
-		Quantity: 1,
+		ProductId: subProd.Id(),
+		Quantity:  1,
 	})
 
 	stor = store.New(ord.Db)
