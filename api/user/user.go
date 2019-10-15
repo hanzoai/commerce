@@ -11,6 +11,7 @@ import (
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/order"
+	"hanzo.io/models/paymentmethod"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/transaction/util"
@@ -73,6 +74,20 @@ func getReferrers(c *gin.Context) {
 	}
 
 	http.Render(c, 200, referrers)
+}
+
+func getPaymentMethods(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	paymentMethods := make([]paymentmethod.PaymentMethod, 0)
+	if _, err := paymentmethod.Query(db).Filter("UserId=", id).GetAll(&paymentMethods); err != nil {
+		http.Fail(c, 400, "Could not query paymentMethod", err)
+		return
+	}
+
+	http.Render(c, 200, paymentMethods)
 }
 
 func getSubscriptions(c *gin.Context) {
