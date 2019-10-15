@@ -23,6 +23,11 @@ func get(c *gin.Context) {
 		return
 	}
 
+	if err := usr.LoadPaymentMethods(); err != nil {
+		http.Fail(c, 500, "User paymentmethods data could get be queried", err)
+		return
+	}
+
 	if err := usr.LoadOrders(); err != nil {
 		http.Fail(c, 500, "User order data could get be queried", err)
 		return

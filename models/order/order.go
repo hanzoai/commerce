@@ -21,6 +21,7 @@ import (
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/paymentmethod"
 	"hanzo.io/models/referrer"
 	"hanzo.io/models/store"
 	"hanzo.io/models/types/accounts"
@@ -106,6 +107,10 @@ type Order struct {
 
 	// Payment processor type - paypal, stripe, etc
 	Type accounts.Type `json:"type,omitempty"`
+
+	// Payment Method Id
+	PaymentMethodId string                       `json:"paymentMethodId,omitempty"`
+	PaymentMethod   *paymentmethod.PaymentMethod `json:"paymentMethod",datastore:"-"`
 
 	// Payment mode
 	Mode Mode `json:"mode,omitempty"`
@@ -644,6 +649,14 @@ func (o Order) DescriptionLong() string {
 	}
 
 	return buffer.String()
+}
+
+func (o Order) GetPaymentMethod() (*paymentmethod.PaymentMethod, error) {
+	o.PaymentMethod = paymentmethod.New(o.Db)
+	if err := o.PaymentMethod.GetById(o.PaymentMethodId); err != nil {
+		return nil, err
+	}
+	return o.PaymentMethod, nil
 }
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
