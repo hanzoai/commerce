@@ -47,7 +47,7 @@ dev_appserver = python2 $(sdk)/dev_appserver.py \
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
-			   				  -not -path "./test/*" \
+			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
@@ -56,7 +56,7 @@ ifeq ($(os), linux)
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./sdk/*" \
-			   				  -not -path "./test/*" \
+			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
@@ -99,7 +99,7 @@ endif
 
 datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api
 
-test_target = -r=true test
+test_target = -r=true test/*
 test_focus := $(focus)
 ifdef test_focus
 	test_target=$(focus)
@@ -113,11 +113,15 @@ endif
 all: deps test install
 
 build: deps
-	$(go) build $(modules)
+	$(go) build $(packages)
+
+clean:
+	$(go) clean -modcache
 
 deps:
-	$(gpm) get
-	# TODO: $(go) get ./...
+	export GO111MODULE=on
+	$(go) list ./...
+	$(go) get ./...
 
 # INSTALL
 install:
@@ -145,13 +149,13 @@ tools:
 
 # TEST/ BENCH
 test: update-env-test
-	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
+	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=test/integration/* $(test_verbose)
 
 test-watch: update-env-test
 	$(ginkgo) watch -r=true --compilers=2 --failFast --trace $(test_verbose)
 
 bench: update-env-test
-	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
+	$(ginkgo) test --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci: update-env-test
 	cd $(pwd); $(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)

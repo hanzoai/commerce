@@ -48,7 +48,7 @@ type Product struct {
 	Excerpt string `json:"excerpt" datastore:",noindex"`
 
 	// Product Description
-	Description string `json:"description", datastore:",noindex"`
+	Description string `json:"description" datastore:",noindex"`
 
 	// Product Media
 	Header Media   `json:"header"`
