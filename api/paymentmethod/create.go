@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/middleware"
+	"hanzo.io/models/paymentmethod"
 	"hanzo.io/thirdparty/paymentmethods/plaid"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -14,7 +15,6 @@ import (
 func create(c *gin.Context) {
 	usr := middleware.GetUser(c)
 	org := middleware.GetOrganization(c)
-	usr.Id()
 
 	req := &CreateReq{}
 
@@ -41,8 +41,14 @@ func create(c *gin.Context) {
 		return
 	}
 
-	usr.PaymentMethods = append(usr.PaymentMethods, out)
-	if err := usr.Put(); err != nil {
-		http.Fail(c, 400, "Failed to update user", err)
+	p := paymentmethod.New(usr.Db)
+	p.UserId = usr.Id()
+	p.PaymentMethodOutput = *out
+
+	if err := p.Create(); err != nil {
+		http.Fail(c, 400, "Failed to add payment method", err)
+		return
 	}
+
+	http.Render(c, 201, p)
 }
