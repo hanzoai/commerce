@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api"
+	"hanzo.io/api/api"
 	"hanzo.io/datastore"
 	"hanzo.io/models/fixtures"
 	"hanzo.io/models/organization"
