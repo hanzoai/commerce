@@ -1,10 +1,15 @@
 package ae
 
 import (
-	ctx "golang.org/x/net/context"
+	ctx "context"
 	"google.golang.org/appengine/aetest"
 
 	"hanzo.io/log"
+)
+
+var (
+	SharedContext *context
+	Counter       int
 )
 
 type Context interface {
@@ -18,10 +23,18 @@ type context struct {
 }
 
 func (c *context) Close() {
+	Counter--
+
+	if Counter == 0 {
+		return
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			log.Warn("Recovered from panic in instance.Close()")
 		}
 	}()
-	c.instance.Close()
+	if c.instance != nil {
+		c.instance.Close()
+	}
 }
