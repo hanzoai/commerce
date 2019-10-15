@@ -96,9 +96,9 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	return true
 }
 
-type PlaidAccount struct {
-	StripeAccount
-}
+// type PlaidAccount struct {
+// 	StripeAccount
+// }
 
 type BitcoinTransaction struct {
 	BitcoinTransactionTxId string           `json:"bitcoinTransactionTxId,omitempty"`
@@ -138,15 +138,15 @@ type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
-	PlaidAccount
+	// PlaidAccount
 	BitcoinTransaction
 	EthereumTransaction
 	AuthorizeNetAccount
 
-	Affirm       AffirmAccount       `json:"affirm,omitempty"`
-	PayPal       PayPalAccount       `json:"paypal,omitempty"`
-	Stripe       StripeAccount       `json:"stripe,omitempty"`
-	Plaid        PlaidAccount        `json:"plaid,omitempty"`
+	Affirm AffirmAccount `json:"affirm,omitempty"`
+	PayPal PayPalAccount `json:"paypal,omitempty"`
+	Stripe StripeAccount `json:"stripe,omitempty"`
+	// Plaid        PlaidAccount        `json:"plaid,omitempty"`
 	Bitcoin      BitcoinTransaction  `json:"bitcoin,omitempty"`
 	Ethereum     EthereumTransaction `json:"ethereum,omitempty"`
 	AuthorizeNet AuthorizeNetAccount `json:"authorizenet,omitempty"`
