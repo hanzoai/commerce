@@ -27,6 +27,7 @@ require (
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
 	github.com/pariz/gountries v0.0.0-20171019111738-adb00f6513a3
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
+	github.com/plaid/plaid-go v0.0.0-20190930195421-3386aedb91b3
 	github.com/qedus/nds v1.0.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.4.1+incompatible
