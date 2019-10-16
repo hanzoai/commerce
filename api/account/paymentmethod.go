@@ -14,7 +14,7 @@ import (
 )
 
 type CreateReq struct {
-	PublicToken string     `json:"public_token"`
+	PublicToken string     `json:"publicToken"`
 	AccountId   string     `json:"accountId"`
 	Metadata    RawMessage `json:"metadata"`
 }
