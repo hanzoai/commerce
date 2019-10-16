@@ -1,3 +1,5 @@
+export GO111MODULE=on
+
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 pwd				= $(shell pwd)
 current_date	= $(shell date +"%Y-%m-%d")
@@ -119,7 +121,6 @@ clean:
 	$(go) clean -modcache
 
 deps:
-	export GO111MODULE=on
 	$(go) list ./...
 	$(go) get ./...
 
