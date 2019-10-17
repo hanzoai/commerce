@@ -11,6 +11,7 @@ import (
 type ModelQuery struct {
 	entity Entity
 	dsq    datastore.Query
+	db     *datastore.Datastore
 }
 
 func (q *ModelQuery) All() datastore.Query {
@@ -46,6 +47,8 @@ func (q *ModelQuery) Filter(filterStr string, value interface{}) *ModelQuery {
 func (q *ModelQuery) Get() (bool, error) {
 	key, ok, err := q.dsq.First(q.entity)
 	if ok {
+		// make sure the entity has a datastore on it
+		q.entity.Init(q.db)
 		q.entity.SetKey(key)
 		return true, nil
 	}
@@ -119,5 +122,6 @@ func (m *Model) Query() *ModelQuery {
 	q.entity = m.Entity.(Entity)
 	log.Debug(m.Context())
 	q.dsq = query.New(m.Context(), m.Kind())
+	q.db = m.Db
 	return q
 }
