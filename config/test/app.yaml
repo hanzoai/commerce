@@ -28,6 +28,12 @@ handlers:
 - url: /task/.*
   script: auto
 
+- url: /run-tasks
+  script: auto
+
+- url: /run-task/.*
+  script: auto
+
 - url: /execute-task/.*
   script: auto
 

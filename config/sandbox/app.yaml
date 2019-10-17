@@ -21,7 +21,12 @@ handlers:
   login: admin
   secure: always
 
-- url: /execute-task/.*
+- url: /run-tasks
+  script: auto
+  login: admin
+  secure: always
+
+- url: /run-task/.*
   script: auto
   login: admin
   secure: always
