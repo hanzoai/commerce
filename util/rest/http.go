@@ -11,11 +11,11 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/organization"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 	"hanzo.io/util/template"
 )
 
@@ -34,7 +34,7 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
 	endpoint.rest = r
 	endpoint.kind = r.Kind
-	endpoint.Model = mixin.Model{Db: db, Entity: r.newKind()}
+	endpoint.Model.Init(db, r.newKind())
 	return endpoint
 }
 
