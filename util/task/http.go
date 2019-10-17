@@ -39,10 +39,10 @@ func SetupRoutes(router router.Router) {
 	router.GET("/run-task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		Run(c, name)
-		c.Redirect(301, "/run-tasks/"+name+"/done")
+		c.Redirect(301, "/run-task/"+name+"/started")
 	})
 
-	router.GET("/run-task/:name/done", func(c *gin.Context) {
+	router.GET("/run-task/:name/started", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		http.Render(c, 200, struct {
 			Msg string `json:"msg"`
