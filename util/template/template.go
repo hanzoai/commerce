@@ -3,17 +3,17 @@ package template
 import (
 	"os"
 
+	"github.com/aymerick/raymond"
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
-	"github.com/aymerick/raymond"
 
 	"hanzo.io/config"
 	"hanzo.io/log"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/thankyou"
-	"hanzo.io/util/json"
 	"hanzo.io/util/fs"
+	"hanzo.io/util/json"
 )
 
 var cwd, _ = os.Getwd()
@@ -119,7 +119,7 @@ func RenderEmail(path string, data map[string]interface{}) string {
 	template := fs.ReadFile(templatePath)
 
 	// Render template
-	out := raymond.MustRender(string(template),data)
+	out := raymond.MustRender(string(template), data)
 
 	return out
 }
