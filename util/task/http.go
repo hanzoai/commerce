@@ -3,6 +3,7 @@ package task
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/util/json/http"
 	"hanzo.io/util/router"
 	"hanzo.io/util/template"
 )
@@ -29,5 +30,22 @@ func SetupRoutes(router router.Router) {
 		name := c.Params.ByName("name")
 		Run(c, name)
 		template.Render(c, "task-running.html", "task", name)
+	})
+
+	router.GET("/run-tasks", func(c *gin.Context) {
+		http.Render(c, 200, Names())
+	})
+
+	router.GET("/run-task/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		Run(c, name)
+		c.Redirect(301, "/run-tasks/"+name+"/done")
+	})
+
+	router.GET("/run-task/:name/done", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		http.Render(c, 200, struct {
+			Msg string `json:"msg"`
+		}{name + "started"})
 	})
 }
