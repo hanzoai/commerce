@@ -46,6 +46,6 @@ func SetupRoutes(router router.Router) {
 		name := c.Params.ByName("name")
 		http.Render(c, 200, struct {
 			Msg string `json:"msg"`
-		}{name + "started"})
+		}{name + "-started"})
 	})
 }
