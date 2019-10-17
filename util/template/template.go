@@ -87,7 +87,7 @@ func getTemplate(path string) *pongo2.Template {
 	// Get template from cache
 	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		log.Panic("Unable to render template: %v\n\n%v", path, err)
+		log.Panic("Unable to fetch template: %v\n\n%v", templatePath, err)
 	}
 
 	return template
