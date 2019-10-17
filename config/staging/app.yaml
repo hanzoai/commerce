@@ -37,6 +37,16 @@ handlers:
   login: admin
   secure: always
 
+- url: /run-tasks
+  script: auto
+  login: admin
+  secure: always
+
+- url: /run-task/.*
+  script: auto
+  login: admin
+  secure: always
+
 - url: /_ah/remote_api
   script: auto
   login: admin
