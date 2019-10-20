@@ -40,7 +40,7 @@ var _ = New("esx", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{u.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://esx.com"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
-	org.AddDefaultTokens()
+	// org.AddDefaultTokens()
 
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
