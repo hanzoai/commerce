@@ -37,7 +37,7 @@ func createPaymentMethod(c *gin.Context) {
 	t := c.Params.ByName("paymentmethodtype")
 	switch t {
 	case "plaid":
-		pm = plaid.New(c, org.Plaid.ClientId, org.Plaid.Secret, org.Plaid.PublicKey, plaid.SandboxEnvironment)
+		pm = plaid.New(org.Context(), org.Plaid.ClientId, org.Plaid.Secret, org.Plaid.PublicKey, plaid.SandboxEnvironment)
 	default:
 		http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
 		return
