@@ -70,6 +70,16 @@ var _ = New("esx", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
+	eth := &integration.Integration{
+		Type:    integration.Plaid,
+		Enabled: true,
+		Plaid: integration.Plaid{
+			ClientId:  "5d9f645b7e517c0013053781",
+			Secret:    "8dd19115064b90a197cd22a109a74b",
+			PublicKey: "5767a07e0e9a39ddc5cf2436648b03",
+		},
+	}
+
 	if len(org.Integrations.FilterByType(eth.Type)) == 0 {
 		org.Integrations = org.Integrations.MustAppend(eth)
 	}
