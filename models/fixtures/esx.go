@@ -70,8 +70,8 @@ var _ = New("esx", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
-	eth := &integration.Integration{
-		Type:    integration.Plaid,
+	plaid := &integration.Integration{
+		Type:    integration.PlaidType,
 		Enabled: true,
 		Plaid: integration.Plaid{
 			ClientId:  "5d9f645b7e517c0013053781",
@@ -82,6 +82,10 @@ var _ = New("esx", func(c *gin.Context) *organization.Organization {
 
 	if len(org.Integrations.FilterByType(eth.Type)) == 0 {
 		org.Integrations = org.Integrations.MustAppend(eth)
+	}
+
+	if len(org.Integrations.FilterByType(plaid.Type)) == 0 {
+		org.Integrations = org.Integrations.MustAppend(plaid)
 	}
 
 	// Save org into default namespace

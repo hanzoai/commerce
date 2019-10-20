@@ -314,6 +314,16 @@ func (i Integrations) FilterByType(typ Type) Integrations {
 	return ins
 }
 
+func (i Integrations) FindByType(typ Type) *Integration {
+	for _, in := range i {
+		if in.Type == typ {
+			return &in
+		}
+	}
+
+	return nil
+}
+
 func (i Integrations) FindById(id string) (*Integration, error) {
 	for _, in := range i {
 		if in.Id == id {
