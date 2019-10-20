@@ -10,4 +10,5 @@ type PaymentMethod struct {
 	paymentmethods.PaymentMethodOutput
 
 	UserId string `json:"userId"`
+	Name   string `json:"name"`
 }
