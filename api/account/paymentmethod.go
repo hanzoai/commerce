@@ -16,6 +16,7 @@ import (
 type CreateReq struct {
 	PublicToken string     `json:"publicToken"`
 	AccountId   string     `json:"accountId"`
+	Name        string     `json:"name"`
 	Metadata    RawMessage `json:"metadata"`
 }
 
@@ -50,6 +51,7 @@ func createPaymentMethod(c *gin.Context) {
 
 	p := paymentmethod.New(usr.Db)
 	p.UserId = usr.Id()
+	p.Name = req.Name
 	p.PaymentMethodOutput = *out
 
 	if err := p.Create(); err != nil {
