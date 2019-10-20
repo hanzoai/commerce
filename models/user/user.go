@@ -102,7 +102,7 @@ type User struct {
 	Referrers      []referrer.Referrer           `json:"referrers,omitempty" datastore:"-"`
 	Orders         []order.Order                 `json:"orders,omitempty" datastore:"-"`
 	PendingFees    []fee.Fee                     `json:"pendingFees,omitempty" datastore:"-"`
-	PaymentMethods []paymentmethod.PaymentMethod `json:"paymentMethod,omitempty" datastore:"-"`
+	PaymentMethods []paymentmethod.PaymentMethod `json:"paymentMethods,omitempty" datastore:"-"`
 	Affiliate      affiliate.Affiliate           `json:"affiliate,omitempty" datastore:"-"`
 
 	Transactions map[currency.Type]*util.TransactionData `json:"transactions" datastore:"-"`
