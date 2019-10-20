@@ -6,6 +6,7 @@ import (
 	"hanzo.io/middleware"
 	"hanzo.io/models/paymentmethod"
 	"hanzo.io/thirdparty/paymentmethods/plaid"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
 
@@ -37,7 +38,12 @@ func createPaymentMethod(c *gin.Context) {
 	t := c.Params.ByName("paymentmethodtype")
 	switch t {
 	case "plaid":
-		pm = plaid.New(org.Context(), org.Plaid.ClientId, org.Plaid.Secret, org.Plaid.PublicKey, plaid.SandboxEnvironment)
+		in := org.Integrations.FindByType(integration.PlaidType)
+		if in == nil {
+			http.Fail(c, 500, "Missing plaid credentials: "+t, ErrorMissingCredentials)
+			return
+		}
+		pm = plaid.New(org.Context(), in.Plaid.ClientId, in.Plaid.Secret, in.Plaid.PublicKey, plaid.SandboxEnvironment)
 	default:
 		http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
 		return
