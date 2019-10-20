@@ -164,9 +164,10 @@ func Upsert(c *gin.Context) {
 
 		org.Analytics = ans
 
+		// TODO: Deprecate all of this in favor of the new integration system
 		// Synchronize integrations
-		if eth := org.Integrations.FilterByType(integration.BitcoinType); len(eth) > 0 {
-			m := eth[0]
+		if btc := org.Integrations.FilterByType(integration.BitcoinType); len(btc) > 0 {
+			m := btc[0]
 			org.Bitcoin = m.Bitcoin
 		}
 
@@ -190,6 +191,10 @@ func Upsert(c *gin.Context) {
 		if netlifies := org.Integrations.FilterByType(integration.NetlifyType); len(netlifies) > 0 {
 			n := netlifies[0]
 			org.Netlify = n.Netlify
+		}
+
+		if in := org.Integrations.FindByType(integration.PlaidType); in != nil {
+			org.Plaid = in.Plaid
 		}
 
 		if reamazes := org.Integrations.FilterByType(integration.ReamazeType); len(reamazes) > 0 {
