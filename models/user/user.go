@@ -40,10 +40,10 @@ type KYCData struct {
 	Documents       []string `json:"documents,omitempty" datastore:"-"`
 	Documents_      []byte   `json:"-" datastore:",noindex"`
 
-	TaxId     string `json:"taxId,omitempty"`
-	Phone     string `json:"phone,omitempty"`
-	Birthdate string `json:"birthdate,omitempty"`
-	Gender    string `json:"gender,omitempty"`
+	TaxId     string    `json:"taxId,omitempty"`
+	Phone     string    `json:"phone,omitempty"`
+	Birthdate time.Time `json:"birthdate,omitempty"`
+	Gender    string    `json:"gender,omitempty"`
 
 	EthereumAddress string `json:"ethereumAddress,omitempty"`
 	EOSPublicKey    string `json:"eosPublicKey,omitempty"`
