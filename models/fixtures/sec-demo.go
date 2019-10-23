@@ -1,7 +1,6 @@
 package fixtures
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -122,7 +121,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 		usr.PasswordHash, _ = password.Hash("secdemo")
 
 		usr.KYC.Phone = fake.Phone()
-		usr.KYC.Birthdate = fmt.Sprintf("%d-%d-%d", fake.MonthNum(), fake.Day(), fake.Year(1942, 2000))
+		usr.KYC.Birthdate = time.Date(fake.Year(1942, 2000), time.Month(fake.MonthNum()), fake.Day(), 0, 0, 0, 0, nil)
 		usr.KYC.Gender = fake.Gender()
 		usr.KYC.Address.Name = usr.FirstName + " " + usr.LastName
 		usr.KYC.Address.Line1 = fake.StreetAddress()
