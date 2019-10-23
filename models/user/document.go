@@ -72,9 +72,10 @@ type Document struct {
 	KYCAddressCountry     string
 	KYCAddressPostalCode  string
 
-	KYCTaxId  string
-	KYCPhone  string
-	KYCGender string
+	KYCTaxId     string
+	KYCPhone     string
+	KYCGender    string
+	KYCBirthdate float64
 }
 
 func (d Document) Id() string {
@@ -198,6 +199,7 @@ func (u User) Document() mixin.Document {
 	doc.KYCTaxId = u.KYC.TaxId
 	doc.KYCPhone = u.KYC.Phone
 	doc.KYCGender = u.KYC.Gender
+	doc.KYCBirthdate = float64(u.KYC.Birthdate)
 
 	return doc
 }
