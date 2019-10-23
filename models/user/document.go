@@ -199,7 +199,7 @@ func (u User) Document() mixin.Document {
 	doc.KYCTaxId = u.KYC.TaxId
 	doc.KYCPhone = u.KYC.Phone
 	doc.KYCGender = u.KYC.Gender
-	doc.KYCBirthdate = float64(u.KYC.Birthdate)
+	doc.KYCBirthdate = float64(u.KYC.Birthdate.Unix())
 
 	return doc
 }
