@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strings"
 
 	"google.golang.org/appengine"
@@ -9,11 +10,12 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/stripe/connect"
-	"hanzo.io/log"
+	"hanzo.io/types/integration"
 )
 
 // Handle stripe Connect callbacks
@@ -21,13 +23,88 @@ func Callback(c *gin.Context) {
 	url := c.Request.URL
 	state := url.Query().Get("state")
 
-	if state != "" && state != "movetoserver" {
+	if strings.Contains(state, ":") {
 		// Affiliate callback
 		affiliateCallback(c)
 	} else {
-		// Redirect to platform
-		c.Redirect(302, config.UrlFor("dash", "/stripe/callback")+"?"+url.RawQuery)
+		organizationCallback(c)
 	}
+}
+
+func organizationCallback(c *gin.Context) {
+	url := c.Request.URL
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+	org := organization.New(db)
+
+	code := url.Query().Get("code")
+	state := url.Query().Get("state")
+	errStr := url.Query().Get("error") + ":" + url.Query().Get("error-description")
+
+	orgId := state
+
+	// Redirect to dashboard
+	if errStr != "" {
+		log.Error("Error from stripe for org %v: %v", orgId, errStr, c)
+		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, errStr))
+		return
+	}
+
+	// Failed to get back authorization code from Stripe
+	if err := org.GetById(orgId); err != nil {
+		log.Error("Failed fetch organization: %v", err, c)
+		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
+		return
+	}
+
+	token, testToken, err := connect.GetTokens(ctx, code)
+	if err != nil {
+		log.Error("Error from stripe connect for org %v: %v", orgId, err, c)
+		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
+		return
+	}
+
+	if in := org.Integrations.FindByType(integration.StripeType); in == nil {
+		in = &integration.Integration{
+			Stripe: integration.Stripe{
+				UserId:         token.UserId,
+				AccessToken:    token.AccessToken,
+				PublishableKey: token.PublishableKey,
+				RefreshToken:   token.RefreshToken,
+				Live:           *token,
+				Test:           *testToken,
+			},
+		}
+		if _, err := org.Integrations.Append(in); err != nil {
+			log.Error("Error adding stripe integration for %v: %v", orgId, err, c)
+			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
+			return
+		}
+
+		org.Stripe = in.Stripe
+	} else {
+		in.Stripe.UserId = token.UserId
+		in.Stripe.AccessToken = token.AccessToken
+		in.Stripe.PublishableKey = token.PublishableKey
+		in.Stripe.RefreshToken = token.RefreshToken
+		in.Stripe.Live = *token
+		in.Stripe.Test = *testToken
+		if _, err := org.Integrations.Update(in); err != nil {
+			log.Error("Error updating stripe integration for %v: %v", orgId, err, c)
+			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
+			return
+		}
+
+		org.Stripe = in.Stripe
+	}
+
+	if err := org.Update(); err != nil {
+		log.Error("Error updating organization %v: %v", orgId, err, c)
+		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
+		return
+	}
+
+	c.Redirect(302, fmt.Sprintf("%v/dash/integrations?success=true&type=%v", config.DashboardUrl, integration.StripeType))
 }
 
 // Connect callback for affiliates

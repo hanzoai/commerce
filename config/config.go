@@ -43,6 +43,7 @@ type Config struct {
 	SentryDSN         string
 	SiteTitle         string
 	StaticUrl         string
+	DashboardUrl      string
 
 	Email struct {
 		From     email.Email
@@ -292,6 +293,7 @@ var SentryDSN = config.SentryDSN
 var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
+var DashboardUrl = config.DashboardUrl
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 
