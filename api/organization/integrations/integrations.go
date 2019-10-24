@@ -68,7 +68,7 @@ func Delete(c *gin.Context) {
 		http.Fail(c, 500, "Failed to save integrations", err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 201, org.Integrations)
+		http.Render(c, 200, org.Integrations)
 	}
 }
 
@@ -222,7 +222,7 @@ func Upsert(c *gin.Context) {
 			http.Fail(c, 500, "Failed to save integrations", err)
 		} else {
 			c.Writer.Header().Add("Location", c.Request.URL.Path)
-			http.Render(c, 201, org.Integrations)
+			http.Render(c, 200, org.Integrations)
 		}
 		return nil
 	}, nil)
