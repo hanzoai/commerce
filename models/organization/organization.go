@@ -60,6 +60,9 @@ type Organization struct {
 	// Used in generating email templates
 	LogoUrl string `json:"logoUrl"`
 
+	// Where is the user's dashboard?
+	DashboardUrl string `json:"dashboardUrl"`
+
 	// Fee structure for this organization
 	Fees pricing.Fees `json:"fees" datastore:",noindex"`
 
