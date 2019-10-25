@@ -39,27 +39,28 @@ func organizationCallback(c *gin.Context) {
 
 	code := url.Query().Get("code")
 	state := url.Query().Get("state")
-	errStr := url.Query().Get("error") + ":" + url.Query().Get("error-description")
+	errStr := url.Query().Get("error")
+	errDesc := url.Query().Get("error_description")
 
 	orgId := state
 
 	// Redirect to dashboard
 	if errStr != "" {
-		log.Error("Error from stripe for org %v: %v", orgId, errStr, c)
-		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, errStr))
+		log.Error("Error from stripe for org %v: %v", orgId, errStr, ctx)
+		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, errStr+":"+errDesc))
 		return
 	}
 
 	// Failed to get back authorization code from Stripe
 	if err := org.GetById(orgId); err != nil {
-		log.Error("Failed fetch organization: %v", err, c)
+		log.Error("Failed fetch organization: %v", err, ctx)
 		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 		return
 	}
 
 	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
-		log.Error("Error from stripe connect for org %v: %v", orgId, err, c)
+		log.Error("Error from stripe connect for org %v: %v", orgId, err, ctx)
 		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 		return
 	}
@@ -76,7 +77,7 @@ func organizationCallback(c *gin.Context) {
 			},
 		}
 		if _, err := org.Integrations.Append(in); err != nil {
-			log.Error("Error adding stripe integration for %v: %v", orgId, err, c)
+			log.Error("Error adding stripe integration for %v: %v", orgId, err, ctx)
 			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 			return
 		}
@@ -90,7 +91,7 @@ func organizationCallback(c *gin.Context) {
 		in.Stripe.Live = *token
 		in.Stripe.Test = *testToken
 		if _, err := org.Integrations.Update(in); err != nil {
-			log.Error("Error updating stripe integration for %v: %v", orgId, err, c)
+			log.Error("Error updating stripe integration for %v: %v", orgId, err, ctx)
 			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 			return
 		}
@@ -99,7 +100,7 @@ func organizationCallback(c *gin.Context) {
 	}
 
 	if err := org.Update(); err != nil {
-		log.Error("Error updating organization %v: %v", orgId, err, c)
+		log.Error("Error updating organization %v: %v", orgId, err, ctx)
 		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 		return
 	}
