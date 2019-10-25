@@ -114,7 +114,7 @@ type Organization struct {
 	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 
 	// integration
-	Integrations  integration.Integrations `json:"integrations" datastore:"-"`
+	Integrations  integration.Integrations `json:"-" datastore:"-"`
 	Integrations_ string                   `json:"-" datastore:",noindex"`
 
 	// integration (deprecated)
