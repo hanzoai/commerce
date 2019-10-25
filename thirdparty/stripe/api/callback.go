@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"google.golang.org/appengine"
+	"hanzo.io/util/rand"
 
 	"github.com/gin-gonic/gin"
 
@@ -75,13 +76,19 @@ func organizationCallback(c *gin.Context) {
 				Live:           *token,
 				Test:           *testToken,
 			},
+			Type:    integration.StripeType,
+			Enabled: true,
+			Id:      rand.ShortId(),
 		}
-		if _, err := org.Integrations.Append(in); err != nil {
+		if ins, err := org.Integrations.Append(in); err != nil {
 			log.Error("Error adding stripe integration for %v: %v", orgId, err, ctx)
 			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 			return
+		} else {
+			org.Integrations = ins
 		}
 
+		// this needs to be nuked at some point
 		org.Stripe = in.Stripe
 	} else {
 		in.Stripe.UserId = token.UserId
@@ -90,12 +97,16 @@ func organizationCallback(c *gin.Context) {
 		in.Stripe.RefreshToken = token.RefreshToken
 		in.Stripe.Live = *token
 		in.Stripe.Test = *testToken
-		if _, err := org.Integrations.Update(in); err != nil {
+		in.Enabled = true
+		if ins, err := org.Integrations.Update(in); err != nil {
 			log.Error("Error updating stripe integration for %v: %v", orgId, err, ctx)
 			c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 			return
+		} else {
+			org.Integrations = ins
 		}
 
+		// this needs to be nuked at some point
 		org.Stripe = in.Stripe
 	}
 
