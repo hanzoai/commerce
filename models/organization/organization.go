@@ -103,6 +103,11 @@ type Organization struct {
 		UsernameRequired bool `json:"usernameRequired"`
 	} `json:"signUpOptions" datastore:",noindex"`
 
+	Twilio struct {
+		AccountSid string `json:"accountSid"`
+		AuthToken string `json:"authtoken"`
+	} `json:"twilio" datastore:",noindex"`
+
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"live"`
 
