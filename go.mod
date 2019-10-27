@@ -47,6 +47,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.4.1+incompatible
 	github.com/sendgrid/sendgrid-go v3.5.0+incompatible // indirect
+	github.com/sfreiberg/gotwilio v0.0.0-20191023035553-f6f740c7bffc
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible
