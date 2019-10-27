@@ -1,10 +1,11 @@
-package test
+package integration
 
 import (
 	"math"
 
 	"hanzo.io/api/checkout"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/fee"
 	"hanzo.io/models/lineitem"
@@ -20,7 +21,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/hashid"
-	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )
