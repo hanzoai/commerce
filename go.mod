@@ -5,12 +5,9 @@ require (
 	github.com/Machiel/slugify v1.0.1
 	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/aymerick/raymond v2.0.2+incompatible
-	github.com/btcsuite/btcd v0.20.0-beta
-	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
-	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
-	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd
-	github.com/btcsuite/goleveldb v0.0.0-20160330041536-7834afc9e8cd
-	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
+	github.com/btcsuite/btcd v0.0.0-20180220005635-2be2f12b358d
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
+	github.com/btcsuite/btcutil v0.0.0-20170726183619-501929d3d046
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/corpix/uarand v0.1.1
 	github.com/davecgh/go-spew v1.1.1
@@ -49,9 +46,9 @@ require (
 	github.com/qedus/nds v1.0.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.4.1+incompatible
-	github.com/sendgrid/sendgrid-go v3.5.0+incompatible
-	github.com/sfreiberg/gotwilio v0.0.0-20190726182017-0491b6bcc523
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sendgrid/sendgrid-go v3.5.0+incompatible // indirect
+	github.com/sirupsen/logrus v1.4.2 // indirect
+	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/stripe/stripe-go v25.0.0+incompatible
 	github.com/unrolled/render v1.0.1
@@ -61,10 +58,8 @@ require (
 	github.com/zeekay/gochimp3 v0.0.0-20190702182554-f6724ffdebb0
 	golang.org/x/arch v0.0.0-20190927153633-4e8777c89be4
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/net v0.0.0-20191011234655-491137f69257
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20190422165155-953cdadca894
-	golang.org/x/text v0.3.2
+	golang.org/x/net v0.0.0-20191011234655-491137f69257 // indirect
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	google.golang.org/appengine v1.6.5
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7
