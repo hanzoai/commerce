@@ -26,7 +26,7 @@ type PaymentMethodParams struct {
 
 // Returned Pay Token
 type PaymentMethodOutput struct {
-	PaymentMethodParams
+	Inputs PaymentMethodParams
 
 	// Long lived payment token
 	PayToken string `json:"-"`

@@ -35,7 +35,7 @@ func (c Client) GetPayToken(p PaymentMethodParams) (*PaymentMethodOutput, error)
 	// )
 
 	return &PaymentMethodOutput{
-		PaymentMethodParams: p,
+		Inputs: p,
 		//PayToken:            res2..StripeBankAccountToken,
 		PayToken:       res.AccessToken,
 		PayTokenId:     res.ItemID,
