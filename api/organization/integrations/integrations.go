@@ -44,6 +44,7 @@ func Get(c *gin.Context) {
 			continue
 		}
 
+		//  Scrub really sensitive data
 		switch in.Type {
 		case integration.StripeType:
 			in.Data = nil
