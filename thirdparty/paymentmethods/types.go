@@ -17,6 +17,9 @@ type PaymentMethodParams struct {
 	// Reference to the verifier id
 	VerifierId string `json:"-"`
 
+	// Reference to external user (if any)
+	ExternalUserId string `json:"-"`
+
 	// Metadata to save with payment method
 	Metadata json.RawMessage `json:"metadata,omitempty"`
 }

@@ -34,6 +34,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.FullName = "Such Tees, Inc."
 	org.Owners = []string{usr.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://suchtees.com"}}
+	org.AddDefaultTokens()
 
 	// Saved stripe tokens
 	org.Stripe.Test.UserId = "acct_16fNBDH4ZOGOmFfW"
