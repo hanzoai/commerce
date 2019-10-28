@@ -79,12 +79,14 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	org.WalletPassphrase = "1234"
 
-	w, _ := org.GetOrCreateWallet(org.Db)
-	a1, _ := w.CreateAccount("Test Ethereum", blockchains.EthereumRopstenType, []byte(org.WalletPassphrase))
-	a1.Withdrawable = true
-	a2, _ := w.CreateAccount("Test Bitcoin", blockchains.BitcoinTestnetType, []byte(org.WalletPassphrase))
-	a2.Withdrawable = true
-	w.MustUpdate()
+	if false {
+		w, _ := org.GetOrCreateWallet(org.Db)
+		a1, _ := w.CreateAccount("Test Ethereum", blockchains.EthereumRopstenType, []byte(org.WalletPassphrase))
+		a1.Withdrawable = true
+		a2, _ := w.CreateAccount("Test Bitcoin", blockchains.BitcoinTestnetType, []byte(org.WalletPassphrase))
+		a2.Withdrawable = true
+		w.MustUpdate()
+	}
 
 	// Add default access tokens
 	// org.AddDefaultTokens()

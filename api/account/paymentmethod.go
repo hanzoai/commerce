@@ -46,8 +46,8 @@ func createPaymentMethod(c *gin.Context) {
 			http.Fail(c, 500, "Missing plaid credentials: "+t, ErrorMissingCredentials)
 			return
 		}
-		// TODO: We need to redo the customer id stuff
-		externalUserId = usr.Account.StripeAccount.CustomerId
+		// TODO: We need to redo the customer id/account object stuff
+		externalUserId = usr.Accounts.StripeAccount.CustomerId
 		pm = plaid.New(org.Context(), in.Plaid.ClientId, in.Plaid.Secret, in.Plaid.PublicKey, plaid.SandboxEnvironment)
 	default:
 		http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
