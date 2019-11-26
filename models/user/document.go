@@ -75,7 +75,7 @@ type Document struct {
 	KYCTaxId     string
 	KYCPhone     string
 	KYCGender    string
-	KYCBirthdate float64
+	KYCBirthdate string
 }
 
 func (d Document) Id() string {
@@ -199,7 +199,7 @@ func (u User) Document() mixin.Document {
 	doc.KYCTaxId = u.KYC.TaxId
 	doc.KYCPhone = u.KYC.Phone
 	doc.KYCGender = u.KYC.Gender
-	doc.KYCBirthdate = float64(u.KYC.Birthdate.Unix())
+	doc.KYCBirthdate = u.KYC.Birthdate.Format("2006-01-02")
 
 	return doc
 }

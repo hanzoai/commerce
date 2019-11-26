@@ -10,9 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/json"
 	"hanzo.io/log"
-	"hanzo.io/util/template"
+	"hanzo.io/util/json"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)
@@ -48,7 +47,10 @@ func ErrorJSONDev(c *gin.Context, stack string, err error) {
 func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.AbortWithStatus(500)
-	template.Render(c, "error/500.html")
+	c.Writer.Write([]byte(`<html>
+		<h1>500 - Internal Server Error</h1>
+		<p>We weren't able to complete your request. Please try again later.</p>
+	</html>`))
 	log.Error(stack, c)
 }
 
