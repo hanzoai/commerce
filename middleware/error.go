@@ -10,9 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/json"
 	"hanzo.io/log"
-	"hanzo.io/util/template"
+	"hanzo.io/util/json"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)
@@ -46,10 +45,7 @@ func ErrorJSONDev(c *gin.Context, stack string, err error) {
 
 // Display errors in HTML
 func ErrorHTML(c *gin.Context, stack string, err error) {
-	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.AbortWithStatus(500)
-	template.Render(c, "error/500.html")
-	log.Error(stack, c)
+	ErrorHTMLDev(c, "", err)
 }
 
 func ErrorHTMLDev(c *gin.Context, stack string, err error) {
