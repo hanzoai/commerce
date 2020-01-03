@@ -112,7 +112,7 @@ endif
 
 all: deps test install
 
-build: deps
+build: deps update-env
 	$(go) build $(packages)
 
 clean:
@@ -170,7 +170,7 @@ auth:
 	@echo "   gcloud components reinstall"
 	gcloud auth login
 
-deploy:
+deploy: update-env
 	@cd $(gopath)/src/hanzo.io
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
