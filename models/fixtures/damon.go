@@ -74,7 +74,6 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	stor := store.New(nsdb)
 	stor.Name = "Website"
 	stor.GetOrCreate("Name=", stor.Name)
-	stor.MustSetKey("7RtpEPYmCnJrnB")
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
@@ -85,7 +84,6 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	prod := product.New(nsdb)
 	prod.Slug = "HS"
 	prod.GetOrCreate("Slug=", prod.Slug)
-	prod.MustSetKey("84cguxepxk")
 	prod.Name = "Damon Motorcycles Hypersport HS Reservation"
 	prod.Description = ""
 	prod.Price = currency.Cents(10000)
@@ -126,7 +124,6 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 		prod := product.New(nsdb)
 		prod.Slug = s
 		prod.GetOrCreate("Slug=", prod.Slug)
-		prod.MustSetKey("84cguxepxk")
 		prod.Name = "Damon Motorcycles Hypersport Premier " + s
 		prod.Description = ""
 		prod.Price = currency.Cents(100000)
