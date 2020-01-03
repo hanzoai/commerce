@@ -17,7 +17,7 @@ func Defaults() *Config {
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "Hanzo"
-	config.DashboardUrl = "//esx-admin.netlify.com"
+	config.DashboardUrl = "http://localhost:3001/"
 
 	config.Fee = 0.05
 
