@@ -188,11 +188,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 	}
 
+	log.Info("Using Ord Type %v", ord.Type, c)
 	// Handle authorization
 	switch ord.Type {
 	case accounts.BalanceType:
+		log.Info("Using Balance", c)
 		err = balance.Authorize(org, ord, usr, pay)
 	case accounts.EthereumType:
+		log.Info("Using Ethereum", c)
 		if ord.Currency != currency.ETH {
 			return nil, UnsupportedEthereumCurrency
 		}
@@ -201,6 +204,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			log.Error("Ethereum Error: %v", err, c)
 		}
 	case accounts.BitcoinType:
+		log.Info("Using Bitcoin", c)
 		if ord.Currency != currency.BTC && ord.Currency != currency.XBT {
 			return nil, UnsupportedBitcoinCurrency
 		}
@@ -209,10 +213,13 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			log.Error("Bitcoin Error: %v", err, c)
 		}
 	case accounts.NullType:
+		log.Info("Using Null", c)
 		err = null.Authorize(org, ord, usr, pay)
 	case accounts.PayPalType:
+		log.Info("Using Paypal", c)
 		err = paypal.Authorize(org, ord, usr, pay)
 	case accounts.AuthorizeNetType:
+		log.Info("Using AuthroizeNet", c)
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
@@ -221,18 +228,34 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			log.Error("Authorize.net Error: %v", err, c)
 		}
 	case accounts.StripeType:
-	default:
+		log.Info("Using Stripe", c)
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
 		if ord.Total > 500000 {
 			return nil, TransactionLimitReached
 		}
+		log.Info("Authorizing Stripe", c)
+		err = stripe.Authorize(org, ord, usr, pay)
+		if err != nil {
+			log.Error("Stripe Error: %v", err, c)
+		}
+	default:
+		log.Info("Using Default", c)
+		if ord.Currency.IsCrypto() {
+			return nil, UnsupportedStripeCurrency
+		}
+		if ord.Total > 500000 {
+			return nil, TransactionLimitReached
+		}
+		log.Info("Authorizing Stripe", c)
 		err = stripe.Authorize(org, ord, usr, pay)
 		if err != nil {
 			log.Error("Stripe Error: %v", err, c)
 		}
 	}
+
+	log.Warn("Done Authorizing: %v", pay, c)
 
 	// Bail on authorization failure
 	if err != nil {

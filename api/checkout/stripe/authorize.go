@@ -89,7 +89,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Live
 
-	log.JSON("Stripe New customer: %v", cust, ord.Db.Context)
+	log.Warn("Stripe New customer: %v", cust, ord.Db.Context)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
@@ -121,7 +121,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	updatePaymentFromCard(pay, card)
 	updateUserFromPayment(usr, pay)
 
-	log.JSON("Stripe Returning: %v", pay, ord.Db.Context)
+	log.Warn("Stripe Returning: %v", pay, ord.Db.Context)
 
 	// Update customer (which will set new card as default)
 	cust, err := client.UpdateCustomer(usr)
