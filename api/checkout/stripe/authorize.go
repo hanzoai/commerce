@@ -23,11 +23,11 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
-		log.Debug("New stripe customer")
+		log.Debug("New stripe customer", ord.Db.Context)
 		return firstTime(client, tok, usr, ord, pay)
 	} else {
 		// Existing customer, new card
-		log.Debug("Returning stripe customer")
+		log.Debug("Returning stripe customer", ord.Db.Context)
 		return returning(client, tok, usr, ord, pay)
 	}
 }
@@ -89,7 +89,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Live
 
-	log.JSON("Stripe customer:", cust)
+	log.JSON("Stripe New customer: %v", cust, ord.Db.Context)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
@@ -120,6 +120,8 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	// Update account info
 	updatePaymentFromCard(pay, card)
 	updateUserFromPayment(usr, pay)
+
+	log.JSON("Stripe Returning: %v", pay, ord.Db.Context)
 
 	// Update customer (which will set new card as default)
 	cust, err := client.UpdateCustomer(usr)
