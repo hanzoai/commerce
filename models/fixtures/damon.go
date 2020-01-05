@@ -1,6 +1,8 @@
 package fixtures
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
@@ -130,7 +132,31 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 		prod.Inventory = 9000
 		prod.Preorder = true
 		prod.Hidden = false
+		prod.Reservation.IsReservable = true
 		prod.MustUpdate()
+
+		switch s {
+		case "HSP-BGRS":
+			prod.Reservation.IsBeingReserved = true
+			prod.Reservation.ReservedBy = "W.L."
+			prod.Reservation.ReservedAt = time.Now()
+		case "HSP-WRRS":
+			prod.Reservation.IsBeingReserved = true
+			prod.Reservation.ReservedBy = "N.L."
+			prod.Reservation.ReservedAt = time.Now()
+		case "HSP-WRS":
+			prod.Reservation.IsBeingReserved = true
+			prod.Reservation.ReservedBy = "J.G."
+			prod.Reservation.ReservedAt = time.Now()
+		case "HSP-GRW":
+			prod.Reservation.IsBeingReserved = true
+			prod.Reservation.ReservedBy = "R.W."
+			prod.Reservation.ReservedAt = time.Now()
+		case "HSP-GRWL":
+			prod.Reservation.IsBeingReserved = true
+			prod.Reservation.ReservedBy = "W.L."
+			prod.Reservation.ReservedAt = time.Now()
+		}
 	}
 
 	return org
