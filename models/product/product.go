@@ -2,6 +2,7 @@ package product
 
 import (
 	"reflect"
+	"time"
 
 	aeds "google.golang.org/appengine/datastore"
 
@@ -24,6 +25,23 @@ type Option struct {
 	Name string `json:"name"`
 	// Ex. [S, M, L]
 	Values []string `json:"values"`
+}
+
+type Reservation struct {
+	// Is the product reservable?
+	IsReservable bool `json:"isReservable"`
+
+	// Set to true if being reserved
+	IsBeingReserved bool `json:"isBeingReserved"`
+
+	// Usually initials of reserver
+	ReservedBy string `json:"reservedBy"`
+
+	// OrderID of Reservation
+	OrderId string `json:"orderId"`
+
+	// When was the product reserved
+	ReservedAt time.Time `json:"ReservedAt"`
 }
 
 // Prune down since Product Listing has a lot of this info now
@@ -78,6 +96,8 @@ type Product struct {
 	// Reference to options used
 	Options  []*Option `json:"options" datastore:"-"`
 	Options_ string    `json:"-" datastore:",noindex"`
+
+	Reservation Reservation `json:"reservation" datastore:"-"`
 }
 
 func (p *Product) Validator() *val.Validator {
