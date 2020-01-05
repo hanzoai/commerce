@@ -97,7 +97,7 @@ type Product struct {
 	Options  []*Option `json:"options" datastore:"-"`
 	Options_ string    `json:"-" datastore:",noindex"`
 
-	Reservation Reservation `json:"reservation" datastore:"-"`
+	Reservation Reservation `json:"reservation"`
 }
 
 func (p *Product) Validator() *val.Validator {
