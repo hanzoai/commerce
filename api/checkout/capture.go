@@ -3,13 +3,13 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/email"
 	"hanzo.io/api/checkout/authorizenet"
 	"hanzo.io/api/checkout/balance"
 	"hanzo.io/api/checkout/null"
 	"hanzo.io/api/checkout/stripe"
 	"hanzo.io/api/checkout/tasks"
 	"hanzo.io/api/checkout/util"
+	"hanzo.io/email"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
@@ -42,6 +42,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	}
 
 	if err != nil {
+		ord.CancelReservations()
+
 		log.Error("Capture failed: %v", err, c)
 		return err
 	}
@@ -51,6 +53,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateOrder(ctx, ord, payments)
 
 	if err := util.UpdateOrderPayments(ctx, ord, payments); err != nil {
+		ord.CancelReservations()
+
 		log.Error("Capture could not update order/payments: %v", err, c)
 		return err
 	}

@@ -104,6 +104,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, InvalidOrIncompleteOrder
 	}
 
+	// check for reservations
+	if err := ord.MakeReservations(); err != nil {
+		log.Error("Item already reserved error: %v", err, c)
+		return nil, FailedToReserveItem
+	}
+
 	log.Info("Order After Tally: '%v'", json.Encode(ord), c)
 
 	// Update order with information from datastore, and tally
