@@ -37,7 +37,6 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{usr.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://damonmotorcycles.com/"}}
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.AddDefaultTokens()
 
 	org.Fees.Card.Flat = 0
 	org.Fees.Card.Percent = 0.05
@@ -133,7 +132,6 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 		prod.Preorder = true
 		prod.Hidden = false
 		prod.Reservation.IsReservable = true
-		prod.MustUpdate()
 
 		switch s {
 		case "HSP-BGRS":
@@ -157,6 +155,8 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 			prod.Reservation.ReservedBy = "W.L."
 			prod.Reservation.ReservedAt = time.Now()
 		}
+
+		prod.MustUpdate()
 	}
 
 	return org
