@@ -36,6 +36,7 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	org.FullName = "Damon Inc"
 	org.Owners = []string{usr.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://damonmotorcycles.com/"}}
+	org.EmailWhitelist = "*.hanzo.ai *.damonmotorcycles.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
 
 	org.Fees.Card.Flat = 0
