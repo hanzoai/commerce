@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"time"
+	// "time"
 
 	"github.com/gin-gonic/gin"
 
