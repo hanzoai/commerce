@@ -122,43 +122,43 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 		"HSP-WRS",
 	}
 
-	for _, s := range premierSlugs {
-		prod := product.New(nsdb)
-		prod.Slug = s
-		prod.GetOrCreate("Slug=", prod.Slug)
-		prod.Name = "Damon Motorcycles Hypersport Premier " + s
-		prod.Description = ""
-		prod.Price = currency.Cents(100000)
-		prod.Inventory = 9000
-		prod.Preorder = true
-		prod.Hidden = false
-		prod.Reservation.IsReservable = true
+	// for _, s := range premierSlugs {
+	// 	prod := product.New(nsdb)
+	// 	prod.Slug = s
+	// 	prod.GetOrCreate("Slug=", prod.Slug)
+	// 	prod.Name = "Damon Motorcycles Hypersport Premier " + s
+	// 	prod.Description = ""
+	// 	prod.Price = currency.Cents(100000)
+	// 	prod.Inventory = 9000
+	// 	prod.Preorder = true
+	// 	prod.Hidden = false
+	// 	prod.Reservation.IsReservable = true
 
-		switch s {
-		case "HSP-BGRS":
-			prod.Reservation.IsBeingReserved = true
-			prod.Reservation.ReservedBy = "W.L."
-			prod.Reservation.ReservedAt = time.Now()
-		case "HSP-WRRS":
-			prod.Reservation.IsBeingReserved = true
-			prod.Reservation.ReservedBy = "N.L."
-			prod.Reservation.ReservedAt = time.Now()
-		case "HSP-WRS":
-			prod.Reservation.IsBeingReserved = true
-			prod.Reservation.ReservedBy = "J.G."
-			prod.Reservation.ReservedAt = time.Now()
-		case "HSP-GRW":
-			prod.Reservation.IsBeingReserved = true
-			prod.Reservation.ReservedBy = "R.W."
-			prod.Reservation.ReservedAt = time.Now()
-		case "HSP-GRWL":
-			prod.Reservation.IsBeingReserved = true
-			prod.Reservation.ReservedBy = "W.L."
-			prod.Reservation.ReservedAt = time.Now()
-		}
+	// 	switch s {
+	// 	case "HSP-BGRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "W.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-WRRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "N.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-WRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "J.G."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-GRW":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "R.W."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-GRWL":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "W.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	}
 
-		prod.MustUpdate()
-	}
+	// 	prod.MustUpdate()
+	// }
 
 	return org
 })
