@@ -265,6 +265,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Bail on authorization failure
 	if err != nil {
+		if err2 := ord.CancelReservations(); err2 != nil {
+			log.Error("Cancel Reservation Error: %v", err2, c)
+		}
+
 		log.Error("Authorize Error: %v", err, c)
 		// Update payment status accordingly
 		ord.Status = order.Cancelled
