@@ -5,10 +5,11 @@ import (
 
 	"google.golang.org/appengine/search"
 
+	"hanzo.io/log"
 	"hanzo.io/models/mixin"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
+	"hanzo.io/util/searchpartial"
 )
 
 type Document struct {
@@ -17,13 +18,15 @@ type Document struct {
 	// Special Kind Option
 	Kind search.Atom `search:",facet"`
 
-	Id_        string
-	Number     float64
-	UserId     string
-	StoreId    string
-	CampaignId string
-	CartId     string
-	ReferrerId string
+	Id_           string
+	Number        float64
+	Email         search.Atom
+	EmailPartials string
+	UserId        string
+	StoreId       string
+	CampaignId    string
+	CartId        string
+	ReferrerId    string
 
 	ProductNames string
 	ProductIds   string
@@ -128,6 +131,8 @@ func (d *Document) Init() {
 }
 
 func (o Order) Document() mixin.Document {
+	emailUser := strings.Split(o.Email, "@")[0]
+
 	productIds := make([]string, 0)
 	productSlugs := make([]string, 0)
 	productNames := make([]string, 0)
@@ -146,6 +151,8 @@ func (o Order) Document() mixin.Document {
 	doc.Kind = search.Atom(kind)
 	doc.Id_ = o.Id()
 	doc.Number = float64(o.NumberFromId())
+	doc.Email = search.Atom(o.Email)
+	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser
 	doc.UserId = o.UserId
 	doc.StoreId = o.StoreId
 	doc.CampaignId = o.CampaignId
