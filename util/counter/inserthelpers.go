@@ -321,7 +321,9 @@ func IncrSubscribers(ctx context.Context, org *organization.Organization, mailin
 
 	key = subKey(org, mailinglistId, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
-	return Increment(ctx, key, key, "", "", Total, t)
+	if err := Increment(ctx, key, key, "", "", Total, t); err != nil {
+		return err
+	}
 
 	key = subKey(org, mailinglistAllKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
