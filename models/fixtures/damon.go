@@ -1,6 +1,8 @@
 package fixtures
 
 import (
+	// "time"
+
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
@@ -34,8 +36,8 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	org.FullName = "Damon Inc"
 	org.Owners = []string{usr.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://damonmotorcycles.com/"}}
+	org.EmailWhitelist = "*.hanzo.ai *.damonmotorcycles.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.AddDefaultTokens()
 
 	org.Fees.Card.Flat = 0
 	org.Fees.Card.Percent = 0.05
@@ -92,46 +94,71 @@ var _ = New("damon", func(c *gin.Context) *organization.Organization {
 	prod.Hidden = false
 	prod.MustUpdate()
 
-	premierSlugs := []string{
-		"HSP-BGL",
-		"HSP-BRS",
-		"HSP-GGP",
-		"HSP-GRS",
-		"HSP-GWP",
-		"HSP-RWS",
-		"HSP-WRW",
-		"HSP-BGP",
-		"HSP-BRW",
-		"HSP-GGRS",
-		"HSP-GRW",
-		"HSP-RWL",
-		"HSP-WGL",
-		"HSP-BGRS",
-		"HSP-GBRS",
-		"HSP-GGS",
-		"HSP-GRWL",
-		"HSP-RWP",
-		"HSP-WRRS",
-		"HSP-BGW",
-		"HSP-GBW",
-		"HSP-GRP",
-		"HSP-GWL",
-		"HSP-RWRS",
-		"HSP-WRS",
-	}
+	// premierSlugs := []string{
+	// 	"HSP-BGL",
+	// 	"HSP-BRS",
+	// 	"HSP-GGP",
+	// 	"HSP-GRS",
+	// 	"HSP-GWP",
+	// 	"HSP-RWS",
+	// 	"HSP-WRW",
+	// 	"HSP-BGP",
+	// 	"HSP-BRW",
+	// 	"HSP-GGRS",
+	// 	"HSP-GRW",
+	// 	"HSP-RWL",
+	// 	"HSP-WGL",
+	// 	"HSP-BGRS",
+	// 	"HSP-GBRS",
+	// 	"HSP-GGS",
+	// 	"HSP-GRWL",
+	// 	"HSP-RWP",
+	// 	"HSP-WRRS",
+	// 	"HSP-BGW",
+	// 	"HSP-GBW",
+	// 	"HSP-GRP",
+	// 	"HSP-GWL",
+	// 	"HSP-RWRS",
+	// 	"HSP-WRS",
+	// }
 
-	for _, s := range premierSlugs {
-		prod := product.New(nsdb)
-		prod.Slug = s
-		prod.GetOrCreate("Slug=", prod.Slug)
-		prod.Name = "Damon Motorcycles Hypersport Premier " + s
-		prod.Description = ""
-		prod.Price = currency.Cents(100000)
-		prod.Inventory = 9000
-		prod.Preorder = true
-		prod.Hidden = false
-		prod.MustUpdate()
-	}
+	// for _, s := range premierSlugs {
+	// 	prod := product.New(nsdb)
+	// 	prod.Slug = s
+	// 	prod.GetOrCreate("Slug=", prod.Slug)
+	// 	prod.Name = "Damon Motorcycles Hypersport Premier " + s
+	// 	prod.Description = ""
+	// 	prod.Price = currency.Cents(100000)
+	// 	prod.Inventory = 9000
+	// 	prod.Preorder = true
+	// 	prod.Hidden = false
+	// 	prod.Reservation.IsReservable = true
+
+	// 	switch s {
+	// 	case "HSP-BGRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "W.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-WRRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "N.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-WRS":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "J.G."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-GRW":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "R.W."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	case "HSP-GRWL":
+	// 		prod.Reservation.IsBeingReserved = true
+	// 		prod.Reservation.ReservedBy = "W.L."
+	// 		prod.Reservation.ReservedAt = time.Now()
+	// 	}
+
+	// 	prod.MustUpdate()
+	// }
 
 	return org
 })
