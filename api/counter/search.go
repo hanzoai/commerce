@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 
 	aeds "google.golang.org/appengine/datastore"
 )
@@ -17,7 +17,7 @@ import (
 type searchReq struct {
 	Tag     string    `json:"tag"`
 	StoreId string    `json:"storeId"`
-	Geo     string    `json:geo`
+	Geo     string    `json:"geo"`
 	Period  string    `json:"period"`
 	After   time.Time `json:"after"`
 	Before  time.Time `json:"before"`

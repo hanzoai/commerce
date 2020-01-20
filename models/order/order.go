@@ -110,7 +110,7 @@ type Order struct {
 
 	// Payment Method Id
 	PaymentMethodId string                      `json:"paymentMethodId,omitempty"`
-	PaymentMethod   paymentmethod.PaymentMethod `json:"paymentMethod",datastore:"-"`
+	PaymentMethod   paymentmethod.PaymentMethod `json:"paymentMethod" datastore:"-"`
 
 	// Payment mode
 	Mode Mode `json:"mode,omitempty"`
