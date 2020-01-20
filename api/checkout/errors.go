@@ -6,6 +6,7 @@ var (
 	FailedToCreateCustomer       = errors.New("Failed to create customer")
 	FailedToCreateUser           = errors.New("Failed to create user")
 	FailedToDecodeRequestBody    = errors.New("Failed to decode request body")
+	FailedToReserveItem          = errors.New("Item already reserved")
 	FeeCalculationError          = errors.New("Failed to calculate fees")
 	FundingAccountCreationError  = errors.New("Failed to create funding account")
 	InvalidOrIncompleteOrder     = errors.New("Invalid or incomplete order")
