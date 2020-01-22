@@ -174,7 +174,6 @@ auth:
 deploy: build
 	@cd $(gopath)/src/hanzo.io
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
-	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
 update-env:
