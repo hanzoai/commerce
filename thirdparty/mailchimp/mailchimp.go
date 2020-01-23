@@ -17,20 +17,19 @@ type API struct {
 	Key     string
 }
 
-func New(c context.Context, settings integration.Mailchimp) *API {
+func New(ctx context.Context, settings integration.Mailchimp) *API {
 	// Update timeout
-	c, cancel := context.WithTimeout(c, time.Second*55)
-	defer cancel()
+	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
 	apiKey := settings.APIKey
 	client := gochimp3.New(apiKey)
 	client.Transport = &urlfetch.Transport{
-		Context: c,
+		Context: ctx,
 	}
 	client.Debug = true
 
 	return &API{
-		Context: c,
+		Context: ctx,
 		Client:  client,
 		Key:     apiKey,
 	}
