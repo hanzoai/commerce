@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/cart"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/types/integration"
 
@@ -63,16 +64,16 @@ var _ = New("damon-mailchimp-orders",
 			}
 		}
 
-		// pay := payment.New(db)
+		pay := payment.New(db)
 
-		// if _, err := pay.Query().Filter("OrderId=", ord.Id()).Get(); err != nil {
-		// 	log.Warn("No Payment Found for %v: %v", ord.Id(), err, db.Context)
-		// 	return
-		// }
+		if _, err := pay.Query().Filter("OrderId=", ord.Id()).Get(); err != nil {
+			log.Warn("No Payment Found for %v: %v", ord.Id(), err, db.Context)
+			return
+		}
 
 		// Just get buyer off first payment
-		// if err := client.SubscribeCustomer(listId, pay.Buyer, ""); err != nil {
-		// 	log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", pay.Buyer.Email, listId, err, db.Context)
-		// }
+		if err := client.SubscribeCustomer(listId, pay.Buyer, ""); err != nil {
+			log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", pay.Buyer.Email, listId, err, db.Context)
+		}
 	},
 )
