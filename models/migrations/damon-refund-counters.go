@@ -11,7 +11,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-var _ = New("reset-refund-counters",
+var _ = New("damon-refund-counters",
 	func(c *gin.Context) []interface{} {
 		orgName := "damon"
 
