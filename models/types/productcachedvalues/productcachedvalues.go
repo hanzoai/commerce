@@ -13,15 +13,15 @@ type ProductCachedValues struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency      currency.Type  `json:"currency"`
 	Price         currency.Cents `json:"price"`
-	MSRP		  currency.Cents `json:"msrp,omitempty"`
+	MSRP          currency.Cents `json:"msrp,omitempty"`
 	InventoryCost currency.Cents `json:"-"`
 
 	// Subscription
-	IsSubscribeable bool		   `json:"isSubscribeable"`
-	Interval        Interval       `json:"interval"`
-	IntervalCount   int            `json:"intervalCount"`
+	IsSubscribeable bool     `json:"isSubscribeable"`
+	Interval        Interval `json:"interval"`
+	IntervalCount   int      `json:"intervalCount"`
 	// Kinda stripe specific, refactor later
-	TrialPeriodDays int            `json:"trialPeriodDays"`
+	TrialPeriodDays int `json:"trialPeriodDays"`
 
 	Inventory int `json:"inventory"`
 
@@ -30,16 +30,13 @@ type ProductCachedValues struct {
 	Dimensions     dimensions.Size `json:"dimensions"`
 	DimensionsUnit dimensions.Unit `json:"dimensionsUnit"`
 
-	Taxable	  bool `json:"taxable"`
+	Taxable bool `json:"taxable"`
 
 	// Optional Estimated Delivery line
 	EstimatedDelivery string `json:"estimatedDelivery"`
 
 	// DEPRECATED
 
-	// Deprecated because people keep getting confused that its hte display
-	// price
-	ListPrice currency.Cents `json:"listPrice,omitempty"`
+	ListPrice      currency.Cents `json:"listPrice,omitempty"`
+	ProjectedPrice currency.Cents `json:"ProjectedPrice,omitempty"`
 }
-
-
