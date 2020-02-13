@@ -112,6 +112,17 @@ func IncrOrder(ctx context.Context, ord *order.Order) error {
 	if err := IncrementByAll(ctx, "order.revenue", ord.StoreId, ord.ShippingAddress.Country, int(ord.Total), ord.CreatedAt); err != nil {
 		return err
 	}
+
+	projectedPrice := 0
+	// Calculate Projected
+	ord.GetItemEntities()
+	for _, item := range ord.Items {
+		projectedPrice += item.Quantity * int(item.ProjectedPrice)
+	}
+
+	if err := IncrementByAll(ctx, "order.projected.revenue", ord.StoreId, ord.ShippingAddress.Country, projectedPrice, ord.CreatedAt); err != nil {
+		return err
+	}
 	for _, item := range ord.Items {
 		prod := product.New(ord.Db)
 		if err := prod.GetById(item.ProductId); err != nil {
@@ -136,6 +147,9 @@ func IncrProduct(ctx context.Context, prod *product.Product, ord *order.Order) e
 		return err
 	}
 	if err := IncrementByAll(ctx, "product."+prod.Id()+".revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
+		return err
+	}
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
 		return err
 	}
 

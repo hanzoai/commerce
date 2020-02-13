@@ -5,7 +5,6 @@ import (
 
 	"hanzo.io/log"
 	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
 	"hanzo.io/util/counter"
 
 	ds "hanzo.io/datastore"
@@ -13,16 +12,7 @@ import (
 
 var _ = New("damon-refund-counters",
 	func(c *gin.Context) []interface{} {
-		orgName := "damon"
-
-		c.Set("namespace", orgName)
-
-		db := ds.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", orgName).Get(); err != nil {
-			panic(err)
-		}
-
+		c.Set("namespace", "damon")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
