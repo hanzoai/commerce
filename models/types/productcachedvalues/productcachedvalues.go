@@ -38,5 +38,5 @@ type ProductCachedValues struct {
 	// DEPRECATED
 
 	ListPrice      currency.Cents `json:"listPrice,omitempty"`
-	ProjectedPrice currency.Cents `json:"ProjectedPrice,omitempty"`
+	ProjectedPrice currency.Cents `json:"projectedPrice,omitempty"`
 }
