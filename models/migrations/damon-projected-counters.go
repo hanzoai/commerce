@@ -21,7 +21,6 @@ var _ = New("damon-projected-counters",
 
 		projectedPrice := 0
 		// Calculate Projected
-		ord.GetItemEntities()
 		for _, item := range ord.Items {
 			if item.ProjectedPrice == 0 {
 				prod := product.New(ord.Db)
