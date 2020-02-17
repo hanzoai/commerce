@@ -22,7 +22,7 @@ var _ = New("damon-projected-counters",
 		projectedPrice := 0
 		// Calculate Projected
 		for _, item := range ord.Items {
-			log.Warn("item %v", item, db.Context)
+			log.Warn("item %v", item.ProjectedPrice, db.Context)
 			if item.ProjectedPrice == 0 {
 				prod := product.New(ord.Db)
 				if err := prod.GetById(item.ProductId); err == nil {
