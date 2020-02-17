@@ -23,22 +23,28 @@ var _ = New("damon-projected-counters",
 		// Calculate Projected
 		ord.GetItemEntities()
 		for _, item := range ord.Items {
-			projectedPrice += item.Quantity * int(item.ProjectedPrice)
+			if item.ProjectedPrice == 0 {
+				prod := product.New(ord.Db)
+				if err := prod.GetById(item.ProductId); err != nil {
+					projectedPrice += item.Quantity * int(item.ProjectedPrice)
+				}
+			}
 		}
 
 		if err := counter.IncrementByAll(ctx, "order.projected.revenue", ord.StoreId, ord.ShippingAddress.Country, projectedPrice, ord.CreatedAt); err != nil {
 			log.Error("order.projected.revenue error %v", err, db.Context)
 		}
-		for _, item := range ord.Items {
-			prod := product.New(ord.Db)
-			if err := prod.GetById(item.ProductId); err != nil {
-				log.Error("no product found %v", err, ctx)
-			}
-			for i := 0; i < item.Quantity; i++ {
-				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
-					log.Error("product."+prod.Id()+".projected.revenue error %v", err, db.Context)
-				}
-			}
-		}
+
+		// for _, item := range ord.Items {
+		// 	prod := product.New(ord.Db)
+		// 	if err := prod.GetById(item.ProductId); err != nil {
+		// 		log.Error("no product found %v", err, ctx)
+		// 	}
+		// 	for i := 0; i < item.Quantity; i++ {
+		// 		if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+		// 			log.Error("product."+prod.Id()+".projected.revenue error %v", err, db.Context)
+		// 		}
+		// 	}
+		// }
 	},
 )
