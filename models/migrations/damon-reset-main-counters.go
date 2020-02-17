@@ -12,7 +12,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-func MustNukeCounter(db *ds.Datastore, tag string) {
+func MustNukeCounter2(db *ds.Datastore, tag string) {
 	var ks []*aeds.Key
 	var err error
 	ks, err = db.Query(counter.ShardKind).Filter("Tag=", tag).Limit(500).KeysOnly().GetAll(nil)
@@ -41,7 +41,9 @@ var _ = New("damon-reset-main-counters",
 		}
 
 		nsDb := ds.New(org.Namespaced(c))
-		MustNukeCounter(nsDb, "order.projected.revenue")
+		MustNukeCounter2(nsDb, "order.projected.revenue")
+		MustNukeCounter2(nsDb, "order.refunded.count")
+		MustNukeCounter2(nsDb, "order.refunded.amount")
 
 		prods := make([]*product.Product, 0)
 		if _, err := product.Query(nsDb).GetAll(&prods); err != nil {
@@ -49,7 +51,9 @@ var _ = New("damon-reset-main-counters",
 		}
 
 		for _, prod := range prods {
-			MustNukeCounter(nsDb, "product."+prod.Id()+".projected.revenue")
+			MustNukeCounter2(nsDb, "product."+prod.Id()+".projected.revenue")
+			MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.count")
+			MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.amount")
 		}
 
 		return NoArgs
