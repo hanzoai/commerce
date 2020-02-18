@@ -17,6 +17,10 @@ var _ = New("damon-projected-counters",
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
+		if ord.Test {
+			return
+		}
+
 		ctx := db.Context
 
 		projectedPrice := 0
@@ -33,16 +37,16 @@ var _ = New("damon-projected-counters",
 			log.Error("order.projected.revenue error %v", err, db.Context)
 		}
 
-		// for _, item := range ord.Items {
-		// 	prod := product.New(ord.Db)
-		// 	if err := prod.GetById(item.ProductId); err != nil {
-		// 		log.Error("no product found %v", err, ctx)
-		// 	}
-		// 	for i := 0; i < item.Quantity; i++ {
-		// 		if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
-		// 			log.Error("product."+prod.Id()+".projected.revenue error %v", err, db.Context)
-		// 		}
-		// 	}
-		// }
+		for _, item := range ord.Items {
+			prod := product.New(ord.Db)
+			if err := prod.GetById(item.ProductId); err != nil {
+				log.Error("no product found %v", err, ctx)
+			}
+			for i := 0; i < item.Quantity; i++ {
+				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+					log.Error("product."+prod.Id()+".projected.revenue error %v", err, db.Context)
+				}
+			}
+		}
 	},
 )

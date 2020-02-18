@@ -58,6 +58,7 @@ func newMessage(message *email.Message) *mandrill.Message {
 	if message.Text != "" {
 		m.Text = message.Text
 	}
+
 	return m
 }
 
@@ -66,12 +67,15 @@ func (c *Client) Send(message *email.Message) error {
 	var (
 		res []*mandrill.Response
 		err error
+		msg = newMessage(message)
 	)
 
+	log.Info("Send Email %v, %v", message, msg, c.context)
+
 	if message.TemplateID != "" {
-		res, err = c.client.MessagesSend(newMessage(message))
+		res, err = c.client.MessagesSendTemplate(msg, message.TemplateID, msg.GlobalMergeVars)
 	} else {
-		res, err = c.client.MessagesSend(newMessage(message))
+		res, err = c.client.MessagesSend(msg)
 	}
 
 	if err != nil {
@@ -92,7 +96,7 @@ func New(c context.Context, in integration.Mandrill) *Client {
 	httpClient := urlfetch.Client(c)
 
 	httpClient.Transport = &urlfetch.Transport{
-		Context: c,
+		Context:                       c,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
