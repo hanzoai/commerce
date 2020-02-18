@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"hanzo.io/log"
 	"hanzo.io/models/form"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
@@ -17,7 +18,6 @@ import (
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 
 	. "hanzo.io/types"
 )
@@ -94,8 +94,8 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 
 	// Include all relevant order information
 	order := map[string]interface{}{
-		"number":    ord.Number,
-		"id":        ord.DisplayId(),
+		"number": ord.Number,
+		// "id":        ord.DisplayId(),
 		"subtotal":  ord.DisplaySubtotal(),
 		"tax":       ord.DisplayTax(),
 		"shipping":  ord.DisplayShipping(),
@@ -127,7 +127,7 @@ func orderMessage(settings email.Setting, ord *order.Order, usr *user.User, pay 
 		"monthName": ord.CreatedAt.Month().String(),
 		"year":      ord.CreatedAt.Year(),
 		"storeId":   ord.StoreId,
-		"metadata":	 ord.Metadata,
+		"metadata":  ord.Metadata,
 	}
 
 	// Include discount
