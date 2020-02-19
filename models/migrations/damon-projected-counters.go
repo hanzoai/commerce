@@ -21,6 +21,10 @@ var _ = New("damon-projected-counters",
 			return
 		}
 
+		if ord.Status == "cancelled" {
+			return
+		}
+
 		ctx := db.Context
 
 		projectedPrice := 0
