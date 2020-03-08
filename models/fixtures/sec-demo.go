@@ -1,22 +1,22 @@
 package fixtures
 
 import (
-	"math/rand"
-	"time"
+	// "math/rand"
+	// "time"
 
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
-	"hanzo.io/demo/disclosure"
-	"hanzo.io/demo/tokentransaction"
-	"hanzo.io/log"
+	// "hanzo.io/demo/disclosure"
+	// "hanzo.io/demo/tokentransaction"
+	// "hanzo.io/log"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/types/email"
 	"hanzo.io/types/integration"
 	"hanzo.io/types/website"
-	"hanzo.io/util/fake"
+	// "hanzo.io/util/fake"
 )
 
 var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
@@ -39,6 +39,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{u.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://sec.hanzo.ai"}}
 	org.SecretKey = []byte("XzJn6Asyd9ZVSuaCDHjxj3tuhAb6FPLnzZ5VU9Md6VwsMrnCHrkcz8ZBBxqMURJD")
+	org.AddDefaultTokens()
 
 	org.Fees.Card.Flat = 50
 	org.Fees.Card.Percent = 0.05
@@ -107,79 +108,79 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	// 	wh.MustUpdate()
 	// }
 
-	nsDb := datastore.New(org.Namespaced(c))
+	// nsDb := datastore.New(org.Namespaced(c))
 
-	users := make([]*user.User, 0)
+	// users := make([]*user.User, 0)
 
-	for i := 0; i < 103; i++ {
-		usr := user.New(nsDb)
-		usr.Email = fake.EmailAddress()
-		usr.GetOrCreate("Email=", usr.Email)
+	// for i := 0; i < 103; i++ {
+	// 	usr := user.New(nsDb)
+	// 	usr.Email = fake.EmailAddress()
+	// 	usr.GetOrCreate("Email=", usr.Email)
 
-		usr.FirstName = fake.FirstName()
-		usr.LastName = fake.LastName()
-		usr.PasswordHash, _ = password.Hash("secdemo")
+	// 	usr.FirstName = fake.FirstName()
+	// 	usr.LastName = fake.LastName()
+	// 	usr.PasswordHash, _ = password.Hash("secdemo")
 
-		usr.KYC.Phone = fake.Phone()
-		usr.KYC.Birthdate = time.Date(fake.Year(1942, 2000), time.Month(fake.MonthNum()), fake.Day(), 0, 0, 0, 0, nil)
-		usr.KYC.Gender = fake.Gender()
-		usr.KYC.Address.Name = usr.FirstName + " " + usr.LastName
-		usr.KYC.Address.Line1 = fake.StreetAddress()
-		usr.KYC.Address.City = fake.City()
-		usr.KYC.Address.State = fake.StateAbbrev()
-		usr.KYC.Address.PostalCode = fake.Zip()
-		usr.KYC.Address.Country = "US"
-		usr.KYC.TaxId = fake.TaxID()
-		usr.KYC.WalletAddresses = []string{fake.EOSAddress(), fake.EthereumAddress()}
-		usr.MustPut()
-		usr.MustUpdate()
+	// 	usr.KYC.Phone = fake.Phone()
+	// 	usr.KYC.Birthdate = time.Date(fake.Year(1942, 2000), time.Month(fake.MonthNum()), fake.Day(), 0, 0, 0, 0, nil)
+	// 	usr.KYC.Gender = fake.Gender()
+	// 	usr.KYC.Address.Name = usr.FirstName + " " + usr.LastName
+	// 	usr.KYC.Address.Line1 = fake.StreetAddress()
+	// 	usr.KYC.Address.City = fake.City()
+	// 	usr.KYC.Address.State = fake.StateAbbrev()
+	// 	usr.KYC.Address.PostalCode = fake.Zip()
+	// 	usr.KYC.Address.Country = "US"
+	// 	usr.KYC.TaxId = fake.TaxID()
+	// 	usr.KYC.WalletAddresses = []string{fake.EOSAddress(), fake.EthereumAddress()}
+	// 	usr.MustPut()
+	// 	usr.MustUpdate()
 
-		users = append(users, usr)
-	}
+	// 	users = append(users, usr)
+	// }
 
-	for i := 0; i < 420; i++ {
-		tr := tokentransaction.New(nsDb)
+	// for i := 0; i < 420; i++ {
+	// 	tr := tokentransaction.New(nsDb)
 
-		usr := users[rand.Intn(100)]
-		usr2 := users[rand.Intn(100)]
+	// 	usr := users[rand.Intn(100)]
+	// 	usr2 := users[rand.Intn(100)]
 
-		log.Warn("HI %v, %v", usr.FirstName, usr.LastName, c)
+	// 	log.Warn("HI %v, %v", usr.FirstName, usr.LastName, c)
 
-		if rand.Float64() > 0.7 {
-			tr.TransactionHash = fake.EthereumAddress()
-			tr.SendingAddress = fake.EthereumAddress()
-			tr.ReceivingAddress = fake.EthereumAddress()
-			tr.Protocol = "ETH"
-		} else {
-			tr.TransactionHash = fake.EOSTransactionHash()
-			tr.SendingAddress = fake.EOSAddress()
-			tr.ReceivingAddress = fake.EOSAddress()
-			tr.Protocol = "EOS"
-		}
+	// 	if rand.Float64() > 0.7 {
+	// 		tr.TransactionHash = fake.EthereumAddress()
+	// 		tr.SendingAddress = fake.EthereumAddress()
+	// 		tr.ReceivingAddress = fake.EthereumAddress()
+	// 		tr.Protocol = "ETH"
+	// 	} else {
+	// 		tr.TransactionHash = fake.EOSTransactionHash()
+	// 		tr.SendingAddress = fake.EOSAddress()
+	// 		tr.ReceivingAddress = fake.EOSAddress()
+	// 		tr.Protocol = "EOS"
+	// 	}
 
-		tr.Timestamp = time.Now()
+	// 	tr.Timestamp = time.Now()
 
-		tr.Amount = rand.Float64() * 1000
-		tr.Fees = rand.Float64() * 10
-		tr.SendingName = usr.FirstName + " " + usr.LastName
-		tr.SendingUserId = usr.Id()
-		tr.SendingState = usr.KYC.Address.State
-		tr.SendingCountry = usr.KYC.Address.Country
+	// 	tr.Amount = rand.Float64() * 1000
+	// 	tr.Fees = rand.Float64() * 10
+	// 	tr.SendingName = usr.FirstName + " " + usr.LastName
+	// 	tr.SendingUserId = usr.Id()
+	// 	tr.SendingState = usr.KYC.Address.State
+	// 	tr.SendingCountry = usr.KYC.Address.Country
 
-		tr.ReceivingName = usr2.FirstName + " " + usr2.LastName
-		tr.ReceivingUserId = usr2.Id()
-		tr.ReceivingState = usr2.KYC.Address.State
-		tr.SendingCountry = usr2.KYC.Address.Country
-		tr.MustPut()
-	}
+	// 	tr.ReceivingName = usr2.FirstName + " " + usr2.LastName
+	// 	tr.ReceivingUserId = usr2.Id()
+	// 	tr.ReceivingState = usr2.KYC.Address.State
+	// 	tr.SendingCountry = usr2.KYC.Address.Country
+	// 	tr.MustPut()
+	// }
 
-	for i := 0; i < 23; i++ {
-		d := disclosure.New(nsDb)
-		d.Publication = ""
-		d.Hash = fake.EOSTransactionHash()
-		d.Type = "prospectus"
-		d.MustPut()
-	}
+	// for i := 0; i < 23; i++ {
+	// 	d := disclosure.New(nsDb)
+	// 	d.Publication = ""
+	// 	d.Hash = fake.EOSTransactionHash()
+	// 	d.Type = "prospectus"
+	// 	d.MustPut()
+	// }
 
 	return org
 })
