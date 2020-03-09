@@ -67,6 +67,8 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp)
 
+		log.Info("Mailchimp Subscribe Metadata %v", s.Metadata, c)
+
 		firstName := s.Metadata["firstName"].(string)
 		if firstName == "" {
 			firstName = s.Metadata["FNAME"].(string)
@@ -82,7 +84,9 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Forward subscriber (if enabled)
-	forward(ctx, org, f, s)
+	if f.Forward.Enabled {
+		forward(ctx, org, f, s)
+	}
 
 	// Success!
 	c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())

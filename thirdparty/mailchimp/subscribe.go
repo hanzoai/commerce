@@ -33,11 +33,17 @@ func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {
 			status = "pending"
 		}
 
+		metadata := sub.Metadata
+
+		if metadata == nil {
+			metadata = map[string]interface{}{}
+		}
+
 		req := &gochimp3.MemberRequest{
 			EmailAddress: sub.Email.Address,
 			Status:       status,
 			StatusIfNew:  status,
-			MergeFields:  sub.Metadata,
+			MergeFields:  metadata,
 			Interests:    make(map[string]bool),
 			// Language:     sub.Client.Language,
 			VIP: false,
