@@ -102,3 +102,39 @@ func (api API) SubscribeCustomer(listId string, buy Buyer, referralUrl string) *
 		return api.Subscribe(list, sub)
 	})
 }
+
+func (api API) SubscribeForm(listId string, emailStr string) *Error {
+	return wrapError(func() error {
+		// f := new(form.Form)
+		// f.EmailList.Id = listId
+		// s := &subscriber.Subscriber{
+		// 	Email:  buy.Email,
+		// 	UserId: idOrEmail(buy.UserId, buy.Email),
+		// 	Client: client.Client{
+		// 		Country: buy.BillingAddress.Country,
+		// 	},
+		// 	Metadata: Map{
+		// 		"FNAME":    buy.FirstName,
+		// 		"LNAME":    buy.LastName,
+		// 		"ADDRESS1": buy.BillingAddress.Line1,
+		// 		"ADDRESS2": buy.BillingAddress.Line2,
+		// 		"CITY":     buy.BillingAddress.City,
+		// 		"STATE":    buy.BillingAddress.State,
+		// 		"POSTAL":   buy.BillingAddress.PostalCode,
+		// 		"COUNTRY":  buy.BillingAddress.Country,
+		// 		"PHONE":    buy.Phone,
+		// 		"REFERRAL": referralUrl,
+		// 	},
+		// }
+		// return nil
+		list := &email.List{
+			Id: listId,
+		}
+		sub := &email.Subscriber{
+			Email: email.Email{
+				Address: emailStr,
+			},
+		}
+		return api.Subscribe(list, sub)
+	})
+}

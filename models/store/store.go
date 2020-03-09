@@ -101,7 +101,7 @@ type Store struct {
 	Mailchimp struct {
 		ListId string `json:"listId"`
 		APIKey string `json:"apiKey"`
-	} `json:"mailchimp,omitempty`
+	} `json:"mailchimp,omitempty"`
 }
 
 func (s *Store) Load(ps []aeds.Property) (err error) {

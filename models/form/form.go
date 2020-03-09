@@ -80,6 +80,11 @@ type Form struct {
 		Category string `json:"category"`
 		Name     string `json:"name"`
 	} `json:"google"`
+
+	Mailchimp struct {
+		ListId string `json:"listId"`
+		APIKey string `json:"apiKey"`
+	} `json:"mailchimp,omitempty"`
 }
 
 func (f *Form) Validator() *val.Validator {
