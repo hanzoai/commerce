@@ -13,6 +13,7 @@ import (
 	"hanzo.io/models/organization"
 	"hanzo.io/models/subscriber"
 	"hanzo.io/models/types/client"
+	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -59,6 +60,16 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	// Send welcome email
 	if f.SendWelcome {
 		email.SendSubscriberWelcome(ctx, org, s, f)
+	}
+
+	// Save user as customer in Mailchimp if configured
+	if f.Mailchimp.APIKey != "" {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp)
+
+		if err := client.SubscribeForm(f.Mailchimp.ListId, s.Email); err != nil {
+			log.Error("Mailchimp Subscribe Error: %v", err, c)
+		}
 	}
 
 	// Forward subscriber (if enabled)
