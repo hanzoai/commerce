@@ -21,7 +21,16 @@ var _ = New("damon-forms", func(c *gin.Context) *form.Form {
 	f := form.New(nsdb)
 	f.Name = "Preorders"
 	f.GetOrCreate("Name=", f.Name)
+	f.Mailchimp.APIKey = ""
 	f.MustUpdate()
+
+	// Create mailinglist
+	f2 := form.New(nsdb)
+	f2.Name = "Newsletter"
+	f2.GetOrCreate("Name=", f.Name)
+	f2.Mailchimp.APIKey = ""
+	f2.Mailchimp.ListId = "aacc13e678"
+	f2.MustUpdate()
 
 	return f
 })
