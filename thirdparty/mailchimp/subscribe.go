@@ -37,8 +37,8 @@ func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {
 			EmailAddress: sub.Email.Address,
 			Status:       status,
 			StatusIfNew:  status,
-			// MergeFields:  sub.MergeFields(),
-			Interests: make(map[string]bool),
+			MergeFields:  sub.Metadata,
+			Interests:    make(map[string]bool),
 			// Language:     sub.Client.Language,
 			VIP: false,
 			Location: &gochimp3.MemberLocation{
@@ -98,12 +98,24 @@ func (api API) SubscribeCustomer(listId string, buy Buyer, referralUrl string) *
 			Email: email.Email{
 				Address: buy.Email,
 			},
+			Metadata: map[string]interface{}{
+				"FNAME":    buy.FirstName,
+				"LNAME":    buy.LastName,
+				"ADDRESS1": buy.BillingAddress.Line1,
+				"ADDRESS2": buy.BillingAddress.Line2,
+				"CITY":     buy.BillingAddress.City,
+				"STATE":    buy.BillingAddress.State,
+				"POSTAL":   buy.BillingAddress.PostalCode,
+				"COUNTRY":  buy.BillingAddress.Country,
+				"PHONE":    buy.Phone,
+				"REFERRAL": referralUrl,
+			},
 		}
 		return api.Subscribe(list, sub)
 	})
 }
 
-func (api API) SubscribeForm(listId string, emailStr string) *Error {
+func (api API) SubscribeForm(listId, emailStr, firstName, lastName string) *Error {
 	return wrapError(func() error {
 		// f := new(form.Form)
 		// f.EmailList.Id = listId
@@ -133,6 +145,10 @@ func (api API) SubscribeForm(listId string, emailStr string) *Error {
 		sub := &email.Subscriber{
 			Email: email.Email{
 				Address: emailStr,
+			},
+			Metadata: map[string]interface{}{
+				"FNAME": firstName,
+				"LNAME": lastName,
 			},
 		}
 		return api.Subscribe(list, sub)

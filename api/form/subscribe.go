@@ -67,7 +67,16 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 		// Create new mailchimp client
 		client := mailchimp.New(ctx, org.Mailchimp)
 
-		if err := client.SubscribeForm(f.Mailchimp.ListId, s.Email); err != nil {
+		firstName := s.Metadata["firstName"].(string)
+		if firstName == "" {
+			firstName = s.Metadata["FNAME"].(string)
+		}
+		lastName := s.Metadata["lastName"].(string)
+		if lastName == "" {
+			lastName = s.Metadata["FNAME"].(string)
+		}
+
+		if err := client.SubscribeForm(f.Mailchimp.ListId, s.Email, firstName, lastName); err != nil {
 			log.Error("Mailchimp Subscribe Error: %v", err, c)
 		}
 	}

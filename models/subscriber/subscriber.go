@@ -74,10 +74,10 @@ func (s Subscriber) Name() string {
 	for k := range s.Metadata {
 		k = normalizeName(k)
 		if v, ok := s.Metadata[k].(string); ok {
-			if k == "first" {
+			if k == "first" || k == "FNAME" {
 				firstName = v
 			}
-			if k == "last" {
+			if k == "last" || k == "LNAME" {
 				lastName = v
 			}
 			if k == "full" {
