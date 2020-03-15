@@ -208,6 +208,20 @@ func (a *Authorization) Init(db *datastore.Datastore) error {
 	} else if a.User == nil {
 		log.Error("No User Found:\nUser: '%v'\nOrder.UserId: '%s'", a.User, a.Order.UserId, db.Context)
 		return UserNotProvided
+	} else if a.User != nil && strings.Contains(a.User.Email, "@") {
+		u := a.User
+		a.User = user.New(db)
+		if err := a.User.GetById(u.Email); err != nil {
+			a.User = u
+			log.Info("Creating new User with Email: %v", u.Email, db.Context)
+		}
+	} else if a.User != nil && a.User.Id_ != "" {
+		u := a.User
+		a.User = user.New(db)
+		if err := a.User.GetById(u.Id_); err != nil {
+			a.User = u
+			log.Info("Creating new User with Id: %v", u.Id_, db.Context)
+		}
 	}
 
 	if err := initUser(db, a.User, a.Order); err != nil {
