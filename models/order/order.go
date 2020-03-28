@@ -225,6 +225,8 @@ type Order struct {
 	// PaymentStop time.Time `json:"paymentStop"`
 
 	FormId string `json:"formId,omitempty"`
+
+	TemplateId string `json:"templateId,omitempty"`
 }
 
 func (o *Order) Validator() *val.Validator {

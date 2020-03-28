@@ -303,7 +303,13 @@ func SendOrderConfirmation(c context.Context, org *organization.Organization, or
 	order := message.TemplateData["order"].(map[string]interface{})
 	order["referralCode"] = referralCode
 
-	SendTemplate("order-confirmation", c, message, org)
+	template := "order-confirmation"
+
+	if ord.TemplateId != "" {
+		template = ord.TemplateId
+	}
+
+	SendTemplate(template, c, message, org)
 }
 
 func SendOrderPartiallyRefunded(c context.Context, org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) {
