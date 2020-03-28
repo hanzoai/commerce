@@ -1,8 +1,8 @@
 package email
 
 import (
-	"time"
 	"encoding/gob"
+	"time"
 )
 
 func init() {
