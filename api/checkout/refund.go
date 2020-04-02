@@ -6,12 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"hanzo.io/api/checkout/stripe"
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/product"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
@@ -34,6 +35,20 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	if !ord.Test {
 		if err := counter.IncrOrderRefund(ord.Context(), ord, int(req.Amount), time.Now()); err != nil {
 			log.Error("IncrOrderRefund Error %v", err, c)
+		}
+
+		if ord.Total == ord.Refunded {
+			if err := ord.GetItemEntities(); err != nil {
+				for _, item := range ord.Items {
+					prod := product.New(ord.Db)
+
+					if err := prod.GetById(item.ProductId); err != nil {
+						log.Error("no product found %v", err, c)
+					}
+
+					counter.IncrProductRefund(ord.Context(), prod, ord)
+				}
+			}
 		}
 	}
 

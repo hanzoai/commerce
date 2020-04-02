@@ -11,7 +11,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-var _ = New("damon-projected-counters",
+var _ = New("damon-product-refund-counters",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "damon")
 		return NoArgs
@@ -21,25 +21,11 @@ var _ = New("damon-projected-counters",
 			return
 		}
 
-		if ord.Status == "cancelled" {
+		if ord.Total != ord.Refunded {
 			return
 		}
 
 		ctx := db.Context
-
-		projectedPrice := 0
-		// Calculate Projected
-		for _, item := range ord.Items {
-			log.Warn("item %v", item.ProjectedPrice, db.Context)
-			prod := product.New(ord.Db)
-			if err := prod.GetById(item.ProductId); err == nil {
-				projectedPrice += item.Quantity * int(prod.ProjectedPrice)
-			}
-		}
-
-		if err := counter.IncrementByAll(ctx, "order.projected.revenue", ord.StoreId, ord.ShippingAddress.Country, projectedPrice, ord.CreatedAt); err != nil {
-			log.Error("order.projected.revenue error %v", err, db.Context)
-		}
 
 		for _, item := range ord.Items {
 			prod := product.New(ord.Db)
