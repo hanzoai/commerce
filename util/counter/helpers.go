@@ -195,6 +195,33 @@ func IncrOrderRefund(ctx context.Context, ord *order.Order, refund int, t time.T
 	return nil
 }
 
+func IncrProductRefund(ctx context.Context, prod *product.Product, ord *order.Order) error {
+	if ord.Test {
+		return nil
+	}
+	if ord.Refunded != ord.Total {
+		return nil
+	}
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
+		return err
+	}
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
+		return err
+	}
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+		return err
+	}
+
+	if prod.InventoryCost == 0 {
+		return nil
+	}
+
+	if err := IncrementByAll(ctx, "product."+prod.Id()+".inventory.refunded.cost", ord.StoreId, ord.ShippingAddress.Country, int(prod.InventoryCost), ord.CreatedAt); err != nil {
+		return err
+	}
+	return nil
+}
+
 func IncrOrderShip(ctx context.Context, ord *order.Order, t time.Time) error {
 	if ord.Test {
 		return nil
@@ -229,17 +256,6 @@ func IncrProductShip(ctx context.Context, prod *product.Product, ord *order.Orde
 		return nil
 	}
 	if err := IncrementByAll(ctx, "product."+prod.Id()+".shipped.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func IncrProductRefund(ctx context.Context, prod *product.Product, ord *order.Order) error {
-	if ord.Test {
-		return nil
-	}
-	if err := IncrementByAll(ctx, "product."+prod.Id()+".refunded.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
 
