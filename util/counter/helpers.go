@@ -211,6 +211,9 @@ func IncrProductRefund(ctx context.Context, prod *product.Product, ord *order.Or
 	if err := IncrementByAll(ctx, "product."+prod.Id()+".projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
 		return err
 	}
+	if err := IncrementByAll(ctx, "order.projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+		return err
+	}
 
 	if prod.InventoryCost == 0 {
 		return nil
