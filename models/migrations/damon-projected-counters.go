@@ -33,8 +33,8 @@ var _ = New("damon-product-refund-counters",
 				log.Error("no product found %v", err, ctx)
 			}
 			for i := 0; i < item.Quantity; i++ {
-				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
-					log.Error("product."+prod.Id()+".projected.revenue error %v", err, db.Context)
+				if err := counter.IncrProductRefund(ctx, prod, ord); err != nil {
+					log.Error("product."+prod.Id()+".refunded error %v", err, db.Context)
 				}
 			}
 		}
