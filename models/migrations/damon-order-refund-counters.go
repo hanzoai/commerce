@@ -11,7 +11,7 @@ import (
 	ds "hanzo.io/datastore"
 )
 
-var _ = New("damon-product-refund-counters",
+var _ = New("damon-order-projected-refund-counters",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "damon")
 		return NoArgs
@@ -33,8 +33,8 @@ var _ = New("damon-product-refund-counters",
 				log.Error("no product found %v", err, ctx)
 			}
 			for i := 0; i < item.Quantity; i++ {
-				if err := counter.IncrProductRefund(ctx, prod, ord); err != nil {
-					log.Error("product."+prod.Id()+".refunded error %v", err, db.Context)
+				if err := counter.IncrementByAll(ctx, "order.projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+					log.Error("order.refunded error %v", err, db.Context)
 				}
 			}
 		}
