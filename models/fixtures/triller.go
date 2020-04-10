@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	// "time"
+	"bytes"
 
 	"github.com/gin-gonic/gin"
 
@@ -34,7 +35,10 @@ var _ = New("triller", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{usr.Id()}
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://trillerfest.com/"}}
 	org.EmailWhitelist = "*.hanzo.ai *.trillerfest.com"
-	org.SecretKey = []byte("QVv9lIO0Yxy7msBr")
+	if bytes.Compare(org.SecretKey, []byte("rQVv9lIO0Yxy7msB")) != 0 {
+		org.SecretKey = []byte("rQVv9lIO0Yxy7msB")
+		org.AddDefaultTokens()
+	}
 
 	org.Fees.Card.Flat = 0
 	org.Fees.Card.Percent = 0.05
