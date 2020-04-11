@@ -77,7 +77,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	log.Info("Decoded:", c)
 	log.Info("User: '%v'", json.Encode(usr), c)
-	log.Info("Payment: '%v'", json.Encode(pay), c)
+	// log.Info("Payment: '%v'", json.Encode(pay), c)
 	log.Info("Token Sale: '%v'", json.Encode(tsPass), c)
 
 	// Check if store has been set, if so pull it out of the context
