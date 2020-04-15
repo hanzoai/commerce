@@ -9,6 +9,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
@@ -41,6 +42,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 
 		ord := order.New(nsdb)
 		ord.UserId = u.Id()
+		ord.Email = u.Email
+		ord.Status = order.Open
+		ord.PaymentStatus = payment.Paid
 		ord.GetOrCreate("UserId=", ord.UserId)
 
 		ord.ShippingAddress.Name = "Wei Lin"
@@ -60,6 +64,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 			LineItem{
 				ProductCachedValues: p.ProductCachedValues,
 				ProductId:           p.Id(),
+				ProductName:         p.Name,
+				ProductSlug:         p.Slug,
+				ProductSKU:          p.SKU,
 				Quantity:            1,
 			},
 		}
@@ -83,6 +90,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 
 		ord := order.New(nsdb)
 		ord.UserId = u.Id()
+		ord.Email = u.Email
+		ord.Status = order.Open
+		ord.PaymentStatus = payment.Paid
 		ord.GetOrCreate("UserId=", ord.UserId)
 
 		ord.ShippingAddress.Name = "Jordan Nott"
@@ -101,6 +111,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 			LineItem{
 				ProductCachedValues: p.ProductCachedValues,
 				ProductId:           p.Id(),
+				ProductName:         p.Name,
+				ProductSlug:         p.Slug,
+				ProductSKU:          p.SKU,
 				Quantity:            1,
 			},
 		}
@@ -124,6 +137,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 
 		ord := order.New(nsdb)
 		ord.UserId = u.Id()
+		ord.Email = u.Email
+		ord.Status = order.Open
+		ord.PaymentStatus = payment.Paid
 		ord.GetOrCreate("UserId=", ord.UserId)
 
 		ord.ShippingAddress.Name = "Noah Li"
@@ -143,6 +159,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 			LineItem{
 				ProductCachedValues: p.ProductCachedValues,
 				ProductId:           p.Id(),
+				ProductName:         p.Name,
+				ProductSlug:         p.Slug,
+				ProductSKU:          p.SKU,
 				Quantity:            1,
 			},
 		}
@@ -166,6 +185,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 
 		ord := order.New(nsdb)
 		ord.UserId = u.Id()
+		ord.Email = u.Email
+		ord.Status = order.Open
+		ord.PaymentStatus = payment.Paid
 		ord.GetOrCreate("UserId=", ord.UserId)
 
 		ord.ShippingAddress.Name = "Justin Genest"
@@ -185,6 +207,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 			LineItem{
 				ProductCachedValues: p.ProductCachedValues,
 				ProductId:           p.Id(),
+				ProductName:         p.Name,
+				ProductSlug:         p.Slug,
+				ProductSKU:          p.SKU,
 				Quantity:            1,
 			},
 		}
@@ -208,6 +233,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 
 		ord := order.New(nsdb)
 		ord.UserId = u.Id()
+		ord.Email = u.Email
+		ord.Status = order.Open
+		ord.PaymentStatus = payment.Paid
 		ord.GetOrCreate("UserId=", ord.UserId)
 
 		ord.ShippingAddress.Name = "Rick Weihs"
@@ -227,6 +255,9 @@ var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {
 			LineItem{
 				ProductCachedValues: p.ProductCachedValues,
 				ProductId:           p.Id(),
+				ProductName:         p.Name,
+				ProductSlug:         p.Slug,
+				ProductSKU:          p.SKU,
 				Quantity:            1,
 			},
 		}
