@@ -6,6 +6,7 @@ import (
 	// "google.golang.org/appengine/search"
 
 	// "hanzo.io/log"
+	"hanzo.io/models/cart"
 	"hanzo.io/models/order"
 	// "hanzo.io/models/mixin"
 	"hanzo.io/demo/tokentransaction"
@@ -50,6 +51,9 @@ var _ = New("rebuild-search-documents",
 		// }
 
 		return NoArgs
+	},
+	func(db *ds.Datastore, c *cart.Cart) {
+		c.PutDocument()
 	},
 	func(db *ds.Datastore, u *user.User) {
 		u.PutDocument()
