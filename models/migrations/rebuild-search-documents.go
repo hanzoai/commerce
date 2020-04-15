@@ -8,9 +8,9 @@ import (
 	// "hanzo.io/log"
 	"hanzo.io/models/order"
 	// "hanzo.io/models/mixin"
+	"hanzo.io/demo/tokentransaction"
 	"hanzo.io/models/product"
 	"hanzo.io/models/user"
-	"hanzo.io/demo/tokentransaction"
 
 	ds "hanzo.io/datastore"
 )
@@ -19,8 +19,8 @@ var _ = New("rebuild-search-documents",
 	func(c *gin.Context) []interface{} {
 		db := ds.New(c)
 
-		c.Set("namespace", "sec-demo")
-		db.SetNamespace("sec-demo")
+		c.Set("namespace", "damon")
+		db.SetNamespace("damon")
 		// ctx := db.Context
 
 		// index, err := search.Open(mixin.DefaultIndex)
