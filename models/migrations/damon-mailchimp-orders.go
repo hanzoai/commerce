@@ -48,6 +48,8 @@ var _ = New("damon-mailchimp-orders",
 		// Create order in mailchimp
 		if err := client.CreateOrder(defaultStore, ord); err != nil {
 			log.Warn("Failed to create Mailchimp order: %v", err, db.Context)
+		} else if err := client.UpdateOrder(defaultStore, ord); err != nil {
+			log.Warn("Failed to update Mailchimp order: %v", err, db.Context)
 		}
 
 		// Update cart
