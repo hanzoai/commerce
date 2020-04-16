@@ -325,7 +325,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 			// Required
 			ID:           strconv.Itoa(ord.Number),
 			CurrencyCode: string(ord.Currency),
-			OrderTotal:   centsToFloat(ord.Total, ord.Currency),
+			OrderTotal:   centsToFloat(ord.Total-ord.Refunded, ord.Currency),
 			Customer: gochimp3.Customer{
 				// Required
 				ID: usr.Id(),
@@ -416,7 +416,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) *Error {
 			// Required
 			ID:           strconv.Itoa(ord.Number),
 			CurrencyCode: string(ord.Currency),
-			OrderTotal:   centsToFloat(ord.Total, ord.Currency),
+			OrderTotal:   centsToFloat(ord.Total-ord.Refunded, ord.Currency),
 			Customer: gochimp3.Customer{
 				// Required
 				ID: usr.Id(),
