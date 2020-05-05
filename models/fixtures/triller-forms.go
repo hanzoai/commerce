@@ -32,5 +32,13 @@ var _ = New("triller-forms", func(c *gin.Context) *form.Form {
 	// f2.Mailchimp.ListId = "aacc13e678"
 	f2.MustUpdate()
 
+	// Create mailinglist
+	f3 := form.New(nsdb)
+	f3.Name = "StepUp Newsletter"
+	f3.GetOrCreate("Name=", f3.Name)
+	// f2.Mailchimp.APIKey = ""
+	// f2.Mailchimp.ListId = "aacc13e678"
+	f3.MustUpdate()
+
 	return f2
 })
