@@ -212,9 +212,9 @@ type Order struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty" datastore:",noindex"`
+	History []Event `json:"-" datastore:",noindex"`
 
-	Test bool `json:"-"` // Whether our internal test flag is active or not
+	Test bool `json:"test"` // Whether our internal test flag is active or not
 
 	// Passphrase for the wallet accounts the order controls, never send to the client
 	WalletPassphrase string `json:"-"`
