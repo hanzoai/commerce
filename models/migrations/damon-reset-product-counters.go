@@ -100,20 +100,19 @@ var _ = New("damon-reset-product-counters",
 					if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
 						log.Error("product."+prod.Id()+".projected.refunded.amount error %v", err, ctx)
 					}
-					// Unrefunded or Partial Refunds
-				} else {
-					if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".sold", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
-						log.Error("product."+prod.Id()+".sold error %v", err, ctx)
-						return
-					}
-					if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
-						log.Error("product."+prod.Id()+".revenue error %v", err, ctx)
-						return
-					}
-					if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
-						log.Error("product."+prod.Id()+".projected.revenue error %v", err, ctx)
-						return
-					}
+				}
+				// Unrefunded or Partial Refunds
+				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".sold", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
+					log.Error("product."+prod.Id()+".sold error %v", err, ctx)
+					return
+				}
+				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.Price), ord.CreatedAt); err != nil {
+					log.Error("product."+prod.Id()+".revenue error %v", err, ctx)
+					return
+				}
+				if err := counter.IncrementByAll(ctx, "product."+prod.Id()+".projected.revenue", ord.StoreId, ord.ShippingAddress.Country, int(prod.ProjectedPrice), ord.CreatedAt); err != nil {
+					log.Error("product."+prod.Id()+".projected.revenue error %v", err, ctx)
+					return
 				}
 			}
 		}
