@@ -42,8 +42,8 @@ var _ = New("damon-reset-main-counters",
 
 		nsDb := ds.New(org.Namespaced(c))
 		MustNukeCounter2(nsDb, "order.projected.revenue")
-		// MustNukeCounter2(nsDb, "order.refunded.count")
-		// MustNukeCounter2(nsDb, "order.refunded.amount")
+		MustNukeCounter2(nsDb, "order.refunded.count")
+		MustNukeCounter2(nsDb, "order.refunded.amount")
 
 		prods := make([]*product.Product, 0)
 		if _, err := product.Query(nsDb).GetAll(&prods); err != nil {
@@ -52,8 +52,8 @@ var _ = New("damon-reset-main-counters",
 
 		for _, prod := range prods {
 			MustNukeCounter2(nsDb, "product."+prod.Id()+".projected.revenue")
-			// MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.count")
-			// MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.amount")
+			MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.count")
+			MustNukeCounter2(nsDb, "product."+prod.Id()+".refunded.amount")
 		}
 
 		return NoArgs
