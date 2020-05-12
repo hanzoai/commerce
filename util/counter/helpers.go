@@ -106,9 +106,11 @@ func IncrOrder(ctx context.Context, ord *order.Order) error {
 	if ord.Test {
 		return nil
 	}
+
 	if err := IncrementByAll(ctx, "order.count", ord.StoreId, ord.ShippingAddress.Country, 1, ord.CreatedAt); err != nil {
 		return err
 	}
+
 	if err := IncrementByAll(ctx, "order.revenue", ord.StoreId, ord.ShippingAddress.Country, int(ord.Total), ord.CreatedAt); err != nil {
 		return err
 	}
