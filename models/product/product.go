@@ -98,6 +98,10 @@ type Product struct {
 	Options_ string    `json:"-" datastore:",noindex"`
 
 	Reservation Reservation `json:"reservation"`
+
+	// Arbitrary key/value pairs associated with this order
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (p *Product) Validator() *val.Validator {
@@ -142,6 +146,10 @@ func (p *Product) Load(ps []aeds.Property) (err error) {
 		return err
 	}
 
+	if len(p.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(p.Metadata_), &p.Metadata)
+	}
+
 	// Deserialize from datastore
 	if len(p.Variants_) > 0 {
 		err = json.DecodeBytes([]byte(p.Variants_), &p.Variants)
@@ -156,6 +164,7 @@ func (p *Product) Load(ps []aeds.Property) (err error) {
 
 func (p *Product) Save() ([]aeds.Property, error) {
 	// Serialize unsupported properties
+	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 	p.Variants_ = string(json.EncodeBytes(&p.Variants))
 	p.Options_ = string(json.Encode(&p.Options))
 
