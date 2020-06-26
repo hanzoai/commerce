@@ -75,7 +75,10 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 			firstName = mf.(string)
 		}
 		if firstName == "" {
-			firstName = s.Metadata["FNAME"].(string)
+			mf = s.Metadata["FNAME"]
+			if mf != nil {
+				firstName = mf.(string)
+			}
 		}
 
 		ml := s.Metadata["lastName"]
@@ -85,7 +88,10 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 			lastName = ml.(string)
 		}
 		if lastName == "" {
-			lastName = s.Metadata["LNAME"].(string)
+			ml = s.Metadata["LNAME"]
+			if ml != nil {
+				lastName = ml.(string)
+			}
 		}
 
 		if err := client.SubscribeForm(f.Mailchimp.ListId, s.Email, firstName, lastName); err != nil {
