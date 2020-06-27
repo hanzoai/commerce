@@ -2,6 +2,7 @@ package taxrates
 
 import (
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/georate"
 )
 
@@ -9,9 +10,9 @@ type GeoRate struct {
 	georate.GeoRate
 
 	// Implement this flag when we need it
-	TaxShipping bool `json:"taxShipping`
+	TaxShipping bool `json:"taxShipping"`
 	// Tax Name like 'Tax' or 'VAT'
-	TaxName string `json:"taxName`
+	TaxName string `json:"taxName"`
 }
 
 type TaxRates struct {
@@ -30,8 +31,8 @@ func (t TaxRates) GetGeoRates() []georate.GeoRate {
 	return grs
 }
 
-func (t TaxRates) Match(ctr, st, ct, pc string) (*GeoRate, int, int) {
-	gr, level, i := georate.Match(t.GetGeoRates(), ctr, st, ct, pc)
+func (t TaxRates) Match(ctr, st, ct, pc string, c currency.Cents) (*GeoRate, int, int) {
+	gr, level, i := georate.Match(t.GetGeoRates(), ctr, st, ct, pc, c)
 	if gr != nil {
 		return &t.GeoRates[i], level, i
 	}

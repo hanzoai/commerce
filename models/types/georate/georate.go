@@ -4,9 +4,9 @@ import (
 	"strings"
 	"unicode"
 
+	"hanzo.io/log"
 	"hanzo.io/models/types/country"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
 )
 
 type GeoRate struct {
@@ -16,7 +16,9 @@ type GeoRate struct {
 	// Only take a city OR postal code, not both
 	City string `json:"city"`
 	// Comma separates postal codes
-	PostalCodes string `json:"postalCode"`
+	PostalCodes string         `json:"postalCode"`
+	Above       currency.Cents `json:"above"`
+	Below       currency.Cents `json:"below"`
 
 	// TODO: Support Product Category Tags
 	// ProductCategory string `json:"productCategory"`
@@ -28,7 +30,7 @@ type GeoRate struct {
 }
 
 // Create and validate that a GeoRate's requirements are valid and exist
-func New(ctr, st, ct, pcs string, pt float64, cst currency.Cents) GeoRate {
+func New(ctr, st, ct, pcs string, ab, bl currency.Cents, pt float64, cst currency.Cents) GeoRate {
 	if c, err := country.FindByISO3166_2(ctr); err != nil {
 		ctr = ""
 		st = ""
@@ -57,6 +59,8 @@ func New(ctr, st, ct, pcs string, pt float64, cst currency.Cents) GeoRate {
 		clean(st),
 		clean(ct),
 		clean(pcs),
+		ab,
+		bl,
 		pt,
 		cst,
 	}
@@ -74,11 +78,23 @@ func clean(str string) string {
 
 // Match GeoRate with country, state, city/postal code.  Report if there's a
 // match and the level of match.  If false, also return level of any partial match
-func (g GeoRate) Match(ctr, st, ct, pc string) (bool, int) {
+func (g GeoRate) Match(ctr, st, ct, pc string, c currency.Cents) (bool, int) {
 	ctr = clean(ctr)
 	st = clean(st)
 	ct = clean(ct)
 	pc = clean(pc)
+
+	if g.Above > 0 {
+		if c < g.Above {
+			log.Debug("amount is lower than Above")
+			return false, -1
+		}
+	} else if g.Below > 0 {
+		if c >= g.Below {
+			log.Debug("amount is higher than Below")
+			return false, -1
+		}
+	}
 
 	if ctr == "" || st == "" || (ct == "" && pc == "") {
 		log.Debug("Invalid Input")
@@ -130,13 +146,13 @@ func (g GeoRate) Match(ctr, st, ct, pc string) (bool, int) {
 
 // Match across an array of georates, return result with highest match level,
 // return first result if there is a tie
-func Match(grs []GeoRate, ctr, st, ct, pc string) (*GeoRate, int, int) {
+func Match(grs []GeoRate, ctr, st, ct, pc string, c currency.Cents) (*GeoRate, int, int) {
 	var retGr *GeoRate
-	currentLevel := -1
+	currentLevel := -2
 	idx := -1
 
 	for i, gr := range grs {
-		if isMatch, level := gr.Match(ctr, st, ct, pc); isMatch && level > currentLevel {
+		if isMatch, level := gr.Match(ctr, st, ct, pc, c); isMatch && level > currentLevel {
 			if level == 3 {
 				return &gr, level, i
 			}

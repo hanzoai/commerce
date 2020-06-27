@@ -2,6 +2,7 @@ package shippingrates
 
 import (
 	"hanzo.io/models/mixin"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/types/georate"
 )
 
@@ -9,7 +10,7 @@ type GeoRate struct {
 	georate.GeoRate
 
 	// Shipping Name like 'Shipping'
-	ShippingName string `json:"shippingName`
+	ShippingName string `json:"shippingName"`
 }
 
 type ShippingRates struct {
@@ -30,8 +31,8 @@ func (t ShippingRates) GetGeoRates() []georate.GeoRate {
 	return grs
 }
 
-func (t ShippingRates) Match(ctr, st, ct, pc string) (*GeoRate, int, int) {
-	gr, level, i := georate.Match(t.GetGeoRates(), ctr, st, ct, pc)
+func (t ShippingRates) Match(ctr, st, ct, pc string, c currency.Cents) (*GeoRate, int, int) {
+	gr, level, i := georate.Match(t.GetGeoRates(), ctr, st, ct, pc, c)
 	if gr != nil {
 		return &t.GeoRates[i], level, i
 	}
