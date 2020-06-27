@@ -48,11 +48,11 @@ var _ = New("karma", func(c *gin.Context) *organization.Organization {
 	org.Fees.Affiliate.Flat = 50
 	org.Fees.Affiliate.Percent = 0.30
 
-	org.Mailchimp.APIKey = ""
-	org.Mailchimp.ListId = "7849878695"
+	// org.Mailchimp.APIKey = ""
+	// org.Mailchimp.ListId = "7849878695"
 
 	// Email configuration
-	org.Mandrill.APIKey = ""
+	// org.Mandrill.APIKey = ""
 
 	org.Email.Enabled = true
 	org.Email.Defaults.From = email.Email{
@@ -82,8 +82,8 @@ var _ = New("karma", func(c *gin.Context) *organization.Organization {
 	stor.GetOrCreate("Name=", stor.Name)
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
-	stor.Mailchimp.APIKey = ""
-	stor.Mailchimp.ListId = "7849878695"
+	// stor.Mailchimp.APIKey = ""
+	// stor.Mailchimp.ListId = "7849878695"
 	stor.MustUpdate()
 
 	{
