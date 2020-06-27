@@ -143,7 +143,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		// Tax may depend on shipping so calcualte that first
 		if srs, err := stor.GetShippingRates(); srs == nil {
 			log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
-		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+		} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
 			o.Shipping = match.Cost + currency.Cents(float64(o.Subtotal)*match.Percent)
 		}
 
@@ -151,7 +151,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 		if trs, err := stor.GetTaxRates(); trs == nil {
 			log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
-		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+		} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
 			if match.TaxShipping {
 				o.Tax = match.Cost + currency.Cents(float64(o.TaxableLineTotal+o.Shipping)*match.Percent)
 			} else {
