@@ -19,18 +19,18 @@ import (
 type SubscriptionBillingType string
 
 const (
-	Charge	SubscriptionBillingType = "charge_automatically"
+	Charge  SubscriptionBillingType = "charge_automatically"
 	Invoice SubscriptionBillingType = "send_invoice"
 )
 
 type SubscriptionStatus string
 
 const (
-	TrialingSubscriptionStatus	SubscriptionStatus = "trialing"
-	ActiveSubscriptionStatus	SubscriptionStatus = "active"
-	PastDueSubscriptionStatus	SubscriptionStatus = "past_due"
-	CancelledSubscriptionStatus	SubscriptionStatus = "cancelled"
-	UnpaidSubscriptionStatus	SubscriptionStatus = "unpaid"
+	TrialingSubscriptionStatus  SubscriptionStatus = "trialing"
+	ActiveSubscriptionStatus    SubscriptionStatus = "active"
+	PastDueSubscriptionStatus   SubscriptionStatus = "past_due"
+	CancelledSubscriptionStatus SubscriptionStatus = "cancelled"
+	UnpaidSubscriptionStatus    SubscriptionStatus = "unpaid"
 )
 
 type Subscription struct {
@@ -61,8 +61,8 @@ type Subscription struct {
 
 	Type SubscriptionBillingType `json:"billingType"`
 
-	PlanId string `json:"planId"`
-	UserId string `json:"userId"`
+	PlanId    string `json:"planId"`
+	UserId    string `json:"userId"`
 	ProductId string `json:"productId"`
 
 	FeePercent float64 `json:"applicationFeePercent"`
@@ -73,7 +73,7 @@ type Subscription struct {
 
 	Start      time.Time `json:"start"`
 	Ended      time.Time `json:"endedAt"`
-	Canceled bool `json:"canceled"`
+	Canceled   bool      `json:"canceled"`
 	CanceledAt time.Time `json:"canceledAt"`
 
 	TrialStart time.Time `json:"trialStart"`
@@ -81,8 +81,8 @@ type Subscription struct {
 
 	Status SubscriptionStatus `json:"status"`
 
-	Account accounts.Account `json:"account,omitempty"`
-	Ref refs.EcommerceRef `json:"ref,omitempty"`
+	Account accounts.Account  `json:"account,omitempty"`
+	Ref     refs.EcommerceRef `json:"ref,omitempty"`
 }
 
 func (s Subscription) TrialPeriodsRemaining() int {
@@ -118,7 +118,7 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 	// Tax may depend on shipping so calcualte that first
 	if srs, err := stor.GetShippingRates(); srs == nil {
 		log.Warn("Failed to get shippingrates for discount rules: %v", err, ctx)
-	} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+	} else if match, _, _ := srs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
 		sub.Shipping = match.Cost + currency.Cents(float64(sub.Subtotal)*match.Percent)
 	}
 
@@ -126,7 +126,7 @@ func (o *Order) CreateAndTallySubscriptionFromItem(stor *store.Store, item linei
 
 	if trs, err := stor.GetTaxRates(); trs == nil {
 		log.Warn("Failed to get taxrates for discount rules: %v", err, ctx)
-	} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode); match != nil {
+	} else if match, _, _ := trs.Match(o.ShippingAddress.Country, o.ShippingAddress.State, o.ShippingAddress.City, o.ShippingAddress.PostalCode, o.Subtotal); match != nil {
 		if match.TaxShipping {
 			sub.Tax = match.Cost + currency.Cents(float64(sub.Subtotal+sub.Shipping)*match.Percent)
 		} else {
@@ -182,7 +182,7 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 		}
 
 		// If not using fallback mode, skip taxes
-		if !item.Taxable || useFallback{
+		if !item.Taxable || useFallback {
 			continue
 		}
 
