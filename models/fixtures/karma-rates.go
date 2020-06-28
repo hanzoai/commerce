@@ -95,5 +95,7 @@ var _ = New("karma-rates", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
+	srs.MustUpdate()
+
 	return org
 })
