@@ -23,7 +23,9 @@ import (
 type Listing struct {
 	// Not customizable
 	ProductId string        `json:"productId,omitempty"`
+	Slug      string        `json:"slug,omitempty"`
 	VariantId string        `json:"variantId,omitempty"`
+	SKU       string        `json:"sku,omitempty"`
 	Currency  currency.Type `json:"currency,omitempty"`
 
 	// Everything else May be overriden
