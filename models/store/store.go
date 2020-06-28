@@ -162,7 +162,7 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	for _, name := range ListingFields {
 		field := ev.FieldByName(name)
 		val := reflect.Indirect(lv.FieldByName(name))
-		if val.IsValid() && !val.IsZero() && field.IsValid() {
+		if val.IsValid() && !reflect.IsZero(val) && field.IsValid() {
 			field.Set(val)
 			log.Info("Name %v, Field %v", name, field, s.Context())
 		}
