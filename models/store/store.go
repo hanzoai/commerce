@@ -23,9 +23,7 @@ import (
 type Listing struct {
 	// Not customizable
 	ProductId string        `json:"productId,omitempty"`
-	Slug      string        `json:"slug,omitempty"`
 	VariantId string        `json:"variantId,omitempty"`
-	SKU       string        `json:"sku,omitempty"`
 	Currency  currency.Type `json:"currency,omitempty"`
 
 	// Everything else May be overriden
@@ -162,7 +160,7 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	for _, name := range ListingFields {
 		field := ev.FieldByName(name)
 		val := reflect.Indirect(lv.FieldByName(name))
-		if val.IsValid() && field.IsValid() {
+		if val.IsValid() && !val.IsZero() && field.IsValid() {
 			field.Set(val)
 			log.Info("Name %v, Field %v", name, field, s.Context())
 		}
