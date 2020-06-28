@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/types/georate"
 )
 
-var _ = New("karma", func(c *gin.Context) *organization.Organization {
+var _ = New("karma-rates", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
