@@ -96,7 +96,7 @@ func (g GeoRate) Match(ctr, st, ct, pc string, c currency.Cents) (bool, int) {
 		}
 	}
 
-	if ctr == "" || st == "" || (ct == "" && pc == "") {
+	if ctr == "" && ct == "" && pc == "" {
 		log.Debug("Invalid Input")
 		return false, 0
 	}
