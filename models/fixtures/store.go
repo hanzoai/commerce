@@ -18,10 +18,10 @@ var Store = New("store", func(c *gin.Context) *store.Store {
 	stor.Slug = "suchtees"
 	stor.GetOrCreate("Slug=", stor.Slug)
 
-	stor.Name = "default"
+	stor.Name = "JPY Store"
 	stor.Domain = "suchtees.com"
 	stor.Prefix = "/"
-	stor.Currency = currency.USD
+	stor.Currency = currency.JPY
 	stor.TaxNexus = []Address{Address{Line1: "123 Such St", City: "Tee City"}, Address{Line1: "456 Noo Ln", City: "Memetown"}}
 
 	// Fetch first product
