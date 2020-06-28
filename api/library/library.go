@@ -74,6 +74,7 @@ type LoadShopJSRes struct {
 	TaxRates      *taxrates.TaxRates           `json:"taxRates,omitempty"`
 	ShippingRates *shippingrates.ShippingRates `json:"shippingRates,omitempty"`
 	Currency      currency.Type                `json:"currency,omitempty"`
+	StoreId       string                       `json:"storeId,omitempty"`
 
 	Live bool `json:"live"`
 }
@@ -102,7 +103,7 @@ func LoadShopJS(c *gin.Context) {
 	}
 
 	// Build response
-	res := LoadShopJSRes{}
+	res := LoadShopJSRes{StoreId: req.StoreId}
 
 	// Determine Test Mode
 	res.Live = org.Live
