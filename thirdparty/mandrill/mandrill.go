@@ -2,6 +2,7 @@ package mandrill
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/keighl/mandrill"
@@ -48,12 +49,16 @@ func newMessage(message *email.Message) *mandrill.Message {
 		mergeVars = append(mergeVars, vars)
 	}
 
+	m.MergeVars = mergeVars
+
+	gMV := map[string]interface{}{}
 	for k, v := range message.TemplateData {
-		vars := mandrill.MapToRecipientVars(k, v)
-		mergeVars = append(mergeVars, vars)
+		for k2, v2 := range v {
+			gMV[strings.ToUpper(k+k2)] = v2.(string)
+		}
 	}
 
-	m.MergeVars = mergeVars
+	m.GlobalMergeVars = append(m.GlobalMergeVars, mandrill.MapToVars(gMV)...)
 
 	// Add content
 	if message.HTML != "" {
