@@ -41,11 +41,16 @@ func newMessage(message *email.Message) []byte {
 	// Set subject
 	m.Subject = message.Subject
 
+	templateData := map[string]interface{}{}
+	for k, v := range message.TemplateData {
+		templateData[k] = v
+	}
+
 	// Add recipients + personalizations
 	for _, to := range message.To {
 		p := mail.NewPersonalization()
 		p.AddTos(newEmail(to))
-		p.DynamicTemplateData = message.TemplateData
+		p.DynamicTemplateData = templateData
 		addSubsitutions(p, message, to.Address)
 		m.AddPersonalizations(p)
 	}
@@ -53,7 +58,7 @@ func newMessage(message *email.Message) []byte {
 	for _, cc := range message.CC {
 		p := mail.NewPersonalization()
 		p.AddCCs(newEmail(cc))
-		p.DynamicTemplateData = message.TemplateData
+		p.DynamicTemplateData = templateData
 		addSubsitutions(p, message, cc.Address)
 		m.AddPersonalizations(p)
 	}
@@ -61,7 +66,7 @@ func newMessage(message *email.Message) []byte {
 	for _, bcc := range message.BCC {
 		p := mail.NewPersonalization()
 		p.AddBCCs(newEmail(bcc))
-		p.DynamicTemplateData = message.TemplateData
+		p.DynamicTemplateData = templateData
 		addSubsitutions(p, message, bcc.Address)
 		m.AddPersonalizations(p)
 	}

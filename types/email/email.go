@@ -48,29 +48,29 @@ type Personalizations map[string]*Personalization
 
 // Tracking settings for a given message
 type Tracking struct {
-	Opens  bool `json:"opens`
-	Clicks bool `json:"clicks`
+	Opens  bool `json:"opens"`
+	Clicks bool `json:"clicks"`
 }
 
 // Represents a single email message
 type Message struct {
-	Subject          string                 `json:"subject,omitempty"`
-	From             Email                  `json:"from"`
-	ReplyTo          Email                  `json:"replyTo,omitempty"`
-	To               []Email                `json:"to"`
-	CC               []Email                `json:"cc,omitempty"`
-	BCC              []Email                `json:"bcc,omitempty"`
-	HTML             string                 `json:"html,omitempty"`
-	Text             string                 `json:"text,omitempty"`
-	TemplateData     map[string]interface{} `json:"templateData,omitempty"`
-	TemplateID       string                 `json:"templateId,omitempty"`
-	Attachments      []Attachment           `json:"attachments,omitempty"`
-	Substitutions    Substitutions          `json:"substitutions,omitempty"`
-	Personalizations Personalizations       `json:"personalizations,omitempty"`
-	Headers          []Header               `json:"headers,omitempty"`
-	SendAt           time.Time              `json:"sendAt,omitempty"`
-	Tags             []string               `json:"tags,omitempty"`
-	Tracking         Tracking               `json:"tracking,omitempty"`
+	Subject          string                            `json:"subject,omitempty"`
+	From             Email                             `json:"from"`
+	ReplyTo          Email                             `json:"replyTo,omitempty"`
+	To               []Email                           `json:"to"`
+	CC               []Email                           `json:"cc,omitempty"`
+	BCC              []Email                           `json:"bcc,omitempty"`
+	HTML             string                            `json:"html,omitempty"`
+	Text             string                            `json:"text,omitempty"`
+	TemplateData     map[string]map[string]interface{} `json:"templateData,omitempty"`
+	TemplateID       string                            `json:"templateId,omitempty"`
+	Attachments      []Attachment                      `json:"attachments,omitempty"`
+	Substitutions    Substitutions                     `json:"substitutions,omitempty"`
+	Personalizations Personalizations                  `json:"personalizations,omitempty"`
+	Headers          []Header                          `json:"headers,omitempty"`
+	SendAt           time.Time                         `json:"sendAt,omitempty"`
+	Tags             []string                          `json:"tags,omitempty"`
+	Tracking         Tracking                          `json:"tracking,omitempty"`
 }
 
 func (m *Message) AddAttachments(ats ...Attachment) {
@@ -110,7 +110,7 @@ func NewMessage() *Message {
 	m.Tags = make([]string, 0)
 	m.Substitutions = make(Substitutions)
 	m.Personalizations = make(Personalizations)
-	m.TemplateData = make(map[string]interface{})
+	m.TemplateData = make(map[string]map[string]interface{})
 	return m
 }
 

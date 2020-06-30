@@ -305,7 +305,7 @@ func SendOrderConfirmation(c context.Context, org *organization.Organization, or
 	if len(referrers) > 0 {
 		referralCode = referrers[0].Id_
 	}
-	order := message.TemplateData["order"].(map[string]interface{})
+	order := message.TemplateData["order"]
 	order["referralCode"] = referralCode
 
 	SendTemplate("order-confirmation", c, message, org)
