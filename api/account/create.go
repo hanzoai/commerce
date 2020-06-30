@@ -292,6 +292,9 @@ func create(c *gin.Context) {
 		s := subscriber.New(db)
 		s.Email = usr.Email
 		s.UserId = usr.Id()
+		s.FirstName = usr.FirstName
+		s.LastName = usr.LastName
+		s.Tags = []string{"account-creation"}
 
 		if err := f.AddSubscriber(s); err != nil {
 			log.Info("Subscriber %v Encountered Non-Fatal Error: %v", usr.Id(), err, c)
