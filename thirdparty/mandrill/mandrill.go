@@ -54,7 +54,7 @@ func newMessage(message *email.Message) *mandrill.Message {
 	gMV := map[string]interface{}{}
 	for k, v := range message.TemplateData {
 		for k2, v2 := range v {
-			gMV[strings.ToUpper(k+k2)] = v2.(string)
+			gMV[strings.ToUpper(k+k2)] = v2
 		}
 	}
 
