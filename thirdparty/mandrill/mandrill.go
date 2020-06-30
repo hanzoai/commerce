@@ -48,6 +48,11 @@ func newMessage(message *email.Message) *mandrill.Message {
 		mergeVars = append(mergeVars, vars)
 	}
 
+	for k, v := range message.TemplateData {
+		vars := mandrill.MapToRecipientVars(k, v)
+		mergeVars = append(mergeVars, vars)
+	}
+
 	m.MergeVars = mergeVars
 
 	// Add content
