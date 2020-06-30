@@ -66,7 +66,12 @@ func SendTemplate(templatePath string, c context.Context, message *email.Message
 	if message.HTML == "" && message.TemplateID == "" {
 		// Built-in tempate, we should render with handlebars
 		log.Info("Using built in template %v", templatePath, c)
-		message.HTML = template.RenderEmail(templatePath, message.TemplateData)
+		templateData := map[string]interface{}{}
+		for k, v := range message.TemplateData {
+			templateData[k] = v
+		}
+
+		message.HTML = template.RenderEmail(templatePath, templateData)
 	}
 
 	log.Info("Sending template %v", templatePath+"/"+message.TemplateID, c)
