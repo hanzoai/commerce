@@ -46,6 +46,9 @@ func normalizeName(s string) string {
 type Subscriber struct {
 	mixin.Model
 
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+
 	Email  string `json:"email"`
 	FormId string `json:"formId"`
 	UserId string `json:"userId,omitempty"`
@@ -54,6 +57,8 @@ type Subscriber struct {
 	UnsubscribeDate time.Time `json:"unsubscribeDate,omitempty"`
 
 	Client client.Client `json:"client"`
+
+	Tags []string `json:"tags"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
