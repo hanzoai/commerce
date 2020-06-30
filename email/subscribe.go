@@ -27,6 +27,9 @@ func Subscribe(c context.Context, f *form.Form, s *subscriber.Subscriber, org *o
 		Email: Email{
 			Address: s.Email,
 		},
+		FirstName: s.FirstName,
+		LastName:  s.LastName,
+		Tags:      s.Tags,
 	}
 
 	return tasks.Subscribe.Call(c, *in, list, sub)

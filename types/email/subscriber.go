@@ -9,8 +9,11 @@ import (
 )
 
 type Subscriber struct {
-	Email    Email `json:"email"`
-	Metadata Map   `json:"metadata"`
+	FirstName string   `json:"firstName"`
+	LastName  string   `json:"lastName"`
+	Email     Email    `json:"email"`
+	Metadata  Map      `json:"metadata"`
+	Tags      []string `json:"tags"`
 }
 
 func (s Subscriber) Md5() string {

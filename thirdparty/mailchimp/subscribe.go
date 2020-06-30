@@ -39,6 +39,14 @@ func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {
 			metadata = map[string]interface{}{}
 		}
 
+		if metadata["FNAME"] == nil {
+			metadata["FNAME"] = sub.FirstName
+		}
+
+		if metadata["LNAME"] == nil {
+			metadata["LNAME"] = sub.LastName
+		}
+
 		req := &gochimp3.MemberRequest{
 			EmailAddress: sub.Email.Address,
 			Status:       status,
@@ -55,6 +63,7 @@ func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {
 				// CountryCode: s.Client.Country,
 				Timezone: "",
 			},
+			Tags: sub.Tags,
 		}
 
 		log.Info("Update or create list member: %v", json.Encode(req), c)
@@ -149,6 +158,8 @@ func (api API) SubscribeForm(listId, emailStr, firstName, lastName string) *Erro
 			Id: listId,
 		}
 		sub := &email.Subscriber{
+			FirstName: firstName,
+			LastName:  lastName,
 			Email: email.Email{
 				Address: emailStr,
 			},
