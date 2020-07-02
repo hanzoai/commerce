@@ -20,7 +20,7 @@ var _ = New("damon-referral-program", func(c *gin.Context) *referralprogram.Refe
 	nsdb := datastore.New(org.Namespaced(db.Context))
 
 	rp := referralprogram.New(nsdb)
-	rp.Name = "Halcyon Referral Program"
+	rp.Name = "Damon Referral Program"
 	rp.GetOrCreate("Name=", rp.Name)
 
 	rp.Actions = []referralprogram.Action{
@@ -44,7 +44,7 @@ var _ = New("damon-referral-program", func(c *gin.Context) *referralprogram.Refe
 
 			CreditAction: referralprogram.CreditAction{
 				Currency: currency.PNT,
-				Amount:   currency.Cents(0),
+				Amount:   currency.Cents(1),
 			},
 
 			Trigger: referralprogram.Trigger{
