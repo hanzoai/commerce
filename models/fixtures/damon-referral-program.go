@@ -54,7 +54,7 @@ var _ = New("damon-referral-program", func(c *gin.Context) *referralprogram.Refe
 		},
 	}
 
-	rp.MustUpdate()
+	rp.MustPut()
 
 	return rp
 })
