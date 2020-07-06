@@ -10,7 +10,7 @@ import (
 	"hanzo.io/models/types/currency"
 )
 
-var Store = New("damon-stores", func(c *gin.Context) *store.Store {
+var _ = New("damon-stores", func(c *gin.Context) *store.Store {
 	db := datastore.New(c)
 
 	org := organization.New(db)
