@@ -7,6 +7,7 @@ import (
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 )
 
