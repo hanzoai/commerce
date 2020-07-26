@@ -5,8 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
+	"hanzo.io/models/product"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -82,8 +84,17 @@ func search(c *gin.Context) {
 func searchProduct(c *gin.Context) {
 	productId := c.Params.ByName("productid")
 
-	tag1 := "product." + productId + ".revenue"
-	tag2 := "product." + productId + ".sold"
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+	prod := product.New(db)
+
+	if err := prod.GetById(productId); err != nil {
+		http.Fail(c, 404, "No product found with id: "+productId, err)
+		return
+	}
+
+	tag1 := "product." + prod.Id() + ".revenue"
+	tag2 := "product." + prod.Id() + ".sold"
 
 	q1 := aeds.NewQuery(counter.ShardKind)
 	q2 := aeds.NewQuery(counter.ShardKind)
@@ -93,8 +104,6 @@ func searchProduct(c *gin.Context) {
 	q2 = q2.Filter("Tag=", tag2).Filter("Geo=", "")
 
 	shards := []counter.Shard{}
-
-	ctx := middleware.GetAppEngine(c)
 
 	res := productRes{
 		Count:  0,
