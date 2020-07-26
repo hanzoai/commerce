@@ -10,11 +10,14 @@ import (
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+
 	namespaced := middleware.Namespace()
 	origin := middleware.AccessControl("*")
 
 	api := router.Group("counter")
-	api.Use(adminRequired, origin)
+	api.Use(origin)
 
-	api.POST("", namespaced, search)
+	api.POST("", adminRequired, namespaced, search)
+	api.GET("product/:productid", publishedRequired, namespaced, searchProduct)
 }
