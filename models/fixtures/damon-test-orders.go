@@ -11,7 +11,7 @@ import (
 	"hanzo.io/models/user"
 )
 
-var _ = New("damon-test-orders", func(c *gin.Context) {
+var _ = New("damon-sample-orders", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
@@ -21,10 +21,11 @@ var _ = New("damon-test-orders", func(c *gin.Context) {
 	nsdb := datastore.New(org.Namespaced(db.Context))
 
 	usr1 := user.New(nsdb)
-	usr1.GetByEmail("david.lam@damon.com")
+	usr1.Email = "david.lam@damon.com"
+	usr1.GetOrCreate("Email=", usr1.Email)
 
-	usr2 := user.New(nsdb)
-	usr2.GetByEmail("dtai@hanzo.ai")
+	// usr2 := user.New(nsdb)
+	// usr2.GetByEmail("dtai@hanzo.ai")
 
 	premierSlugs := []string{
 		"HSP-BGL",
@@ -57,30 +58,31 @@ var _ = New("damon-test-orders", func(c *gin.Context) {
 		"HS",
 	}
 
-	for _, v := range premierSlugs {
+	for _, s := range premierSlugs {
 		ord1 := order.New(nsdb)
 		ord1.UserId = usr1.Id()
 		ord1.Currency = currency.USD
 		ord1.Items = []lineitem.LineItem{
 			lineitem.LineItem{
-				ProductSlug: v,
+				ProductSlug: s,
 				Quantity:    1,
 			},
 		}
-
-		ord1.UpdateAndTally(nil)
+		ord1.Test = true
+		// ord1.UpdateAndTally(nil)
 		ord1.MustPut()
 
-		ord2 := order.New(nsdb)
-		ord2.UserId = usr2.Id()
-		ord2.Items = []lineitem.LineItem{
-			lineitem.LineItem{
-				ProductSlug: v,
-				Quantity:    1,
-			},
-		}
-
-		ord2.UpdateAndTally(nil)
-		ord2.MustPut()
+		// ord2 := order.New(nsdb)
+		// ord2.UserId = usr2.Id()
+		// ord2.Items = []lineitem.LineItem{
+		// 	lineitem.LineItem{
+		// 		ProductSlug: v,
+		// 		Quantity:    1,
+		// 	},
+		// }
+		// ord2.UpdateAndTally(nil)
+		// ord2.MustPut()
 	}
+
+	return org
 })
