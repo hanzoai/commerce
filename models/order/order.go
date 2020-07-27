@@ -106,7 +106,7 @@ type Order struct {
 	Currency currency.Type `json:"currency"`
 
 	// Payment processor type - paypal, stripe, etc
-	Type accounts.Type `json:"type,omitempty"`
+	Type accounts.Type `json:"-"` // type,omitempty"`
 
 	// Payment Method Id
 	PaymentMethodId string                      `json:"paymentMethodId,omitempty"`
