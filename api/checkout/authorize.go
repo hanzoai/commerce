@@ -250,7 +250,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		err = stripe.Authorize(org, ord, usr, pay)
 		if err != nil {
 			log.Error("Stripe Error: %v", err, c)
-			return AuthorizationFailed
+			err = AuthorizationFailed
 		}
 	default:
 		log.Info("Using Default", c)
@@ -264,7 +264,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		err = stripe.Authorize(org, ord, usr, pay)
 		if err != nil {
 			log.Error("Stripe Error: %v", err, c)
-			return AuthorizationFailed
+			err = AuthorizationFailed
 		}
 	}
 
