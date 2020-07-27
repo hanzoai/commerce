@@ -24,4 +24,5 @@ var (
 	WalletCreationError          = errors.New("Failed to create wallet for user")
 	MissingTokenSaleOrPassphrase = errors.New("order.tokenSaleId or tokenSale.passphrase is missing")
 	OrderTotalIsLessThan1        = errors.New("order.total is less than 1")
+	AuthorizationFailed          = errors.New("Failed to authorize")
 )
