@@ -20,7 +20,7 @@ var (
 	UnsupportedPaymentType       = errors.New("Unsupported payment type")
 	UnsupportedStripeCurrency    = errors.New("XBT(BTC), ETH not supported by 'stripe' payment method")
 	UserDoesNotExist             = errors.New("User does not exist")
-	UserNotProvided              = errors.New("None of User, User.id, Order.userId is set")
+	UserNotProvided              = errors.New("None of user, user.id, order.userId is set")
 	WalletCreationError          = errors.New("Failed to create wallet for user")
 	MissingTokenSaleOrPassphrase = errors.New("order.tokenSaleId or tokenSale.passphrase is missing")
 	OrderTotalIsLessThan1        = errors.New("order.total is less than 1")
