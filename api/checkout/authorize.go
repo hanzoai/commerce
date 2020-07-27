@@ -104,6 +104,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, InvalidOrIncompleteOrder
 	}
 
+	if ord.total < 1 {
+		log.Error("Order : %v", err, c)
+		return nil, InvalidOrIncompleteOrder
+	}
+
 	// check for reservations
 	if err := ord.MakeReservations(); err != nil {
 		log.Error("Item already reserved error: %v", err, c)
