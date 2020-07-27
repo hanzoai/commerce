@@ -23,4 +23,5 @@ var (
 	UserNotProvided              = errors.New("None of User, User.id, Order.userId is set")
 	WalletCreationError          = errors.New("Failed to create wallet for user")
 	MissingTokenSaleOrPassphrase = errors.New("order.tokenSaleId or tokenSale.passphrase is missing")
+	OrderTotalIsLessThan1        = errors.New("order.total is less than 1")
 )
