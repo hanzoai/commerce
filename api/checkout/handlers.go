@@ -32,7 +32,7 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 	if id := c.Params.ByName("orderid"); id != "" {
 		if err := ord.GetById(id); err != nil {
 			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-			return nil, nil, err
+			return nil, nil, OrderDoesNotExist
 		}
 	}
 
