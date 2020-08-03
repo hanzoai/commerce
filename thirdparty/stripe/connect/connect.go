@@ -22,6 +22,7 @@ func GetToken(ctx context.Context, code string) (*Token, error) {
 
 	data := url.Values{}
 	data.Set("client_secret", config.Stripe.SecretKey)
+	// data.Set("code", code)
 	data.Add("code", code)
 	data.Add("grant_type", "authorization_code")
 
@@ -29,6 +30,8 @@ func GetToken(ctx context.Context, code string) (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// tokenReq.Header.Set("Authorization", "Basic "+config.Stripe.SecretKey)
 
 	// try to post to OAuth API
 	res, err := client.Do(tokenReq)
@@ -45,7 +48,7 @@ func GetToken(ctx context.Context, code string) (*Token, error) {
 
 	// Stripe returned an error
 	if token.Error != "" {
-		return nil, errors.New(token.Error)
+		return nil, errors.New(token.Error + ": " + token.ErrorDescription)
 	}
 
 	return token, nil
