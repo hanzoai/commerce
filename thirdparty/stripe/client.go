@@ -9,13 +9,13 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"hanzo.io/log"
+	"hanzo.io/models/deprecated/plan"
+	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/refs"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/models/deprecated/subscription"
-	"hanzo.io/models/deprecated/plan"
+	"hanzo.io/models/types/refs"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe/errors"
 	"hanzo.io/util/json"
@@ -310,9 +310,9 @@ func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 	}
 
 	// Update with our user metadata
-	for k, v := range usr.Metadata {
-		params.AddMeta(k, json.Encode(v))
-	}
+	// for k, v := range usr.Metadata {
+	// 	params.AddMeta(k, json.Encode(v))
+	// }
 
 	params.AddMeta("user", usr.Id())
 
@@ -366,14 +366,14 @@ func (c Client) NewCard(token string, usr *user.User) (*Card, error) {
 
 // Add new subscription to Stripe
 func (c Client) NewPlan(p *plan.Plan) (*Plan, error) {
-	params := &stripe.PlanParams {
-		ID: p.Id(),
-		Name: p.Name,
-		Currency: stripe.Currency(p.Currency),
-		Interval: stripe.PlanInterval(p.Interval),
+	params := &stripe.PlanParams{
+		ID:            p.Id(),
+		Name:          p.Name,
+		Currency:      stripe.Currency(p.Currency),
+		Interval:      stripe.PlanInterval(p.Interval),
 		IntervalCount: uint64(p.IntervalCount),
-		TrialPeriod: uint64(p.TrialPeriodDays),
-		Statement: p.Description,
+		TrialPeriod:   uint64(p.TrialPeriodDays),
+		Statement:     p.Description,
 	}
 
 	params.AddMeta("plan", p.Id())
@@ -392,14 +392,14 @@ func (c Client) NewPlan(p *plan.Plan) (*Plan, error) {
 func (c Client) UpdatePlan(p *plan.Plan) (*Plan, error) {
 	planId := p.Id()
 
-	params := &stripe.PlanParams {
-		ID: p.Id(),
-		Name: p.Name,
-		Currency: stripe.Currency(p.Currency),
-		Interval: stripe.PlanInterval(p.Interval),
+	params := &stripe.PlanParams{
+		ID:            p.Id(),
+		Name:          p.Name,
+		Currency:      stripe.Currency(p.Currency),
+		Interval:      stripe.PlanInterval(p.Interval),
 		IntervalCount: uint64(p.IntervalCount),
-		TrialPeriod: uint64(p.TrialPeriodDays),
-		Statement: p.Description,
+		TrialPeriod:   uint64(p.TrialPeriodDays),
+		Statement:     p.Description,
 	}
 
 	plan, err := c.API.Plans.Update(planId, params)
