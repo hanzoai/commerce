@@ -61,6 +61,7 @@ func organizationCallback(c *gin.Context) {
 
 	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
+		log.Error("params: %v %v", code, state, ctx)
 		log.Error("Error from stripe connect for org %v: %v", orgId, err, ctx)
 		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 		return
