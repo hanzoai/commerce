@@ -100,8 +100,8 @@ func searchProduct(c *gin.Context) {
 	q2 := aeds.NewQuery(counter.ShardKind)
 
 	// Index Order Is Tag, StoreId, Period, Time, always query in this order
-	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "")
-	q2 = q2.Filter("Tag=", tag2).Filter("Geo=", "")
+	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "").Filter("Period=", counter.Total)
+	q2 = q2.Filter("Tag=", tag2).Filter("Geo=", "").Filter("Period=", counter.Total)
 
 	shards := []counter.Shard{}
 
