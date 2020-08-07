@@ -103,7 +103,7 @@ func searchProduct(c *gin.Context) {
 	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "").Filter("Period=", counter.Total)
 	q2 = q2.Filter("Tag=", tag2).Filter("Geo=", "").Filter("Period=", counter.Total)
 
-	shards := []counter.Shard{}
+	shards1 := []counter.Shard{}
 
 	res := productRes{
 		Count:  0,
@@ -111,20 +111,22 @@ func searchProduct(c *gin.Context) {
 	}
 
 	log.Warn("Searching for %v", productId, c)
-	if _, err := q1.GetAll(ctx, &shards); err != nil {
+	if _, err := q1.GetAll(ctx, &shards1); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
-		log.Warn("Result Count %v", len(shards), c)
-		for _, shard := range shards {
+		log.Warn("Result Count %v", len(shards1), c)
+		for _, shard := range shards1 {
 			res.Amount += shard.Count
 		}
 	}
 
-	if _, err := q2.GetAll(ctx, &shards); err != nil {
+	shards2 := []counter.Shard{}
+
+	if _, err := q2.GetAll(ctx, &shards2); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
-		log.Warn("Result Count %v", len(shards), c)
-		for _, shard := range shards {
+		log.Warn("Result Count %v", len(shards2), c)
+		for _, shard := range shards2 {
 			res.Count += shard.Count
 		}
 	}
