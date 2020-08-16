@@ -335,9 +335,9 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 	params.SetSource(token)
 
 	// Update with our user metadata
-	for k, v := range user.Metadata {
-		params.AddMeta(k, json.Encode(v))
-	}
+	// for k, v := range user.Metadata {
+	// 	params.AddMeta(k, json.Encode(v))
+	// }
 
 	params.AddMeta("user", user.Id())
 
