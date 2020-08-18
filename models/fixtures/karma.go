@@ -179,7 +179,7 @@ var _ = New("karma", func(c *gin.Context) *organization.Organization {
 
 	{
 		prod := product.New(nsdb)
-		prod.Slug = "dial-a-backer"
+		prod.Slug = "karma-bikini"
 		prod.GetOrCreate("Slug=", prod.Slug)
 		prod.Name = "Karma Bikini"
 		prod.Description = "Sustainable, chic, lightweight and made from recycled fish nets. All sales from every piece in our Less Boring Summer Collection directly contribute towards our mission to create a fully sustainable supply chain that empowers disadvantaged Women globally. Choose a suit from any piece in our Less Boring Summer Collection."
@@ -192,7 +192,7 @@ var _ = New("karma", func(c *gin.Context) *organization.Organization {
 
 	{
 		prod := product.New(nsdb)
-		prod.Slug = "dial-a-backer"
+		prod.Slug = "trikini"
 		prod.GetOrCreate("Slug=", prod.Slug)
 		prod.Name = "Trikini"
 		prod.Description = "Guess what it’s 2020 and the only way to look cute and safe at the beach is with your bikini and mask, a.k.a. the tri-kini matching set. Choose a bikini style from the Less Boring Summer Collection and any mask. Available in our Trippy Leopard print/Dragon Blossom print."
