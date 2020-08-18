@@ -13,6 +13,7 @@ const (
 	StoreCredit ActionType = "Credit" // Add credit to user's balance
 	// Refund        ActionType = "Refund" // Refund part of the payment on a order
 	SendUserEmail ActionType = "SendUserEmail"
+	SendWoopra    ActionType = "SendWoopraEvent"
 )
 
 type SendTransactionalUserEmailAction struct {
@@ -22,6 +23,10 @@ type SendTransactionalUserEmailAction struct {
 type CreditAction struct {
 	Currency currency.Type  `json:"currency,omitempty"`
 	Amount   currency.Cents `json:"amount,omitempty"`
+}
+
+type SendWoopraEvent struct {
+	Domain string `json:"domain"`
 }
 
 // type PercentAction struct {
@@ -37,6 +42,7 @@ type Action struct {
 	CreditAction
 	// PercentAction
 	SendTransactionalUserEmailAction
+	SendWoopraEvent
 
 	Trigger Trigger `json:"trigger"`
 }
