@@ -32,7 +32,7 @@ type Person struct {
 	Id     string
 	Name   string
 	Email  string
-	Values url.Values
+	Values map[string]string
 }
 
 // Context is an intermediate representation of concatenated track-request specific data
@@ -118,11 +118,12 @@ func (ctx *Context) performRequest(endpoint string) {
 
 // prepareQuery concatenates all needed request parameters
 func (ctx *Context) prepareQuery() string {
-	var values = ctx.Person.Values
-	if values == nil {
-		values = make(url.Values)
-	}
+	values := make(url.Values)
 	values.Add("host", ctx.Tracker.Host)
+
+	for k, v := range ctx.Person.Values {
+		values.Add("cv_"+k, v)
+	}
 
 	if ctx.Tracker.Timeout > 0 {
 		values.Add("timeout", strconv.Itoa(ctx.Tracker.Timeout))
