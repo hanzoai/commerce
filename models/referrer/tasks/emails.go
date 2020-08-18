@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"context"
-	"net/url"
 	"strconv"
 
 	"hanzo.io/datastore"
@@ -121,13 +120,13 @@ var SendWoopraEvent = delay.Func("referrer-send-woopra-event", func(ctx context.
 		"timeout": "30000",
 	})
 
-	values := make(url.Values)
-	values.Add("firstName", usr.FirstName)
-	values.Add("lastName", usr.LastName)
-	values.Add("city", usr.ShippingAddress.City)
-	values.Add("country", usr.ShippingAddress.Country)
-	values.Add("referred_by", usr.ReferrerId)
-	values.Add("referrals", strconv.Itoa(len(usr.Referrals)))
+	values := make(map[string]string)
+	values["firstName"] = usr.FirstName
+	values["lastName"] = usr.LastName
+	values["city"] = usr.ShippingAddress.City
+	values["country"] = usr.ShippingAddress.Country
+	values["referred_by"] = usr.ReferrerId
+	values["referrals"] = strconv.Itoa(len(usr.Referrals))
 
 	person := woopra.Person{
 		Id:     usr.Id(),
