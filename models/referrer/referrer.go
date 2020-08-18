@@ -285,7 +285,6 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 			fn := delay.FuncByKey("referrer-send-user-email")
 			log.Debug("Sending Email Template '%s'", action.EmailTemplate, ctx)
 			fn.Call(ctx, orgId, action.EmailTemplate, r.UserId)
-			// return nil
 		case referralprogram.SendWoopra:
 			if !done && action.Once {
 				r.State[action.Name+"_done"] = true
@@ -293,8 +292,8 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 			}
 
 			fn := delay.FuncByKey("referrer-send-woopra-event")
-			log.Debug("Sending Email Template '%s'", action.EmailTemplate, ctx)
-			fn.Call(ctx, orgId, action.Domain, r.UserId, rfn.Id())
+			log.Debug("Sending Woopra Event '%s'", action.Domain, ctx)
+			fn.Call(ctx, orgId, action.Domain, r.UserId, rfn.Id(), rfn.Kind())
 		default:
 			log.Error("Unknown Action '%s'", action.Type, r.Context())
 			return errors.New(fmt.Sprintf("Unknown Action '%s'", action.Type))
