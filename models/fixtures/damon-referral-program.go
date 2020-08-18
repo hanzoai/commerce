@@ -52,6 +52,19 @@ var _ = New("damon-referral-program", func(c *gin.Context) *referralprogram.Refe
 				Type:  referralprogram.Always,
 			},
 		},
+		referralprogram.Action{
+			Type: referralprogram.SendWoopra,
+			Name: "Woopra Action",
+
+			SendWoopraEvent: referralprogram.SendWoopraEvent{
+				Domain: "damon.com",
+			},
+
+			Trigger: referralprogram.Trigger{
+				Event: referral.NewOrder,
+				Type:  referralprogram.Always,
+			},
+		},
 	}
 
 	rp.MustPut()
