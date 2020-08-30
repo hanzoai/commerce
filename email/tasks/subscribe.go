@@ -39,6 +39,6 @@ var Subscribe = delay.Func("email-subscribe", func(c context.Context, in integra
 	err = provider.Subscribe(&l, &sub)
 	if err != nil {
 		log.Error("Email provider error: %v", err, c)
-		panic(err)
+		// panic(err)
 	}
 })
