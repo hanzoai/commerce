@@ -51,6 +51,7 @@ func userMessage(settings email.Setting, usr *user.User, org *organization.Organ
 		"name":      usr.Name(),
 		"firstName": usr.FirstName,
 		"lastName":  usr.LastName,
+		"email":     usr.Email,
 	}
 	m.TemplateData["user"] = user
 
