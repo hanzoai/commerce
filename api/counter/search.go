@@ -133,3 +133,49 @@ func searchProduct(c *gin.Context) {
 
 	http.Render(c, 200, res)
 }
+
+func topLine(c *gin.Context) {
+	productId := c.Params.ByName("productid")
+
+	ctx := middleware.GetAppEngine(c)
+
+	tag1 := "order.revenue"
+	tag2 := "order.sold"
+
+	q1 := aeds.NewQuery(counter.ShardKind)
+	q2 := aeds.NewQuery(counter.ShardKind)
+
+	// Index Order Is Tag, StoreId, Period, Time, always query in this order
+	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "").Filter("Period=", counter.Total)
+	q2 = q2.Filter("Tag=", tag2).Filter("Geo=", "").Filter("Period=", counter.Total)
+
+	shards1 := []counter.Shard{}
+
+	res := productRes{
+		Count:  0,
+		Amount: 0,
+	}
+
+	log.Warn("Searching for %v", productId, c)
+	if _, err := q1.GetAll(ctx, &shards1); err != nil {
+		log.Error("Counter Search Error %v", err, c)
+	} else {
+		log.Warn("Result Count %v", len(shards1), c)
+		for _, shard := range shards1 {
+			res.Amount += shard.Count
+		}
+	}
+
+	shards2 := []counter.Shard{}
+
+	if _, err := q2.GetAll(ctx, &shards2); err != nil {
+		log.Error("Counter Search Error %v", err, c)
+	} else {
+		log.Warn("Result Count %v", len(shards2), c)
+		for _, shard := range shards2 {
+			res.Count += shard.Count
+		}
+	}
+
+	http.Render(c, 200, res)
+}
