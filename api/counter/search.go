@@ -135,12 +135,10 @@ func searchProduct(c *gin.Context) {
 }
 
 func topLine(c *gin.Context) {
-	productId := c.Params.ByName("productid")
-
 	ctx := middleware.GetAppEngine(c)
 
 	tag1 := "order.revenue"
-	tag2 := "order.sold"
+	tag2 := "order.count"
 
 	q1 := aeds.NewQuery(counter.ShardKind)
 	q2 := aeds.NewQuery(counter.ShardKind)
@@ -156,7 +154,6 @@ func topLine(c *gin.Context) {
 		Amount: 0,
 	}
 
-	log.Warn("Searching for %v", productId, c)
 	if _, err := q1.GetAll(ctx, &shards1); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
