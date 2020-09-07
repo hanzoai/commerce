@@ -31,6 +31,7 @@ var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
 
 type createReq struct {
 	*user.User
+	Email           string `json:"email"`
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
 	Captcha         string `json:"g-recaptcha-response"`

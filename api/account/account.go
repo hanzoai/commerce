@@ -9,6 +9,7 @@ import (
 	"hanzo.io/auth/password"
 	"hanzo.io/log"
 	"hanzo.io/middleware"
+	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
@@ -77,6 +78,15 @@ func patch(c *gin.Context) {
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
 	req := &confirmPasswordReq{User: usr}
+
+	usr2 := user.New(usr.Db)
+	// Email can't already exist or if it does, can't have a password
+	if err := usr2.GetByEmail(req.Email); err == nil {
+		if usr2.Id() != usr.Id() {
+			http.Fail(c, 400, "Email is already taken", err)
+			return
+		}
+	}
 
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
