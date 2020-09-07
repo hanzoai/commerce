@@ -137,10 +137,10 @@ func create(c *gin.Context) {
 			return
 		}
 
-		if usr.LastName == "" || usr.LastName == "\u263A" {
-			http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
-			return
-		}
+		// if usr.LastName == "" || usr.LastName == "\u263A" {
+		// 	http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
+		// 	return
+		// }
 	} else {
 		log.Info("Sign up does not require Name", c)
 	}
