@@ -142,77 +142,67 @@ var _ = New("karma-products", func(c *gin.Context) []*product.Product {
 		},
 	}
 
-	TOP_STYLES := []size{
+	BIKINI_STYLES := []size{
 		size{
 			name: "Railay Bikini in trippy leopard",
-			id:   "railay-top-tl",
+			id:   "railay-tl",
 		},
 		size{
 			name: "Railay Bikini in dragon blossom",
-			id:   "railay-top-db",
+			id:   "railay-db",
 		},
 		size{
 			name: "Ruby Bikini in trippy leopard",
-			id:   "ruby-top-tl",
+			id:   "ruby-tl",
 		},
 		size{
 			name: "Ruby Bikini in dragon blossom",
-			id:   "ruby-top-db",
+			id:   "ruby-db",
 		},
 		size{
 			name: "Lafayette Bikini in trippy leopard",
-			id:   "lafayette-top-tl",
+			id:   "lafayette-tl",
 		},
 		size{
 			name: "Lafayette Bikini in dragon blossom",
-			id:   "lafayette-top-db",
+			id:   "lafayette-db",
 		},
 		size{
 			name: "Bikini-n-Chill Bikini in trippy leopard",
-			id:   "bikini-n-chill-top-tl",
+			id:   "bikini-n-chill-tl",
 		},
 		size{
 			name: "Bikini-n-Chill Bikini in dragon blossom",
-			id:   "bikini-n-chill-top-db",
+			id:   "bikini-n-chill-db",
 		},
 	}
 
-	BOTTOM_STYLES := []size{
+	MASK_STYLES := []size{
 		size{
-			name: "Railay Bikini in trippy leopard",
-			id:   "railay-btm-tl",
+			name: "Dragon Blossom",
+			id:   "mask-db",
 		},
 		size{
-			name: "Railay Bikini in dragon blossom",
-			id:   "railay-btm-db",
-		},
-		size{
-			name: "Ruby Bikini in trippy leopard",
-			id:   "ruby-btm-tl",
-		},
-		size{
-			name: "Ruby Bikini in dragon blossom",
-			id:   "ruby-btm-db",
-		},
-		size{
-			name: "Lafayette Bikini in trippy leopard",
-			id:   "lafayette-btm-tl",
-		},
-		size{
-			name: "Lafayette Bikini in dragon blossom",
-			id:   "lafayette-btm-db",
-		},
-		size{
-			name: "Bikini-n-Chill Bikini in trippy leopard",
-			id:   "bikini-n-chill-btm-tl",
-		},
-		size{
-			name: "Bikini-n-Chill Bikini in dragon blossom",
-			id:   "bikini-n-chill-btm-db",
+			name: "Trippy Leopard",
+			id:   "mask-tl",
 		},
 	}
 
 	prods := []*product.Product{}
+
+	for _, s := range MASK_STYLES {
+		prod := product.New(nsdb)
+		prod.Slug = "less-boring-" + s.id
+		prod.GetOrCreate("Slug=", prod.Slug)
+		prod.Name = "Less Boring Summer Mask " + s.name
+		prod.Description = "Stay healthy and chic with our sustainable yet lightweight protective measures. Choose from our 2 prints (dragon blossom and trippy leopard) all made from recycled fish nets."
+		prod.Currency = currency.USD
+		prod.ListPrice = currency.Cents(3500)
+		prod.Price = currency.Cents(3500)
+		prod.Update()
+
+		prods = append(prods, prod)
+	}
 
 	for _, s := range SIZES_BOTH_GENDERS {
 		prod := product.New(nsdb)
@@ -294,22 +284,20 @@ var _ = New("karma-products", func(c *gin.Context) []*product.Product {
 		}
 	}
 
-	for _, s1 := range TOP_STYLES {
+	for _, s1 := range BIKINI_STYLES {
 		for _, s2 := range SIZES {
-			for _, s3 := range BOTTOM_STYLES {
-				for _, s4 := range SIZES {
-					prod := product.New(nsdb)
-					prod.Slug = "karma-bikini-" + s1.id + "-" + s2.id + "-" + s3.id + "-" + s4.id
-					prod.GetOrCreate("Slug=", prod.Slug)
-					prod.Name = "Karma Bikini " + s1.name + " " + s2.name + " Top " + s3.name + " " + s4.name + " Bottom"
-					prod.Description = "Sustainable, chic, lightweight and made from recycled fish nets. All sales from every piece in our Less Boring Summer Collection directly contribute towards our mission to create a fully sustainable supply chain that empowers disadvantaged Women globally. Choose a suit from any piece in our Less Boring Summer Collection."
-					prod.Currency = currency.USD
-					prod.ListPrice = currency.Cents(20000)
-					prod.Price = currency.Cents(20000)
-					prod.Update()
+			for _, s3 := range SIZES {
+				prod := product.New(nsdb)
+				prod.Slug = "karma-bikini-" + s1.id + "-" + s2.id + "-" + s3.id
+				prod.GetOrCreate("Slug=", prod.Slug)
+				prod.Name = "Karma Bikini " + s1.name + " " + s2.name + " Top " + s3.name + " Bottom"
+				prod.Description = "Sustainable, chic, lightweight and made from recycled fish nets. All sales from every piece in our Less Boring Summer Collection directly contribute towards our mission to create a fully sustainable supply chain that empowers disadvantaged Women globally. Choose a suit from any piece in our Less Boring Summer Collection."
+				prod.Currency = currency.USD
+				prod.ListPrice = currency.Cents(20000)
+				prod.Price = currency.Cents(20000)
+				prod.Update()
 
-					prods = append(prods, prod)
-				}
+				prods = append(prods, prod)
 			}
 		}
 	}
