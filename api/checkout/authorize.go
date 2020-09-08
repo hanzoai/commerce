@@ -243,7 +243,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		if ord.Currency.IsCrypto() {
 			return nil, UnsupportedStripeCurrency
 		}
-		if ord.Total > 500000 {
+		if ord.Total > 5000000 {
 			return nil, TransactionLimitReached
 		}
 		log.Info("Authorizing Stripe", c)
