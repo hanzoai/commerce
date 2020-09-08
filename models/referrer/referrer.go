@@ -76,7 +76,11 @@ func (r *Referrer) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent, test bool) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent, userId string, test bool) (*referral.Referral, error) {
+	if userId == r.UserId {
+		return nil, errors.New("User cannot refer themselves")
+	}
+
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
