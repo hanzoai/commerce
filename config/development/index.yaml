@@ -207,3 +207,7 @@ indexes:
   - name: DestinationId
   - name: Currency
 
+- kind: referral
+  properties:
+  - name: Referrer.UserId
+  - name: Revoked
