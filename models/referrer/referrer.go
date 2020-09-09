@@ -309,6 +309,9 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 	}
 
 	rfl.Referrer.WoopraDomains = strings.Join(domains, ",")
+	if err := rfl.Update(); err != nil {
+		return err
+	}
 
 	// No actions triggered for this referral
 	return nil
