@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	aeds "google.golang.org/appengine/datastore"
@@ -117,7 +118,7 @@ func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referra
 	}
 
 	// Apply any program actions if applicable
-	if err := r.ApplyActions(ctx, orgId, event, &r.Program, rfn, test); err != nil {
+	if err := r.ApplyActions(ctx, orgId, event, &r.Program, rfn, rfl, test); err != nil {
 		return rfl, err
 	}
 
@@ -235,7 +236,9 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	return false, nil
 }
 
-func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram, rfn Referrent, test bool) error {
+func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referral.Event, p *referralprogram.ReferralProgram, rfn Referrent, rfl *referral.Referral, test bool) error {
+	domains := []string{}
+
 	old := len(r.Program.Triggers) > 0
 	if old {
 		log.Debug("Old Triggers")
@@ -297,12 +300,15 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 
 			fn := delay.FuncByKey("referrer-send-woopra-event")
 			log.Debug("Sending Woopra Event '%s'", action.Domain, ctx)
+			domains = append(domains, action.Domain)
 			fn.Call(ctx, orgId, action.Domain, r.UserId, rfn.Id(), rfn.Kind())
 		default:
 			log.Error("Unknown Action '%s'", action.Type, r.Context())
 			return errors.New(fmt.Sprintf("Unknown Action '%s'", action.Type))
 		}
 	}
+
+	rfl.Referrer.WoopraDomains = strings.Join(domains, ",")
 
 	// No actions triggered for this referral
 	return nil
