@@ -90,6 +90,7 @@ type Order struct {
 
 	// Associated referrer
 	ReferrerId string `json:"referrerId,omitempty"`
+	ReferralId string `json:"referralId,omitempty"`
 
 	// Status
 	Status        Status         `json:"status"`
