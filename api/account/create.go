@@ -83,6 +83,7 @@ func create(c *gin.Context) {
 
 	// Pull out user
 	usr := req.User
+	usr.Email = req.Email
 
 	log.Info("Fetching User Request: %v", json.Encode(usr), c)
 	// Email is required
