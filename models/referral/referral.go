@@ -14,9 +14,10 @@ const (
 )
 
 type Referrer struct {
-	Id          string `json:"id"`
-	UserId      string `json:"userId"`
-	AffiliateId string `json:"affiliateId"`
+	Id            string `json:"id"`
+	UserId        string `json:"userId"`
+	AffiliateId   string `json:"affiliateId"`
+	WoopraDomains string `json:"woopraDomains"`
 }
 
 type Fee struct {
@@ -44,4 +45,5 @@ type Referral struct {
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
+	Revoked     bool          `json:"revoked"`
 }
