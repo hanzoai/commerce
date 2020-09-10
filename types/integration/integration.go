@@ -38,6 +38,7 @@ const (
 	ShipwireType      Type = "shipwire"
 	SMTPRelayType     Type = "smtprelay"
 	StripeType        Type = "stripe"
+	WoopraType        Type = "woopra"
 )
 
 // Analytics
@@ -249,6 +250,10 @@ type SecurityToken struct {
 	EOS      EOSSecurityToken      `json:"eos,omitempty"`
 }
 
+type Woopra struct {
+	Domain string `json:"domain,omitempty"`
+}
+
 type Integration struct {
 	Type      Type            `json:"type,omitempty"`
 	Enabled   bool            `json:"enabled,omitempty"`
@@ -284,4 +289,5 @@ type Integration struct {
 	SMTPRelay     SMTPRelay     `json:"-"`
 	Stripe        Stripe        `json:"-"`
 	SecurityToken SecurityToken `json:"-"`
+	Woopra        Woopra        `json:"-"`
 }
