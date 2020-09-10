@@ -15,6 +15,7 @@ import (
 	"hanzo.io/models/referral"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
+	"hanzo.io/types/integration"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 
@@ -130,6 +131,68 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 				}
 			}
 		}
+	}
+
+	in := org.Integrations.FindByType(integration.WoopraType)
+	if in != nil {
+		usr := user.New(ord.Db)
+		if err := usr.GetById(ord.UserId); err != nil {
+
+		}
+		domain := in.Woopra.Domain
+		wt, _ := woopra.NewTracker(map[string]string{
+
+			// `host` is domain as registered in Woopra, it identifies which
+			// project environment to receive the tracking request
+			"host": domain,
+
+			// In milliseconds, defaults to 30000 (equivalent to 30 seconds)
+			// after which the event will expire and the visit will be marked
+			// as offline.
+			"timeout": "30000",
+		})
+
+		values := make(map[string]string)
+		values["firstName"] = usr.FirstName
+		values["lastName"] = usr.LastName
+		values["city"] = usr.ShippingAddress.City
+		values["country"] = usr.ShippingAddress.Country
+		values["referred_by"] = usr.ReferrerId
+
+		person := woopra.Person{
+			Id:     usr.Id(),
+			Name:   usr.Name(),
+			Email:  usr.Email,
+			Values: values,
+		}
+
+		// identifying current visitor in Woopra
+		ident := wt.Identify(
+			ctx,
+			person,
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/601.7.7 (KHTML, like Gecko) Version/9.1.2 Safari/601.7.7",
+		)
+
+		// Tracking custom event in Woopra. Each event can has additional data
+		ident.Track(
+			"orderRefund", // event name
+			map[string]string{ // custom data
+				"orderId":     ord.Id(),
+				"orderNumber": strconv.Itoa(ord.Number),
+				"name":        usr.Name(),
+				"email":       usr.Email,
+				"city":        usr.ShippingAddress.City,
+				"country":     usr.ShippingAddress.Country,
+				"referred_by": usr.ReferrerId,
+				"currency":    string(ord.Currency),
+				"revenue":     ord.Currency.ToStringNoSymbol(ord.Total),
+				"refunded":    ord.Currency.ToStringNoSymbol(ord.Refunded),
+				"cartId":      ord.CartId,
+			})
+
+		// it's possible to send only visitor's data to Woopra, without sending
+		// any custom event and/or data
+		ident.Push()
 	}
 
 	return nil
