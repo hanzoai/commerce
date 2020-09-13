@@ -64,6 +64,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	util.UpdateReferral(org, ord)
 	util.UpdateCart(ctx, ord)
 	util.UpdateStats(ctx, org, ord, payments)
+	util.UpdateWoopraIntegration(ctx, org, ord)
 	util.HandleDeposit(ord)
 
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())

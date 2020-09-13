@@ -2,7 +2,6 @@ package checkout
 
 import (
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +10,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
 	"hanzo.io/models/types/currency"
@@ -62,9 +62,9 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 			return err
 		}
 
-		domains := strings.Split(rfl.Referrer.WoopraDomains, ",")
-
-		for _, domain := range domains {
+		in := org.Integrations.FindByType(integration.WoopraType)
+		if in != nil {
+			domain := in.Woopra.Domain
 			wt, _ := woopra.NewTracker(map[string]string{
 
 				// `host` is domain as registered in Woopra, it identifies which
@@ -77,6 +77,13 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 				"timeout": "30000",
 			})
 
+			revokedReferrals := 0
+			for _, v := range usr.Referrals {
+				if v.Revoked {
+					revokedReferrals += 1
+				}
+			}
+
 			values := make(map[string]string)
 			values["firstName"] = usr.FirstName
 			values["lastName"] = usr.LastName
@@ -84,6 +91,8 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 			values["country"] = usr.ShippingAddress.Country
 			values["referred_by"] = usr.ReferrerId
 			values["referrals"] = strconv.Itoa(len(usr.Referrals))
+			values["activeReferrals"] = strconv.Itoa(len(usr.Referrals) - revokedReferrals)
+			values["revokedReferrals"] = strconv.Itoa(revokedReferrals)
 
 			person := woopra.Person{
 				Id:     usr.Id(),
@@ -137,8 +146,15 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	if in != nil {
 		usr := user.New(ord.Db)
 		if err := usr.GetById(ord.UserId); err != nil {
-
+			log.Error("no user found %v", err, c)
+			return nil
 		}
+
+		if err := usr.LoadOrders(); err != nil {
+			log.Error("loadorders error %v", err, c)
+			return nil
+		}
+
 		domain := in.Woopra.Domain
 		wt, _ := woopra.NewTracker(map[string]string{
 
@@ -152,12 +168,51 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 			"timeout": "30000",
 		})
 
+		cancelledOrders := 0
+		creditOrders := 0
+		disputedOrders := 0
+		failedOrders := 0
+		fraudOrders := 0
+		paidOrders := 0
+		refundedOrders := 0
+		unpaidOrders := 0
+		for _, v := range usr.Orders {
+			switch ps := v.PaymentStatus; ps {
+			case payment.Cancelled:
+				cancelledOrders++
+			case payment.Credit:
+				creditOrders++
+			case payment.Disputed:
+				disputedOrders++
+			case payment.Failed:
+				failedOrders++
+			case payment.Fraudulent:
+				fraudOrders++
+			case payment.Paid:
+				paidOrders++
+			case payment.Refunded:
+				refundedOrders++
+			case payment.Unpaid:
+				unpaidOrders++
+			}
+		}
+
 		values := make(map[string]string)
 		values["firstName"] = usr.FirstName
 		values["lastName"] = usr.LastName
 		values["city"] = usr.ShippingAddress.City
 		values["country"] = usr.ShippingAddress.Country
 		values["referred_by"] = usr.ReferrerId
+		values["referrals"] = strconv.Itoa(len(usr.Referrals))
+		values["orders"] = strconv.Itoa(len(usr.Orders))
+		values["cancelledOrders"] = strconv.Itoa(cancelledOrders)
+		values["creditOrders"] = strconv.Itoa(creditOrders)
+		values["disputedOrders"] = strconv.Itoa(disputedOrders)
+		values["failedOrders"] = strconv.Itoa(failedOrders)
+		values["fraudOrders"] = strconv.Itoa(fraudOrders)
+		values["paidOrders"] = strconv.Itoa(paidOrders)
+		values["refundedOrders"] = strconv.Itoa(refundedOrders)
+		values["unpaidOrders"] = strconv.Itoa(unpaidOrders)
 
 		person := woopra.Person{
 			Id:     usr.Id(),
