@@ -229,13 +229,14 @@ func create(c *gin.Context) {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 
+	enabled := org.SignUpOptions.AccountsEnabledByDefault || usr.PreApproved
 	// Test key users are automatically confirmed
 	if !org.Live {
 		usr.Enabled = true
+	} else {
+		log.Info("User is enabled? %v", usr.Enabled, enabled, c)
+		usr.Enabled = enabled
 	}
-
-	log.Info("User is enabled? %v", usr.Enabled, c)
-	usr.Enabled = org.SignUpOptions.AccountsEnabledByDefault
 
 	// Determine store to use
 	storeId := req.StoreId
@@ -308,7 +309,10 @@ func create(c *gin.Context) {
 	}
 
 	// Send welcome, email confirmation emails
-	email.SendUserConfirmEmail(ctx, org, usr)
+	if !enabled {
+		email.SendUserConfirmEmail(ctx, org, usr)
+	}
+
 	if usr.IsAffiliate && org.Email.Get(email.AffiliateWelcome).Enabled {
 		email.SendAffiliateWelcome(ctx, org, usr)
 	} else {

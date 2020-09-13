@@ -93,7 +93,8 @@ type User struct {
 	// Account to use for new orders when customer creates new orders
 	Accounts accounts.Account `json:"-" datastore:",noindex"`
 
-	Enabled bool `json:"enabled"` //whether or not the user can login yet
+	Enabled     bool `json:"enabled"` //whether or not the user can login yet
+	PreApproved bool `json:"preApproved"`
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
