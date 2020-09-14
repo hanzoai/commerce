@@ -84,6 +84,13 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 					"timeout": "30000",
 				})
 
+				revokedReferrals := 0
+				for _, v := range usr.Referrals {
+					if v.Revoked {
+						revokedReferrals += 1
+					}
+				}
+
 				values := make(map[string]string)
 				values["first_name"] = usr.FirstName
 				values["last_name"] = usr.LastName
@@ -91,6 +98,8 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 				values["country"] = usr.ShippingAddress.Country
 				values["referred_by"] = usr.ReferrerId
 				values["referrals"] = strconv.Itoa(len(usr.Referrals))
+				values["active_referrals"] = strconv.Itoa(len(usr.Referrals) - revokedReferrals)
+				values["revoked_referrals"] = strconv.Itoa(revokedReferrals)
 
 				person := woopra.Person{
 					Id:     usr.Id(),
