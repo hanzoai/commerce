@@ -85,8 +85,8 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 				})
 
 				values := make(map[string]string)
-				values["firstName"] = usr.FirstName
-				values["lastName"] = usr.LastName
+				values["first_name"] = usr.FirstName
+				values["last_name"] = usr.LastName
 				values["city"] = usr.ShippingAddress.City
 				values["country"] = usr.ShippingAddress.Country
 				values["referred_by"] = usr.ReferrerId
@@ -108,10 +108,10 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 
 				// Tracking custom event in Woopra. Each event can has additional data
 				ident.Track(
-					"removeReferral", // event name
+					"Remove Referral", // event name
 					map[string]string{ // custom data
-						"referredOrderId":     ord.Id(),
-						"referredOrderNumber": strconv.Itoa(ord.Number),
+						"referred_order_id":     ord.Id(),
+						"referred_order_number": strconv.Itoa(ord.Number),
 					})
 
 				// it's possible to send only visitor's data to Woopra, without sending

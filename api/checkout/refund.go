@@ -110,7 +110,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 
 			// Tracking custom event in Woopra. Each event can has additional data
 			ident.Track(
-				"removeReferral", // event name
+				"Remove Referral", // event name
 				map[string]string{ // custom data
 					"referred_order_id":     ord.Id(),
 					"referred_order_number": strconv.Itoa(ord.Number),
