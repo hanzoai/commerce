@@ -121,8 +121,8 @@ var SendWoopraEvent = delay.Func("referrer-send-woopra-event", func(ctx context.
 	})
 
 	values := make(map[string]string)
-	values["firstName"] = usr.FirstName
-	values["lastName"] = usr.LastName
+	values["first_name"] = usr.FirstName
+	values["last_name"] = usr.LastName
 	values["city"] = usr.ShippingAddress.City
 	values["country"] = usr.ShippingAddress.Country
 	values["referred_by"] = usr.ReferrerId
@@ -144,13 +144,13 @@ var SendWoopraEvent = delay.Func("referrer-send-woopra-event", func(ctx context.
 
 	// Tracking custom event in Woopra. Each event can has additional data
 	ident.Track(
-		"newReferral", // event name
+		"New Referral", // event name
 		map[string]string{ // custom data
-			"referredId":          usr2.Id(),
-			"referredName":        usr2.Name(),
-			"referredEmail":       usr2.Email,
-			"referredOrderId":     orderId,
-			"referredOrderNumber": orderNumber,
+			"referred_id":           usr2.Id(),
+			"referred_name":         usr2.Name(),
+			"referred_email":        usr2.Email,
+			"referred_order_id":     orderId,
+			"referred_order_number": orderNumber,
 		})
 
 	// it's possible to send only visitor's data to Woopra, without sending

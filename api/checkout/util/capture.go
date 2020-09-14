@@ -322,21 +322,21 @@ func UpdateWoopraIntegration(ctx context.Context, org *organization.Organization
 			}
 
 			values := make(map[string]string)
-			values["firstName"] = usr.FirstName
-			values["lastName"] = usr.LastName
+			values["first_name"] = usr.FirstName
+			values["last_name"] = usr.LastName
 			values["city"] = usr.ShippingAddress.City
 			values["country"] = usr.ShippingAddress.Country
 			values["referred_by"] = usr.ReferrerId
 			values["referrals"] = strconv.Itoa(len(usr.Referrals))
 			values["orders"] = strconv.Itoa(len(usr.Orders))
-			values["cancelledOrders"] = strconv.Itoa(cancelledOrders)
-			values["creditOrders"] = strconv.Itoa(creditOrders)
-			values["disputedOrders"] = strconv.Itoa(disputedOrders)
-			values["failedOrders"] = strconv.Itoa(failedOrders)
-			values["fraudOrders"] = strconv.Itoa(fraudOrders)
-			values["paidOrders"] = strconv.Itoa(paidOrders)
-			values["refundedOrders"] = strconv.Itoa(refundedOrders)
-			values["unpaidOrders"] = strconv.Itoa(unpaidOrders)
+			values["cancelled_orders"] = strconv.Itoa(cancelledOrders)
+			values["credit_orders"] = strconv.Itoa(creditOrders)
+			values["disputed_orders"] = strconv.Itoa(disputedOrders)
+			values["failed_orders"] = strconv.Itoa(failedOrders)
+			values["fraud_orders"] = strconv.Itoa(fraudOrders)
+			values["paid_orders"] = strconv.Itoa(paidOrders)
+			values["refunded_orders"] = strconv.Itoa(refundedOrders)
+			values["unpaid_orders"] = strconv.Itoa(unpaidOrders)
 
 			person := woopra.Person{
 				Id:     usr.Id(),
@@ -354,19 +354,19 @@ func UpdateWoopraIntegration(ctx context.Context, org *organization.Organization
 
 			// Tracking custom event in Woopra. Each event can has additional data
 			ident.Track(
-				"orderCreate", // event name
+				"Order Create", // event name
 				map[string]string{ // custom data
-					"orderId":     ord.Id(),
-					"orderNumber": strconv.Itoa(ord.Number),
-					"name":        usr.Name(),
-					"email":       usr.Email,
-					"city":        usr.ShippingAddress.City,
-					"country":     usr.ShippingAddress.Country,
-					"referred_by": usr.ReferrerId,
-					"currency":    string(ord.Currency),
-					"revenue":     ord.Currency.ToStringNoSymbol(ord.Total),
-					"refunded":    ord.Currency.ToStringNoSymbol(ord.Refunded),
-					"cartId":      ord.CartId,
+					"order_id":     ord.Id(),
+					"order_number": strconv.Itoa(ord.Number),
+					"name":         usr.Name(),
+					"email":        usr.Email,
+					"city":         usr.ShippingAddress.City,
+					"country":      usr.ShippingAddress.Country,
+					"referred_by":  usr.ReferrerId,
+					"currency":     string(ord.Currency),
+					"revenue":      ord.Currency.ToStringNoSymbol(ord.Total),
+					"refunded":     ord.Currency.ToStringNoSymbol(ord.Refunded),
+					"cart_id":      ord.CartId,
 				})
 
 			// it's possible to send only visitor's data to Woopra, without sending
