@@ -272,7 +272,7 @@ func create(c *gin.Context) {
 
 	tokStr := ""
 
-	if org.SignUpOptions.ImmediateLogin {
+	if org.SignUpOptions.ImmediateLogin || usr.PreApproved {
 		log.Info("User is being immediately logged in", c)
 		loginTok := middleware.GetToken(c)
 		loginTok.UserId = usr.Id()
