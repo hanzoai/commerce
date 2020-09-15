@@ -42,6 +42,7 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 func Authorize(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
@@ -60,6 +61,7 @@ func Authorize(c *gin.Context) {
 func Capture(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
@@ -76,6 +78,7 @@ func Capture(c *gin.Context) {
 func Charge(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
@@ -100,6 +103,7 @@ func Charge(c *gin.Context) {
 func Refund(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
@@ -114,6 +118,7 @@ func Refund(c *gin.Context) {
 func Cancel(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
@@ -128,6 +133,7 @@ func Cancel(c *gin.Context) {
 func Confirm(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
