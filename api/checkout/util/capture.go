@@ -111,6 +111,7 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 
 	if err != nil {
 		log.Warn("Unable to save referral: %v", err, ctx)
+		ord.ReferrerId = ""
 		return
 	}
 
