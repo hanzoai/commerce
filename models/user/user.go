@@ -286,7 +286,7 @@ func (u *User) LoadReferrals() error {
 	}
 
 	u.Referrals = make([]referral.Referral, 0)
-	if _, err := referral.Query(u.Db).Filter("Referrer.UserId=", u.Id()).Filter("Revoked=", false).GetAll(&u.Referrals); err != nil {
+	if _, err := referral.Query(u.Db).Filter("Referrer.UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
 		return err
 	}
 
