@@ -109,14 +109,16 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 		total,
 	}, ord.UserId, !org.Live)
 
-	ord.ReferralId = rfl.Id()
-
 	if err != nil {
 		log.Warn("Unable to save referral: %v", err, ctx)
+		return
 	}
+
+	ord.ReferralId = rfl.Id()
 
 	if err := ord.Update(); err != nil {
 		log.Warn("Unable to save order: %v", err, ctx)
+		return
 	}
 
 	if !ord.Test {
