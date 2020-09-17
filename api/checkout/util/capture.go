@@ -154,6 +154,7 @@ func UpdateCart(ctx context.Context, ord *order.Order) {
 
 func UpdateStats(ctx context.Context, org *organization.Organization, ord *order.Order, payments []*payment.Payment) {
 	log.Debug("Incrementing Counters? %v", ord.Test, ctx)
+
 	if !ord.Test {
 		log.Debug("Incrementing Counters", ctx)
 		t := ord.CreatedAt
