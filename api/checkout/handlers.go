@@ -150,6 +150,7 @@ func route(router router.Router, prefix string) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := router.Group(prefix)
+	api.Use(middleware.AccessControl("*"))
 
 	// Auth and Capture Flow (Two-step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
