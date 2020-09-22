@@ -125,6 +125,8 @@ type User struct {
 
 	// For Halcyon
 	Commission commission.Commission `json:"commission"`
+
+	Test bool `json:"test"`
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
