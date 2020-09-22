@@ -77,6 +77,8 @@ type Document struct {
 	CreatedAt float64
 	UpdatedAt float64
 
+	Test search.Atom
+
 	// Facets
 	ProductNameOption0 search.Atom `search:"productName,facet"`
 	ProductNameOption1 search.Atom `search:"productName,facet"`
@@ -323,6 +325,12 @@ func (o Order) Document() mixin.Document {
 	}
 	if nTrackings > 2 {
 		doc.FulfillmentTrackingOption2 = search.Atom(o.Fulfillment.Trackings[2].Number)
+	}
+
+	if o.Test {
+		doc.Test = "true"
+	} else {
+		doc.Test = "false"
 	}
 
 	return doc
