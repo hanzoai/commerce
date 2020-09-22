@@ -76,6 +76,8 @@ type Document struct {
 	KYCPhone     string
 	KYCGender    string
 	KYCBirthdate string
+
+	Test search.Atom
 }
 
 func (d Document) Id() string {
@@ -200,6 +202,12 @@ func (u User) Document() mixin.Document {
 	doc.KYCPhone = u.KYC.Phone
 	doc.KYCGender = u.KYC.Gender
 	doc.KYCBirthdate = u.KYC.Birthdate.Format("2006-01-02")
+
+	if u.Test {
+		doc.Test = "true"
+	} else {
+		doc.Test = "false"
+	}
 
 	return doc
 }
