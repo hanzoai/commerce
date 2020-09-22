@@ -377,7 +377,8 @@ func (r Rest) list(c *gin.Context) {
 		fStr := query.Get("facets")
 		r.listSearch(c, entity, qStr, fStr, pageStr, displayStr, limitStr, sortField)
 	} else {
-		r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+		r.listSearch(c, entity, "", "", pageStr, displayStr, limitStr, sortField)
+		// r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
 	}
 }
 
