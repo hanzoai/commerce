@@ -153,29 +153,44 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 					return err
 				}
 
-				// Determine store to use
-				storeId := ord.StoreId
-				if storeId == "" {
-					storeId = org.DefaultStore
+				if err := usr.LoadOrders(); err != nil {
+					log.Error("loadorders error %v", err, c)
+					return nil
 				}
 
-				stor := store.New(ord.Db)
-				stor.MustGetById(storeId)
-
-				// Subscribe user to list
-				buy := Buyer{
-					Email:           usr.Email,
-					FirstName:       usr.FirstName,
-					LastName:        usr.LastName,
-					Phone:           usr.Phone,
-					BillingAddress:  ord.BillingAddress,
-					ShippingAddress: ord.ShippingAddress,
+				paidOrders := 0
+				for _, v := range usr.Orders {
+					switch ps := v.PaymentStatus; ps {
+					case payment.Paid:
+						paidOrders++
+					}
 				}
 
-				if err := client.UnsubscribeCustomer(stor.Mailchimp.ListId, buy); err != nil {
-					log.Warn("Failed to delete Mailchimp customer - status: %v", err.Status, ctx)
-					log.Warn("Failed to delete Mailchimp customer - unknown error: %v", err.Unknown, ctx)
-					log.Warn("Failed to delete Mailchimp customer - mailchimp error: %v", err.Mailchimp, ctx)
+				if paidOrders == 0 {
+					// Determine store to use
+					storeId := ord.StoreId
+					if storeId == "" {
+						storeId = org.DefaultStore
+					}
+
+					stor := store.New(ord.Db)
+					stor.MustGetById(storeId)
+
+					// Subscribe user to list
+					buy := Buyer{
+						Email:           usr.Email,
+						FirstName:       usr.FirstName,
+						LastName:        usr.LastName,
+						Phone:           usr.Phone,
+						BillingAddress:  ord.BillingAddress,
+						ShippingAddress: ord.ShippingAddress,
+					}
+
+					if err := client.UnsubscribeCustomer(stor.Mailchimp.ListId, buy); err != nil {
+						log.Warn("Failed to delete Mailchimp customer - status: %v", err.Status, ctx)
+						log.Warn("Failed to delete Mailchimp customer - unknown error: %v", err.Unknown, ctx)
+						log.Warn("Failed to delete Mailchimp customer - mailchimp error: %v", err.Mailchimp, ctx)
+					}
 				}
 			}
 		}
