@@ -13,13 +13,16 @@ import (
 	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/models/referral"
+	"hanzo.io/models/store"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/types/integration"
 	"hanzo.io/util/counter"
 	"hanzo.io/util/json"
 
+	"hanzo.io/thirdparty/mailchimp"
 	"hanzo.io/thirdparty/woopra"
+	. "hanzo.io/types"
 )
 
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
@@ -137,6 +140,42 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 					}
 
 					counter.IncrProductRefund(ord.Context(), prod, ord)
+				}
+			}
+
+			if org.Mailchimp.APIKey != "" {
+				// Create new mailchimp client
+				client := mailchimp.New(ctx, org.Mailchimp)
+
+				usr := user.New(ord.Db)
+				if err := usr.GetById(ord.UserId); err != nil {
+					log.Warn("Could not get order's user '%s'", ord.UserId, ctx)
+					return err
+				}
+
+				// Determine store to use
+				storeId := ord.StoreId
+				if storeId == "" {
+					storeId = org.DefaultStore
+				}
+
+				stor := store.New(ord.Db)
+				stor.MustGetById(storeId)
+
+				// Subscribe user to list
+				buy := Buyer{
+					Email:           usr.Email,
+					FirstName:       usr.FirstName,
+					LastName:        usr.LastName,
+					Phone:           usr.Phone,
+					BillingAddress:  ord.BillingAddress,
+					ShippingAddress: ord.ShippingAddress,
+				}
+
+				if err := client.Unsubscribe(stor.Mailchimp.ListId, buy); err != nil {
+					log.Warn("Failed to delete Mailchimp customer - status: %v", err.Status, ctx)
+					log.Warn("Failed to delete Mailchimp customer - unknown error: %v", err.Unknown, ctx)
+					log.Warn("Failed to delete Mailchimp customer - mailchimp error: %v", err.Mailchimp, ctx)
 				}
 			}
 		}
