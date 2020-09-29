@@ -162,7 +162,9 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 				for _, v := range usr.Orders {
 					switch ps := v.PaymentStatus; ps {
 					case payment.Paid:
-						paidOrders++
+						if !v.Test {
+							paidOrders++
+						}
 					}
 				}
 
