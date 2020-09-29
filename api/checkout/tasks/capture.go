@@ -6,10 +6,10 @@ import (
 	"hanzo.io/api/checkout/util"
 	"hanzo.io/datastore"
 	"hanzo.io/delay"
+	"hanzo.io/email"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
-	"hanzo.io/email"
 )
 
 var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId string, ordId string) {
@@ -24,7 +24,9 @@ var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId s
 	ord.MustGetById(ordId)
 	usr.MustGetById(ord.UserId)
 
-	util.UpdateMailchimp(ctx, org, ord, usr)
+	if !ord.Test || usr.Test {
+		util.UpdateMailchimp(ctx, org, ord, usr)
+	}
 
 	// payments := make([]*payment.Payment, 0)
 	// if _, err := payment.Query(nsdb).Ancestor(ord.Key()).GetAll(payments); err != nil {
