@@ -172,7 +172,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 					ShippingAddress: ord.ShippingAddress,
 				}
 
-				if err := client.Unsubscribe(stor.Mailchimp.ListId, buy); err != nil {
+				if err := client.UnsubscribeCustomer(stor.Mailchimp.ListId, buy); err != nil {
 					log.Warn("Failed to delete Mailchimp customer - status: %v", err.Status, ctx)
 					log.Warn("Failed to delete Mailchimp customer - unknown error: %v", err.Unknown, ctx)
 					log.Warn("Failed to delete Mailchimp customer - mailchimp error: %v", err.Mailchimp, ctx)
