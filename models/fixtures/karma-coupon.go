@@ -22,10 +22,24 @@ var _ = New("karma-coupon", func(c *gin.Context) *coupon.Coupon {
 
 	now := time.Now()
 
+	{
+		cpn := coupon.New(nsdb)
+		cpn.Code_ = strings.ToUpper("DAYNA")
+		cpn.GetOrCreate("Code=", cpn.Code_)
+		cpn.Name = "Danya's Code"
+		cpn.Type = "percent"
+		cpn.StartDate = now
+		cpn.Once = false
+		cpn.Enabled = true
+		cpn.Amount = 20
+
+		cpn.MustPut()
+	}
+
 	cpn := coupon.New(nsdb)
-	cpn.Code_ = strings.ToUpper("DAYNA")
+	cpn.Code_ = strings.ToUpper("SAVEKARMA20")
 	cpn.GetOrCreate("Code=", cpn.Code_)
-	cpn.Name = "Danya's Code"
+	cpn.Name = "Save Karma"
 	cpn.Type = "percent"
 	cpn.StartDate = now
 	cpn.Once = false
