@@ -49,8 +49,6 @@ func daily(c *gin.Context) {
 		return
 	}
 
-	q := aeds.NewQuery(counter.ShardKind)
-
 	if req.Before.IsZero() {
 		req.Before = time.Now()
 	}
@@ -72,6 +70,7 @@ func daily(c *gin.Context) {
 	getByTag := func(tag string, start time.Time, end time.Time) int {
 		count := 0
 
+		q := aeds.NewQuery(counter.ShardKind)
 		// Index Order Is Tag, StoreId, Period, Time, always query in this order
 		q = q.Filter("Tag=", tag).Filter("StoreId=", req.StoreId).Filter("Geo=", req.Geo)
 		q = q.Filter("Period=", counter.Hourly).Filter("Time>", start).Filter("Time<=", end)
