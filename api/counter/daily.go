@@ -69,12 +69,12 @@ func daily(c *gin.Context) {
 
 	start := req.After
 
-	getByTag := func(tag string) int {
+	getByTag := func(tag string, start time.Time, end time.Time) int {
 		count := 0
 
 		// Index Order Is Tag, StoreId, Period, Time, always query in this order
 		q = q.Filter("Tag=", tag).Filter("StoreId=", req.StoreId).Filter("Geo=", req.Geo)
-		q = q.Filter("Period=", counter.Hourly).Filter("Time>", req.After).Filter("Time<=", req.Before)
+		q = q.Filter("Period=", counter.Hourly).Filter("Time>", start).Filter("Time<=", end)
 
 		shards := []counter.Shard{}
 
@@ -93,25 +93,23 @@ func daily(c *gin.Context) {
 		return count
 	}
 
-	i := 0
 	for start.Before(req.Before) {
+		end := start.Add(time.Hour * 24)
 
-		res.Counts[i] = dailyCount{
+		res.Counts = append(res.Counts, dailyCount{
 			Date: start,
 
-			ProjectedRevenueAmount:         getByTag("order.projected.revenue"),
-			ProjectedRevenueRefundedAmount: getByTag("order.projected.refunded.amount"),
+			ProjectedRevenueAmount:         getByTag("order.projected.revenue", start, end),
+			ProjectedRevenueRefundedAmount: getByTag("order.projected.refunded.amount", start, end),
 
-			OrderAmount: getByTag("order.revenue"),
-			OrderCount:  getByTag("order.count"),
+			OrderAmount: getByTag("order.revenue", start, end),
+			OrderCount:  getByTag("order.count", start, end),
 
-			OrderRefundedAmount: getByTag("order.refunded.amount"),
-			OrderRefundedCount:  getByTag("order.refunded.count"),
-		}
+			OrderRefundedAmount: getByTag("order.refunded.amount", start, end),
+			OrderRefundedCount:  getByTag("order.refunded.count", start, end),
+		})
 
-		i++
-
-		start = start.Add(time.Hour * 24)
+		start = end
 		startYear, startMonth, startDay := start.Date()
 		start = time.Date(startYear, startMonth, startDay, 0, 0, 0, 0, req.After.Location())
 	}
