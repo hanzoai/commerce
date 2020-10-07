@@ -19,6 +19,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Use(origin)
 
 	api.POST("", adminRequired, namespaced, search)
+	api.POST("/dashboard/daily", adminRequired, namespaced, daily)
 	api.GET("/product/:productid", publishedRequired, namespaced, searchProduct)
 	api.GET("/topline", publishedRequired, namespaced, topLine)
 }
