@@ -67,7 +67,7 @@ var _ = New("damon-reset-order-projected-counters",
 			return
 		}
 
-		if ord.PaymentStatus != payment.Paid && ord.PaymentStatus == payment.Refunded {
+		if ord.PaymentStatus != payment.Paid && ord.PaymentStatus != payment.Refunded {
 			return
 		}
 
