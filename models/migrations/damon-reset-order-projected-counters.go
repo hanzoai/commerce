@@ -6,6 +6,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
+	"hanzo.io/models/payment"
 	"hanzo.io/models/product"
 	"hanzo.io/util/counter"
 
@@ -66,6 +67,10 @@ var _ = New("damon-reset-order-projected-counters",
 			return
 		}
 
+		if ord.PaymentStatus != payment.Paid && ord.PaymentStatus == payment.Refunded {
+			return
+		}
+
 		// if ord.Status == "cancelled" {
 		// 	return
 		// }
@@ -89,6 +94,7 @@ var _ = New("damon-reset-order-projected-counters",
 		if ord.Refunded != ord.Total {
 			return
 		}
+
 		if err := counter.IncrementByAll(ctx, "order.projected.refunded.amount", ord.StoreId, ord.ShippingAddress.Country, projectedPrice, ord.CreatedAt); err != nil {
 			log.Error("order.projected.refunded.amount error %v", err, db.Context)
 		}
