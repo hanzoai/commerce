@@ -22,7 +22,7 @@ var _ = New("hanzo", func(c *gin.Context) *organization.Organization {
 
 	// Create admins
 	u := user.New(db)
-	u.Email = "dev@hanzo.ai"
+	u.Email = "zach@hanzo.ai"
 	u.GetOrCreate("Email=", u.Email)
 	u.AddOrganization(org.Id())
 	u.Put()

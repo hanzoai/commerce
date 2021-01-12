@@ -176,6 +176,10 @@ deploy: build
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
+deploy-dispatch:
+	@cd $(gopath)/src/hanzo.io
+	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
+
 update-env:
 	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
 
