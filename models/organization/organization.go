@@ -340,6 +340,17 @@ func (o *Organization) AddOwner(userOrId string) {
 	}
 }
 
+// Get namespace for this organization
+func (o Organization) Namespace() string {
+	// The `platform` organization is special -- all of it's API calls use the
+	// global namespace, enabling you to populate organizations / users w/o
+	// restrictions
+	if o.Name == "platform" {
+		return ""
+	}
+	return o.Name
+}
+
 // Get namespaced context for this organization
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
@@ -347,7 +358,7 @@ func (o Organization) Namespaced(ctx context.Context) context.Context {
 	}
 
 	var err error
-	ctx, err = appengine.Namespace(ctx, o.Name)
+	ctx, err = appengine.Namespace(ctx, o.Namespace())
 	if err != nil {
 		panic(err)
 	}
