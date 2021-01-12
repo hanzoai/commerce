@@ -2,6 +2,9 @@ dispatch:
   - url: "default.hanzo.ai/*"
     service: default
 
+  - url: "default.payminto.com/*"
+    service: default
+
   - url: "js.hanzo.ai/*"
     service: default
 
@@ -11,11 +14,26 @@ dispatch:
   - url: "a.hanzo.ai/*"
     service: analytics
 
+  - url: "a.payminto.com/*"
+    service: analytics
+
   - url: "api.hanzo.ai/*"
+    service: api
+
+  - url: "api.eu.hanzo.ai/*"
+    service: api
+
+  - url: "api.payminto.com/*"
+    service: api
+
+  - url: "api.eu.payminto.com/*"
     service: api
 
   - url: "cdn.hanzo.ai/*"
     service: api
 
   - url: "x.hanzo.ai/*"
+    service: api
+
+  - url: "x.payminto.com/*"
     service: api
