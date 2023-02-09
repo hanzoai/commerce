@@ -12,7 +12,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/flosch/pongo2 v0.0.0-20190707114632-bbf5a6c351f4
-	github.com/gin-gonic/gin v1.4.0
+	github.com/gin-gonic/gin v1.7.7
 	github.com/gorilla/schema v1.1.0
 	github.com/gorilla/sessions v1.2.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
@@ -21,6 +21,8 @@ require (
 	github.com/icrowley/fake v0.0.0-20180203215853-4178557ae428
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/mholt/binding v0.3.0
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo v1.10.2
 	github.com/onsi/gomega v1.7.0
@@ -37,8 +39,7 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/stripe/stripe-go v25.0.0+incompatible
 	github.com/zeekay/gochimp3 v0.0.0-20190702182554-f6724ffdebb0
-	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
-	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20191011234655-491137f69257 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
 	google.golang.org/appengine v1.6.5
