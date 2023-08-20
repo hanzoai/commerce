@@ -13,14 +13,14 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/blockchains/blocktransaction"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"hanzo.io/datastore"
+	"hanzo.io/log"
+	"hanzo.io/models/blockchains/blocktransaction"
 	"hanzo.io/util/json"
 	"hanzo.io/util/rand"
 
@@ -90,7 +90,7 @@ func New(ctx context.Context, address string) Client {
 
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context: ctx,
+		Context:                       ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 
@@ -205,9 +205,10 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	// Create a signer for the particular chain using the modern signature
 	// algorithm
 	signer := types.NewEIP155Signer(big.NewInt(int64(chainId)))
-	tx := types.NewTransaction(nonce, common.HexToAddress(to), amount, gasLimit, gasPrice, data)
+	gasLimitUint64 := gasLimit.Uint64()
+	tx := types.NewTransaction(nonce, common.HexToAddress(to), amount, gasLimitUint64, gasPrice, data)
 
-	log.Info("Unsigned Transaction: %v", tx.String(), ctx)
+	log.Info("Unsigned Transaction: %v", tx, ctx)
 
 	// Sign the transaction
 	signedTx, err := types.SignTx(tx, signer, privKey)
@@ -216,7 +217,7 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 		return "", err
 	}
 
-	log.Info("Signed Transaction: %v", signedTx.String(), ctx)
+	log.Info("Signed Transaction: %v", signedTx, ctx)
 
 	// get RLP of transaction
 	bytes, err := rlp.EncodeToBytes(signedTx)
@@ -225,7 +226,7 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 		return "", err
 	}
 
-	txHex := common.ToHex(bytes)
+	txHex := hexutil.Encode(bytes)
 
 	id := rand.Int64()
 
