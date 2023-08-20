@@ -3,7 +3,7 @@ package plaid
 import (
 	"context"
 
-	"github.com/plaid/plaid-go/v15"
+	"github.com/plaid/plaid-go/v15/plaid"
 
 	. "hanzo.io/thirdparty/paymentmethods"
 )
@@ -22,7 +22,17 @@ type Client struct {
 }
 
 func (c Client) GetPayToken(p PaymentMethodParams) (*PaymentMethodOutput, error) {
-	res, err := c.ExchangePublicToken(p.VerifierToken)
+	// Exchange the publicToken for an accessToken
+	exchangePublicTokenResp, _, err := c.PlaidApi.ItemPublicTokenExchange(c.ctx).ItemPublicTokenExchangeRequest(
+		*plaid.NewItemPublicTokenExchangeRequest(p.VerifierToken),
+	).Execute()
+	accessToken := exchangePublicTokenResp.GetAccessToken()
+
+	// Get Accounts
+	accountsGetResp, _, err := c.PlaidApi.AccountsGet(c.ctx).AccountsGetRequest(
+		*plaid.NewAccountsGetRequest(accessToken),
+	).Execute()
+	accountID := accountsGetResp.GetAccounts()[0].GetAccountId()
 
 	if err != nil {
 		return nil, err
@@ -37,8 +47,8 @@ func (c Client) GetPayToken(p PaymentMethodParams) (*PaymentMethodOutput, error)
 	return &PaymentMethodOutput{
 		Inputs: p,
 		//PayToken:            res2..StripeBankAccountToken,
-		PayToken:       res.AccessToken,
-		PayTokenId:     res.ItemID,
+		PayToken:       accessToken,
+		PayTokenId:     accountID,
 		ExternalUserId: p.ExternalUserId,
 		Type:           PlaidType,
 	}, nil
