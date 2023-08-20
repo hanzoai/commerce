@@ -3,7 +3,7 @@ package plaid
 import (
 	"context"
 
-	"github.com/plaid/plaid-go/plaid"
+	"github.com/plaid/plaid-go/v15"
 
 	. "hanzo.io/thirdparty/paymentmethods"
 )
@@ -17,7 +17,7 @@ const (
 )
 
 type Client struct {
-	*plaid.Client
+	*plaid.APIClient
 	ctx context.Context
 }
 
