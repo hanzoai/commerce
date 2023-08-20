@@ -150,7 +150,7 @@ tools:
 
 # TEST/ BENCH
 test: update-env-test
-	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=test/integration/* $(test_verbose)
+	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=test-integration/* $(test_verbose)
 
 test-watch: update-env-test
 	$(ginkgo) watch -r=true --compilers=2 --failFast --trace $(test_verbose)
