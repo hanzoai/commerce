@@ -4,19 +4,19 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	sg "github.com/stripe/stripe-go"
+	sg "github.com/stripe/stripe-go/v75"
 
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware"
 	"hanzo.io/models/organization"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 	"hanzo.io/util/task"
 )
 
 // May be called one of two ways:
-//   1. As an HTTP task from the generated pages, append organization=name to specify organization.
-//	 2. As a delay Func, in which case organization should be specified as an extra argument.
+//  1. As an HTTP task from the generated pages, append organization=name to specify organization.
+//  2. As a delay Func, in which case organization should be specified as an extra argument.
 var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...interface{}) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
