@@ -13,13 +13,6 @@ import (
 	. "hanzo.io/types"
 )
 
-type Interval string
-
-const (
-	Yearly  Interval = "year"
-	Monthly          = "month"
-)
-
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Based On Stripe Plan
