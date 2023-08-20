@@ -7,7 +7,7 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"github.com/plaid/plaid-go/plaid"
+	"github.com/plaid/plaid-go/v15/plaid"
 )
 
 func New(ctx context.Context, client_id, secret, pub_key string, env Environment) *Client {
@@ -21,15 +21,12 @@ func New(ctx context.Context, client_id, secret, pub_key string, env Environment
 		Context:                       ctx,
 		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
-	pc, _ := plaid.NewClient(
-		plaid.ClientOptions{
-			client_id,
-			secret,
-			pub_key,
-			plaid.Sandbox, // Available environments are Sandbox, Development, and Production
-			httpClient,    // This parameter is optional
-		},
-	)
+	configuration := plaid.NewConfiguration()
+	configuration.HTTPClient = httpClient
+	configuration.AddDefaultHeader("PLAID-CLIENT-ID", client_id)
+	configuration.AddDefaultHeader("PLAID-SECRET", secret)
+	configuration.UseEnvironment(plaid.Sandbox) // Available environments are Sandbox, Development, and Production
+	pc := plaid.NewAPIClient(configuration)
 
 	return &Client{pc, ctx}
 }

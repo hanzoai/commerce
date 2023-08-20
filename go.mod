@@ -68,6 +68,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.9 // indirect
+	github.com/plaid/plaid-go/v15 v15.2.0 // indirect
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
