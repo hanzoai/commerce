@@ -4,13 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/stripe/stripe-go/charge"
+	"github.com/stripe/stripe-go/v75"
 
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/delay"
 )
 
 // Update payment from charge
@@ -34,8 +34,8 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	}
 
 	if ch.FraudDetails != nil {
-		if ch.FraudDetails.UserReport == charge.ReportFraudulent ||
-			ch.FraudDetails.StripeReport == charge.ReportFraudulent {
+		if ch.FraudDetails.UserReport == stripe.ChargeFraudUserReport ||
+			ch.FraudDetails.StripeReport == stripe.ChargeFraudUserReportFraudulent
 			pay.Status = payment.Fraudulent
 		}
 	}

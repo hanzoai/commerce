@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stripe/stripe-go"
+	_stripe "github.com/stripe/stripe-go/v75"
 )
 
 var (
@@ -26,7 +26,7 @@ func (e StripeError) Error() string {
 }
 
 func New(err error) error {
-	stripeErr, ok := err.(*stripe.Error)
+	stripeErr, ok := err.(*_stripe.Error)
 	if ok {
 		return &StripeError{
 			Type:    string(stripeErr.Type),

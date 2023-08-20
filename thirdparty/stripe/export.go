@@ -1,43 +1,40 @@
 package stripe
 
 import (
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/charge"
-	"github.com/stripe/stripe-go/dispute"
+	_stripe "github.com/stripe/stripe-go/v75"
 )
 
-type Card stripe.Card
-type CardParams stripe.CardParams
-type Charge stripe.Charge
-type ChargeListParams stripe.ChargeListParams
-type ChargeParams stripe.ChargeParams
-type Customer stripe.Customer
-type Dispute stripe.Dispute
-type Plan stripe.Plan
-type PlanListParams stripe.PlanListParams
-type PlanParams stripe.PlanParams
-type PlanList stripe.PlanList
+type Card _stripe.Card
+type CardParams _stripe.CardParams
+type Charge _stripe.Charge
+type ChargeListParams _stripe.ChargeListParams
+type ChargeParams _stripe.ChargeParams
+type Customer _stripe.Customer
+type Dispute _stripe.Dispute
+type Plan _stripe.Plan
+type PlanListParams _stripe.PlanListParams
+type PlanParams _stripe.PlanParams
+type PlanList _stripe.PlanList
 type Event struct {
-	ID       string            `json:"id"`
-	Account  string            `json:"account"`
-	Live     bool              `json:"livemode"`
-	Created  int64             `json:"created"`
-	Data     *stripe.EventData `json:"data"`
-	Webhooks uint64            `json:"pending_webhooks"`
-	Type     string            `json:"type"`
-	Request  string            `json:"request"`
+	ID       string             `json:"id"`
+	Account  string             `json:"account"`
+	Live     bool               `json:"livemode"`
+	Created  int64              `json:"created"`
+	Data     *_stripe.EventData `json:"data"`
+	Webhooks uint64             `json:"pending_webhooks"`
+	Type     string             `json:"type"`
+	Request  string             `json:"request"`
 }
-type Sub stripe.Sub
+type Subscription _stripe.Subscription
 
-type Reversal stripe.Reversal
-type Token stripe.Token
-type Transfer stripe.Transfer
-type Payout stripe.Payout
+type Reversal _stripe.Reversal
+type Token _stripe.Token
+type Transfer _stripe.Transfer
+type Payout _stripe.Payout
 
-const ReportFraudulent = charge.ReportFraudulent
-const ReportSafe = charge.ReportSafe
+const ReportSafe = _stripe.ChargeFraudUserReportsSafe
+const ReportFraudulent = _stripe.ChargeFraudUserReportsFraudulent
 
-const Won = dispute.Won
-const ChargeRefunded = dispute.ChargeRefunded
-const Lost = dispute.Lost
-const Review = dispute.Review
+const Won = _stripe.DisputeStatusWon
+const Lost = _stripe.DisputeStatusLost
+const Review = _stripe.DisputeStatusUnderReview
