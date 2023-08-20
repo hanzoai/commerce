@@ -86,11 +86,11 @@ ifeq ($(production), 1)
 	gae_config  = $(gae_production)
 else ifeq ($(sandbox), 1)
 	project_env = sandbox
-	project_id  = hanzo-sandbox-249116
+	project_id  = hanzo-sandbox
 	gae_config  = $(gae_sandbox)
 else
 	project_env = staging
-	project_id  = hanzo-staging-249116
+	project_id  = hanzo-staging
 	gae_config  = $(gae_staging)
 endif
 
