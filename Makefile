@@ -51,6 +51,7 @@ ifeq ($(os), linux)
 			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
+			   				  -not -path "./replace/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
 			   				  -printf '%h\n' | sort -u | sed -e 's/.\//hanzo.io\//')
@@ -60,6 +61,7 @@ else
 			   				  -not -path "./sdk/*" \
 			   				  -not -path "./test*" \
 			   				  -not -path "./assets/*" \
+			   				  -not -path "./replace/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
