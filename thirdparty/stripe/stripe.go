@@ -7,8 +7,8 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/client"
+	stripe "github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/client"
 )
 
 func New(ctx context.Context, accessToken string) *Client {
