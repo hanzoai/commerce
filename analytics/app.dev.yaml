@@ -1,6 +1,6 @@
 service: analytics
 
-runtime: go111
+runtime: go121
 instance_class: F1
 
 handlers:
