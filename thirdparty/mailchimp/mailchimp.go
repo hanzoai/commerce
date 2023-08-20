@@ -6,7 +6,7 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"github.com/zeekay/gochimp3"
+	"github.com/hanzoai/gochimp3"
 
 	"hanzo.io/types/integration"
 )

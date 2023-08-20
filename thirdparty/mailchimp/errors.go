@@ -1,6 +1,6 @@
 package mailchimp
 
-import "github.com/zeekay/gochimp3"
+import "github.com/hanzoai/gochimp3"
 
 type Error struct {
 	Unknown   error
