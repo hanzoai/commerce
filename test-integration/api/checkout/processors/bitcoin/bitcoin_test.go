@@ -6,7 +6,7 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/user"
-	"hanzo.io/test/integration/api/checkout/processors/requests"
+	"hanzo.io/test-integration/api/checkout/processors/requests"
 	"hanzo.io/util/json"
 
 	. "hanzo.io/util/test/ginkgo"
