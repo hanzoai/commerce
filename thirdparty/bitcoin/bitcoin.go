@@ -5,8 +5,6 @@ import (
 
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -20,13 +18,17 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/base58"
+	ecdsa2 "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
@@ -108,13 +110,20 @@ func PubKeyToAddress(pubKey string, testNet bool) (string, []byte, error) {
 }
 
 func GenerateKeyPair() (string, string, error) {
-	priv, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	priv, err := btcec.NewPrivateKey()
 	if err != nil {
 		return "", "", err
 	}
+	privBytes := priv.Serialize()
+	pubBytes := priv.PubKey().SerializeCompressed()
+
+	// If you want to use the uncompressed format and drop the first byte (0x04)
+	// pubBytes = priv.PubKey().SerializeUncompressed()[1:]
+
+	return hex.EncodeToString(privBytes), hex.EncodeToString(pubBytes), nil
 
 	// Remove the extra pubkey byte before serializing hex (drop the first 0x04)
-	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
+	//return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
 func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error) {
@@ -154,7 +163,10 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	// }
 
 	//Sign the raw transaction
-	sig, err := (*btcec.PrivateKey)(privateKey).Sign(rawTransactionHashed)
+	privateKeyBytes := privateKey.D.Bytes()
+	privateKeySecp256k1 := secp256k1.PrivKeyFromBytes(privateKeyBytes)
+
+	sig := ecdsa.Sign(privateKeySecp256k1, rawTransactionHashed)
 	if err != nil {
 		log.Error("GetRawTransactionSignature: Failed to sign transaction: %v", err)
 		return nil, err
@@ -162,7 +174,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 
 	signedTransaction := sig.Serialize()
 
-	parsedSig, err := btcec.ParseDERSignature(signedTransaction, btcec.S256())
+	parsedSig, err := ecdsa2.ParseDERSignature(signedTransaction)
 	if err != nil {
 		log.Error("GetRawTransactionSignature: Failed to parse signed transaction: %v", err)
 		return nil, err
