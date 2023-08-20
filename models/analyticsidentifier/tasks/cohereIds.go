@@ -20,16 +20,12 @@ var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analytics
 	id.Db = db
 	id.Entity = id
 
-	found := false
-
 	db.RunInTransaction(func(db *datastore.Datastore) error {
 		ids := make([]*analyticsidentifier.AnalyticsIdentifier, 0)
 		if _, err := analyticsidentifier.Query(db).Filter("UUId=", id.UUId).GetAll(&ids); err != nil {
 			log.Error("Failed trying to find AnalyticsIdentifier with UUId %v", id.UUId, ctx)
 			return err
 		}
-
-		found = len(ids) > 0
 
 		userIdUpdates := id.UserId != ""
 

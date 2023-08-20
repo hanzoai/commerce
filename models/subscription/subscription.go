@@ -160,7 +160,7 @@ func (s Subscription) NumberFromId() (i int, err error) {
 func (s Subscription) TrialPeriodsRemaining() int {
 	years, months := timeutil.YearMonthDiff(s.TrialStart, s.TrialEnd)
 
-	if s.Plan.Interval == plan.Monthly {
+	if s.Plan.Interval == Monthly {
 		return months
 	}
 	return years
@@ -169,7 +169,7 @@ func (s Subscription) TrialPeriodsRemaining() int {
 func (s Subscription) PeriodsRemaining() int {
 	months, years := timeutil.YearMonthDiff(s.PeriodStart, s.PeriodEnd)
 
-	if s.Plan.Interval == plan.Monthly {
+	if s.Plan.Interval == Monthly {
 		return months
 	}
 	return years
