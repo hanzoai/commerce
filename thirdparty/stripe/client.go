@@ -5,9 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/client"
-
+	"github.com/stripe/stripe-go/v75"
+	"github.com/stripe/stripe-go/v75/client"
 	"hanzo.io/log"
 	"hanzo.io/models/deprecated/plan"
 	"hanzo.io/models/deprecated/subscription"
@@ -99,7 +98,7 @@ func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 // 	return ch.Status == "succeeded", err
 // }
 
-func (c Client) NewSubscription(source interface{}, sub *subscription.Subscription) (*Sub, error) {
+func (c Client) NewSubscription(source interface{}, sub *subscription.Subscription) (*Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
 	params := &stripe.SubParams{
 		Plan: sub.Plan.Id_,
@@ -136,11 +135,11 @@ func (c Client) NewSubscription(source interface{}, sub *subscription.Subscripti
 	sub.Quantity = int(s.Quantity)
 	sub.Status = subscription.Status(s.Status)
 
-	return (*Sub)(s), nil
+	return (*Subscription)(s), nil
 }
 
 // Update subscribe to a plan
-func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error) {
+func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Subscription, error) {
 	params := &stripe.SubParams{
 		Customer: sub.Account.CustomerId,
 		Plan:     sub.Plan.Id_,
@@ -170,11 +169,11 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Sub, error)
 	sub.Quantity = int(s.Quantity)
 	sub.Status = subscription.Status(s.Status)
 
-	return (*Sub)(s), nil
+	return (*Subscription)(s), nil
 }
 
 // Subscribe to a plan
-func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
+func (c Client) CancelSubscription(sub *subscription.Subscription) (*Subscription, error) {
 	params := &stripe.SubParams{
 		Customer:  sub.Account.CustomerId,
 		EndCancel: true,
@@ -203,7 +202,7 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error)
 	sub.Quantity = int(s.Quantity)
 	sub.Status = subscription.Status(s.Status)
 
-	return (*Sub)(s), nil
+	return (*Subscription)(s), nil
 }
 
 // Do authorization, return token

@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/delay"
 )
 
 // Update payment from dispute
@@ -15,7 +15,7 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 	switch dispute.Status {
 	case stripe.Won:
 		pay.Status = payment.Paid
-	case stripe.ChargeRefunded:
+	case stripe.Lost:
 		pay.Status = payment.Refunded
 	default:
 		pay.Status = payment.Disputed
