@@ -11,7 +11,7 @@ import (
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/mixin"
-	"hanzo.io/test/integration/datastore/tasks"
+	"hanzo.io/test-integration/datastore/tasks"
 	"hanzo.io/util/gincontext"
 	"hanzo.io/util/test/ae"
 
