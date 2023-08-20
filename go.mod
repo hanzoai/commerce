@@ -31,7 +31,7 @@ require (
 	github.com/sendgrid/rest v2.4.1+incompatible
 	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/stripe/stripe-go v25.0.0+incompatible
-	github.com/zeekay/gochimp3 v0.0.0-20190702182554-f6724ffdebb0
+	github.com/hanzoai/gochimp3 v0.0.0-20190702182554-f6724ffdebb0
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
 	google.golang.org/appengine v1.6.5
 )

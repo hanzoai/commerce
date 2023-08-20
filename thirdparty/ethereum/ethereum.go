@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto"
 	"hanzo.io/log"
 )
 

@@ -1,7 +1,7 @@
 package mailchimp
 
 import (
-	"github.com/zeekay/gochimp3"
+	"github.com/hanzoai/gochimp3"
 
 	"hanzo.io/log"
 	// "hanzo.io/models/form"

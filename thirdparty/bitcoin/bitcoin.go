@@ -27,8 +27,8 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
-	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto"
-	"hanzo.io/thirdparty/ethereum/go-ethereum/crypto/btcec"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
 )
 
