@@ -12,23 +12,25 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/ripemd160"
 	"math"
 	mathRand "math/rand"
 	"time"
 
+	"golang.org/x/crypto/ripemd160"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
-	//"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/base58"
 
+	//"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/base58"
+
+	"github.com/ethereum/go-ethereum/crypto"
 	"hanzo.io/datastore"
 	"hanzo.io/log"
 	"hanzo.io/models/blockchains"
 	"hanzo.io/models/blockchains/blocktransaction"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/btcec"
 	"hanzo.io/util/json"
 )
 
