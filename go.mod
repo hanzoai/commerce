@@ -34,7 +34,9 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/speps/go-hashids v2.0.0+incompatible
-	golang.org/x/crypto v0.12.0
+	github.com/stripe/stripe-go v70.15.0+incompatible
+	github.com/stripe/stripe-go/v75 v75.1.0
+	golang.org/x/crypto v0.16.0
 	google.golang.org/appengine v1.6.7
 )
 
@@ -70,14 +72,14 @@ require (
 	github.com/sendgrid/sendgrid-go v3.13.0+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
-	github.com/stripe/stripe-go/v75 v75.1.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/arch v0.4.0 // indirect
-	golang.org/x/net v0.14.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
