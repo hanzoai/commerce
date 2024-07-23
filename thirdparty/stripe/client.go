@@ -25,6 +25,10 @@ type Client struct {
 	ctx context.Context
 }
 
+func toPtr[T any](v T) *T {
+	return &v
+}
+
 // Covert a payment model into a card card we can use for authorization
 func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card := stripe.CardParams{}
