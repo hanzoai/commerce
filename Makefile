@@ -1,28 +1,28 @@
 export GO111MODULE=on
 
-os				= $(shell uname | tr '[A-Z]' '[a-z]')
-pwd				= $(shell pwd)
-current_date	= $(shell date +"%Y-%m-%d")
+os				 			= $(shell uname | tr '[A-Z]' '[a-z]')
+pwd							= $(shell pwd)
+current_date		= $(shell date +"%Y-%m-%d")
 
-sdk     		= $(shell dirname $(shell readlink $(shell which gcloud)))
-gopath          = $(shell go env GOPATH)
-goroot          = $(shell go env GOROOT)
+sdk     				= $(shell dirname $(shell readlink $(shell which gcloud)))
+cloud_sdk     	= $(gcloud --format='value(installation.sdk_root)' info)
+gopath        	= $(shell go env GOPATH)
+goroot        	= $(shell go env GOROOT)
 
-go 				= go
-gpm 			= gpm
-gover 			= $(gopath)/bin/gover
-goveralls       = $(gopath)/bin/goveralls
-ginkgo			= $(gopath)/bin/ginkgo
+go 							= go
+gpm 						= gpm
+gover 					= $(gopath)/bin/gover
+goveralls     	= $(gopath)/bin/goveralls
+ginkgo					= $(gopath)/bin/ginkgo
 
-gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml config/development/index.yaml
-gae_production  = config/production api/app.production.yaml analytics/app.production.yaml config/production/index.yaml
-gae_sandbox 	= config/sandbox api/app.sandbox.yaml analytics/app.sandbox.yaml config/sandbox/index.yaml
-gae_staging     = config/staging api/app.staging.yaml analytics/app.staging.yaml config/staging/index.yaml
+gae_development = $(pwd)/config/development $(pwd)/api/app.development.yaml
+gae_production  = config/production api/app.production.yaml analytics/app.production.yaml
+gae_sandbox 	  = config/sandbox api/app.sandbox.yaml analytics/app.sandbox.yaml
+gae_staging     = config/staging api/app.staging.yaml analytics/app.staging.yaml
 
 tools = github.com/nsf/gocode \
         github.com/alecthomas/gometalinter \
         github.com/fatih/motion \
-        github.com/golang/lint/golint \
         github.com/josharian/impl \
         github.com/jstemmer/gotags \
         github.com/kisielk/errcheck \
@@ -36,7 +36,7 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-dev_appserver = python2 $(sdk)/dev_appserver.py \
+dev_appserver = python3 $(sdk)/dev_appserver.py \
 					--skip_sdk_update_check \
 					--datastore_path=$(pwd)/.datastore.bin \
 					--enable_task_running=true \
