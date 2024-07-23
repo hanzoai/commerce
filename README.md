@@ -1,6 +1,6 @@
 # Hanzo [![Build status](https://badge.buildkite.com/d7e68217b7c11a402384e82726433b30b9ebdb54cab934d89c.svg)](https://buildkite.com/hanzo/platform)
 
-Hanzo is a scalable blockchain development platform.
+Hanzo is a scalable DX platform designed to power next-gen internet companies.
 
 ## Development
 
