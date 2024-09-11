@@ -27,14 +27,15 @@ type Event struct {
 }
 type Subscription _stripe.Subscription
 
-type Reversal _stripe.Reversal
+type Reversal _stripe.TransferReversal
 type Token _stripe.Token
 type Transfer _stripe.Transfer
 type Payout _stripe.Payout
 
-const ReportSafe = _stripe.ChargeFraudUserReportsSafe
-const ReportFraudulent = _stripe.ChargeFraudUserReportsFraudulent
+const ReportSafe = _stripe.ChargeFraudUserReportSafe
+const ReportFraudulent = _stripe.ChargeFraudUserReportFraudulent
 
 const Won = _stripe.DisputeStatusWon
 const Lost = _stripe.DisputeStatusLost
 const Review = _stripe.DisputeStatusUnderReview
+const Needsresponse = _stripe.DisputeStatusNeedsResponse

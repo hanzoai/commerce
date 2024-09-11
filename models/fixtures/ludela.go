@@ -18,6 +18,7 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/mailchimp"
+
 	// "hanzo.io/types/accesstoken"
 	"hanzo.io/types/email"
 	"hanzo.io/types/website"
@@ -45,7 +46,7 @@ var _ = New("ludela", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Ludela Inc"
 	org.Owners = []string{usr.Id()}
-	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "https://ludela.com"}}
+	org.Websites = []website.Website{{Type: website.Production, Url: "https://ludela.com"}}
 	org.SecretKey = []byte("EU8E011iX2Bp5lv481N2STd1d999cU58")
 	org.AddDefaultTokens()
 

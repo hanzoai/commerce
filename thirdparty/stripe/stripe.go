@@ -33,6 +33,8 @@ func New(ctx context.Context, accessToken string) *Client {
 // Enable debug logging in development
 func init() {
 	if appengine.IsDevAppServer() {
-		stripe.LogLevel = 2
+		stripe.DefaultLeveledLogger = &stripe.LeveledLogger{
+			Level: stripe.LevelInfo,
+		}
 	}
 }

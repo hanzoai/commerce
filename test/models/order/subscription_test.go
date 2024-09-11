@@ -12,11 +12,11 @@ var _ = Describe("Order.Subscription", func() {
 	Context("CreateSubscriptionsFromItems", func() {
 		BeforeEach(func() {
 			// Scramble currency values so we know they are being replaced
-			for i, _ := range ord.Coupons {
+			for i := range ord.Coupons {
 				ord.Coupons[i].Amount = rand.Int()
 			}
 
-			for i, _ := range ord.Items {
+			for i := range ord.Items {
 				ord.Items[i].Price = currency.Cents(rand.Int64())
 			}
 
@@ -33,8 +33,7 @@ var _ = Describe("Order.Subscription", func() {
 
 			ord.Subscriptions = make([]order.Subscription, 0)
 		})
-
-		It("Should Create Subscriptions From Items", func () {
+		It("Should Create Subscriptions From Items", func() {
 			err := ord.CreateSubscriptionsFromItems(stor)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(ord.Subscriptions)).To(Equal(1))
@@ -52,7 +51,7 @@ var _ = Describe("Order.Subscription", func() {
 			Expect(sub.Total).To(Equal(sub.Price + tax + shipping))
 		})
 
-		It("Should Create Multiple Subscriptions From Item Quantities", func () {
+		It("Should Create Multiple Subscriptions From Item Quantities", func() {
 			ord.Items[2].Quantity = 2
 			err := ord.CreateSubscriptionsFromItems(stor)
 			Expect(err).ToNot(HaveOccurred())

@@ -21,7 +21,6 @@ gae_sandbox 	  = config/sandbox api/app.sandbox.yaml analytics/app.sandbox.yaml
 gae_staging     = config/staging api/app.staging.yaml analytics/app.staging.yaml
 
 tools = github.com/nsf/gocode \
-        github.com/alecthomas/gometalinter \
         github.com/fatih/motion \
         github.com/josharian/impl \
         github.com/jstemmer/gotags \
@@ -36,7 +35,7 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-dev_appserver = python3 $(sdk)/dev_appserver.py \
+dev_appserver = python scripts/dev_appserver.py \
 					--skip_sdk_update_check \
 					--datastore_path=$(pwd)/.datastore.bin \
 					--enable_task_running=true \
@@ -183,10 +182,10 @@ deploy-dispatch:
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
 update-env:
-	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
+	@echo package config\n\nvar Env = "$(project_env)" > config/env.go
 
 update-env-test:
-	@printf 'package config\n\nvar Env = "test"' > config/env.go
+	@echo package config\n\nvar Env = "test" > config/env.go
 
 rollback:
 	for module in $(gae_config); do \

@@ -5,6 +5,8 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
+	"time"
+
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
 	"hanzo.io/demo/tokentransaction"
@@ -23,7 +25,6 @@ import (
 	"hanzo.io/models/wallet"
 	"hanzo.io/util/json"
 	"hanzo.io/util/val"
-	"time"
 
 	. "hanzo.io/types"
 )
@@ -127,6 +128,17 @@ type User struct {
 	Commission commission.Commission `json:"commission"`
 
 	Test bool `json:"test"`
+}
+
+// Id implements referrer.Referrent.
+// Subtle: this method shadows the method (Model).Id of User.Model.
+func (u *User) Id() string {
+	panic("unimplemented")
+}
+
+// Total implements referrer.Referrent.
+func (u *User) Total() currency.Cents {
+	panic("unimplemented")
 }
 
 func (u *User) Load(ps []aeds.Property) (err error) {
