@@ -3,12 +3,12 @@ package stripe
 import (
 	"errors"
 
+	"hanzo.io/log"
 	"hanzo.io/models/order"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
@@ -48,9 +48,9 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			p.Status = payment.Paid
 			p.Amount = currency.Cents(ch.Amount)
 			p.AmountRefunded = currency.Cents(ch.AmountRefunded)
-			p.Account.BalanceTransactionId = ch.Tx.ID
-			p.AmountTransferred = currency.Cents(ch.Tx.Amount)
-			p.CurrencyTransferred = currency.Type(ch.Tx.Currency)
+			p.Account.BalanceTransactionId = ch.BalanceTransaction.ID
+			p.AmountTransferred = currency.Cents(ch.Amount)
+			p.CurrencyTransferred = currency.Type(ch.Currency)
 		}
 	}
 

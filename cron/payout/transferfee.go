@@ -8,6 +8,7 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/datastore"
+	"hanzo.io/delay"
 	"hanzo.io/log"
 	"hanzo.io/models/affiliate"
 	"hanzo.io/models/fee"
@@ -15,7 +16,6 @@ import (
 	"hanzo.io/models/partner"
 	"hanzo.io/models/transfer"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/delay"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
@@ -40,7 +40,7 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 		tr.Description = fmt.Sprintf("Platform fee transfer '%s', fee '%s'", tr.Id(), fe.Id())
 		tr.Destination = config.Stripe.BankAccount
 	default:
-		panic(fmt.Errorf("Invalid fee type: '%s'\n", fe.Type, fe))
+		panic(fmt.Errorf("invalid fee type: '%s'", fe.Type))
 	}
 	return tr
 }
@@ -68,11 +68,11 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 
 		// Deal with invalid states
 		if fe.Status == fee.Disputed {
-			return fmt.Errorf("Fee '%s' is being disputed", fe.Id())
+			return fmt.Errorf("fee '%s' is being disputed", fe.Id())
 		}
 
 		if fe.Status == fee.Transferred {
-			return fmt.Errorf("Fee '%s' is already transferred", fe.Id())
+			return fmt.Errorf("fee '%s' is already transferred", fe.Id())
 		}
 
 		// Create associated transfer
@@ -86,7 +86,6 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 		models := []interface{}{tr, fe}
 		return multi.Update(models)
 	}, nil)
-
 	// Bail out if error happened creating transactions, any changes in
 	// transaction will have been rolled back.
 	if err != nil {
@@ -106,9 +105,9 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 
 		// Update transfer to reflect failure status
 		tr.Status = transfer.Error
-		if res.FailMessage == "" {
-			tr.FailureCode = string(res.FailCode)
-			tr.FailureMessage = res.FailMessage
+		if res.FailureMessage == "" {
+			tr.FailureCode = string(res.FailureCode)
+			tr.FailureMessage = res.FailureMessage
 		} else {
 			tr.FailureCode = "stripe-error"
 			tr.FailureMessage = err.Error()

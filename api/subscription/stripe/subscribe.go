@@ -1,11 +1,11 @@
 package stripe
 
 import (
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/deprecated/subscription"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/user"
 	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/log"
 )
 
 func Subscribe(org *organization.Organization, usr *user.User, sub *subscription.Subscription) error {
@@ -63,7 +63,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 		return err
 	}
 	sub.Account.CustomerId = cust.ID
-	sub.Live = cust.Live
+	sub.Live = cust.Livemode
 
 	log.Debug("Stripe customer: %#v", cust)
 
@@ -88,22 +88,21 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, sub *subs
 func updatePaymentFromCard(sub *subscription.Subscription, card *stripe.Card) {
 	sub.Account.CardId = card.ID
 	sub.Account.Brand = string(card.Brand)
-	sub.Account.LastFour = card.LastFour
-	sub.Account.Month = int(card.Month)
-	sub.Account.Year = int(card.Year)
+	sub.Account.LastFour = card.Last4
+	sub.Account.Month = int(card.ExpMonth)
+	sub.Account.Year = int(card.ExpYear)
 	sub.Account.Country = card.Country
 	sub.Account.Fingerprint = card.Fingerprint
 	sub.Account.Funding = string(card.Funding)
 	sub.Account.CVCCheck = string(card.CVCCheck)
 }
-
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, sub *subscription.Subscription) error {
 	// Update customer details
 	cust, err := client.UpdateCustomer(usr)
 	if err != nil {
 		return err
 	}
-	sub.Live = cust.Live
+	sub.Live = cust.Livemode
 
 	// Update card details using token
 	card, err := client.UpdateCard(tok.ID, usr)

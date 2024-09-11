@@ -15,7 +15,7 @@ func ShortPassword() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		fmt.Printf("Failed to genrate random characters: %v", err)
+		fmt.Sprintf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -27,7 +27,7 @@ func ShortId() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		fmt.Printf("Failed to genrate random characters: %v", err)
+		fmt.Sprintf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -39,7 +39,7 @@ func SecretKey() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		fmt.Printf("Failed to genrate random characters: %v", err)
+		fmt.Sprintf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
