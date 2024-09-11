@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/stripe/stripe-go"
 
+	"hanzo.io/log"
 	"hanzo.io/models/lineitem"
 	"hanzo.io/models/order"
 	"hanzo.io/models/payment"
@@ -10,7 +11,6 @@ import (
 	"hanzo.io/models/types/currency"
 	"hanzo.io/models/variant"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -19,8 +19,8 @@ import (
 func fakeCharge() *stripe.Charge {
 	ch := new(stripe.Charge)
 	ch.ID = "ch_000000000000000000000000"
-	ch.Live = true
-	ch.Meta = make(map[string]string)
+	ch.Livemode = true
+	ch.Metadata = make(map[string]string)
 	return ch
 }
 
@@ -28,7 +28,7 @@ func fakeCharge() *stripe.Charge {
 func fakeEvent(name string, obj interface{}) *stripe.Event {
 	ev := new(stripe.Event)
 	ev.Account = "1"
-	ev.Live = true
+	ev.Livemode = true
 	ev.Type = name
 	ev.ID = "evt_000000000000000000000000"
 	ev.Data = new(stripe.EventData)
@@ -73,10 +73,10 @@ var _ = Describe("Stripe Webhook", func() {
 				ch := fakeCharge()
 				ch.Paid = true
 				ch.Status = "succeeded"
-				ch.Amount = uint64(ord.Total)
+				ch.Amount = int64(ord.Total)
 				ch.Currency = stripe.Currency(ord.Currency)
-				ch.Meta["order"] = ord.Id()
-				ch.Meta["payment"] = pay.Id()
+				ch.Metadata["order"] = ord.Id()
+				ch.Metadata["payment"] = pay.Id()
 				req = fakeEvent("charge.updated", ch)
 			})
 

@@ -10,11 +10,11 @@ import (
 	"hanzo.io/log"
 	"hanzo.io/models/payment"
 	"hanzo.io/models/types/currency"
-	"hanzo.io/thirdparty/stripe"
+	hanzo_stripe "hanzo.io/thirdparty/stripe"
 )
 
 // Update payment from charge
-func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
+func UpdatePaymentFromCharge(pay *payment.Payment, ch *hanzo_stripe.Charge) {
 	pay.Amount = currency.Cents(ch.Amount)
 	pay.AmountRefunded = currency.Cents(ch.AmountRefunded)
 
@@ -34,15 +34,14 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	}
 
 	if ch.FraudDetails != nil {
-		if ch.FraudDetails.UserReport == stripe.ChargeFraudUserReport ||
-			ch.FraudDetails.StripeReport == stripe.ChargeFraudUserReportFraudulent
+		if ch.FraudDetails.UserReport == stripe.ChargeFraudUserReportSafe || ch.FraudDetails.StripeReport == stripe.ChargeFraudStripeReportFraudulent {
 			pay.Status = payment.Fraudulent
 		}
 	}
 }
 
 // Synchronize payment using charge
-var ChargeSync = delay.Func("stripe-charge-sync", func(ctx context.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+var ChargeSync = delay.Func("stripe-charge-sync", func(ctx context.Context, ns string, token string, ch hanzo_stripe.Charge, start time.Time) {
 	log.Debug("Charge %s", ch, ctx)
 
 	ctx = getNamespacedContext(ctx, ns)
