@@ -3,13 +3,13 @@ package subscription
 import "errors"
 
 var (
-	SubscriptionDoesNotExist  = errors.New("Subscription does not exist")
-	PlanDoesNotExist          = errors.New("Plan does not exist")
-	UserDoesNotExist          = errors.New("User does not exist")
-	PaymentCancelled          = errors.New("Subscription was cancelled")
-	FailedToDecodeRequestBody = errors.New("Failed to decode request body")
-	FailedToCreateCustomer    = errors.New("Failed to create customer")
-	FailedToCreateUser        = errors.New("Failed to create user")
-	OnlyOneOfUserBuyerAllowed = errors.New("Only one of user buyer allowed")
-	CannotChangeUser          = errors.New("Subscription user cannot be changed")
+	SubscriptionDoesNotExist  = errors.New("subscription does not exist")
+	PlanDoesNotExist          = errors.New("plan does not exist")
+	UserDoesNotExist          = errors.New("user does not exist")
+	PaymentCancelled          = errors.New("subscription was cancelled")
+	FailedToDecodeRequestBody = errors.New("failed to decode request body")
+	FailedToCreateCustomer    = errors.New("failed to create customer")
+	FailedToCreateUser        = errors.New("failed to create user")
+	OnlyOneOfUserBuyerAllowed = errors.New("only one of user buyer allowed")
+	CannotChangeUser          = errors.New("subscription user cannot be changed")
 )

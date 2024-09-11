@@ -140,6 +140,7 @@ func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscr
 }
 
 func unsubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
+	_ = c
 	err := stripe.Unsubscribe(org, sub)
 	if err != nil {
 		return nil, err
