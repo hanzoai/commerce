@@ -25,7 +25,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 
 	Context("When the charge of a dispute is refunded", func() {
 		pay, dispute := construct()
-		dispute.Status = stripe.ChargeRefunded
+		dispute.Status = stripe.Needsresponse
 		It("should mark the payment as Refunded", func() {
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(pay.Status).To(Equal(payment.Refunded))

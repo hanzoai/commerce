@@ -47,11 +47,13 @@ func stripeVerifyCards(usr *user.User, cardIds []string) {
 	Expect1(err).ToNot(HaveOccurred())
 
 	sources := make([]string, 0)
-	for _, source := range cust.Sources.Values {
-		sources = append(sources, source.Card.ID)
+	for _, source := range cust.Sources.Data {
+		if source.Type == "card" {
+			sources = append(sources, source.ID)
+		}
 	}
 
 	log.Debug("StripeVerifyCards Expected: %v\nGot:%v", cardIds, sources)
-	Expect1(len(cust.Sources.Values)).To(Equal(len(cardIds)))
+	Expect1(len(sources)).To(Equal(len(cardIds)))
 	Expect1(sources).To(ConsistOf(cardIds))
 }

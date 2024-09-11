@@ -52,7 +52,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.ReferralsGreaterThanOrEquals,
 						ReferralsGreaterThanOrEqualsTrigger: referralprogram.ReferralsGreaterThanOrEqualsTrigger{
@@ -73,7 +73,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, true)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id(), true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -85,7 +85,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, true)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id(), true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -104,7 +104,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.Always,
 					},
@@ -115,7 +115,7 @@ var _ = Describe("Referrer", func() {
 						Amount:   currency.Cents(7),
 					},
 				},
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.Always,
 					},
@@ -133,7 +133,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -152,7 +152,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.ReferralsGreaterThanOrEquals,
 						ReferralsGreaterThanOrEqualsTrigger: referralprogram.ReferralsGreaterThanOrEqualsTrigger{
@@ -173,7 +173,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -185,7 +185,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -204,7 +204,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.ReferralsGreaterThanOrEquals,
 						ReferralsGreaterThanOrEqualsTrigger: referralprogram.ReferralsGreaterThanOrEqualsTrigger{
@@ -226,7 +226,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -238,7 +238,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -259,7 +259,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.CreditGreaterThanOrEquals,
 						CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
@@ -281,7 +281,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -293,7 +293,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -312,7 +312,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.CreditGreaterThanOrEquals,
 						CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
@@ -334,7 +334,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -346,7 +346,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD]).To(BeNil())
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -365,7 +365,7 @@ var _ = Describe("Referrer", func() {
 
 			prog := referralprogram.New(db)
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Trigger: referralprogram.Trigger{
 						Type: referralprogram.ReferralsGreaterThanOrEquals,
 						CreditGreaterThanOrEqualsTrigger: referralprogram.CreditGreaterThanOrEqualsTrigger{
@@ -388,7 +388,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -400,7 +400,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -423,7 +423,7 @@ var _ = Describe("Referrer", func() {
 			prog := referralprogram.New(db)
 			prog.Triggers = []int{0}
 			prog.Actions = []referralprogram.Action{
-				referralprogram.Action{
+				{
 					Name: "test",
 					Type: referralprogram.StoreCredit,
 					CreditAction: referralprogram.CreditAction{
@@ -438,7 +438,7 @@ var _ = Describe("Referrer", func() {
 			rfr.ProgramId = prog.Id()
 			rfr.MustCreate()
 
-			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err := rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 
@@ -450,7 +450,7 @@ var _ = Describe("Referrer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(usr.Transactions[currency.USD].Balance).To(Equal(currency.Cents(7)))
 
-			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr)
+			rfl, err = rfr.SaveReferral(ctx, org.Id(), referral.NewOrder, usr, usr.Id_, true)
 			Expect(err).ToNot(HaveOccurred())
 			rfl.MustCreate()
 

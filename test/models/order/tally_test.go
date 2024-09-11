@@ -15,11 +15,11 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		// deprecated flow
 		BeforeEach(func() {
 			// Scramble currency values so we know they are being replaced
-			for i, _ := range ord.Coupons {
+			for i := range ord.Coupons {
 				ord.Coupons[i].Amount = rand.Int()
 			}
 
-			for i, _ := range ord.Items {
+			for i := range ord.Items {
 				ord.Items[i].Price = currency.Cents(rand.Int64())
 			}
 
@@ -84,7 +84,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		It("Should UpdateAndTally Only Applicable Coupons", func() {
 			ord2 := order.New(ord.Db)
 			ord2.CouponCodes = []string{"sad-coupon"}
-			ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", Quantity: 1}}
+			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", Quantity: 1}}
 			err := ord2.UpdateAndTally(nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
@@ -92,7 +92,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 
 			ord2 = order.New(ord.Db)
 			ord2.CouponCodes = []string{"sad-coupon"}
-			ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
+			ord2.Items = []lineitem.LineItem{{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
 			err = ord2.UpdateAndTally(nil)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
@@ -102,7 +102,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		It("Should Serialize Line Items", func() {
 			ord2 := order.New(ord.Db)
 			ord2.CouponCodes = []string{"sad-coupon"}
-			ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", ProductName: "Doge Shirt", Quantity: 1}}
+			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", ProductName: "Doge Shirt", Quantity: 1}}
 
 			memo := ord2.DescriptionLong()
 			Expect(memo).To(Equal("Doge Shirt (doge-shirt) x 1\n"))
@@ -112,11 +112,11 @@ var _ = Describe("Order.UpdateAndTally", func() {
 	Context("Store", func() {
 		BeforeEach(func() {
 			// Scramble currency values so we know they are being replaced
-			for i, _ := range ord.Coupons {
+			for i := range ord.Coupons {
 				ord.Coupons[i].Amount = rand.Int()
 			}
 
-			for i, _ := range ord.Items {
+			for i := range ord.Items {
 				ord.Items[i].Price = currency.Cents(rand.Int64())
 			}
 
@@ -240,7 +240,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		It("Should UpdateAndTally Only Applicable Coupons", func() {
 			ord2 := order.New(ord.Db)
 			ord2.CouponCodes = []string{"sad-coupon"}
-			ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", Quantity: 1}}
+			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", Quantity: 1}}
 			ord2.ShippingAddress.Country = "us"
 			ord2.ShippingAddress.State = "ks"
 			ord2.ShippingAddress.PostalCode = "66212"
@@ -258,7 +258,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 
 			ord2 = order.New(ord.Db)
 			ord2.CouponCodes = []string{"sad-coupon"}
-			ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
+			ord2.Items = []lineitem.LineItem{{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
 			ord2.ShippingAddress.Country = "us"
 			ord2.ShippingAddress.State = "ks"
 			ord2.ShippingAddress.PostalCode = "66212"

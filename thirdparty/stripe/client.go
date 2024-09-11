@@ -8,9 +8,9 @@ import (
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/client"
 	"hanzo.io/log"
-	"hanzo.io/models/deprecated/plan"
-	"hanzo.io/models/deprecated/subscription"
 	"hanzo.io/models/payment"
+	"hanzo.io/models/plan"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/transfer"
 	"hanzo.io/models/types/accounts"
 	"hanzo.io/models/types/currency"
@@ -31,35 +31,37 @@ func toPtr[T any](v T) *T {
 
 // Covert a payment model into a card card we can use for authorization
 func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = pay.Buyer.Name()
-	card.Number = pay.Account.Number
-	card.CVC = pay.Account.CVC
-	card.Month = strconv.Itoa(pay.Account.Month)
-	card.Year = strconv.Itoa(pay.Account.Year)
-	card.Address1 = pay.Buyer.BillingAddress.Line1
-	card.Address2 = pay.Buyer.BillingAddress.Line2
-	card.City = pay.Buyer.BillingAddress.City
-	card.State = pay.Buyer.BillingAddress.State
-	card.Zip = pay.Buyer.BillingAddress.PostalCode
-	card.Country = pay.Buyer.BillingAddress.Country
-	return &card
+	card := &stripe.CardParams{
+		Name:           toPtr(pay.Buyer.Name()),
+		Number:         toPtr(pay.Account.Number),
+		CVC:            toPtr(pay.Account.CVC),
+		ExpMonth:       toPtr(strconv.Itoa(pay.Account.Month)),
+		ExpYear:        toPtr(strconv.Itoa(pay.Account.Year)),
+		AddressLine1:   toPtr(pay.Buyer.BillingAddress.Line1),
+		AddressLine2:   toPtr(pay.Buyer.BillingAddress.Line2),
+		AddressCity:    toPtr(pay.Buyer.BillingAddress.City),
+		AddressState:   toPtr(pay.Buyer.BillingAddress.State),
+		AddressZip:     toPtr(pay.Buyer.BillingAddress.PostalCode),
+		AddressCountry: toPtr(pay.Buyer.BillingAddress.Country),
+	}
+	return card
 }
 
 func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = sub.Buyer.Name()
-	card.Number = sub.Account.Number
-	card.CVC = sub.Account.CVC
-	card.Month = strconv.Itoa(sub.Account.Month)
-	card.Year = strconv.Itoa(sub.Account.Year)
-	card.Address1 = sub.Buyer.BillingAddress.Line1
-	card.Address2 = sub.Buyer.BillingAddress.Line2
-	card.City = sub.Buyer.BillingAddress.City
-	card.State = sub.Buyer.BillingAddress.State
-	card.Zip = sub.Buyer.BillingAddress.PostalCode
-	card.Country = sub.Buyer.BillingAddress.Country
-	return &card
+	card := &stripe.CardParams{
+		Name:           toPtr(sub.Buyer.Name()),
+		Number:         toPtr(sub.Account.Number),
+		CVC:            toPtr(sub.Account.CVC),
+		ExpMonth:       toPtr(strconv.Itoa(sub.Account.Month)),
+		ExpYear:        toPtr(strconv.Itoa(sub.Account.Year)),
+		AddressLine1:   toPtr(sub.Buyer.BillingAddress.Line1),
+		AddressLine2:   toPtr(sub.Buyer.BillingAddress.Line2),
+		AddressCity:    toPtr(sub.Buyer.BillingAddress.City),
+		AddressState:   toPtr(sub.Buyer.BillingAddress.State),
+		AddressZip:     toPtr(sub.Buyer.BillingAddress.PostalCode),
+		AddressCountry: toPtr(sub.Buyer.BillingAddress.Country),
+	}
+	return card
 }
 
 // Removed from API
@@ -104,21 +106,25 @@ func SubscriptionToCard(sub *subscription.Subscription) *stripe.CardParams {
 
 func (c Client) NewSubscription(source interface{}, sub *subscription.Subscription) (*Subscription, error) {
 	log.Debug("sub.Plan %v", sub.Plan)
-	params := &stripe.SubParams{
-		Plan: sub.Plan.Id_,
+	params := &stripe.SubscriptionParams{
+		Items: []*stripe.SubscriptionItemsParams{
+			{
+				Plan: stripe.String(sub.Plan.Id_),
+			},
+		},
 	}
 
 	switch v := source.(type) {
 	case *Customer:
-		params.Customer = v.ID
+		params.Customer = stripe.String(v.ID)
 	case *user.User:
-		params.Customer = v.Accounts.Stripe.CustomerId
-		params.AddMeta("user", v.Id())
+		params.Customer = stripe.String(v.Accounts.Stripe.CustomerId)
+		params.AddMetadata("user", v.Id())
 	}
 
-	params.AddMeta("plan", sub.Plan.Id_)
+	params.AddMetadata("plan", sub.Plan.Id_)
 
-	s, err := c.Subs.New(params)
+	s, err := c.API.Subscriptions.New(params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -127,32 +133,36 @@ func (c Client) NewSubscription(source interface{}, sub *subscription.Subscripti
 	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
 	sub.Account.Type = accounts.StripeType
-	sub.FeePercent = s.FeePercent
-	sub.EndCancel = s.EndCancel
-	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	sub.FeePercent = s.ApplicationFeePercent
+	sub.EndCancel = s.CancelAtPeriodEnd
+	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
 	// sub.Start = time.Unix(s.Start, 0)
-	sub.Ended = time.Unix(s.Ended, 0)
+	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
 
-	sub.Quantity = int(s.Quantity)
+	if len(s.Items.Data) > 0 {
+		sub.Quantity = int(s.Items.Data[0].Quantity)
+	}
 	sub.Status = subscription.Status(s.Status)
 
 	return (*Subscription)(s), nil
-}
-
-// Update subscribe to a plan
+} // Update subscribe to a plan
 func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Subscription, error) {
-	params := &stripe.SubParams{
-		Customer: sub.Account.CustomerId,
-		Plan:     sub.Plan.Id_,
-		Quantity: uint64(sub.Quantity),
+	params := &stripe.SubscriptionParams{
+		Customer: stripe.String(sub.Account.CustomerId),
+		Items: []*stripe.SubscriptionItemsParams{
+			{
+				Plan:     stripe.String(sub.Plan.Id_),
+				Quantity: stripe.Int64(int64(sub.Quantity)),
+			},
+		},
 	}
 
-	params.AddMeta("plan", sub.Plan.Id_)
+	params.AddMetadata("plan", sub.Plan.Id_)
 
-	s, err := c.Subs.Update(sub.Ref.Stripe.Id, params)
+	s, err := c.API.Subscriptions.Update(sub.Ref.Stripe.Id, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -161,16 +171,18 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Subscriptio
 	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
 	sub.Account.Type = accounts.StripeType
-	sub.FeePercent = s.FeePercent
-	sub.EndCancel = s.EndCancel
-	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	sub.FeePercent = s.ApplicationFeePercent
+	sub.EndCancel = s.CancelAtPeriodEnd
+	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
 	// sub.Start = time.Unix(s.Start, 0)
-	sub.Ended = sub.PeriodEnd
+	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
 
-	sub.Quantity = int(s.Quantity)
+	if len(s.Items.Data) > 0 {
+		sub.Quantity = int(s.Items.Data[0].Quantity)
+	}
 	sub.Status = subscription.Status(s.Status)
 
 	return (*Subscription)(s), nil
@@ -178,12 +190,9 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Subscriptio
 
 // Subscribe to a plan
 func (c Client) CancelSubscription(sub *subscription.Subscription) (*Subscription, error) {
-	params := &stripe.SubParams{
-		Customer:  sub.Account.CustomerId,
-		EndCancel: true,
-	}
+	params := &stripe.SubscriptionCancelParams{}
 
-	s, err := c.Subs.Cancel(sub.Ref.Stripe.Id, params)
+	s, err := c.API.Subscriptions.Cancel(sub.Ref.Stripe.Id, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
@@ -192,18 +201,19 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Subscriptio
 	sub.Ref.Type = refs.StripeEcommerceRefType
 	sub.Account.CustomerId = s.Customer.ID
 	sub.Account.Type = accounts.StripeType
-	sub.FeePercent = s.FeePercent
-	sub.EndCancel = s.EndCancel
-	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	sub.FeePercent = s.ApplicationFeePercent
+	sub.EndCancel = s.CancelAtPeriodEnd
+	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
 	// sub.Start = time.Unix(s.Start, 0)
-	sub.Ended = sub.PeriodEnd
+	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
-	sub.CanceledAt = time.Now()
-	sub.EndCancel = true
+	sub.CanceledAt = time.Unix(s.CanceledAt, 0)
 
-	sub.Quantity = int(s.Quantity)
+	if len(s.Items.Data) > 0 {
+		sub.Quantity = int(s.Items.Data[0].Quantity)
+	}
 	sub.Status = subscription.Status(s.Status)
 
 	return (*Subscription)(s), nil
@@ -256,8 +266,8 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 
 	// Process refund with Stripe
 	refund, err := c.API.Refunds.New(&stripe.RefundParams{
-		Charge: pay.Account.ChargeId,
-		Amount: uint64(refundAmount),
+		Charge: stripe.String(pay.Account.ChargeId),
+		Amount: stripe.Int64(int64(refundAmount)),
 	})
 
 	if err != nil {
@@ -277,7 +287,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 // Get an exising Stripe card
 func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 	params := &stripe.CardParams{
-		Customer: customerId,
+		Customer: stripe.String(customerId),
 	}
 
 	card, err := c.API.Cards.Get(cardId, params)
@@ -289,9 +299,9 @@ func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 }
 
 // Get Stripe customer
-func (c Client) GetCustomer(token, usr *user.User) (*Customer, error) {
+func (c Client) GetCustomer(token string, usr *user.User) (*Customer, error) {
 	params := &stripe.CustomerParams{}
-	params.SetSource(token)
+	params.SetStripeAccount(token)
 
 	cust, err := c.API.Customers.Get(usr.Accounts.Stripe.CustomerId, params)
 	if err != nil {
@@ -304,20 +314,20 @@ func (c Client) GetCustomer(token, usr *user.User) (*Customer, error) {
 // Update Stripe customer
 func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 	params := &stripe.CustomerParams{
-		Email: usr.Email,
+		Email: stripe.String(usr.Email),
 	}
 
 	// Update Default source
 	if usr.Accounts.Stripe.CardId != "" {
-		params.DefaultSource = usr.Accounts.Stripe.CardId
+		params.DefaultSource = stripe.String(usr.Accounts.Stripe.CardId)
 	}
 
 	// Update with our user metadata
 	// for k, v := range usr.Metadata {
-	// 	params.AddMeta(k, json.Encode(v))
+	// 	params.AddMetadata(k, json.Encode(v))
 	// }
 
-	params.AddMeta("user", usr.Id())
+	params.AddMetadata("user", usr.Id())
 
 	customerId := usr.Accounts.Stripe.CustomerId
 
@@ -327,22 +337,20 @@ func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 	}
 
 	return (*Customer)(cust), nil
-}
-
-// Create new stripe customer
+} // Create new stripe customer
 func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 	params := &stripe.CustomerParams{
-		Desc:  user.Name(),
-		Email: user.Email,
+		Description: stripe.String(user.Name()),
+		Email:       stripe.String(user.Email),
 	}
-	params.SetSource(token)
+	params.Source = &token
 
 	// Update with our user metadata
 	// for k, v := range user.Metadata {
 	// 	params.AddMeta(k, json.Encode(v))
 	// }
 
-	params.AddMeta("user", user.Id())
+	params.AddMetadata("user", user.Id())
 
 	cust, err := c.API.Customers.New(params)
 	if err != nil {
@@ -350,13 +358,11 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 	}
 
 	return (*Customer)(cust), nil
-}
-
-// Add new card to Stripe customer
+} // Add new card to Stripe customer
 func (c Client) NewCard(token string, usr *user.User) (*Card, error) {
 	params := &stripe.CardParams{
-		Customer: usr.Accounts.Stripe.CustomerId,
-		Token:    token,
+		Customer: stripe.String(usr.Accounts.Stripe.CustomerId),
+		Token:    stripe.String(token),
 	}
 
 	card, err := c.API.Cards.New(params)
@@ -370,16 +376,18 @@ func (c Client) NewCard(token string, usr *user.User) (*Card, error) {
 // Add new subscription to Stripe
 func (c Client) NewPlan(p *plan.Plan) (*Plan, error) {
 	params := &stripe.PlanParams{
-		ID:            p.Id(),
-		Name:          p.Name,
-		Currency:      stripe.Currency(p.Currency),
-		Interval:      stripe.PlanInterval(p.Interval),
-		IntervalCount: uint64(p.IntervalCount),
-		TrialPeriod:   uint64(p.TrialPeriodDays),
-		Statement:     p.Description,
+		ID:              stripe.String(p.Id()),
+		Nickname:        stripe.String(p.Name),
+		Currency:        stripe.String(string(p.Currency)),
+		Interval:        stripe.String(string(p.Interval)),
+		IntervalCount:   stripe.Int64(int64(p.IntervalCount)),
+		TrialPeriodDays: stripe.Int64(int64(p.TrialPeriodDays)),
+		Product: &stripe.PlanProductParams{
+			Name: stripe.String(p.Name),
+		},
 	}
 
-	params.AddMeta("plan", p.Id())
+	params.AddMetadata("plan", p.Id())
 
 	plan, err := c.API.Plans.New(params)
 	if err != nil {
@@ -396,13 +404,12 @@ func (c Client) UpdatePlan(p *plan.Plan) (*Plan, error) {
 	planId := p.Id()
 
 	params := &stripe.PlanParams{
-		ID:            p.Id(),
-		Name:          p.Name,
-		Currency:      stripe.Currency(p.Currency),
-		Interval:      stripe.PlanInterval(p.Interval),
-		IntervalCount: uint64(p.IntervalCount),
-		TrialPeriod:   uint64(p.TrialPeriodDays),
-		Statement:     p.Description,
+		ID:              stripe.String(p.Id()),
+		Nickname:        stripe.String(p.Name),
+		Currency:        stripe.String(string(p.Currency)),
+		Interval:        stripe.String(string(p.Interval)),
+		IntervalCount:   stripe.Int64(int64(p.IntervalCount)),
+		TrialPeriodDays: stripe.Int64(int64(p.TrialPeriodDays)),
 	}
 
 	plan, err := c.API.Plans.Update(planId, params)
@@ -440,8 +447,8 @@ func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 	cardId := usr.Accounts.Stripe.CardId
 
 	params := &stripe.CardParams{
-		Customer: customerId,
-		Token:    token,
+		Customer: stripe.String(customerId),
+		Token:    stripe.String(token),
 	}
 
 	card, err := c.API.Cards.Update(cardId, params)
@@ -455,7 +462,7 @@ func (c Client) UpdateCard(token string, usr *user.User) (*Card, error) {
 // Update card associated with Stripe customer
 func (c Client) DeleteCard(cardId string, usr *user.User) (*Card, error) {
 	params := &stripe.CardParams{
-		Customer: usr.Accounts.Stripe.CustomerId,
+		Customer: stripe.String(usr.Accounts.Stripe.CustomerId),
 	}
 
 	card, err := c.API.Cards.Del(cardId, params)
@@ -467,8 +474,9 @@ func (c Client) DeleteCard(cardId string, usr *user.User) (*Card, error) {
 }
 
 func (c Client) GetCharge(chargeId string) (*Charge, error) {
-	params := &stripe.ChargeParams{}
-	params.Expand("balance_transaction")
+	params := &stripe.ChargeParams{
+		Expand: []*string{stripe.String("balance_transaction")},
+	}
 
 	charge, err := c.API.Charges.Get(chargeId, params)
 	if err != nil {
@@ -491,7 +499,7 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 
 	// Create params for update
 	params := &stripe.ChargeParams{
-		Desc: pay.Description,
+		Description: stripe.String(pay.Description),
 		// Email: pay.Buyer.Email,
 	}
 
@@ -499,7 +507,7 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 	for k, v := range pay.Metadata {
 		s, ok := v.(string)
 		if ok {
-			params.AddMeta(k, s)
+			params.AddMetadata(k, s)
 		}
 	}
 
@@ -516,39 +524,38 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 // Create new charge
 func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
 	params := &stripe.ChargeParams{
-		Amount:    uint64(pay.Amount),
-		Currency:  stripe.Currency(pay.Currency),
-		Customer:  pay.Account.CustomerId,
-		Desc:      pay.Description,
-		Fee:       uint64(pay.Fee),
-		NoCapture: true,
+		Amount:      stripe.Int64(int64(pay.Amount)),
+		Currency:    stripe.String(string(pay.Currency)),
+		Customer:    stripe.String(pay.Account.CustomerId),
+		Description: stripe.String(pay.Description),
+		Capture:     stripe.Bool(false),
 		// Email:     pay.Buyer.Email,
 	}
 
 	// Update with our user metadata
 	for k, v := range pay.Metadata {
-		params.AddMeta(k, json.Encode(v))
+		params.AddMetadata(k, json.Encode(v))
 	}
 
-	params.AddMeta("order", pay.OrderId)
-	params.AddMeta("payment", pay.Id())
+	params.AddMetadata("order", pay.OrderId)
+	params.AddMetadata("payment", pay.Id())
 
 	switch v := source.(type) {
 	case string:
 		params.SetSource(v)
 	case *Customer:
-		params.Customer = v.ID
+		params.Customer = stripe.String(v.ID)
 	case *user.User:
-		params.Customer = v.Accounts.Stripe.CustomerId
-		params.AddMeta("user", v.Id())
+		params.Customer = stripe.String(v.Accounts.Stripe.CustomerId)
+		params.AddMetadata("user", v.Id())
 	}
 
-	params.Expand("balance_transaction")
+	params.AddExpand("balance_transaction")
 
 	// Create charge
 	ch, err := c.API.Charges.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	// Update charge Id on payment
@@ -572,61 +579,61 @@ func (c Client) Capture(chargeId string) (*Charge, error) {
 func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 	tid := tr.Id()
 	params := &stripe.TransferParams{
-		Amount:   int64(tr.Amount),
-		Dest:     tr.Destination,
-		Currency: stripe.Currency(tr.Currency),
-		Meta:     map[string]string{"description": tr.Description},
+		Amount:      stripe.Int64(int64(tr.Amount)),
+		Destination: stripe.String(tr.Destination),
+		Currency:    stripe.String(string(tr.Currency)),
+		Description: stripe.String(tr.Description),
 	}
-	params.Params.IdempotencyKey = tid
+	params.SetIdempotencyKey(tid)
 
 	if tr.AffiliateId != "" {
-		params.AddMeta("affiliate", tr.AffiliateId)
+		params.AddMetadata("affiliate", tr.AffiliateId)
 	}
 	if tr.PartnerId != "" {
-		params.AddMeta("affiliate", tr.AffiliateId)
+		params.AddMetadata("partner", tr.PartnerId)
 	}
-	params.AddMeta("transfer", tid)
-	params.AddMeta("fee", tr.FeeId)
+	params.AddMetadata("transfer", tid)
+	params.AddMetadata("fee", tr.FeeId)
 
 	// Create transfer
 	str, err := c.API.Transfers.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	t := (*Transfer)(str)
 	UpdateTransferFromStripe(tr, t)
 
-	return t, err
+	return t, nil
 }
 
 func (c Client) Payout(tr *transfer.Transfer) (*Payout, error) {
 	tid := tr.Id()
 	params := &stripe.PayoutParams{
-		Amount:              int64(tr.Amount),
-		Destination:         tr.Destination,
-		Currency:            stripe.Currency(tr.Currency),
-		StatementDescriptor: tr.Description,
+		Amount:              stripe.Int64(int64(tr.Amount)),
+		Destination:         stripe.String(tr.Destination),
+		Currency:            stripe.String(string(tr.Currency)),
+		StatementDescriptor: stripe.String(tr.Description),
 	}
-	params.Params.IdempotencyKey = tid
+	params.SetIdempotencyKey(tid)
 
 	if tr.AffiliateId != "" {
-		params.AddMeta("affiliate", tr.AffiliateId)
+		params.AddMetadata("affiliate", tr.AffiliateId)
 	}
 	if tr.PartnerId != "" {
-		params.AddMeta("affiliate", tr.AffiliateId)
+		params.AddMetadata("partner", tr.PartnerId)
 	}
-	params.AddMeta("payout", tid)
-	params.AddMeta("fee", tr.FeeId)
+	params.AddMetadata("payout", tid)
+	params.AddMetadata("fee", tr.FeeId)
 
-	// Create transfer
+	// Create payout
 	str, err := c.API.Payouts.New(params)
 	if err != nil {
-		return nil, errors.New(err)
+		return nil, err
 	}
 
 	t := (*Payout)(str)
 	UpdatePayoutFromStripe(tr, t)
 
-	return t, err
+	return t, nil
 }

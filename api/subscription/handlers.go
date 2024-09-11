@@ -3,11 +3,11 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
+	"hanzo.io/api/subscription/stripe"
 	"hanzo.io/config"
 	"hanzo.io/datastore"
 	"hanzo.io/middleware"
-	"hanzo.io/models/deprecated/subscription"
-	"hanzo.io/api/subscription/stripe"
+	"hanzo.io/models/subscription"
 	"hanzo.io/util/json/http"
 	"hanzo.io/util/permission"
 	"hanzo.io/util/router"
@@ -99,7 +99,7 @@ func UpdateSubscribe(c *gin.Context) {
 	}
 	sub.Number = num
 
-	err = stripe.UpdateSubscription(org, sub);
+	err = stripe.UpdateSubscription(org, sub)
 	if err != nil {
 		http.Fail(c, 500, "Error during subscribe", err)
 		return
@@ -127,7 +127,7 @@ func Unsubscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
-	err = stripe.Unsubscribe(org, sub);
+	err = stripe.Unsubscribe(org, sub)
 	if err != nil {
 		http.Fail(c, 500, "Error during subscribe", err)
 		return

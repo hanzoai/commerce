@@ -19,7 +19,7 @@ func Test(t *testing.T) {
 
 var (
 	ctx      ae.Context
-	client   *sendgrid.Client
+	client   *sendgrid.API
 	settings = integration.SendGrid{
 		APIKey: config.SendGrid.APIKey,
 	}

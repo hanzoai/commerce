@@ -46,7 +46,8 @@ var _ = New("add-stripe-fix-mysterious",
 			usr.Company = buyer.Company
 			usr.Phone = buyer.Phone
 			usr.ShippingAddress = buyer.ShippingAddress
-			usr.History = []Event{Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
+
+			usr.History = []Event{{Type: "RegeneratedFromStripe", Desc: "Mysteriously Missing 2015-07-02"}}
 			usr.Accounts.Stripe = pay.Account.Stripe
 
 			usr.MustPut()
@@ -66,9 +67,10 @@ var _ = New("add-stripe-fix-mysterious",
 			ord.Subtotal = pay.Amount
 			ord.Total = pay.Amount
 			ord.Currency = pay.Currency
-			ord.History = []Event{Event{"RegeneratedFromStripe", "Mysteriously Missing 2015-07-02"}}
 
-			descs := strings.Split(charge.Desc, ",")
+			ord.History = []Event{{Type: "RegeneratedFromStripe", Desc: "Mysteriously Missing 2015-07-02"}}
+
+			descs := strings.Split(charge.Description, ",")
 			ord.Items = make([]lineitem.LineItem, len(descs))
 
 			for i, desc := range descs {
@@ -100,5 +102,5 @@ var _ = New("add-stripe-fix-mysterious",
 		pay.OrderId = ord.Id()
 		pay.MustPut()
 		log.Debug("Updating Payment %v, Order %v, UserId %v", pay.Id(), ord.Id(), usr.Id(), db.Context)
-	},
-)
+
+	})

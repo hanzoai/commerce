@@ -35,15 +35,14 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
 	pay.Account.CardId = card.ID
 	pay.Account.Brand = string(card.Brand)
-	pay.Account.LastFour = card.LastFour
-	pay.Account.Month = int(card.Month)
-	pay.Account.Year = int(card.Year)
+	pay.Account.LastFour = card.Last4
+	pay.Account.Month = int(card.ExpMonth)
+	pay.Account.Year = int(card.ExpYear)
 	pay.Account.Country = card.Country
 	pay.Account.Fingerprint = card.Fingerprint
 	pay.Account.Funding = string(card.Funding)
 	pay.Account.CVCCheck = string(card.CVCCheck)
 }
-
 func updateUserFromPayment(usr *user.User, pay *payment.Payment) {
 	usr.Accounts.Stripe.CardId = pay.Account.CardId
 	usr.Accounts.Stripe.Brand = string(pay.Account.Brand)
@@ -59,27 +58,25 @@ func updateUserFromPayment(usr *user.User, pay *payment.Payment) {
 func dedupeCards(client *stripe.Client, card *stripe.Card, cust *stripe.Customer, usr *user.User) {
 	// Keep track of last four we've seen
 	seen := make(map[string]bool)
-	seen[card.LastFour] = true
+	seen[card.Last4] = true
 
 	// Check sources returned on customer for duplicates
-	for _, source := range cust.Sources.Values {
+	for _, source := range cust.Sources.Data {
 		// Skip card we just added
 		if card.ID == source.Card.ID {
 			continue
 		}
 
 		// Delete any dupes
-		if _, ok := seen[source.Card.LastFour]; ok {
+		if _, ok := seen[source.Card.Last4]; ok {
 			if _, err := client.DeleteCard(source.Card.ID, usr); err != nil {
 				log.Warn("Unable to delete card '%s': %v", card.ID, err, usr.Db.Context)
 			}
 		} else {
-			seen[source.Card.LastFour] = true
+			seen[source.Card.Last4] = true
 		}
-
 	}
 }
-
 func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
 	cust, err := client.NewCustomer(tok.ID, usr)
@@ -87,7 +84,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 		return err
 	}
 	pay.Account.CustomerId = cust.ID
-	pay.Live = cust.Live
+	pay.Live = cust.Livemode
 
 	log.Warn("Stripe New customer: %v", cust, ord.Db.Context)
 
@@ -128,7 +125,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	if err != nil {
 		return err
 	}
-	pay.Live = cust.Live
+	pay.Live = cust.Livemode
 
 	dedupeCards(client, card, cust, usr)
 

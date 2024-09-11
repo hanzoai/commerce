@@ -48,7 +48,7 @@ func getPaymentFromCharge(ctx context.Context, ch *stripe.Charge) (*payment.Paym
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 
-	id, ok := ch.Meta["payment"]
+	id, ok := ch.Metadata["payment"]
 
 	// Try to get by payment id
 	if ok {
@@ -69,7 +69,7 @@ func getTransfer(ctx context.Context, str *stripe.Transfer) (*transfer.Transfer,
 	db := datastore.New(ctx)
 	tr := transfer.New(db)
 
-	id, ok := str.Meta["transfer"]
+	id, ok := str.Metadata["transfer"]
 
 	// Try to get by transfer id
 	if ok {
@@ -89,9 +89,9 @@ func getTransfer(ctx context.Context, str *stripe.Transfer) (*transfer.Transfer,
 func updateChargeFromPayment(ctx context.Context, token string, pay *payment.Payment, ch *stripe.Charge) {
 	if ch != nil {
 		// Check if we need to sync back changes to charge
-		payId, _ := ch.Meta["payment"]
-		ordId, _ := ch.Meta["order"]
-		usrId, _ := ch.Meta["user"]
+		payId, _ := ch.Metadata["payment"]
+		ordId, _ := ch.Metadata["order"]
+		usrId, _ := ch.Metadata["user"]
 
 		// Don't sync if metadata is already correct
 		if pay.Id() == payId && pay.OrderId == ordId && pay.Buyer.UserId == usrId {

@@ -5,12 +5,12 @@ import (
 
 	"hanzo.io/api/subscription/stripe"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/models/organization"
-	"hanzo.io/models/deprecated/plan"
-	"hanzo.io/models/deprecated/subscription"
+	"hanzo.io/models/plan"
+	"hanzo.io/models/subscription"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
-	"hanzo.io/log"
 )
 
 func subscriptionRequest(c *gin.Context, org *organization.Organization) (*SubscriptionReq, error) {

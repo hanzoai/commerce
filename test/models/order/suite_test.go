@@ -66,63 +66,63 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	sr.GeoRates = append(sr.GeoRates, shippingrates.GeoRate{
-		georate.New(
+		GeoRate: georate.New(
 			"",
 			"",
 			"",
 			"",
-			0.1,
+			currency.Cents(10),
+			currency.Cents(0),
 			0,
-			0,
-			499,
+			currency.Cents(100),
 		),
-		"SHIPPING",
+		ShippingName: "SHIPPING",
 	})
 	sr.MustUpdate()
 
 	tr, err := stor.GetTaxRates()
 	Expect(err).NotTo(HaveOccurred())
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.New(
+		GeoRate: georate.New(
 			"US",
 			"KS",
 			"",
 			"66212",
-			0.0885,
+			currency.Cents(885),
+			currency.Cents(0),
 			0,
-			0,
-			1,
+			currency.Cents(10000),
 		),
-		false,
-		"TEST TAX",
+		TaxShipping: false,
+		TaxName:     "TEST TAX",
 	})
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.New(
+		GeoRate: georate.New(
 			"US",
 			"KS",
 			"",
 			"",
-			0.065,
+			currency.Cents(650),
+			currency.Cents(0),
 			0,
-			0,
-			1,
+			currency.Cents(10000),
 		),
-		false,
-		"TEST TAX",
+		TaxShipping: false,
+		TaxName:     "TEST TAX",
 	})
 	tr.GeoRates = append(tr.GeoRates, taxrates.GeoRate{
-		georate.New(
+		GeoRate: georate.New(
 			"GB",
 			"",
 			"",
 			"",
-			0.2,
+			currency.Cents(2000),
+			currency.Cents(0),
 			0,
-			0,
-			1,
+			currency.Cents(10000),
 		),
-		false,
-		"VAT",
+		TaxShipping: false,
+		TaxName:     "VAT",
 	})
 	tr.MustUpdate()
 

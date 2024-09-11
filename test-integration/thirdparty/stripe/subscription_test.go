@@ -1,10 +1,10 @@
 package test
 
 import (
+	"hanzo.io/log"
 	"hanzo.io/models/plan"
 	"hanzo.io/models/subscription"
 	"hanzo.io/models/user"
-	"hanzo.io/log"
 	. "hanzo.io/util/test/ginkgo"
 )
 

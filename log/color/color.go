@@ -8,20 +8,20 @@ import (
 
 var (
 	colors = []string{
-		CRITICAL: ColorSeq(ColorMagenta),
-		ERROR:    ColorSeq(ColorRed),
-		WARNING:  ColorSeq(ColorYellow),
-		NOTICE:   ColorSeq(ColorGreen),
-		INFO:     ColorSeq(ColorWhite),
-		DEBUG:    ColorSeq(ColorCyan),
+		CRITICAL: "\033[35m",
+		ERROR:    "\033[31m",
+		WARNING:  "\033[33m",
+		NOTICE:   "\033[32m",
+		INFO:     "\033[37m",
+		DEBUG:    "\033[36m",
 	}
 	boldcolors = []string{
-		CRITICAL: ColorSeqBold(ColorMagenta),
-		ERROR:    ColorSeqBold(ColorRed),
-		WARNING:  ColorSeqBold(ColorYellow),
-		NOTICE:   ColorSeqBold(ColorGreen),
-		INFO:     ColorSeq(ColorWhite),
-		DEBUG:    ColorSeqBold(ColorCyan),
+		CRITICAL: "\033[1;35m",
+		ERROR:    "\033[1;31m",
+		WARNING:  "\033[1;33m",
+		NOTICE:   "\033[1;32m",
+		INFO:     "\033[37m",
+		DEBUG:    "\033[1;36m",
 	}
 )
 
