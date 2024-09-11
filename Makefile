@@ -115,7 +115,7 @@ endif
 
 all: deps test install
 
-build: deps update-env
+build: deps
 	$(go) build $(packages)
 
 clean:
@@ -130,7 +130,7 @@ install:
 	$(go) install $(packages)
 
 # DEV SERVER
-serve: update-env
+serve: 
 	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: update-env
