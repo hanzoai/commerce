@@ -35,7 +35,11 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
+<<<<<<< Updated upstream
 dev_appserver = python $(sdk)/dev_appserver.py \
+=======
+dev_appserver = python3 $(sdk)/dev_appserver.py \
+>>>>>>> Stashed changes
 					--skip_sdk_update_check \
 					--datastore_path=$(pwd)/.datastore.bin \
 					--enable_task_running=true \
@@ -115,7 +119,7 @@ endif
 
 all: deps test install
 
-build: deps
+build: deps update-env
 	$(go) build $(packages)
 
 clean:
@@ -130,7 +134,7 @@ install:
 	$(go) install $(packages)
 
 # DEV SERVER
-serve: 
+serve: update-env
 	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: update-env
@@ -182,10 +186,10 @@ deploy-dispatch:
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
 update-env:
-	@echo package config\n\nvar Env = "$(project_env)" > config/env.go
+	@printf 'package config\n\nvar Env = "$(project_env)"' > config/env.go
 
 update-env-test:
-	@echo package config\n\nvar Env = "test" > config/env.go
+	@printf 'package config\n\nvar Env = "test"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
