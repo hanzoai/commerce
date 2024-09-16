@@ -17,8 +17,8 @@ import (
 
 // Copy to Hanzo
 var (
-	PasswordMinLengthError = errors.New("Password needs to be atleast 6 characters")
-	PasswordMismatchError  = errors.New("Passwords need to match")
+	ErrPasswordMinLength = errors.New("password needs to be atleast 6 characters")
+	ErrPasswordMismatch  = errors.New("passwords need to match")
 )
 
 type resetPasswordReq interface {
@@ -45,11 +45,11 @@ func (r confirmPasswordReq) GetPasswordConfirm() string {
 func resetPassword(usr *user.User, req resetPasswordReq) error {
 	// Validate password
 	if len(req.GetPassword()) < 6 {
-		return PasswordMinLengthError
+		return ErrPasswordMinLength
 	}
 
 	if req.GetPassword() != req.GetPasswordConfirm() {
-		return PasswordMismatchError
+		return ErrPasswordMismatch
 	}
 
 	// Update password
@@ -86,7 +86,7 @@ func confirm(c *gin.Context) {
 	}
 
 	if tok.Expired() || tok.Used {
-		http.Fail(c, 403, "Token expired", errors.New("Token expired"))
+		http.Fail(c, 403, "Token expired", errors.New("token expired"))
 		return
 	}
 
@@ -99,7 +99,7 @@ func confirm(c *gin.Context) {
 
 	if err := resetPassword(usr, req); err != nil {
 		switch err {
-		case PasswordMismatchError, PasswordMinLengthError:
+		case ErrPasswordMismatch, ErrPasswordMinLength:
 			http.Fail(c, 400, err.Error(), err)
 		default:
 			http.Fail(c, 500, err.Error(), err)

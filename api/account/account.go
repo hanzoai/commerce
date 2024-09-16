@@ -95,12 +95,12 @@ func patch(c *gin.Context) {
 
 	if req.Password != "" {
 		if !password.HashAndCompare(usr.PasswordHash, req.CurrentPassword) {
-			http.Fail(c, 401, "Password is incorrect", errors.New("Password is incorrect"))
+			http.Fail(c, 401, "Password is incorrect", errors.New("password is incorrect"))
 			return
 		}
 		if err := resetPassword(usr, req); err != nil {
 			switch err {
-			case PasswordMismatchError, PasswordMinLengthError:
+			case ErrPasswordMismatch, ErrPasswordMinLength:
 				http.Fail(c, 400, err.Error(), err)
 			default:
 				http.Fail(c, 500, err.Error(), err)
