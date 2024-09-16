@@ -35,7 +35,7 @@ tools = github.com/nsf/gocode \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-dev_appserver = python gcloud-sdk/google_appengine/dev_appserver.py \
+dev_appserver = python $(sdk)/dev_appserver.py \
 					--skip_sdk_update_check \
 					--datastore_path=$(pwd)/.datastore.bin \
 					--enable_task_running=true \
