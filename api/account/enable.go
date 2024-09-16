@@ -51,7 +51,7 @@ func enable(c *gin.Context) {
 	}
 
 	if tok.Expired() || tok.Used {
-		http.Fail(c, 403, "Token expired", errors.New("Token expired"))
+		http.Fail(c, 403, "Token expired", errors.New("token expired"))
 		return
 	}
 
@@ -68,7 +68,7 @@ func enable(c *gin.Context) {
 		if req.Password != "" {
 			if err := resetPassword(usr, req); err != nil {
 				switch err {
-				case PasswordMismatchError, PasswordMinLengthError:
+				case ErrPasswordMismatch, ErrPasswordMinLength:
 					http.Fail(c, 400, err.Error(), err)
 					return
 				}

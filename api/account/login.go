@@ -53,7 +53,7 @@ func login(c *gin.Context) {
 	} else if req.Username != "" {
 		id = strings.ToLower(strings.TrimSpace(req.Username))
 	} else {
-		http.Fail(c, 400, "Could not find account", errors.New("Could not find account"))
+		http.Fail(c, 400, "Could not find account", errors.New("could not find account"))
 		return
 	}
 
@@ -67,13 +67,13 @@ func login(c *gin.Context) {
 	// }
 	if isEmail {
 		if err := usr.GetByEmail(id); err != nil {
-			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+			http.Fail(c, 401, "Email or password is incorrect", errors.New("email or password is incorrect"))
 			log.Debug("Unable to lookup user by email", c)
 			return
 		}
 	} else if isUsername {
 		if err := usr.GetByEmail(id); err != nil {
-			http.Fail(c, 401, "Username or password is incorrect", errors.New("Email or password is incorrect"))
+			http.Fail(c, 401, "Username or password is incorrect", errors.New("email or password is incorrect"))
 			log.Debug("Unable to lookup user by username", c)
 			return
 		}
@@ -81,14 +81,14 @@ func login(c *gin.Context) {
 
 	// Check user's password
 	if !password.HashAndCompare(usr.PasswordHash, req.Password) {
-		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("email or password is incorrect"))
 		log.Debug("Incorrect password", c)
 		return
 	}
 
 	// If user is not enabled fail
 	if !usr.Enabled {
-		http.Fail(c, 401, "Account needs to be enabled", errors.New("Account needs to be enabled"))
+		http.Fail(c, 401, "Account needs to be enabled", errors.New("account needs to be enabled"))
 		return
 	}
 

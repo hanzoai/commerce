@@ -7,13 +7,13 @@ import (
 
 	"hanzo.io/auth/password"
 	"hanzo.io/datastore"
+	"hanzo.io/log"
 	"hanzo.io/middleware/oauthmiddleware"
 	"hanzo.io/models/oauthtoken"
 	"hanzo.io/models/organization"
 	"hanzo.io/models/user"
 	"hanzo.io/util/json"
 	"hanzo.io/util/json/http"
-	"hanzo.io/log"
 )
 
 // {
@@ -105,13 +105,13 @@ func passwordCredentials(c *gin.Context, req OAuthRequest) {
 
 	// Check user's password
 	if !password.HashAndCompare(usr.PasswordHash, pw) {
-		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("email or password is incorrect"))
 		return
 	}
 
 	// If user is not enabled fail
 	if !usr.Enabled {
-		http.Fail(c, 401, "Account needs to be enabled", errors.New("Account needs to be enabled"))
+		http.Fail(c, 401, "Account needs to be enabled", errors.New("account needs to be enabled"))
 		return
 	}
 
@@ -161,7 +161,7 @@ func refreshCredentials(c *gin.Context, req OAuthRequest) {
 
 	org, _, claims, ok := oauthmiddleware.DecodeToken(c, refreshToken, func(claims oauthtoken.Claims) error {
 		if claims.Type != oauthtoken.Refresh {
-			return errors.New("Token must be type refresh")
+			return errors.New("token must be type refresh")
 		}
 		return nil
 	})
