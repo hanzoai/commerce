@@ -26,7 +26,7 @@ import (
 	"hanzo.io/util/json/http"
 )
 
-var emailRegex = regexp.MustCompile("(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})")
+var emailRegex = regexp.MustCompile(`(\\w[-._\\w]*@\\w[-._\\w]*\\w\\.\\w{2,4})`)
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
 
 type createReq struct {
@@ -88,14 +88,14 @@ func create(c *gin.Context) {
 	log.Info("Fetching User Request: %v", json.Encode(usr), c)
 	// Email is required
 	if usr.Email == "" || usr.Email == "\u263A" {
-		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
+		http.Fail(c, 400, "Email is required", errors.New("email is required"))
 		return
 	}
 
 	// If the username is purposely blank or username is required by the
 	// organization...
 	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "\u263A") {
-		http.Fail(c, 400, "Username is required", errors.New("Username is required"))
+		http.Fail(c, 400, "Username is required", errors.New("username is required"))
 		return
 	}
 
@@ -108,7 +108,7 @@ func create(c *gin.Context) {
 	// Email can't already exist or if it does, can't have a password
 	if err := usr2.GetByEmail(usr.Email); err == nil {
 		if len(usr2.PasswordHash) > 0 {
-			http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
+			http.Fail(c, 400, "Email is in use", errors.New("email is in use"))
 			return
 		} else {
 			// Transfer name from request user to queried out user if successful
@@ -135,7 +135,7 @@ func create(c *gin.Context) {
 	if !org.SignUpOptions.NoNameRequired {
 		log.Info("Sign up does require Name: %s/%s", usr.FirstName, usr.LastName, c)
 		if usr.FirstName == "" || usr.FirstName == "\u263A" {
-			http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
+			http.Fail(c, 400, "First name cannot be blank", errors.New("first name cannot be blank"))
 			return
 		}
 
@@ -191,7 +191,7 @@ func create(c *gin.Context) {
 	// Email must be valid
 	log.Info("Checking if User email is valid", c)
 	if ok := emailRegex.MatchString(usr.Email); !ok {
-		http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("Email '"+usr.Email+"' is not valid"))
+		http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("email '"+usr.Email+"' is not valid"))
 		return
 	}
 
@@ -199,13 +199,13 @@ func create(c *gin.Context) {
 		log.Info("Sign up requires password", c)
 		// Password should be at least 6 characters long
 		if len(req.Password) < 6 {
-			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
+			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("password needs to be atleast 6 characters"))
 			return
 		}
 
 		// Password confirm must match
 		if req.Password != req.PasswordConfirm {
-			http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
+			http.Fail(c, 400, "Passwords need to match", errors.New("passwords need to match"))
 			return
 		}
 
@@ -220,7 +220,7 @@ func create(c *gin.Context) {
 	}
 
 	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-		http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
+		http.Fail(c, 400, "Captcha needs to be completed", errors.New("captcha needs to be completed"))
 		return
 	}
 

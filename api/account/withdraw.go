@@ -105,6 +105,6 @@ func withdraw(c *gin.Context) {
 		http.Fail(c, 500, err.Error(), err)
 		return
 	} else {
-		http.Render(c, 200, wallet.PayFromAccountResponse{transactionId})
+		http.Render(c, 200, wallet.PayFromAccountResponse{TransactionId: transactionId})
 	}
 }
