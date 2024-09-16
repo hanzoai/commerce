@@ -11,6 +11,10 @@ result = subprocess.check_output([
         "--format=json"
     ])
 
+admin_port = os.environ.get('DEV_APPSERVER_ADMIN_PORT', '8000')
+api_port = os.environ.get('DEV_APPSERVER_API_PORT', '8001')
+port = os.environ.get('DEV_APPSERVER_PORT', '8080')
+
 GCLOUD_PATH = json.loads(result)['installation']['sdk_root']
 SERVER_PATH = os.path.join(GCLOUD_PATH, 'bin/dev_appserver.py')
 PLATFORM_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -18,9 +22,9 @@ PLATFORM_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 print(SERVER_PATH)
 
 PORTS = {
-    '--admin_port=0': int(os.environ['DEV_APPSERVER_ADMIN_PORT']),
-    '--api_port=0':   int(os.environ['DEV_APPSERVER_API_PORT']),
-    '--port=0':       int(os.environ['DEV_APPSERVER_PORT']),
+    '--admin_port=0': int(admin_port),
+    '--api_port=0':   int(api_port),
+    '--port=0':       int(port),
 }
 
 if __name__ == '__main__':
@@ -39,7 +43,7 @@ if __name__ == '__main__':
         os.path.join(PLATFORM_PATH, 'api/app.development.yaml'),
     ])
 
-    argv = 'python2 {} {}'.format(SERVER_PATH, ' '.join(sys.argv[1:]))
+    argv = 'python3 {} {}'.format(SERVER_PATH, ' '.join(sys.argv[1:]))
     print(argv)
 
     sys.exit(os.system(argv))
