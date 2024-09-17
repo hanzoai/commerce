@@ -28,6 +28,7 @@ tools = github.com/nsf/gocode \
         github.com/klauspost/asmfmt/cmd/asmfmt \
         github.com/rogpeppe/godef \
         github.com/zmb3/gogetdoc \
+	github.com/onsi/ginkgo/v2/ginkgo \
         golang.org/x/tools/cmd/goimports \
         golang.org/x/tools/cmd/gorename \
         golang.org/x/tools/cmd/guru
