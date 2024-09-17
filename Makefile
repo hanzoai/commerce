@@ -152,13 +152,13 @@ tools:
 
 # TEST/ BENCH
 test: update-env-test
-	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=test-integration/* $(test_verbose)
+	$(ginkgo) $(test_target) --compilers=2 --randomizeAllSpecs --fail-fast --trace --skipMeasurements --skipPackage=test-integration/* $(test_verbose)
 
 test-watch: update-env-test
-	$(ginkgo) watch -r=true --compilers=2 --failFast --trace $(test_verbose)
+	$(ginkgo) watch -r=true --compilers=2 --fail-fast --trace $(test_verbose)
 
 bench: update-env-test
-	$(ginkgo) test --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
+	$(ginkgo) test --randomizeAllSpecs --fail-fast --trace --skipPackage=integration $(test_verbose)
 
 test-ci: update-env-test
 	cd $(pwd); $(ginkgo) $(test_target) --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace $(test_verbose)
