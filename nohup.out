@@ -336,3 +336,1278 @@ Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.
     	verbose: print additional output
 [38;5;9m
 Done.  Resuming watch...[0m
+[38;5;10mDetected changes in:[0m
+  /home/azureuser/platform/config
+[38;5;10mWill run 3 suites:[0m
+  ./test-integration/thirdparty/mandrill/integration [5 dependencies]
+  ./test-integration/thirdparty/sendgrid/integration [7 dependencies]
+  ./test-integration/thirdparty/ethereum [13 dependencies]
+
+Failed to compile integration:
+
+# hanzo.io/test-integration/thirdparty/mandrill/integration_test [hanzo.io/test-integration/thirdparty/mandrill/integration.test]
+./integration_test.go:46:19: undefined: mandrill.Ping
+./integration_test.go:56:20: undefined: mandrill.GetTemplate
+./integration_test.go:57:19: undefined: mandrill.NewSendReq
+./integration_test.go:65:19: undefined: mandrill.Send
+./integration_test.go:76:19: undefined: mandrill.NewSendTemplateReq
+./integration_test.go:88:19: undefined: mandrill.SendTemplate
+
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/sendgrid/integration/integration.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726583022)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726583027)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+[38;5;9m
+Done.  Resuming watch...[0m
+[38;5;10mDetected changes in:[0m
+  /home/azureuser/platform/config
+[38;5;10mWill run 3 suites:[0m
+  ./test-integration/thirdparty/mandrill/integration [5 dependencies]
+  ./test-integration/thirdparty/sendgrid/integration [7 dependencies]
+  ./test-integration/thirdparty/ethereum [13 dependencies]
+
+Failed to compile integration:
+
+# hanzo.io/test-integration/thirdparty/mandrill/integration_test [hanzo.io/test-integration/thirdparty/mandrill/integration.test]
+./integration_test.go:46:19: undefined: mandrill.Ping
+./integration_test.go:56:20: undefined: mandrill.GetTemplate
+./integration_test.go:57:19: undefined: mandrill.NewSendReq
+./integration_test.go:65:19: undefined: mandrill.Send
+./integration_test.go:76:19: undefined: mandrill.NewSendTemplateReq
+./integration_test.go:88:19: undefined: mandrill.SendTemplate
+
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/sendgrid/integration/integration.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585223)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585228)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+[38;5;9m
+Done.  Resuming watch...[0m
+[38;5;10mDetected changes in:[0m
+  /home/azureuser/platform/config
+[38;5;10mWill run 3 suites:[0m
+  ./test-integration/thirdparty/mandrill/integration [5 dependencies]
+  ./test-integration/thirdparty/sendgrid/integration [7 dependencies]
+  ./test-integration/thirdparty/ethereum [13 dependencies]
+
+Failed to compile integration:
+
+# hanzo.io/test-integration/thirdparty/mandrill/integration_test [hanzo.io/test-integration/thirdparty/mandrill/integration.test]
+./integration_test.go:46:19: undefined: mandrill.Ping
+./integration_test.go:56:20: undefined: mandrill.GetTemplate
+./integration_test.go:57:19: undefined: mandrill.NewSendReq
+./integration_test.go:65:19: undefined: mandrill.Send
+./integration_test.go:76:19: undefined: mandrill.NewSendTemplateReq
+./integration_test.go:88:19: undefined: mandrill.SendTemplate
+
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/sendgrid/integration/integration.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585586)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585594)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+[38;5;9m
+Done.  Resuming watch...[0m
+[38;5;10mDetected changes in:[0m
+  /home/azureuser/platform/config
+[38;5;10mWill run 3 suites:[0m
+  ./test-integration/thirdparty/mandrill/integration [5 dependencies]
+  ./test-integration/thirdparty/sendgrid/integration [7 dependencies]
+  ./test-integration/thirdparty/ethereum [13 dependencies]
+
+Failed to compile integration:
+
+# hanzo.io/test-integration/thirdparty/mandrill/integration_test [hanzo.io/test-integration/thirdparty/mandrill/integration.test]
+./integration_test.go:46:19: undefined: mandrill.Ping
+./integration_test.go:56:20: undefined: mandrill.GetTemplate
+./integration_test.go:57:19: undefined: mandrill.NewSendReq
+./integration_test.go:65:19: undefined: mandrill.Send
+./integration_test.go:76:19: undefined: mandrill.NewSendTemplateReq
+./integration_test.go:88:19: undefined: mandrill.SendTemplate
+
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/sendgrid/integration/integration.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585643)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726585647)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+[38;5;9m
+Done.  Resuming watch...[0m
+[38;5;10mDetected changes in:[0m
+  /home/azureuser/platform/config
+[38;5;10mWill run 3 suites:[0m
+  ./test-integration/thirdparty/mandrill/integration [5 dependencies]
+  ./test-integration/thirdparty/sendgrid/integration [7 dependencies]
+  ./test-integration/thirdparty/ethereum [13 dependencies]
+
+Failed to compile integration:
+
+# hanzo.io/test-integration/thirdparty/mandrill/integration_test [hanzo.io/test-integration/thirdparty/mandrill/integration.test]
+./integration_test.go:46:19: undefined: mandrill.Ping
+./integration_test.go:56:20: undefined: mandrill.GetTemplate
+./integration_test.go:57:19: undefined: mandrill.NewSendReq
+./integration_test.go:65:19: undefined: mandrill.Send
+./integration_test.go:76:19: undefined: mandrill.NewSendTemplateReq
+./integration_test.go:88:19: undefined: mandrill.SendTemplate
+
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/sendgrid/integration/integration.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726595150)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+flag provided but not defined: -ginkgo.fail-fast
+Usage of /home/azureuser/platform/test-integration/thirdparty/ethereum/ethereum.test:
+  -ginkgo.debug
+    	If set, ginkgo will emit node output to files when running in parallel.
+  -ginkgo.dryRun
+    	If set, ginkgo will walk the test hierarchy without actually running anything.  Best paired with -v.
+  -ginkgo.failFast
+    	If set, ginkgo will stop running a test suite after a failure occurs.
+  -ginkgo.failOnPending
+    	If set, ginkgo will mark the test suite as failed if any specs are pending.
+  -ginkgo.flakeAttempts int
+    	Make up to this many attempts to run each spec. Please note that if any of the attempts succeed, the suite will not be failed. But any failures will still be recorded. (default 1)
+  -ginkgo.focus value
+    	If set, ginkgo will only run specs that match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.noColor
+    	If set, suppress color output in default reporter.
+  -ginkgo.noisyPendings
+    	If set, default reporter will shout about pending tests. (default true)
+  -ginkgo.noisySkippings
+    	If set, default reporter will shout about skipping tests. (default true)
+  -ginkgo.parallel.node int
+    	This worker node's (one-indexed) node number.  For running specs in parallel. (default 1)
+  -ginkgo.parallel.streamhost string
+    	The address for the server that the running nodes should stream data to.
+  -ginkgo.parallel.synchost string
+    	The address for the server that will synchronize the running nodes.
+  -ginkgo.parallel.total int
+    	The total number of worker nodes.  For running specs in parallel. (default 1)
+  -ginkgo.progress
+    	If set, ginkgo will emit progress information as each spec runs to the GinkgoWriter.
+  -ginkgo.randomizeAllSpecs
+    	If set, ginkgo will randomize all specs together.  By default, ginkgo only randomizes the top level Describe, Context and When groups.
+  -ginkgo.regexScansFilePath
+    	If set, ginkgo regex matching also will look at the file path (code location).
+  -ginkgo.reportFile string
+    	Override the default reporter output file path.
+  -ginkgo.reportPassed
+    	If set, default reporter prints out captured output of passed tests.
+  -ginkgo.seed int
+    	The seed used to randomize the spec suite. (default 1726595165)
+  -ginkgo.skip value
+    	If set, ginkgo will only run specs that do not match this regular expression. Can be specified multiple times, values are ORed.
+  -ginkgo.skipMeasurements
+    	If set, ginkgo will skip any measurement specs.
+  -ginkgo.slowSpecThreshold float
+    	(in seconds) Specs that take longer to run than this threshold are flagged as slow by the default reporter. (default 5)
+  -ginkgo.succinct
+    	If set, default reporter prints out a very succinct report
+  -ginkgo.trace
+    	If set, default reporter prints out the full stack trace when a failure occurs
+  -ginkgo.v
+    	If set, default reporter print out all specs as they begin.
+  -test.bench regexp
+    	run only benchmarks matching regexp
+  -test.benchmem
+    	print memory allocations for benchmarks
+  -test.benchtime d
+    	run each benchmark for duration d or N times if `d` is of the form Nx (default 1s)
+  -test.blockprofile file
+    	write a goroutine blocking profile to file
+  -test.blockprofilerate rate
+    	set blocking profile rate (see runtime.SetBlockProfileRate) (default 1)
+  -test.count n
+    	run tests and benchmarks n times (default 1)
+  -test.coverprofile file
+    	write a coverage profile to file
+  -test.cpu list
+    	comma-separated list of cpu counts to run each test with
+  -test.cpuprofile file
+    	write a cpu profile to file
+  -test.failfast
+    	do not start new tests after the first test failure
+  -test.fullpath
+    	show full file names in error messages
+  -test.fuzz regexp
+    	run the fuzz test matching regexp
+  -test.fuzzcachedir string
+    	directory where interesting fuzzing inputs are stored (for use only by cmd/go)
+  -test.fuzzminimizetime value
+    	time to spend minimizing a value after finding a failing input (default 1m0s)
+  -test.fuzztime value
+    	time to spend fuzzing; default is to run indefinitely
+  -test.fuzzworker
+    	coordinate with the parent process to fuzz random values (for use only by cmd/go)
+  -test.gocoverdir string
+    	write coverage intermediate files to this directory
+  -test.list regexp
+    	list tests, examples, and benchmarks matching regexp then exit
+  -test.memprofile file
+    	write an allocation profile to file
+  -test.memprofilerate rate
+    	set memory allocation profiling rate (see runtime.MemProfileRate)
+  -test.mutexprofile string
+    	write a mutex contention profile to the named file after execution
+  -test.mutexprofilefraction int
+    	if >= 0, calls runtime.SetMutexProfileFraction() (default 1)
+  -test.outputdir dir
+    	write profiles to dir
+  -test.paniconexit0
+    	panic on call to os.Exit(0)
+  -test.parallel n
+    	run at most n tests in parallel (default 4)
+  -test.run regexp
+    	run only tests and examples matching regexp
+  -test.short
+    	run smaller test suite to save time
+  -test.shuffle string
+    	randomize the execution order of tests and benchmarks (default "off")
+  -test.skip regexp
+    	do not list or run tests matching regexp
+  -test.testlogfile file
+    	write test action log to file (for use only by cmd/go)
+  -test.timeout d
+    	panic test binary after duration d (default 0, timeout disabled)
+  -test.trace file
+    	write an execution trace to file
+  -test.v
+    	verbose: print additional output
+[38;5;9m
+Done.  Resuming watch...[0m
