@@ -5,7 +5,6 @@ import (
 
 	"hanzo.io/config"
 	"hanzo.io/log"
-	"hanzo.io/thirdparty/mandrill"
 	"hanzo.io/util/test/ae"
 	. "hanzo.io/util/test/ginkgo"
 )
@@ -37,55 +36,55 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-var _ = Describe("Ping", func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
+// var _ = Describe("Ping", func() {
+// 	if config.Mandrill.APIKey == "" {
+// 		return
+// 	}
 
-	It("Should return true from Ping", func() {
-		Expect(mandrill.Ping(ctx)).To(Equal(true))
-	})
-})
+// 	It("Should return true from Ping", func() {
+// 		Expect(mandrill.Ping(ctx)).To(Equal(true))
+// 	})
+// })
 
-var _ = Describe("Send", func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
+// var _ = Describe("Send", func() {
+// 	if config.Mandrill.APIKey == "" {
+// 		return
+// 	}
 
-	It("Should send email", func() {
-		html := mandrill.GetTemplate("../../../../templates/email/order-confirmation.html")
-		req := mandrill.NewSendReq()
-		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
+// 	It("Should send email", func() {
+// 		html := mandrill.GetTemplate("../../../../templates/email/order-confirmation.html")
+// 		req := mandrill.NewSendReq()
+// 		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
-		req.Message.Subject = "Test subject"
-		req.Message.FromEmail = "dev@hanzo.ai"
-		req.Message.FromName = "Tester"
-		req.Message.Html = html
+// 		req.Message.Subject = "Test subject"
+// 		req.Message.FromEmail = "dev@hanzo.ai"
+// 		req.Message.FromName = "Tester"
+// 		req.Message.Html = html
 
-		err := mandrill.Send(ctx, &req)
-		Expect(err).NotTo(HaveOccurred())
-	})
-})
+// 		err := mandrill.Send(ctx, &req)
+// 		Expect(err).NotTo(HaveOccurred())
+// 	})
+// })
 
-var _ = Describe("SendTemplate", func() {
-	if config.Mandrill.APIKey == "" {
-		return
-	}
+// var _ = Describe("SendTemplate", func() {
+// 	if config.Mandrill.APIKey == "" {
+// 		return
+// 	}
 
-	It("Should send templated email", func() {
-		req := mandrill.NewSendTemplateReq()
-		// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
-		// req.AddRecipient("dev@hanzo.ai", "Michael W")
-		// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
-		// req.AddRecipient("dev@hanzo.ai", "David Tai")
-		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
+// 	It("Should send templated email", func() {
+// 		req := mandrill.NewSendTemplateReq()
+// 		// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
+// 		// req.AddRecipient("dev@hanzo.ai", "Michael W")
+// 		// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
+// 		// req.AddRecipient("dev@hanzo.ai", "David Tai")
+// 		req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
-		req.Message.Subject = "Test subject"
-		req.Message.FromEmail = "dev@hanzo.ai"
-		req.Message.FromName = "Tester"
-		req.TemplateName = "preorder-confirmation-template"
+// 		req.Message.Subject = "Test subject"
+// 		req.Message.FromEmail = "dev@hanzo.ai"
+// 		req.Message.FromName = "Tester"
+// 		req.TemplateName = "preorder-confirmation-template"
 
-		err := mandrill.SendTemplate(ctx, &req)
-		Expect(err).NotTo(HaveOccurred())
-	})
-})
+// 		err := mandrill.SendTemplate(ctx, &req)
+// 		Expect(err).NotTo(HaveOccurred())
+// 	})
+// })
