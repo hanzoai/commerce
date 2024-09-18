@@ -1,6 +1,6 @@
 service: default
 
-runtime: go121
+runtime: go122
 instance_class: F4
 
 automatic_scaling:
