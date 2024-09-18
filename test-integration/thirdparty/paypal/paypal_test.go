@@ -54,8 +54,8 @@ var _ = BeforeSuite(func() {
 		ProductId:   "Test Product Id",
 		ProductName: "Test Product Name",
 		ProductSlug: "Test Product Slug",
-		Price:       100,
-		Quantity:    1,
+		// :       100,
+		Quantity: 1,
 	}
 	ord.Currency = currency.USD
 	ord.Tax = 1
