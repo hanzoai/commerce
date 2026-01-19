@@ -20,6 +20,17 @@ Hanzo Commerce is a multi-tenant e-commerce platform being modernized from a Goo
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Database Backends
+
+The `db/` package supports multiple backends:
+
+| Backend | Use Case | Vector Search |
+|---------|----------|---------------|
+| **SQLite** | Per-user/org isolation, edge deployment | sqlite-vec |
+| **PostgreSQL** | Shared deployments, scaling | pgvector |
+| **MongoDB/FerretDB** | Document-oriented, flexible schema | Atlas Search |
+| **ClickHouse** | Analytics, parallel queries | - |
+
 ### Database Layers
 
 1. **User SQLite** (`data/users/{userID}/data.db`)
@@ -33,7 +44,18 @@ Hanzo Commerce is a multi-tenant e-commerce platform being modernized from a Goo
    - Organization-level settings
    - Multi-user access within org
 
-3. **Analytics (ClickHouse)** (Optional)
+3. **PostgreSQL** (Alternative to SQLite)
+   - Shared multi-tenant deployment
+   - pgvector for vector search
+   - Schema-based tenant isolation
+   - JSONB for flexible data
+
+4. **MongoDB/FerretDB** (Alternative)
+   - Document-oriented storage
+   - FerretDB uses PostgreSQL/SQLite backend
+   - MongoDB-compatible API
+
+5. **Analytics (ClickHouse)** (Optional)
    - Deep analytics queries
    - Parallel processing
    - Event streaming

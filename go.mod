@@ -22,8 +22,10 @@ require (
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20221112152111-d7b7e2276db2
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mholt/binding v0.3.0
+	go.mongodb.org/mongo-driver v1.13.1
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.34.1
