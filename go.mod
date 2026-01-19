@@ -22,6 +22,7 @@ require (
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20221112152111-d7b7e2276db2
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo v1.16.5
@@ -34,6 +35,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/speps/go-hashids v2.0.0+incompatible
+	github.com/spf13/cobra v1.8.0
 	github.com/stripe/stripe-go v70.15.0+incompatible
 	github.com/stripe/stripe-go/v75 v75.1.0
 	golang.org/x/crypto v0.27.0
@@ -43,6 +45,8 @@ require (
 require (
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/bytedance/sonic v1.10.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect
