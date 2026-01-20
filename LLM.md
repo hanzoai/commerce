@@ -2,22 +2,22 @@
 
 ## Overview
 
-Hanzo Commerce is a multi-tenant e-commerce platform being modernized from a Google App Engine monolith to a standalone binary with embedded SQLite.
+Hanzo Commerce is a multi-tenant e-commerce platform that has been fully modernized from a Google App Engine monolith to a standalone binary with embedded SQLite. All App Engine dependencies have been removed.
 
 ## Architecture
 
-### Current State (Modernization In Progress)
+### Current State (Modernization Complete)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Commerce App                            │
-├─────────────────────────────────────────────────────────────┤
-│  CLI (cobra)    │  HTTP (Gin)    │  Hooks System            │
-├─────────────────────────────────────────────────────────────┤
-│  User SQLite    │  Org SQLite    │  Hanzo Datastore         │
-│  + sqlite-vec   │  + sqlite-vec  │  (ClickHouse)            │
-│  Per-user data  │  Shared tenant │  Deep analytics          │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Commerce App v1.33.0                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  CLI (Cobra)    │  HTTP (Gin)    │  Hooks System  │  Events Emitter    │
+├─────────────────────────────────────────────────────────────────────────┤
+│  User SQLite    │  Org SQLite    │  Datastore     │  Insights+Analytics│
+│  + sqlite-vec   │  + sqlite-vec  │  (ClickHouse)  │  (PostHog+Umami)   │
+│  Per-user data  │  Shared tenant │  Deep analytics│  Product+Web       │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Database Backends
@@ -65,22 +65,32 @@ The `db/` package supports multiple backends:
 
 ```
 commerce/
-├── cmd/commerce/       # CLI entry point (NEW)
-├── commerce.go         # Main app framework (NEW)
-├── db/                 # Database abstraction (NEW)
-│   ├── db.go           # Interfaces and Manager
-│   ├── sqlite.go       # SQLite implementation
-│   ├── postgres.go     # PostgreSQL implementation
-│   ├── mongo.go        # MongoDB/FerretDB implementation
-│   ├── query.go        # Query builder
-│   └── datastore.go    # Hanzo Datastore (ClickHouse) connector
-├── hooks/              # Hook system (NEW)
-│   └── hooks.go        # Event hooks for extensibility
-├── api/                # HTTP API handlers (legacy)
-├── models/             # Data models (legacy, needs migration)
-├── datastore/          # Old App Engine datastore (legacy)
-├── config/             # Configuration (legacy)
-└── middleware/         # HTTP middleware (legacy)
+├── cmd/commerce/              # CLI entry point
+├── commerce.go                # Main app framework
+├── db/                        # Database abstraction
+│   ├── db.go                  # Interfaces and Manager
+│   ├── sqlite.go              # SQLite implementation
+│   ├── postgres.go            # PostgreSQL implementation
+│   ├── mongo.go               # MongoDB/FerretDB implementation
+│   ├── query.go               # Query builder
+│   └── datastore.go           # Hanzo Datastore (ClickHouse) connector
+├── hooks/                     # Hook system (Base-compatible)
+│   ├── hooks.go               # Core hook registry
+│   ├── event.go               # Event types and Resolver interface
+│   └── tagged.go              # TaggedHook for filtered execution
+├── insights/                  # PostHog integration
+│   ├── insights.go            # Insights client
+│   └── middleware.go          # Gin middleware for tracking
+├── events/                    # Unified event forwarding
+│   └── events.go              # Multi-backend event emitter
+├── integrations/              # Third-party integrations
+│   └── analyticsapi/          # Hanzo Analytics client
+├── infra/                     # Infrastructure clients
+├── api/                       # HTTP API handlers
+├── models/                    # Data models
+├── datastore/                 # Datastore wrapper
+├── config/                    # Configuration
+└── middleware/                # HTTP middleware
 ```
 
 ## Running Commerce
@@ -94,8 +104,15 @@ go run cmd/commerce/main.go serve --dev
 # Production
 ./commerce serve 0.0.0.0:80
 
-# With Hanzo Datastore
-COMMERCE_DATASTORE="native://localhost:9000/commerce" ./commerce serve
+# With full analytics stack
+COMMERCE_DATASTORE="native://localhost:9000/commerce" \
+INSIGHTS_ENABLED=true \
+INSIGHTS_ENDPOINT="https://insights.hanzo.ai" \
+INSIGHTS_API_KEY="phc_..." \
+ANALYTICS_ENABLED=true \
+ANALYTICS_ENDPOINT="https://analytics.hanzo.ai" \
+ANALYTICS_WEBSITE_ID="website-uuid" \
+./commerce serve
 ```
 
 ### Environment Variables
@@ -107,6 +124,228 @@ COMMERCE_DATASTORE="native://localhost:9000/commerce" ./commerce serve
 | `COMMERCE_SECRET` | Encryption secret | `change-me-in-production` |
 | `COMMERCE_HTTP` | HTTP address | `127.0.0.1:8090` |
 | `COMMERCE_DATASTORE` | Hanzo Datastore DSN | (disabled) |
+| `INSIGHTS_ENABLED` | Enable Insights (PostHog) | `false` |
+| `INSIGHTS_ENDPOINT` | Insights API URL | `https://insights.hanzo.ai` |
+| `INSIGHTS_API_KEY` | Insights project API key | - |
+| `ANALYTICS_ENABLED` | Enable Analytics (Umami-like) | `false` |
+| `ANALYTICS_ENDPOINT` | Analytics API URL | `https://analytics.hanzo.ai` |
+| `ANALYTICS_WEBSITE_ID` | Analytics website ID | - |
+
+## Hook System
+
+Commerce uses a hook system compatible with Hanzo Base patterns:
+
+### Core Concepts
+
+- **Hook[T]**: Generic, thread-safe collection of handlers
+- **TaggedHook[T]**: Filters execution based on event tags
+- **Resolver**: Interface for events that can chain to next handler
+- **Handler**: Has ID, Priority, and Func
+
+### Event Types
+
+```go
+// Base event with chaining support
+type Event struct {
+    nextFunc func() error
+}
+
+func (e *Event) Next() error { ... }
+
+// Tagged event for filtered hooks
+type TaggedEvent struct {
+    Event
+    tags []string
+}
+```
+
+### Registering Hooks
+
+```go
+// On order creation (using TaggedHook pattern from Base)
+app.Hooks.OnModelCreate("Order").Bind(&hooks.Handler[*hooks.ModelEvent]{
+    ID:       "validateInventory",
+    Priority: 10,
+    Func: func(e *hooks.ModelEvent) error {
+        order := e.Model.(*Order)
+        // Validate inventory before create
+        return e.Next() // MUST call to continue chain
+    },
+})
+
+// On server start
+app.Hooks.OnServe().Bind(&hooks.Handler[*hooks.AppEvent]{
+    ID: "startCron",
+    Func: func(e *hooks.AppEvent) error {
+        // Start background jobs
+        return e.Next()
+    },
+})
+```
+
+## Events System
+
+Commerce includes a unified events system with shared datastore storage:
+
+### Architecture
+
+```
+Commerce App
+    │
+    ▼
+┌─────────────────┐
+│  Event Emitter  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   ClickHouse    │ ◄── Single source of truth
+│   (Datastore)   │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+Insights  Analytics
+(PostHog) (Umami)
+```
+
+### Unified Datastore (Primary)
+
+Events are written directly to ClickHouse via the Hanzo Datastore. Both Insights and Analytics query from the same tables, ensuring data consistency:
+
+- **commerce.events** - Main event table (MergeTree)
+- **commerce.events_hourly** - Aggregated stats (SummingMergeTree)
+- **commerce.persons** - User profiles (ReplacingMergeTree)
+- **commerce.sessions** - Session data (ReplacingMergeTree)
+- **commerce.groups** - Group analytics (ReplacingMergeTree)
+
+### HTTP Forwarding (Optional)
+
+For hybrid deployments, events can also be forwarded via HTTP:
+
+1. **Hanzo Insights (PostHog fork)** - Product analytics
+   - User behavior tracking
+   - Funnels and conversions
+   - Feature flags
+   - Session recording
+
+2. **Hanzo Analytics (Umami-like)** - Web analytics
+   - Page views and sessions
+   - Privacy-focused tracking
+   - UTM parameter tracking
+   - Referrer analysis
+
+### Using the Events Emitter
+
+```go
+// Events are automatically forwarded to configured backends
+emitter := app.Events
+
+// Track order completed
+emitter.EmitOrderCompleted(ctx, &events.Order{
+    ID:     "ord_123",
+    UserID: "usr_456",
+    Total:  99.99,
+    Items:  items,
+})
+
+// Track product viewed
+emitter.EmitProductViewed(ctx, userID, &events.Product{
+    ID:    "prod_789",
+    Name:  "Widget",
+    Price: 29.99,
+})
+
+// Track page view
+emitter.EmitPageView(ctx, &events.PageView{
+    URL:    "https://shop.example.com/products",
+    Title:  "Products",
+    UserID: userID,
+})
+```
+
+### Insights Middleware
+
+```go
+// Add to Gin router for automatic HTTP tracking
+app.Router.Use(insights.Middleware(app.Events.insightsClient))
+```
+
+### Analytics API Endpoints
+
+Commerce exposes a unified analytics API for event collection:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/analytics/event` | POST | Single event |
+| `/api/v1/analytics/events` | POST | Batch events |
+| `/api/v1/analytics/pageview` | POST | Page view |
+| `/api/v1/analytics/identify` | POST | User identification |
+| `/api/v1/analytics/ast` | POST | astley.js page AST |
+| `/api/v1/analytics/element` | POST | Element interaction |
+| `/api/v1/analytics/section` | POST | Section visibility |
+| `/api/v1/analytics/pixel.gif` | GET | Pixel tracking |
+| `/api/v1/analytics/ai/message` | POST | AI message event |
+| `/api/v1/analytics/ai/completion` | POST | AI completion event |
+
+### astley.js Integration
+
+astley.js can send structured page data using JSON-LD format:
+
+```javascript
+// Send page AST to Commerce
+fetch('/api/v1/analytics/ast', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    '@context': 'hanzo.ai/schema',
+    '@type': 'Website',
+    head: {
+      title: 'Product Page',
+      description: 'View our products'
+    },
+    sections: [
+      { name: 'hero', type: 'hero', id: 'hero-section' },
+      { name: 'products', type: 'block', id: 'product-grid' }
+    ],
+    distinct_id: 'user_123',
+    organization_id: 'org_456',
+    url: window.location.href
+  })
+});
+
+// Track element interaction
+fetch('/api/v1/analytics/element', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    element_type: 'button',
+    element_id: 'add-to-cart',
+    element_text: 'Add to Cart',
+    section_name: 'product-detail',
+    distinct_id: 'user_123'
+  })
+});
+```
+
+### Cloud AI Integration
+
+Hanzo Cloud can send AI events to the same datastore:
+
+```go
+// From Cloud: track AI message
+http.Post("https://commerce.example.com/api/v1/analytics/ai/message",
+    "application/json",
+    strings.NewReader(`{
+        "distinct_id": "user_123",
+        "organization_id": "org_456",
+        "chat_id": "chat_789",
+        "model_provider": "openai",
+        "model_name": "gpt-4",
+        "token_count": 1250,
+        "token_price": 0.015
+    }`))
+```
 
 ## Database Usage
 
@@ -166,77 +405,39 @@ err := datastore.Select(ctx, &stats, `
 `)
 ```
 
-## Hook System
+## Migration Status
 
-### Registering Hooks
+All migration phases are complete:
 
-```go
-// On order creation
-app.Hooks.OnModelCreate("Order").Bind(&hooks.Handler[*hooks.ModelEvent]{
-    ID:       "validateInventory",
-    Priority: 10,
-    Func: func(e *hooks.ModelEvent) error {
-        order := e.Model.(*Order)
-        // Validate inventory
-        return e.Next()
-    },
-})
+1. ✅ **Phase 1**: Create new `db/` package with SQLite backend
+2. ✅ **Phase 2**: Create standalone CLI and app framework
+3. ✅ **Phase 3**: Migrate models to new `db.DB` interface
+4. ✅ **Phase 4**: Remove App Engine dependencies (145 files, 0 imports remain)
+5. ✅ **Phase 5**: Integrate `hanzo/iam` for auth
+6. ✅ **Phase 6**: Integrate datastore-go for ClickHouse
+7. ✅ **Phase 7**: Add AI recommendations via Cloud-Backend
+8. ✅ **Phase 8**: Create deployment configuration
+9. ✅ **Phase 9**: Events system (Insights + Analytics integration)
 
-// On server start
-app.Hooks.OnServe().Bind(&hooks.Handler[*hooks.AppEvent]{
-    ID: "startCron",
-    Func: func(e *hooks.AppEvent) error {
-        // Start background jobs
-        return e.Next()
-    },
-})
-```
-
-## Legacy Code Notes
-
-### App Engine Dependencies (To Be Migrated)
-
-The following packages still depend on `google.golang.org/appengine`:
-
-- `datastore/` - Core datastore wrapper
-- `models/mixin/` - Model base class
-- `middleware/` - HTTP middleware
-- `api/` - API handlers
-- `delay/` - Task queue
-
-### Migration Strategy
-
-1. **Phase 1** (Complete): Create new `db/` package with SQLite backend
-2. **Phase 2** (Complete): Create standalone CLI and app framework
-3. **Phase 3** (Complete): Migrate models to new `db.DB` interface
-   - Order, User, Product models migrated to v2
-   - Repository pattern for data access
-   - Vector embeddings for AI recommendations
-4. **Phase 4** (Complete): Remove App Engine dependencies
-   - Replaced appengine/urlfetch with net/http
-   - Replaced appengine/memcache with util/cache
-   - Replaced appengine/search with util/search
-   - Replaced appengine/taskqueue with delay package
-   - 145 files updated, zero App Engine imports remain
-5. **Phase 5** (Complete): Integrate `hanzo/iam` for auth
-6. **Phase 6** (Complete): Integrate datastore-go for ClickHouse
-7. **Phase 7** (Complete): Add AI recommendations via Cloud-Backend
-8. **Phase 8** (Complete): Create deployment configuration
-
-**ALL PHASES COMPLETE** - Commerce is now a standalone binary.
+**Commerce is now a fully standalone binary with zero App Engine dependencies.**
 
 ## Dependencies
 
-### New (Modernization)
+### Core Dependencies
 
 - `github.com/spf13/cobra` - CLI framework
 - `github.com/mattn/go-sqlite3` - SQLite driver
-- `github.com/gin-gonic/gin` - HTTP framework (existing)
+- `github.com/gin-gonic/gin` - HTTP framework
+- `github.com/hanzoai/datastore-go` - ClickHouse connector
 
-### Legacy (To Be Evaluated)
+### Infrastructure Dependencies
 
-- `google.golang.org/appengine` - App Engine SDK (to be removed)
-- `github.com/qedus/nds` - Datastore caching (to be replaced)
+- `github.com/redis/go-redis/v9` - Valkey/Redis client
+- `github.com/qdrant/go-client` - Qdrant vector DB
+- `github.com/minio/minio-go/v7` - MinIO object storage
+- `github.com/meilisearch/meilisearch-go` - Meilisearch client
+- `github.com/nats-io/nats.go` - NATS pub/sub
+- `go.temporal.io/sdk` - Temporal workflow engine
 
 ## Testing
 
@@ -251,57 +452,57 @@ go test ./db/...
 go test -v ./...
 ```
 
-## Security Considerations
-
-1. **Secrets**: All secrets removed from codebase, use environment variables
-2. **Per-user isolation**: SQLite databases are isolated per user
-3. **Vector embeddings**: Stored locally, no external API calls for search
-
 ## Hanzo Ecosystem Integration
 
 Commerce integrates with the broader Hanzo ecosystem:
 
-### Hanzo Services
+### Services Matrix
 
 | Service | Path | Tech | Status | Integration |
 |---------|------|------|--------|-------------|
-| **IAM (hanzo.id)** | `~/work/hanzo/iam` | Go/React (Casdoor) | ✅ Production | OAuth2/OIDC |
-| **Cloud (Casibase)** | `~/work/hanzo/cloud` | Go/Beego | ✅ Production | AI/LLM APIs |
-| **Cloud-Backend** | `~/work/hanzo/cloud-backend` | Rust/Tokio | ✅ Production | Inference API |
+| **IAM (hanzo.id)** | `~/work/hanzo/iam` | Go/React | ✅ Production | OAuth2/OIDC |
+| **Cloud** | `~/work/hanzo/cloud` | Go/Beego | ✅ Production | AI/LLM APIs |
+| **Cloud-Backend** | `~/work/hanzo/cloud-backend` | Rust/Tokio | ✅ Production | Inference |
 | **Datastore** | `~/work/hanzo/datastore-go` | Go | ✅ Production | ClickHouse |
-| **Base** | `~/work/hanzo/base` | Go | ✅ Production | Reference arch |
-| **Universe** | `~/work/hanzo/universe` | Terraform/K8s | ✅ Deployed | Infrastructure |
+| **Base** | `~/work/hanzo/base` | Go | ✅ Production | Reference |
+| **Insights** | `~/work/hanzo/insights` | PostHog fork | ✅ Ready | Product analytics |
+| **Analytics** | `~/work/hanzo/analytics` | Next.js | ✅ Ready | Web analytics |
 
-### Authentication (hanzo.id via IAM)
+### Growth + Automation Stack
 
-```go
-// OAuth2 integration with Hanzo IAM
-type IAMConfig struct {
-    Issuer       string // https://hanzo.id
-    ClientID     string
-    ClientSecret string
-    RedirectURL  string
-}
+Commerce is designed to work with the full Hanzo Growth stack:
 
-// Validate token from IAM
-claims, err := iam.ValidateToken(ctx, token)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Hanzo Data Layer                        │
+├─────────────────────────────────────────────────────────────┤
+│  BigQuery      │  ClickHouse     │  PostgreSQL              │
+│  (Analytics)   │  (Real-time)    │  (Operational)           │
+└─────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────┐
+│                     Hanzo Growth                            │
+├─────────────────────────────────────────────────────────────┤
+│  Insights      │  Analytics      │  GrowthBook   │ Dittofeed│
+│  (PostHog)     │  (Umami)        │  (A/B Test)   │ (Engage) │
+└─────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────┐
+│                    Hanzo Automation                         │
+├─────────────────────────────────────────────────────────────┤
+│  Activepieces  │  Temporal       │  NATS                    │
+│  (Workflows)   │  (Tasks)        │  (Pub/Sub)               │
+└─────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────┐
+│                   Hanzo CX & Ops                            │
+├─────────────────────────────────────────────────────────────┤
+│  Chatwoot      │  CRM            │  ERP                     │
+│  (Support)     │  (Sales)        │  (Inventory)             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### AI Integration (Cloud/Cloud-Backend)
-
-```go
-// AI-powered product recommendations
-type AIConfig struct {
-    Endpoint string // Cloud-Backend API
-    APIKey   string
-    Model    string // "claude-3-5-sonnet", "gpt-4", etc.
-}
-
-// Get recommendations
-recs, err := ai.GetRecommendations(ctx, userID, products)
-```
-
-### Deployment (Universe → DigitalOcean)
+### Deployment
 
 ```yaml
 # compose.yml for production
@@ -312,16 +513,15 @@ services:
       - COMMERCE_DATASTORE=native://clickhouse:9000/commerce
       - IAM_ISSUER=https://hanzo.id
       - IAM_CLIENT_ID=${IAM_CLIENT_ID}
+      - INSIGHTS_ENABLED=true
+      - INSIGHTS_ENDPOINT=https://insights.hanzo.ai
+      - INSIGHTS_API_KEY=${INSIGHTS_API_KEY}
+      - ANALYTICS_ENABLED=true
+      - ANALYTICS_ENDPOINT=https://analytics.hanzo.ai
     depends_on:
       - clickhouse
       - redis
 ```
-
-### Integration Roadmap
-
-1. **Phase 5** (Pending): OAuth2 client for IAM (hanzo.id)
-2. **Phase 6** (Pending): datastore-go for ClickHouse analytics
-3. **Phase 7** (Pending): AI recommendations via Cloud-Backend
 
 ## Related Projects
 
@@ -330,4 +530,6 @@ services:
 - `~/work/hanzo/iam` - Casdoor-based IAM (hanzo.id authentication)
 - `~/work/hanzo/cloud` - Casibase AI platform (100+ LLM providers)
 - `~/work/hanzo/cloud-backend` - Rust inference backend with GRPO
+- `~/work/hanzo/insights` - PostHog fork for product analytics
+- `~/work/hanzo/analytics` - Privacy-focused web analytics (Umami-like)
 - `~/work/hanzo/universe` - Production infrastructure (private)
