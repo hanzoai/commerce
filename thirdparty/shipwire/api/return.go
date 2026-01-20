@@ -6,18 +6,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	return_ "hanzo.io/models/return"
-	"hanzo.io/thirdparty/shipwire"
-	"hanzo.io/util/counter"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	return_ "github.com/hanzoai/commerce/models/return"
+	"github.com/hanzoai/commerce/thirdparty/shipwire"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func createReturn(c *gin.Context) {

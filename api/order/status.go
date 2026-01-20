@@ -2,14 +2,14 @@ package order
 
 import (
 	"github.com/gin-gonic/gin"
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/wallet"
-	// "hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/wallet"
+	// "github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
 )
 
 type StatusResponse struct {

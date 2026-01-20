@@ -5,15 +5,15 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api/api"
-	"hanzo.io/datastore"
-	"hanzo.io/models/fixtures"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
+	"github.com/hanzoai/commerce/api/api"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/ginclient"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

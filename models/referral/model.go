@@ -1,6 +1,6 @@
 package referral
 
-import "hanzo.io/datastore"
+import "github.com/hanzoai/commerce/datastore"
 
 var kind = "referral"
 

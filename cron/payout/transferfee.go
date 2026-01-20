@@ -6,16 +6,16 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/models/affiliate"
-	"hanzo.io/models/fee"
-	"hanzo.io/models/multi"
-	"hanzo.io/models/partner"
-	"hanzo.io/models/transfer"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/affiliate"
+	"github.com/hanzoai/commerce/models/fee"
+	"github.com/hanzoai/commerce/models/multi"
+	"github.com/hanzoai/commerce/models/partner"
+	"github.com/hanzoai/commerce/models/transfer"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {

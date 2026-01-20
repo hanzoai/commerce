@@ -3,8 +3,8 @@ package stripe
 import (
 	"time"
 
-	"hanzo.io/models/transfer"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/transfer"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 // Update transfer from Stripe

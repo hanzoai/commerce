@@ -3,18 +3,18 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/ads/ad"
-	"hanzo.io/models/ads/adcampaign"
-	"hanzo.io/models/ads/adconfig"
-	"hanzo.io/models/ads/adset"
-	"hanzo.io/models/ads/util"
-	"hanzo.io/models/copy"
-	"hanzo.io/models/media"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/ads/ad"
+	"github.com/hanzoai/commerce/models/ads/adcampaign"
+	"github.com/hanzoai/commerce/models/ads/adconfig"
+	"github.com/hanzoai/commerce/models/ads/adset"
+	"github.com/hanzoai/commerce/models/ads/util"
+	"github.com/hanzoai/commerce/models/copy"
+	"github.com/hanzoai/commerce/models/media"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/models/ads"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/models/ads"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

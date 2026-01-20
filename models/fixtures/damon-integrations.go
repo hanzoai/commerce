@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 var _ = New("damon-integrations", func(c *gin.Context) *organization.Organization {

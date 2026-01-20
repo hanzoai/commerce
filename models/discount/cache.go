@@ -7,9 +7,9 @@ import (
 	aeds "google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/discount/scope"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/discount/scope"
 )
 
 // Computes memcache key, using format:

@@ -6,7 +6,7 @@ import (
 
 	"github.com/speps/go-hashids"
 
-	"hanzo.io/config"
+	"github.com/hanzoai/commerce/config"
 )
 
 var hd = hashids.NewData()

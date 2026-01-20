@@ -1,9 +1,9 @@
 package block
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	. "hanzo.io/models/blockchains"
+	. "github.com/hanzoai/commerce/models/blockchains"
 )
 
 //

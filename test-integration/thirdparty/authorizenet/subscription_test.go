@@ -1,11 +1,11 @@
 package test
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/order"
-	//"hanzo.io/thirdparty/authorizenet"
-	. "hanzo.io/util/test/ginkgo"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/order"
+	//"github.com/hanzoai/commerce/thirdparty/authorizenet"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("thirdparty.authorizenet.subscription", func() {

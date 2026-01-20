@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/wallet"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/wallet"
 )
 
 func MakePayment(ctx context.Context, from wallet.Account, to string, amount, fee currency.Cents, password []byte) (string, error) {

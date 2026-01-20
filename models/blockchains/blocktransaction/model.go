@@ -3,8 +3,8 @@ package blocktransaction
 import (
 	"google.golang.org/appengine"
 
-	"hanzo.io/datastore"
-	. "hanzo.io/models/blockchains"
+	"github.com/hanzoai/commerce/datastore"
+	. "github.com/hanzoai/commerce/models/blockchains"
 )
 
 var kind = "blocktransaction"

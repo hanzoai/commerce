@@ -3,13 +3,13 @@ package integration
 import (
 	"fmt"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/test-integration/api/checkout/processors/requests"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/test-integration/api/checkout/processors/requests"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("/checkout/authorize", func() {

@@ -3,11 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
-	"hanzo.io/types/website"
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/types/website"
 )
 
 var _ = New("amazingairfare", func(c *gin.Context) *organization.Organization {

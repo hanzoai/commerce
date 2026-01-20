@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/payment"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/user"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("fix-ludela-pt2",

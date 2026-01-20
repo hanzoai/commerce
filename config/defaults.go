@@ -3,8 +3,8 @@ package config
 import (
 	"path/filepath"
 
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 // Default settings

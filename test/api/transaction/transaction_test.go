@@ -1,14 +1,14 @@
 package test
 
 import (
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/transaction/util"
-	"hanzo.io/models/types/currency"
-	// "hanzo.io/util/json"
-	// "hanzo.io/log"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/transaction/util"
+	"github.com/hanzoai/commerce/models/types/currency"
+	// "github.com/hanzoai/commerce/util/json"
+	// "github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/util/test/ginclient"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginclient"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("transaction", func() {

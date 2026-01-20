@@ -4,21 +4,21 @@ import (
 	"net/url"
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/fixtures"
-	"hanzo.io/models/oauthtoken"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/json"
-	"hanzo.io/util/jwt"
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/oauthtoken"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/jwt"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/ginclient"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
-	authApi "hanzo.io/api/auth"
+	authApi "github.com/hanzoai/commerce/api/auth"
 )
 
 func Test(t *testing.T) {

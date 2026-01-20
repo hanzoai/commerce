@@ -7,19 +7,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/shipwire"
-	"hanzo.io/util/counter"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/shipwire"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func updateFromTrackings(ord *order.Order, rsrc Resource) {

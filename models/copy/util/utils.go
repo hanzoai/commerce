@@ -3,8 +3,8 @@ package util
 import (
 	"errors"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/copy"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/copy"
 )
 
 var NoParentCopyFound = errors.New("No Parent Copy Found")

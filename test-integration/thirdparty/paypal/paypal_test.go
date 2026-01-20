@@ -3,17 +3,17 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/paypal"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/paypal"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/models/lineitem"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/models/lineitem"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

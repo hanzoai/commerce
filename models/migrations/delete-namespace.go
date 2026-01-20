@@ -3,20 +3,20 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/bundle"
-	"hanzo.io/models/collection"
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/form"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/token"
-	"hanzo.io/models/user"
-	"hanzo.io/models/variant"
+	"github.com/hanzoai/commerce/models/bundle"
+	"github.com/hanzoai/commerce/models/collection"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/token"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/variant"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 func setupNamespaceDelete(c *gin.Context) []interface{} {

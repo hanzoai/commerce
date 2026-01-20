@@ -3,10 +3,10 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/util/bit"
-	"hanzo.io/util/permission"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/permission"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

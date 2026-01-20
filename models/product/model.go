@@ -1,8 +1,8 @@
 package product
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/variant"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/variant"
 )
 
 var kind = "product"

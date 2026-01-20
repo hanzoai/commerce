@@ -1,7 +1,7 @@
 package referralprogram
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 )
 
 var kind = "referralprogram"

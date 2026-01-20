@@ -9,14 +9,14 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/template"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/template"
 )
 
 // Wrapped model, with a few display helpers

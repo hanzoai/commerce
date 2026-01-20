@@ -3,9 +3,9 @@ package account
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

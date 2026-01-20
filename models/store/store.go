@@ -3,19 +3,19 @@ package store
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/shippingrates"
-	"hanzo.io/models/taxrates"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/shipping"
-	"hanzo.io/models/types/weight"
-	"hanzo.io/util/json"
-	"hanzo.io/util/reflect"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/shippingrates"
+	"github.com/hanzoai/commerce/models/taxrates"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/shipping"
+	"github.com/hanzoai/commerce/models/types/weight"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/reflect"
+	"github.com/hanzoai/commerce/util/val"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Everything is a pointer, which allows fields to be nil. This way when we

@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	partial "hanzo.io/util/searchpartial"
+	partial "github.com/hanzoai/commerce/util/searchpartial"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

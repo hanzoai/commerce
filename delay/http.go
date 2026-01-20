@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/appengine/taskqueue"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 func RunFunc(c context.Context, w http.ResponseWriter, req *http.Request) {

@@ -7,8 +7,8 @@ import (
 
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/log"
-	"hanzo.io/util/task"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/task"
 )
 
 // SOON!

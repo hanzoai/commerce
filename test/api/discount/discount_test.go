@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"time"
 
-	"hanzo.io/models/discount"
+	"github.com/hanzoai/commerce/models/discount"
 	"github.com/icrowley/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("discount", func() {

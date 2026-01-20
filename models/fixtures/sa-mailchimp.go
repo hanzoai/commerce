@@ -3,14 +3,14 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var _ = New("sa-mailchimp", func(c *gin.Context) *organization.Organization {

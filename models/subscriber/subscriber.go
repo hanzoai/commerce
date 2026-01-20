@@ -10,13 +10,13 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/client"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
-	. "hanzo.io/util/strings"
+	. "github.com/hanzoai/commerce/types"
+	. "github.com/hanzoai/commerce/util/strings"
 )
 
 var mailchimpReserved = map[string]bool{

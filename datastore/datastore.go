@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore/query"
-	"hanzo.io/datastore/utils"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore/query"
+	"github.com/hanzoai/commerce/datastore/utils"
+	"github.com/hanzoai/commerce/log"
 )
 
 var (

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Subscriber struct {

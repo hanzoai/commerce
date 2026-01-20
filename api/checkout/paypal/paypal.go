@@ -5,11 +5,11 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 type PayKeyResponse struct {

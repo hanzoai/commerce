@@ -1,8 +1,8 @@
 package referrer
 
 import (
-	"hanzo.io/datastore"
-	. "hanzo.io/types"
+	"github.com/hanzoai/commerce/datastore"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var kind = "referrer"

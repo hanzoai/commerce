@@ -1,9 +1,9 @@
 package rule
 
 import (
-	"hanzo.io/models/discount/action"
-	"hanzo.io/models/discount/trigger"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/discount/action"
+	"github.com/hanzoai/commerce/models/discount/trigger"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 // Quantity-based trigger

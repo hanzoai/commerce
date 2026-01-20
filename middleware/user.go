@@ -3,11 +3,11 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth"
-	"hanzo.io/config"
-	"hanzo.io/models/user"
-	"hanzo.io/log"
-	"hanzo.io/util/session"
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/session"
 )
 
 func AcquireUser(moduleName string) gin.HandlerFunc {

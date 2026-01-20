@@ -10,9 +10,9 @@ import (
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 // This is really a token response, but for our purposes acts as a copy of

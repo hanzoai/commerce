@@ -3,17 +3,17 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/return"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/user"
-	"hanzo.io/util/counter"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/return"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/log"
 
 	aeds "google.golang.org/appengine/datastore"
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 func MustNukeCounter(db *ds.Datastore, tag string) {

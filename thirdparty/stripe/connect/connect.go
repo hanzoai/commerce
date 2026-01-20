@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/config"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/json"
 
-	"hanzo.io/thirdparty/stripe/connect/types"
+	"github.com/hanzoai/commerce/thirdparty/stripe/connect/types"
 )
 
 type Token = types.Token

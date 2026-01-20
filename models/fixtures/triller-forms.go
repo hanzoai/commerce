@@ -3,9 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/form"
-	"hanzo.io/models/organization"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
 )
 
 var _ = New("triller-forms", func(c *gin.Context) *form.Form {

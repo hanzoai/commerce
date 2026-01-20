@@ -8,15 +8,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/thirdparty/stripe/tasks"
-	"hanzo.io/delay"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
+	"github.com/hanzoai/commerce/thirdparty/stripe/tasks"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 // Decode Stripe payload

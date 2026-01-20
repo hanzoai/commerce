@@ -5,7 +5,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 func Retry(times int, fn func() error) error {

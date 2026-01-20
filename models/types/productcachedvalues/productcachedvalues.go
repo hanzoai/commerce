@@ -1,11 +1,11 @@
 package productcachedvalues
 
 import (
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/dimensions"
-	"hanzo.io/models/types/weight"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/dimensions"
+	"github.com/hanzoai/commerce/models/types/weight"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Values on product that need to be cached on the lineitem

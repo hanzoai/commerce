@@ -5,15 +5,15 @@ import (
 
 	// "google.golang.org/appengine/search"
 
-	// "hanzo.io/log"
-	"hanzo.io/models/cart"
-	"hanzo.io/models/order"
-	// "hanzo.io/models/mixin"
-	"hanzo.io/demo/tokentransaction"
-	"hanzo.io/models/product"
-	"hanzo.io/models/user"
+	// "github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/order"
+	// "github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/demo/tokentransaction"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/user"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("rebuild-search-documents",

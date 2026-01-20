@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"hanzo.io/util/json"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 var (

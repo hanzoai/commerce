@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 var Product = New("product", func(c *gin.Context) *product.Product {

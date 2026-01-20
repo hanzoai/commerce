@@ -1,8 +1,8 @@
 package ad
 
 import (
-	"hanzo.io/datastore"
-	. "hanzo.io/models/ads"
+	"github.com/hanzoai/commerce/datastore"
+	. "github.com/hanzoai/commerce/models/ads"
 )
 
 var kind = "ad"

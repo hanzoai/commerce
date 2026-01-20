@@ -3,21 +3,21 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/fixtures"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	"hanzo.io/models/shippingrates"
-	"hanzo.io/models/store"
-	"hanzo.io/models/taxrates"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/georate"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/shippingrates"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/taxrates"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/georate"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/types"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/types"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 type ParallelFn struct {

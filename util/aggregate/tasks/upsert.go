@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"google.golang.org/appengine"
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/aggregate"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/aggregate"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {

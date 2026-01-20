@@ -3,9 +3,9 @@ package test
 import (
 	"testing"
 
-	bs "hanzo.io/util/bitstring"
+	bs "github.com/hanzoai/commerce/util/bitstring"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -9,13 +9,13 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/bit"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/session"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/session"
 )
 
 func splitAuthorization(fieldValue string) (string, string) {

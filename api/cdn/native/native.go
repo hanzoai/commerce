@@ -8,11 +8,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/fs"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/fs"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 var jsTemplate string

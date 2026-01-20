@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var _ = New("move-order-to-new-user", func(c *gin.Context) {

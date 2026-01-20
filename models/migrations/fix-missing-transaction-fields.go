@@ -3,8 +3,8 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	ds "hanzo.io/datastore"
-	"hanzo.io/models/transaction"
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/transaction"
 )
 
 var _ = New("fix-missing-transaction-fields",

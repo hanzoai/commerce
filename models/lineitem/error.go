@@ -1,6 +1,6 @@
 package lineitem
 
-import "hanzo.io/util/spew"
+import "github.com/hanzoai/commerce/util/spew"
 
 type LineItemError struct {
 	Item *LineItem

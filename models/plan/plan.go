@@ -3,14 +3,14 @@ package plan
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/refs"
-	"hanzo.io/util/json"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/refs"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/val"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

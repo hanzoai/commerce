@@ -1,7 +1,7 @@
 package api
 
 import (
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/util/router"
 	"github.com/gin-gonic/gin"
 )
 

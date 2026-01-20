@@ -5,11 +5,11 @@ import (
 	"strconv"
 	"time"
 
-	"hanzo.io/log"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	"hanzo.io/models/return"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/return"
 )
 
 var incrementSep = "."

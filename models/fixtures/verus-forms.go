@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/form"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/form"
 )
 
 var _ = New("verus-forms", func(c *gin.Context) *form.Form {

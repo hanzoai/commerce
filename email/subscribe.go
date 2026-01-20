@@ -3,11 +3,11 @@ package email
 import (
 	"context"
 
-	"hanzo.io/email/tasks"
-	"hanzo.io/log"
-	"hanzo.io/models/form"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/subscriber"
+	"github.com/hanzoai/commerce/email/tasks"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/subscriber"
 )
 
 func Subscribe(c context.Context, f *form.Form, s *subscriber.Subscriber, org *organization.Organization) (err error) {

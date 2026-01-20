@@ -10,10 +10,10 @@ import (
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/taskqueue"
 
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type counterConfig struct {

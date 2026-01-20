@@ -3,7 +3,7 @@ package movie
 import (
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 type Document struct {

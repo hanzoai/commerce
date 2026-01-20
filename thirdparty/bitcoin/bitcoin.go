@@ -29,11 +29,11 @@ import (
 	"github.com/btcsuite/btcd/btcutil/base58"
 	ecdsa2 "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/blockchains/blocktransaction"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/blockchains/blocktransaction"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 // The steps notated in the variable names here relate to the steps outlined in

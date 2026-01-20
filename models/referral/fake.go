@@ -1,8 +1,8 @@
 package referral
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 func Fake(db *datastore.Datastore, userId, orderId string) *Referral {

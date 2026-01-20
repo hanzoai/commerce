@@ -1,7 +1,7 @@
 package subscriber
 
 import (
-	"hanzo.io/util/webhook"
+	"github.com/hanzoai/commerce/util/webhook"
 )
 
 // Hooks

@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/log"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/thirdparty/sendgrid"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/thirdparty/sendgrid"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func getEmailMarketer(c context.Context, in integration.Integration) (email.Marketer, error) {

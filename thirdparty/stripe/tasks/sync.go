@@ -6,12 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 	sg "github.com/stripe/stripe-go/v75"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/task"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
+	"github.com/hanzoai/commerce/util/task"
 )
 
 // May be called one of two ways:

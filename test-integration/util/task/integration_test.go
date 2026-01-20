@@ -7,10 +7,10 @@ import (
 	// "google.golang.org/appengine/aetest"
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/httpclient"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/httpclient"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

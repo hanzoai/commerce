@@ -1,11 +1,11 @@
 package test
 
 import (
-	"hanzo.io/models/product"
-	"hanzo.io/models/variant"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/util/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("variant", func() {

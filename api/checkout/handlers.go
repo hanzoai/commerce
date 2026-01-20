@@ -3,16 +3,16 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/checkout/ethereum"
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/api/checkout/ethereum"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 var orderEndpoint = config.UrlFor("api", "/order/")

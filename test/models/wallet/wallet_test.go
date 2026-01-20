@@ -3,11 +3,11 @@ package test
 import (
 	"strings"
 
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/blockchains/blockaddress"
-	"hanzo.io/models/wallet"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/blockchains/blockaddress"
+	"github.com/hanzoai/commerce/models/wallet"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("Wallet", func() {

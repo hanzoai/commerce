@@ -5,7 +5,7 @@ import (
 
 	"github.com/plaid/plaid-go/v15/plaid"
 
-	. "hanzo.io/thirdparty/paymentmethods"
+	. "github.com/hanzoai/commerce/thirdparty/paymentmethods"
 )
 
 type Environment plaid.Environment

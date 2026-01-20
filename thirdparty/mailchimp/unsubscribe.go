@@ -1,13 +1,13 @@
 package mailchimp
 
 import (
-	"hanzo.io/log"
-	// "hanzo.io/models/form"
-	// "hanzo.io/models/subscriber"
-	// "hanzo.io/models/types/client"
-	"hanzo.io/types/email"
+	"github.com/hanzoai/commerce/log"
+	// "github.com/hanzoai/commerce/models/form"
+	// "github.com/hanzoai/commerce/models/subscriber"
+	// "github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/types/email"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 func (api API) Unsubscribe(list *email.List, sub *email.Subscriber) error {

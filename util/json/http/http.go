@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/thirdparty/stripe/errors"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/stripe/errors"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func Render(c *gin.Context, status int, src interface{}) {

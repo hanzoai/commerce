@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 func Payments(c *gin.Context) {

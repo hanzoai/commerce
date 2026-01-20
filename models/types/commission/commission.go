@@ -1,7 +1,7 @@
 package commission
 
 import (
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Commission struct {

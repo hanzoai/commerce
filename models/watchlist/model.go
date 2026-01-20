@@ -1,10 +1,10 @@
 package watchlist
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/movie"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/movie"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var kind = "watchlist"

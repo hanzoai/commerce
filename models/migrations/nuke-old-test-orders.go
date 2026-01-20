@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var oldestDate = time.Date(2015, time.April, 30, 0, 0, 0, 0, time.UTC)

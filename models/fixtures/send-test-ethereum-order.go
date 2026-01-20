@@ -8,14 +8,14 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/api/checkout"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/api/checkout"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context) {

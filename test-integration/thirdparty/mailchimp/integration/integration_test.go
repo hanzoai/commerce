@@ -3,15 +3,15 @@ package mailchimp_integration_test
 import (
 	"testing"
 
-	"hanzo.io/log"
-	// "hanzo.io/models/subscriber"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/log"
+	// "github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

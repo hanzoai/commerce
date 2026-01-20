@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/task"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/task"
 )
 
 type Fixture struct {

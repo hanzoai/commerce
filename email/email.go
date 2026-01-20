@@ -8,17 +8,17 @@ package email
 import (
 	"context"
 
-	"hanzo.io/config"
-	"hanzo.io/email/tasks"
-	// "hanzo.io/models/form"
-	"hanzo.io/models/organization"
-	"hanzo.io/types/email"
-	"hanzo.io/util/template"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/email/tasks"
+	// "github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/util/template"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
-// Alias common types from "hanzo.io/types/email"
+// Alias common types from "github.com/hanzoai/commerce/types/email"
 var NewMessage = email.NewMessage
 var NewPersonalization = email.NewPersonalization
 

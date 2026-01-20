@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"hanzo.io/config"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/ethereum"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
 )
 
 func MakeEthereumPayment(ctx context.Context, from wallet.Account, to string, amount, gasPrice *big.Int, password []byte) (string, error) {

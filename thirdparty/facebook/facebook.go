@@ -16,11 +16,11 @@ import (
 	"google.golang.org/appengine/memcache"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/config"
-	"hanzo.io/middleware"
-	// "hanzo.io/models"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/middleware"
+	// "github.com/hanzoai/commerce/models"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 var appId = config.Facebook.AppId

@@ -1,9 +1,9 @@
 package blocktransaction
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	. "hanzo.io/models/blockchains"
+	. "github.com/hanzoai/commerce/models/blockchains"
 )
 
 // Datastructure for Bitcoin Transaction

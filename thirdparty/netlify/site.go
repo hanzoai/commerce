@@ -1,7 +1,7 @@
 package netlify
 
 import (
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 
 	"github.com/netlify/netlify-go"
 )

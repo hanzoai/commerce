@@ -3,16 +3,16 @@ package test
 import (
 	"github.com/stripe/stripe-go"
 
-	"hanzo.io/log"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/variant"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 // Create a mock stripe charge

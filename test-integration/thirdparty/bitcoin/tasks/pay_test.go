@@ -1,14 +1,14 @@
 package test
 
 import (
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 
-	. "hanzo.io/thirdparty/bitcoin/tasks"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/thirdparty/bitcoin/tasks"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("thirdparty/bitcoin/tasks/pay.go", func() {

@@ -11,11 +11,11 @@ import (
 
 	"github.com/qedus/nds"
 
-	"hanzo.io/datastore/iface"
-	"hanzo.io/datastore/key"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/datastore/utils"
+	. "github.com/hanzoai/commerce/datastore/utils"
 )
 
 type Id struct {

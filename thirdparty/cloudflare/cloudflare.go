@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"hanzo.io/config"
-	"hanzo.io/middleware"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/json"
 
 	"github.com/gin-gonic/gin"
 

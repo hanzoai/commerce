@@ -3,8 +3,8 @@ package test
 import (
 	"regexp"
 
-	"hanzo.io/types/integration"
-	// "hanzo.io/log"
+	"github.com/hanzoai/commerce/types/integration"
+	// "github.com/hanzoai/commerce/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

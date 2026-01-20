@@ -8,11 +8,11 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type Request struct {

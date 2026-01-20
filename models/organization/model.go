@@ -1,8 +1,8 @@
 package organization
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/pricing"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/pricing"
 )
 
 var kind = "organization"

@@ -1,11 +1,11 @@
 package marketing
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/marketing/engines"
-	"hanzo.io/marketing/types"
-	"hanzo.io/models/ads/adcampaign"
-	"hanzo.io/models/multi"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/marketing/engines"
+	"github.com/hanzoai/commerce/marketing/types"
+	"github.com/hanzoai/commerce/models/ads/adcampaign"
+	"github.com/hanzoai/commerce/models/multi"
 )
 
 func Create(db *datastore.Datastore, ci types.CreateInput) (cmpgn *adcampaign.AdCampaign, err error) {

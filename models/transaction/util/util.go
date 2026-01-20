@@ -3,11 +3,11 @@ package util
 import (
 	"context"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type TransactionData struct {

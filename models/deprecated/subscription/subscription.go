@@ -6,17 +6,17 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/deprecated/plan"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/refs"
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/json"
-	"hanzo.io/util/val"
-	"hanzo.io/util/timeutil"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/deprecated/plan"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/refs"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/commerce/util/timeutil"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Based On Stripe Subscription

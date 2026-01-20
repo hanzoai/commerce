@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/webhook/tasks"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/webhook/tasks"
 )
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {

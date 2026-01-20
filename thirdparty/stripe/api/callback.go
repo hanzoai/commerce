@@ -5,18 +5,18 @@ import (
 	"strings"
 
 	"google.golang.org/appengine"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/rand"
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/affiliate"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/stripe/connect"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/affiliate"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 // Handle stripe Connect callbacks

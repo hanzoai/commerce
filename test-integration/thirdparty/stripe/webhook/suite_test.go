@@ -5,15 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/ginclient"
 
-	stripeApi "hanzo.io/thirdparty/stripe/api"
+	stripeApi "github.com/hanzoai/commerce/thirdparty/stripe/api"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var (

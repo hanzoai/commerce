@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/order"
+	"github.com/hanzoai/commerce/models/order"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("add-sku-to-sa-orders",

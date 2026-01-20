@@ -1,11 +1,11 @@
 package cart
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/lineitem"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/lineitem"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var kind = "cart"

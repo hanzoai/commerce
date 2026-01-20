@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/token"
+	"github.com/hanzoai/commerce/models/token"
 )
 
 var Token = New("token", func(c *gin.Context) *token.Token {

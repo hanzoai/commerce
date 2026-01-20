@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/cart"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/rest"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/rest"
 )
 
 type SetReq struct {

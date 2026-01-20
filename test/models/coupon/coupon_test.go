@@ -3,11 +3,11 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/coupon"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

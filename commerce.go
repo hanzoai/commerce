@@ -28,8 +28,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
-	"hanzo.io/commerce/db"
-	"hanzo.io/commerce/hooks"
+	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/hooks"
 )
 
 // Version is the current version of Commerce
@@ -63,7 +63,7 @@ type Config struct {
 	Database db.Config
 
 	// Analytics DSN (optional)
-	AnalyticsDSN string
+	DatastoreDSN string
 
 	// Query timeout
 	QueryTimeout time.Duration
@@ -77,7 +77,7 @@ func DefaultConfig() *Config {
 		Secret:         getEnv("COMMERCE_SECRET", "change-me-in-production"),
 		HTTPAddr:       getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
 		AllowedOrigins: []string{"*"},
-		AnalyticsDSN:   getEnv("COMMERCE_ANALYTICS", ""),
+		DatastoreDSN:   getEnv("COMMERCE_DATASTORE", ""),
 		QueryTimeout:   30 * time.Second,
 	}
 }
@@ -246,8 +246,8 @@ func (app *App) Bootstrap() error {
 	// Initialize database manager
 	dbConfig := &db.Config{
 		DataDir:            app.config.DataDir,
-		AnalyticsDSN:       app.config.AnalyticsDSN,
-		EnableAnalytics:    app.config.AnalyticsDSN != "",
+		DatastoreDSN:       app.config.DatastoreDSN,
+		EnableDatastore:    app.config.DatastoreDSN != "",
 		EnableVectorSearch: true,
 		VectorDimensions:   1536,
 		IsDev:              app.config.Dev,

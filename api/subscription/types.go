@@ -3,10 +3,10 @@ package subscription
 import (
 	"strings"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/subscription"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 type SubscriptionReq struct {

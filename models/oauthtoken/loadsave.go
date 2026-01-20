@@ -3,7 +3,7 @@ package oauthtoken
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 )
 
 func (t *Token) Load(properties []aeds.Property) error {

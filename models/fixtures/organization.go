@@ -3,18 +3,18 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	// "hanzo.io/models/namespace"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/shippingrates"
-	"hanzo.io/models/store"
-	"hanzo.io/models/taxrates"
-	"hanzo.io/models/types/georate"
-	"hanzo.io/models/user"
-	"hanzo.io/types/website"
+	"github.com/hanzoai/commerce/datastore"
+	// "github.com/hanzoai/commerce/models/namespace"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/shippingrates"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/taxrates"
+	"github.com/hanzoai/commerce/models/types/georate"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/types/website"
 
-	. "hanzo.io/models/types/analytics"
+	. "github.com/hanzoai/commerce/models/types/analytics"
 )
 
 var Organization = New("organization", func(c *gin.Context) *organization.Organization {

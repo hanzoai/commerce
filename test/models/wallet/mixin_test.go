@@ -1,9 +1,9 @@
 package test
 
 import (
-	"hanzo.io/models/wallet"
+	"github.com/hanzoai/commerce/models/wallet"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 type WalletHolderer struct {

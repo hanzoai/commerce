@@ -1,9 +1,9 @@
 package mixin
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/datastore/query"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/query"
+	"github.com/hanzoai/commerce/log"
 )
 
 // This is a simple Query helper for individual models. Allows you to query for

@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var _ = New("damon-sample-orders", func(c *gin.Context) *organization.Organization {

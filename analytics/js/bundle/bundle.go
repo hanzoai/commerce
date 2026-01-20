@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"hanzo.io/models/organization"
-	"hanzo.io/util/fs"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/fs"
 )
 
 var js = ""

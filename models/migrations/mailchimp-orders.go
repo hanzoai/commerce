@@ -3,14 +3,14 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/models/cart"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/types/integration"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("mailchimp-orders",

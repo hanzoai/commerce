@@ -1,13 +1,13 @@
 package order
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/fulfillment"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
 
-	"hanzo.io/models/lineitem"
-	. "hanzo.io/types"
+	"github.com/hanzoai/commerce/models/lineitem"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var kind = "order"

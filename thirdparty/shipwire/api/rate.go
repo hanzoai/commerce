@@ -6,12 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/thirdparty/shipwire"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/thirdparty/shipwire"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
 )
 
 func rate(c *gin.Context) {

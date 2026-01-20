@@ -3,13 +3,13 @@ package mandrill_integration_test
 import (
 	"testing"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/thirdparty/sendgrid"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/test/ae"
-	. "hanzo.io/util/test/ginkgo"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/sendgrid"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/test/ae"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/log"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 type Client struct {

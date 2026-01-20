@@ -1,13 +1,13 @@
 package test
 
 // import (
-// 	"hanzo.io/models/transaction"
-// 	"hanzo.io/models/types/currency"
-// 	"hanzo.io/util/fake"
-// 	"hanzo.io/log"
+// 	"github.com/hanzoai/commerce/models/transaction"
+// 	"github.com/hanzoai/commerce/models/types/currency"
+// 	"github.com/hanzoai/commerce/util/fake"
+// 	"github.com/hanzoai/commerce/log"
 // 	"math/rand"
 
-// 	. "hanzo.io/util/test/ginkgo"
+// 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 // )
 
 // var _ = Describe("transaction", func() {

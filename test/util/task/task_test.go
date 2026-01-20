@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/util/task"
-	. "hanzo.io/util/test/ginkgo"
+	"github.com/hanzoai/commerce/util/task"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/oauthtoken"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/oauthtoken"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

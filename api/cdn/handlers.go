@@ -3,10 +3,10 @@ package cdn
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/cdn/analytics"
-	"hanzo.io/api/cdn/form"
-	"hanzo.io/api/cdn/native"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/api/cdn/analytics"
+	"github.com/hanzoai/commerce/api/cdn/form"
+	"github.com/hanzoai/commerce/api/cdn/native"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(r router.Router, args ...gin.HandlerFunc) {

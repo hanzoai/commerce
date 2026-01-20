@@ -10,8 +10,8 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/aetest"
 
-	"hanzo.io/log"
-	"hanzo.io/util/retry"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/retry"
 )
 
 func NewContext(args ...Options) Context {

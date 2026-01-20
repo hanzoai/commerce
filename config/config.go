@@ -7,12 +7,15 @@ import (
 	"path"
 	"strings"
 
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 var demoMode = true
 var cachedConfig *Config
+
+// Env is the current environment (development, test, sandbox, staging, production)
+var Env = os.Getenv("ENV")
 
 // The current working dir is config/development due to how we split
 // development and production app.yaml files so we need to check two places for

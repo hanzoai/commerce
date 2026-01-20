@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"hanzo.io/models/multi"
+	"github.com/hanzoai/commerce/models/multi"
 )
 
 var _ = Describe("models/multi", func() {

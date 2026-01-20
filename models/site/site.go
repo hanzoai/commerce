@@ -1,8 +1,8 @@
 package site
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/thirdparty/netlify"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/thirdparty/netlify"
 )
 
 type Site struct {

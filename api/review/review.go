@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/review"
-	"hanzo.io/thirdparty/recaptcha"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/review"
+	"github.com/hanzoai/commerce/thirdparty/recaptcha"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func forced404(c *gin.Context) {

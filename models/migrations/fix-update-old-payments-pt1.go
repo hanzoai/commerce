@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/payment"
+	"github.com/hanzoai/commerce/models/payment"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 // var accessToken = ""

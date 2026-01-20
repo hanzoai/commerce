@@ -3,12 +3,12 @@ package stripe
 import (
 	"errors"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

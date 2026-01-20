@@ -6,10 +6,10 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/reflect"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/reflect"
 
-	"hanzo.io/datastore/key"
+	"github.com/hanzoai/commerce/datastore/key"
 )
 
 var newKeyFromInt = key.NewFromInt

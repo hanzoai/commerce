@@ -3,10 +3,10 @@ package test
 import (
 	"strings"
 
-	"hanzo.io/models/wallet"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("Account", func() {

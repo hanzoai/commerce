@@ -1,8 +1,8 @@
 package test
 
 import (
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/georate"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/georate"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

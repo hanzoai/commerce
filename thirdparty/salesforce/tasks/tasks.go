@@ -5,20 +5,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/datastore"
-	"hanzo.io/datastore/parallel"
-	// "hanzo.io/models"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/parallel"
+	// "github.com/hanzoai/commerce/models"
 
-	// "hanzo.io/util/queries"
-	"hanzo.io/util/task"
+	// "github.com/hanzoai/commerce/util/queries"
+	"github.com/hanzoai/commerce/util/task"
 
-	"hanzo.io/models/campaign"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/models/variant"
-	// . "hanzo.io/thirdparty/salesforce"
+	"github.com/hanzoai/commerce/models/campaign"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/variant"
+	// . "github.com/hanzoai/commerce/thirdparty/salesforce"
 )
 
 // Deferred Tasks

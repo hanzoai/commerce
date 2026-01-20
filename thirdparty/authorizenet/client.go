@@ -17,14 +17,14 @@ import (
 
 	"github.com/hanzoai/goauthorizenet"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/refs"
-	json2 "hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/refs"
+	json2 "github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Client struct {

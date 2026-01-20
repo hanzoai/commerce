@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/user"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/log"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("collapse-transactions-by-user",

@@ -7,17 +7,17 @@ import (
 
 	"github.com/stripe/stripe-go/v75"
 	"github.com/stripe/stripe-go/v75/client"
-	"hanzo.io/log"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/plan"
-	"hanzo.io/models/subscription"
-	"hanzo.io/models/transfer"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/refs"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/stripe/errors"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/transfer"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/refs"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/stripe/errors"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type Client struct {

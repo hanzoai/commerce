@@ -8,7 +8,7 @@ import (
 
 	"github.com/hanzoai/gochimp3"
 
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 type API struct {

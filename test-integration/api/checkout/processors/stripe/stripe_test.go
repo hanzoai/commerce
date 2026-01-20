@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"strings"
 
-	"hanzo.io/log"
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/test-integration/api/checkout/processors/requests"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/test-integration/api/checkout/processors/requests"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 type testHelperReturn struct {

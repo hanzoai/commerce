@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/token"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/token"
+	"github.com/hanzoai/commerce/models/user"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("create-tokens",

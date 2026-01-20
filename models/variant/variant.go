@@ -1,11 +1,11 @@
 package variant
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/productcachedvalues"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/productcachedvalues"
+	"github.com/hanzoai/commerce/util/val"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Variant struct {

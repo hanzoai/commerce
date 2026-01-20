@@ -1,7 +1,7 @@
 package accesstoken
 
 import (
-	"hanzo.io/util/jwt"
+	"github.com/hanzoai/commerce/util/jwt"
 )
 
 var (

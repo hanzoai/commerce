@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
 )
 
 var _ = New("reset-keys", func(c *gin.Context) *organization.Organization {

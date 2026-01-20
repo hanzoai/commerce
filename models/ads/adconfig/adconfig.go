@@ -1,9 +1,9 @@
 package adconfig
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	. "hanzo.io/models/ads"
+	. "github.com/hanzoai/commerce/models/ads"
 )
 
 type AdConfig struct {

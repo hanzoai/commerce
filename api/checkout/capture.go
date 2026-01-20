@@ -3,21 +3,21 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/checkout/authorizenet"
-	"hanzo.io/api/checkout/balance"
-	"hanzo.io/api/checkout/null"
-	"hanzo.io/api/checkout/stripe"
-	"hanzo.io/api/checkout/tasks"
-	"hanzo.io/api/checkout/util"
-	"hanzo.io/email"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/user"
-	"hanzo.io/util/webhook"
+	"github.com/hanzoai/commerce/api/checkout/authorizenet"
+	"github.com/hanzoai/commerce/api/checkout/balance"
+	"github.com/hanzoai/commerce/api/checkout/null"
+	"github.com/hanzoai/commerce/api/checkout/stripe"
+	"github.com/hanzoai/commerce/api/checkout/tasks"
+	"github.com/hanzoai/commerce/api/checkout/util"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/webhook"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	stripe "hanzo.io/thirdparty/stripe/connect/types"
+	stripe "github.com/hanzoai/commerce/thirdparty/stripe/connect/types"
 
-	"hanzo.io/models/types/analytics"
+	"github.com/hanzoai/commerce/models/types/analytics"
 )
 
 type Type string

@@ -5,15 +5,15 @@ package migrations
 
 // 	"github.com/gin-gonic/gin"
 
-// 	"hanzo.io/datastore"
-// 	"hanzo.io/models/order"
-// 	"hanzo.io/models/organization"
-// 	"hanzo.io/models/types/email"
-// 	"hanzo.io/models/user"
-// 	"hanzo.io/email"
-// 	"hanzo.io/log"
+// 	"github.com/hanzoai/commerce/datastore"
+// 	"github.com/hanzoai/commerce/models/order"
+// 	"github.com/hanzoai/commerce/models/organization"
+// 	"github.com/hanzoai/commerce/models/types/email"
+// 	"github.com/hanzoai/commerce/models/user"
+// 	"github.com/hanzoai/commerce/email"
+// 	"github.com/hanzoai/commerce/log"
 
-// 	ds "hanzo.io/datastore"
+// 	ds "github.com/hanzoai/commerce/datastore"
 // )
 
 // var _ = New("send-confirmations-for-jan",

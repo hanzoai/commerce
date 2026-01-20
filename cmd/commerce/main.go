@@ -23,7 +23,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"hanzo.io/commerce"
+	commerce "github.com/hanzoai/commerce"
 )
 
 func main() {

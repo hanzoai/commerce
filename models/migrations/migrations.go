@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore/parallel"
-	"hanzo.io/delay"
-	"hanzo.io/util/task"
+	"github.com/hanzoai/commerce/datastore/parallel"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/util/task"
 )
 
 type Row parallel.BigQueryRow

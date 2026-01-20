@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"hanzo.io/util/permission"
+	"github.com/hanzoai/commerce/util/permission"
 )
 
 var _ = Describe("models/mixin AccessToken", func() {

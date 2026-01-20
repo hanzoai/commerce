@@ -11,11 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/json"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 type ApiError struct {

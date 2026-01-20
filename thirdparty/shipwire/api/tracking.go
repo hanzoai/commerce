@@ -6,15 +6,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/thirdparty/shipwire"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/thirdparty/shipwire"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func convertTracking(t Tracking) fulfillment.Tracking {

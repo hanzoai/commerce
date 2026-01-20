@@ -7,14 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/email"
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/token"
-	"hanzo.io/models/user"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/token"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 type twoStageEnableReq struct {

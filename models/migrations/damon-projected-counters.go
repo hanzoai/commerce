@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	"hanzo.io/util/counter"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/util/counter"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("damon-projected-counters",
