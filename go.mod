@@ -46,7 +46,6 @@ require (
 	go.mongodb.org/mongo-driver v1.13.1
 	go.temporal.io/sdk v1.31.0
 	golang.org/x/crypto v0.47.0
-	google.golang.org/appengine v1.6.7
 	google.golang.org/grpc v1.69.2
 )
 
@@ -77,7 +76,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
