@@ -5,11 +5,11 @@ import (
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/namespace"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/types/website"
-	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("soltrackr", func(c *gin.Context) *organization.Organization {

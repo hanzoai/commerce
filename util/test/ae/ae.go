@@ -1,20 +1,21 @@
 package ae
 
 import (
+	"context"
 	"os"
 	"path/filepath"
-	"sort"
-	"strconv"
 
-	"github.com/phayes/freeport"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/aetest"
-
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/util/retry"
 )
 
+// NewContext creates a new test context with in-memory SQLite backend.
+// This replaces the App Engine aetest functionality with a lightweight
+// in-memory database suitable for unit testing.
 func NewContext(args ...Options) Context {
+	mu.Lock()
+	defer mu.Unlock()
+
 	// Share Context if possible
 	Counter++
 
@@ -22,10 +23,7 @@ func NewContext(args ...Options) Context {
 		return SharedContext
 	}
 
-	var (
-		opts Options
-		err  error
-	)
+	var opts Options
 
 	// Parse options
 	switch len(args) {
@@ -37,69 +35,92 @@ func NewContext(args ...Options) Context {
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	services := []string{
-		"DEV_APPSERVER_ADMIN_PORT",
-		"DEV_APPSERVER_API_PORT",
-		"DEV_APPSERVER_PORT",
-	}
-
-	// Find available ports
-	ports := make([]int, 3)
-	ports[0], _ = freeport.GetFreePort()
-	ports[1], _ = freeport.GetFreePort()
-	ports[2], _ = freeport.GetFreePort()
-
-	// Sort least to highest, each service port is incremented up from
-	// api_port, so ensure it has the highest port number
-	sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
-
-	// Derive project path from GOPATH
-	projectDir := filepath.Join(os.Getenv("GOPATH"), "src/hanzo.io")
-
-	aetest.PrepareDevAppserver = func() error {
-		// Convert port into a string and update environment for dev_appserver
-		// wrapper
-		for i, service := range services {
-			s := strconv.Itoa(ports[i])
-			os.Setenv(service, s)
-		}
-
-		// Ensure our wrapper is used
-		os.Setenv("APPENGINE_DEV_APPSERVER", projectDir+"/scripts/dev_appserver.py")
-		return nil
-	}
-
-	// Create new dev server instance
-	var inst aetest.Instance
-	err = retry.Retry(10, func() error {
-		inst, err = aetest.NewInstance(&aetest.Options{
-			AppID:                       opts.AppID,
-			StronglyConsistentDatastore: opts.StronglyConsistentDatastore,
-		})
-		if err != nil {
-			log.Error("Cannot Initialize AeTest Instance: %v", err)
-		}
-		if err != nil && inst != nil {
-			inst.Close()
-			return err
-		}
-		return nil
-	})
-
+	// Create temporary directory for test data
+	tempDir, err := os.MkdirTemp("", "commerce-test-*")
 	if err != nil {
-		log.Panic("Failed to create instance: %v", err)
+		log.Panic("Failed to create temp directory: %v", err)
 	}
 
-	// Create new request
-	req, err := inst.NewRequest("GET", "/", nil)
+	// Configure the database manager with in-memory/temp SQLite
+	cfg := db.DefaultConfig()
+	cfg.DataDir = tempDir
+	cfg.UserDataDir = filepath.Join(tempDir, "users")
+	cfg.OrgDataDir = filepath.Join(tempDir, "orgs")
+	cfg.EnableDatastore = false // Use SQLite only for tests
+	cfg.EnableVectorSearch = false
+	cfg.IsDev = opts.Debug
+
+	// Create database manager
+	manager, err := db.NewManager(cfg)
 	if err != nil {
-		log.Panic("Failed to create request")
+		os.RemoveAll(tempDir)
+		log.Panic("Failed to create database manager: %v", err)
 	}
 
-	// Create new appengine context
-	ctx := appengine.NewContext(req)
+	// Get an organization database for the test app
+	database, err := manager.Org(opts.AppID)
+	if err != nil {
+		manager.Close()
+		os.RemoveAll(tempDir)
+		log.Panic("Failed to create test database: %v", err)
+	}
 
-	// Return context lookalike with instance embedded
-	SharedContext = &context{ctx, inst}
+	// Create a context with the test database embedded
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "testDB", database)
+	ctx = context.WithValue(ctx, "testAppID", opts.AppID)
+	ctx = context.WithValue(ctx, "testTempDir", tempDir)
+
+	// Return context with database embedded
+	SharedContext = &testContext{
+		Context:  ctx,
+		database: database,
+		manager:  manager,
+		tempDir:  tempDir,
+	}
 	return SharedContext
+}
+
+// testContext wraps a standard context with test infrastructure
+type testContext struct {
+	context.Context
+	database db.DB
+	manager  *db.Manager
+	tempDir  string
+}
+
+// DB returns the underlying database for direct access in tests
+func (c *testContext) DB() db.DB {
+	return c.database
+}
+
+// Close cleans up the test context
+func (c *testContext) Close() {
+	mu.Lock()
+	defer mu.Unlock()
+
+	Counter--
+
+	if Counter > 0 {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Warn("Recovered from panic in context.Close()")
+		}
+	}()
+
+	if c.manager != nil {
+		c.manager.Close()
+		c.manager = nil
+	}
+
+	// Clean up temp directory
+	if c.tempDir != "" {
+		os.RemoveAll(c.tempDir)
+		c.tempDir = ""
+	}
+
+	SharedContext = nil
 }

@@ -36,14 +36,38 @@ services:
       PORT: 8001
       ENV: ${ENV:-staging}
 
-      # Redis caching
-      REDIS_URL: redis://redis:6379
+      # KV caching (Valkey/Redis)
+      VALKEY_ADDR: valkey:6379
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
 
       # ClickHouse analytics
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       COMMERCE_DATASTORE: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+
+      # Vector search (Qdrant)
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6334
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+
+      # Object storage (MinIO)
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-commerce}
+
+      # Full-text search (Meilisearch)
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-}
+
+      # Event streaming (NATS)
+      NATS_URL: nats://nats:4222
+      NATS_TOKEN: ${NATS_TOKEN:-}
+
+      # Workflow orchestration (Temporal)
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: ${TEMPORAL_NAMESPACE:-commerce}
 
       # External IAM (hanzo.id)
       IAM_URL: ${IAM_URL:-https://api.hanzo.id}
@@ -65,9 +89,17 @@ services:
       - commerce_data:/app/data
       - commerce_logs:/app/logs
     depends_on:
-      redis:
+      valkey:
         condition: service_healthy
       clickhouse:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      nats:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8001/health"]
@@ -85,31 +117,172 @@ services:
       - "traefik.http.routers.commerce.tls.certresolver=letsencrypt"
 
   # ===========================================================================
-  # REDIS - Session & Cache Store
+  # VALKEY - Session & Cache Store (Redis-compatible)
   # ===========================================================================
 
-  redis:
-    image: redis:7-alpine
-    container_name: commerce-redis
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: commerce-valkey
     restart: unless-stopped
     command: >
-      redis-server
+      valkey-server
       --appendonly yes
       --appendfsync everysec
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-}
+      --requirepass ${VALKEY_PASSWORD:-}
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${VALKEY_PORT:-6379}:6379"
     volumes:
-      - redis_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - commerce-network
+
+  # ===========================================================================
+  # QDRANT - Vector Database for Product Embeddings
+  # ===========================================================================
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    container_name: commerce-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:6333/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - commerce-network
+
+  # ===========================================================================
+  # MINIO - Object Storage for Product Images
+  # ===========================================================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: commerce-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - commerce-network
+
+  # ===========================================================================
+  # MEILISEARCH - Full-Text Product Search
+  # ===========================================================================
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: commerce-meilisearch
+    restart: unless-stopped
+    ports:
+      - "${MEILISEARCH_PORT:-7700}:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    environment:
+      MEILI_ENV: ${MEILI_ENV:-development}
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-}
+      MEILI_NO_ANALYTICS: true
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - commerce-network
+
+  # ===========================================================================
+  # NATS - Event Streaming for Order Events
+  # ===========================================================================
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: commerce-nats
+    restart: unless-stopped
+    command: >
+      -js
+      -sd /data
+      -m 8222
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - commerce-network
+
+  # ===========================================================================
+  # TEMPORAL - Workflow Orchestration
+  # ===========================================================================
+
+  temporal:
+    image: temporalio/auto-setup:1.25
+    container_name: commerce-temporal
+    restart: unless-stopped
+    ports:
+      - "${TEMPORAL_PORT:-7233}:7233"
+    environment:
+      - DB=sqlite
+      - SKIP_SCHEMA_SETUP=false
+      - SKIP_DEFAULT_NAMESPACE_CREATION=false
+    volumes:
+      - temporal_data:/etc/temporal/data
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "localhost:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    networks:
+      - commerce-network
+    profiles:
+      - workflows
+
+  temporal-ui:
+    image: temporalio/ui:2.30.3
+    container_name: commerce-temporal-ui
+    restart: unless-stopped
+    ports:
+      - "${TEMPORAL_UI_PORT:-8080}:8080"
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    depends_on:
+      - temporal
+    networks:
+      - commerce-network
+    profiles:
+      - workflows
 
   # ===========================================================================
   # CLICKHOUSE - Analytics & Event Store
@@ -181,11 +354,21 @@ volumes:
     driver: local
   commerce_logs:
     driver: local
-  redis_data:
+  valkey_data:
     driver: local
   clickhouse_data:
     driver: local
   clickhouse_logs:
+    driver: local
+  qdrant_data:
+    driver: local
+  minio_data:
+    driver: local
+  meilisearch_data:
+    driver: local
+  nats_data:
+    driver: local
+  temporal_data:
     driver: local
   nginx_logs:
     driver: local

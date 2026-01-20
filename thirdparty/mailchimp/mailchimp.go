@@ -2,9 +2,8 @@ package mailchimp
 
 import (
 	"context"
+	"net/http"
 	"time"
-
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/hanzoai/gochimp3"
 
@@ -23,8 +22,10 @@ func New(ctx context.Context, settings integration.Mailchimp) *API {
 
 	apiKey := settings.APIKey
 	client := gochimp3.New(apiKey)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
+
+	// Use standard HTTP transport with timeout
+	client.Transport = &http.Transport{
+		ResponseHeaderTimeout: time.Second * 55,
 	}
 	client.Debug = true
 

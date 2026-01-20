@@ -6,9 +6,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-
-	"google.golang.org/appengine"
+	"os"
+	"strings"
 )
+
+// isDevelopment checks if we're in development mode without importing config
+// to avoid import cycles. Checks GAE_ENV and HANZO_ENV environment variables.
+var isDevelopment = func() bool {
+	env := os.Getenv("GAE_ENV")
+	if env == "" {
+		env = os.Getenv("HANZO_ENV")
+	}
+	return env == "" || strings.ToLower(env) == "development" || strings.ToLower(env) == "dev"
+}()
 
 func Encode(value interface{}) string {
 	return string(EncodeBytes(value))
@@ -18,7 +28,8 @@ func EncodeBytes(value interface{}) []byte {
 	var b []byte
 	var err error
 
-	if appengine.IsDevAppServer() {
+	// Use indented JSON in development mode for readability
+	if isDevelopment {
 		b, err = json.MarshalIndent(value, "", "  ")
 	} else {
 		b, err = json.Marshal(value)

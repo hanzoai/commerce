@@ -3,34 +3,34 @@ package search
 import (
 	"fmt"
 
-	aeds "google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/search"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json/http"
+	searchutil "github.com/hanzoai/commerce/util/search"
 )
 
 func searchUser(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
 
 	u := user.User{}
-	index, err := search.Open(mixin.DefaultIndex)
+	index, err := searchutil.Open(mixin.DefaultIndex)
 	if err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'user'"), err)
 		return
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
-	keys := make([]*aeds.Key, 0)
-	for t := index.Search(db.Context, q, &search.SearchOptions{
-		Refinements: []search.Facet{
-			search.Facet{
+	keys := make([]iface.Key, 0)
+	for t := index.Search(db.Context, q, &searchutil.SearchOptions{
+		Refinements: []searchutil.Facet{
+			{
 				Name:  "kind",
 				Value: u.Kind(),
 			},
@@ -38,7 +38,7 @@ func searchUser(c *gin.Context) {
 	}); ; {
 		var doc user.Document
 		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
-		if err == search.Done {
+		if err == searchutil.Done {
 			break
 		}
 		if err != nil {
@@ -46,7 +46,7 @@ func searchUser(c *gin.Context) {
 			return
 		}
 
-		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
+		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(db.Context, doc.Id())))
 	}
 
 	users := make([]user.User, len(keys))

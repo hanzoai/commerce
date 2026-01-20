@@ -1,8 +1,6 @@
 package product
 
 import (
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
@@ -11,7 +9,7 @@ type Document struct {
 	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
 	// Special Kind Option
-	Kind search.Atom `search:",facet"`
+	Kind string `search:",facet"`
 
 	Id_  string
 	Slug string
@@ -48,17 +46,17 @@ type Document struct {
 
 	InventoryOption float64 `search:"inventory,facet"`
 
-	WeightOption     float64     `search:"weight,facet"`
-	WeightUnitOption search.Atom `search:"weightUnit,facet"`
+	WeightOption     float64 `search:"weight,facet"`
+	WeightUnitOption string  `search:"weightUnit,facet"`
 
-	DimensionsLengthOption float64     `search:"dimensionsLength,facet"`
-	DimensionsWidthOption  float64     `search:"dimensionsWidth,facet"`
-	DimensionsHeightOption float64     `search:"dimensionsHeight,facet"`
-	DimensionsUnitOption   search.Atom `search:"dimensionsUnit,facet"`
+	DimensionsLengthOption float64 `search:"dimensionsLength,facet"`
+	DimensionsWidthOption  float64 `search:"dimensionsWidth,facet"`
+	DimensionsHeightOption float64 `search:"dimensionsHeight,facet"`
+	DimensionsUnitOption   string  `search:"dimensionsUnit,facet"`
 
-	AvailableOption search.Atom `search:"available,facet"`
-	HiddenOption    search.Atom `search:"hidden,facet"`
-	PreorderOption  search.Atom `search:"preorder,facet"`
+	AvailableOption string `search:"available,facet"`
+	HiddenOption    string `search:"hidden,facet"`
+	PreorderOption  string `search:"preorder,facet"`
 }
 
 func (d *Document) Id() string {
@@ -72,7 +70,7 @@ func (d *Document) Init() {
 func (p Product) Document() mixin.Document {
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = search.Atom(kind)
+	doc.Kind = kind
 	doc.Id_ = p.Id()
 	doc.Slug = p.Slug
 	doc.SKU = p.SKU
@@ -114,12 +112,12 @@ func (p Product) Document() mixin.Document {
 
 	doc.InventoryOption = float64(p.Inventory)
 	doc.WeightOption = float64(p.Weight)
-	doc.WeightUnitOption = search.Atom(p.WeightUnit)
+	doc.WeightUnitOption = string(p.WeightUnit)
 
 	doc.DimensionsLengthOption = p.Dimensions.Length
 	doc.DimensionsWidthOption = p.Dimensions.Width
 	doc.DimensionsHeightOption = p.Dimensions.Height
-	doc.DimensionsUnitOption = search.Atom(p.DimensionsUnit)
+	doc.DimensionsUnitOption = string(p.DimensionsUnit)
 
 	if p.Available {
 		doc.AvailableOption = "available"

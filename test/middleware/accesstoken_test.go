@@ -6,12 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"github.com/hanzoai/commerce/util/test/ginclient"
@@ -100,8 +99,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// make another namespace context different from returned
-			ctx3, err := appengine.Namespace(ctx, "empty-namespace")
-			Expect(err).ToNot(HaveOccurred())
+			ctx3 := nscontext.WithNamespace(ctx, "empty-namespace")
 
 			// make db from different namespace context
 			db3 := datastore.New(ctx3)
@@ -114,8 +112,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			Expect(stub3.Foo).ToNot(Equal(stub2.Foo))
 
 			// make another namespace context same as returned
-			ctx4, err := appengine.Namespace(ctx, id)
-			Expect(err).ToNot(HaveOccurred())
+			ctx4 := nscontext.WithNamespace(ctx, id)
 
 			// make db from same namespace context
 			db4 := datastore.New(ctx4)

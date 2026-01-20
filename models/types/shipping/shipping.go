@@ -17,7 +17,8 @@ const (
 )
 
 // This represents the minimum value of a shipping formula
-//  for example: Shipping = $10 Flat Rate if weight > 10 lbs
+//
+//	for example: Shipping = $10 Flat Rate if weight > 10 lbs
 type Formula struct {
 	MinWeight weight.Mass    `json:"minWeight"`
 	RateType  RateType       `json:"type"`

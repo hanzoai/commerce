@@ -3,11 +3,11 @@ package discount
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/discount/rule"
 	"github.com/hanzoai/commerce/models/discount/scope"
 	"github.com/hanzoai/commerce/models/discount/target"
 	"github.com/hanzoai/commerce/models/mixin"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/timeutil"
 )
 

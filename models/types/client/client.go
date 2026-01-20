@@ -3,20 +3,23 @@ package client
 import (
 	"strconv"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 )
 
+type GeoPoint struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
 type Client struct {
-	Ip        string             `json:"ip,omitempty" datastore:",noindex"`
-	UserAgent string             `json:"userAgent,omitempty" datastore:",noindex"`
-	Referer   string             `json:"referer,omitempty" datastore:",noindex"`
-	Language  string             `json:"language,omitempty"`
-	Country   string             `json:"country,omitempty"`
-	Region    string             `json:"region,omitempty"`
-	City      string             `json:"city,omitempty"`
-	GeoPoint  appengine.GeoPoint `json:"geoPoint,omitempty"`
+	Ip        string   `json:"ip,omitempty" datastore:",noindex"`
+	UserAgent string   `json:"userAgent,omitempty" datastore:",noindex"`
+	Referer   string   `json:"referer,omitempty" datastore:",noindex"`
+	Language  string   `json:"language,omitempty"`
+	Country   string   `json:"country,omitempty"`
+	Region    string   `json:"region,omitempty"`
+	City      string   `json:"city,omitempty"`
+	GeoPoint  GeoPoint `json:"geoPoint,omitempty"`
 }
 
 func New(c *gin.Context) Client {
@@ -43,7 +46,7 @@ func New(c *gin.Context) Client {
 		geo := c.Request.Header.Get("X-AppEngine-CitLatLong")
 		lat, _ := strconv.ParseFloat(geo, 64)
 		long, _ := strconv.ParseFloat(geo, 64)
-		client.GeoPoint = appengine.GeoPoint{Lat: lat, Lng: long}
+		client.GeoPoint = GeoPoint{Lat: lat, Lng: long}
 	}
 
 	return client

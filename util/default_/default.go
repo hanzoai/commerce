@@ -1,8 +1,6 @@
 package default_
 
 import (
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/config"
@@ -14,9 +12,6 @@ import (
 	"github.com/hanzoai/commerce/util/router"
 	"github.com/hanzoai/commerce/util/task"
 	"github.com/hanzoai/commerce/util/template"
-
-	// Imported for side-effect, needed to enable remote api calls
-	_ "google.golang.org/appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
 	_ "github.com/hanzoai/commerce/api/checkout/tasks"
@@ -40,7 +35,7 @@ func Init() {
 	router := router.New("default")
 
 	// Index, development has nice index with links
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		router.GET("/", func(c *gin.Context) {
 			template.Render(c, "index.html")
 		})
@@ -57,7 +52,7 @@ func Init() {
 
 	// Setup routes for delay funcs
 	router.POST(delay.Path, func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
+		ctx := middleware.GetAppEngine(c)
 		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 

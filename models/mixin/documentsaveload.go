@@ -6,8 +6,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-
-	"google.golang.org/appengine/search"
 )
 
 var (
@@ -19,6 +17,23 @@ var (
 // the validity of both field and facet names.
 func validFieldName(s string) bool {
 	return len(s) <= 500 && fieldNameRE.MatchString(s)
+}
+
+// SearchField represents a field in a search document
+type SearchField struct {
+	Name  string
+	Value interface{}
+}
+
+// SearchFacet represents a facet in a search document
+type SearchFacet struct {
+	Name  string
+	Value interface{}
+}
+
+// SearchDocumentMetadata holds metadata for a search document
+type SearchDocumentMetadata struct {
+	Facets []SearchFacet
 }
 
 // ErrFieldMismatch is returned when a field is to be loaded into a different
@@ -132,7 +147,7 @@ func (s *DocumentSaveLoad) GetDocument() reflect.Value {
 	return s.document
 }
 
-func (s *DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMetadata) error {
+func (s *DocumentSaveLoad) Load(fields []SearchField, meta *SearchDocumentMetadata) error {
 	var err error
 
 	val := s.document
@@ -217,15 +232,15 @@ func (s *DocumentSaveLoad) Load(fields []search.Field, meta *search.DocumentMeta
 	return nil
 }
 
-func (s DocumentSaveLoad) Save() ([]search.Field, *search.DocumentMetadata, error) {
+func (s DocumentSaveLoad) Save() ([]SearchField, *SearchDocumentMetadata, error) {
 	val := s.GetDocument()
 	codec, err := loadCodec(val.Type())
 	if err != nil {
 		return nil, nil, err
 	}
 
-	fields := make([]search.Field, 0, len(codec.fieldByName))
-	var facets []search.Facet
+	fields := make([]SearchField, 0, len(codec.fieldByName))
+	var facets []SearchFacet
 	for i, tag := range codec.byIndex {
 		if tag.ignore {
 			continue
@@ -240,12 +255,12 @@ func (s DocumentSaveLoad) Save() ([]search.Field, *search.DocumentMetadata, erro
 			if tag.facet {
 				// ignore zeroed facets
 				if reflect.Zero(f.Type()).Interface() != f.Interface() {
-					facets = append(facets, search.Facet{Name: tag.name, Value: f.Interface()})
+					facets = append(facets, SearchFacet{Name: tag.name, Value: f.Interface()})
 				}
 			} else {
-				fields = append(fields, search.Field{Name: tag.name, Value: f.Interface()})
+				fields = append(fields, SearchField{Name: tag.name, Value: f.Interface()})
 			}
 		}
 	}
-	return fields, &search.DocumentMetadata{Facets: facets}, nil
+	return fields, &SearchDocumentMetadata{Facets: facets}, nil
 }

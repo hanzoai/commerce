@@ -4,28 +4,26 @@ import (
 	"context"
 	"net/http"
 	"time"
-
-	"google.golang.org/appengine/urlfetch"
 )
 
 type OauthTransport struct {
-	*urlfetch.Transport
+	http.RoundTripper
 	AccessToken string
 }
 
 func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
-	return t.Transport.RoundTrip(req)
+	return t.RoundTripper.RoundTrip(req)
 }
 
 func newOauthClient(ctx context.Context, accessToken string) *http.Client {
 	// Update timeout
 	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 
-	client := urlfetch.Client(ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 	client.Transport = &OauthTransport{
-		AccessToken: accessToken,
-		Transport:   &urlfetch.Transport{Context: ctx},
+		AccessToken:  accessToken,
+		RoundTripper: http.DefaultTransport,
 	}
 	return client
 }

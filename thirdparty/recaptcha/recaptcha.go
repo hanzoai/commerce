@@ -3,10 +3,9 @@ package recaptcha
 import (
 	"context"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"time"
-
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
@@ -21,7 +20,7 @@ type RecaptchaResponse struct {
 
 func Challenge(ctx context.Context, privateKey, response string) bool {
 	// log.Warn("Captcha:\n\n%s\n\n%s\n\n%s", privateKey, response, ctx)
-	client := urlfetch.Client(ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 	r := RecaptchaResponse{}
 	resp, err := client.PostForm("https://www.google.com/recaptcha/api/siteverify",
 		url.Values{

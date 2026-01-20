@@ -1,17 +1,16 @@
 package query
 
 import (
-	aeds "google.golang.org/appengine/datastore"
+	"errors"
+
+	"github.com/hanzoai/commerce/db"
 )
 
 var (
-	// Alias appengine types
-	Done                 = aeds.Done
-	ErrNoSuchEntity      = aeds.ErrNoSuchEntity
-	ErrInvalidEntityType = aeds.ErrInvalidEntityType
-	ErrInvalidKey        = aeds.ErrInvalidKey
+	// Done signals end of iteration
+	Done = errors.New("datastore: done")
 
-	// Custom Errors
-	InvalidKey  = ErrInvalidKey
-	KeyNotFound = ErrNoSuchEntity
+	// Custom Errors - these are package-local to avoid conflicts with dot-imported utils
+	InvalidKey  = db.ErrInvalidKey
+	KeyNotFound = db.ErrNoSuchEntity
 )

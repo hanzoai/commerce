@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/fs"
@@ -20,7 +18,7 @@ func Render(org *organization.Organization) string {
 	}
 
 	endpoint := config.UrlFor("cdn", "/a/", org.Id(), "/analytics.js")
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		endpoint = "http://localhost:8080" + endpoint
 	} else {
 		endpoint = "https:" + endpoint

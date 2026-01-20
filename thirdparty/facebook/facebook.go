@@ -12,11 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/cache"
 	"github.com/hanzoai/commerce/middleware"
 	// "github.com/hanzoai/commerce/models"
 
@@ -58,7 +55,7 @@ func newSession(c *gin.Context, accessToken string) *fb.Session {
 		app.RedirectUri = redirectUri(c)
 	}
 	session := app.Session(accessToken)
-	session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
+	session.HttpClient = &http.Client{Timeout: 55 * time.Second}
 	return session
 }
 
@@ -147,14 +144,14 @@ func CSRFToken(c *gin.Context) string {
 	}
 	token := string(b)
 
-	item := &memcache.Item{
+	item := &cache.Item{
 		Key:        token,
 		Value:      []byte(token),
 		Expiration: 3 * time.Minute,
 	}
 
 	ctx := middleware.GetAppEngine(c)
-	memcache.Set(ctx, item)
+	cache.Set(ctx, item)
 	return url.QueryEscape(token)
 }
 
@@ -193,7 +190,7 @@ func exchangeCode(c *gin.Context, code string) (token string, err error) {
 		appId, redirectUri(c), appSecret, code,
 	)
 	log.Debug(endpoint)
-	client := urlfetch.Client(middleware.GetAppEngine(c))
+	client := &http.Client{Timeout: 55 * time.Second}
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		log.Panic(err)

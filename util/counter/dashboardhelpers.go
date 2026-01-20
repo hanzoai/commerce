@@ -5,11 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"google.golang.org/appengine/memcache"
-
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/cache"
 )
 
 type currencyValue map[currency.Type]int
@@ -52,7 +51,7 @@ func GetDashboardData(ctx context.Context, t Period, date time.Time, tzOffset in
 
 	log.Debug("Counter memcache lookup for key: %v", dashboardKey)
 
-	if _, err := memcache.Gob.Get(ctx, dashboardKey, &data); err == nil {
+	if _, err := cache.Gob.Get(ctx, dashboardKey, &data); err == nil {
 		log.Debug("Counter memcache hit for key: %v", dashboardKey)
 		return data, nil
 	}
@@ -210,40 +209,15 @@ func GetDashboardData(ctx context.Context, t Period, date time.Time, tzOffset in
 		}
 	}
 
-	// var stors []store.Store
-	// if _, err := store.Query(db).GetAll(&stors); err != nil {
-	// 	return data, err
-	// }
-	// currentDate := oldDate
-	// startDay := currentDate.Day()
-	// for currentDate.Before(newDate) {
-	// 	i := currentDate.Day() - startDay
-	// 	totalSalesKey := totalKey(org, salesKeyId(stor.Currency), strconv.FormatInt(currentDate.Unix(), 10))
-	// 	totalOrdersKey := totalKey(org, ordersKey, strconv.FormatInt(currentDate.Unix(), 10))
+	expiration := 15 * time.Minute
 
-	// 	data.DailyOrders[i]
-	// }
-
-	// for _, stor := range stors {
-	// }
-
-	expiration := 0 * time.Minute
-
-	// isToday := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-	// now := time.Now()
-	// today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-
-	// if isToday.Equal(today) {
-	expiration = 15 * time.Minute
-	// }
-
-	item := &memcache.Item{
+	item := &cache.Item{
 		Key:        dashboardKey,
 		Object:     data,
 		Expiration: expiration,
 	}
 
-	memcache.Gob.Set(ctx, item)
+	cache.Gob.Set(ctx, item)
 
 	return data, nil
 }

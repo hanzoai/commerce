@@ -4,10 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/stripe"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/log"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )

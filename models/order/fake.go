@@ -42,7 +42,7 @@ func FakeSubscription(db *datastore.Datastore) *Subscription {
 	sub.UserId = fake.Id()
 	sub.FeePercent = fake.Percent
 	sub.PeriodStart = time.Now()
-	sub.PeriodEnd = time.Now().AddDate(0,0,30)
+	sub.PeriodEnd = time.Now().AddDate(0, 0, 30)
 	sub.Canceled = false
 	sub.Status = ActiveSubscriptionStatus
 	sub.Buyer = Buyer{

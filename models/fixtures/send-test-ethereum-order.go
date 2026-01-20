@@ -6,8 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/api/checkout"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -55,8 +53,8 @@ var SendTestEthereumOrder = New("send-test-ethereum-order", func(c *gin.Context)
 	log.Info("Sending To %s", "https://api.hanzo.io/checkout/authorize/", c)
 	log.Info("Sending Test Order: %s", j, c)
 
-	client := urlfetch.Client(ctx)
-	req, err := http.NewRequest("POST", "https://api.hanzo.io/checkout/authorize/", strings.NewReader(j))
+	client := &http.Client{}
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.hanzo.io/checkout/authorize/", strings.NewReader(j))
 	if err != nil {
 		panic(err)
 	}

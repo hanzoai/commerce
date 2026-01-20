@@ -6,10 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/memcache"
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
@@ -42,7 +38,7 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	}
 
 	log.Debug("Requesting new access token for %s (%s)", userId, email, c.ctx)
-	client := urlfetch.Client(c.ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 	res, err := client.Do(req)
 	defer res.Body.Close()
 
@@ -65,18 +61,10 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	return user, nil
 }
 
-// Get access token from memcache
+// Get access token from cache (placeholder - memcache removed)
 func getAccessToken(ctx context.Context, orgName string) string {
-	if item, err := memcache.Get(ctx, "netlify-access-token"); err == memcache.ErrCacheMiss {
-		log.Debug("Token not cached", ctx)
-		return ""
-	} else if err != nil {
-		log.Error("Failed to get token from memcache: %v", err, ctx)
-		return ""
-	} else {
-		log.Debug("Found token: %v", string(item.Value), ctx)
-		return string(item.Value)
-	}
+	// Note: memcache dependency removed - implement alternative caching if needed
+	return ""
 }
 
 // Create new access token
@@ -92,25 +80,14 @@ func createAccessToken(ctx context.Context, orgName string) string {
 	return user.AccessToken
 }
 
-// Cache access token in memcache
+// Cache access token (placeholder - memcache removed)
 func setAccessToken(ctx context.Context, accessToken string) {
-	item := &memcache.Item{
-		Key:   "netlify-access-token",
-		Value: []byte(accessToken),
-	}
-
-	// Persist to memcache
-	if err := memcache.Set(ctx, item); err != nil {
-		log.Error("Unable to persist access token: %v", err, ctx)
-	} else {
-		log.Debug("Cached access token: %v", accessToken, ctx)
-	}
+	// Note: memcache dependency removed - implement alternative caching if needed
+	log.Debug("Would cache access token: %v", accessToken, ctx)
 }
 
 // Get a client for netlify
 func NewFromNamespace(ctx context.Context, orgName string) *Client {
-	ctx, _ = appengine.Namespace(ctx, orgName)
-
 	// Get user-level token for organization
 	accessToken := GetAccessToken(ctx, orgName)
 
@@ -119,8 +96,6 @@ func NewFromNamespace(ctx context.Context, orgName string) *Client {
 
 // Get access token
 func GetAccessToken(ctx context.Context, orgName string) string {
-	ctx, _ = appengine.Namespace(ctx, orgName)
-
 	accessToken := getAccessToken(ctx, orgName)
 	if accessToken == "" {
 		accessToken = createAccessToken(ctx, orgName)

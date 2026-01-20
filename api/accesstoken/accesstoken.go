@@ -5,15 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/session"
 )
@@ -63,7 +62,7 @@ func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
 	org.Put()
 
 	// Save access token in cookie for ease of use during development
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		session.Set(c, "access-token", accessToken)
 	}
 
@@ -75,7 +74,7 @@ func deleteAccessToken(c *gin.Context) {
 	accessToken := session.GetString(c, "access-token")
 
 	// Save access token in cookie for ease of use during development
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		session.Delete(c, "access-token")
 	}
 

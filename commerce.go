@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/hooks"
+	"github.com/hanzoai/commerce/infra"
 )
 
 // Version is the current version of Commerce
@@ -65,6 +67,9 @@ type Config struct {
 	// Analytics DSN (optional)
 	DatastoreDSN string
 
+	// Infrastructure configuration
+	Infra infra.Config
+
 	// Query timeout
 	QueryTimeout time.Duration
 }
@@ -78,8 +83,65 @@ func DefaultConfig() *Config {
 		HTTPAddr:       getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
 		AllowedOrigins: []string{"*"},
 		DatastoreDSN:   getEnv("COMMERCE_DATASTORE", ""),
+		Infra:          *infraConfigFromEnv(),
 		QueryTimeout:   30 * time.Second,
 	}
+}
+
+// infraConfigFromEnv loads infrastructure config from environment
+func infraConfigFromEnv() *infra.Config {
+	cfg := infra.DefaultConfig()
+
+	// KV (Valkey)
+	if addr := getEnv("VALKEY_ADDR", ""); addr != "" {
+		cfg.KV.Enabled = true
+		cfg.KV.Addr = addr
+		cfg.KV.Password = getEnv("VALKEY_PASSWORD", "")
+	}
+
+	// Vector (Qdrant)
+	if host := getEnv("QDRANT_HOST", ""); host != "" {
+		cfg.Vector.Enabled = true
+		cfg.Vector.Host = host
+		if port, err := strconv.Atoi(getEnv("QDRANT_PORT", "6334")); err == nil {
+			cfg.Vector.Port = port
+		}
+		cfg.Vector.APIKey = getEnv("QDRANT_API_KEY", "")
+	}
+
+	// Storage (MinIO)
+	if endpoint := getEnv("MINIO_ENDPOINT", ""); endpoint != "" {
+		cfg.Storage.Enabled = true
+		cfg.Storage.Endpoint = endpoint
+		cfg.Storage.AccessKey = getEnv("MINIO_ACCESS_KEY", "minioadmin")
+		cfg.Storage.SecretKey = getEnv("MINIO_SECRET_KEY", "minioadmin")
+		cfg.Storage.Bucket = getEnv("MINIO_BUCKET", "commerce")
+		cfg.Storage.UseSSL = getEnv("MINIO_USE_SSL", "false") == "true"
+	}
+
+	// Search (Meilisearch)
+	if host := getEnv("MEILISEARCH_HOST", ""); host != "" {
+		cfg.Search.Enabled = true
+		cfg.Search.Host = host
+		cfg.Search.APIKey = getEnv("MEILISEARCH_API_KEY", "")
+	}
+
+	// PubSub (NATS)
+	if url := getEnv("NATS_URL", ""); url != "" {
+		cfg.PubSub.Enabled = true
+		cfg.PubSub.URL = url
+		cfg.PubSub.Token = getEnv("NATS_TOKEN", "")
+		cfg.PubSub.EnableJetStream = getEnv("NATS_JETSTREAM", "true") == "true"
+	}
+
+	// Tasks (Temporal)
+	if host := getEnv("TEMPORAL_HOST", ""); host != "" {
+		cfg.Tasks.Enabled = true
+		cfg.Tasks.HostPort = host
+		cfg.Tasks.Namespace = getEnv("TEMPORAL_NAMESPACE", "commerce")
+	}
+
+	return cfg
 }
 
 // App is the main Commerce application
@@ -91,6 +153,9 @@ type App struct {
 
 	// Database manager
 	DB *db.Manager
+
+	// Infrastructure manager
+	Infra *infra.Manager
 
 	// Hook system
 	Hooks *hooks.Registry
@@ -259,6 +324,16 @@ func (app *App) Bootstrap() error {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 
+	// Initialize infrastructure manager
+	app.Infra = infra.New(&app.config.Infra)
+	ctx, cancel := context.WithTimeout(context.Background(), app.config.Infra.ConnectTimeout)
+	defer cancel()
+
+	if err := app.Infra.Connect(ctx); err != nil {
+		// Log but don't fail - infrastructure services are optional
+		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
+	}
+
 	// Initialize router
 	app.Router = gin.New()
 	app.Router.Use(gin.Recovery())
@@ -352,6 +427,13 @@ func (app *App) Shutdown() error {
 			defer cancel()
 			if shutdownErr := app.server.Shutdown(ctx); shutdownErr != nil {
 				err = shutdownErr
+			}
+		}
+
+		// Close infrastructure
+		if app.Infra != nil {
+			if infraErr := app.Infra.Close(); infraErr != nil {
+				err = infraErr
 			}
 		}
 

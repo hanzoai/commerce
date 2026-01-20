@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
@@ -52,9 +50,8 @@ func createClient(ctx context.Context) *Client {
 	// Set timeout
 	ctx, _ = context.WithTimeout(ctx, time.Second*20)
 
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
+	client := &http.Client{
+		Timeout: 20 * time.Second,
 	}
 
 	return &Client{ctx: ctx, client: client}
