@@ -1,8 +1,6 @@
 package copy
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 
@@ -42,7 +40,7 @@ func (m Copy) Fork() *Copy {
 	return m2
 }
 
-func (m *Copy) Load(ps []aeds.Property) (err error) {
+func (m *Copy) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
@@ -50,7 +48,7 @@ func (m *Copy) Load(ps []aeds.Property) (err error) {
 	return datastore.LoadStruct(m, ps)
 }
 
-func (m *Copy) Save() (ps []aeds.Property, err error) {
+func (m *Copy) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	m.IsParent = m.ParentCopyId != ""
 

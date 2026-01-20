@@ -4,30 +4,37 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/qedus/nds"
-
-	"google.golang.org/appengine"
-	aeds "google.golang.org/appengine/datastore"
-
+	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/datastore/utils"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
 )
 
 // Gets an entity using datastore.Key or encoded Key
-func (d *Datastore) Get(key Key, value interface{}) error {
-	aekey := key.(*aeds.Key)
-	return d.ignoreFieldMismatch(nds.Get(d.Context, aekey, value))
+func (d *Datastore) Get(k Key, value interface{}) error {
+	if d.database == nil {
+		return errors.New("datastore: database not initialized")
+	}
+
+	dskey := key.ToDatastoreKey(k)
+	dbKey := dskey.ToDBKey(d.database)
+	return d.ignoreFieldMismatch(d.database.Get(d.Context, dbKey, value))
 }
 
 // Gets an entity using datastore.Key or encoded Key
 func (d *Datastore) GetById(id string, value interface{}) error {
-	aekey := d.NewKeyFromId(id)
-	return d.ignoreFieldMismatch(nds.Get(d.Context, aekey, value))
+	dskey := d.NewKeyFromId(id)
+	return d.Get(dskey, value)
 }
 
 // Same as Get, but works for multiple key/vals, keys can be slice of any type
 // accepted by GetMulti as well as *[]*Model, which will automatically
 // allocated if necessary.
 func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
+	if d.database == nil {
+		return errors.New("datastore: database not initialized")
+	}
+
 	var slice reflect.Value
 
 	// Check keys type
@@ -39,8 +46,14 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 	}
 
 	// Convert keys to appropriate type
-	aekeys := convertKeys(keys)
-	nkeys := len(aekeys)
+	dskeys := convertKeys(keys)
+	nkeys := len(dskeys)
+
+	// Convert to db.Key slice
+	dbKeys := make([]db.Key, nkeys)
+	for i, k := range dskeys {
+		dbKeys[i] = k.ToDBKey(d.database)
+	}
 
 	// Check type of vals
 	typ := reflect.TypeOf(vals)
@@ -76,10 +89,10 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 		slice.Set(reflect.AppendSlice(slice, zeroes))
 	}
 
-	// Fetch entities from datastore
-	err := d.ignoreFieldMismatch(nds.GetMulti(d.Context, aekeys, slice.Interface()))
+	// Fetch entities from database
+	err := d.ignoreFieldMismatch(d.database.GetMulti(d.Context, dbKeys, slice.Interface()))
 	if err != nil {
-		if me, ok := err.(appengine.MultiError); ok {
+		if me, ok := err.(utils.MultiError); ok {
 			for _, merr := range me {
 				log.Warn(merr, d.Context)
 			}
@@ -89,8 +102,8 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 }
 
 // Gets an entity using datastore.Key or encoded Key
-func (d *Datastore) MustGet(key Key, value interface{}) {
-	if err := d.Get(key, value); err != nil {
+func (d *Datastore) MustGet(k Key, value interface{}) {
+	if err := d.Get(k, value); err != nil {
 		panic(err)
 	}
 }

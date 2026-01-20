@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
@@ -53,7 +51,7 @@ type Referrent interface {
 	Total() currency.Cents
 }
 
-func (r *Referrer) Save() (ps []aeds.Property, err error) {
+func (r *Referrer) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	r.State_ = string(json.EncodeBytes(&r.State))
 
@@ -61,7 +59,7 @@ func (r *Referrer) Save() (ps []aeds.Property, err error) {
 	return datastore.SaveStruct(r)
 }
 
-func (r *Referrer) Load(ps []aeds.Property) (err error) {
+func (r *Referrer) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	r.Defaults()
 

@@ -7,8 +7,8 @@ import (
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 )
 
 var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *gin.Context) {

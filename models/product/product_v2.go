@@ -22,12 +22,12 @@ import (
 
 // Common errors for Product operations
 var (
-	ErrProductNotFound     = errors.New("product: not found")
-	ErrProductInvalidID    = errors.New("product: invalid id")
-	ErrProductInvalidSlug  = errors.New("product: invalid slug")
-	ErrProductDuplicate    = errors.New("product: duplicate slug or sku")
-	ErrProductValidation   = errors.New("product: validation failed")
-	ErrEmbeddingFailed     = errors.New("product: failed to store embedding")
+	ErrProductNotFound    = errors.New("product: not found")
+	ErrProductInvalidID   = errors.New("product: invalid id")
+	ErrProductInvalidSlug = errors.New("product: invalid slug")
+	ErrProductDuplicate   = errors.New("product: duplicate slug or sku")
+	ErrProductValidation  = errors.New("product: validation failed")
+	ErrEmbeddingFailed    = errors.New("product: failed to store embedding")
 )
 
 // OptionV2 represents a product option (e.g., Size, Color)
@@ -132,11 +132,11 @@ type ProductV2 struct {
 	Media  []Media `json:"media,omitempty"`
 
 	// Availability
-	Available    bool          `json:"available"`
-	Hidden       bool          `json:"hidden"`
-	Availability Availability  `json:"availability,omitempty"`
-	Preorder     bool          `json:"preorder"`
-	AddLabel     string        `json:"addLabel,omitempty"`
+	Available    bool         `json:"available"`
+	Hidden       bool         `json:"hidden"`
+	Availability Availability `json:"availability,omitempty"`
+	Preorder     bool         `json:"preorder"`
+	AddLabel     string       `json:"addLabel,omitempty"`
 
 	// Variants and options
 	Variants []*VariantV2 `json:"variants"`
@@ -163,9 +163,9 @@ type ProductV2 struct {
 	SEOKeywords    string `json:"seoKeywords,omitempty"`
 
 	// Internal state (not persisted)
-	db    db.DB   `json:"-"`
-	key   db.Key  `json:"-"`
-	isNew bool    `json:"-"`
+	db    db.DB  `json:"-"`
+	key   db.Key `json:"-"`
+	isNew bool   `json:"-"`
 }
 
 // Kind returns the entity kind for database operations

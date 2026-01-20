@@ -37,7 +37,7 @@ var Order = New("order", func(c *gin.Context) *order.Order {
 	ord.Items = []LineItem{
 		LineItem{
 			ProductCachedValues: productcachedvalues.ProductCachedValues{
-				Price:     currency.Cents(100),
+				Price: currency.Cents(100),
 			},
 			ProductId: p.Id(),
 			Quantity:  20,

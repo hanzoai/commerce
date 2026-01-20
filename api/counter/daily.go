@@ -5,13 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/counter"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	aeds "google.golang.org/appengine/datastore"
 )
 
 type dailyReq struct {
@@ -58,6 +57,8 @@ func daily(c *gin.Context) {
 	}
 
 	// Get Dailies
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 
 	res := dailyRes{
 		Before: req.Before,
@@ -70,17 +71,15 @@ func daily(c *gin.Context) {
 	getByTag := func(tag string, start time.Time, end time.Time) int {
 		count := 0
 
-		q := aeds.NewQuery(counter.ShardKind)
+		q := db.Query(counter.ShardKind)
 		// Index Order Is Tag, StoreId, Period, Time, always query in this order
 		q = q.Filter("Tag=", tag).Filter("StoreId=", req.StoreId).Filter("Geo=", req.Geo)
 		q = q.Filter("Period=", counter.Hourly).Filter("Time>", start).Filter("Time<=", end)
 
 		shards := []counter.Shard{}
 
-		ctx := middleware.GetAppEngine(c)
-
 		log.Warn("Searching for %v", req, c)
-		if _, err := q.GetAll(ctx, &shards); err != nil {
+		if _, err := q.GetAll(&shards); err != nil {
 			log.Error("Counter Search Error %v", err, c)
 		} else {
 			log.Warn("Result Count %v", len(shards), c)

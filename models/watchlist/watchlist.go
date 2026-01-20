@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/dustin/go-humanize"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -45,7 +43,7 @@ func (c *Watchlist) Validator() *val.Validator {
 	return val.New()
 }
 
-func (c *Watchlist) Load(ps []aeds.Property) (err error) {
+func (c *Watchlist) Load(ps []datastore.Property) (err error) {
 	// Prevent duplicate deserialization
 	if c.Loaded() {
 		return nil
@@ -71,7 +69,7 @@ func (c *Watchlist) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (w *Watchlist) Save() (ps []aeds.Property, err error) {
+func (w *Watchlist) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	w.Metadata_ = string(json.EncodeBytes(&w.Metadata))
 	w.Movies_ = string(json.EncodeBytes(w.Movies))

@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/types/email"
@@ -36,7 +34,10 @@ type Client struct {
 func New(ctx context.Context, settings integration.SMTPRelay) *Client {
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
-	client := urlfetch.Client(ctx)
+	// Create standard HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Second * 55,
+	}
 
 	return &Client{
 		client:   client,

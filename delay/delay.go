@@ -1,4 +1,5 @@
-// derived from https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/delay/delay.go
+// Package delay provides a task queue abstraction for background job execution.
+// This is a standalone implementation that replaces the google.golang.org/appengine/delay package.
 package delay
 
 import (
@@ -8,39 +9,64 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
-	"google.golang.org/appengine/taskqueue"
-
-	// "github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 )
 
 const (
-	// The HTTP path for invocations.
+	// Path is the HTTP path for invocations (maintained for compatibility)
 	Path = "/_/queue/delay"
-	// Use the default queue.
-	queue = ""
 )
 
 type contextKey int
 
 var (
-	// registry of all delayed functions
+	// Funcs is the registry of all delayed functions
 	Funcs = make(map[string]*Function)
+
+	// funcsMu protects Funcs map
+	funcsMu sync.RWMutex
 
 	// precomputed types
 	errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 	// errors
-	errFirstArg         = errors.New("first argument must be context.Context")
-	errOutsideDelayFunc = errors.New("request headers are only available inside a delay.Func")
+	errFirstArg         = errors.New("delay: first argument must be context.Context")
+	errOutsideDelayFunc = errors.New("delay: request headers are only available inside a delay.Func")
+	errFuncInvalid      = errors.New("delay: func is invalid")
+	errNotAFunction     = errors.New("delay: not a function")
 
 	// context keys
 	headersContextKey contextKey = 0
+	taskIDContextKey  contextKey = 1
+
+	// DefaultRetryCount is the default number of retries for failed tasks
+	DefaultRetryCount = 3
+
+	// DefaultRetryDelay is the default delay between retries
+	DefaultRetryDelay = time.Second * 5
 )
 
-// Simple wrapper around delay.Func which allows queue to be customized
+// TaskOptions configures task execution
+type TaskOptions struct {
+	Queue      string
+	Name       string
+	Delay      time.Duration
+	RetryCount int
+	RetryDelay time.Duration
+}
+
+// Task represents a delayed task
+type Task struct {
+	ID      string
+	Path    string
+	Payload []byte
+	Options TaskOptions
+}
+
+// Function wraps a delayed function with queue configuration
 type Function struct {
 	fv  reflect.Value // Kind() == reflect.Func
 	key string
@@ -69,12 +95,12 @@ func Func(key string, i interface{}) *Function {
 
 	f.key = key
 	f.queue = "" // Use default queue
-	f.name = ""  // Use taskqueue-generated name
+	f.name = ""  // Auto-generated name
 	f.delay = 0
 
 	t := f.fv.Type()
 	if t.Kind() != reflect.Func {
-		f.err = errors.New("not a function")
+		f.err = errNotAFunction
 		return f
 	}
 	if t.NumIn() == 0 || !isContext(t.In(0)) {
@@ -88,7 +114,7 @@ func Func(key string, i interface{}) *Function {
 	// that's fine because this function expects the same.
 	for i := 0; i < t.NumIn(); i++ {
 		// Only concrete types may be registered. If the argument has
-		// interface type, the client is resposible for registering the
+		// interface type, the client is responsible for registering the
 		// concrete types it will hold.
 		if t.In(i).Kind() == reflect.Interface {
 			continue
@@ -96,8 +122,11 @@ func Func(key string, i interface{}) *Function {
 		gob.Register(reflect.Zero(t.In(i)).Interface())
 	}
 
+	funcsMu.Lock()
+	defer funcsMu.Unlock()
+
 	if old := Funcs[f.key]; old != nil {
-		old.err = fmt.Errorf("multiple functions registered for %s", key)
+		old.err = fmt.Errorf("delay: multiple functions registered for %s", key)
 	}
 
 	Funcs[f.key] = f
@@ -105,11 +134,8 @@ func Func(key string, i interface{}) *Function {
 	return f
 }
 
-// Call invokes a delayed function.
-//   err := f.Call(c, ...)
-// is equivalent to
-//   t, _ := f.Task(...)
-//   _, err := taskqueue.Add(c, t, "")
+// Call invokes a delayed function asynchronously using goroutines.
+// The function is executed in a background goroutine after any configured delay.
 func (f *Function) Call(c context.Context, args ...interface{}) error {
 	t, err := f.Task(args...)
 	if err != nil {
@@ -117,38 +143,114 @@ func (f *Function) Call(c context.Context, args ...interface{}) error {
 		return err
 	}
 
-	// Override name
+	// Override name if set
 	if f.name != "" {
-		t.Name = f.name
+		t.Options.Name = f.name
 	}
 
-	// For testing environments only
-	// if config.IsTest {
-	// 	vals := []reflect.Value{
-	// 		reflect.ValueOf(c),
-	// 	}
+	// Execute the task asynchronously
+	return executeTask(c, t, f)
+}
 
-	// 	for arg := range args {
-	// 		vals = append(vals, reflect.ValueOf(arg))
-	// 	}
+// executeTask runs the task in a goroutine with optional delay
+func executeTask(parentCtx context.Context, t *Task, f *Function) error {
+	delay := f.delay
+	retryCount := DefaultRetryCount
+	retryDelay := DefaultRetryDelay
 
-	// 	f.fv.Call(vals)
-	// 	return nil
-	// }
+	if t.Options.RetryCount > 0 {
+		retryCount = t.Options.RetryCount
+	}
+	if t.Options.RetryDelay > 0 {
+		retryDelay = t.Options.RetryDelay
+	}
 
-	// Add to taskqueue
-	if _, err := taskqueue.Add(c, t, f.queue); err != nil {
-		log.Warn(err)
-		return err
+	go func() {
+		// Create a new context for the background task
+		// We don't inherit cancellation from parentCtx since this is a background job
+		ctx := context.Background()
+
+		// Add task ID to context if available
+		if t.Options.Name != "" {
+			ctx = context.WithValue(ctx, taskIDContextKey, t.Options.Name)
+		}
+
+		// Apply initial delay if configured
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+
+		// Decode the invocation
+		var inv invocation
+		if err := gob.NewDecoder(bytes.NewReader(t.Payload)).Decode(&inv); err != nil {
+			log.Error(ctx, "delay: failed decoding task payload: %v", err)
+			return
+		}
+
+		// Execute with retries
+		var lastErr error
+		for attempt := 0; attempt <= retryCount; attempt++ {
+			if attempt > 0 {
+				log.Warn(ctx, "delay: retrying task %s (attempt %d/%d)", f.key, attempt, retryCount)
+				time.Sleep(retryDelay)
+			}
+
+			lastErr = executeInvocation(ctx, f, inv.Args)
+			if lastErr == nil {
+				return // Success
+			}
+
+			log.Error(ctx, "delay: func %s failed (attempt %d): %v", f.key, attempt+1, lastErr)
+		}
+
+		log.Error(ctx, "delay: func %s exhausted all retries: %v", f.key, lastErr)
+	}()
+
+	return nil
+}
+
+// executeInvocation executes the function with the given arguments
+func executeInvocation(ctx context.Context, f *Function, args []interface{}) error {
+	ft := f.fv.Type()
+	in := []reflect.Value{reflect.ValueOf(ctx)}
+
+	for i, arg := range args {
+		var v reflect.Value
+		if arg != nil {
+			v = reflect.ValueOf(arg)
+		} else {
+			// Task was passed a nil argument, so we must construct
+			// the zero value for the argument here.
+			n := len(in) // we're constructing the nth argument
+			var at reflect.Type
+			if !ft.IsVariadic() || n < ft.NumIn()-1 {
+				at = ft.In(n)
+			} else {
+				at = ft.In(ft.NumIn() - 1).Elem()
+			}
+			v = reflect.Zero(at)
+		}
+		in = append(in, v)
+
+		// Suppress unused variable warning
+		_ = i
+	}
+
+	out := f.fv.Call(in)
+
+	if n := ft.NumOut(); n > 0 && ft.Out(n-1) == errorType {
+		if errv := out[n-1]; !errv.IsNil() {
+			return errv.Interface().(error)
+		}
 	}
 
 	return nil
 }
 
 // Task creates a Task that will invoke the function.
-// Its parameters may be tweaked before adding it to a queue.
+// Its parameters may be tweaked before execution.
 // Users should not modify the Path or Payload fields of the returned Task.
-func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
+func (f *Function) Task(args ...interface{}) (*Task, error) {
 	if f.err != nil {
 		return nil, fmt.Errorf("delay: func is invalid: %v", f.err)
 	}
@@ -217,37 +319,75 @@ func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
 		return nil, fmt.Errorf("delay: gob encoding failed: %v", err)
 	}
 
-	return &taskqueue.Task{
+	return &Task{
 		Path:    Path,
 		Payload: buf.Bytes(),
+		Options: TaskOptions{
+			Queue: f.queue,
+			Name:  f.name,
+			Delay: f.delay,
+		},
 	}, nil
 }
 
-// Returns a copy of this Function with new queue settings
+// Queue returns a copy of this Function with the specified queue.
 func (f *Function) Queue(queue string) *Function {
-	f2 := new(Function)
-	f2.queue = queue
+	f2 := &Function{
+		fv:    f.fv,
+		key:   f.key,
+		err:   f.err,
+		queue: queue,
+		name:  f.name,
+		delay: f.delay,
+	}
 	return f2
 }
 
-// Add a task only once by using a unique name
+// Once adds a task only once by using a unique name.
+// This prevents duplicate task execution.
 func (f *Function) Once(ctx context.Context, name string, delay time.Duration, args ...interface{}) error {
-	f2 := *f
-	f2.queue = f.queue
-	f2.name = name
-	f2.delay = delay
+	f2 := &Function{
+		fv:    f.fv,
+		key:   f.key,
+		err:   f.err,
+		queue: f.queue,
+		name:  name,
+		delay: delay,
+	}
 	return f2.Call(ctx, args...)
 }
 
+// FuncByKey retrieves a registered function by its key.
 func FuncByKey(key string) *Function {
+	funcsMu.RLock()
+	defer funcsMu.RUnlock()
+
 	f, ok := Funcs[key]
 	if !ok {
 		keys := []string{}
 		for k := range Funcs {
 			keys = append(keys, k)
 		}
-
 		panic(fmt.Errorf("delay: key %s not found in delay.Funcs(%s)", key, keys))
 	}
 	return f
+}
+
+// Later executes a function after a delay.
+// This is a simpler API for one-off delayed tasks.
+func Later(ctx context.Context, delay time.Duration, fn func(context.Context) error) error {
+	go func() {
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+		if err := fn(context.Background()); err != nil {
+			log.Error(ctx, "delay: Later func failed: %v", err)
+		}
+	}()
+	return nil
+}
+
+// Now executes a function immediately in a background goroutine.
+func Now(ctx context.Context, fn func(context.Context) error) error {
+	return Later(ctx, 0, fn)
 }

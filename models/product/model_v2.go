@@ -288,18 +288,18 @@ func MigrateFromV1(v1 *Product, database db.DB, orgID string) *ProductV2 {
 	v2.Variants = make([]*VariantV2, len(v1.Variants))
 	for i, oldV := range v1.Variants {
 		v2.Variants[i] = &VariantV2{
-			ID:           oldV.Id_,
-			ProductId:    v2.ID,
-			SKU:          oldV.SKU,
-			UPC:          oldV.UPC,
-			Name:         oldV.Name,
-			Price:        oldV.Price,
-			ListPrice:    oldV.ListPrice,
-			Available:    oldV.Available,
-			Sold:         oldV.Sold,
-			Header:       oldV.Header,
-			Image:        oldV.Image,
-			Media:        oldV.Media,
+			ID:        oldV.Id_,
+			ProductId: v2.ID,
+			SKU:       oldV.SKU,
+			UPC:       oldV.UPC,
+			Name:      oldV.Name,
+			Price:     oldV.Price,
+			ListPrice: oldV.ListPrice,
+			Available: oldV.Available,
+			Sold:      oldV.Sold,
+			Header:    oldV.Header,
+			Image:     oldV.Image,
+			Media:     oldV.Media,
 		}
 
 		// Convert variant options
@@ -446,4 +446,3 @@ func ImportV2(ctx context.Context, database db.DB, data []byte) error {
 
 	return BulkCreate(ctx, database, products)
 }
-

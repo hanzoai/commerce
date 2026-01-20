@@ -4,16 +4,15 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/cron/payout"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue
@@ -23,8 +22,8 @@ var transferFee = payout.TransferFee.Queue("transfer-affiliate-fee")
 var transferFees = delay.Func("transfer-affiliate-fees", func(ctx context.Context, namespace, affKey string, cutoff time.Time) {
 	db := datastore.New(ctx)
 
-	// Switch namespace
-	nsctx, _ := appengine.Namespace(ctx, namespace)
+	// Switch namespace using context
+	nsctx := nscontext.WithNamespace(ctx, namespace)
 
 	// Decode affiliate key
 	key, _ := datastore.DecodeKey(nsctx, affKey)
@@ -68,8 +67,8 @@ func Payout(ctx context.Context) error {
 
 	// Transfer fees for each organization
 	for _, org := range orgs {
-		// Switch namespace
-		nsctx, _ := appengine.Namespace(ctx, org.Name)
+		// Switch namespace using context
+		nsctx := nscontext.WithNamespace(ctx, org.Name)
 
 		log.Debug("Fetching all affiliates for '%s'", org.Name, ctx)
 		affs := make([]*affiliate.Affiliate, 0)

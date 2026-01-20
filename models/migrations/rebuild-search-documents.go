@@ -3,13 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	// "google.golang.org/appengine/search"
-
-	// "github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/models/cart"
 	"github.com/hanzoai/commerce/models/order"
-	// "github.com/hanzoai/commerce/models/mixin"
-	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/user"
 
@@ -22,33 +18,9 @@ var _ = New("rebuild-search-documents",
 
 		c.Set("namespace", "damon")
 		db.SetNamespace("damon")
-		// ctx := db.Context
 
-		// index, err := search.Open(mixin.DefaultIndex)
-		// if err != nil {
-		// 	log.Error("Failed to open search index for model", ctx)
-		// 	return NoArgs
-		// }
-
-		// opts := search.SearchOptions{}
-		// opts.IDsOnly = true
-		// opts.Refinements = []search.Facet{
-		// 	search.Facet{
-		// 		Name:  "Kind",
-		// 		Value: search.Atom("product"),
-		// 	},
-		// }
-
-		// iter := index.Search(ctx, "", &opts)
-
-		// for {
-		// 	id, err := iter.Next(nil)
-		// 	if err != nil {
-		// 		break
-		// 	}
-
-		// 	index.Delete(ctx, id)
-		// }
+		// Search functionality removed - appengine/search is deprecated
+		// Document operations now handled by individual model PutDocument() calls
 
 		return NoArgs
 	},

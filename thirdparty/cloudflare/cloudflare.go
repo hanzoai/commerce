@@ -11,8 +11,6 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 
 	"github.com/gin-gonic/gin"
-
-	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {
@@ -29,15 +27,13 @@ func New(c *gin.Context) *Client {
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
-	}
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	return &Client{
 		Email:    config.Cloudflare.Email,
 		Key:      config.Cloudflare.Key,
 		Endpoint: "https://api.cloudflare.com/client/v4/",
+		client:   client,
 	}
 }
 

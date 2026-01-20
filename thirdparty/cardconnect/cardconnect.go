@@ -8,13 +8,12 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	// "github.com/hanzoai/commerce/models"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
-
-	"google.golang.org/appengine/urlfetch"
 )
 
 var baseUrl = "https://fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
@@ -121,7 +120,7 @@ func Authorize(ctx context.Context, order *order.Order, user *user.User) (ares A
 		Items:    items,
 	}
 
-	client := urlfetch.Client(ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	jsonreq, _ := json.Marshal(areq)
 	reqbuf := bytes.NewBuffer(jsonreq)

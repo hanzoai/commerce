@@ -10,5 +10,5 @@ var (
 )
 
 func isContext(t reflect.Type) bool {
-	return t == stdContextType
+	return t.Implements(stdContextType)
 }

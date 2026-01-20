@@ -1,8 +1,6 @@
 package blockaddress
 
 import (
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/datastore"
 	. "github.com/hanzoai/commerce/models/blockchains"
 )
@@ -22,11 +20,9 @@ func (b *BlockAddress) Defaults() {
 
 func New(db *datastore.Datastore) *BlockAddress {
 	b := new(BlockAddress)
-	if ctx, err := appengine.Namespace(db.Context, BlockchainNamespace); err != nil {
-		panic(err)
-	} else {
-		b.Init(datastore.New(ctx))
-	}
+	nsDb := datastore.New(db.Context)
+	nsDb.SetNamespace(BlockchainNamespace)
+	b.Init(nsDb)
 	b.Defaults()
 	return b
 }

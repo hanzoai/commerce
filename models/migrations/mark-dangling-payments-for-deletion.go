@@ -1,15 +1,17 @@
 package migrations
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine/datastore"
-
 	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
-	"github.com/hanzoai/commerce/log"
 )
+
+var errNoSuchEntity = errors.New("datastore: no such entity")
 
 var _ = New("mark-dangling-payments-for-deletion",
 	func(c *gin.Context) []interface{} {
@@ -27,7 +29,7 @@ var _ = New("mark-dangling-payments-for-deletion",
 		switch err {
 		case nil:
 			pay.Deleted = false
-		case datastore.ErrNoSuchEntity:
+		case errNoSuchEntity:
 			pay.Deleted = true
 		default:
 			log.Error("Failed to query for order: %v", err, ctx)

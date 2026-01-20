@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/appengine"
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/cache"
@@ -146,12 +143,7 @@ func (m *Model) SetContext(ctx context.Context) {
 
 // Set context.Context namespace
 func (m *Model) SetNamespace(namespace string) {
-	ctx, err := appengine.Namespace(m.Context(), namespace)
-	if err != nil {
-		panic(err)
-	}
-
-	m.SetContext(ctx)
+	m.Db.SetNamespace(namespace)
 }
 
 // Returns namespace for this model
@@ -210,17 +202,13 @@ func (m *Model) SetKey(key interface{}) (err error) {
 			// We've declared this model uses string keys.
 			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Parent)
 		} else {
-			// Try to decode key as hashid
-			k, err = hashid.DecodeKey(m.Db.Context, v)
+			// Try to decode key as hashid or base64 encoded key
+			k, err = datastore.DecodeKey(m.Db.Context, v)
 			if err == nil {
-				// Success, this is a hashid encoded key
+				// Success, this is a decoded key
 				id = v
 			} else {
-				// Try to decode key as encoded key
-				k, err = aeds.DecodeKey(v)
-				if err != nil {
-					return fmt.Errorf("Unable to decode '%v': %v", v, err)
-				}
+				return fmt.Errorf("Unable to decode '%v': %v", v, err)
 			}
 		}
 	case int64:
@@ -239,7 +227,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	}
 
 	// Bail out if already set with same key
-	if m.key != nil && m.key.Equal(k.(*aeds.Key)) {
+	if m.key != nil && m.key.Encode() == k.Encode() {
 		return nil
 	}
 

@@ -3,7 +3,6 @@ package tasks
 import (
 	"context"
 
-	"google.golang.org/appengine"
 	"github.com/hanzoai/commerce/delay"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -11,20 +10,18 @@ import (
 	"github.com/hanzoai/commerce/models/aggregate"
 	"github.com/hanzoai/commerce/models/analyticsevent"
 	"github.com/hanzoai/commerce/models/funnel"
+	"github.com/hanzoai/commerce/util/nscontext"
 	. "github.com/hanzoai/commerce/util/aggregate/tasks"
 )
 
 var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {
-	nsctx, err := appengine.Namespace(ctx, namespace)
-	if err != nil {
-		log.Error("Could not namespace %v, %v", namespace, err, ctx)
-		return
-	}
+	// Create namespaced context using our nscontext helper
+	nsctx := nscontext.WithNamespace(ctx, namespace)
 
 	db := datastore.New(nsctx)
 
 	event := analyticsevent.New(db)
-	err = event.GetById(eventId)
+	err := event.GetById(eventId)
 	if err != nil {
 		log.Error("Could not get event %v, %v", eventId, err, ctx)
 		return

@@ -3,9 +3,8 @@ package paypal
 import (
 	"github.com/gin-gonic/gin"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
@@ -48,7 +47,7 @@ func Confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (
 func Cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
 	db := datastore.New(c)
 
-	var keys []*aeds.Key
+	var keys []iface.Key
 	var payments []*payment.Payment
 
 	payments = make([]*payment.Payment, 0)

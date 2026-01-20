@@ -1,10 +1,9 @@
 package api
 
 import (
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/demo/disclosure"
 	"github.com/hanzoai/commerce/demo/tokentransaction"
@@ -80,7 +79,7 @@ func Route(api router.Router) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		api.GET("/", middleware.ParseToken, rest.ListRoutes())
 	} else {
 		api.GET("/", router.Ok)
@@ -98,7 +97,7 @@ func Route(api router.Router) {
 
 	// Setup routes for delay funcs
 	api.POST(delay.Path, func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
+		ctx := c.Request.Context()
 		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
