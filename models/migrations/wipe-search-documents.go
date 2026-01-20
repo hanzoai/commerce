@@ -1,8 +1,6 @@
 package migrations
 
 import (
-	"google.golang.org/appengine/search"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -15,22 +13,8 @@ var _ = New("wipe-search-documents",
 		db.SetNamespace("damon")
 		ctx := db.Context
 
-		index, err := search.Open("everything")
-		if err != nil {
-			log.Error("Failed to open search index for model", ctx)
-			return NoArgs
-		}
-
-		iter := index.List(ctx, &search.ListOptions{IDsOnly: true})
-
-		for {
-			id, err := iter.Next(nil)
-			if err != nil {
-				break
-			}
-
-			index.Delete(ctx, id)
-		}
+		// Search functionality removed - appengine/search is deprecated
+		log.Info("wipe-search-documents: search functionality removed (no-op)", ctx)
 
 		return NoArgs
 	},

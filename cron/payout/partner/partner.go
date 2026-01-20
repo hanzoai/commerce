@@ -4,16 +4,15 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/cron/payout"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/partner"
-	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue
@@ -32,8 +31,8 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx context.Context,
 
 	log.Debug("Transferring partner fees collected in '%s'", namespace, ctx)
 
-	// Switch namespace
-	nsctx, _ := appengine.Namespace(ctx, namespace)
+	// Switch namespace using context
+	nsctx := nscontext.WithNamespace(ctx, namespace)
 
 	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)

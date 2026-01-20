@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"time"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
@@ -66,21 +64,21 @@ type BigQueryRow struct {
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createBigQueryDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-bigquery-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
-		// Explicitly switch namespace. TODO: this should not be necessary, bug?
+		// Explicitly switch namespace
 		nsCtx := ctx
 		if namespace != "" {
-			var err error
-			nsCtx, err = appengine.Namespace(ctx, namespace)
-			if err != nil {
-				panic(err)
-			}
+			nsCtx = context.WithValue(ctx, "namespace", namespace)
 		}
 
 		// Set timeout
-		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
+		nsCtx, cancel := context.WithTimeout(nsCtx, time.Second*30)
+		defer cancel()
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
+		if namespace != "" {
+			db.SetNamespace(namespace)
+		}
 
 		// Construct query
 		q := db.Query(fn.Kind).Offset(offset).Limit(batchSize)
@@ -102,7 +100,7 @@ func (fn *ParallelFn) createBigQueryDelayFn(name string) {
 			key, err := t.Next(entity)
 
 			// Done iterating
-			if err == datastore.Done {
+			if err == datastore.Done || key == nil {
 				break
 			}
 

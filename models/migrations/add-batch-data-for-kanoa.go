@@ -3,8 +3,8 @@ package migrations
 import (
 	"time"
 
-	"github.com/hanzoai/commerce/models/order"
 	"github.com/gin-gonic/gin"
+	"github.com/hanzoai/commerce/models/order"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )

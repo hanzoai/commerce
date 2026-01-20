@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
@@ -149,7 +147,7 @@ func (s Subscriber) MergeFields() map[string]interface{} {
 	return fields
 }
 
-func (s *Subscriber) Load(ps []aeds.Property) (err error) {
+func (s *Subscriber) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -166,7 +164,7 @@ func (s *Subscriber) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscriber) Save() (ps []aeds.Property, err error) {
+func (s *Subscriber) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

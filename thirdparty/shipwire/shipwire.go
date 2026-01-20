@@ -8,8 +8,6 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/log"
@@ -32,10 +30,7 @@ func New(c *gin.Context, username, password string) *Client {
 	ctx := middleware.GetAppEngine(c)
 
 	ctx, _ = context.WithTimeout(ctx, time.Second*30)
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
-	}
+	client := &http.Client{Timeout: 30 * time.Second}
 
 	return &Client{
 		Username: username,

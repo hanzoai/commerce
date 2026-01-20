@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"time"
 
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/config"
@@ -53,10 +51,7 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 
 	// Create client
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
-	}
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	// Make Post request
 	res, err := client.Do(req)

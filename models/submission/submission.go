@@ -1,8 +1,6 @@
 package submission
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
@@ -24,7 +22,7 @@ type Submission struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Submission) Load(ps []aeds.Property) (err error) {
+func (s *Submission) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -41,7 +39,7 @@ func (s *Submission) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (s *Submission) Save() (ps []aeds.Property, err error) {
+func (s *Submission) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

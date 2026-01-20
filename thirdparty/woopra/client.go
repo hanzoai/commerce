@@ -6,9 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
+	"time"
 
 	"github.com/hanzoai/commerce/log"
 )
@@ -64,11 +62,7 @@ func (t Tracker) Identify(ctx context.Context, person Person, args ...string) *C
 		userAgent = args[0]
 	}
 
-	httpClient := urlfetch.Client(ctx)
-	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
-	}
+	httpClient := &http.Client{Timeout: 55 * time.Second}
 
 	return &Context{
 		Tracker:    t,

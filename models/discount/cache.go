@@ -3,19 +3,25 @@ package discount
 import (
 	"context"
 	"fmt"
-
-	aeds "google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/memcache"
+	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/discount/scope"
 )
 
-// Computes memcache key, using format:
+// In-memory cache for discount keys (replaces appengine memcache)
+var (
+	discountCache     = make(map[string][]iface.Key)
+	discountCacheLock sync.RWMutex
+)
+
+// Computes cache key, using format:
+//
 //	discount-keys-organization
-//  discount-keys-store-storeId
-//  ..etc
+//	discount-keys-store-storeId
+//	..etc
 func keyForScope(scopeType scope.Type, id string) string {
 	key := "discount-keys-"
 	keyFmt := key + "%s-%s"
@@ -40,43 +46,41 @@ func keyForScope(scopeType scope.Type, id string) string {
 // Invalidate cache for all keys in matching scope
 func (d *Discount) invalidateCache() error {
 	key := keyForScope(d.Scope.Type, d.ScopeId())
-	err := memcache.Delete(d.Context(), key)
-	if err == memcache.ErrCacheMiss {
-		err = nil
-	}
-	return err
+	discountCacheLock.Lock()
+	delete(discountCache, key)
+	discountCacheLock.Unlock()
+	return nil
 }
 
 // Cache discount keys
-func cacheDiscounts(ctx context.Context, key string, keys []*aeds.Key) error {
-	return memcache.Gob.Set(ctx,
-		&memcache.Item{
-			Key:    key,
-			Object: keys,
-		})
+func cacheDiscounts(ctx context.Context, key string, keys []iface.Key) error {
+	discountCacheLock.Lock()
+	discountCache[key] = keys
+	discountCacheLock.Unlock()
+	return nil
 }
 
 // Get cached discount keys
-func getCachedDiscounts(ctx context.Context, key string) ([]*aeds.Key, error) {
-	keys := make([]*aeds.Key, 0)
-	_, err := memcache.Gob.Get(ctx, key, keys)
-	if err != nil {
-		return keys, err
+func getCachedDiscounts(ctx context.Context, key string) ([]iface.Key, error) {
+	discountCacheLock.RLock()
+	keys, ok := discountCache[key]
+	discountCacheLock.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("cache miss for key: %s", key)
 	}
-
 	return keys, nil
 }
 
-func GetScopedDiscounts(ctx context.Context, sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
+func GetScopedDiscounts(ctx context.Context, sc scope.Type, id string, keyc chan []iface.Key, errc chan error) {
 	// Id required for all scopes except organization
 	if id == "" && sc != scope.Organization {
 		// TODO: Prevent this from happening. Usually due to store id missing on order.
 		errc <- nil
-		keyc <- make([]*aeds.Key, 0)
+		keyc <- make([]iface.Key, 0)
 		return
 	}
 
-	// Check memcache for keys
+	// Check cache for keys
 	key := keyForScope(sc, id)
 
 	log.Debug("Trying to get discounts from cache using key '%s'", key)

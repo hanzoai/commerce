@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ds "github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
 )
 
 var _ = New("mark-nil-payments-for-deletion",

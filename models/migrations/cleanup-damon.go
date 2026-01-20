@@ -3,11 +3,7 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	// "google.golang.org/appengine/search"
-
-	// "github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
-	// "github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/user"
 
 	ds "github.com/hanzoai/commerce/datastore"

@@ -93,8 +93,8 @@ type Context struct {
 
 func (c *Context) cloneKeys(keys map[string]interface{}) {
 	for k, v := range keys {
-		// Skip app engine
-		if k == "google.golang.org/appengine" {
+		// Skip context keys that cannot be serialized
+		if k == "appengine" || k == "context" {
 			continue
 		}
 
@@ -108,35 +108,36 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx context.Context) (ctx *gin.Context, err error) {
-	ctx = new(gin.Context)
-	ctx.Errors = ctx.Errors[0:0]
-	ctx.Keys = c.Keys
-	ctx.Params = c.Params
+func (c Context) Context(ctx context.Context) (ginCtx *gin.Context, err error) {
+	ginCtx = new(gin.Context)
+	ginCtx.Errors = ginCtx.Errors[0:0]
+	ginCtx.Keys = c.Keys
+	ginCtx.Params = c.Params
 
-	ctx.Request, err = c.Request.Request()
+	ginCtx.Request, err = c.Request.Request()
 	if err != nil {
 		log.Warn("Failed to create Request from Request: %v", err)
 	}
 
-	// If we don't have an appengine context, this is all we can do for now
-	if aectx == nil {
-		return ctx, err
+	// If we don't have a context, this is all we can do for now
+	if ctx == nil {
+		return ginCtx, err
 	}
 
-	// ...otherwise use appengine context to update gin context
-	ctx.Set("appengine", aectx)
+	// ...otherwise use context to update gin context
+	ginCtx.Set("appengine", ctx)
+	ginCtx.Set("context", ctx)
 
 	// Fetch organization if organization-id is set
-	if value, ok := ctx.Get("organization-id"); !ok {
+	if value, ok := ginCtx.Get("organization-id"); !ok {
 		if id, ok := value.(string); ok {
-			db := datastore.New(aectx)
+			db := datastore.New(ctx)
 			org := organization.New(db)
 			org.GetById(id)
-			ctx.Set("organization", org)
+			ginCtx.Set("organization", org)
 		}
 	}
-	return ctx, err
+	return ginCtx, err
 }
 
 func NewContext(c *gin.Context) *Context {
@@ -153,7 +154,7 @@ func NewContext(c *gin.Context) *Context {
 		ctx.Request = &Request{}
 	}
 
-	// Clone keys, skipping app engine context (can't gob encode, also no point)
+	// Clone keys, skipping context (can't gob encode, also no point)
 	ctx.cloneKeys(c.Keys)
 
 	return ctx

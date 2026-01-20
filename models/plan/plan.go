@@ -1,8 +1,6 @@
 package plan
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -56,7 +54,7 @@ type Plan struct {
 	Ref refs.EcommerceRef `json:"ref,omitempty"`
 }
 
-func (p *Plan) Load(ps []aeds.Property) (err error) {
+func (p *Plan) Load(ps []datastore.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
@@ -70,7 +68,7 @@ func (p *Plan) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (p *Plan) Save() (ps []aeds.Property, err error) {
+func (p *Plan) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 

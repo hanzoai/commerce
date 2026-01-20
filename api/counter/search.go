@@ -12,8 +12,6 @@ import (
 	"github.com/hanzoai/commerce/util/counter"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	aeds "google.golang.org/appengine/datastore"
 )
 
 type searchReq struct {
@@ -41,7 +39,9 @@ func search(c *gin.Context) {
 		return
 	}
 
-	q := aeds.NewQuery(counter.ShardKind)
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+	q := db.Query(counter.ShardKind)
 
 	if req.Before.IsZero() {
 		req.Before = time.Now()
@@ -62,14 +62,12 @@ func search(c *gin.Context) {
 
 	shards := []counter.Shard{}
 
-	ctx := middleware.GetAppEngine(c)
-
 	res := searchRes{
 		Count: 0,
 	}
 
 	log.Warn("Searching for %v", req, c)
-	if _, err := q.GetAll(ctx, &shards); err != nil {
+	if _, err := q.GetAll(&shards); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
 		log.Warn("Result Count %v", len(shards), c)
@@ -96,8 +94,8 @@ func searchProduct(c *gin.Context) {
 	tag1 := "product." + prod.Id() + ".revenue"
 	tag2 := "product." + prod.Id() + ".sold"
 
-	q1 := aeds.NewQuery(counter.ShardKind)
-	q2 := aeds.NewQuery(counter.ShardKind)
+	q1 := db.Query(counter.ShardKind)
+	q2 := db.Query(counter.ShardKind)
 
 	// Index Order Is Tag, StoreId, Period, Time, always query in this order
 	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "").Filter("Period=", counter.Total)
@@ -111,7 +109,7 @@ func searchProduct(c *gin.Context) {
 	}
 
 	log.Warn("Searching for %v", productId, c)
-	if _, err := q1.GetAll(ctx, &shards1); err != nil {
+	if _, err := q1.GetAll(&shards1); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
 		log.Warn("Result Count %v", len(shards1), c)
@@ -122,7 +120,7 @@ func searchProduct(c *gin.Context) {
 
 	shards2 := []counter.Shard{}
 
-	if _, err := q2.GetAll(ctx, &shards2); err != nil {
+	if _, err := q2.GetAll(&shards2); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
 		log.Warn("Result Count %v", len(shards2), c)
@@ -136,12 +134,13 @@ func searchProduct(c *gin.Context) {
 
 func topLine(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 
 	tag1 := "order.revenue"
 	tag2 := "order.count"
 
-	q1 := aeds.NewQuery(counter.ShardKind)
-	q2 := aeds.NewQuery(counter.ShardKind)
+	q1 := db.Query(counter.ShardKind)
+	q2 := db.Query(counter.ShardKind)
 
 	// Index Order Is Tag, StoreId, Period, Time, always query in this order
 	q1 = q1.Filter("Tag=", tag1).Filter("Geo=", "").Filter("Period=", counter.Total)
@@ -154,7 +153,7 @@ func topLine(c *gin.Context) {
 		Amount: 0,
 	}
 
-	if _, err := q1.GetAll(ctx, &shards1); err != nil {
+	if _, err := q1.GetAll(&shards1); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
 		log.Warn("Result Count %v", len(shards1), c)
@@ -165,7 +164,7 @@ func topLine(c *gin.Context) {
 
 	shards2 := []counter.Shard{}
 
-	if _, err := q2.GetAll(ctx, &shards2); err != nil {
+	if _, err := q2.GetAll(&shards2); err != nil {
 		log.Error("Counter Search Error %v", err, c)
 	} else {
 		log.Warn("Result Count %v", len(shards2), c)

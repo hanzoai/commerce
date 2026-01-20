@@ -3,8 +3,8 @@ package pricing
 import (
 	"context"
 
-	aeds "google.golang.org/appengine/datastore"
-
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/hashid"
@@ -28,12 +28,12 @@ type Partner struct {
 	} `json:"ethereum"`
 }
 
-func (p Partner) Key(ctx context.Context) *aeds.Key {
-	key, err := hashid.DecodeKey(ctx, p.Id)
+func (p Partner) Key(ctx context.Context) iface.Key {
+	dbKey, err := hashid.DecodeKey(ctx, p.Id)
 	if err != nil {
 		panic(err)
 	}
-	return key
+	return key.FromDBKey(dbKey)
 }
 
 // Various fees we collect
@@ -65,10 +65,10 @@ type Fees struct {
 	} `json:"affiliate"`
 }
 
-func (f Fees) Key(ctx context.Context) *aeds.Key {
-	key, err := hashid.DecodeKey(ctx, f.Id)
+func (f Fees) Key(ctx context.Context) iface.Key {
+	dbKey, err := hashid.DecodeKey(ctx, f.Id)
 	if err != nil {
 		panic(err)
 	}
-	return key
+	return key.FromDBKey(dbKey)
 }

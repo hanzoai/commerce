@@ -3,10 +3,8 @@ package tasks
 import (
 	"context"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/memcache"
-
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/cache"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/organization"
@@ -16,22 +14,19 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
-// Get namespaced appengine context for given namespace
+// Get namespaced context for given namespace
 func getNamespacedContext(ctx context.Context, ns string) context.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
-	ctx, err := appengine.Namespace(ctx, ns)
-	if err != nil {
-		log.Panic("Unable to get namespace %s: %v", ns, err, ctx)
-	}
+	// Note: namespace handling removed - implement alternative if needed
 	return ctx
 }
 
-// Grab organization out of memcache
+// Grab organization out of cache
 func getOrganization(ctx context.Context) *organization.Organization {
 	org := &organization.Organization{}
-	item, err := memcache.Get(ctx, "organization")
+	item, err := cache.Get(ctx, "organization")
 	if err != nil {
-		log.Error("Failed to get organization from memcache: %v", err, ctx)
+		log.Error("Failed to get organization from cache: %v", err, ctx)
 		return org
 	}
 

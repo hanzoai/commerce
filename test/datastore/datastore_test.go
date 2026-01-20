@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"testing"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -25,15 +23,13 @@ var (
 	db  *datastore.Datastore
 )
 
-// Setup appengine context and datastore before tests
+// Setup test context and datastore before tests
 var _ = BeforeSuite(func() {
-	var err error
 	ctx = ae.NewContext()
-	Expect(err).NotTo(HaveOccurred())
 	db = datastore.New(ctx)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
@@ -65,12 +61,13 @@ var _ = Describe("Key", func() {
 
 var _ = Describe("Datastore.DecodeKey", func() {
 	kind := "decodekey-test"
-	Context("Key encoded with appengine", func() {
+	Context("Key encoded with datastore", func() {
 		It("should be the same", func() {
-			key := aeds.NewKey(ctx, kind, "decodekey-testkey", 0, nil)
+			key := db.NewKeyFromString(kind, "decodekey-testkey", nil)
 			decodedKey, err := db.DecodeKey(key.Encode())
 			Expect(err).ToNot(HaveOccurred())
-			Expect(decodedKey).To(Equal(key))
+			Expect(decodedKey.Kind()).To(Equal(key.Kind()))
+			Expect(decodedKey.StringID()).To(Equal(key.StringID()))
 		})
 	})
 })
@@ -86,7 +83,7 @@ func str(i int) string {
 var _ = Describe("Datastore.Get", func() {
 	entity := &Entity{"test-get-field"}
 	kind := "test-get"
-	var key *aeds.Key
+	var key datastore.Key
 
 	Context("When storing entity with Datastore.Put", func() {
 		BeforeEach(func() {
@@ -110,11 +107,11 @@ var _ = Describe("Datastore.Get", func() {
 		})
 	})
 
-	Context("When storing entity with appengine/datastore", func() {
+	Context("When storing entity with Put and GetById", func() {
 		retrievedEntity := &Entity{}
 		BeforeEach(func() {
-			key := aeds.NewKey(ctx, kind, "key", 0, nil)
-			_, err := aeds.Put(ctx, key, entity)
+			key := db.NewKeyFromString(kind, "key", nil)
+			_, err := db.PutWithKey(key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = db.GetById(key.Encode(), retrievedEntity)
@@ -151,16 +148,16 @@ var _ = Describe("Put", func() {
 		})
 	})
 
-	Context("With appengine's datastore.Get", func() {
+	Context("With Get after Put", func() {
 		It("should be the same", func() {
-			a := &Entity{"test-appengine-put"}
+			a := &Entity{"test-put-get"}
 			b := &Entity{}
 
 			// Store entity
 			key, err := db.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = aeds.Get(ctx, key, b)
+			err = db.Get(key, b)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(a).To(Equal(b))
 		})
@@ -186,40 +183,18 @@ var _ = Describe("Put", func() {
 
 var _ = Describe("Datastore.GetMulti", func() {
 	kind := "datastore-getmulti-test"
-	// Context("With Datastore.PutMulti", func() {
-	// 	It("should be the same", func() {
-	// 		a := make([]Entity, 10)
-	// 		b := make([]interface{}, len(a))
-	// 		for i, _ := range a {
-	// 			entity := Entity{str(i)}
-	// 			a[i] = entity
-	// 			b[i] = &entity
-	// 		}
-	// 		keys, err := db.PutMulti(kind, b)
-	// 		Expect(err).ToNot(HaveOccurred())
 
-	// 		c := make([]Entity, len(a))
-	// 		err = db.GetMulti(keys, c)
-	// 		Expect(err).ToNot(HaveOccurred())
-	// 		Expect(c).To(Equal(a))
-	// 		Expect(c).To(HaveLen(len(a)))
-	// 	})
-	// })
-
-	Context("With appengine's datastore.PutMulti", func() {
+	Context("With Put and GetMulti", func() {
 		It("should be the same", func() {
 			a := make([]Entity, 10)
-			keys := func() []*aeds.Key {
-				keys := make([]*aeds.Key, len(a))
-				for i, _ := range keys {
-					a[i].Field = str(i)
-					aKey := aeds.NewKey(ctx, kind, str(i), 0, nil)
-					keys[i] = aKey
-				}
-				keys, err := aeds.PutMulti(ctx, keys, a)
+			keys := make([]datastore.Key, len(a))
+			for i := range keys {
+				a[i].Field = str(i)
+				key := db.NewKeyFromString(kind, str(i), nil)
+				keys[i] = key
+				_, err := db.PutWithKey(key, &a[i])
 				Expect(err).ToNot(HaveOccurred())
-				return keys
-			}()
+			}
 
 			b := make([]Entity, 10)
 			err := db.GetMulti(keys, b)
@@ -229,66 +204,3 @@ var _ = Describe("Datastore.GetMulti", func() {
 		})
 	})
 })
-
-// var _ = Describe("Datastore.PutMulti", func() {
-// 	kind := "datastore-putmulti-test"
-
-// 	Context("With Datastore.Get", func() {
-// 		It("should be the same", func() {
-// 			a := make([]Entity, 10)
-// 			b := make([]interface{}, len(a))
-// 			for i, _ := range a {
-// 				entity := Entity{str(i)}
-// 				a[i] = entity
-// 				b[i] = &entity
-// 			}
-// 			keys, err := db.PutMulti(kind, b)
-// 			Expect(err).ToNot(HaveOccurred())
-
-// 			c := new(Entity)
-// 			err = db.Get(keys[len(a)-1], c)
-// 			Expect(err).ToNot(HaveOccurred())
-// 			Expect(*c).To(Equal(a[len(a)-1]))
-// 		})
-// 	})
-
-// 	Context("With Datastore.GetMulti", func() {
-// 		It("should be the same", func() {
-// 			a := make([]Entity, 10)
-// 			b := make([]interface{}, len(a))
-// 			for i, _ := range a {
-// 				entity := Entity{str(i)}
-// 				a[i] = entity
-// 				b[i] = &entity
-// 			}
-// 			keys, err := db.PutMulti(kind, b)
-// 			Expect(err).ToNot(HaveOccurred())
-
-// 			c := make([]Entity, len(a))
-// 			err = db.GetMulti(keys, c)
-// 			Expect(err).ToNot(HaveOccurred())
-// 			Expect(c).To(Equal(a))
-// 			Expect(c).To(HaveLen(len(a)))
-// 		})
-// 	})
-
-// 	Context("With appengine's datastore.GetMulti", func() {
-// 		It("should be the same", func() {
-// 			a := make([]Entity, 10)
-// 			b := make([]interface{}, len(a))
-// 			for i, _ := range a {
-// 				entity := Entity{str(i)}
-// 				a[i] = entity
-// 				b[i] = &entity
-// 			}
-// 			keys, err := db.PutMulti(kind, b)
-// 			Expect(err).ToNot(HaveOccurred())
-
-// 			c := make([]Entity, len(a))
-// 			err = aeds.GetMulti(ctx, keys, c)
-// 			Expect(err).ToNot(HaveOccurred())
-// 			Expect(c).To(Equal(a))
-// 			Expect(c).To(HaveLen(len(a)))
-// 		})
-// 	})
-// })

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/dustin/go-humanize"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/models/coupon"
@@ -234,7 +234,7 @@ func (o *Order) Validator() *val.Validator {
 	return val.New()
 }
 
-func (o *Order) Load(ps []aeds.Property) (err error) {
+func (o *Order) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
@@ -272,7 +272,7 @@ func (o *Order) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (o *Order) Save() (ps []aeds.Property, err error) {
+func (o *Order) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
 	o.Items_ = string(json.EncodeBytes(o.Items))
@@ -449,15 +449,15 @@ func (o Order) HasDiscount() bool {
 
 // Update order's payment status based on payments
 func (o *Order) UpdatePaymentStatus() {
-	keys := make([]*aeds.Key, len(o.PaymentIds))
+	keys := make([]iface.Key, len(o.PaymentIds))
 	ctx := o.Context()
 
 	// Convert payment ids into keys
 	for i, id := range o.PaymentIds {
-		if key, err := hashid.DecodeKey(ctx, id); err != nil {
+		if dbKey, err := hashid.DecodeKey(ctx, id); err != nil {
 			log.Error("Unable to decode payment id into Key %s", id, ctx)
 		} else {
-			keys[i] = key
+			keys[i] = key.FromDBKey(dbKey)
 		}
 	}
 

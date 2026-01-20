@@ -1,8 +1,8 @@
 package mixin
 
 import (
-	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/reflect"
 )
 

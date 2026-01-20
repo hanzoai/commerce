@@ -14,14 +14,13 @@ import (
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/nscontext"
 	//"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"github.com/hanzoai/commerce/util/test/ginclient"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
-
-	"google.golang.org/appengine"
 
 	organizationApi "github.com/hanzoai/commerce/api/organization"
 )
@@ -98,7 +97,7 @@ var _ = BeforeSuite(func() {
 	usr4.MustPut()
 
 	ctx := ae.NewContext()
-	nsCtx, _ := appengine.Namespace(ctx, "_blockchains")
+	nsCtx := nscontext.WithNamespace(ctx, "_blockchains")
 	bcDb = datastore.New(nsCtx)
 })
 

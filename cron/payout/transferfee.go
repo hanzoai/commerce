@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
@@ -16,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/models/partner"
 	"github.com/hanzoai/commerce/models/transfer"
 	"github.com/hanzoai/commerce/thirdparty/stripe"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
@@ -50,15 +49,11 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 	var fe *fee.Fee
 	var tr *transfer.Transfer
 
-	// Switch to corrct namespace
-	ctx, err := appengine.Namespace(ctx, namespace)
-	if err != nil {
-		log.Error("Failed to switch to namespace '%s': %v", namespace, err, ctx)
-		return
-	}
+	// Switch to correct namespace using context
+	ctx = nscontext.WithNamespace(ctx, namespace)
 
 	// Create transfer and update payment in transaction
-	err = datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
+	err := datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe = fee.New(db)
 		if err := fe.GetById(id); err != nil {

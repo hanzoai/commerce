@@ -2,10 +2,8 @@ package sendgrid
 
 import (
 	"context"
+	"net/http"
 	"time"
-
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/hanzoai/sendgrid-go"
 	"github.com/sendgrid/rest"
@@ -23,12 +21,9 @@ func New(c context.Context, settings integration.SendGrid) *API {
 	// Set deadline
 	c, _ = context.WithTimeout(c, time.Second*55)
 
-	// Set HTTP Client for App engine
-	httpClient := urlfetch.Client(c)
-
-	httpClient.Transport = &urlfetch.Transport{
-		Context: c,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
+	// Create standard HTTP client with timeout
+	httpClient := &http.Client{
+		Timeout: time.Second * 55,
 	}
 
 	client := &rest.Client{HTTPClient: httpClient}

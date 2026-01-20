@@ -1,19 +1,42 @@
 package datastore
 
-import "github.com/qedus/nds"
+import (
+	"errors"
+
+	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/db"
+)
 
 // Delete an entity
-func (d *Datastore) Delete(key Key) error {
-	return nds.Delete(d.Context, convertKey(key))
+func (d *Datastore) Delete(k Key) error {
+	if d.database == nil {
+		return errors.New("datastore: database not initialized")
+	}
+
+	dskey := key.ToDatastoreKey(k)
+	dbKey := dskey.ToDBKey(d.database)
+	return d.database.Delete(d.Context, dbKey)
 }
 
 func (d *Datastore) DeleteMulti(keys interface{}) error {
-	return nds.DeleteMulti(d.Context, convertKeys(keys))
+	if d.database == nil {
+		return errors.New("datastore: database not initialized")
+	}
+
+	dskeys := convertKeys(keys)
+
+	// Convert to db.Key slice
+	dbKeys := make([]db.Key, len(dskeys))
+	for i, k := range dskeys {
+		dbKeys[i] = k.ToDBKey(d.database)
+	}
+
+	return d.database.DeleteMulti(d.Context, dbKeys)
 }
 
 // Gets an entity using datastore.Key or encoded Key
-func (d *Datastore) MustDelete(key Key) {
-	if err := d.Delete(key); err != nil {
+func (d *Datastore) MustDelete(k Key) {
+	if err := d.Delete(k); err != nil {
 		panic(err)
 	}
 }

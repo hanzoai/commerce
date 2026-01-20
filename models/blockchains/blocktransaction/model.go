@@ -1,8 +1,6 @@
 package blocktransaction
 
 import (
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/datastore"
 	. "github.com/hanzoai/commerce/models/blockchains"
 )
@@ -22,11 +20,9 @@ func (b *BlockTransaction) Defaults() {
 
 func New(db *datastore.Datastore) *BlockTransaction {
 	b := new(BlockTransaction)
-	if ctx, err := appengine.Namespace(db.Context, BlockchainNamespace); err != nil {
-		panic(err)
-	} else {
-		b.Init(datastore.New(ctx))
-	}
+	nsDb := datastore.New(db.Context)
+	nsDb.SetNamespace(BlockchainNamespace)
+	b.Init(nsDb)
 	b.Defaults()
 	return b
 }

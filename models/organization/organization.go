@@ -5,9 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/appengine"
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
@@ -165,7 +162,7 @@ type Organization struct {
 	Currency currency.Type `json:"currency"`
 }
 
-func (o *Organization) Load(ps []aeds.Property) (err error) {
+func (o *Organization) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	o.Defaults()
 
@@ -189,7 +186,7 @@ func (o *Organization) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (o *Organization) Save() (ps []aeds.Property, err error) {
+func (o *Organization) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	o.Integrations_ = string(json.EncodeBytes(o.Integrations))
 
@@ -354,15 +351,17 @@ func (o Organization) Namespace() string {
 // Get namespaced context for this organization
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
-		ctx = c.MustGet("appengine").(context.Context)
+		if aeCtx := c.Value("appengine"); aeCtx != nil {
+			if aeContextVal, ok := aeCtx.(context.Context); ok {
+				ctx = aeContextVal
+			}
+		}
 	}
 
-	var err error
-	ctx, err = appengine.Namespace(ctx, o.Namespace())
-	if err != nil {
-		panic(err)
-	}
-	return ctx
+	// Store namespace in context for datastore operations
+	type contextKey string
+	const namespaceKey contextKey = "namespace"
+	return context.WithValue(ctx, namespaceKey, o.Namespace())
 }
 
 func (o Organization) StripeToken() string {

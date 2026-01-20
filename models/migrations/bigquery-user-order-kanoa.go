@@ -8,11 +8,11 @@ import (
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore/parallel"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/bigquery"
-	"github.com/hanzoai/commerce/log"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )

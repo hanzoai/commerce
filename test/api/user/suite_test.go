@@ -1,7 +1,6 @@
 package test
 
 import (
-	"google.golang.org/appengine"
 	"net/http"
 	"testing"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 	"github.com/hanzoai/commerce/util/test/ginclient"
 
@@ -52,7 +52,7 @@ var _ = BeforeSuite(func() {
 		r.Header.Set("Authorization", accessToken.String)
 	})
 
-	nsCtx, _ := appengine.Namespace(ctx, "_blockchains")
+	nsCtx := nscontext.WithNamespace(ctx, "_blockchains")
 	bcDb = datastore.New(nsCtx)
 	// Add API routes to client
 	api.Route(cl.Router)

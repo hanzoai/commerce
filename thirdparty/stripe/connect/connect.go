@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-
-	"google.golang.org/appengine/urlfetch"
+	"time"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/util/json"
@@ -18,7 +17,7 @@ import (
 type Token = types.Token
 
 func GetToken(ctx context.Context, code string) (*Token, error) {
-	client := urlfetch.Client(ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	data := url.Values{}
 	data.Set("client_secret", config.Stripe.SecretKey)
@@ -55,7 +54,7 @@ func GetToken(ctx context.Context, code string) (*Token, error) {
 }
 
 func GetTestToken(ctx context.Context, refreshToken string) (*Token, error) {
-	client := urlfetch.Client(ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	data := url.Values{}
 	data.Set("client_secret", config.Stripe.TestSecretKey)

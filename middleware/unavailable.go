@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hanzoai/commerce/util/template"
 
-	"google.golang.org/appengine"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/template"
 )
 
 var template503 = `
@@ -27,14 +27,14 @@ var template503 = `
 </html>
 `
 
-// Serve custom 404 page.
+// Serve custom 503 page.
 func UnavailableHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.AbortWithError(http.StatusServiceUnavailable, errors.New("Service temporarily unavailable."))
 
 		c.Next()
 
-		if appengine.IsDevAppServer() {
+		if config.IsDevelopment {
 			c.Writer.Write([]byte(template503))
 		} else {
 			template.Render(c, "error/503.html")

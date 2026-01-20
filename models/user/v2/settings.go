@@ -51,9 +51,9 @@ type NotificationSettings struct {
 	SecurityAlerts    bool `json:"securityAlerts"`
 
 	// Push notifications
-	PushEnabled       bool `json:"pushEnabled"`
-	PushOrderUpdates  bool `json:"pushOrderUpdates"`
-	PushPromos        bool `json:"pushPromos"`
+	PushEnabled      bool `json:"pushEnabled"`
+	PushOrderUpdates bool `json:"pushOrderUpdates"`
+	PushPromos       bool `json:"pushPromos"`
 
 	// SMS notifications
 	SMSEnabled        bool `json:"smsEnabled"`
@@ -67,15 +67,15 @@ type NotificationSettings struct {
 // PrivacySettings controls data privacy options
 type PrivacySettings struct {
 	// Profile visibility
-	ProfileVisible      bool `json:"profileVisible"`
-	ShowOrderHistory    bool `json:"showOrderHistory"`
-	ShowWishlist        bool `json:"showWishlist"`
-	ShowReviews         bool `json:"showReviews"`
+	ProfileVisible   bool `json:"profileVisible"`
+	ShowOrderHistory bool `json:"showOrderHistory"`
+	ShowWishlist     bool `json:"showWishlist"`
+	ShowReviews      bool `json:"showReviews"`
 
 	// Data sharing
-	ShareAnalytics      bool `json:"shareAnalytics"`
+	ShareAnalytics       bool `json:"shareAnalytics"`
 	AllowPersonalization bool `json:"allowPersonalization"`
-	AllowThirdParty     bool `json:"allowThirdParty"`
+	AllowThirdParty      bool `json:"allowThirdParty"`
 
 	// Activity tracking
 	TrackActivity       bool `json:"trackActivity"`
@@ -99,9 +99,9 @@ type CommerceSettings struct {
 	PreferredLanguage string `json:"preferredLanguage,omitempty"`
 
 	// Shopping preferences
-	ShowPricesWithTax    bool `json:"showPricesWithTax"`
-	EnableOneClickBuy    bool `json:"enableOneClickBuy"`
-	SaveCartOnLogout     bool `json:"saveCartOnLogout"`
+	ShowPricesWithTax bool `json:"showPricesWithTax"`
+	EnableOneClickBuy bool `json:"enableOneClickBuy"`
+	SaveCartOnLogout  bool `json:"saveCartOnLogout"`
 
 	// Subscription preferences
 	AutoRenewSubscriptions bool `json:"autoRenewSubscriptions"`
@@ -109,17 +109,17 @@ type CommerceSettings struct {
 
 // DisplaySettings controls UI preferences
 type DisplaySettings struct {
-	Theme           string `json:"theme,omitempty"`            // "light", "dark", "system"
-	ColorScheme     string `json:"colorScheme,omitempty"`      // Custom color scheme
-	CompactMode     bool   `json:"compactMode"`
-	HighContrast    bool   `json:"highContrast"`
-	ReducedMotion   bool   `json:"reducedMotion"`
-	FontSize        string `json:"fontSize,omitempty"`         // "small", "medium", "large"
+	Theme         string `json:"theme,omitempty"`       // "light", "dark", "system"
+	ColorScheme   string `json:"colorScheme,omitempty"` // Custom color scheme
+	CompactMode   bool   `json:"compactMode"`
+	HighContrast  bool   `json:"highContrast"`
+	ReducedMotion bool   `json:"reducedMotion"`
+	FontSize      string `json:"fontSize,omitempty"` // "small", "medium", "large"
 
 	// Dashboard preferences
-	DashboardLayout  string   `json:"dashboardLayout,omitempty"`
-	VisibleWidgets   []string `json:"visibleWidgets,omitempty"`
-	DefaultView      string   `json:"defaultView,omitempty"`    // "grid", "list"
+	DashboardLayout string   `json:"dashboardLayout,omitempty"`
+	VisibleWidgets  []string `json:"visibleWidgets,omitempty"`
+	DefaultView     string   `json:"defaultView,omitempty"` // "grid", "list"
 }
 
 // SecuritySettings controls account security
@@ -129,9 +129,9 @@ type SecuritySettings struct {
 	TwoFactorMethod  string `json:"twoFactorMethod,omitempty"` // "totp", "sms", "email"
 
 	// Session management
-	SessionTimeout     int  `json:"sessionTimeout,omitempty"`      // Minutes
-	RememberMe         bool `json:"rememberMe"`
-	SingleSessionOnly  bool `json:"singleSessionOnly"`
+	SessionTimeout    int  `json:"sessionTimeout,omitempty"` // Minutes
+	RememberMe        bool `json:"rememberMe"`
+	SingleSessionOnly bool `json:"singleSessionOnly"`
 
 	// Login security
 	RequirePasswordChange bool      `json:"requirePasswordChange"`
@@ -160,11 +160,11 @@ type TrustedDevice struct {
 
 // DeveloperSettings for API access
 type DeveloperSettings struct {
-	APIEnabled    bool        `json:"apiEnabled"`
-	WebhookURL    string      `json:"webhookUrl,omitempty"`
-	WebhookSecret string      `json:"-"`
-	APIKeys       []APIKey    `json:"apiKeys,omitempty"`
-	RateLimit     int         `json:"rateLimit,omitempty"` // Requests per minute
+	APIEnabled    bool     `json:"apiEnabled"`
+	WebhookURL    string   `json:"webhookUrl,omitempty"`
+	WebhookSecret string   `json:"-"`
+	APIKeys       []APIKey `json:"apiKeys,omitempty"`
+	RateLimit     int      `json:"rateLimit,omitempty"` // Requests per minute
 }
 
 // APIKey represents a user API key

@@ -1,14 +1,13 @@
 package order
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/discount"
 	"github.com/hanzoai/commerce/models/discount/scope"
 	"github.com/hanzoai/commerce/models/discount/target"
 	"github.com/hanzoai/commerce/models/discount/trigger"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/log"
 )
 
 // Append discounts which are valid for order creation date
@@ -30,7 +29,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
-	keyc := make(chan []*aeds.Key, channels)
+	keyc := make(chan []iface.Key, channels)
 
 	// Fetch any organization-level discounts
 	go discount.GetScopedDiscounts(ctx, scope.Organization, "", keyc, errc)
@@ -57,7 +56,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	}
 
 	// Merge results together
-	keys := make([]*aeds.Key, 0)
+	keys := make([]iface.Key, 0)
 	for i := 0; i < channels; i++ {
 		keys = append(keys, <-keyc...)
 	}

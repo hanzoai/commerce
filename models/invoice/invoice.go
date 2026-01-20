@@ -1,9 +1,6 @@
 package invoice
 
 import (
-
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
@@ -88,13 +85,12 @@ func (p *Invoice) Init() {
 	p.Metadata = make(Map)
 }
 
-
-func (p *Invoice) Load(ps []aeds.Property) (err error) {
+func (p *Invoice) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	p.Init()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, ps)); err != nil {
+	if err = IgnoreFieldMismatch(datastore.LoadStruct(p, ps)); err != nil {
 		return err
 	}
 
@@ -106,7 +102,7 @@ func (p *Invoice) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (p *Invoice) Save() (ps []aeds.Property, err error) {
+func (p *Invoice) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
@@ -128,4 +124,3 @@ func New(db *datastore.Datastore) *Invoice {
 	p.Model = mixin.Model{Db: db, Entity: p}
 	return p
 }
-

@@ -9,8 +9,6 @@ import (
 
 	"bytes"
 	"encoding/json"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -41,13 +39,8 @@ func New(ctx context.Context, loginId string, transactionKey string, key string,
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
-	// Set HTTP Client for App engine
-	httpClient := urlfetch.Client(ctx)
-
-	httpClient.Transport = &urlfetch.Transport{
-		Context: ctx,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
-	}
+	// Set HTTP Client
+	httpClient := &http.Client{Timeout: 55 * time.Second}
 
 	return &Client{httpClient, ctx, loginId, transactionKey, key, test}
 
@@ -687,11 +680,7 @@ func SendRequest(ctx context.Context, input []byte, test bool) ([]byte, error) {
 	req, err := http.NewRequest("POST", api_endpoint, bytes.NewBuffer(input))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context: ctx,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
-	}
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	resp, err := client.Do(req)
 

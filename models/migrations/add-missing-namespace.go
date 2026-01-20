@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/namespace"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/namespace"
 )
 
 var _ = New("add-missing-namespace", func(c *gin.Context) []interface{} {

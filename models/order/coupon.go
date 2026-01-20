@@ -5,9 +5,9 @@ import (
 	"math"
 	"strings"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/log"
 
 	"github.com/hanzoai/commerce/models/lineitem"
 )

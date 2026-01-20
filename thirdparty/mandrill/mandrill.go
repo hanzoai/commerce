@@ -2,12 +2,11 @@ package mandrill
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/keighl/mandrill"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/types/email"
@@ -102,12 +101,9 @@ func New(c context.Context, in integration.Mandrill) *Client {
 	// Set deadline
 	c, _ = context.WithTimeout(c, time.Second*55)
 
-	// Set HTTP Client for App engine
-	httpClient := urlfetch.Client(c)
-
-	httpClient.Transport = &urlfetch.Transport{
-		Context:                       c,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
+	// Create standard HTTP client with timeout
+	httpClient := &http.Client{
+		Timeout: time.Second * 55,
 	}
 
 	client := mandrill.ClientWithKey(in.APIKey)

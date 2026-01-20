@@ -8,10 +8,10 @@ import (
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
-	"github.com/hanzoai/commerce/log"
 )
 
 var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {

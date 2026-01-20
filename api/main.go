@@ -1,7 +1,8 @@
 package main
 
 import (
-	"google.golang.org/appengine"
+	"net/http"
+	"os"
 
 	a "github.com/hanzoai/commerce/api/api"
 	"github.com/hanzoai/commerce/util/router"
@@ -10,5 +11,13 @@ import (
 func main() {
 	api := router.New("api")
 	a.Route(api)
-	appengine.Main()
+
+	// Get port from environment or default to 8080
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Start standard HTTP server
+	http.ListenAndServe(":"+port, nil)
 }

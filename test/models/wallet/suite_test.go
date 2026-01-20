@@ -1,12 +1,12 @@
 package test
 
 import (
-	"google.golang.org/appengine"
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
@@ -31,10 +31,10 @@ var _ = BeforeSuite(func() {
 	fixtures.Organization(c)
 
 	// Create dbs for the two namespaces
-	nsCtx, _ := appengine.Namespace(ctx, "suchtees")
+	nsCtx := nscontext.WithNamespace(ctx, "suchtees")
 	db = datastore.New(nsCtx)
 
-	nsCtx, _ = appengine.Namespace(ctx, "_blockchains")
+	nsCtx = nscontext.WithNamespace(ctx, "_blockchains")
 	bcDb = datastore.New(nsCtx)
 })
 

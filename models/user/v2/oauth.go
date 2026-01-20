@@ -16,11 +16,11 @@ import (
 
 // OAuth2 errors
 var (
-	ErrOAuthInvalidGrant   = errors.New("oauth: invalid grant")
-	ErrOAuthTokenExpired   = errors.New("oauth: token expired")
-	ErrOAuthInvalidState   = errors.New("oauth: invalid state")
-	ErrOAuthProviderError  = errors.New("oauth: provider error")
-	ErrOAuthNotConfigured  = errors.New("oauth: provider not configured")
+	ErrOAuthInvalidGrant  = errors.New("oauth: invalid grant")
+	ErrOAuthTokenExpired  = errors.New("oauth: token expired")
+	ErrOAuthInvalidState  = errors.New("oauth: invalid state")
+	ErrOAuthProviderError = errors.New("oauth: provider error")
+	ErrOAuthNotConfigured = errors.New("oauth: provider not configured")
 )
 
 // HanzoIDConfig holds configuration for hanzo.id OAuth2
@@ -46,8 +46,8 @@ func DefaultHanzoIDConfig() *HanzoIDConfig {
 
 // OAuthService handles OAuth2 authentication flows
 type OAuthService struct {
-	config   *HanzoIDConfig
-	service  *Service
+	config     *HanzoIDConfig
+	service    *Service
 	httpClient *http.Client
 }
 

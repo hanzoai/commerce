@@ -1,8 +1,6 @@
 package bitcoin
 
 import (
-	"google.golang.org/appengine"
-
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -495,12 +493,8 @@ func CalculateFee(inputs, outputs int, feePerByte int64) int64 {
 }
 
 func GetBitcoinTransactions(ctx context.Context, address string) ([]OriginWithAmount, error) {
-	nsCtx, err := appengine.Namespace(ctx, blockchains.BlockchainNamespace)
-	if err != nil {
-		return nil, err
-	}
-
-	db := datastore.New(nsCtx)
+	db := datastore.New(ctx)
+	db.SetNamespace(blockchains.BlockchainNamespace)
 
 	bts := make([]*blocktransaction.BlockTransaction, 0)
 
