@@ -35,7 +35,7 @@ import (
 )
 
 // Version is the current version of Commerce
-const Version = "2.0.0"
+const Version = "1.33.0"
 
 // Config holds application configuration
 type Config struct {
