@@ -244,9 +244,77 @@ go test -v ./...
 2. **Per-user isolation**: SQLite databases are isolated per user
 3. **Vector embeddings**: Stored locally, no external API calls for search
 
+## Hanzo Ecosystem Integration
+
+Commerce integrates with the broader Hanzo ecosystem:
+
+### Hanzo Services
+
+| Service | Path | Tech | Status | Integration |
+|---------|------|------|--------|-------------|
+| **IAM (hanzo.id)** | `~/work/hanzo/iam` | Go/React (Casdoor) | ✅ Production | OAuth2/OIDC |
+| **Cloud (Casibase)** | `~/work/hanzo/cloud` | Go/Beego | ✅ Production | AI/LLM APIs |
+| **Cloud-Backend** | `~/work/hanzo/cloud-backend` | Rust/Tokio | ✅ Production | Inference API |
+| **Datastore** | `~/work/hanzo/datastore-go` | Go | ✅ Production | ClickHouse |
+| **Base** | `~/work/hanzo/base` | Go | ✅ Production | Reference arch |
+| **Universe** | `~/work/hanzo/universe` | Terraform/K8s | ✅ Deployed | Infrastructure |
+
+### Authentication (hanzo.id via IAM)
+
+```go
+// OAuth2 integration with Hanzo IAM
+type IAMConfig struct {
+    Issuer       string // https://hanzo.id
+    ClientID     string
+    ClientSecret string
+    RedirectURL  string
+}
+
+// Validate token from IAM
+claims, err := iam.ValidateToken(ctx, token)
+```
+
+### AI Integration (Cloud/Cloud-Backend)
+
+```go
+// AI-powered product recommendations
+type AIConfig struct {
+    Endpoint string // Cloud-Backend API
+    APIKey   string
+    Model    string // "claude-3-5-sonnet", "gpt-4", etc.
+}
+
+// Get recommendations
+recs, err := ai.GetRecommendations(ctx, userID, products)
+```
+
+### Deployment (Universe → DigitalOcean)
+
+```yaml
+# compose.yml for production
+services:
+  commerce:
+    image: hanzoai/commerce:latest
+    environment:
+      - COMMERCE_DATASTORE=native://clickhouse:9000/commerce
+      - IAM_ISSUER=https://hanzo.id
+      - IAM_CLIENT_ID=${IAM_CLIENT_ID}
+    depends_on:
+      - clickhouse
+      - redis
+```
+
+### Integration Roadmap
+
+1. **Phase 5** (Pending): OAuth2 client for IAM (hanzo.id)
+2. **Phase 6** (Pending): datastore-go for ClickHouse analytics
+3. **Phase 7** (Pending): AI recommendations via Cloud-Backend
+
 ## Related Projects
 
 - `~/work/hanzo/base` - Reference architecture for standalone binary
-- `~/work/hanzo/datastore-go` - ClickHouse driver for analytics
-- `~/work/hanzo/iam` - Authentication service (to be integrated)
-- `~/work/hanzo/analytics` - Analytics service (to be integrated)
+- `~/work/hanzo/datastore-go` - ClickHouse driver for Hanzo Datastore
+- `~/work/hanzo/iam` - Casdoor-based IAM (hanzo.id authentication)
+- `~/work/hanzo/cloud` - Casibase AI platform (100+ LLM providers)
+- `~/work/hanzo/cloud-backend` - Rust inference backend with GRPO
+- `~/work/hanzo/universe` - Production infrastructure (private)
