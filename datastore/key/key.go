@@ -9,9 +9,9 @@ import (
 
 	"github.com/qedus/nds"
 
-	"hanzo.io/datastore/iface"
-	"hanzo.io/log"
-	"hanzo.io/util/hashid"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/hashid"
 )
 
 type Key iface.Key

@@ -3,14 +3,14 @@ package lineitem
 import (
 	"fmt"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/productcachedvalues"
-	"hanzo.io/models/variant"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/productcachedvalues"
+	"github.com/hanzoai/commerce/models/variant"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type LineItem struct {

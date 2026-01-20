@@ -3,10 +3,10 @@ package wallet
 import (
 	"time"
 
-	"hanzo.io/models/blockchains"
+	"github.com/hanzoai/commerce/models/blockchains"
 
-	"hanzo.io/util/crypto/aes"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/crypto/aes"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 type Account struct {

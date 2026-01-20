@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 type Response struct {

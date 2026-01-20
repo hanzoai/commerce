@@ -1,7 +1,7 @@
 package ads
 
 import (
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 // add some functionality to fetch these values from counters

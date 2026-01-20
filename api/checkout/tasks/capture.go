@@ -3,13 +3,13 @@ package tasks
 import (
 	"context"
 
-	"hanzo.io/api/checkout/util"
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/email"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/api/checkout/util"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId string, ordId string) {

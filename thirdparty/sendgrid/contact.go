@@ -1,9 +1,9 @@
 package sendgrid
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/types/email"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type Error struct {

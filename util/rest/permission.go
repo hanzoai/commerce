@@ -1,8 +1,8 @@
 package rest
 
 import (
-	"hanzo.io/util/bit"
-	. "hanzo.io/util/permission"
+	"github.com/hanzoai/commerce/util/bit"
+	. "github.com/hanzoai/commerce/util/permission"
 )
 
 type Permissions map[string][]bit.Mask

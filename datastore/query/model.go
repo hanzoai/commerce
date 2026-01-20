@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"hanzo.io/datastore/iface"
-	. "hanzo.io/datastore/utils"
+	"github.com/hanzoai/commerce/datastore/iface"
+	. "github.com/hanzoai/commerce/datastore/utils"
 )
 
 type Kind interface {

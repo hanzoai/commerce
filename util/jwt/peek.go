@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 // Like Decode but no validation, don't forget to actually validate using decode

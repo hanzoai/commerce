@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/log"
-	"hanzo.io/thirdparty/mandrill"
-	"hanzo.io/thirdparty/sendgrid"
-	"hanzo.io/thirdparty/smtprelay"
-	"hanzo.io/types/email"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/mandrill"
+	"github.com/hanzoai/commerce/thirdparty/sendgrid"
+	"github.com/hanzoai/commerce/thirdparty/smtprelay"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 func getEmailSender(c context.Context, in integration.Integration) (email.Sender, error) {

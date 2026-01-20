@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
 
-	. "hanzo.io/models/fixtures"
+	. "github.com/hanzoai/commerce/models/fixtures"
 )
 
 var KirbyForStonedAndSuchTees = New("kirby-for-stoned-and-suchtees", func(c *gin.Context) {

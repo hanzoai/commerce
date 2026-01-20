@@ -1,9 +1,9 @@
 package blockaddress
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	. "hanzo.io/models/blockchains"
+	. "github.com/hanzoai/commerce/models/blockchains"
 )
 
 // This is a reference to an address the blockchain reader needs to watch for

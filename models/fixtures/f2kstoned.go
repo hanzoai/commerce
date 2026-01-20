@@ -3,15 +3,15 @@ package fixtures
 // import (
 // 	"github.com/gin-gonic/gin"
 
-// 	"hanzo.io/datastore"
-// 	"hanzo.io/models/lineitem"
-// 	"hanzo.io/models/order"
-// 	"hanzo.io/models/organization"
-// 	"hanzo.io/models/payment"
-// 	"hanzo.io/models/product"
-// 	"hanzo.io/models/user"
+// 	"github.com/hanzoai/commerce/datastore"
+// 	"github.com/hanzoai/commerce/models/lineitem"
+// 	"github.com/hanzoai/commerce/models/order"
+// 	"github.com/hanzoai/commerce/models/organization"
+// 	"github.com/hanzoai/commerce/models/payment"
+// 	"github.com/hanzoai/commerce/models/product"
+// 	"github.com/hanzoai/commerce/models/user"
 
-// 	. "hanzo.io/types"
+// 	. "github.com/hanzoai/commerce/types"
 // )
 
 // var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {

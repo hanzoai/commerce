@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type currencyValue map[currency.Type]int

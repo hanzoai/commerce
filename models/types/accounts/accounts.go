@@ -1,9 +1,9 @@
 package accounts
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Type string

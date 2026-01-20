@@ -3,16 +3,16 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/user"
-	"hanzo.io/util/counter"
-	"hanzo.io/util/hashid"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/counter"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/log"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("fix-currency-set",

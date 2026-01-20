@@ -12,11 +12,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 type Client struct {

@@ -1,8 +1,8 @@
 package analytics
 
 import (
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 var t bool

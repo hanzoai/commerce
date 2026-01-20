@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
+	"github.com/hanzoai/commerce/config"
 )
 
 func Static(urlRoot string) gin.HandlerFunc {

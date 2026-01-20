@@ -1,7 +1,7 @@
 package tokentransaction
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 	"time"
 )
 

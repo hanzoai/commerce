@@ -6,14 +6,14 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/memcache"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/fee"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/transfer"
-	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/fee"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/transfer"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 // Get namespaced appengine context for given namespace

@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/sendgrid-go"
 	"github.com/sendgrid/rest"
 
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/types/integration"
 )
 
 type API struct {

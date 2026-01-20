@@ -3,10 +3,10 @@ package app
 import (
 	"time"
 
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/oauthtoken"
-	"hanzo.io/util/bit"
-	"hanzo.io/util/permission"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/oauthtoken"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/permission"
 )
 
 const (

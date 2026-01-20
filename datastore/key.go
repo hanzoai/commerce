@@ -5,8 +5,8 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore/iface"
-	"hanzo.io/datastore/key"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 )
 
 type Key iface.Key

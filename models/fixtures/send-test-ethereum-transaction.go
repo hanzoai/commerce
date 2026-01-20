@@ -6,12 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
+	"github.com/hanzoai/commerce/log"
 )
 
 var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {

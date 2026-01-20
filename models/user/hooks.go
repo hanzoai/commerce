@@ -3,9 +3,9 @@ package user
 import (
 	"strings"
 
-	"hanzo.io/util/crypto/sha256"
-	"hanzo.io/util/json"
-	"hanzo.io/util/webhook"
+	"github.com/hanzoai/commerce/util/crypto/sha256"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/webhook"
 )
 
 // Hooks

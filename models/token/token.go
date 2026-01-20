@@ -3,7 +3,7 @@ package token
 import (
 	"time"
 
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 type Token struct {

@@ -4,12 +4,12 @@ import (
 	"math/rand"
 	"time"
 
-	"hanzo.io/models/affiliate"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/affiliate"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/user"
 	"github.com/icrowley/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("referrer", func() {

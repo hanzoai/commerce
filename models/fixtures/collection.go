@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/collection"
+	"github.com/hanzoai/commerce/models/collection"
 )
 
 var Collection = New("collection", func(c *gin.Context) *collection.Collection {

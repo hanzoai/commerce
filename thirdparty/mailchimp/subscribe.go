@@ -3,14 +3,14 @@ package mailchimp
 import (
 	"github.com/hanzoai/gochimp3"
 
-	"hanzo.io/log"
-	// "hanzo.io/models/form"
-	// "hanzo.io/models/subscriber"
-	// "hanzo.io/models/types/client"
-	"hanzo.io/types/email"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	// "github.com/hanzoai/commerce/models/form"
+	// "github.com/hanzoai/commerce/models/subscriber"
+	// "github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 func (api API) Subscribe(list *email.List, sub *email.Subscriber) error {

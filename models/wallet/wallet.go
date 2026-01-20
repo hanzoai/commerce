@@ -4,13 +4,13 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/blockchains/blockaddress"
-	"hanzo.io/models/mixin"
-	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/hashid"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/blockchains/blockaddress"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/log"
 )
 
 type Wallet struct {

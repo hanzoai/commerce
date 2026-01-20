@@ -1,11 +1,11 @@
 package test
 
 import (
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/ethereum/util"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/ethereum/util"
 )
 
 var _ = Describe("client.GasPrice2", func() {

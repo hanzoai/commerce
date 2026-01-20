@@ -1,8 +1,8 @@
 package sendgrid
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/types/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/email"
 )
 
 // Add subscriber to list

@@ -1,12 +1,12 @@
 package integration
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func stripeVerifyCharge(pay *payment.Payment) {

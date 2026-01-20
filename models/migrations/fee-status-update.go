@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/fee"
-	"hanzo.io/models/payment"
-	"hanzo.io/thirdparty/stripe/tasks"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/fee"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/thirdparty/stripe/tasks"
+	"github.com/hanzoai/commerce/log"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("payment-fee-status-update",

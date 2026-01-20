@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 // Wire up stripe endpoint

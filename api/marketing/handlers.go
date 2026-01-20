@@ -3,14 +3,14 @@ package marketing
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/ads/ad"
-	"hanzo.io/models/ads/adcampaign"
-	"hanzo.io/models/ads/adconfig"
-	"hanzo.io/models/ads/adset"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/ads/ad"
+	"github.com/hanzoai/commerce/models/ads/adcampaign"
+	"github.com/hanzoai/commerce/models/ads/adconfig"
+	"github.com/hanzoai/commerce/models/ads/adset"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

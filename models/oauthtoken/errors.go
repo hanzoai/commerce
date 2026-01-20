@@ -3,7 +3,7 @@ package oauthtoken
 import (
 	"errors"
 
-	"hanzo.io/util/jwt"
+	"github.com/hanzoai/commerce/util/jwt"
 )
 
 var (

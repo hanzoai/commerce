@@ -1,11 +1,11 @@
 package util
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/log"
 )
 
 func GetUserOrderByWallet(db *datastore.Datastore, walletId string) (*user.User, *order.Order, *wallet.Wallet, error) {

@@ -3,11 +3,11 @@ package shipwire
 import (
 	"strconv"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/models/user"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func (c *Client) CreateOrder(ord *order.Order, usr *user.User, opts OrderOptions) (*Order, *Response, error) {

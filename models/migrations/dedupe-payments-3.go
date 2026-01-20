@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/payment"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {

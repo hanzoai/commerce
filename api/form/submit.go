@@ -3,13 +3,13 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/form"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/submission"
-	"hanzo.io/models/types/client"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/submission"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f *form.Form) {

@@ -3,13 +3,13 @@ package platform
 import (
 	"context"
 
-	"hanzo.io/config"
-	"hanzo.io/cron/payout"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/fee"
-	"hanzo.io/models/organization"
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/cron/payout"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/fee"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/delay"
 )
 
 // Create a copy payout.TransferFee delay.Func configured to use unique queue

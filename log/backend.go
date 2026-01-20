@@ -8,7 +8,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	"hanzo.io/config"
+	"github.com/hanzoai/commerce/config"
 )
 
 // Custom logger backend that knows about AppEngine

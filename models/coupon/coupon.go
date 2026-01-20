@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/timeutil"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/timeutil"
 )
 
 type Type string

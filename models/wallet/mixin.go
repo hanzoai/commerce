@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 )
 
 type WalletHolder struct {

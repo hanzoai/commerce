@@ -3,8 +3,8 @@ package main
 import (
 	"google.golang.org/appengine"
 
-	a "hanzo.io/api/api"
-	"hanzo.io/util/router"
+	a "github.com/hanzoai/commerce/api/api"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func main() {

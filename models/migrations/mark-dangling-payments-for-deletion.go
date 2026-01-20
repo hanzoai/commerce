@@ -5,10 +5,10 @@ import (
 
 	"google.golang.org/appengine/datastore"
 
-	ds "hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/log"
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("mark-dangling-payments-for-deletion",

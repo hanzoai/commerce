@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/submission"
+	"github.com/hanzoai/commerce/models/submission"
 )
 
 var Submission = New("submission", func(c *gin.Context) *submission.Submission {

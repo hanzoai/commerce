@@ -3,11 +3,11 @@ package authorizenet
 import (
 	"errors"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/thirdparty/authorizenet"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/thirdparty/authorizenet"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

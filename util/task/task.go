@@ -6,14 +6,14 @@ import (
 	"sort"
 	"strconv"
 
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/util/fakecontext"
-	"hanzo.io/util/gincontext"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/fakecontext"
+	"github.com/hanzoai/commerce/util/gincontext"
 )
 
 var (

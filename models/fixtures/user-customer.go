@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var UserCustomer = New("user-customer", func(c *gin.Context) *user.User {

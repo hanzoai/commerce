@@ -6,18 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/types/integration"
 
-	"hanzo.io/thirdparty/woopra"
+	"github.com/hanzoai/commerce/thirdparty/woopra"
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {

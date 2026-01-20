@@ -1,7 +1,7 @@
 package test
 
 import (
-	. "hanzo.io/models/types/weight"
+	. "github.com/hanzoai/commerce/models/types/weight"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -5,8 +5,8 @@ import (
 
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/models/mixin"
-	"hanzo.io/util/searchpartial"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/searchpartial"
 )
 
 type Document struct {

@@ -4,10 +4,10 @@ import (
 	"math/rand"
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/discount/scope"
-	"hanzo.io/models/discount/target"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/discount/scope"
+	"github.com/hanzoai/commerce/models/discount/target"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Discount {

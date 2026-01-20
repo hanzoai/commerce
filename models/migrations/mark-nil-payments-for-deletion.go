@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	ds "hanzo.io/datastore"
-	"hanzo.io/models/payment"
-	"hanzo.io/log"
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("mark-nil-payments-for-deletion",

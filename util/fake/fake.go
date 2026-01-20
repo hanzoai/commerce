@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"reflect"
 
-	"hanzo.io/util/slug"
+	"github.com/hanzoai/commerce/util/slug"
 )
 
 type fieldMap map[string]reflect.Value

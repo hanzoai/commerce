@@ -3,10 +3,10 @@ package affiliate
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/affiliate"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/affiliate"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

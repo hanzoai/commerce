@@ -1,9 +1,9 @@
 package shipwire
 
 import (
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func Import(db *datastore.Datastore, filename string) {

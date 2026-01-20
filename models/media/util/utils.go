@@ -3,8 +3,8 @@ package util
 import (
 	"errors"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/media"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/media"
 )
 
 var NoParentMediaFound = errors.New("No Parent Media Found")

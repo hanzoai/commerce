@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/organization"
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("grant-bonus-referral-points",

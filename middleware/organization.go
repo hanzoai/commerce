@@ -4,12 +4,12 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/types/accesstoken"
-	"hanzo.io/util/session"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/types/accesstoken"
+	"github.com/hanzoai/commerce/util/session"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {

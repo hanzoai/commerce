@@ -3,7 +3,7 @@ package namespace
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

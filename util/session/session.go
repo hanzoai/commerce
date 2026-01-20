@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
 )
 
 var store = sessions.NewCookieStore([]byte(config.Secret))

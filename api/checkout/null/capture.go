@@ -3,9 +3,9 @@ package null
 import (
 	"errors"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

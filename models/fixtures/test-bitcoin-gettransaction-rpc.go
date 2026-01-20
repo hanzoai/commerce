@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/log"
 )
 
 var GetTestBitcoinTransaction = New("test-bitcoin-gettransaction", func(c *gin.Context) {

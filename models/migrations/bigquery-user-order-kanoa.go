@@ -6,15 +6,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore/parallel"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/bigquery"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore/parallel"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/bigquery"
+	"github.com/hanzoai/commerce/log"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var UserFields = bigquery.Fields{

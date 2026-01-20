@@ -1,6 +1,6 @@
 package variant
 
-import "hanzo.io/datastore"
+import "github.com/hanzoai/commerce/datastore"
 
 var kind = "variant"
 

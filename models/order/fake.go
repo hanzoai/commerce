@@ -3,15 +3,15 @@ package order
 import (
 	"time"
 
-	"hanzo.io/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/accounts"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/fake"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 func Fake(db *datastore.Datastore, lis ...lineitem.LineItem) *Order {

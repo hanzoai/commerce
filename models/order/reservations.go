@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/product"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/product"
 )
 
 var PendingReservationError = errors.New("Product is already being reserved.")

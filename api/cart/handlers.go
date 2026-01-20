@@ -3,11 +3,11 @@ package cart
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/cart"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

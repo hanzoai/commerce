@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	// "hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/util/json"
+	// "github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func getModuleHost(ctx context.Context, moduleName string) string {

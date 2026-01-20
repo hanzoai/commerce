@@ -12,15 +12,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/models/user"
-	"hanzo.io/util/hashid"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>

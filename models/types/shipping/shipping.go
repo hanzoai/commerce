@@ -4,9 +4,9 @@ import (
 	"math"
 	"sort"
 
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/weight"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/weight"
 )
 
 type RateType string

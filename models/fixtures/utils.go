@@ -4,8 +4,8 @@ package fixtures
 import (
 	// "github.com/vanng822/go-premailer/premailer"
 
-	"hanzo.io/config"
-	"hanzo.io/util/fs"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/fs"
 )
 
 func readEmailTemplate(path string) string {

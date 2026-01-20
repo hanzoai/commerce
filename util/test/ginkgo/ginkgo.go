@@ -9,8 +9,8 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 
-	"hanzo.io/log"
-	"hanzo.io/util/retry"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/retry"
 )
 
 func Setup(suiteName string, t *testing.T) {

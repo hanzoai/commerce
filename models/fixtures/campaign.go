@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/campaign"
-	"hanzo.io/util/category"
+	"github.com/hanzoai/commerce/models/campaign"
+	"github.com/hanzoai/commerce/util/category"
 )
 
 var Campaign = New("campaign", func(c *gin.Context) *campaign.Campaign {

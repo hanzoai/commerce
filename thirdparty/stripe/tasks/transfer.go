@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 // Synchronize payment using transfer

@@ -3,14 +3,14 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/subscription/stripe"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/plan"
-	"hanzo.io/models/subscription"
-	"hanzo.io/models/user"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/api/subscription/stripe"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func subscriptionRequest(c *gin.Context, org *organization.Organization) (*SubscriptionReq, error) {

@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/deprecated/plan"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/deprecated/plan"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var Plan = New("plan", func(c *gin.Context) *plan.Plan {

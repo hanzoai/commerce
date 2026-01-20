@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/models/form"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/form"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("form-enabled",

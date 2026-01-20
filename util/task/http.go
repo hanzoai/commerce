@@ -3,9 +3,9 @@ package task
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/router"
-	"hanzo.io/util/template"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/router"
+	"github.com/hanzoai/commerce/util/template"
 )
 
 // Setup handlers for HTTP registered tasks

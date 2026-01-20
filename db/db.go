@@ -1,15 +1,15 @@
 // Package db provides a multi-layer database abstraction supporting:
 // - User-level SQLite with sqlite-vec for personal data and vector search
 // - Organization-level SQLite for shared tenant data
-// - Datastore (ClickHouse) for deep analytics and parallel queries
+// - Hanzo Datastore (ClickHouse) for deep analytics and parallel queries
 //
 // Architecture:
 //
 //	┌─────────────────────────────────────────────────────────────┐
 //	│                      Query Layer                            │
 //	├─────────────────────────────────────────────────────────────┤
-//	│  User SQLite    │   Org SQLite    │    Datastore            │
-//	│  (per-user)     │   (per-org)     │    (analytics)          │
+//	│  User SQLite    │   Org SQLite    │    Hanzo Datastore      │
+//	│  (per-user)     │   (per-org)     │    (ClickHouse)         │
 //	│  + sqlite-vec   │   + sqlite-vec  │    (parallel queries)   │
 //	│  Fast queries   │   Shared data   │    Deep analytics       │
 //	└─────────────────────────────────────────────────────────────┘
@@ -49,8 +49,8 @@ const (
 	// LayerOrg uses the organization-level SQLite database
 	LayerOrg
 
-	// LayerAnalytics uses the Datastore (ClickHouse) for analytics
-	LayerAnalytics
+	// LayerDatastore uses the Hanzo Datastore (ClickHouse) for analytics
+	LayerDatastore
 
 	// LayerAll queries all layers (for cross-cutting queries)
 	LayerAll
@@ -69,11 +69,11 @@ type Config struct {
 	// Defaults to DataDir/orgs
 	OrgDataDir string
 
-	// AnalyticsDSN is the connection string for analytics datastore
-	AnalyticsDSN string
+	// DatastoreDSN is the connection string for Hanzo Datastore (ClickHouse)
+	DatastoreDSN string
 
-	// EnableAnalytics enables the analytics layer (Datastore/ClickHouse)
-	EnableAnalytics bool
+	// EnableDatastore enables the Hanzo Datastore layer (ClickHouse)
+	EnableDatastore bool
 
 	// EnableVectorSearch enables sqlite-vec for vector embeddings
 	EnableVectorSearch bool
@@ -84,8 +84,8 @@ type Config struct {
 	// SQLite configuration
 	SQLite SQLiteConfig
 
-	// Analytics configuration
-	Analytics AnalyticsConfig
+	// Datastore configuration (Hanzo Datastore / ClickHouse)
+	Datastore DatastoreConfig
 
 	// IsDev enables development mode logging
 	IsDev bool
@@ -115,8 +115,8 @@ type SQLiteConfig struct {
 	QueryTimeout time.Duration
 }
 
-// AnalyticsConfig holds analytics datastore configuration
-type AnalyticsConfig struct {
+// DatastoreConfig holds Hanzo Datastore (ClickHouse) configuration
+type DatastoreConfig struct {
 	// MaxOpenConns for parallel queries
 	MaxOpenConns int
 
@@ -129,7 +129,7 @@ type AnalyticsConfig struct {
 	// Compression method (lz4, zstd, etc.)
 	Compression string
 
-	// QueryTimeout for analytics queries
+	// QueryTimeout for datastore queries
 	QueryTimeout time.Duration
 }
 
@@ -137,7 +137,7 @@ type AnalyticsConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		DataDir:            "./data",
-		EnableAnalytics:    false,
+		EnableDatastore:    false,
 		EnableVectorSearch: true,
 		VectorDimensions:   1536, // OpenAI ada-002 dimensions
 		SQLite: SQLiteConfig{
@@ -149,7 +149,7 @@ func DefaultConfig() *Config {
 			CacheSize:    -16000, // 16MB
 			QueryTimeout: 30 * time.Second,
 		},
-		Analytics: AnalyticsConfig{
+		Datastore: DatastoreConfig{
 			MaxOpenConns:    25,
 			MaxIdleConns:    5,
 			ConnMaxLifetime: time.Hour,
@@ -172,8 +172,8 @@ type Manager struct {
 	// Organization databases (orgID -> DB)
 	orgDBs map[string]*SQLiteDB
 
-	// Analytics datastore (shared)
-	analyticsDB Analytics
+	// Hanzo Datastore (shared)
+	datastoreDB Datastore
 
 	// Closed flag
 	closed bool
@@ -198,13 +198,13 @@ func NewManager(cfg *Config) (*Manager, error) {
 		orgDBs:  make(map[string]*SQLiteDB),
 	}
 
-	// Initialize analytics if enabled
-	if cfg.EnableAnalytics && cfg.AnalyticsDSN != "" {
-		analytics, err := NewAnalytics(cfg)
+	// Initialize Hanzo Datastore if enabled
+	if cfg.EnableDatastore && cfg.DatastoreDSN != "" {
+		datastore, err := NewDatastore(cfg)
 		if err != nil {
 			return nil, err
 		}
-		m.analyticsDB = analytics
+		m.datastoreDB = datastore
 	}
 
 	return m, nil
@@ -270,9 +270,9 @@ func (m *Manager) Org(orgID string) (DB, error) {
 	return db, nil
 }
 
-// Analytics returns the analytics datastore for deep queries
-func (m *Manager) Analytics() Analytics {
-	return m.analyticsDB
+// Datastore returns the Hanzo Datastore for deep analytics queries
+func (m *Manager) Datastore() Datastore {
+	return m.datastoreDB
 }
 
 // Close closes all database connections
@@ -301,9 +301,9 @@ func (m *Manager) Close() error {
 		}
 	}
 
-	// Close analytics
-	if m.analyticsDB != nil {
-		if err := m.analyticsDB.Close(); err != nil {
+	// Close Hanzo Datastore
+	if m.datastoreDB != nil {
+		if err := m.datastoreDB.Close(); err != nil {
 			lastErr = err
 		}
 	}
@@ -346,10 +346,10 @@ type DB interface {
 	TenantType() string
 }
 
-// Analytics is the interface for deep analytics queries (Datastore/ClickHouse)
-type Analytics interface {
-	// Query executes analytics queries
-	Query(ctx context.Context, query string, args ...interface{}) (AnalyticsRows, error)
+// Datastore is the interface for Hanzo Datastore (ClickHouse) analytics queries
+type Datastore interface {
+	// Query executes datastore queries
+	Query(ctx context.Context, query string, args ...interface{}) (DatastoreRows, error)
 
 	// Select scans results into a destination slice
 	Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error
@@ -358,17 +358,17 @@ type Analytics interface {
 	Exec(ctx context.Context, query string, args ...interface{}) error
 
 	// Batch insert for high-throughput data ingestion
-	PrepareBatch(ctx context.Context, query string) (AnalyticsBatch, error)
+	PrepareBatch(ctx context.Context, query string) (DatastoreBatch, error)
 
 	// AsyncInsert for fire-and-forget event logging
 	AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error
 
-	// Close closes the analytics connection
+	// Close closes the datastore connection
 	Close() error
 }
 
-// AnalyticsRows represents analytics query results
-type AnalyticsRows interface {
+// DatastoreRows represents datastore query results
+type DatastoreRows interface {
 	Next() bool
 	Scan(dest ...interface{}) error
 	ScanStruct(dest interface{}) error
@@ -377,8 +377,8 @@ type AnalyticsRows interface {
 	Err() error
 }
 
-// AnalyticsBatch for bulk inserts into analytics
-type AnalyticsBatch interface {
+// DatastoreBatch for bulk inserts into Hanzo Datastore
+type DatastoreBatch interface {
 	Append(v ...interface{}) error
 	AppendStruct(v interface{}) error
 	Flush() error
@@ -526,10 +526,10 @@ type Entity interface {
 	Kind() string
 }
 
-// Syncable entities can be synced to analytics layer
+// Syncable entities can be synced to Hanzo Datastore
 type Syncable interface {
 	Entity
 
-	// SyncToAnalytics returns true if this entity should be synced
-	SyncToAnalytics() bool
+	// SyncToDatastore returns true if this entity should be synced
+	SyncToDatastore() bool
 }

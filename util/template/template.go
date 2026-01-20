@@ -7,13 +7,13 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/thankyou"
-	"hanzo.io/util/fs"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/thankyou"
+	"github.com/hanzoai/commerce/util/fs"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 var cwd, _ = os.Getwd()

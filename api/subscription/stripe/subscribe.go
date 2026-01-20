@@ -1,11 +1,11 @@
 package stripe
 
 import (
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/subscription"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 func Subscribe(org *organization.Organization, usr *user.User, sub *subscription.Subscription) error {

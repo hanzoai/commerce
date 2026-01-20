@@ -6,16 +6,16 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/types/form"
-	"hanzo.io/models/types/thankyou"
-	"hanzo.io/types/email"
-	"hanzo.io/util/fs"
-	"hanzo.io/util/json"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/types/form"
+	"github.com/hanzoai/commerce/models/types/thankyou"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/util/fs"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/val"
 )
 
 var jsTemplate = ""

@@ -3,9 +3,9 @@ package variant
 import (
 	"math/rand"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore, productId string) *Variant {

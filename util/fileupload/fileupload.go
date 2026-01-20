@@ -10,8 +10,8 @@ import (
 	// "golang.org/x/oauth2/google"
 	// storage "google.golang.org/api/storage/v1"
 
-	"hanzo.io/models/organization"
-	// "hanzo.io/log"
+	"github.com/hanzoai/commerce/models/organization"
+	// "github.com/hanzoai/commerce/log"
 )
 
 func UploadFile(ctx *gin.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {

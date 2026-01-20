@@ -4,7 +4,7 @@ import (
 	ctx "context"
 	"google.golang.org/appengine/aetest"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 var (

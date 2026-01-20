@@ -1,8 +1,8 @@
 package paymentmethod
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/thirdparty/paymentmethods"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/thirdparty/paymentmethods"
 )
 
 type PaymentMethod struct {

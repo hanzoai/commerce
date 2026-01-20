@@ -1,9 +1,9 @@
 package campaign
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/util/fake"
-	"hanzo.io/util/slug"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/fake"
+	"github.com/hanzoai/commerce/util/slug"
 )
 
 func Fake(db *datastore.Datastore, organizationId string) *Campaign {

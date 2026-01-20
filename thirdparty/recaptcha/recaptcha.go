@@ -8,8 +8,8 @@ import (
 
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/log"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type RecaptchaResponse struct {

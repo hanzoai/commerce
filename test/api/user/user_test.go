@@ -5,12 +5,12 @@ import (
 
 	"github.com/icrowley/fake"
 
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 type retrieveWalletRes struct {

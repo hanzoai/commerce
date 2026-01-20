@@ -3,10 +3,10 @@ package auth
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/user"
-	"hanzo.io/util/session"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/session"
 )
 
 const loginKey = "loggedIn"

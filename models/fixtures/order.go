@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/order"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/productcachedvalues"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/productcachedvalues"
 
-	. "hanzo.io/models/lineitem"
+	. "github.com/hanzoai/commerce/models/lineitem"
 )
 
 var Order = New("order", func(c *gin.Context) *order.Order {

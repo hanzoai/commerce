@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/referralprogram"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/referralprogram"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 var _ = New("esx-referral", func(c *gin.Context) *organization.Organization {

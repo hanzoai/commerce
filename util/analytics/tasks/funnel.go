@@ -4,14 +4,14 @@ import (
 	"context"
 
 	"google.golang.org/appengine"
-	"hanzo.io/delay"
+	"github.com/hanzoai/commerce/delay"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/aggregate"
-	"hanzo.io/models/analyticsevent"
-	"hanzo.io/models/funnel"
-	. "hanzo.io/util/aggregate/tasks"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/aggregate"
+	"github.com/hanzoai/commerce/models/analyticsevent"
+	"github.com/hanzoai/commerce/models/funnel"
+	. "github.com/hanzoai/commerce/util/aggregate/tasks"
 )
 
 var updateFunnels = delay.Func("UpdateFunnels", func(ctx context.Context, namespace, eventId string) {

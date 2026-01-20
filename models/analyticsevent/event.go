@@ -5,13 +5,13 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/analyticsidentifier"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/client"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/analyticsidentifier"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type AnalyticsEvent struct {

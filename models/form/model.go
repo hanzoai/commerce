@@ -1,8 +1,8 @@
 package form
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/thankyou"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/thankyou"
 )
 
 var kind = "form"

@@ -10,7 +10,7 @@ import (
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/urlfetch"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 const (

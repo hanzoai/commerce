@@ -1,9 +1,9 @@
 package mixin
 
 import (
-	"hanzo.io/util/json"
-	"hanzo.io/log"
-	"hanzo.io/util/reflect"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/reflect"
 )
 
 // Create a new zero'd entity of this type

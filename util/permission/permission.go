@@ -1,7 +1,7 @@
 package permission
 
 import (
-	"hanzo.io/util/bit"
+	"github.com/hanzoai/commerce/util/bit"
 )
 
 // There are three types of users that permissions commonly accomodate:

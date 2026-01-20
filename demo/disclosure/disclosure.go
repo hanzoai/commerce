@@ -1,7 +1,7 @@
 package disclosure
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 // Datastructure for Bitcoin Transaction

@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

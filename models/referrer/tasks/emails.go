@@ -4,14 +4,14 @@ import (
 	"context"
 	"strconv"
 
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
-	// mandrill "hanzo.io/thirdparty/mandrill/tasks"
-	"hanzo.io/thirdparty/woopra"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	// mandrill "github.com/hanzoai/commerce/thirdparty/mandrill/tasks"
+	"github.com/hanzoai/commerce/thirdparty/woopra"
 )
 
 // Fire webhooks

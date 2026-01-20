@@ -3,8 +3,8 @@ package product
 import (
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Document struct {

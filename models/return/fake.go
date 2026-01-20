@@ -1,9 +1,9 @@
 package return_
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore, userId string) *Return {

@@ -3,10 +3,10 @@ package transfer
 import (
 	"time"
 
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Type string

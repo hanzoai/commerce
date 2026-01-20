@@ -1,9 +1,9 @@
 package referral
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/client"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Event string

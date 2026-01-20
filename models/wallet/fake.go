@@ -1,9 +1,9 @@
 package wallet
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 func Fake(db *datastore.Datastore) (*Wallet, *Account, string) {

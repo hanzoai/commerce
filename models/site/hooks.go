@@ -1,9 +1,9 @@
 package site
 
 import (
-	"hanzo.io/thirdparty/netlify"
-	"hanzo.io/log"
-	"hanzo.io/util/webhook"
+	"github.com/hanzoai/commerce/thirdparty/netlify"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/webhook"
 )
 
 // Create

@@ -1,9 +1,9 @@
 package subscriber
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var kind = "subscriber"

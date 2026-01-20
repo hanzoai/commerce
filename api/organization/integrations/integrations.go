@@ -6,12 +6,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/middleware"
-	"hanzo.io/models/types/analytics"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/types/analytics"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 func Get(c *gin.Context) {

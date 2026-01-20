@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 type ValidatorFunction interface{}

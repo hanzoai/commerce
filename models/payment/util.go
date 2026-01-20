@@ -1,6 +1,6 @@
 package payment
 
-import "hanzo.io/models/types/accounts"
+import "github.com/hanzoai/commerce/models/types/accounts"
 
 // Is the payment processor type handle fiat
 func IsFiatProcessorType(typ accounts.Type) bool {

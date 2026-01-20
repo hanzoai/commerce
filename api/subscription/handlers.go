@@ -3,14 +3,14 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/subscription/stripe"
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/subscription"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/api/subscription/stripe"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 var subscriptionEndpoint = config.UrlFor("api", "/subscription/")

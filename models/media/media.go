@@ -3,10 +3,10 @@ package media
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	. "hanzo.io/models/ads"
+	. "github.com/hanzoai/commerce/models/ads"
 )
 
 type Type string

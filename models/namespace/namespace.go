@@ -1,9 +1,9 @@
 package namespace
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 type Namespace struct {

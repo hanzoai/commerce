@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 var (

@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/bundle"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/variant"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/bundle"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 var types = map[string]reflect.Type{

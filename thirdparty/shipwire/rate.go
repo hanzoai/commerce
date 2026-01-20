@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"hanzo.io/models/order"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func (c *Client) Rate(ord *order.Order) ([]Rates, *RateResponse, error) {

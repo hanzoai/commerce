@@ -1,12 +1,12 @@
 package payment
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/util/fake"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 func Fake(db *datastore.Datastore) *Payment {
