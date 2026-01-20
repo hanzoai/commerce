@@ -29,7 +29,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
+	"github.com/hanzoai/commerce/api/analytics"
 	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
 )
@@ -72,6 +74,9 @@ type Config struct {
 
 	// Query timeout
 	QueryTimeout time.Duration
+
+	// Events configuration
+	Events events.Config
 }
 
 // DefaultConfig returns the default configuration
@@ -85,6 +90,29 @@ func DefaultConfig() *Config {
 		DatastoreDSN:   getEnv("COMMERCE_DATASTORE", ""),
 		Infra:          *infraConfigFromEnv(),
 		QueryTimeout:   30 * time.Second,
+		Events:         *eventsConfigFromEnv(),
+	}
+}
+
+// eventsConfigFromEnv loads events config from environment
+func eventsConfigFromEnv() *events.Config {
+	// Enable datastore when COMMERCE_DATASTORE is set (same check as DB config)
+	datastoreDSN := getEnv("COMMERCE_DATASTORE", "")
+
+	return &events.Config{
+		// Datastore (ClickHouse) - primary storage for unified analytics
+		// Automatically enabled when COMMERCE_DATASTORE is configured
+		DatastoreEnabled: datastoreDSN != "",
+
+		// Insights (PostHog) HTTP forwarding (optional)
+		InsightsEnabled:  getEnv("INSIGHTS_ENABLED", "false") == "true",
+		InsightsEndpoint: getEnv("INSIGHTS_ENDPOINT", "https://insights.hanzo.ai"),
+		InsightsAPIKey:   getEnv("INSIGHTS_API_KEY", ""),
+
+		// Analytics (Umami-like) HTTP forwarding (optional)
+		AnalyticsEnabled:   getEnv("ANALYTICS_ENABLED", "false") == "true",
+		AnalyticsEndpoint:  getEnv("ANALYTICS_ENDPOINT", "https://analytics.hanzo.ai"),
+		AnalyticsWebsiteID: getEnv("ANALYTICS_WEBSITE_ID", ""),
 	}
 }
 
@@ -159,6 +187,9 @@ type App struct {
 
 	// Hook system
 	Hooks *hooks.Registry
+
+	// Events emitter (sends to Insights + Analytics)
+	Events *events.Emitter
 
 	// HTTP router
 	Router *gin.Engine
@@ -334,6 +365,11 @@ func (app *App) Bootstrap() error {
 		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
 	}
 
+	// Initialize events emitter (Insights + Analytics + Datastore)
+	// This creates a unified event storage where both Insights and Analytics
+	// read from the same ClickHouse datastore
+	app.Events = events.NewEmitterWithDatastore(&app.config.Events, app.DB.Datastore())
+
 	// Initialize router
 	app.Router = gin.New()
 	app.Router.Use(gin.Recovery())
@@ -361,6 +397,10 @@ func (app *App) setupRoutes() {
 	// API routes
 	api := app.Router.Group("/api/v1")
 	{
+		// Analytics endpoints (astley.js, Cloud AI, etc.)
+		analyticsHandler := analytics.NewHandler(app.Events)
+		analyticsHandler.Route(api)
+
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
 	}
@@ -427,6 +467,13 @@ func (app *App) Shutdown() error {
 			defer cancel()
 			if shutdownErr := app.server.Shutdown(ctx); shutdownErr != nil {
 				err = shutdownErr
+			}
+		}
+
+		// Close events emitter (flush remaining events)
+		if app.Events != nil {
+			if eventsErr := app.Events.Close(); eventsErr != nil {
+				err = eventsErr
 			}
 		}
 
