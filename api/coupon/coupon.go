@@ -3,15 +3,15 @@ package coupon
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/coupon"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func getCoupon(c *gin.Context) {

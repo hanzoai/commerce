@@ -3,9 +3,9 @@ package mixin
 import (
 	"errors"
 
-	"hanzo.io/log"
-	"hanzo.io/types/accesstoken"
-	"hanzo.io/util/bit"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/accesstoken"
+	"github.com/hanzoai/commerce/util/bit"
 )
 
 // Error for expired jti's

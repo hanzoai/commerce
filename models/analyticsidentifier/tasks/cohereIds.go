@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/gob"
 
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/models/analyticsidentifier"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/analyticsidentifier"
 )
 
 func init() {

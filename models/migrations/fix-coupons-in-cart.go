@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/cart"
-	"hanzo.io/models/coupon"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/coupon"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("fix-coupons-in-cart",

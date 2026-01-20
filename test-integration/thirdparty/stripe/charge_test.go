@@ -1,10 +1,10 @@
 package test
 
 import (
-	"hanzo.io/models/payment"
-	"hanzo.io/thirdparty/stripe"
-	"hanzo.io/thirdparty/stripe/tasks"
-	. "hanzo.io/util/test/ginkgo"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
+	"github.com/hanzoai/commerce/thirdparty/stripe/tasks"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {

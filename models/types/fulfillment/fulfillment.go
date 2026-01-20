@@ -3,7 +3,7 @@ package fulfillment
 import (
 	"time"
 
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Status string

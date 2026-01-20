@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)

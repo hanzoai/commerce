@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func MakeBitcoinPayment(ctx context.Context, from wallet.Account, to string, amount, feePerByte currency.Cents, password []byte) (string, error) {

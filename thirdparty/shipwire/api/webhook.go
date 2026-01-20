@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/util/json"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/log"
 
 	. "encoding/json"
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func getList(c *gin.Context, data []byte, dst interface{}) error {

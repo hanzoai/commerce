@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"hanzo.io/util/jwt"
+	"github.com/hanzoai/commerce/util/jwt"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

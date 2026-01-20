@@ -7,15 +7,15 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/auth/password"
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/session"
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/session"
 )
 
 func getAccessToken(c *gin.Context, id, email, pass string, test bool) {

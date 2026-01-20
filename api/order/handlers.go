@@ -3,12 +3,12 @@ package order
 import (
 	"github.com/gin-gonic/gin"
 
-	checkoutApi "hanzo.io/api/checkout"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	checkoutApi "github.com/hanzoai/commerce/api/checkout"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/datastore"
-	// "hanzo.io/models"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/models/variant"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	// "github.com/hanzoai/commerce/models"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")

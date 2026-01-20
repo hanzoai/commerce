@@ -6,20 +6,20 @@ import (
 	"strings"
 	"time"
 
-	"hanzo.io/log"
-	"hanzo.io/models/form"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/token"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/user"
-	"hanzo.io/types/email"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/token"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Create new message using provided defaults

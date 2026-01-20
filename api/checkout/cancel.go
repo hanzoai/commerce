@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/checkout/paypal"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
+	"github.com/hanzoai/commerce/api/checkout/paypal"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
 )
 
 func cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {

@@ -1,8 +1,8 @@
 package affiliate
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/schedule"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/schedule"
 )
 
 var kind = "affiliate"

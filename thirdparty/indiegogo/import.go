@@ -1,11 +1,11 @@
 package indiegogo
 
 import (
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/util/csv"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/csv"
 
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 func Import(db *datastore.Datastore, filename string) {

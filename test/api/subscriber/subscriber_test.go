@@ -4,10 +4,10 @@ import (
 	"strings"
 
 	"github.com/icrowley/fake"
-	"hanzo.io/models/subscriber"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/subscriber"
+	"github.com/hanzoai/commerce/models/user"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("subscriber", func() {

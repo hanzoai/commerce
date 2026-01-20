@@ -5,15 +5,15 @@ import (
 
 	"github.com/hanzoai/gochimp3"
 
-	"hanzo.io/log"
-	"hanzo.io/models/cart"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/models/variant"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 func centsToFloat(cents currency.Cents, typ currency.Type) float64 {

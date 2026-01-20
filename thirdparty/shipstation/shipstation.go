@@ -3,14 +3,14 @@ package shipstation
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth"
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/shipstation/export"
-	"hanzo.io/thirdparty/shipstation/shipnotify"
-	"hanzo.io/log"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/shipstation/export"
+	"github.com/hanzoai/commerce/thirdparty/shipstation/shipnotify"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func setOrg(c *gin.Context) {

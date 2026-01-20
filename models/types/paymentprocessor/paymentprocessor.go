@@ -1,6 +1,6 @@
 package paymentprocessors
 
-import "hanzo.io/models/types/currency"
+import "github.com/hanzoai/commerce/models/types/currency"
 
 type Processor string
 

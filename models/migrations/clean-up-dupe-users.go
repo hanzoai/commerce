@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/user"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("clean-up-dupe-users", func(c *gin.Context) []interface{} {

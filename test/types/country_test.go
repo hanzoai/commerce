@@ -3,7 +3,7 @@ package test
 import (
 	"sort"
 
-	. "hanzo.io/models/types/country"
+	. "github.com/hanzoai/commerce/models/types/country"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

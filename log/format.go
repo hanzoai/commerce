@@ -17,7 +17,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	"hanzo.io/log/color"
+	"github.com/hanzoai/commerce/log/color"
 )
 
 type fmtVerb int

@@ -3,13 +3,13 @@ package test
 import (
 	"math/big"
 
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/thirdparty/ethereum/tasks"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/thirdparty/ethereum/tasks"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func MulInts(a, b int64) *big.Int {

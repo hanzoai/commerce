@@ -3,10 +3,10 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	ds "hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/product"
-	"hanzo.io/models/user"
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var _ = New("add-search-documents",

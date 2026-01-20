@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"strings"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/thirdparty/paypal/responses"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/thirdparty/paypal/responses"
 
 	"google.golang.org/appengine/urlfetch"
 )

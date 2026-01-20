@@ -1,10 +1,10 @@
 package tokensale
 
 import (
-	"hanzo.io/models/mixin"
-	// "hanzo.io/models/payment"
-	// "hanzo.io/models/types/pricing"
-	"hanzo.io/models/wallet"
+	"github.com/hanzoai/commerce/models/mixin"
+	// "github.com/hanzoai/commerce/models/payment"
+	// "github.com/hanzoai/commerce/models/types/pricing"
+	"github.com/hanzoai/commerce/models/wallet"
 )
 
 type TokenSale struct {

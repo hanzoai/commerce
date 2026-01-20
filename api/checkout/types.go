@@ -3,15 +3,15 @@ package checkout
 import (
 	"strings"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/fulfillment"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/fulfillment"
+	"github.com/hanzoai/commerce/models/user"
 
-	stringutil "hanzo.io/util/strings"
+	stringutil "github.com/hanzoai/commerce/util/strings"
 )
 
 type TokenSale struct {

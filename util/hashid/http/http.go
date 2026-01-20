@@ -3,10 +3,10 @@ package http
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/router"
-	"hanzo.io/util/template"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/router"
+	"github.com/hanzoai/commerce/util/template"
 )
 
 func decodeKey(c *gin.Context) {

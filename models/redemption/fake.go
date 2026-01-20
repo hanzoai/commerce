@@ -1,8 +1,8 @@
 package coupon
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Redemption {

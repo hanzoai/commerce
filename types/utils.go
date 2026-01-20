@@ -8,7 +8,7 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 func FloatPrice(price currency.Cents) float64 {

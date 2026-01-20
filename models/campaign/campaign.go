@@ -1,8 +1,8 @@
 package campaign
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/util/category"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/category"
 )
 
 type Campaign struct {

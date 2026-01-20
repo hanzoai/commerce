@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"sync"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 // Vals should be a slice of models

@@ -1,8 +1,8 @@
 package store
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 var kind = "store"

@@ -1,8 +1,8 @@
 package store
 
 import (
-	"hanzo.io/models/shippingrates"
-	"hanzo.io/models/taxrates"
+	"github.com/hanzoai/commerce/models/shippingrates"
+	"github.com/hanzoai/commerce/models/taxrates"
 )
 
 // Hooks

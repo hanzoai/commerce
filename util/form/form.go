@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/schema"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 var decoder = schema.NewDecoder()

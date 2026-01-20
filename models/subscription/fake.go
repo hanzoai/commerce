@@ -4,11 +4,11 @@ import (
 	"math/rand"
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/plan"
-	"hanzo.io/models/types/accounts"
-	. "hanzo.io/types"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/plan"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	. "github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Subscription {

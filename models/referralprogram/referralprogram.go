@@ -1,9 +1,9 @@
 package referralprogram
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type ActionType string

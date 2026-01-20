@@ -3,16 +3,16 @@ package organization
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/api/organization/analytics"
-	"hanzo.io/api/organization/integrations"
-	"hanzo.io/api/organization/wallet"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/api/organization/analytics"
+	"github.com/hanzoai/commerce/api/organization/integrations"
+	"github.com/hanzoai/commerce/api/organization/wallet"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 
-	. "hanzo.io/api/organization/newroutes"
+	. "github.com/hanzoai/commerce/api/organization/newroutes"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

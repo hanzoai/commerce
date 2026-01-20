@@ -3,16 +3,16 @@ package account
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/paymentmethod"
-	"hanzo.io/thirdparty/paymentmethods/plaid"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/thirdparty/paymentmethods/plaid"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 
 	. "encoding/json"
 
-	. "hanzo.io/thirdparty/paymentmethods"
+	. "github.com/hanzoai/commerce/thirdparty/paymentmethods"
 )
 
 type CreateReq struct {

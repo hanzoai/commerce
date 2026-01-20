@@ -1,7 +1,7 @@
 package subscription
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 
 )
 

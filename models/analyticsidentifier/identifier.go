@@ -1,8 +1,8 @@
 package analyticsidentifier
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

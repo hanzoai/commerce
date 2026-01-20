@@ -3,8 +3,8 @@ package coupon
 import (
 	"time"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 )
 
 type Redemption struct {

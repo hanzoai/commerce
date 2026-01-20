@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/types/email"
-	"hanzo.io/types/email/provider"
-	// "hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/types/email"
+	"github.com/hanzoai/commerce/types/email/provider"
+	// "github.com/hanzoai/commerce/types/integration"
 )
 
 var _ = New("damon-email", func(c *gin.Context) *organization.Organization {

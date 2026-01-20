@@ -4,9 +4,9 @@ import (
 	"strings"
 	"unicode"
 
-	"hanzo.io/log"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type GeoRate struct {

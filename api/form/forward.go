@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"hanzo.io/email"
-	"hanzo.io/models/form"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/submission"
-	"hanzo.io/models/subscriber"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/submission"
+	"github.com/hanzoai/commerce/models/subscriber"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}

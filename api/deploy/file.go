@@ -3,12 +3,12 @@ package site
 import (
 	"github.com/gin-gonic/gin"
 
-	// "hanzo.io/datastore"
-	// "hanzo.io/models/site"
-	"hanzo.io/config"
-	"hanzo.io/middleware"
-	"hanzo.io/thirdparty/netlify"
-	"hanzo.io/log"
+	// "github.com/hanzoai/commerce/datastore"
+	// "github.com/hanzoai/commerce/models/site"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/thirdparty/netlify"
+	"github.com/hanzoai/commerce/log"
 )
 
 func listFiles(c *gin.Context) {

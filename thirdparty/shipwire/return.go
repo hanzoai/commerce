@@ -3,9 +3,9 @@ package shipwire
 import (
 	"strconv"
 
-	"hanzo.io/models/order"
+	"github.com/hanzoai/commerce/models/order"
 
-	. "hanzo.io/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
 func (c *Client) CreateReturn(ord *order.Order, opts ReturnOptions) (*Return, *Response, error) {

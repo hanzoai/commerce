@@ -3,8 +3,8 @@ package sendgrid
 import (
 	"github.com/hanzoai/sendgrid-go/helpers/mail"
 
-	"hanzo.io/log"
-	"hanzo.io/types/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/types/email"
 )
 
 // Send email

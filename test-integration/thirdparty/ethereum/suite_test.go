@@ -5,15 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	// "hanzo.io/models/fixtures"
-	"hanzo.io/models/wallet"
-	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	// "github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var (

@@ -1,8 +1,8 @@
 package namespace
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/namespace/consts"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/namespace/consts"
 )
 
 var kind = "namespace"

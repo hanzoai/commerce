@@ -2,9 +2,9 @@ package test
 
 import (
 	"github.com/icrowley/fake"
-	"hanzo.io/models/product"
+	"github.com/hanzoai/commerce/models/product"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("product", func() {

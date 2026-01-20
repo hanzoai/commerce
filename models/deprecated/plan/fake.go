@@ -1,11 +1,11 @@
 package plan
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/util/fake"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/fake"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 func Fake(db *datastore.Datastore) *Plan {

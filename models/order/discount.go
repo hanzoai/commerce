@@ -3,12 +3,12 @@ package order
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/models/discount"
-	"hanzo.io/models/discount/scope"
-	"hanzo.io/models/discount/target"
-	"hanzo.io/models/discount/trigger"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/discount"
+	"github.com/hanzoai/commerce/models/discount/scope"
+	"github.com/hanzoai/commerce/models/discount/target"
+	"github.com/hanzoai/commerce/models/discount/trigger"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/log"
 )
 
 // Append discounts which are valid for order creation date

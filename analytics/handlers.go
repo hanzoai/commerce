@@ -5,18 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	// "hanzo.io/models/aggregate"
-	"hanzo.io/models/analyticsevent"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/client"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	// "github.com/hanzoai/commerce/models/aggregate"
+	"github.com/hanzoai/commerce/models/analyticsevent"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 
-	. "hanzo.io/models/analyticsidentifier/tasks"
-	// . "hanzo.io/util/aggregate/tasks"
-	// . "hanzo.io/util/analytics/tasks"
+	. "github.com/hanzoai/commerce/models/analyticsidentifier/tasks"
+	// . "github.com/hanzoai/commerce/util/aggregate/tasks"
+	// . "github.com/hanzoai/commerce/util/analytics/tasks"
 )
 
 func create(c *gin.Context) {

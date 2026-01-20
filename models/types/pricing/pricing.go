@@ -5,9 +5,9 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/models/types/commission"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/hashid"
+	"github.com/hanzoai/commerce/models/types/commission"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/hashid"
 )
 
 // Partner pricing fees

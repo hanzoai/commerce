@@ -1,11 +1,11 @@
 package test
 
 import (
-	"hanzo.io/models/product"
-	"hanzo.io/models/review"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/review"
+	"github.com/hanzoai/commerce/models/user"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("review", func() {

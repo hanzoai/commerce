@@ -5,7 +5,7 @@ import (
 
 	"github.com/netlify/netlify-go"
 
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/log"
 )
 
 type Client struct {

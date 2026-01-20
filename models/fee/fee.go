@@ -1,10 +1,10 @@
 package fee
 
 import (
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/commission"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/commission"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type Type string
