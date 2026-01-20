@@ -3,16 +3,16 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/store"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/types/integration"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/types/integration"
 
-	ds "hanzo.io/datastore"
-	. "hanzo.io/types"
+	ds "github.com/hanzoai/commerce/datastore"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var _ = New("damon-users-mailchimp-refunded",

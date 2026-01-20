@@ -3,11 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/product"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var Store = New("store", func(c *gin.Context) *store.Store {

@@ -1,10 +1,10 @@
 package test
 
 import (
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
-	"hanzo.io/util/json"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/log"
 	"math/big"
 )
 

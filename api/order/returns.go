@@ -3,9 +3,9 @@ package order
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	return_ "hanzo.io/models/return"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	return_ "github.com/hanzoai/commerce/models/return"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 func Returns(c *gin.Context) {

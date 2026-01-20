@@ -3,11 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/namespace"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/namespace"
+	"github.com/hanzoai/commerce/log"
 
-	"hanzo.io/models/blockchains"
+	"github.com/hanzoai/commerce/models/blockchains"
 )
 
 var BlockchainNamespace = New("blockchain-namespace", func(c *gin.Context) *namespace.Namespace {

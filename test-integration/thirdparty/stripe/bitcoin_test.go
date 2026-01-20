@@ -1,9 +1,9 @@
 package test
 
 // import (
-// 	"hanzo.io/models/payment"
-// 	"hanzo.io/models/user"
-// 	. "hanzo.io/util/test/ginkgo"
+// 	"github.com/hanzoai/commerce/models/payment"
+// 	"github.com/hanzoai/commerce/models/user"
+// 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 // )
 
 // var _ = Describe("thirdparty.stripe.client.CreateSource", func() {

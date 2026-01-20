@@ -1,8 +1,8 @@
 package tasks
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/datastore/parallel"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/parallel"
 )
 
 // Define a new worker with parallel.Task

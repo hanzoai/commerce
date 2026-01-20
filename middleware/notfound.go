@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	// "hanzo.io/util/template"
+	// "github.com/hanzoai/commerce/util/template"
 	// "google.golang.org/appengine"
 )
 

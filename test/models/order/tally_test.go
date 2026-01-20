@@ -1,12 +1,12 @@
 package test
 
 import (
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/rand"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("Order.UpdateAndTally", func() {

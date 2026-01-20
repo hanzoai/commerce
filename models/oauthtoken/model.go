@@ -1,7 +1,7 @@
 package oauthtoken
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 )
 
 var kind = "oauthtoken"

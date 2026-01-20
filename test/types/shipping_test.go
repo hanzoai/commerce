@@ -1,12 +1,12 @@
 package test
 
 import (
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/models/types/productcachedvalues"
-	. "hanzo.io/models/types/shipping"
-	. "hanzo.io/models/types/weight"
+	. "github.com/hanzoai/commerce/models/types/productcachedvalues"
+	. "github.com/hanzoai/commerce/models/types/shipping"
+	. "github.com/hanzoai/commerce/models/types/weight"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

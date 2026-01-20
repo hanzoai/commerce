@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/store"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/util/json/http"
 
-	checkoutApi "hanzo.io/api/checkout"
+	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 )
 
 func setStore(c *gin.Context) error {

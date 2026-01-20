@@ -1,12 +1,12 @@
 package partner
 
 import (
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/commission"
-	"hanzo.io/models/types/schedule"
-	"hanzo.io/thirdparty/stripe/connect"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/commission"
+	"github.com/hanzoai/commerce/models/types/schedule"
+	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Partner struct {

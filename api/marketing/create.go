@@ -3,13 +3,13 @@ package marketing
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/marketing"
-	"hanzo.io/middleware"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/marketing"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 
-	. "hanzo.io/marketing/types"
+	. "github.com/hanzoai/commerce/marketing/types"
 )
 
 func create(c *gin.Context) {

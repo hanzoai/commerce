@@ -5,11 +5,11 @@ import (
 
 	"google.golang.org/appengine/search"
 
-	"hanzo.io/log"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/searchpartial"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/searchpartial"
 )
 
 type Document struct {

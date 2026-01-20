@@ -3,9 +3,9 @@ package test
 import (
 	"time"
 
-	// "hanzo.io/log"
+	// "github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/models/types/schedule"
+	. "github.com/hanzoai/commerce/models/types/schedule"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

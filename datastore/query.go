@@ -1,5 +1,5 @@
 package datastore
 
-import "hanzo.io/datastore/iface"
+import "github.com/hanzoai/commerce/datastore/iface"
 
 type Query iface.Query

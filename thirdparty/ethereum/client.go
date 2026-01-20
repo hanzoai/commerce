@@ -18,13 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/blockchains/blocktransaction"
-	"hanzo.io/util/json"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/blockchains/blocktransaction"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/rand"
 
-	. "hanzo.io/models/blockchains"
+	. "github.com/hanzoai/commerce/models/blockchains"
 )
 
 type EthGasStationResponse struct {

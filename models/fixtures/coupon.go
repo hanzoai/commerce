@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/product"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/product"
 )
 
 const Month = time.Hour * 24 * 30

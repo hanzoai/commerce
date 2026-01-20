@@ -3,9 +3,9 @@ package accesstoken
 import (
 	"time"
 
-	"hanzo.io/util/bit"
-	"hanzo.io/util/jwt"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/jwt"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 const (

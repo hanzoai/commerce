@@ -3,7 +3,7 @@ package test
 import (
 	"math/big"
 
-	. "hanzo.io/models/types/currency"
+	. "github.com/hanzoai/commerce/models/types/currency"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

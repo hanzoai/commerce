@@ -3,12 +3,12 @@ package discount
 import (
 	"time"
 
-	"hanzo.io/models/discount/rule"
-	"hanzo.io/models/discount/scope"
-	"hanzo.io/models/discount/target"
-	"hanzo.io/models/mixin"
-	"hanzo.io/log"
-	"hanzo.io/util/timeutil"
+	"github.com/hanzoai/commerce/models/discount/rule"
+	"github.com/hanzoai/commerce/models/discount/scope"
+	"github.com/hanzoai/commerce/models/discount/target"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/timeutil"
 )
 
 type Type string

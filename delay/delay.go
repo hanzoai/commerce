@@ -12,8 +12,8 @@ import (
 
 	"google.golang.org/appengine/taskqueue"
 
-	// "hanzo.io/config"
-	"hanzo.io/log"
+	// "github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
 )
 
 const (

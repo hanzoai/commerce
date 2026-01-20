@@ -1,6 +1,6 @@
 package test
 
-import . "hanzo.io/util/test/ginkgo"
+import . "github.com/hanzoai/commerce/util/test/ginkgo"
 
 var _ = Describe("models/mixin Model", func() {
 	Context("Model.SetKey", func() {

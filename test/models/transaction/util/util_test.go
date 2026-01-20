@@ -3,13 +3,13 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/transaction/util"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/transaction/util"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var (

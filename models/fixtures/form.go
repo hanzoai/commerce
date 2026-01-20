@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/form"
-	"hanzo.io/models/types/thankyou"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/types/thankyou"
 )
 
 var Form = New("form", func(c *gin.Context) *form.Form {

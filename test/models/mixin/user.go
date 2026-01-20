@@ -1,9 +1,9 @@
 package test
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/val"
 )
 
 type User struct {

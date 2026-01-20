@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/shippingrates"
-	"hanzo.io/models/store"
-	"hanzo.io/models/taxrates"
-	"hanzo.io/models/types/georate"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/shippingrates"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/taxrates"
+	"github.com/hanzoai/commerce/models/types/georate"
 )
 
 var _ = New("karma-rates", func(c *gin.Context) *organization.Organization {

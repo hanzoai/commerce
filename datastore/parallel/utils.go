@@ -3,8 +3,8 @@ package parallel
 import (
 	"reflect"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
 )
 
 // Precompute a few common types

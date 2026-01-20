@@ -5,11 +5,11 @@ import (
 	"math"
 	"strings"
 
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/log"
 
-	"hanzo.io/models/lineitem"
+	"github.com/hanzoai/commerce/models/lineitem"
 )
 
 // Get line items from datastore

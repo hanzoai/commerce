@@ -3,15 +3,15 @@ package payment
 import (
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/fee"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/types/client"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/fee"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 type Status string

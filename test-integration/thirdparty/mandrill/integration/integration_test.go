@@ -3,10 +3,10 @@ package mandrill_integration_test
 import (
 	"testing"
 
-	"hanzo.io/config"
-	"hanzo.io/log"
-	"hanzo.io/util/test/ae"
-	. "hanzo.io/util/test/ginkgo"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/test/ae"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

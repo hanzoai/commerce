@@ -6,10 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
 
-	"hanzo.io/models/coupon"
+	"github.com/hanzoai/commerce/models/coupon"
 )
 
 var _ = New("karma-coupon", func(c *gin.Context) *coupon.Coupon {

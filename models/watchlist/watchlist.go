@@ -10,13 +10,13 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/movie"
-	"hanzo.io/util/json"
-	"hanzo.io/util/val"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/movie"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/val"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

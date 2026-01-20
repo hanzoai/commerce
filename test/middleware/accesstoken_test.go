@@ -8,15 +8,15 @@ import (
 
 	"google.golang.org/appengine"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/ginclient"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

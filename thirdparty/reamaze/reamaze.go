@@ -3,12 +3,12 @@ package reamaze
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/organization"
-	"hanzo.io/thirdparty/reamaze/custommodule"
-	"hanzo.io/log"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/reamaze/custommodule"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/router"
 
 	"crypto/hmac"
 	"crypto/sha256"

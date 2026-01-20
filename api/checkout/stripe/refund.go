@@ -3,16 +3,16 @@ package stripe
 import (
 	"errors"
 
-	"hanzo.io/email"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/accounts"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/mailchimp"
-	"hanzo.io/thirdparty/stripe"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/mailchimp"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")

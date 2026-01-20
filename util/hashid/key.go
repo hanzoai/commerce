@@ -10,10 +10,10 @@ import (
 
 	"github.com/qedus/nds"
 
-	"hanzo.io/datastore/iface"
-	"hanzo.io/datastore/utils"
-	"hanzo.io/log"
-	"hanzo.io/models/namespace/consts"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/utils"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/namespace/consts"
 )
 
 var (

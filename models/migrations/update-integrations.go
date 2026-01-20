@@ -3,12 +3,12 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/log"
-	"hanzo.io/models/organization"
-	"hanzo.io/types/integration"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/types/integration"
+	"github.com/hanzoai/commerce/util/json"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("update-integrations",

@@ -4,12 +4,12 @@ import (
 	"math"
 	"time"
 
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	"hanzo.io/log"
-	"hanzo.io/util/bit"
-	"hanzo.io/util/jwt"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/jwt"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 const (

@@ -1,12 +1,12 @@
 package organization
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/app"
-	"hanzo.io/models/namespace"
-	"hanzo.io/models/store"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/app"
+	"github.com/hanzoai/commerce/models/namespace"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 const (

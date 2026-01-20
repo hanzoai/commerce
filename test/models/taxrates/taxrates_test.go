@@ -3,12 +3,12 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/models/taxrates"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/types/georate"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/models/taxrates"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/georate"
+	"github.com/hanzoai/commerce/util/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

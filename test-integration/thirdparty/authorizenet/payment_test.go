@@ -1,10 +1,10 @@
 package test
 
 import (
-	"hanzo.io/models/payment"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/types/currency"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("thirdparty.authorizenet.payments", func() {

@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	ds "hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/thirdparty/stripe"
+	ds "github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 var accessToken = ""

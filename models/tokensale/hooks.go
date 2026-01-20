@@ -1,8 +1,8 @@
 package tokensale
 
 import (
-	"hanzo.io/models/blockchains"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 // Hooks

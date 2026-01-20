@@ -4,23 +4,23 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/fixtures"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/transaction/util"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/bitcoin"
-	"hanzo.io/thirdparty/ethereum"
-	"hanzo.io/util/gincontext"
-	"hanzo.io/util/test/ae"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/transaction/util"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/bitcoin"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
+	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/test/ae"
 
-	. "hanzo.io/util/test/ginclient"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginclient"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
-	accountApi "hanzo.io/api/account"
+	accountApi "github.com/hanzoai/commerce/api/account"
 )
 
 func Test(t *testing.T) {

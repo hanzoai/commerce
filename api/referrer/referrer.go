@@ -3,14 +3,14 @@ package referrer
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/referrer"
-	"hanzo.io/models/types/client"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

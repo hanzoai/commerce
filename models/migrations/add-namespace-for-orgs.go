@@ -3,11 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/namespace"
-	"hanzo.io/models/organization"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/models/namespace"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/log"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("add-namespace-for-orgs",

@@ -1,12 +1,12 @@
 package test
 
 import (
-	"hanzo.io/models/cart"
-	"hanzo.io/models/coupon"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/cart"
+	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/user"
 	"github.com/icrowley/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("cart", func() {

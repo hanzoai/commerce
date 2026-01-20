@@ -3,8 +3,8 @@ package oauthtoken
 import (
 	"encoding/json"
 
-	"hanzo.io/util/bit"
-	"hanzo.io/util/jwt"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/jwt"
 )
 
 type Type string

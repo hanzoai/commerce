@@ -1,11 +1,11 @@
 package transaction
 
 import (
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"math/rand"
 
-	"hanzo.io/datastore"
-	"hanzo.io/util/fake"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/util/fake"
 )
 
 func Fake(db *datastore.Datastore) *Transaction {

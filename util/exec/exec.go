@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"hanzo.io/config"
+	"github.com/hanzoai/commerce/config"
 	"log"
 	"os"
 	"os/exec"

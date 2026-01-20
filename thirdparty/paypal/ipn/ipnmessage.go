@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 type IpnMessage struct {

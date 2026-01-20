@@ -1,7 +1,7 @@
 package app
 
 import (
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/rand"
 )
 
 // Hooks

@@ -1,8 +1,8 @@
 package provision
 
 import (
-	"hanzo.io/models/organization"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 // Take an organization and the owning user

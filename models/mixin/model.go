@@ -9,13 +9,13 @@ import (
 	"google.golang.org/appengine"
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/util/cache"
-	"hanzo.io/util/hashid"
-	"hanzo.io/util/rand"
-	"hanzo.io/util/reflect"
-	"hanzo.io/util/timeutil"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/cache"
+	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/rand"
+	"github.com/hanzoai/commerce/util/reflect"
+	"github.com/hanzoai/commerce/util/timeutil"
 )
 
 // A datastore kind that is compatible with the Model mixin

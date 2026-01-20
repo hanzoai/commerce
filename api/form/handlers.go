@@ -3,11 +3,11 @@ package form
 import (
 	"github.com/gin-gonic/gin"
 
-	cdn "hanzo.io/api/cdn/form"
-	"hanzo.io/middleware"
-	"hanzo.io/models/form"
-	"hanzo.io/util/rest"
-	"hanzo.io/util/router"
+	cdn "github.com/hanzoai/commerce/api/cdn/form"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

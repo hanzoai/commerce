@@ -5,17 +5,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth/password"
-	"hanzo.io/datastore"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/country"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
+	"github.com/hanzoai/commerce/auth/password"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/country"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
 
-	. "hanzo.io/models/lineitem"
+	. "github.com/hanzoai/commerce/models/lineitem"
 )
 
 var _ = New("damon-founders", func(c *gin.Context) *organization.Organization {

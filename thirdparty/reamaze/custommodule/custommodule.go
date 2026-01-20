@@ -7,13 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"strings"
 
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
-	"hanzo.io/util/template"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/template"
 )
 
 func Serve(c *gin.Context) {

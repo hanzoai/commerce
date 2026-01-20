@@ -1,16 +1,16 @@
 package test
 
 import (
-	"hanzo.io/api/checkout"
-	"hanzo.io/models/lineitem"
-	"hanzo.io/models/order"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/product"
-	"hanzo.io/models/user"
-	"hanzo.io/models/variant"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/api/checkout"
+	"github.com/hanzoai/commerce/models/lineitem"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/variant"
+	"github.com/hanzoai/commerce/log"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("shipstation", func() {

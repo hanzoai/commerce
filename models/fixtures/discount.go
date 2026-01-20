@@ -3,12 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/models/discount"
-	"hanzo.io/models/discount/rule"
-	"hanzo.io/models/discount/scope"
-	"hanzo.io/models/discount/target"
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/models/discount"
+	"github.com/hanzoai/commerce/models/discount/rule"
+	"github.com/hanzoai/commerce/models/discount/scope"
+	"github.com/hanzoai/commerce/models/discount/target"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 var Discount = New("discount", func(c *gin.Context) *discount.Discount {

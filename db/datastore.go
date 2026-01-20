@@ -7,31 +7,31 @@ import (
 	"time"
 )
 
-// NewAnalytics creates a new analytics datastore connection
+// NewDatastore creates a new Hanzo Datastore connection
 // This connects to ClickHouse via hanzo/datastore-go for deep analytics
-func NewAnalytics(cfg *Config) (Analytics, error) {
-	if cfg.AnalyticsDSN == "" {
-		return nil, errors.New("db: AnalyticsDSN is required for analytics")
+func NewDatastore(cfg *Config) (Datastore, error) {
+	if cfg.DatastoreDSN == "" {
+		return nil, errors.New("db: DatastoreDSN is required for Hanzo Datastore")
 	}
 
 	// Import hanzo/datastore-go for ClickHouse connectivity
 	// The actual implementation will use the datastore-go package
-	return &clickhouseAnalytics{
-		dsn:    cfg.AnalyticsDSN,
-		config: cfg.Analytics,
+	return &clickhouseDatastore{
+		dsn:    cfg.DatastoreDSN,
+		config: cfg.Datastore,
 	}, nil
 }
 
-// clickhouseAnalytics implements Analytics using ClickHouse
-type clickhouseAnalytics struct {
+// clickhouseDatastore implements Datastore using ClickHouse via hanzo/datastore-go
+type clickhouseDatastore struct {
 	dsn    string
-	config AnalyticsConfig
+	config DatastoreConfig
 	// conn is the ClickHouse connection from datastore-go
 	// conn *datastore.Conn
 }
 
-// Query executes an analytics query
-func (c *clickhouseAnalytics) Query(ctx context.Context, query string, args ...interface{}) (AnalyticsRows, error) {
+// Query executes a datastore query
+func (c *clickhouseDatastore) Query(ctx context.Context, query string, args ...interface{}) (DatastoreRows, error) {
 	// TODO: Implement using hanzo/datastore-go
 	// This will be implemented when we integrate the datastore-go package
 	//
@@ -39,77 +39,77 @@ func (c *clickhouseAnalytics) Query(ctx context.Context, query string, args ...i
 	// rows, err := c.conn.Query(ctx, query, args...)
 	// return &clickhouseRows{rows: rows}, err
 
-	return nil, errors.New("analytics: not implemented - requires hanzo/datastore-go integration")
+	return nil, errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
 }
 
 // Select scans results into a destination
-func (c *clickhouseAnalytics) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+func (c *clickhouseDatastore) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	// TODO: Implement using hanzo/datastore-go
 	// return c.conn.Select(ctx, dest, query, args...)
 
-	return errors.New("analytics: not implemented - requires hanzo/datastore-go integration")
+	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
 }
 
 // Exec executes a non-query statement
-func (c *clickhouseAnalytics) Exec(ctx context.Context, query string, args ...interface{}) error {
+func (c *clickhouseDatastore) Exec(ctx context.Context, query string, args ...interface{}) error {
 	// TODO: Implement using hanzo/datastore-go
 	// return c.conn.Exec(ctx, query, args...)
 
-	return errors.New("analytics: not implemented - requires hanzo/datastore-go integration")
+	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
 }
 
 // PrepareBatch prepares a batch insert
-func (c *clickhouseAnalytics) PrepareBatch(ctx context.Context, query string) (AnalyticsBatch, error) {
+func (c *clickhouseDatastore) PrepareBatch(ctx context.Context, query string) (DatastoreBatch, error) {
 	// TODO: Implement using hanzo/datastore-go
 	// batch, err := c.conn.PrepareBatch(ctx, query)
 	// return &clickhouseBatch{batch: batch}, err
 
-	return nil, errors.New("analytics: not implemented - requires hanzo/datastore-go integration")
+	return nil, errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
 }
 
 // AsyncInsert performs an async insert
-func (c *clickhouseAnalytics) AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error {
+func (c *clickhouseDatastore) AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error {
 	// TODO: Implement using hanzo/datastore-go
 	// return c.conn.AsyncInsert(ctx, query, wait, args...)
 
-	return errors.New("analytics: not implemented - requires hanzo/datastore-go integration")
+	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
 }
 
-// Close closes the analytics connection
-func (c *clickhouseAnalytics) Close() error {
+// Close closes the datastore connection
+func (c *clickhouseDatastore) Close() error {
 	// TODO: Implement
 	// return c.conn.Close()
 	return nil
 }
 
-// NoOpAnalytics is a no-op implementation when analytics is disabled
-type NoOpAnalytics struct{}
+// NoOpDatastore is a no-op implementation when datastore is disabled
+type NoOpDatastore struct{}
 
-func (n *NoOpAnalytics) Query(ctx context.Context, query string, args ...interface{}) (AnalyticsRows, error) {
+func (n *NoOpDatastore) Query(ctx context.Context, query string, args ...interface{}) (DatastoreRows, error) {
 	return &noOpRows{}, nil
 }
 
-func (n *NoOpAnalytics) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
+func (n *NoOpDatastore) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
 	return nil
 }
 
-func (n *NoOpAnalytics) Exec(ctx context.Context, query string, args ...interface{}) error {
+func (n *NoOpDatastore) Exec(ctx context.Context, query string, args ...interface{}) error {
 	return nil
 }
 
-func (n *NoOpAnalytics) PrepareBatch(ctx context.Context, query string) (AnalyticsBatch, error) {
+func (n *NoOpDatastore) PrepareBatch(ctx context.Context, query string) (DatastoreBatch, error) {
 	return &noOpBatch{}, nil
 }
 
-func (n *NoOpAnalytics) AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error {
+func (n *NoOpDatastore) AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error {
 	return nil
 }
 
-func (n *NoOpAnalytics) Close() error {
+func (n *NoOpDatastore) Close() error {
 	return nil
 }
 
-// noOpRows implements AnalyticsRows
+// noOpRows implements DatastoreRows
 type noOpRows struct{}
 
 func (r *noOpRows) Next() bool                        { return false }
@@ -119,7 +119,7 @@ func (r *noOpRows) Columns() []string                 { return nil }
 func (r *noOpRows) Close() error                      { return nil }
 func (r *noOpRows) Err() error                        { return nil }
 
-// noOpBatch implements AnalyticsBatch
+// noOpBatch implements DatastoreBatch
 type noOpBatch struct{}
 
 func (b *noOpBatch) Append(v ...interface{}) error    { return nil }
@@ -130,9 +130,9 @@ func (b *noOpBatch) Abort() error                     { return nil }
 func (b *noOpBatch) Rows() int                        { return 0 }
 func (b *noOpBatch) Close() error                     { return nil }
 
-// SyncConfig configures how data is synced to analytics
+// SyncConfig configures how data is synced to Hanzo Datastore
 type SyncConfig struct {
-	// Enabled turns on analytics sync
+	// Enabled turns on datastore sync
 	Enabled bool
 
 	// BatchSize is the number of records to batch before sending
@@ -158,10 +158,10 @@ func DefaultSyncConfig() *SyncConfig {
 	}
 }
 
-// Syncer handles syncing data from SQLite to analytics
+// Syncer handles syncing data from SQLite to Hanzo Datastore
 type Syncer struct {
 	config    *SyncConfig
-	analytics Analytics
+	datastore Datastore
 	pending   []syncRecord
 	lastFlush time.Time
 }
@@ -173,19 +173,19 @@ type syncRecord struct {
 	timestamp time.Time
 }
 
-// NewSyncer creates a new analytics syncer
-func NewSyncer(config *SyncConfig, analytics Analytics) *Syncer {
+// NewSyncer creates a new datastore syncer
+func NewSyncer(config *SyncConfig, datastore Datastore) *Syncer {
 	return &Syncer{
 		config:    config,
-		analytics: analytics,
+		datastore: datastore,
 		pending:   make([]syncRecord, 0, config.BatchSize),
 		lastFlush: time.Now(),
 	}
 }
 
-// Sync queues a record for syncing to analytics
+// Sync queues a record for syncing to Hanzo Datastore
 func (s *Syncer) Sync(kind, id string, data []byte) error {
-	if !s.config.Enabled || s.analytics == nil {
+	if !s.config.Enabled || s.datastore == nil {
 		return nil
 	}
 
@@ -223,7 +223,7 @@ func (s *Syncer) Sync(kind, id string, data []byte) error {
 	return nil
 }
 
-// Flush sends pending records to analytics
+// Flush sends pending records to Hanzo Datastore
 func (s *Syncer) Flush(ctx context.Context) error {
 	if len(s.pending) == 0 {
 		return nil
@@ -253,7 +253,7 @@ func (s *Syncer) flushKind(ctx context.Context, kind string, records []syncRecor
 		// Use async insert for fire-and-forget
 		for _, r := range records {
 			query := fmt.Sprintf(`INSERT INTO %s_events (id, data, timestamp) VALUES (?, ?, ?)`, kind)
-			if err := s.analytics.AsyncInsert(ctx, query, false, r.id, r.data, r.timestamp); err != nil {
+			if err := s.datastore.AsyncInsert(ctx, query, false, r.id, r.data, r.timestamp); err != nil {
 				return err
 			}
 		}
@@ -262,7 +262,7 @@ func (s *Syncer) flushKind(ctx context.Context, kind string, records []syncRecor
 
 	// Use batch insert for guaranteed delivery
 	query := fmt.Sprintf(`INSERT INTO %s_events (id, data, timestamp) VALUES`, kind)
-	batch, err := s.analytics.PrepareBatch(ctx, query)
+	batch, err := s.datastore.PrepareBatch(ctx, query)
 	if err != nil {
 		return err
 	}

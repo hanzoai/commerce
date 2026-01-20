@@ -15,13 +15,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/config"
-	"hanzo.io/datastore"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/util/router"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/util/router"
 )
 
 // Read body from response

@@ -9,10 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	// "hanzo.io/models"
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/user"
+	// "github.com/hanzoai/commerce/models"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/user"
 
 	"google.golang.org/appengine/urlfetch"
 )

@@ -4,13 +4,13 @@ import (
 	"errors"
 	"time"
 
-	"hanzo.io/log"
-	"hanzo.io/models/order"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/payment"
-	"hanzo.io/models/user"
-	"hanzo.io/thirdparty/authorizenet"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/payment"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/thirdparty/authorizenet"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 var NothingToAuthorizeError = errors.New("Nothing to Authorize (Items or Subscriptions)")

@@ -1,12 +1,12 @@
 package ad
 
 import (
-	"hanzo.io/models/mixin"
+	"github.com/hanzoai/commerce/models/mixin"
 
-	"hanzo.io/models/copy"
-	"hanzo.io/models/media"
+	"github.com/hanzoai/commerce/models/copy"
+	"github.com/hanzoai/commerce/models/media"
 
-	. "hanzo.io/models/ads"
+	. "github.com/hanzoai/commerce/models/ads"
 )
 
 type FacebookAd struct {

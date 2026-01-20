@@ -3,13 +3,13 @@ package util
 import (
 	"errors"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/ads/ad"
-	"hanzo.io/models/ads/adcampaign"
-	"hanzo.io/models/ads/adconfig"
-	"hanzo.io/models/ads/adset"
-	"hanzo.io/models/copy"
-	"hanzo.io/models/media"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/ads/ad"
+	"github.com/hanzoai/commerce/models/ads/adcampaign"
+	"github.com/hanzoai/commerce/models/ads/adconfig"
+	"github.com/hanzoai/commerce/models/ads/adset"
+	"github.com/hanzoai/commerce/models/copy"
+	"github.com/hanzoai/commerce/models/media"
 )
 
 var NoAdCampaignFound = errors.New("No AdCampaign Found")

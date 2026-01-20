@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/datastore"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/product"
-	"hanzo.io/models/types/currency"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/product"
+	"github.com/hanzoai/commerce/models/types/currency"
 )
 
 var _ = New("karma-products-trunk-show", func(c *gin.Context) []*product.Product {

@@ -9,20 +9,20 @@ import (
 
 	aeds "google.golang.org/appengine/datastore"
 
-	"hanzo.io/datastore"
-	"hanzo.io/delay"
-	"hanzo.io/log"
-	"hanzo.io/models/affiliate"
-	"hanzo.io/models/mixin"
-	"hanzo.io/models/referral"
-	"hanzo.io/models/referralprogram"
-	"hanzo.io/models/transaction"
-	"hanzo.io/models/types/client"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
-	"hanzo.io/util/timeutil"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/delay"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/affiliate"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/referralprogram"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/client"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/timeutil"
 
-	. "hanzo.io/types"
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Is a link that can refer customers to buy products

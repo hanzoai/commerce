@@ -1,6 +1,6 @@
 package types
 
-import "hanzo.io/models/types/currency"
+import "github.com/hanzoai/commerce/models/types/currency"
 
 type Adjustment struct {
 	// Possible values: flat.

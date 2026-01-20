@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"hanzo.io/log"
-	"hanzo.io/models/store"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 // Calculates order totals

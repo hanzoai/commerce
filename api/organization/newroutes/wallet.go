@@ -3,12 +3,12 @@ package newroutes
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/middleware"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/json"
-	"hanzo.io/util/json/http"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/log"
 )
 
 type AccountNameRes struct {

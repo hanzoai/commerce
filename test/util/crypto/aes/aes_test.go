@@ -3,11 +3,11 @@ package test
 import (
 	"testing"
 
-	"hanzo.io/util/crypto/aes"
-	"hanzo.io/log"
-	"hanzo.io/util/rand"
+	"github.com/hanzoai/commerce/util/crypto/aes"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/rand"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var msg = "This is the test message. It better pass."

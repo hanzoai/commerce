@@ -4,26 +4,26 @@ import (
 	"net/http"
 	"testing"
 
-	"hanzo.io/api/organization/newroutes"
-	"hanzo.io/datastore"
-	"hanzo.io/middleware"
-	"hanzo.io/models/blockchains"
-	"hanzo.io/models/fixtures"
-	"hanzo.io/models/organization"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/models/user"
-	"hanzo.io/models/wallet"
-	"hanzo.io/util/gincontext"
-	//"hanzo.io/log"
-	"hanzo.io/util/permission"
-	"hanzo.io/util/test/ae"
-	"hanzo.io/util/test/ginclient"
+	"github.com/hanzoai/commerce/api/organization/newroutes"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/models/fixtures"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/models/user"
+	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/commerce/util/gincontext"
+	//"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/test/ginclient"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
 	"google.golang.org/appengine"
 
-	organizationApi "hanzo.io/api/organization"
+	organizationApi "github.com/hanzoai/commerce/api/organization"
 )
 
 func Test(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/op/go-logging"
 
-	"hanzo.io/config"
-	"hanzo.io/util/json"
-	"hanzo.io/util/spew"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/spew"
 )
 
 // Create a new App Engine-aware logger

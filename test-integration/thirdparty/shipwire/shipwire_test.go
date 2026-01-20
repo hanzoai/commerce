@@ -1,11 +1,11 @@
 package test
 
 import (
-	"hanzo.io/util/fs"
-	"hanzo.io/util/json"
+	"github.com/hanzoai/commerce/util/fs"
+	"github.com/hanzoai/commerce/util/json"
 
-	. "hanzo.io/thirdparty/shipwire/types"
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 func decodeRequest(data []byte, dst interface{}) error {

@@ -14,9 +14,9 @@ Hanzo Commerce is a multi-tenant e-commerce platform being modernized from a Goo
 ├─────────────────────────────────────────────────────────────┤
 │  CLI (cobra)    │  HTTP (Gin)    │  Hooks System            │
 ├─────────────────────────────────────────────────────────────┤
-│  User SQLite    │  Org SQLite    │  Analytics (ClickHouse)  │
-│  + sqlite-vec   │  + sqlite-vec  │  (deep queries)          │
-│  Per-user data  │  Shared tenant │  Parallel analytics      │
+│  User SQLite    │  Org SQLite    │  Hanzo Datastore         │
+│  + sqlite-vec   │  + sqlite-vec  │  (ClickHouse)            │
+│  Per-user data  │  Shared tenant │  Deep analytics          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -29,7 +29,7 @@ The `db/` package supports multiple backends:
 | **SQLite** | Per-user/org isolation, edge deployment | sqlite-vec |
 | **PostgreSQL** | Shared deployments, scaling | pgvector |
 | **MongoDB/FerretDB** | Document-oriented, flexible schema | Atlas Search |
-| **ClickHouse** | Analytics, parallel queries | - |
+| **Hanzo Datastore** | Deep analytics, parallel queries (ClickHouse) | - |
 
 ### Database Layers
 
@@ -55,7 +55,7 @@ The `db/` package supports multiple backends:
    - FerretDB uses PostgreSQL/SQLite backend
    - MongoDB-compatible API
 
-5. **Analytics (ClickHouse)** (Optional)
+5. **Hanzo Datastore** (ClickHouse, Optional)
    - Deep analytics queries
    - Parallel processing
    - Event streaming
@@ -70,8 +70,10 @@ commerce/
 ├── db/                 # Database abstraction (NEW)
 │   ├── db.go           # Interfaces and Manager
 │   ├── sqlite.go       # SQLite implementation
+│   ├── postgres.go     # PostgreSQL implementation
+│   ├── mongo.go        # MongoDB/FerretDB implementation
 │   ├── query.go        # Query builder
-│   └── analytics.go    # ClickHouse connector
+│   └── datastore.go    # Hanzo Datastore (ClickHouse) connector
 ├── hooks/              # Hook system (NEW)
 │   └── hooks.go        # Event hooks for extensibility
 ├── api/                # HTTP API handlers (legacy)
@@ -92,8 +94,8 @@ go run cmd/commerce/main.go serve --dev
 # Production
 ./commerce serve 0.0.0.0:80
 
-# With analytics
-COMMERCE_ANALYTICS="native://localhost:9000/commerce" ./commerce serve
+# With Hanzo Datastore
+COMMERCE_DATASTORE="native://localhost:9000/commerce" ./commerce serve
 ```
 
 ### Environment Variables
@@ -104,7 +106,7 @@ COMMERCE_ANALYTICS="native://localhost:9000/commerce" ./commerce serve
 | `COMMERCE_DEV` | Development mode | `false` |
 | `COMMERCE_SECRET` | Encryption secret | `change-me-in-production` |
 | `COMMERCE_HTTP` | HTTP address | `127.0.0.1:8090` |
-| `COMMERCE_ANALYTICS` | Analytics DSN | (disabled) |
+| `COMMERCE_DATASTORE` | Hanzo Datastore DSN | (disabled) |
 
 ## Database Usage
 
@@ -144,15 +146,15 @@ results, err := db.VectorSearch(ctx, &db.VectorSearchOptions{
 })
 ```
 
-### Analytics Queries
+### Hanzo Datastore Queries
 
 ```go
-// Get analytics layer
-analytics := app.DB.Analytics()
+// Get Hanzo Datastore for deep analytics
+datastore := app.DB.Datastore()
 
 // Run analytics query
 var stats []SalesStats
-err := analytics.Select(ctx, &stats, `
+err := datastore.Select(ctx, &stats, `
     SELECT
         toDate(created_at) as date,
         count() as orders,

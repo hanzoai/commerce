@@ -1,10 +1,10 @@
 package test
 
 import (
-	"hanzo.io/models/webhook"
+	"github.com/hanzoai/commerce/models/webhook"
 	"github.com/icrowley/fake"
 
-	. "hanzo.io/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var _ = Describe("webhook", func() {

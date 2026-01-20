@@ -3,7 +3,7 @@ package main
 import (
 	"google.golang.org/appengine"
 
-	"hanzo.io/util/default_"
+	"github.com/hanzoai/commerce/util/default_"
 )
 
 func init() {

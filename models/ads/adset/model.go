@@ -1,9 +1,9 @@
 package adset
 
 import (
-	"hanzo.io/datastore"
+	"github.com/hanzoai/commerce/datastore"
 
-	. "hanzo.io/models/ads"
+	. "github.com/hanzoai/commerce/models/ads"
 )
 
 var kind = "adset"

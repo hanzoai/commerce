@@ -3,10 +3,10 @@ package migrations
 import (
 	"time"
 
-	"hanzo.io/models/order"
+	"github.com/hanzoai/commerce/models/order"
 	"github.com/gin-gonic/gin"
 
-	ds "hanzo.io/datastore"
+	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("add-batch-data-for-kanoa",

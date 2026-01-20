@@ -3,9 +3,9 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"hanzo.io/auth"
-	"hanzo.io/config"
-	"hanzo.io/log"
+	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
 )
 
 // Updates session with login information, does not require it

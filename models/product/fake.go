@@ -1,10 +1,10 @@
 package product
 
 import (
-	"hanzo.io/datastore"
-	"hanzo.io/models/types/currency"
-	"hanzo.io/util/fake"
-	"hanzo.io/util/slug"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/fake"
+	"github.com/hanzoai/commerce/util/slug"
 )
 
 func Fake(db *datastore.Datastore) *Product {
