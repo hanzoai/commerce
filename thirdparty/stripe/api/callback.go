@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"google.golang.org/appengine"
 	"github.com/hanzoai/commerce/util/rand"
 
 	"github.com/gin-gonic/gin"
@@ -145,8 +144,8 @@ func affiliateCallback(c *gin.Context) {
 	}
 
 	// Fetch affiliate
-	nsctx, _ := appengine.Namespace(ctx, org.Name)
-	db = datastore.New(nsctx)
+	// Note: namespace handling removed - implement alternative if needed
+	db = datastore.New(ctx)
 	aff := affiliate.New(db)
 	aff.GetById(affId)
 

@@ -7,8 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -52,7 +51,7 @@ func ParseToken(c *gin.Context) {
 	}
 
 	// If it's still not set and dev server is running, grab from session
-	if accessToken == "" && appengine.IsDevAppServer() {
+	if accessToken == "" && config.IsDevelopment {
 		value, _ := session.Get(c, "access-token")
 		if tokstr, ok := value.(string); ok {
 			accessToken = tokstr

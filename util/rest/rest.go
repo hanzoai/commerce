@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/search"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/mixin"
@@ -24,6 +23,7 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/reflect"
 	"github.com/hanzoai/commerce/util/router"
+	"github.com/hanzoai/commerce/util/search"
 )
 
 var restApis = make([]*Rest, 0)
@@ -486,7 +486,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 		return
 	}
 
-	keys := make([]*aeds.Key, 0)
+	keys := make([]iface.Key, 0)
 	opts.IDsOnly = true
 	opts.Refinements = []search.Facet{
 		search.Facet{
@@ -529,7 +529,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 			return
 		}
 
-		keys = append(keys, hashid.MustDecodeKey(entity.Context(), id))
+		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(entity.Context(), id)))
 	}
 
 	facets, err := t.Facets()

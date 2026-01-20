@@ -1,8 +1,6 @@
 package media
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 
@@ -73,7 +71,7 @@ func (m *Media) DetermineUsage() Usage {
 	return u
 }
 
-func (m *Media) Load(ps []aeds.Property) (err error) {
+func (m *Media) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
@@ -81,7 +79,7 @@ func (m *Media) Load(ps []aeds.Property) (err error) {
 	return datastore.LoadStruct(m, ps)
 }
 
-func (m *Media) Save() (ps []aeds.Property, err error) {
+func (m *Media) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	m.DetermineUsage()
 	m.IsParent = m.ParentMediaId != ""

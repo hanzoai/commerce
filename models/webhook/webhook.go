@@ -1,8 +1,6 @@
 package webhook
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
@@ -36,7 +34,7 @@ type Webhook struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (s *Webhook) Load(ps []aeds.Property) (err error) {
+func (s *Webhook) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	s.Defaults()
 
@@ -53,7 +51,7 @@ func (s *Webhook) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (s *Webhook) Save() (ps []aeds.Property, err error) {
+func (s *Webhook) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	s.Events_ = string(json.EncodeBytes(&s.Events))
 

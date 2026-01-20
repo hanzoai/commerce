@@ -1,12 +1,10 @@
 package oauthtoken
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 )
 
-func (t *Token) Load(properties []aeds.Property) error {
+func (t *Token) Load(properties []datastore.Property) error {
 	// Ensure we're initialized
 	t.Defaults()
 
@@ -19,7 +17,7 @@ func (t *Token) Load(properties []aeds.Property) error {
 	return err
 }
 
-func (t *Token) Save() ([]aeds.Property, error) {
+func (t *Token) Save() ([]datastore.Property, error) {
 	// Save properties
 	return datastore.SaveStruct(t)
 }

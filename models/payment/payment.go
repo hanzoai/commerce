@@ -1,12 +1,10 @@
 package payment
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
@@ -85,7 +83,7 @@ func (p *Payment) GetFees() ([]*fee.Fee, error) {
 	return fees, nil
 }
 
-func (p *Payment) Load(ps []aeds.Property) (err error) {
+func (p *Payment) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
@@ -102,7 +100,7 @@ func (p *Payment) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (p *Payment) Save() (ps []aeds.Property, err error) {
+func (p *Payment) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 

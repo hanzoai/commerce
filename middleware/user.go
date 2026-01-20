@@ -5,8 +5,8 @@ import (
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/config"
-	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/session"
 )
 

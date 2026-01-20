@@ -18,6 +18,10 @@ func isPtrSlice(v reflect.Value) bool {
 
 // Ensure this is a slice of pointers
 func isSliceOfPtr(slice reflect.Value) bool {
+	if slice.Len() == 0 {
+		return false
+	}
+
 	v := slice.Index(0)
 	if v.Type().Kind() == reflect.Ptr {
 		return true

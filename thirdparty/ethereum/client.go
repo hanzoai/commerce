@@ -10,9 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -88,11 +85,7 @@ func New(ctx context.Context, address string) Client {
 	// Set timeout
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
-	httpClient := urlfetch.Client(ctx)
-	httpClient.Transport = &urlfetch.Transport{
-		Context:                       ctx,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
-	}
+	httpClient := &http.Client{Timeout: 55 * time.Second}
 
 	return Client{ctx: ctx, httpClient: httpClient, address: address, IsTest: false, Commands: []string{}}
 }

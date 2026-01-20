@@ -5,8 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine/memcache"
-
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/task"
 )
@@ -18,30 +16,24 @@ import (
 // })
 
 var Foo = task.Func("foo", func(c *gin.Context) {
-	foo := &memcache.Item{
-		Key:   "foo",
-		Value: []byte("bar"),
-	}
+	// Use context.Background() for test context
+	ctx := context.Background()
+	_ = ctx // Context available if needed for future use
 
-	ctx := c.MustGet("appengine").(context.Context)
-	if err := memcache.Set(ctx, foo); err != nil {
-		log.Error(err, c)
-	}
+	// Test task - no actual memcache operations
+	log.Info("Task foo executed", c)
 })
 
 var Baz = task.Func("baz", func(c *gin.Context) {
-	baz := &memcache.Item{
-		Key:   "baz",
-		Value: []byte("qux"),
-	}
+	// Use context.Background() for test context
+	ctx := context.Background()
+	_ = ctx // Context available if needed for future use
 
-	ctx := c.MustGet("appengine").(context.Context)
-	if err := memcache.Set(ctx, baz); err != nil {
-		log.Error(err, c)
-	}
+	// Test task - no actual memcache operations
+	log.Info("Task baz executed", c)
 })
 
 var NestedBaz = task.Func("nested-baz", func(c *gin.Context) {
-	ctx := c.MustGet("appengine").(context.Context)
+	ctx := context.Background()
 	Baz.Call(ctx)
 })

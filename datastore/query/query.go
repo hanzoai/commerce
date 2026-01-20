@@ -7,12 +7,9 @@ import (
 	"reflect"
 	"strings"
 
-	aeds "google.golang.org/appengine/datastore"
-
-	"github.com/qedus/nds"
-
 	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/datastore/utils"
@@ -22,102 +19,205 @@ type Id struct {
 	Id_ string
 }
 
+// Query implements iface.Query using the new db package
 type Query struct {
-	ctx   context.Context
-	aedsq *aeds.Query
-	kind  string
+	ctx      context.Context
+	dbQuery  db.Query
+	kind     string
+	database db.DB
+	keysOnly bool
+
+	// Query state for building
+	filters     []filter
+	orders      []string
+	limit       int
+	offset      int
+	ancestor    iface.Key
+	projections []string
+	distinct    bool
+	startCursor iface.Cursor
+	endCursor   iface.Cursor
 }
 
+type filter struct {
+	field string
+	value interface{}
+}
+
+// New creates a new Query for the given kind
 func New(ctx context.Context, kind string) iface.Query {
-	q := new(Query)
-	q.ctx = ctx
-	q.kind = kind
-	q.aedsq = aeds.NewQuery(kind)
+	q := &Query{
+		ctx:  ctx,
+		kind: kind,
+	}
 	return q
 }
 
-// Wrap all App Engine query methods
-func (q *Query) Ancestor(ancestor iface.Key) iface.Query {
-	q.aedsq = q.aedsq.Ancestor(ancestor.(*aeds.Key))
+// NewWithDB creates a new Query with an explicit database
+func NewWithDB(ctx context.Context, kind string, database db.DB) iface.Query {
+	q := &Query{
+		ctx:      ctx,
+		kind:     kind,
+		database: database,
+	}
+	if database != nil {
+		q.dbQuery = database.Query(kind)
+	}
 	return q
+}
+
+// clone creates a copy of the query
+func (q *Query) clone() *Query {
+	newQ := &Query{
+		ctx:         q.ctx,
+		database:    q.database,
+		dbQuery:     q.dbQuery,
+		kind:        q.kind,
+		keysOnly:    q.keysOnly,
+		filters:     append([]filter{}, q.filters...),
+		orders:      append([]string{}, q.orders...),
+		limit:       q.limit,
+		offset:      q.offset,
+		ancestor:    q.ancestor,
+		projections: append([]string{}, q.projections...),
+		distinct:    q.distinct,
+		startCursor: q.startCursor,
+		endCursor:   q.endCursor,
+	}
+	return newQ
+}
+
+// Wrap all query methods to implement iface.Query
+
+func (q *Query) Ancestor(ancestor iface.Key) iface.Query {
+	newQ := q.clone()
+	newQ.ancestor = ancestor
+	if newQ.dbQuery != nil {
+		// Convert iface.Key to db.Key
+		dbKey := &dbKeyWrapper{ancestor}
+		newQ.dbQuery = newQ.dbQuery.Ancestor(dbKey)
+	}
+	return newQ
 }
 
 func (q *Query) Count() (int, error) {
-	return q.aedsq.Count(q.ctx)
+	if q.dbQuery != nil {
+		return q.dbQuery.Count(q.ctx)
+	}
+	// Without a database, we can't count
+	return 0, errors.New("query: database not initialized")
 }
 
 func (q *Query) Distinct() iface.Query {
-	q.aedsq = q.aedsq.Distinct()
-	return q
+	newQ := q.clone()
+	newQ.distinct = true
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Distinct()
+	}
+	return newQ
 }
 
 func (q *Query) EventualConsistency() iface.Query {
-	q.aedsq = q.aedsq.EventualConsistency()
+	// No-op in the new db package
 	return q
 }
 
 func (q *Query) Filter(filterStr string, value interface{}) iface.Query {
-	q.aedsq = q.aedsq.Filter(filterStr, value)
-	return q
+	newQ := q.clone()
+	newQ.filters = append(newQ.filters, filter{field: filterStr, value: value})
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Filter(filterStr, value)
+	}
+	return newQ
 }
 
 func (q *Query) KeysOnly() iface.Query {
-	q.aedsq = q.aedsq.KeysOnly()
-	return q
+	newQ := q.clone()
+	newQ.keysOnly = true
+	return newQ
 }
 
 func (q *Query) Limit(limit int) iface.Query {
-	q.aedsq = q.aedsq.Limit(limit)
-	return q
+	newQ := q.clone()
+	newQ.limit = limit
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Limit(limit)
+	}
+	return newQ
 }
 
 func (q *Query) Offset(offset int) iface.Query {
-	q.aedsq = q.aedsq.Offset(offset)
-	return q
+	newQ := q.clone()
+	newQ.offset = offset
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Offset(offset)
+	}
+	return newQ
 }
 
 func (q *Query) Order(fieldName string) iface.Query {
-	q.aedsq = q.aedsq.Order(fieldName)
-	return q
+	newQ := q.clone()
+	newQ.orders = append(newQ.orders, fieldName)
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Order(fieldName)
+	}
+	return newQ
 }
 
 func (q *Query) Project(fieldNames ...string) iface.Query {
-	q.aedsq = q.aedsq.Project(fieldNames...)
-	return q
+	newQ := q.clone()
+	newQ.projections = append(newQ.projections, fieldNames...)
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Project(fieldNames...)
+	}
+	return newQ
 }
 
-func (q *Query) Run() *aeds.Iterator {
-	return q.aedsq.Run(q.ctx)
+func (q *Query) Run() iface.Iterator {
+	if q.dbQuery != nil {
+		iter := q.dbQuery.Run(q.ctx)
+		return &iteratorWrapper{iter: iter, kind: q.kind}
+	}
+	return &emptyIterator{}
 }
 
-func (q *Query) Start(c aeds.Cursor) iface.Query {
-	q.aedsq = q.aedsq.Start(c)
-	return q
+func (q *Query) Start(c iface.Cursor) iface.Query {
+	newQ := q.clone()
+	newQ.startCursor = c
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.Start(&cursorWrapper{c})
+	}
+	return newQ
 }
 
-func (q *Query) End(c aeds.Cursor) iface.Query {
-	q.aedsq = q.aedsq.End(c)
-	return q
+func (q *Query) End(c iface.Cursor) iface.Query {
+	newQ := q.clone()
+	newQ.endCursor = c
+	if newQ.dbQuery != nil {
+		newQ.dbQuery = newQ.dbQuery.End(&cursorWrapper{c})
+	}
+	return newQ
 }
 
 // Returns true if entity with key is persisted to datastore
-func (q *Query) KeyExists(key iface.Key) (bool, error) {
-	_, ok, err := q.KeysOnly().ByKey(key, nil)
+func (q *Query) KeyExists(k iface.Key) (bool, error) {
+	_, ok, err := q.KeysOnly().ByKey(k, nil)
 	return ok, err
 }
 
 // Returns true if entity with key that encodes to id is persisted to datastore
-func (q *Query) IdExists(id string) (*aeds.Key, bool, error) {
+func (q *Query) IdExists(id string) (iface.Key, bool, error) {
 	return q.KeysOnly().ById(id, nil)
 }
 
 // Fetches first entity
-func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
+func (q *Query) First(dst interface{}) (iface.Key, bool, error) {
 	// Run query with iterator
-	key, err := q.Limit(1).Run().Next(dst)
+	iter := q.Limit(1).Run()
+	k, err := iter.Next(dst)
 
 	// Nothing found
-	if key == nil {
+	if k == nil {
 		return nil, false, nil
 	}
 
@@ -127,47 +227,71 @@ func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
 	}
 
 	// Found it
-	return key, true, nil
+	return k, true, nil
 }
 
 // Fetches first key
-func (q *Query) FirstKey() (*aeds.Key, bool, error) {
+func (q *Query) FirstKey() (iface.Key, bool, error) {
 	return q.KeysOnly().First(nil)
 }
 
 // Fetches keys only
-func (q *Query) GetKeys() ([]*aeds.Key, error) {
+func (q *Query) GetKeys() ([]iface.Key, error) {
 	return q.KeysOnly().GetAll(nil)
 }
 
 // Fetches entities. Dst must have type *[]S or *[]*S or *[]P, for some
 // struct type S or some non- interface, non-pointer type P such that P
 // or *P implements PropertyLoadSaver.
-func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
+func (q *Query) GetAll(dst interface{}) ([]iface.Key, error) {
+	if q.dbQuery == nil {
+		return nil, errors.New("query: database not initialized")
+	}
+
 	v := reflect.ValueOf(dst)
 	if dst != nil && !isPtrSlice(v) {
 		return nil, fmt.Errorf("Expected dst to be a pointer to a slice or nil, got: %v", v.Kind())
 	}
 
-	keys, err := q.aedsq.GetAll(q.ctx, dst)
+	dbKeys, err := q.dbQuery.GetAll(q.ctx, dst)
 	err = IgnoreFieldMismatch(err)
-	return keys, err
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert db.Keys to iface.Keys
+	keys := make([]iface.Key, len(dbKeys))
+	for i, k := range dbKeys {
+		keys[i] = key.FromDBKey(k)
+	}
+
+	return keys, nil
 }
 
-func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
-	aekey, _ := key.(*aeds.Key)
+func (q *Query) ByKey(k iface.Key, dst interface{}) (iface.Key, bool, error) {
+	if k == nil {
+		return nil, false, ErrInvalidKey
+	}
 
 	if dst == nil {
 		dst = &Id{}
 	}
 
-	err := nds.Get(q.ctx, aekey, dst)
+	if q.database == nil {
+		return nil, false, errors.New("query: database not initialized")
+	}
 
-	// Completely ignore this as we may be querying just for Id{}
+	// Convert to db.Key
+	dbKey := &dbKeyWrapper{k}
+
+	err := q.database.Get(q.ctx, dbKey, dst)
+
+	// Completely ignore field mismatch as we may be querying just for Id{}
 	err = ReallyIgnoreFieldMismatch(err)
 
 	// Not found
-	if err == aeds.ErrNoSuchEntity {
+	if errors.Is(err, db.ErrNoSuchEntity) {
 		return nil, false, nil
 	}
 
@@ -178,42 +302,42 @@ func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
 	}
 
 	// Success
-	return aekey, true, nil
+	return k, true, nil
 }
 
 // Query for entity by id
-func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
+func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 	// Assume encoded key
 	k, err := key.Decode(q.ctx, id)
 
-	// Try to fetch by key (can fail in rare edge cases
+	// Try to fetch by key (can fail in rare edge cases)
 	if err == nil {
-		if k, ok, _ := q.ByKey(k, dst); ok {
-			return k, true, nil
+		if result, ok, _ := q.ByKey(k, dst); ok {
+			return result, true, nil
 		}
 	}
 
 	// Try to find by filter
-	filter := ""
+	filterField := ""
 
 	// Use unique filter based on model type
 	switch q.kind {
 	case "store", "product", "collection":
-		filter = "Slug="
+		filterField = "Slug="
 	case "variant":
-		filter = "SKU="
+		filterField = "SKU="
 	case "form", "namespace", "organization", "site":
-		filter = "Name="
+		filterField = "Name="
 	case "aggregate":
-		filter = "Instance="
+		filterField = "Instance="
 	case "user":
 		if strings.Contains(id, "@") {
-			filter = "Email="
+			filterField = "Email="
 		} else {
-			filter = "Username="
+			filterField = "Username="
 		}
 	case "referrer":
-		filter = "Code="
+		filterField = "Code="
 	case "coupon":
 		return q.couponFromId(id, dst)
 	case "order":
@@ -223,5 +347,95 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 	}
 
 	// Query by filter last
-	return q.Filter(filter, id).First(dst)
+	return q.Filter(filterField, id).First(dst)
+}
+
+// dbKeyWrapper wraps iface.Key to implement db.Key
+type dbKeyWrapper struct {
+	key iface.Key
+}
+
+func (w *dbKeyWrapper) Kind() string      { return w.key.Kind() }
+func (w *dbKeyWrapper) StringID() string  { return w.key.StringID() }
+func (w *dbKeyWrapper) IntID() int64      { return w.key.IntID() }
+func (w *dbKeyWrapper) Namespace() string { return w.key.Namespace() }
+func (w *dbKeyWrapper) Incomplete() bool  { return w.key.Incomplete() }
+func (w *dbKeyWrapper) Encode() string    { return w.key.Encode() }
+
+func (w *dbKeyWrapper) Parent() db.Key {
+	p := w.key.Parent()
+	if p == nil {
+		return nil
+	}
+	return &dbKeyWrapper{p}
+}
+
+func (w *dbKeyWrapper) Equal(other db.Key) bool {
+	if other == nil {
+		return false
+	}
+	return w.Kind() == other.Kind() && w.Encode() == other.Encode()
+}
+
+// iteratorWrapper wraps db.Iterator to implement iface.Iterator
+type iteratorWrapper struct {
+	iter db.Iterator
+	kind string
+}
+
+func (w *iteratorWrapper) Next(dst interface{}) (iface.Key, error) {
+	dbKey, err := w.iter.Next(dst)
+	if err != nil {
+		if errors.Is(err, db.ErrNoSuchEntity) {
+			return nil, Done
+		}
+		return nil, err
+	}
+	if dbKey == nil {
+		return nil, Done
+	}
+	return key.FromDBKey(dbKey), nil
+}
+
+func (w *iteratorWrapper) Cursor() (iface.Cursor, error) {
+	cursor, err := w.iter.Cursor()
+	if err != nil {
+		return nil, err
+	}
+	return &cursorWrapperDB{cursor}, nil
+}
+
+// cursorWrapper wraps iface.Cursor to implement db.Cursor
+type cursorWrapper struct {
+	cursor iface.Cursor
+}
+
+func (w *cursorWrapper) String() string {
+	return w.cursor.String()
+}
+
+// cursorWrapperDB wraps db.Cursor to implement iface.Cursor
+type cursorWrapperDB struct {
+	cursor db.Cursor
+}
+
+func (w *cursorWrapperDB) String() string {
+	return w.cursor.String()
+}
+
+// emptyIterator is returned when no database is configured
+type emptyIterator struct{}
+
+func (e *emptyIterator) Next(dst interface{}) (iface.Key, error) {
+	return nil, Done
+}
+
+func (e *emptyIterator) Cursor() (iface.Cursor, error) {
+	return &emptyCursor{}, nil
+}
+
+type emptyCursor struct{}
+
+func (c *emptyCursor) String() string {
+	return ""
 }

@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
 )
 
 var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {

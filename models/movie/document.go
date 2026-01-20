@@ -1,8 +1,6 @@
 package movie
 
 import (
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/models/mixin"
 )
 
@@ -10,7 +8,7 @@ type Document struct {
 	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
 	// Special Kind Option
-	Kind search.Atom `search:",facet"`
+	Kind string `search:",facet"`
 
 	Id_  string
 	Slug string
@@ -21,8 +19,8 @@ type Document struct {
 	Headline    string
 	Description string
 
-	AvailableOption search.Atom `search:"available,facet"`
-	HiddenOption    search.Atom `search:"hidden,facet"`
+	AvailableOption string `search:"available,facet"`
+	HiddenOption    string `search:"hidden,facet"`
 }
 
 func (d *Document) Id() string {
@@ -36,7 +34,7 @@ func (d *Document) Init() {
 func (m Movie) Document() mixin.Document {
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = search.Atom(kind)
+	doc.Kind = kind
 	doc.Id_ = m.Id()
 	doc.Slug = m.Slug
 	doc.IMDB = m.IMDB

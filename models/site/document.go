@@ -1,14 +1,12 @@
 package site
 
 import (
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/models/mixin"
 )
 
 type Document struct {
 	// Special Kind Facet
-	Kind search.Atom `search:",facet"`
+	Kind string `search:",facet"`
 
 	Id_    string
 	Name   string
@@ -22,10 +20,10 @@ func (d Document) Id() string {
 
 func (s Site) Document() mixin.Document {
 	return &Document{
-		search.Atom(kind),
-		s.Id(),
-		s.Name,
-		s.Domain,
-		s.Url,
+		Kind:   kind,
+		Id_:    s.Id(),
+		Name:   s.Name,
+		Domain: s.Domain,
+		Url:    s.Url,
 	}
 }

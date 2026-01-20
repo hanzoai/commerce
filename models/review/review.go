@@ -1,8 +1,6 @@
 package review
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
@@ -31,7 +29,7 @@ type Review struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (r *Review) Load(p []aeds.Property) (err error) {
+func (r *Review) Load(p []datastore.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(r, p); err != nil {
 		return err
@@ -45,7 +43,7 @@ func (r *Review) Load(p []aeds.Property) (err error) {
 	return
 }
 
-func (r *Review) Save() (p []aeds.Property, err error) {
+func (r *Review) Save() (p []datastore.Property, err error) {
 	// Serialize unsupported properties
 	r.Metadata_ = string(json.EncodeBytes(&r.Metadata))
 

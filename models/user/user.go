@@ -3,8 +3,6 @@ package user
 import (
 	"strings"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"time"
 
 	"github.com/hanzoai/commerce/auth/password"
@@ -141,7 +139,7 @@ func (u *User) Total() currency.Cents {
 	panic("unimplemented")
 }
 
-func (u *User) Load(ps []aeds.Property) (err error) {
+func (u *User) Load(ps []datastore.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(u, ps); err != nil {
 		return err
@@ -177,7 +175,7 @@ func (u *User) Load(ps []aeds.Property) (err error) {
 	return
 }
 
-func (u *User) Save() (ps []aeds.Property, err error) {
+func (u *User) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
 

@@ -3,6 +3,8 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/product"
@@ -10,14 +12,12 @@ import (
 	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/counter"
-	"github.com/hanzoai/commerce/log"
 
-	aeds "google.golang.org/appengine/datastore"
 	ds "github.com/hanzoai/commerce/datastore"
 )
 
 func MustNukeCounter(db *ds.Datastore, tag string) {
-	var ks []*aeds.Key
+	var ks []iface.Key
 	var err error
 	ks, err = db.Query(counter.ShardKind).Filter("Tag=", tag).Limit(500).KeysOnly().GetAll(nil)
 	if err != nil {

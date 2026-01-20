@@ -4,25 +4,22 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/appengine"
 	"github.com/hanzoai/commerce/delay"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/aggregate"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, namespace, name, typ string, t time.Time, f string, deltaValue int, deltaVectorValue []int64) {
 	freq := aggregate.Frequency(f)
 
-	nsctx, err := appengine.Namespace(ctx, namespace)
-	if err != nil {
-		log.Error("Could not namespace %v, %v", namespace, err, ctx)
-		return
-	}
+	// Create namespaced context using our nscontext helper
+	nsctx := nscontext.WithNamespace(ctx, namespace)
 
 	db := datastore.New(nsctx)
-	err = db.RunInTransaction(func(db *datastore.Datastore) error {
+	err := db.RunInTransaction(func(db *datastore.Datastore) error {
 		agg := aggregate.New(db)
 		aggregate.Init(agg, name, t, freq)
 
@@ -59,6 +56,7 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx context.Context, na
 
 	if err != nil {
 		// Poor man's retry
+		log.Error("UpsertAggregate error: %v", err, ctx)
 		panic(err)
 	}
 })

@@ -3,15 +3,13 @@ package middleware
 import (
 	"context"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 )
 
-// Automatically get App Engine context.
+// Automatically get request context (standard Go context from http.Request).
 func AppEngine() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
+		ctx := c.Request.Context()
 		c.Set("appengine", ctx)
 	}
 }

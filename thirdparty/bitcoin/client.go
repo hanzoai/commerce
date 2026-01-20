@@ -8,9 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/urlfetch"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains/blocktransaction"
@@ -63,11 +60,7 @@ func New(ctx context.Context, host, username, password string) BitcoinClient {
 	// Update timeout
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)
 
-	httpClient := urlfetch.Client(ctx)
-	httpClient.Transport = &urlfetch.Transport{
-		Context: ctx,
-		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
-	}
+	httpClient := &http.Client{Timeout: 55 * time.Second}
 
 	return BitcoinClient{ctx, httpClient, host, false, []string{}, username, password}
 }

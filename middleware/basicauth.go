@@ -9,8 +9,8 @@ import (
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 func parseAuthHeader(fieldValue string) (string, string) {

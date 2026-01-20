@@ -22,14 +22,14 @@ const Kind = "user"
 
 // Common errors
 var (
-	ErrUserNotFound     = errors.New("user: not found")
-	ErrInvalidEmail     = errors.New("user: invalid email")
-	ErrInvalidPassword  = errors.New("user: invalid password")
-	ErrEmailExists      = errors.New("user: email already exists")
-	ErrUsernameExists   = errors.New("user: username already exists")
-	ErrUnauthorized     = errors.New("user: unauthorized")
-	ErrAccountDisabled  = errors.New("user: account disabled")
-	ErrKYCRequired      = errors.New("user: KYC verification required")
+	ErrUserNotFound    = errors.New("user: not found")
+	ErrInvalidEmail    = errors.New("user: invalid email")
+	ErrInvalidPassword = errors.New("user: invalid password")
+	ErrEmailExists     = errors.New("user: email already exists")
+	ErrUsernameExists  = errors.New("user: username already exists")
+	ErrUnauthorized    = errors.New("user: unauthorized")
+	ErrAccountDisabled = errors.New("user: account disabled")
+	ErrKYCRequired     = errors.New("user: KYC verification required")
 )
 
 // KYCStatus represents the Know Your Customer verification status

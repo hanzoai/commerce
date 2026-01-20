@@ -7,8 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -77,8 +75,10 @@ func ListRoutes() gin.HandlerFunc {
 	sort.Sort(byKind(restApis))
 
 	return func(c *gin.Context) {
-		if !appengine.IsDevAppServer() {
+		// Only show routes in development mode
+		if !config.IsDevelopment {
 			c.Next()
+			return
 		}
 
 		// Get default org

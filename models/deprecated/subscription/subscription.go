@@ -1,20 +1,18 @@
 package subscription
 
 import (
-	"time"
 	"errors"
-
-	aeds "google.golang.org/appengine/datastore"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/deprecated/plan"
+	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/types/refs"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json"
-	"github.com/hanzoai/commerce/util/val"
 	"github.com/hanzoai/commerce/util/timeutil"
+	"github.com/hanzoai/commerce/util/val"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -49,18 +47,18 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type BillingType string
 
 const (
-	Charge	BillingType = "charge_automatically"
+	Charge  BillingType = "charge_automatically"
 	Invoice BillingType = "send_invoice"
 )
 
 type Status string
 
 const (
-	Trialing	Status = "trialing"
-	Active		Status = "active"
-	PastDue		Status = "past_due"
-	Cancelled	Status = "canceled"
-	Unpaid		Status = "unpaid"
+	Trialing  Status = "trialing"
+	Active    Status = "active"
+	PastDue   Status = "past_due"
+	Cancelled Status = "canceled"
+	Unpaid    Status = "unpaid"
 )
 
 type Subscription struct {
@@ -85,7 +83,7 @@ type Subscription struct {
 
 	Start      time.Time `json:"start"`
 	Ended      time.Time `json:"ended_at"`
-	Canceled bool `json:"canceled"`
+	Canceled   bool      `json:"canceled"`
 	CanceledAt time.Time `json:"canceled_at"`
 
 	TrialStart time.Time `json:"trial_start"`
@@ -93,7 +91,7 @@ type Subscription struct {
 
 	Plan     plan.Plan `json:"plan"`
 	Quantity int       `json:"quantity"`
-	Status   Status	   `json:"status"`
+	Status   Status    `json:"status"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
@@ -104,15 +102,15 @@ type Subscription struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	Account accounts.Account `json:"account,omitempty"`
-	Ref refs.EcommerceRef `json:"ref,omitempty"`
+	Account accounts.Account  `json:"account,omitempty"`
+	Ref     refs.EcommerceRef `json:"ref,omitempty"`
 }
 
-func (s *Subscription) Load(ps []aeds.Property) (err error) {
+func (s *Subscription) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, ps)); err != nil {
+	if err = IgnoreFieldMismatch(datastore.LoadStruct(s, ps)); err != nil {
 		return err
 	}
 
@@ -131,7 +129,7 @@ func (s *Subscription) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscription) Save() (ps []aeds.Property, err error) {
+func (s *Subscription) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

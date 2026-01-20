@@ -6,15 +6,52 @@ import (
 	"net/http"
 	"reflect"
 
-	"google.golang.org/appengine/taskqueue"
-
 	"github.com/hanzoai/commerce/log"
 )
 
+// RequestHeaders contains metadata from the task queue request.
+// This replaces taskqueue.RequestHeaders from appengine.
+type RequestHeaders struct {
+	TaskName       string
+	TaskRetryCount int64
+	QueueName      string
+}
+
+// ParseRequestHeaders extracts task queue headers from an HTTP request.
+// This is a compatibility function for HTTP-based task invocation.
+func ParseRequestHeaders(h http.Header) *RequestHeaders {
+	return &RequestHeaders{
+		TaskName:       h.Get("X-Task-Name"),
+		TaskRetryCount: parseRetryCount(h.Get("X-Task-Retry-Count")),
+		QueueName:      h.Get("X-Queue-Name"),
+	}
+}
+
+func parseRetryCount(s string) int64 {
+	if s == "" {
+		return 0
+	}
+	var count int64
+	for _, c := range s {
+		if c >= '0' && c <= '9' {
+			count = count*10 + int64(c-'0')
+		} else {
+			break
+		}
+	}
+	return count
+}
+
+// RunFunc handles HTTP requests to execute delayed functions.
+// This is maintained for backward compatibility with HTTP-based task queues.
+// In the new implementation, tasks are executed directly via goroutines,
+// but this handler can still be used if you want to dispatch tasks via HTTP.
 func RunFunc(c context.Context, w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
-	c = context.WithValue(c, headersContextKey, taskqueue.ParseRequestHeaders(req.Header))
+	// Parse headers and add to context
+	headers := ParseRequestHeaders(req.Header)
+	c = context.WithValue(c, headersContextKey, headers)
 
 	var inv invocation
 	if err := gob.NewDecoder(req.Body).Decode(&inv); err != nil {
@@ -23,7 +60,10 @@ func RunFunc(c context.Context, w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	funcsMu.RLock()
 	f := Funcs[inv.Key]
+	funcsMu.RUnlock()
+
 	if f == nil {
 		log.Error(c, "delay: no func with key %q found", inv.Key)
 		log.Warn(c, "delay: dropping task")
@@ -59,4 +99,11 @@ func RunFunc(c context.Context, w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+}
+
+// GetRequestHeaders retrieves the task queue headers from the context.
+// Returns nil if called outside of a delay function execution.
+func GetRequestHeaders(ctx context.Context) *RequestHeaders {
+	h, _ := ctx.Value(headersContextKey).(*RequestHeaders)
+	return h
 }

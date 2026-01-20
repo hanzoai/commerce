@@ -11,8 +11,6 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/campaign"
-
-	"google.golang.org/appengine/urlfetch"
 )
 
 var ErrorInvalidType = errors.New("Invalid Type")
@@ -49,7 +47,7 @@ type Api struct {
 
 // Get the HttpClient from the Gin context
 func getClient(c context.Context) *http.Client {
-	client := urlfetch.Client(c)
+	client := &http.Client{Timeout: 55 * time.Second}
 
 	return client
 }

@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"strconv"
 
-	aeds "google.golang.org/appengine/datastore"
-	"google.golang.org/appengine/search"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/search"
 )
 
 func searchOrder(c *gin.Context) {
@@ -36,10 +36,10 @@ func searchOrder(c *gin.Context) {
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
-	keys := make([]*aeds.Key, 0)
+	keys := make([]iface.Key, 0)
 	for t := index.Search(db.Context, q, &search.SearchOptions{
 		Refinements: []search.Facet{
-			search.Facet{
+			{
 				Name:  "kind",
 				Value: o.Kind(),
 			},
@@ -55,7 +55,7 @@ func searchOrder(c *gin.Context) {
 			return
 		}
 
-		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
+		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(db.Context, doc.Id())))
 	}
 
 	orders := make([]order.Order, len(keys))

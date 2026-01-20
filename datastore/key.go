@@ -3,34 +3,36 @@ package datastore
 import (
 	"fmt"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/datastore/key"
 )
 
-type Key iface.Key
+// Key is the interface for datastore keys
+type Key = iface.Key
 
+// Export key functions
 var EncodeKey = key.Encode
 var DecodeKey = key.Decode
 
-func convertKey(key Key) *aeds.Key {
-	if key == nil {
+// convertKey converts a Key to a *key.DatastoreKey
+func convertKey(k Key) *key.DatastoreKey {
+	if k == nil {
 		return nil
 	}
-	return key.(*aeds.Key)
+	return key.ToDatastoreKey(k)
 }
 
-func convertKeys(keys interface{}) []*aeds.Key {
+// convertKeys converts a slice of keys
+func convertKeys(keys interface{}) []*key.DatastoreKey {
 	switch v := keys.(type) {
 	case []Key:
 		n := len(v)
-		aekeys := make([]*aeds.Key, n)
+		dskeys := make([]*key.DatastoreKey, n)
 		for i := 0; i < n; i++ {
-			aekeys[i] = v[i].(*aeds.Key)
+			dskeys[i] = key.ToDatastoreKey(v[i])
 		}
-		return aekeys
-	case []*aeds.Key:
+		return dskeys
+	case []*key.DatastoreKey:
 		return v
 	default:
 		panic(fmt.Errorf("Invalid slice of keys: %v", keys))
@@ -38,33 +40,33 @@ func convertKeys(keys interface{}) []*aeds.Key {
 }
 
 // Encode/decode hashid keys
-func (d *Datastore) DecodeKey(encoded string) (*aeds.Key, error) {
+func (d *Datastore) DecodeKey(encoded string) (*key.DatastoreKey, error) {
 	return DecodeKey(d.Context, encoded)
 }
 
-func (d *Datastore) EncodeKey(key Key) string {
-	return EncodeKey(d.Context, key)
+func (d *Datastore) EncodeKey(k Key) string {
+	return EncodeKey(d.Context, k)
 }
 
-// Wrap appengine key funcs
-func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
-	return aeds.NewKey(d.Context, kind, stringID, intID, convertKey(parent))
+// Wrap key creation funcs
+func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *key.DatastoreKey {
+	return key.NewKey(d.Context, kind, stringID, intID, convertKey(parent))
 }
 
-func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
-	return aeds.NewIncompleteKey(d.Context, kind, convertKey(parent))
+func (d *Datastore) NewIncompleteKey(kind string, parent Key) *key.DatastoreKey {
+	return key.NewIncompleteKey(d.Context, kind, convertKey(parent))
 }
 
 // Create helpers
-func (d *Datastore) NewKeyFromId(id string) *aeds.Key {
+func (d *Datastore) NewKeyFromId(id string) *key.DatastoreKey {
 	return key.NewFromId(d.Context, id)
 }
 
-func (d *Datastore) NewKeyFromInt(kind string, id interface{}, parent Key) (*aeds.Key, error) {
+func (d *Datastore) NewKeyFromInt(kind string, id interface{}, parent Key) (*key.DatastoreKey, error) {
 	return key.NewFromInt(d.Context, kind, id, parent)
 }
 
-func (d *Datastore) NewKeyFromString(kind string, id string, parent Key) *aeds.Key {
+func (d *Datastore) NewKeyFromString(kind string, id string, parent Key) *key.DatastoreKey {
 	return d.NewKey(kind, id, 0, parent)
 }
 
@@ -74,14 +76,15 @@ func (d *Datastore) AllocateID(kind string, parent Key) int64 {
 }
 
 func (d *Datastore) AllocateIDs(kind string, parent Key, n int) (int64, int64) {
-	low, high, err := aeds.AllocateIDs(d.Context, kind, convertKey(parent), n)
-	if err != nil {
-		panic(fmt.Errorf("Unable to Allocate IDs: %v", err))
-	}
+	// In the new db package, we generate IDs client-side
+	// This simulates the old behavior of allocating sequential IDs
+	low := d.allocateCounter
+	d.allocateCounter += int64(n)
+	high := d.allocateCounter
 	return low, high
 }
 
-func (d *Datastore) AllocateKey(kind string, parent Key) *aeds.Key {
+func (d *Datastore) AllocateKey(kind string, parent Key) *key.DatastoreKey {
 	id := d.AllocateID(kind, parent)
 	return d.NewKey(kind, "", id, parent)
 }
@@ -96,7 +99,7 @@ func (d *Datastore) AllocateOrphanID(kind string) int64 {
 	return id
 }
 
-func (d *Datastore) AllocateOrphanKey(kind string, parent Key) *aeds.Key {
+func (d *Datastore) AllocateOrphanKey(kind string, parent Key) *key.DatastoreKey {
 	id := d.AllocateOrphanID(kind)
 	return d.NewKey(kind, "", id, parent)
 }

@@ -3,8 +3,6 @@ package user
 import (
 	"strings"
 
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/country"
@@ -15,10 +13,10 @@ type Document struct {
 	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
 	// Special Kind Facet
-	Kind search.Atom `search:",facet"`
+	Kind string `search:",facet"`
 
 	Id_               string
-	Email             search.Atom
+	Email             string
 	EmailPartials     string
 	Username          string
 	UsernamePartials  string
@@ -77,7 +75,7 @@ type Document struct {
 	KYCGender    string
 	KYCBirthdate string
 
-	Test search.Atom
+	Test string
 }
 
 func (d Document) Id() string {
@@ -93,9 +91,9 @@ func (u User) Document() mixin.Document {
 
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = search.Atom(kind)
+	doc.Kind = kind
 	doc.Id_ = u.Id()
-	doc.Email = search.Atom(u.Email)
+	doc.Email = u.Email
 	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser
 	doc.Username = u.Username
 	doc.UsernamePartials = searchpartial.Partials(u.Username)

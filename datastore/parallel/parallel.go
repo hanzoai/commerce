@@ -7,8 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
@@ -70,21 +68,22 @@ func New(name string, fn interface{}) *ParallelFn {
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx context.Context, namespace string, offset int, batchSize int, args ...interface{}) {
-		// Explicitly switch namespace. TODO: this should not be necessary, bug?
+		// Explicitly switch namespace
 		nsCtx := ctx
 		if namespace != "" {
-			var err error
-			nsCtx, err = appengine.Namespace(ctx, namespace)
-			if err != nil {
-				panic(err)
-			}
+			// In the new architecture, namespace is handled through context values
+			nsCtx = context.WithValue(ctx, "namespace", namespace)
 		}
 
 		// Set timeout
-		nsCtx, _ = context.WithTimeout(nsCtx, time.Second*30)
+		nsCtx, cancel := context.WithTimeout(nsCtx, time.Second*30)
+		defer cancel()
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
+		if namespace != "" {
+			db.SetNamespace(namespace)
+		}
 
 		// Construct query
 		q := db.Query(fn.Kind).Offset(offset).Limit(batchSize)
@@ -98,7 +97,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			key, err := t.Next(entity)
 
 			// Done iterating
-			if err == datastore.Done {
+			if err == datastore.Done || key == nil {
 				break
 			}
 
@@ -142,7 +141,18 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		batchSize = 1
 	}
 
-	ctx := c.MustGet("appengine").(context.Context)
+	ctx := c.Request.Context()
+	// Try to get the context from gin context
+	if appCtx := c.Value("appengine"); appCtx != nil {
+		if ctxVal, ok := appCtx.(context.Context); ok {
+			ctx = ctxVal
+		}
+	}
+	if appCtx := c.Value("context"); appCtx != nil {
+		if ctxVal, ok := appCtx.(context.Context); ok {
+			ctx = ctxVal
+		}
+	}
 
 	namespaces := make([]string, 0)
 
@@ -180,14 +190,13 @@ var initNamespace = delay.Func("parallel-init", func(ctx context.Context, fnName
 	// Set namespace explicitly
 	nsCtx := ctx
 	if namespace != "" {
-		var err error
-		nsCtx, err = appengine.Namespace(ctx, namespace)
-		if err != nil {
-			panic(err)
-		}
+		nsCtx = context.WithValue(ctx, "namespace", namespace)
 	}
 
 	db := datastore.New(nsCtx)
+	if namespace != "" {
+		db.SetNamespace(namespace)
+	}
 
 	// Get relevant ParallelFn
 	fn := parallelFns[fnName]

@@ -1,8 +1,8 @@
 package subscription
 
 import (
-	"time"
 	"math/rand"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/deprecated/plan"
@@ -18,7 +18,7 @@ func Fake(db *datastore.Datastore) *Subscription {
 	sub.UserId = fake.Id()
 	sub.FeePercent = fake.Percent
 	sub.PeriodStart = time.Now()
-	sub.PeriodEnd = time.Now().AddDate(0,0,30)
+	sub.PeriodEnd = time.Now().AddDate(0, 0, 30)
 	sub.Canceled = false
 	sub.Quantity = rand.Intn(10)
 	sub.Status = Active

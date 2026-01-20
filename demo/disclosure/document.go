@@ -1,9 +1,8 @@
 package disclosure
 
 import (
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/search"
 )
 
 type Document struct {

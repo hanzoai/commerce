@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"google.golang.org/appengine"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
@@ -121,7 +119,8 @@ func (f *Form) Js() string {
 
 	// Endpoint for subscription
 	endpoint := config.UrlFor("api", "/form/", f.Id(), "/subscribe")
-	if appengine.IsDevAppServer() {
+	// Check for development environment via environment variable
+	if env := os.Getenv("ENV"); env == "development" || env == "dev" {
 		endpoint = "http://localhost:8080" + endpoint
 	} else {
 		endpoint = "https:" + endpoint

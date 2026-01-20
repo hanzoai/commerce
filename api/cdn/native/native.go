@@ -4,8 +4,6 @@ import (
 	"os"
 	"strings"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/config"
@@ -30,14 +28,6 @@ func Js(c *gin.Context) {
 	if jsTemplate == "" {
 		var cwd, _ = os.Getwd()
 		jsTemplate = string(fs.ReadFile(cwd + "/js/native.js"))
-	}
-
-	// Endpoint for subscription
-	endpoint := config.UrlFor("analytics", "/"+org.Id())
-	if appengine.IsDevAppServer() {
-		endpoint = "http://localhost:8080" + endpoint
-	} else {
-		endpoint = "https:" + endpoint
 	}
 
 	c.Writer.Header().Add("Content-Type", "application/javascript")

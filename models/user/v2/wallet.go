@@ -10,12 +10,12 @@ import (
 
 // Wallet errors
 var (
-	ErrWalletNotFound       = errors.New("wallet: not found")
-	ErrWalletAlreadyExists  = errors.New("wallet: already exists")
-	ErrInsufficientBalance  = errors.New("wallet: insufficient balance")
-	ErrInvalidAmount        = errors.New("wallet: invalid amount")
-	ErrWalletLocked         = errors.New("wallet: locked")
-	ErrAddressNotFound      = errors.New("wallet: address not found")
+	ErrWalletNotFound      = errors.New("wallet: not found")
+	ErrWalletAlreadyExists = errors.New("wallet: already exists")
+	ErrInsufficientBalance = errors.New("wallet: insufficient balance")
+	ErrInvalidAmount       = errors.New("wallet: invalid amount")
+	ErrWalletLocked        = errors.New("wallet: locked")
+	ErrAddressNotFound     = errors.New("wallet: address not found")
 )
 
 // Currency represents a supported currency
@@ -25,7 +25,7 @@ const (
 	CurrencyUSD  Currency = "USD"
 	CurrencyEUR  Currency = "EUR"
 	CurrencyGBP  Currency = "GBP"
-	CurrencyLUX  Currency = "LUX"  // Native Lux token
+	CurrencyLUX  Currency = "LUX" // Native Lux token
 	CurrencyETH  Currency = "ETH"
 	CurrencyBTC  Currency = "BTC"
 	CurrencyUSDC Currency = "USDC"
@@ -35,16 +35,16 @@ const (
 type AccountType string
 
 const (
-	AccountTypeMain     AccountType = "main"
-	AccountTypeRewards  AccountType = "rewards"
-	AccountTypeEscrow   AccountType = "escrow"
-	AccountTypeStaking  AccountType = "staking"
+	AccountTypeMain    AccountType = "main"
+	AccountTypeRewards AccountType = "rewards"
+	AccountTypeEscrow  AccountType = "escrow"
+	AccountTypeStaking AccountType = "staking"
 )
 
 // Wallet represents a user's wallet with multiple accounts
 type Wallet struct {
-	ID       string `json:"id"`
-	UserID   string `json:"userId"`
+	ID     string `json:"id"`
+	UserID string `json:"userId"`
 
 	// Accounts by type
 	Accounts map[AccountType]*Account `json:"accounts"`
@@ -56,9 +56,9 @@ type Wallet struct {
 	DefaultCurrency Currency `json:"defaultCurrency"`
 
 	// Security
-	Locked        bool      `json:"locked"`
-	LockedAt      time.Time `json:"lockedAt,omitempty"`
-	LockReason    string    `json:"lockReason,omitempty"`
+	Locked     bool      `json:"locked"`
+	LockedAt   time.Time `json:"lockedAt,omitempty"`
+	LockReason string    `json:"lockReason,omitempty"`
 
 	// Timestamps
 	CreatedAt time.Time `json:"createdAt"`
@@ -654,19 +654,19 @@ func randomString(n int) string {
 
 // Transaction represents a wallet transaction
 type Transaction struct {
-	ID            string      `json:"id"`
-	WalletID      string      `json:"walletId"`
-	UserID        string      `json:"userId"`
-	AccountType   AccountType `json:"accountType"`
-	Type          string      `json:"type"` // "credit", "debit", "hold", "release", "capture"
-	Currency      Currency    `json:"currency"`
-	Amount        int64       `json:"amount"`
-	BalanceAfter  int64       `json:"balanceAfter"`
-	Reason        string      `json:"reason,omitempty"`
-	ReferenceID   string      `json:"referenceId,omitempty"`
-	ReferenceType string      `json:"referenceType,omitempty"` // "order", "refund", "reward", etc.
+	ID            string                 `json:"id"`
+	WalletID      string                 `json:"walletId"`
+	UserID        string                 `json:"userId"`
+	AccountType   AccountType            `json:"accountType"`
+	Type          string                 `json:"type"` // "credit", "debit", "hold", "release", "capture"
+	Currency      Currency               `json:"currency"`
+	Amount        int64                  `json:"amount"`
+	BalanceAfter  int64                  `json:"balanceAfter"`
+	Reason        string                 `json:"reason,omitempty"`
+	ReferenceID   string                 `json:"referenceId,omitempty"`
+	ReferenceType string                 `json:"referenceType,omitempty"` // "order", "refund", "reward", etc.
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt     time.Time   `json:"createdAt"`
+	CreatedAt     time.Time              `json:"createdAt"`
 }
 
 // Kind implements db.Entity

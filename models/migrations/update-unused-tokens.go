@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/models/token"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/token"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )

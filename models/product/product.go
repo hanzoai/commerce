@@ -4,8 +4,6 @@ import (
 	"reflect"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -137,7 +135,7 @@ func (p *Product) Validator() *val.Validator {
 	// 	return errs
 }
 
-func (p *Product) Load(ps []aeds.Property) (err error) {
+func (p *Product) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
 
@@ -162,7 +160,7 @@ func (p *Product) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (p *Product) Save() ([]aeds.Property, error) {
+func (p *Product) Save() ([]datastore.Property, error) {
 	// Serialize unsupported properties
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 	p.Variants_ = string(json.EncodeBytes(&p.Variants))

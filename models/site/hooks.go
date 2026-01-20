@@ -1,8 +1,8 @@
 package site
 
 import (
-	"github.com/hanzoai/commerce/thirdparty/netlify"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/netlify"
 	"github.com/hanzoai/commerce/util/webhook"
 )
 

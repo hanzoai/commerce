@@ -5,14 +5,14 @@ package refs
 type EcommerceRefType string
 
 const (
-	AffirmEcommerceRefType   EcommerceRefType = "affirm"
-	AuthorizeNetRefType EcommerceRefType = "authorize"
+	AffirmEcommerceRefType EcommerceRefType = "affirm"
+	AuthorizeNetRefType    EcommerceRefType = "authorize"
 	// Balance  Type = "balance"
 	// Ethereum Type = "ethereum"
 	// Bitcoin  Type = "bitcoin"
 	// Null     Type = "null"
 	// PayPal   Type = "paypal"
-	StripeEcommerceRefType   EcommerceRefType = "stripe"
+	StripeEcommerceRefType EcommerceRefType = "stripe"
 )
 
 type StripeRef struct {
@@ -24,16 +24,15 @@ type AffirmRef struct {
 }
 
 type AuthorizeNetRef struct {
-	SubscriptionId string `json:"subscriptionId,omitempty"`
-	CustomerProfileId string `json:"customerProfileId,omitempty"`
+	SubscriptionId           string `json:"subscriptionId,omitempty"`
+	CustomerProfileId        string `json:"customerProfileId,omitempty"`
 	CustomerPaymentProfileId string `json:"customerPaymentProfileId,omitempty"`
 }
 
 type EcommerceRef struct {
 	Type EcommerceRefType `json:"type,omitempty"`
 
-	Stripe StripeRef `json:"stripe,omitempty"`
-	Affirm AffirmRef `json:"affirm,omitempty"`
+	Stripe       StripeRef       `json:"stripe,omitempty"`
+	Affirm       AffirmRef       `json:"affirm,omitempty"`
 	AuthorizeNet AuthorizeNetRef `json:"authorizeNet,omitempty"`
 }
-

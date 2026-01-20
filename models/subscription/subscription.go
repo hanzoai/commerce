@@ -4,8 +4,6 @@ import (
 	"errors"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/plan"
@@ -108,11 +106,11 @@ type Subscription struct {
 	Ref     refs.EcommerceRef `json:"ref,omitempty"`
 }
 
-func (s *Subscription) Load(ps []aeds.Property) (err error) {
+func (s *Subscription) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, ps)); err != nil {
+	if err = IgnoreFieldMismatch(datastore.LoadStruct(s, ps)); err != nil {
 		return err
 	}
 
@@ -131,7 +129,7 @@ func (s *Subscription) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscription) Save() (ps []aeds.Property, err error) {
+func (s *Subscription) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 

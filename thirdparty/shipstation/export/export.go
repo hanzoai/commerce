@@ -8,11 +8,12 @@ import (
 	"strings"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/iface"
+	"github.com/hanzoai/commerce/datastore/key"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/lineitem"
 	"github.com/hanzoai/commerce/models/order"
@@ -20,7 +21,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/fulfillment"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/hashid"
-	"github.com/hanzoai/commerce/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -358,7 +358,7 @@ func Export(c *gin.Context) {
 	res.Orders = make([]*Order, 0)
 
 	ctx := db.Context
-	keys := make([]*aeds.Key, 0)
+	keys := make([]iface.Key, 0)
 
 	validOrders := make([]*order.Order, 0)
 
@@ -377,10 +377,10 @@ func Export(c *gin.Context) {
 		}
 
 		// Save user key for later
-		if key, err := hashid.DecodeKey(ctx, ord.UserId); err != nil {
-			log.Warn("Could not decode key %v: %v", key, err, c)
+		if dbKey, err := hashid.DecodeKey(ctx, ord.UserId); err != nil {
+			log.Warn("Could not decode key %v: %v", dbKey, err, c)
 		} else {
-			keys = append(keys, key)
+			keys = append(keys, key.FromDBKey(dbKey))
 
 			validOrders = append(validOrders, ord)
 

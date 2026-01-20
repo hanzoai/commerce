@@ -3,8 +3,8 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/payment"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )

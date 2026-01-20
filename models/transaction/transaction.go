@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -54,7 +52,7 @@ type Transaction struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (t *Transaction) Load(ps []aeds.Property) (err error) {
+func (t *Transaction) Load(ps []datastore.Property) (err error) {
 	// Load supported properties
 	if err = datastore.LoadStruct(t, ps); err != nil {
 		return err
@@ -73,7 +71,7 @@ func (t *Transaction) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (t *Transaction) Save() (ps []aeds.Property, err error) {
+func (t *Transaction) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	t.Metadata_ = string(json.EncodeBytes(&t.Metadata))
 

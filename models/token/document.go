@@ -3,8 +3,6 @@ package token
 import (
 	"strings"
 
-	"google.golang.org/appengine/search"
-
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/searchpartial"
 )
@@ -13,10 +11,10 @@ type Document struct {
 	mixin.DocumentSaveLoad `datastore:"-" json:"-"`
 
 	// Special Kind Facet
-	Kind search.Atom `search:",facet"`
+	Kind string `search:",facet"`
 
 	Id_           string
-	Email         search.Atom
+	Email         string
 	EmailPartials string
 	UserId        string
 	// Expires       float64
@@ -38,9 +36,9 @@ func (t Token) Document() mixin.Document {
 
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = search.Atom(kind)
+	doc.Kind = kind
 	doc.Id_ = t.Id()
-	doc.Email = search.Atom(t.Email)
+	doc.Email = t.Email
 	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser
 	doc.UserId = t.UserId
 

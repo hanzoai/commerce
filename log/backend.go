@@ -2,67 +2,88 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"log"
-
-	aelog "google.golang.org/appengine/log"
+	"os"
 
 	"github.com/op/go-logging"
 
 	"github.com/hanzoai/commerce/config"
 )
 
-// Custom logger backend that knows about AppEngine
+// LogLevel represents log severity levels
+type LogLevel int
+
+const (
+	LevelDebug LogLevel = iota
+	LevelInfo
+	LevelWarning
+	LevelError
+	LevelCritical
+)
+
+// Custom logger backend that writes to stdout/stderr
 type Backend struct {
 	context    context.Context
 	error      error
 	requestURI string
 	verbose    bool
+	logger     *log.Logger
+	errLogger  *log.Logger
 }
 
 func (b Backend) Verbose() bool {
 	return b.verbose
 }
 
-// Log implementation for local dev server only.
-func (b Backend) logToDevServer(level logging.Level, formatted string) error {
-	log.Println(formatted)
-	return b.logToAppEngine(level, formatted)
+// NewBackend creates a new logging backend
+func NewBackend(ctx context.Context) *Backend {
+	return &Backend{
+		context:   ctx,
+		verbose:   config.IsDevelopment,
+		logger:    log.New(os.Stdout, "", log.LstdFlags),
+		errLogger: log.New(os.Stderr, "", log.LstdFlags),
+	}
 }
 
-// Log implementation that uses App Engine's logging methods
-func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
-	log.Println(formatted)
-	if !config.IsTest {
-		switch level {
-		case logging.WARNING:
-			aelog.Warningf(b.context, formatted)
-		case logging.ERROR:
-			aelog.Errorf(b.context, formatted)
-		case logging.CRITICAL:
-			aelog.Criticalf(b.context, formatted)
-		case logging.INFO:
-			aelog.Infof(b.context, formatted)
-		default:
-			aelog.Debugf(b.context, formatted)
-		}
+// logToStdout writes log messages to stdout/stderr based on level
+func (b Backend) logToStdout(level logging.Level, formatted string) error {
+	prefix := levelPrefix(level)
+	message := fmt.Sprintf("%s %s", prefix, formatted)
+
+	switch level {
+	case logging.ERROR, logging.CRITICAL:
+		b.errLogger.Println(message)
+	default:
+		b.logger.Println(message)
 	}
 
 	return nil
 }
 
-// Log method that customizes logging behavior for AppEngine dev server / production
+// levelPrefix returns a string prefix for the given log level
+func levelPrefix(level logging.Level) string {
+	switch level {
+	case logging.DEBUG:
+		return "[DEBUG]"
+	case logging.INFO:
+		return "[INFO]"
+	case logging.WARNING:
+		return "[WARN]"
+	case logging.ERROR:
+		return "[ERROR]"
+	case logging.CRITICAL:
+		return "[CRITICAL]"
+	default:
+		return "[LOG]"
+	}
+}
+
+// Log method that outputs to stdout/stderr
 func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	if config.IsDevelopment || config.IsTest {
-		// Logging for local server
-		return b.logToDevServer(level, formatted)
-	} else {
-		// Log to App Engine in staging and production when passed a context
-		if b.context != nil {
-			return b.logToAppEngine(level, formatted)
-		}
-	}
-	return nil
+	// Always log to stdout/stderr
+	return b.logToStdout(level, formatted)
 }

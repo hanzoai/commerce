@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
@@ -17,8 +18,6 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/thirdparty/paypal/responses"
-
-	"google.golang.org/appengine/urlfetch"
 )
 
 type Client struct {
@@ -102,7 +101,7 @@ func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Or
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("%v", escape(string(dump)), c.ctx)
 
-	client := urlfetch.Client(c.ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)
@@ -205,7 +204,7 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *o
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("%v", escape(string(dump)), c.ctx)
 
-	client := urlfetch.Client(c.ctx)
+	client := &http.Client{Timeout: 55 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)

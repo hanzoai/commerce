@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/dustin/go-humanize"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -17,8 +15,8 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
 
-	. "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/models/lineitem"
+	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -108,7 +106,7 @@ func (c *Cart) Validator() *val.Validator {
 	return val.New()
 }
 
-func (c *Cart) Load(ps []aeds.Property) (err error) {
+func (c *Cart) Load(ps []datastore.Property) (err error) {
 	// Prevent duplicate deserialization
 	if c.Loaded() {
 		return nil
@@ -140,7 +138,7 @@ func (c *Cart) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (c *Cart) Save() (ps []aeds.Property, err error) {
+func (c *Cart) Save() (ps []datastore.Property, err error) {
 	// Serialize unsupported properties
 	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
 	c.Items_ = string(json.EncodeBytes(c.Items))

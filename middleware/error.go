@@ -6,10 +6,9 @@ import (
 	"runtime"
 	"strings"
 
-	"google.golang.org/appengine"
-
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
 )
@@ -103,7 +102,7 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 
 // Error middleware
 func ErrorHandler() gin.HandlerFunc {
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		return errorHandler(ErrorHTMLDev)
 	} else {
 		return errorHandler(ErrorHTML)
@@ -111,7 +110,7 @@ func ErrorHandler() gin.HandlerFunc {
 }
 
 func ErrorHandlerJSON() gin.HandlerFunc {
-	if appengine.IsDevAppServer() {
+	if config.IsDevelopment {
 		return errorHandler(ErrorJSONDev)
 	} else {
 		return errorHandler(ErrorJSON)

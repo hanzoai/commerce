@@ -31,12 +31,12 @@ type Profile struct {
 	Currency          string `json:"currency,omitempty"`
 
 	// Social links
-	Website   string `json:"website,omitempty"`
-	Twitter   string `json:"twitter,omitempty"`
-	GitHub    string `json:"github,omitempty"`
-	LinkedIn  string `json:"linkedin,omitempty"`
-	Discord   string `json:"discord,omitempty"`
-	Telegram  string `json:"telegram,omitempty"`
+	Website  string `json:"website,omitempty"`
+	Twitter  string `json:"twitter,omitempty"`
+	GitHub   string `json:"github,omitempty"`
+	LinkedIn string `json:"linkedin,omitempty"`
+	Discord  string `json:"discord,omitempty"`
+	Telegram string `json:"telegram,omitempty"`
 
 	// Professional info
 	JobTitle   string   `json:"jobTitle,omitempty"`
@@ -52,17 +52,17 @@ type Profile struct {
 	JoinedAt     time.Time `json:"joinedAt,omitempty"`
 
 	// Stats (cached)
-	OrderCount       int `json:"orderCount,omitempty"`
-	ReferralCount    int `json:"referralCount,omitempty"`
-	ReviewCount      int `json:"reviewCount,omitempty"`
-	TotalSpent       int `json:"totalSpent,omitempty"` // In cents
-	LoyaltyPoints    int `json:"loyaltyPoints,omitempty"`
+	OrderCount    int `json:"orderCount,omitempty"`
+	ReferralCount int `json:"referralCount,omitempty"`
+	ReviewCount   int `json:"reviewCount,omitempty"`
+	TotalSpent    int `json:"totalSpent,omitempty"` // In cents
+	LoyaltyPoints int `json:"loyaltyPoints,omitempty"`
 
 	// Privacy settings
-	ProfilePublic      bool `json:"profilePublic,omitempty"`
-	ShowEmail          bool `json:"showEmail,omitempty"`
-	ShowWalletAddress  bool `json:"showWalletAddress,omitempty"`
-	ShowActivity       bool `json:"showActivity,omitempty"`
+	ProfilePublic     bool `json:"profilePublic,omitempty"`
+	ShowEmail         bool `json:"showEmail,omitempty"`
+	ShowWalletAddress bool `json:"showWalletAddress,omitempty"`
+	ShowActivity      bool `json:"showActivity,omitempty"`
 
 	// Timestamps
 	CreatedAt time.Time `json:"createdAt"`
@@ -261,14 +261,14 @@ type ProfileStats struct {
 
 // PublicProfile returns a sanitized profile for public viewing
 type PublicProfile struct {
-	UserID      string   `json:"userId"`
-	DisplayName string   `json:"displayName,omitempty"`
-	Bio         string   `json:"bio,omitempty"`
-	AvatarURL   string   `json:"avatarUrl,omitempty"`
-	Website     string   `json:"website,omitempty"`
-	Twitter     string   `json:"twitter,omitempty"`
-	GitHub      string   `json:"github,omitempty"`
-	Badges      []Badge  `json:"badges,omitempty"`
+	UserID      string    `json:"userId"`
+	DisplayName string    `json:"displayName,omitempty"`
+	Bio         string    `json:"bio,omitempty"`
+	AvatarURL   string    `json:"avatarUrl,omitempty"`
+	Website     string    `json:"website,omitempty"`
+	Twitter     string    `json:"twitter,omitempty"`
+	GitHub      string    `json:"github,omitempty"`
+	Badges      []Badge   `json:"badges,omitempty"`
 	JoinedAt    time.Time `json:"joinedAt,omitempty"`
 }
 

@@ -9,7 +9,7 @@ import (
 
 // Precompute a few common types
 var (
-	datastoreType = reflect.TypeOf((**datastore.Datastore)(nil)).Elem()
+	datastoreType = reflect.TypeOf((*datastore.Datastore)(nil))
 	keyType       = reflect.TypeOf((*datastore.Key)(nil)).Elem()
 )
 

@@ -1,8 +1,6 @@
 package movie
 
 import (
-	aeds "google.golang.org/appengine/datastore"
-
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/val"
@@ -56,7 +54,7 @@ func (m *Movie) Validator() *val.Validator {
 		Check("IMDB").Exists()
 }
 
-func (m *Movie) Load(ps []aeds.Property) (err error) {
+func (m *Movie) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
 	m.Defaults()
 
@@ -70,7 +68,7 @@ func (m *Movie) Load(ps []aeds.Property) (err error) {
 	return err
 }
 
-func (m *Movie) Save() ([]aeds.Property, error) {
+func (m *Movie) Save() ([]datastore.Property, error) {
 
 	// Save properties
 	return datastore.SaveStruct(m)

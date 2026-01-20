@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/user"
 )
 
 var _ = New("clean-up-dupe-users", func(c *gin.Context) []interface{} {
