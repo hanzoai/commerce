@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	datastore "github.com/hanzoai/datastore-go"
+	"github.com/hanzoai/datastore-go/lib/driver"
 )
 
 // NewDatastore creates a new Hanzo Datastore connection
@@ -14,11 +17,58 @@ func NewDatastore(cfg *Config) (Datastore, error) {
 		return nil, errors.New("db: DatastoreDSN is required for Hanzo Datastore")
 	}
 
-	// Import hanzo/datastore-go for ClickHouse connectivity
-	// The actual implementation will use the datastore-go package
+	// Parse DSN to get options
+	opts, err := datastore.ParseDSN(cfg.DatastoreDSN)
+	if err != nil {
+		return nil, fmt.Errorf("db: failed to parse datastore DSN: %w", err)
+	}
+
+	// Apply configuration overrides
+	if cfg.Datastore.MaxOpenConns > 0 {
+		opts.MaxOpenConns = cfg.Datastore.MaxOpenConns
+	}
+	if cfg.Datastore.MaxIdleConns > 0 {
+		opts.MaxIdleConns = cfg.Datastore.MaxIdleConns
+	}
+	if cfg.Datastore.ConnMaxLifetime > 0 {
+		opts.ConnMaxLifetime = cfg.Datastore.ConnMaxLifetime
+	}
+
+	// Set compression based on config
+	if cfg.Datastore.Compression != "" {
+		switch cfg.Datastore.Compression {
+		case "lz4":
+			opts.Compression = &datastore.Compression{Method: datastore.CompressionLZ4}
+		case "zstd":
+			opts.Compression = &datastore.Compression{Method: datastore.CompressionZSTD}
+		case "none":
+			opts.Compression = &datastore.Compression{Method: datastore.CompressionNone}
+		}
+	}
+
+	// Enable debug logging in dev mode
+	if cfg.IsDev {
+		opts.Debug = true
+	}
+
+	// Open connection
+	conn, err := datastore.Open(opts)
+	if err != nil {
+		return nil, fmt.Errorf("db: failed to open datastore connection: %w", err)
+	}
+
+	// Verify connection with a ping
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := conn.Ping(ctx); err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("db: failed to ping datastore: %w", err)
+	}
+
 	return &clickhouseDatastore{
 		dsn:    cfg.DatastoreDSN,
 		config: cfg.Datastore,
+		conn:   conn,
 	}, nil
 }
 
@@ -26,60 +76,179 @@ func NewDatastore(cfg *Config) (Datastore, error) {
 type clickhouseDatastore struct {
 	dsn    string
 	config DatastoreConfig
-	// conn is the ClickHouse connection from datastore-go
-	// conn *datastore.Conn
+	conn   driver.Conn
 }
 
 // Query executes a datastore query
 func (c *clickhouseDatastore) Query(ctx context.Context, query string, args ...interface{}) (DatastoreRows, error) {
-	// TODO: Implement using hanzo/datastore-go
-	// This will be implemented when we integrate the datastore-go package
-	//
-	// Example usage with datastore-go:
-	// rows, err := c.conn.Query(ctx, query, args...)
-	// return &clickhouseRows{rows: rows}, err
+	// Apply query timeout if configured
+	if c.config.QueryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.config.QueryTimeout)
+		defer cancel()
+	}
 
-	return nil, errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
+	// Convert []interface{} to []any for datastore-go
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
+
+	rows, err := c.conn.Query(ctx, query, anyArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("datastore query failed: %w", err)
+	}
+
+	return &clickhouseRows{rows: rows}, nil
 }
 
-// Select scans results into a destination
+// Select scans results into a destination slice
 func (c *clickhouseDatastore) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	// TODO: Implement using hanzo/datastore-go
-	// return c.conn.Select(ctx, dest, query, args...)
+	// Apply query timeout if configured
+	if c.config.QueryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.config.QueryTimeout)
+		defer cancel()
+	}
 
-	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
+	// Convert []interface{} to []any for datastore-go
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
+
+	if err := c.conn.Select(ctx, dest, query, anyArgs...); err != nil {
+		return fmt.Errorf("datastore select failed: %w", err)
+	}
+
+	return nil
 }
 
 // Exec executes a non-query statement
 func (c *clickhouseDatastore) Exec(ctx context.Context, query string, args ...interface{}) error {
-	// TODO: Implement using hanzo/datastore-go
-	// return c.conn.Exec(ctx, query, args...)
+	// Apply query timeout if configured
+	if c.config.QueryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.config.QueryTimeout)
+		defer cancel()
+	}
 
-	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
+	// Convert []interface{} to []any for datastore-go
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
+
+	if err := c.conn.Exec(ctx, query, anyArgs...); err != nil {
+		return fmt.Errorf("datastore exec failed: %w", err)
+	}
+
+	return nil
 }
 
 // PrepareBatch prepares a batch insert
 func (c *clickhouseDatastore) PrepareBatch(ctx context.Context, query string) (DatastoreBatch, error) {
-	// TODO: Implement using hanzo/datastore-go
-	// batch, err := c.conn.PrepareBatch(ctx, query)
-	// return &clickhouseBatch{batch: batch}, err
+	batch, err := c.conn.PrepareBatch(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("datastore prepare batch failed: %w", err)
+	}
 
-	return nil, errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
+	return &clickhouseBatch{batch: batch}, nil
 }
 
-// AsyncInsert performs an async insert
+// AsyncInsert performs an async insert (fire-and-forget style)
 func (c *clickhouseDatastore) AsyncInsert(ctx context.Context, query string, wait bool, args ...interface{}) error {
-	// TODO: Implement using hanzo/datastore-go
-	// return c.conn.AsyncInsert(ctx, query, wait, args...)
+	// Convert []interface{} to []any for datastore-go
+	anyArgs := make([]any, len(args))
+	for i, arg := range args {
+		anyArgs[i] = arg
+	}
 
-	return errors.New("datastore: not implemented - requires hanzo/datastore-go integration")
+	if err := c.conn.AsyncInsert(ctx, query, wait, anyArgs...); err != nil {
+		return fmt.Errorf("datastore async insert failed: %w", err)
+	}
+
+	return nil
 }
 
 // Close closes the datastore connection
 func (c *clickhouseDatastore) Close() error {
-	// TODO: Implement
-	// return c.conn.Close()
+	if c.conn != nil {
+		return c.conn.Close()
+	}
 	return nil
+}
+
+// clickhouseRows wraps driver.Rows to implement DatastoreRows
+type clickhouseRows struct {
+	rows driver.Rows
+}
+
+func (r *clickhouseRows) Next() bool {
+	return r.rows.Next()
+}
+
+func (r *clickhouseRows) Scan(dest ...interface{}) error {
+	// Convert []interface{} to []any for datastore-go
+	anyDest := make([]any, len(dest))
+	for i, d := range dest {
+		anyDest[i] = d
+	}
+	return r.rows.Scan(anyDest...)
+}
+
+func (r *clickhouseRows) ScanStruct(dest interface{}) error {
+	return r.rows.ScanStruct(dest)
+}
+
+func (r *clickhouseRows) Columns() []string {
+	return r.rows.Columns()
+}
+
+func (r *clickhouseRows) Close() error {
+	return r.rows.Close()
+}
+
+func (r *clickhouseRows) Err() error {
+	return r.rows.Err()
+}
+
+// clickhouseBatch wraps driver.Batch to implement DatastoreBatch
+type clickhouseBatch struct {
+	batch driver.Batch
+}
+
+func (b *clickhouseBatch) Append(v ...interface{}) error {
+	// Convert []interface{} to []any for datastore-go
+	anyV := make([]any, len(v))
+	for i, val := range v {
+		anyV[i] = val
+	}
+	return b.batch.Append(anyV...)
+}
+
+func (b *clickhouseBatch) AppendStruct(v interface{}) error {
+	return b.batch.AppendStruct(v)
+}
+
+func (b *clickhouseBatch) Flush() error {
+	return b.batch.Flush()
+}
+
+func (b *clickhouseBatch) Send() error {
+	return b.batch.Send()
+}
+
+func (b *clickhouseBatch) Abort() error {
+	return b.batch.Abort()
+}
+
+func (b *clickhouseBatch) Rows() int {
+	return b.batch.Rows()
+}
+
+func (b *clickhouseBatch) Close() error {
+	return b.batch.Close()
 }
 
 // NoOpDatastore is a no-op implementation when datastore is disabled
