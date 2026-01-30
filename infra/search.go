@@ -5,6 +5,7 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -118,14 +119,13 @@ func (c *SearchClient) Index(ctx context.Context, indexUID string, documents int
 
 	index := c.client.Index(indexUID)
 
-	var task *meilisearch.TaskInfo
-	var err error
-
+	var opts *meilisearch.DocumentOptions
 	if len(primaryKey) > 0 {
-		task, err = index.AddDocuments(documents, primaryKey[0])
-	} else {
-		task, err = index.AddDocuments(documents)
+		pk := primaryKey[0]
+		opts = &meilisearch.DocumentOptions{PrimaryKey: &pk}
 	}
+
+	task, err := index.AddDocuments(documents, opts)
 
 	if err != nil {
 		return fmt.Errorf("failed to index documents: %w", err)
@@ -168,16 +168,27 @@ func (c *SearchClient) Search(ctx context.Context, opts *SearchOptions) (*Search
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
 
-	// Convert facet distribution
-	var facetDist map[string]interface{}
-	if resp.FacetDistribution != nil {
-		if fd, ok := resp.FacetDistribution.(map[string]interface{}); ok {
-			facetDist = fd
+	// Convert hits to []interface{}
+	hits := make([]interface{}, len(resp.Hits))
+	for i, h := range resp.Hits {
+		// Convert meilisearch.Hit (map[string]json.RawMessage) to map[string]interface{}
+		m := make(map[string]interface{})
+		if err := h.DecodeInto(&m); err == nil {
+			hits[i] = m
+		} else {
+			hits[i] = h
 		}
 	}
 
+	// Convert facet distribution from json.RawMessage
+	var facetDist map[string]interface{}
+	if resp.FacetDistribution != nil && len(resp.FacetDistribution) > 0 {
+		// Parse the raw JSON into map
+		_ = json.Unmarshal(resp.FacetDistribution, &facetDist)
+	}
+
 	result := &SearchResult{
-		Hits:              resp.Hits,
+		Hits:              hits,
 		NbHits:            resp.EstimatedTotalHits,
 		Offset:            int(resp.Offset),
 		Limit:             int(resp.Limit),
@@ -197,7 +208,7 @@ func (c *SearchClient) Delete(ctx context.Context, indexUID string, documentIDs 
 
 	index := c.client.Index(indexUID)
 
-	task, err := index.DeleteDocuments(documentIDs)
+	task, err := index.DeleteDocuments(documentIDs, (*meilisearch.DocumentOptions)(nil))
 	if err != nil {
 		return fmt.Errorf("failed to delete documents: %w", err)
 	}
@@ -218,7 +229,7 @@ func (c *SearchClient) DeleteAll(ctx context.Context, indexUID string) error {
 
 	index := c.client.Index(indexUID)
 
-	task, err := index.DeleteAllDocuments()
+	task, err := index.DeleteAllDocuments((*meilisearch.DocumentOptions)(nil))
 	if err != nil {
 		return fmt.Errorf("failed to delete all documents: %w", err)
 	}
@@ -267,8 +278,18 @@ func (c *SearchClient) GetDocuments(ctx context.Context, indexUID string, opts *
 		return nil, fmt.Errorf("failed to get documents: %w", err)
 	}
 
+	// Convert Results from meilisearch.Hits to []map[string]interface{}
+	results := make([]map[string]interface{}, len(resp.Results))
+	for i, hit := range resp.Results {
+		m := make(map[string]interface{})
+		if err := hit.DecodeInto(&m); err != nil {
+			return nil, fmt.Errorf("failed to decode document %d: %w", i, err)
+		}
+		results[i] = m
+	}
+
 	return &DocumentsResult{
-		Results: resp.Results,
+		Results: results,
 		Offset:  int(resp.Offset),
 		Limit:   int(resp.Limit),
 		Total:   int(resp.Total),
