@@ -91,27 +91,37 @@ type Context struct {
 	Request *Request
 }
 
-func (c *Context) cloneKeys(keys map[string]interface{}) {
+func (c *Context) cloneKeys(keys map[any]any) {
 	for k, v := range keys {
+		// Convert key to string (gin v1.11+ uses map[any]any)
+		keyStr, ok := k.(string)
+		if !ok {
+			continue
+		}
+
 		// Skip context keys that cannot be serialized
-		if k == "appengine" || k == "context" {
+		if keyStr == "appengine" || keyStr == "context" {
 			continue
 		}
 
 		// save organization id so we can fetch it on the other side
-		if k == "organization" {
+		if keyStr == "organization" {
 			c.Keys["organization-id"] = (v.(*organization.Organization)).Id()
 			continue
 		}
 
-		c.Keys[k] = v
+		c.Keys[keyStr] = v
 	}
 }
 
 func (c Context) Context(ctx context.Context) (ginCtx *gin.Context, err error) {
 	ginCtx = new(gin.Context)
 	ginCtx.Errors = ginCtx.Errors[0:0]
-	ginCtx.Keys = c.Keys
+	// Convert map[string]interface{} to map[any]any for gin v1.11+
+	ginCtx.Keys = make(map[any]any, len(c.Keys))
+	for k, v := range c.Keys {
+		ginCtx.Keys[k] = v
+	}
 	ginCtx.Params = c.Params
 
 	ginCtx.Request, err = c.Request.Request()
