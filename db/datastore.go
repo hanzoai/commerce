@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	datastore "github.com/hanzoai/datastore-go"
-	"github.com/hanzoai/datastore-go/lib/driver"
+	datastore "github.com/hanzoai/datastore-go/v2"
+	"github.com/hanzoai/datastore-go/v2/lib/driver"
 )
 
 // NewDatastore creates a new Hanzo Datastore connection
