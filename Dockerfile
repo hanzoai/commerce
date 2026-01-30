@@ -2,7 +2,7 @@
 # Multi-stage build for minimal production image
 
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
@@ -19,7 +19,8 @@ RUN go mod download
 COPY . .
 
 # Build the binary with CGO for SQLite support
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+ARG TARGETARCH
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build \
     -ldflags="-s -w" \
     -o /build/commerce \
     ./cmd/commerce/main.go
