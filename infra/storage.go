@@ -1,7 +1,7 @@
 // Package infra provides infrastructure clients.
 //
-// This file implements the MinIO object storage client for product images
-// and digital assets.
+// This file implements the S3-compatible storage client (S3_URL) for product
+// images and digital assets.
 package infra
 
 import (
