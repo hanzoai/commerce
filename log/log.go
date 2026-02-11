@@ -15,7 +15,7 @@ import (
 // Create a new App Engine-aware logger
 func New() *Logger {
 	log := new(Logger)
-	log.backend = new(Backend)
+	log.backend = NewBackend(nil)
 
 	// Log formatters, color for dev, plain for production
 	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
