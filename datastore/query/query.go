@@ -15,6 +15,14 @@ import (
 	. "github.com/hanzoai/commerce/datastore/utils"
 )
 
+// defaultDB is the fallback database for queries created without an explicit db.DB.
+var defaultDB db.DB
+
+// SetDefaultDB sets the global default database used by New().
+func SetDefaultDB(database db.DB) {
+	defaultDB = database
+}
+
 type Id struct {
 	Id_ string
 }
@@ -44,11 +52,16 @@ type filter struct {
 	value interface{}
 }
 
-// New creates a new Query for the given kind
+// New creates a new Query for the given kind.
+// Uses the default database if one was set via SetDefaultDB.
 func New(ctx context.Context, kind string) iface.Query {
 	q := &Query{
-		ctx:  ctx,
-		kind: kind,
+		ctx:      ctx,
+		kind:     kind,
+		database: defaultDB,
+	}
+	if defaultDB != nil {
+		q.dbQuery = defaultDB.Query(kind)
 	}
 	return q
 }
