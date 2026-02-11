@@ -18,11 +18,11 @@ type AccessTokens struct {
 	// Entity is a struct with a Entity mixin
 	Entity Entity `json:"-" datastore:"-"`
 
-	// JWT secret
-	SecretKey []byte `json:"-"`
+	// JWT secret (persisted for token verification)
+	SecretKey []byte `json:"secretKey,omitempty"`
 
 	// UseTokenId as JWT "jti" param, randomly generate upon generating a new key to expire all existing keys
-	Tokens []accesstoken.AccessToken `json:"-"`
+	Tokens []accesstoken.AccessToken `json:"tokens,omitempty"`
 }
 
 func (at *AccessTokens) Init(e Entity) {

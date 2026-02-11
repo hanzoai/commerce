@@ -33,12 +33,18 @@ import (
 
 	"github.com/hanzoai/commerce/api/analytics"
 	"github.com/hanzoai/commerce/auth"
+	commerceDatastore "github.com/hanzoai/commerce/datastore"
+	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	planModel "github.com/hanzoai/commerce/models/deprecated/plan"
+	orgModel "github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/types"
 )
 
 // Version is the current version of Commerce
@@ -295,6 +301,7 @@ func (app *App) initCLI() {
 	app.RootCmd.AddCommand(app.newServeCmd())
 	app.RootCmd.AddCommand(app.newMigrateCmd())
 	app.RootCmd.AddCommand(app.newAdminCmd())
+	app.RootCmd.AddCommand(app.newSeedCmd())
 }
 
 // newServeCmd creates the serve command
@@ -354,6 +361,96 @@ func (app *App) newAdminCmd() *cobra.Command {
 	return cmd
 }
 
+// newSeedCmd creates the seed command for bootstrapping organizations and plans
+func (app *App) newSeedCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "seed [org-name]",
+		Short: "Seed organization and plans for a service",
+		Long:  "Bootstrap an organization with API tokens and subscription plans.\nDefault org: bootnode",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			orgName := "bootnode"
+			if len(args) > 0 {
+				orgName = args[0]
+			}
+			return app.seedOrganization(orgName)
+		},
+	}
+	return cmd
+}
+
+func (app *App) seedOrganization(orgName string) error {
+	ctx := context.Background()
+	ds := commerceDatastore.New(ctx)
+
+	// Create or get organization
+	org := orgModel.New(ds)
+	org.Name = orgName
+	org.GetOrCreate("Name=", org.Name)
+	org.FullName = orgName + " Platform"
+	org.Enabled = true
+	org.AddDefaultTokens()
+
+	// Square config from env
+	org.Square.Sandbox.ApplicationId = getEnv("SQUARE_SANDBOX_APPLICATION_ID", "")
+	org.Square.Sandbox.AccessToken = getEnv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
+	org.Square.Sandbox.LocationId = getEnv("SQUARE_SANDBOX_LOCATION_ID", "")
+	org.Square.Production.ApplicationId = getEnv("SQUARE_APPLICATION_ID", "")
+	org.Square.Production.AccessToken = getEnv("SQUARE_ACCESS_TOKEN", "")
+	org.Square.Production.LocationId = getEnv("SQUARE_LOCATION_ID", "")
+	org.Square.WebhookSignatureKey = getEnv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
+
+	org.MustPut()
+
+	// Get the test-secret-key token for API access
+	tok, err := org.GetTokenByName("test-secret-key")
+	if err != nil {
+		return fmt.Errorf("failed to get API token: %w", err)
+	}
+
+	fmt.Printf("Organization: %s (ID: %s)\n", org.Name, org.Id())
+	fmt.Printf("API Key (test): %s\n", tok.String)
+
+	liveTok, err := org.GetTokenByName("live-secret-key")
+	if err == nil {
+		fmt.Printf("API Key (live): %s\n", liveTok.String)
+	}
+
+	// Create plans in the org's namespace
+	nsDs := commerceDatastore.New(ctx)
+	nsDs.SetNamespace(org.Namespace())
+
+	plans := []struct {
+		slug        string
+		name        string
+		price       int64
+		interval    string
+		description string
+	}{
+		{"bootnode-free", "Bootnode Free", 0, "month", "Free tier: 30M CU/mo, 25 req/s"},
+		{"bootnode-payg", "Bootnode Pay-As-You-Go", 0, "month", "PAYG: $0.40/M CU, 300 req/s"},
+		{"bootnode-growth", "Bootnode Growth", 4900, "month", "Growth: 100M CU included, $0.35/M overage, 500 req/s"},
+		{"bootnode-enterprise", "Bootnode Enterprise", 0, "month", "Enterprise: custom pricing, 1000+ req/s"},
+	}
+
+	for _, p := range plans {
+		pln := planModel.New(nsDs)
+		pln.Slug = p.slug
+		pln.GetOrCreate("Slug=", pln.Slug)
+		pln.Name = p.name
+		pln.Price = currency.Cents(p.price)
+		pln.Currency = currency.USD
+		pln.Interval = types.Monthly
+		pln.IntervalCount = 1
+		pln.Description = p.description
+		pln.MustPut()
+		fmt.Printf("Plan: %s (%s) - $%.2f/mo\n", pln.Name, pln.Slug, float64(pln.Price)/100)
+	}
+
+	fmt.Println("\nSeed complete.")
+	return nil
+}
+
 // Start runs the application
 func (app *App) Start() error {
 	return app.RootCmd.Execute()
@@ -393,6 +490,15 @@ func (app *App) Bootstrap() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
+
+	// Set up system-level SQLite DB as the default for all datastore operations.
+	// This bridges the legacy GAE datastore API to the new SQLite backend.
+	systemDB, err := app.DB.Org("system")
+	if err != nil {
+		return fmt.Errorf("failed to initialize system database: %w", err)
+	}
+	commerceDatastore.SetDefaultDB(systemDB)
+	commerceQuery.SetDefaultDB(systemDB)
 
 	// Initialize infrastructure manager
 	app.Infra = infra.New(&app.config.Infra)

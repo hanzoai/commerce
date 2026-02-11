@@ -32,6 +32,10 @@ var (
 
 	// Global ID counter for allocations
 	globalIDCounter int64 = time.Now().UnixNano()
+
+	// defaultDB is the fallback database used when New() is called without an explicit db.DB.
+	// Set via SetDefaultDB during application bootstrap.
+	defaultDB db.DB
 )
 
 // Query is the interface for datastore queries
@@ -50,12 +54,20 @@ type Datastore struct {
 	allocateCounter     int64
 }
 
-// New creates a new Datastore with the given context
+// SetDefaultDB sets the global default database used by New() when no explicit db.DB is provided.
+// Call this during application bootstrap after initializing the database manager.
+func SetDefaultDB(database db.DB) {
+	defaultDB = database
+}
+
+// New creates a new Datastore with the given context.
+// Uses the default database if one was set via SetDefaultDB.
 func New(ctx context.Context) *Datastore {
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
 	d.allocateCounter = atomic.AddInt64(&globalIDCounter, 1000)
+	d.database = defaultDB
 	d.SetContext(ctx)
 	return d
 }
