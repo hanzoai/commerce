@@ -1,6 +1,6 @@
 // Package infra provides infrastructure clients.
 //
-// This file implements the Valkey (Redis-compatible) client for caching
+// This file implements the KV client (KV_URL, Redis-compatible) for caching
 // and session storage.
 package infra
 

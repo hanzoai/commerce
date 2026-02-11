@@ -106,7 +106,7 @@ func DefaultConfig() *Config {
 		Secret:         getEnv("COMMERCE_SECRET", "change-me-in-production"),
 		HTTPAddr:       getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
 		AllowedOrigins: []string{"*"},
-		DatastoreDSN:   getEnv("COMMERCE_DATASTORE", ""),
+		DatastoreDSN:   getEnv("DATASTORE_URL", getEnv("COMMERCE_DATASTORE", "")),
 		Infra:          *infraConfigFromEnv(),
 		QueryTimeout:   30 * time.Second,
 		Events:         *eventsConfigFromEnv(),
@@ -122,8 +122,8 @@ func DefaultConfig() *Config {
 
 // eventsConfigFromEnv loads events config from environment
 func eventsConfigFromEnv() *events.Config {
-	// Enable datastore when COMMERCE_DATASTORE is set (same check as DB config)
-	datastoreDSN := getEnv("COMMERCE_DATASTORE", "")
+	// Enable datastore when DATASTORE_URL (or legacy COMMERCE_DATASTORE) is set
+	datastoreDSN := getEnv("DATASTORE_URL", getEnv("COMMERCE_DATASTORE", ""))
 
 	return &events.Config{
 		// Datastore (ClickHouse) - primary storage for unified analytics
@@ -142,15 +142,16 @@ func eventsConfigFromEnv() *events.Config {
 	}
 }
 
-// infraConfigFromEnv loads infrastructure config from environment
+// infraConfigFromEnv loads infrastructure config from environment.
+// Generic env vars take priority over implementation-specific ones.
 func infraConfigFromEnv() *infra.Config {
 	cfg := infra.DefaultConfig()
 
-	// KV (Valkey/Redis) - supports both URL format and separate addr/password
-	// Priority: REDIS_URL > VALKEY_URL > VALKEY_ADDR
-	if redisURL := getEnv("REDIS_URL", getEnv("VALKEY_URL", "")); redisURL != "" {
+	// KV (Redis-compatible) - supports URL format or separate addr/password
+	// Priority: KV_URL > REDIS_URL > VALKEY_URL > VALKEY_ADDR
+	if kvURL := getEnv("KV_URL", getEnv("REDIS_URL", getEnv("VALKEY_URL", ""))); kvURL != "" {
 		// Parse URL format: redis://[:password@]host:port[/db]
-		if parsed, err := url.Parse(redisURL); err == nil {
+		if parsed, err := url.Parse(kvURL); err == nil {
 			cfg.KV.Enabled = true
 			cfg.KV.Addr = parsed.Host
 			if parsed.User != nil {
@@ -182,14 +183,31 @@ func infraConfigFromEnv() *infra.Config {
 		cfg.Vector.APIKey = getEnv("QDRANT_API_KEY", "")
 	}
 
-	// Storage (MinIO)
-	if endpoint := getEnv("MINIO_ENDPOINT", ""); endpoint != "" {
+	// Storage (S3-compatible) - supports URL format or separate vars
+	// Priority: S3_URL > S3_ENDPOINT+keys > MINIO_ENDPOINT+keys
+	if s3URL := getEnv("S3_URL", ""); s3URL != "" {
+		// Parse URL: s3://key:secret@host:port/bucket?ssl=true
+		if parsed, err := url.Parse(s3URL); err == nil {
+			cfg.Storage.Enabled = true
+			cfg.Storage.Endpoint = parsed.Host
+			if parsed.User != nil {
+				cfg.Storage.AccessKey = parsed.User.Username()
+				if pwd, ok := parsed.User.Password(); ok {
+					cfg.Storage.SecretKey = pwd
+				}
+			}
+			if bucket := strings.TrimPrefix(parsed.Path, "/"); bucket != "" {
+				cfg.Storage.Bucket = bucket
+			}
+			cfg.Storage.UseSSL = parsed.Scheme == "s3s" || parsed.Query().Get("ssl") == "true"
+		}
+	} else if endpoint := getEnv("S3_ENDPOINT", getEnv("MINIO_ENDPOINT", "")); endpoint != "" {
 		cfg.Storage.Enabled = true
 		cfg.Storage.Endpoint = endpoint
-		cfg.Storage.AccessKey = getEnv("MINIO_ACCESS_KEY", "minioadmin")
-		cfg.Storage.SecretKey = getEnv("MINIO_SECRET_KEY", "minioadmin")
-		cfg.Storage.Bucket = getEnv("MINIO_BUCKET", "commerce")
-		cfg.Storage.UseSSL = getEnv("MINIO_USE_SSL", "false") == "true"
+		cfg.Storage.AccessKey = getEnv("S3_ACCESS_KEY", getEnv("MINIO_ACCESS_KEY", "minioadmin"))
+		cfg.Storage.SecretKey = getEnv("S3_SECRET_KEY", getEnv("MINIO_SECRET_KEY", "minioadmin"))
+		cfg.Storage.Bucket = getEnv("S3_BUCKET", getEnv("MINIO_BUCKET", "commerce"))
+		cfg.Storage.UseSSL = getEnv("S3_USE_SSL", getEnv("MINIO_USE_SSL", "false")) == "true"
 	}
 
 	// Search (Meilisearch)
