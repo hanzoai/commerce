@@ -106,7 +106,7 @@ func DefaultConfig() *Config {
 		Secret:         getEnv("COMMERCE_SECRET", "change-me-in-production"),
 		HTTPAddr:       getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
 		AllowedOrigins: []string{"*"},
-		DatastoreDSN:   getEnv("DATASTORE_URL", getEnv("COMMERCE_DATASTORE", "")),
+		DatastoreDSN:   getEnv("DATASTORE_URL", ""),
 		Infra:          *infraConfigFromEnv(),
 		QueryTimeout:   30 * time.Second,
 		Events:         *eventsConfigFromEnv(),
@@ -122,8 +122,8 @@ func DefaultConfig() *Config {
 
 // eventsConfigFromEnv loads events config from environment
 func eventsConfigFromEnv() *events.Config {
-	// Enable datastore when DATASTORE_URL (or legacy COMMERCE_DATASTORE) is set
-	datastoreDSN := getEnv("DATASTORE_URL", getEnv("COMMERCE_DATASTORE", ""))
+	// Enable datastore when DATASTORE_URL is set
+	datastoreDSN := getEnv("DATASTORE_URL", "")
 
 	return &events.Config{
 		// Datastore (ClickHouse) - primary storage for unified analytics
@@ -143,14 +143,24 @@ func eventsConfigFromEnv() *events.Config {
 }
 
 // infraConfigFromEnv loads infrastructure config from environment.
-// Generic env vars take priority over implementation-specific ones.
+//
+// Env vars (generic, no implementation leakage):
+//
+//	KV_URL        = redis://:password@host:6379/0
+//	S3_URL        = s3://key:secret@host:9000/bucket
+//	S3_ENDPOINT   = host:9000  (with S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET)
+//	DATASTORE_URL = clickhouse://host:9000/db
+//	DOC_URL       = mongodb://host:27017/db
+//	SQL_URL       = postgresql://user:pass@host:5432/db
+//	VECTOR_URL    = qdrant://host:6334
+//	SEARCH_URL    = http://host:7700
+//	PUBSUB_URL    = nats://host:4222
+//	TASKS_URL     = temporal://host:7233/namespace
 func infraConfigFromEnv() *infra.Config {
 	cfg := infra.DefaultConfig()
 
-	// KV (Redis-compatible) - supports URL format or separate addr/password
-	// Priority: KV_URL > REDIS_URL > VALKEY_URL > VALKEY_ADDR
-	if kvURL := getEnv("KV_URL", getEnv("REDIS_URL", getEnv("VALKEY_URL", ""))); kvURL != "" {
-		// Parse URL format: redis://[:password@]host:port[/db]
+	// KV (Redis-compatible)
+	if kvURL := getEnv("KV_URL", ""); kvURL != "" {
 		if parsed, err := url.Parse(kvURL); err == nil {
 			cfg.KV.Enabled = true
 			cfg.KV.Addr = parsed.Host
@@ -159,7 +169,6 @@ func infraConfigFromEnv() *infra.Config {
 					cfg.KV.Password = pwd
 				}
 			}
-			// Parse DB number from path (e.g., /0)
 			if parsed.Path != "" && parsed.Path != "/" {
 				dbNum := strings.TrimPrefix(parsed.Path, "/")
 				if db, err := strconv.Atoi(dbNum); err == nil {
@@ -167,26 +176,27 @@ func infraConfigFromEnv() *infra.Config {
 				}
 			}
 		}
-	} else if addr := getEnv("VALKEY_ADDR", ""); addr != "" {
-		cfg.KV.Enabled = true
-		cfg.KV.Addr = addr
-		cfg.KV.Password = getEnv("VALKEY_PASSWORD", "")
 	}
 
 	// Vector (Qdrant)
-	if host := getEnv("QDRANT_HOST", ""); host != "" {
-		cfg.Vector.Enabled = true
-		cfg.Vector.Host = host
-		if port, err := strconv.Atoi(getEnv("QDRANT_PORT", "6334")); err == nil {
-			cfg.Vector.Port = port
+	if vectorURL := getEnv("VECTOR_URL", ""); vectorURL != "" {
+		if parsed, err := url.Parse(vectorURL); err == nil {
+			cfg.Vector.Enabled = true
+			host := parsed.Hostname()
+			cfg.Vector.Host = host
+			if p := parsed.Port(); p != "" {
+				if port, err := strconv.Atoi(p); err == nil {
+					cfg.Vector.Port = port
+				}
+			}
+			if parsed.User != nil {
+				cfg.Vector.APIKey = parsed.User.Username()
+			}
 		}
-		cfg.Vector.APIKey = getEnv("QDRANT_API_KEY", "")
 	}
 
-	// Storage (S3-compatible) - supports URL format or separate vars
-	// Priority: S3_URL > S3_ENDPOINT+keys > MINIO_ENDPOINT+keys
+	// Storage (S3-compatible)
 	if s3URL := getEnv("S3_URL", ""); s3URL != "" {
-		// Parse URL: s3://key:secret@host:port/bucket?ssl=true
 		if parsed, err := url.Parse(s3URL); err == nil {
 			cfg.Storage.Enabled = true
 			cfg.Storage.Endpoint = parsed.Host
@@ -201,35 +211,47 @@ func infraConfigFromEnv() *infra.Config {
 			}
 			cfg.Storage.UseSSL = parsed.Scheme == "s3s" || parsed.Query().Get("ssl") == "true"
 		}
-	} else if endpoint := getEnv("S3_ENDPOINT", getEnv("MINIO_ENDPOINT", "")); endpoint != "" {
+	} else if endpoint := getEnv("S3_ENDPOINT", ""); endpoint != "" {
 		cfg.Storage.Enabled = true
 		cfg.Storage.Endpoint = endpoint
-		cfg.Storage.AccessKey = getEnv("S3_ACCESS_KEY", getEnv("MINIO_ACCESS_KEY", "minioadmin"))
-		cfg.Storage.SecretKey = getEnv("S3_SECRET_KEY", getEnv("MINIO_SECRET_KEY", "minioadmin"))
-		cfg.Storage.Bucket = getEnv("S3_BUCKET", getEnv("MINIO_BUCKET", "commerce"))
-		cfg.Storage.UseSSL = getEnv("S3_USE_SSL", getEnv("MINIO_USE_SSL", "false")) == "true"
+		cfg.Storage.AccessKey = getEnv("S3_ACCESS_KEY", "")
+		cfg.Storage.SecretKey = getEnv("S3_SECRET_KEY", "")
+		cfg.Storage.Bucket = getEnv("S3_BUCKET", "commerce")
+		cfg.Storage.UseSSL = getEnv("S3_USE_SSL", "false") == "true"
 	}
 
 	// Search (Meilisearch)
-	if host := getEnv("MEILISEARCH_HOST", ""); host != "" {
+	if searchURL := getEnv("SEARCH_URL", ""); searchURL != "" {
 		cfg.Search.Enabled = true
-		cfg.Search.Host = host
-		cfg.Search.APIKey = getEnv("MEILISEARCH_API_KEY", "")
+		cfg.Search.Host = searchURL
+		if parsed, err := url.Parse(searchURL); err == nil {
+			if parsed.User != nil {
+				cfg.Search.APIKey = parsed.User.Username()
+			}
+		}
 	}
 
 	// PubSub (NATS)
-	if url := getEnv("NATS_URL", ""); url != "" {
+	if pubsubURL := getEnv("PUBSUB_URL", ""); pubsubURL != "" {
 		cfg.PubSub.Enabled = true
-		cfg.PubSub.URL = url
-		cfg.PubSub.Token = getEnv("NATS_TOKEN", "")
-		cfg.PubSub.EnableJetStream = getEnv("NATS_JETSTREAM", "true") == "true"
+		cfg.PubSub.URL = pubsubURL
+		if parsed, err := url.Parse(pubsubURL); err == nil {
+			if parsed.User != nil {
+				cfg.PubSub.Token = parsed.User.Username()
+			}
+		}
+		cfg.PubSub.EnableJetStream = getEnv("PUBSUB_JETSTREAM", "true") == "true"
 	}
 
 	// Tasks (Temporal)
-	if host := getEnv("TEMPORAL_HOST", ""); host != "" {
-		cfg.Tasks.Enabled = true
-		cfg.Tasks.HostPort = host
-		cfg.Tasks.Namespace = getEnv("TEMPORAL_NAMESPACE", "commerce")
+	if tasksURL := getEnv("TASKS_URL", ""); tasksURL != "" {
+		if parsed, err := url.Parse(tasksURL); err == nil {
+			cfg.Tasks.Enabled = true
+			cfg.Tasks.HostPort = parsed.Host
+			if ns := strings.TrimPrefix(parsed.Path, "/"); ns != "" {
+				cfg.Tasks.Namespace = ns
+			}
+		}
 	}
 
 	return cfg
