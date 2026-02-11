@@ -119,6 +119,33 @@ type Config struct {
 		WebhookURL  string
 	}
 
+	Square struct {
+		// Application ID from Square Developer Dashboard
+		ApplicationId string
+
+		// Access token for API calls
+		AccessToken string
+
+		// Location ID for transactions
+		LocationId string
+
+		// Webhook signature key
+		WebhookSignatureKey string
+
+		// Environment: sandbox or production
+		Environment string
+
+		// Sandbox credentials (for development/testing)
+		SandboxApplicationId string
+		SandboxAccessToken   string
+		SandboxLocationId    string
+
+		// Production credentials
+		ProductionApplicationId string
+		ProductionAccessToken   string
+		ProductionLocationId    string
+	}
+
 	Mandrill struct {
 		APIKey    string
 		FromEmail string
@@ -297,6 +324,7 @@ var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var DashboardUrl = config.DashboardUrl
+var Square = config.Square
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 

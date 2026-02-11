@@ -1,5 +1,35 @@
 # Commerce - LLM Context Document
 
+## Recent Changes (2026-01-26)
+
+### Production Deployment Fixes
+
+1. **REDIS_URL Environment Variable Support** (`commerce.go:121-149`)
+   - Added support for `REDIS_URL` environment variable in URL format
+   - Parses URL format: `redis://[:password@]host:port[/db]`
+   - Priority: `REDIS_URL` > `VALKEY_URL` > `VALKEY_ADDR`
+   - Extracts host, password, and DB number from URL
+
+2. **Meilisearch API Compatibility** (`infra/search.go`)
+   - Updated for meilisearch-go v0.35.1 API changes
+   - Fixed `AddDocuments` to use `*meilisearch.DocumentOptions`
+   - Fixed `DeleteDocuments` and `DeleteAllDocuments` signatures
+   - Fixed type conversions for `Hits` and `FacetDistribution`
+
+3. **Production Dockerfile** (`Dockerfile.production`)
+   - Created for production builds without local replace directives
+   - Uses `CGO_ENABLED=0` for static binary
+   - Uses pseudo-version for `github.com/hanzoai/datastore-go`
+
+4. **Healthcheck Fix** (compose.production.yml)
+   - Changed from `wget --spider` to `curl -f` because Gin only handles GET (not HEAD)
+   - Fixed port from 8001 to 8000 to match Dockerfile.production
+
+### Deployment Status
+- **Live at**: https://commerce.hanzo.ai (via Traefik)
+- **Health**: `{"status":"ok","version":"1.33.0"}`
+- **Pending**: Square credentials need to be configured in KMS
+
 ## Overview
 
 Hanzo Commerce is a multi-tenant e-commerce platform that has been fully modernized from a Google App Engine monolith to a standalone binary with embedded SQLite. All App Engine dependencies have been removed.
