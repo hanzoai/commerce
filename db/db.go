@@ -1,7 +1,7 @@
 // Package db provides a multi-layer database abstraction supporting:
 // - User-level SQLite with sqlite-vec for personal data and vector search
 // - Organization-level SQLite for shared tenant data
-// - Hanzo Datastore (ClickHouse) for deep analytics and parallel queries
+// - Hanzo Datastore (DATASTORE_URL) for deep analytics and parallel queries
 //
 // Architecture:
 //
@@ -9,7 +9,7 @@
 //	│                      Query Layer                            │
 //	├─────────────────────────────────────────────────────────────┤
 //	│  User SQLite    │   Org SQLite    │    Hanzo Datastore      │
-//	│  (per-user)     │   (per-org)     │    (ClickHouse)         │
+//	│  (per-user)     │   (per-org)     │    (DATASTORE_URL)      │
 //	│  + sqlite-vec   │   + sqlite-vec  │    (parallel queries)   │
 //	│  Fast queries   │   Shared data   │    Deep analytics       │
 //	└─────────────────────────────────────────────────────────────┘
@@ -69,10 +69,10 @@ type Config struct {
 	// Defaults to DataDir/orgs
 	OrgDataDir string
 
-	// DatastoreDSN is the connection string for Hanzo Datastore (ClickHouse)
+	// DatastoreDSN is the connection string for Hanzo Datastore (DATASTORE_URL)
 	DatastoreDSN string
 
-	// EnableDatastore enables the Hanzo Datastore layer (ClickHouse)
+	// EnableDatastore enables the Hanzo Datastore layer
 	EnableDatastore bool
 
 	// EnableVectorSearch enables sqlite-vec for vector embeddings
@@ -84,7 +84,7 @@ type Config struct {
 	// SQLite configuration
 	SQLite SQLiteConfig
 
-	// Datastore configuration (Hanzo Datastore / ClickHouse)
+	// Datastore configuration (Hanzo Datastore)
 	Datastore DatastoreConfig
 
 	// IsDev enables development mode logging

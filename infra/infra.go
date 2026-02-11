@@ -1,20 +1,19 @@
 // Package infra provides unified infrastructure clients for Commerce.
 //
 // This package integrates various backend services:
-//   - Vector: Qdrant for product embeddings and semantic search
-//   - KV: Valkey (Redis-compatible) for caching and sessions
-//   - Storage: MinIO for product images and assets
-//   - Search: Meilisearch for full-text product search
-//   - PubSub: NATS for order events and real-time updates
-//   - Tasks: Temporal for workflow orchestration
+//   - Vector: Embeddings and semantic search (Qdrant)
+//   - KV: Key-value cache and sessions (KV_URL, Redis-compatible)
+//   - Storage: Object storage for assets (S3_URL, S3-compatible)
+//   - Search: Full-text search (Meilisearch)
+//   - PubSub: Event streaming (NATS)
+//   - Tasks: Workflow orchestration (Temporal)
 //
 // Architecture:
 //
 //	+------------------------------------------------------------------+
 //	|                     Infrastructure Manager                        |
 //	+------------------------------------------------------------------+
-//	|  Vector    |   KV     |  Storage  |  Search  |  PubSub  |  Tasks |
-//	|  (Qdrant)  | (Valkey) |  (MinIO)  | (Meili)  |  (NATS)  | (Temp) |
+//	|  Vector  |   KV     |  Storage  |  Search  |  PubSub  |  Tasks   |
 //	+------------------------------------------------------------------+
 package infra
 
