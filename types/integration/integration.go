@@ -207,6 +207,19 @@ type Stripe struct {
 	Test stripe.Token `json:"test,omitempty" datastore:",noindex"`
 }
 
+// Square connection
+type SquareConnection struct {
+	ApplicationId string `json:"applicationId,omitempty"`
+	AccessToken   string `json:"accessToken,omitempty"`
+	LocationId    string `json:"locationId,omitempty"`
+}
+
+type Square struct {
+	WebhookSignatureKey string           `json:"webhookSignatureKey,omitempty"`
+	Sandbox             SquareConnection `json:"sandbox"`
+	Production          SquareConnection `json:"production"`
+}
+
 // Authorize.net connection
 type AuthorizeNetConnection struct {
 	LoginId        string `json:"loginId,omitempty"`

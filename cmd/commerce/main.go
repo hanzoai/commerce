@@ -24,10 +24,22 @@ import (
 	"syscall"
 
 	commerce "github.com/hanzoai/commerce"
+	api "github.com/hanzoai/commerce/api/api"
+	"github.com/hanzoai/commerce/hooks"
 )
 
 func main() {
 	app := commerce.New()
+
+	// Register the full Commerce API routes on the /api/v1 group
+	app.Hooks.OnRouteSetup().Bind(&hooks.Handler[*hooks.RouteEvent]{
+		ID:       "commerce-api",
+		Priority: 0,
+		Func: func(e *hooks.RouteEvent) error {
+			api.Route(e.Router)
+			return nil
+		},
+	})
 
 	// Setup graceful shutdown
 	done := make(chan bool, 1)
