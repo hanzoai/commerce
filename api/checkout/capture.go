@@ -6,6 +6,7 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/authorizenet"
 	"github.com/hanzoai/commerce/api/checkout/balance"
 	"github.com/hanzoai/commerce/api/checkout/null"
+	"github.com/hanzoai/commerce/api/checkout/square"
 	"github.com/hanzoai/commerce/api/checkout/stripe"
 	"github.com/hanzoai/commerce/api/checkout/tasks"
 	"github.com/hanzoai/commerce/api/checkout/util"
@@ -32,13 +33,14 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 		ord, payments, err = balance.Capture(org, ord)
 	case accounts.NullType:
 		ord, payments, err = null.Capture(org, ord)
+	case accounts.SquareType:
+		ord, payments, err = square.Capture(org, ord)
 	case accounts.StripeType:
 		ord, payments, err = stripe.Capture(org, ord)
 	case accounts.PayPalType:
 		payments = ord.Payments
 	default:
-		// TODO: return nil, errors.New("Invalid order type")
-		ord, payments, err = stripe.Capture(org, ord)
+		ord, payments, err = square.Capture(org, ord)
 	}
 
 	if err != nil {
