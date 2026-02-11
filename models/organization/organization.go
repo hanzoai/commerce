@@ -151,6 +151,9 @@ type Organization struct {
 	// Shipwire settings
 	Shipwire integration.Shipwire `json:"-"`
 
+	// Square connection
+	Square integration.Square `json:"-"`
+
 	// Stripe connection
 	Stripe integration.Stripe `json:"-"`
 
@@ -362,6 +365,13 @@ func (o Organization) Namespaced(ctx context.Context) context.Context {
 	type contextKey string
 	const namespaceKey contextKey = "namespace"
 	return context.WithValue(ctx, namespaceKey, o.Namespace())
+}
+
+func (o Organization) SquareConfig(sandbox bool) integration.SquareConnection {
+	if sandbox {
+		return o.Square.Sandbox
+	}
+	return o.Square.Production
 }
 
 func (o Organization) StripeToken() string {

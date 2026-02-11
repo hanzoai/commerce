@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/app"
 	"github.com/hanzoai/commerce/models/oauthtoken"
 	"github.com/hanzoai/commerce/models/organization"
@@ -194,6 +195,16 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		// IAM tokens represent authenticated Hanzo users (hanzo.id).
+		// They bypass legacy org-token permission checks because the permission
+		// models are fundamentally different: IAM uses roles/claims, legacy uses
+		// bit-mask org API keys. Downstream handlers should check IAM claims
+		// (iam_roles, iam_claims) for fine-grained authorization.
+		if iammiddleware.IsIAMAuthenticated(c) {
+			c.Next()
+			return
+		}
+
 		// Parse token
 		ParseToken(c)
 

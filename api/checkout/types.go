@@ -176,10 +176,9 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 	}
 	pay.Account.Number = number
 
-	// Default all payment types to Stripe for now, although eventually we
-	// should use organization settings
+	// Default all payment types to Square
 	if pay.Type == "" {
-		pay.Type = accounts.StripeType
+		pay.Type = accounts.SquareType
 	}
 
 	// Ensure order has same type as payment

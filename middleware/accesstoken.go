@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -96,6 +97,12 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		// IAM tokens bypass legacy org-token auth (different permission model)
+		if iammiddleware.IsIAMAuthenticated(c) {
+			c.Next()
+			return
+		}
+
 		// Parse token
 		ParseToken(c)
 

@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,10 +32,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hanzoai/commerce/api/analytics"
+	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 )
 
 // Version is the current version of Commerce
@@ -77,11 +82,19 @@ type Config struct {
 
 	// Events configuration
 	Events events.Config
+
+	// IAM configuration for hanzo.id JWT validation
+	IAM struct {
+		Enabled      bool   `json:"enabled"`
+		Issuer       string `json:"issuer"`
+		ClientID     string `json:"clientId"`
+		ClientSecret string `json:"clientSecret"`
+	} `json:"iam"`
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
-	return &Config{
+	cfg := &Config{
 		DataDir:        getEnv("COMMERCE_DIR", "./commerce_data"),
 		Dev:            getEnv("COMMERCE_DEV", "false") == "true",
 		Secret:         getEnv("COMMERCE_SECRET", "change-me-in-production"),
@@ -92,6 +105,13 @@ func DefaultConfig() *Config {
 		QueryTimeout:   30 * time.Second,
 		Events:         *eventsConfigFromEnv(),
 	}
+
+	cfg.IAM.Enabled = getEnv("IAM_ENABLED", "true") == "true"
+	cfg.IAM.Issuer = getEnv("IAM_ISSUER", "https://hanzo.id")
+	cfg.IAM.ClientID = getEnv("IAM_CLIENT_ID", "")
+	cfg.IAM.ClientSecret = getEnv("IAM_CLIENT_SECRET", "")
+
+	return cfg
 }
 
 // eventsConfigFromEnv loads events config from environment
@@ -120,8 +140,27 @@ func eventsConfigFromEnv() *events.Config {
 func infraConfigFromEnv() *infra.Config {
 	cfg := infra.DefaultConfig()
 
-	// KV (Valkey)
-	if addr := getEnv("VALKEY_ADDR", ""); addr != "" {
+	// KV (Valkey/Redis) - supports both URL format and separate addr/password
+	// Priority: REDIS_URL > VALKEY_URL > VALKEY_ADDR
+	if redisURL := getEnv("REDIS_URL", getEnv("VALKEY_URL", "")); redisURL != "" {
+		// Parse URL format: redis://[:password@]host:port[/db]
+		if parsed, err := url.Parse(redisURL); err == nil {
+			cfg.KV.Enabled = true
+			cfg.KV.Addr = parsed.Host
+			if parsed.User != nil {
+				if pwd, ok := parsed.User.Password(); ok {
+					cfg.KV.Password = pwd
+				}
+			}
+			// Parse DB number from path (e.g., /0)
+			if parsed.Path != "" && parsed.Path != "/" {
+				dbNum := strings.TrimPrefix(parsed.Path, "/")
+				if db, err := strconv.Atoi(dbNum); err == nil {
+					cfg.KV.DB = db
+				}
+			}
+		}
+	} else if addr := getEnv("VALKEY_ADDR", ""); addr != "" {
 		cfg.KV.Enabled = true
 		cfg.KV.Addr = addr
 		cfg.KV.Password = getEnv("VALKEY_PASSWORD", "")
@@ -377,6 +416,21 @@ func (app *App) Bootstrap() error {
 		app.Router.Use(gin.Logger())
 	}
 
+	// Initialize IAM middleware for hanzo.id JWT validation
+	if app.config.IAM.Enabled && app.config.IAM.Issuer != "" && app.config.IAM.ClientID != "" {
+		iamCfg := &auth.IAMConfig{
+			Issuer:       app.config.IAM.Issuer,
+			ClientID:     app.config.IAM.ClientID,
+			ClientSecret: app.config.IAM.ClientSecret,
+		}
+		if err := iammiddleware.Init(iamCfg); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: IAM middleware initialization failed: %v\n", err)
+			app.config.IAM.Enabled = false
+		}
+	} else if app.config.IAM.ClientID == "" {
+		app.config.IAM.Enabled = false
+	}
+
 	// Setup routes
 	app.setupRoutes()
 
@@ -397,6 +451,18 @@ func (app *App) setupRoutes() {
 	// API routes
 	api := app.Router.Group("/api/v1")
 	{
+		// Core middleware required by Commerce API handlers
+		api.Use(middleware.AddHost())
+		api.Use(middleware.AppEngine())
+		api.Use(middleware.DetectOverrides())
+		api.Use(middleware.ErrorHandlerJSON())
+		api.Use(middleware.AccessControl("*"))
+
+		// IAM JWT validation middleware (falls through to legacy auth if not IAM token)
+		if app.config.IAM.Enabled {
+			api.Use(iammiddleware.IAMTokenRequired())
+		}
+
 		// Analytics endpoints (astley.js, Cloud AI, etc.)
 		analyticsHandler := analytics.NewHandler(app.Events)
 		analyticsHandler.Route(api)

@@ -16,6 +16,7 @@ const (
 	BitcoinType      Type = "bitcoin"
 	NullType         Type = "null"
 	PayPalType       Type = "paypal"
+	SquareType       Type = "square"
 	StripeType       Type = "stripe"
 	PlaidType        Type = "plaid"
 )
@@ -100,6 +101,15 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 // 	StripeAccount
 // }
 
+type SquareAccount struct {
+	PaymentId  string `json:"paymentId,omitempty"`
+	CustomerId string `json:"customerId,omitempty"`
+	LocationId string `json:"locationId,omitempty"`
+	CardBrand  string `json:"cardBrand,omitempty"`
+	LastFour   string `json:"lastFour,omitempty"`
+	ReceiptURL string `json:"receiptUrl,omitempty"`
+}
+
 type BitcoinTransaction struct {
 	BitcoinTransactionTxId string           `json:"bitcoinTransactionTxId,omitempty"`
 	BitcoinChainType       blockchains.Type `json:"bitcoinChainType,omitempty"`
@@ -145,6 +155,7 @@ type Account struct {
 
 	Affirm AffirmAccount `json:"affirm,omitempty"`
 	PayPal PayPalAccount `json:"paypal,omitempty"`
+	Square SquareAccount `json:"square,omitempty"`
 	Stripe StripeAccount `json:"stripe,omitempty"`
 	// Plaid        PlaidAccount        `json:"plaid,omitempty"`
 	Bitcoin      BitcoinTransaction  `json:"bitcoin,omitempty"`
