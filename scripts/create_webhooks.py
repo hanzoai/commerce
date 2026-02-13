@@ -40,6 +40,6 @@ if __name__ == '__main__':
     for wh in sw.list_webhooks().all():
         sw.delete_webhook(wh['resource']['id'])
 
-    url = 'https://api.hanzo.io/shipwire/webhook/stoned'
+    url = 'https://api.hanzo.ai/shipwire/webhook/stoned'
     for topic in topics:
         sw.create_webhook({'topic': topic, 'url': url})

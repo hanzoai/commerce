@@ -62,8 +62,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
-	org.Paypal.ConfirmUrl = "http://hanzo.io"
-	org.Paypal.CancelUrl = "http://hanzo.io"
+	org.Paypal.ConfirmUrl = "http://hanzo.ai"
+	org.Paypal.CancelUrl = "http://hanzo.ai"
 
 	org.Paypal.Live.Email = "dev@hanzo.ai"
 	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"
