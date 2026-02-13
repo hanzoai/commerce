@@ -13,7 +13,7 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
-var hanzoEmail = email.Email{Address: "noreplay@hanzo.io", Name: "Hanzo"}
+var hanzoEmail = email.Email{Address: "noreplay@hanzo.ai", Name: "Hanzo"}
 
 // Forward email to configured recpeients
 func forward(c context.Context, org *organization.Organization, f *form.Form, s interface{}) {

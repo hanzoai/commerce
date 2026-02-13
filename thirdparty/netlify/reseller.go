@@ -70,7 +70,7 @@ func getAccessToken(ctx context.Context, orgName string) string {
 // Create new access token
 func createAccessToken(ctx context.Context, orgName string) string {
 	client := New(ctx, config.Netlify.AccessToken)
-	user, err := client.AccessToken(orgName, orgName+"@hanzo.io")
+	user, err := client.AccessToken(orgName, orgName+"@hanzo.ai")
 
 	if err != nil {
 		log.Error("Unable to get Netlify Access Token: %v", err, ctx)

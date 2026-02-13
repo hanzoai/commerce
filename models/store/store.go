@@ -64,10 +64,10 @@ type Store struct {
 	// Full name of store
 	Name string `json:"name"`
 
-	// Unique human readable id for url <slug>.hanzo.ioe
+	// Unique human readable id for url <slug>.hanzo.aie
 	Slug string `json:"slug"`
 
-	// Where this is hosted if not on hanzo.io
+	// Where this is hosted if not on hanzo.ai
 	Domain string `json:"domain"`
 	Prefix string `json:"prefix"`
 
