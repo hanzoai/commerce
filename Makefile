@@ -54,7 +54,7 @@ ifeq ($(os), linux)
 			   				  -not -path "./replace/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -printf '%h\n' | sort -u | sed -e 's/.\//hanzo.io\//')
+			   				  -printf '%h\n' | sort -u | sed -e 's/.\//hanzo.ai\//')
 	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
@@ -64,7 +64,7 @@ else
 			   				  -not -path "./replace/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.io\//')
+			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//hanzo.ai\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(pwd)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip2 install macfsevents --upgrade
@@ -174,12 +174,12 @@ auth:
 	gcloud auth login
 
 deploy: build
-	@cd $(gopath)/src/hanzo.io
+	@cd $(gopath)/src/hanzo.ai
 	gcloud app deploy $(gae_config) --project $(project_id) --version v1
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
 deploy-dispatch:
-	@cd $(gopath)/src/hanzo.io
+	@cd $(gopath)/src/hanzo.ai
 	gcloud app deploy config/$(project_env)/dispatch.yaml --project $(project_id) --version v1
 
 update-env:

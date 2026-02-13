@@ -22,7 +22,7 @@ func ErrorJSON(c *gin.Context, stack string, err error) {
 	jsonErr := gin.H{
 		"error": gin.H{
 			"type":    "api-error",
-			"message": "Unable to process request. Please try again later. If this continues, please message support@hanzo.io",
+			"message": "Unable to process request. Please try again later. If this continues, please message support@hanzo.ai",
 		},
 	}
 	c.Writer.Write(json.EncodeBytes(jsonErr))

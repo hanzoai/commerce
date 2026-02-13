@@ -38,8 +38,8 @@ var _ = BeforeSuite(func() {
 	// usr.PaypalEmail = "dev@hanzo.ai"
 
 	org = organization.New(db)
-	org.Paypal.ConfirmUrl = "http://hanzo.io"
-	org.Paypal.CancelUrl = "http://hanzo.io"
+	org.Paypal.ConfirmUrl = "http://hanzo.ai"
+	org.Paypal.CancelUrl = "http://hanzo.ai"
 
 	org.Paypal.Test.Email = "dev@hanzo.ai"
 	org.Paypal.Test.SecurityUserId = "dev@hanzo.ai"

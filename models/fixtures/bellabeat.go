@@ -15,7 +15,7 @@ var _ = New("bellabeat", func(c *gin.Context) *organization.Organization {
 	org.GetOrCreate("Name=", org.Name)
 
 	// u := user.New(db)
-	// u.Email = "bellabeat-shipstation@hanzo.io"
+	// u.Email = "bellabeat-shipstation@hanzo.ai"
 	// u.GetOrCreate("Email=", u.Email)
 	// u.FirstName = "Shipstation"
 	// u.LastName = "API"

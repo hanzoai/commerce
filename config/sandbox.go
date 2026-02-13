@@ -10,9 +10,9 @@ func Sandbox() *Config {
 	config.IsSandbox = true
 
 	// Only modules active in sandbox
-	config.Hosts["default"] = "sandbox.hanzo.io"
-	config.Hosts["api"] = "api.sandbox.hanzo.io"
-	config.Hosts["dash"] = "dash.sandbox.hanzo.io"
+	config.Hosts["default"] = "sandbox.hanzo.ai"
+	config.Hosts["api"] = "api.sandbox.hanzo.ai"
+	config.Hosts["dash"] = "dash.sandbox.hanzo.ai"
 
 	config.Ethereum.TestPassword = ""
 	config.Ethereum.DepositPassword = ""
@@ -34,7 +34,7 @@ func Sandbox() *Config {
 	config.Bitcoin.TestNetPasswords = []string{""}
 	config.Bitcoin.WebhookPassword = ""
 
-	config.StaticUrl = "//static.sandbox.hanzo.io"
+	config.StaticUrl = "//static.sandbox.hanzo.ai"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
