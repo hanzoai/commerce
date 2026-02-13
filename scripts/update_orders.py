@@ -27,4 +27,4 @@ if __name__ == '__main__':
             "uniqueEventID": "424242424242",
             "webhookSubscriptionID": 42,
         }
-        requests.post("https://api.hanzo.io/shipwire/stoned", json=req)
+        requests.post("https://api.hanzo.ai/shipwire/stoned", json=req)

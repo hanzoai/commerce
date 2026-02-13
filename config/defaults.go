@@ -68,7 +68,7 @@ func Defaults() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://api.staging.hanzo.io/paypal/ipn/"
+	config.Paypal.IpnUrl = "https://api.staging.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.BankAccount = "ba_14trEsCSRlllXCwPzT8vGYiK"
@@ -81,7 +81,7 @@ func Defaults() *Config {
 	config.Stripe.LivePublishablKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 
 	config.Mandrill.FromName = "Hanzo"
-	config.Mandrill.FromEmail = "noreply@hanzo.io"
+	config.Mandrill.FromEmail = "noreply@hanzo.ai"
 
 	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
 	config.Redis.Password = ""
@@ -92,7 +92,7 @@ func Defaults() *Config {
 
 	config.Cloudflare.Email = "dev@hanzo.ai"
 	config.Cloudflare.Key = ""
-	config.Cloudflare.Zone = "hanzo.io"
+	config.Cloudflare.Zone = "hanzo.ai"
 
 	config.SMTPRelay.Endpoint = "https://smtprelay.hanzo.ai"
 	config.SMTPRelay.Username = "admin@hanzo.ai"

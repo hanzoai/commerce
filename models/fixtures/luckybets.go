@@ -48,7 +48,7 @@ var _ = New("luckybets", func(c *gin.Context) *organization.Organization {
 	org.Email.Enabled = true
 	org.Email.Defaults.From = email.Email{
 		Name:    "Admin",
-		Address: "noreply@hanzo.io",
+		Address: "noreply@hanzo.ai",
 	}
 
 	org.Email.Order.Confirmation.Subject = "Deposit confirmation"

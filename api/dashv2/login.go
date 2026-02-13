@@ -19,7 +19,7 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.io$")
+var verusEmailRe = regexp.MustCompile("@verus.io$|@hanzo.ai$")
 
 type loginReq struct {
 	Email    string `json:"email"`

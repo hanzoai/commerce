@@ -557,7 +557,7 @@ services:
 
 - `~/work/hanzo/base` - Reference architecture for standalone binary
 - `~/work/hanzo/datastore-go` - ClickHouse driver for Hanzo Datastore
-- `~/work/hanzo/iam` - Casdoor-based IAM (hanzo.id authentication)
+- `~/work/hanzo/iam` - Hanzo IAM (hanzo.id authentication)
 - `~/work/hanzo/cloud` - Casibase AI platform (100+ LLM providers)
 - `~/work/hanzo/cloud-backend` - Rust inference backend with GRPO
 - `~/work/hanzo/insights` - PostHog fork for product analytics

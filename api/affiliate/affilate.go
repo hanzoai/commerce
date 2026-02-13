@@ -25,7 +25,7 @@ const (
 	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&stripe_landing=login&redirect_uri=%s&state=%s"
 )
 
-//<a href="api.hanzo.io/affiliate/:id/connect"></a>
+//<a href="api.hanzo.ai/affiliate/:id/connect"></a>
 
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
