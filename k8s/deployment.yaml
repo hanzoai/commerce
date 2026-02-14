@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: commerce
+  namespace: hanzo
+  labels:
+    app: commerce
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: commerce
+  template:
+    metadata:
+      labels:
+        app: commerce
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: commerce
+          image: ghcr.io/hanzoai/commerce:latest
+          ports:
+            - containerPort: 8001
+              protocol: TCP
+          env:
+            - name: RUNNING_IN_DOCKER
+              value: "true"
+            - name: PORT
+              value: "8001"
+            - name: ENV
+              value: "production"
+          volumeMounts:
+            - name: config
+              mountPath: /app/.env
+              subPath: .env
+            - name: square
+              mountPath: /app/square
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          secret:
+            secretName: commerce-config
+        - name: square
+          secret:
+            secretName: commerce-square

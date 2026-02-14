@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: commerce-config
+  namespace: hanzo
+type: Opaque
+stringData:
+  .env: |
+    COMMERCE_SECRET=CHANGE_ME
+    ENV=production
+    COMMERCE_DEV=false
+    IAM_ENABLED=true
+    IAM_ISSUER=https://hanzo.id
+    IAM_CLIENT_ID=hanzo-commerce-client-id
+    VALKEY_ADDR=valkey.hanzo.svc.cluster.local:6379
