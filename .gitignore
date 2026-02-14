@@ -34,3 +34,5 @@ vendor/
 _export
 **/*.coverprofile.*
 .ipynb_checkpoints/
+commerced
+nohup.out
