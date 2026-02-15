@@ -29,30 +29,31 @@ import (
 	"time"
 )
 
-// Default endpoints for Hanzo Cloud services
+// Default endpoints for Hanzo Cloud services.
+// All inference routes through the Go cloud-api which handles native
+// provider routing (DO-AI, Fireworks, OpenAI Direct). LiteLLM is removed.
 const (
-	DefaultCloudBackendEndpoint = "https://api.hanzo.ai/v1"
-	DefaultCloudEndpoint        = "https://cloud.hanzo.ai/api"
-	DefaultModel                = "deepseek-chat"
-	DefaultEmbeddingModel       = "text-embedding-3-small"
-	DefaultTimeout              = 30 * time.Second
+	DefaultCloudEndpoint  = "https://cloud.hanzo.ai/api"
+	DefaultModel          = "gpt-4o"
+	DefaultEmbeddingModel = "text-embedding-3-small"
+	DefaultTimeout        = 30 * time.Second
 )
 
 // AIConfig holds configuration for the Hanzo AI services
 type AIConfig struct {
-	// Endpoint is the base URL for the Hanzo Cloud-Backend API
-	// Default: https://api.hanzo.ai/v1
+	// Endpoint is the base URL for the Hanzo Cloud API.
+	// All inference routes through cloud-api natively (no LiteLLM middleman).
+	// Default: https://cloud.hanzo.ai/api
 	Endpoint string `json:"endpoint"`
 
-	// CloudEndpoint is the base URL for the Hanzo Cloud API (Casibase)
-	// Default: https://cloud.hanzo.ai/api
+	// CloudEndpoint is an alias for Endpoint (kept for backward compatibility).
 	CloudEndpoint string `json:"cloudEndpoint"`
 
 	// APIKey is the Bearer token for authentication
 	APIKey string `json:"apiKey"`
 
 	// Model is the default model for chat completions
-	// Options: deepseek-chat, gpt-4, claude-3-opus, zen-nano, zen-coder
+	// Options: gpt-4o, gpt-5, claude-opus-4-6, zen4-pro, zen4-coder-pro
 	Model string `json:"model"`
 
 	// EmbeddingModel is the model used for generating embeddings
@@ -72,16 +73,17 @@ type AIConfig struct {
 	GRPOEnabled bool `json:"grpoEnabled"`
 }
 
-// NewAIConfig creates a new AIConfig with defaults from environment variables
+// NewAIConfig creates a new AIConfig with defaults from environment variables.
+// All inference now routes through the Go cloud-api (no LiteLLM middleman).
 func NewAIConfig() *AIConfig {
-	endpoint := os.Getenv("HANZO_AI_ENDPOINT")
+	// Unified endpoint — HANZO_CLOUD_ENDPOINT takes priority, then
+	// HANZO_AI_ENDPOINT for backward compat, then default.
+	endpoint := os.Getenv("HANZO_CLOUD_ENDPOINT")
 	if endpoint == "" {
-		endpoint = DefaultCloudBackendEndpoint
+		endpoint = os.Getenv("HANZO_AI_ENDPOINT")
 	}
-
-	cloudEndpoint := os.Getenv("HANZO_CLOUD_ENDPOINT")
-	if cloudEndpoint == "" {
-		cloudEndpoint = DefaultCloudEndpoint
+	if endpoint == "" {
+		endpoint = DefaultCloudEndpoint
 	}
 
 	apiKey := os.Getenv("HANZO_API_KEY")
@@ -101,7 +103,7 @@ func NewAIConfig() *AIConfig {
 
 	return &AIConfig{
 		Endpoint:       endpoint,
-		CloudEndpoint:  cloudEndpoint,
+		CloudEndpoint:  endpoint,
 		APIKey:         apiKey,
 		Model:          model,
 		EmbeddingModel: embeddingModel,
@@ -899,6 +901,30 @@ type ModelInfo struct {
 	Object  string `json:"object"`
 	Created int64  `json:"created"`
 	OwnedBy string `json:"owned_by"`
+	Premium bool   `json:"premium,omitempty"`
+}
+
+// ListCloudModels returns the available models from the Hanzo Cloud API
+// (Go backend), which includes the full routing table with premium flags.
+// Use this instead of ListModels when you need billing-aware model info.
+func (c *Client) ListCloudModels(ctx context.Context) ([]ModelInfo, error) {
+	url := c.config.CloudEndpoint + "/models"
+
+	respBody, err := c.doRequest(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var response struct {
+		Object string      `json:"object"`
+		Data   []ModelInfo `json:"data"`
+	}
+
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cloud models response: %w", err)
+	}
+
+	return response.Data, nil
 }
 
 // HealthCheck verifies the AI service is available
