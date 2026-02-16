@@ -1,0 +1,71 @@
+package region
+
+import (
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/json"
+
+	. "github.com/hanzoai/commerce/types"
+)
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+type Country struct {
+	ISO2        string `json:"iso2"`
+	ISO3        string `json:"iso3"`
+	NumCode     int    `json:"numCode"`
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	RegionId    string `json:"regionId"`
+}
+
+type Region struct {
+	mixin.Model
+
+	// Name of region
+	Name string `json:"name"`
+
+	// ISO 4217 currency code
+	CurrencyCode string `json:"currencyCode"`
+
+	// Whether automatic taxes are enabled
+	AutomaticTaxes bool `json:"automaticTaxes"`
+
+	// Whether tax-inclusive pricing is enabled
+	TaxInclusiveEnabled bool `json:"taxInclusiveEnabled"`
+
+	// Countries in this region (serialized to datastore)
+	Countries  []Country `json:"countries" datastore:"-"`
+	Countries_ string    `json:"-" datastore:",noindex"`
+
+	// Arbitrary metadata
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
+}
+
+func (r *Region) Load(ps []datastore.Property) (err error) {
+	r.Defaults()
+
+	if err = datastore.LoadStruct(r, ps); err != nil {
+		return err
+	}
+
+	if len(r.Countries_) > 0 {
+		if err = json.DecodeBytes([]byte(r.Countries_), &r.Countries); err != nil {
+			return err
+		}
+	}
+
+	if len(r.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(r.Metadata_), &r.Metadata)
+	}
+
+	return err
+}
+
+func (r *Region) Save() ([]datastore.Property, error) {
+	r.Countries_ = string(json.EncodeBytes(&r.Countries))
+	r.Metadata_ = string(json.EncodeBytes(&r.Metadata))
+
+	return datastore.SaveStruct(r)
+}

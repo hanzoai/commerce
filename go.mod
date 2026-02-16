@@ -20,6 +20,7 @@ require (
 	github.com/hanzoai/datastore-go/v2 v2.44.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
+	github.com/hanzoai/kv-go/v9 v9.17.2-hanzo.1
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
@@ -37,7 +38,6 @@ require (
 	github.com/pariz/gountries v0.1.6
 	github.com/plaid/plaid-go/v15 v15.3.0
 	github.com/qdrant/go-client v1.16.2
-	github.com/redis/go-redis/v9 v9.17.2
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/speps/go-hashids v2.0.0+incompatible
@@ -136,6 +136,7 @@ require (
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.temporal.io/api v1.61.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.23.0 // indirect
@@ -161,5 +162,7 @@ replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
 replace github.com/btcsuite/btcd/btcec => ./replace/btcec
 
 // replace github.com/hanzoai/datastore-go/v2 => ../datastore-go // commented out for Docker builds
+
+replace github.com/hanzoai/kv-go/v9 => ../kv-go
 
 go 1.24.0

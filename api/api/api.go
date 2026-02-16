@@ -18,7 +18,9 @@ import (
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/return"
+	"github.com/hanzoai/commerce/models/saleschannel"
 	"github.com/hanzoai/commerce/models/site"
+	"github.com/hanzoai/commerce/models/stocklocation"
 	"github.com/hanzoai/commerce/models/submission"
 	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/token"
@@ -52,11 +54,15 @@ import (
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
 	referrerApi "github.com/hanzoai/commerce/api/referrer"
+	regionApi "github.com/hanzoai/commerce/api/region"
 	reviewApi "github.com/hanzoai/commerce/api/review"
 	searchApi "github.com/hanzoai/commerce/api/search"
 	storeApi "github.com/hanzoai/commerce/api/store"
 	subscriptionApi "github.com/hanzoai/commerce/api/subscription"
 	transactionApi "github.com/hanzoai/commerce/api/transaction"
+	inventoryApi "github.com/hanzoai/commerce/api/inventory"
+	pricingApi "github.com/hanzoai/commerce/api/pricing"
+	promotionApi "github.com/hanzoai/commerce/api/promotion"
 	userApi "github.com/hanzoai/commerce/api/user"
 	xdApi "github.com/hanzoai/commerce/api/xd"
 
@@ -126,6 +132,9 @@ func Route(api router.Router) {
 	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
+	rest.New(saleschannel.SalesChannel{}).Route(api, tokenRequired)
+	rest.New(stocklocation.StockLocation{}).Route(api, tokenRequired)
+
 	rest.New(disclosure.Disclosure{}).Route(api, tokenRequired)
 	rest.New(tokentransaction.Transaction{}).Route(api, tokenRequired)
 
@@ -140,12 +149,16 @@ func Route(api router.Router) {
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
+	inventoryApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	referrerApi.Route(api, tokenRequired)
+	regionApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	transactionApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
+	pricingApi.Route(api, tokenRequired)
+	promotionApi.Route(api, tokenRequired)
 
 	// Hanzo APIs, using default namespace (internal use only)
 	organizationApi.Route(api, tokenRequired)
