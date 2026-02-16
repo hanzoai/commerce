@@ -217,10 +217,18 @@ func (h *Handler) handleIdentify(c *gin.Context) {
 		return
 	}
 
+	// Enforce org scoping
+	orgID := req.OrganizationID
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			orgID = org.Id()
+		}
+	}
+
 	event := &events.RawEvent{
 		Event:            "$identify",
 		DistinctID:       req.DistinctID,
-		OrganizationID:   req.OrganizationID,
+		OrganizationID:   orgID,
 		PersonProperties: req.PersonProperties,
 		IP:               c.ClientIP(),
 		UserAgent:        c.Request.UserAgent(),
@@ -245,11 +253,19 @@ func (h *Handler) handleAST(c *gin.Context) {
 		return
 	}
 
+	// Enforce org scoping
+	astOrgID := req.OrganizationID
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			astOrgID = org.Id()
+		}
+	}
+
 	// Emit page view with AST context
 	pageEvent := &events.RawEvent{
 		Event:           "$pageview",
 		DistinctID:      req.DistinctID,
-		OrganizationID:  req.OrganizationID,
+		OrganizationID:  astOrgID,
 		SessionID:       req.SessionID,
 		URL:             req.URL,
 		ASTContext:      req.Context,
@@ -276,7 +292,7 @@ func (h *Handler) handleAST(c *gin.Context) {
 		sectionEvent := &events.RawEvent{
 			Event:          "section_viewed",
 			DistinctID:     req.DistinctID,
-			OrganizationID: req.OrganizationID,
+			OrganizationID: astOrgID,
 			SessionID:      req.SessionID,
 			URL:            req.URL,
 			ASTContext:     req.Context,
@@ -363,11 +379,26 @@ func (h *Handler) handleSection(c *gin.Context) {
 }
 
 // handlePixel handles pixel tracking requests (for email opens, ads, etc).
+// SECURITY: Pixel tracking is typically unauthenticated (embedded in emails/ads),
+// so org scoping from auth context is applied when available, but falls back to
+// the query parameter for anonymous pixel hits.
 func (h *Handler) handlePixel(c *gin.Context) {
+	// Enforce org scoping when auth context is present
+	pixelOrgID := c.Query("oid")
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			pixelOrgID = org.Id()
+		}
+	} else if iamOrg, exists := c.Get("iam_org"); exists {
+		if iamOrgStr, ok := iamOrg.(string); ok && iamOrgStr != "" {
+			pixelOrgID = iamOrgStr
+		}
+	}
+
 	event := &events.RawEvent{
 		Event:          "pixel_view",
 		DistinctID:     c.Query("uid"),
-		OrganizationID: c.Query("oid"),
+		OrganizationID: pixelOrgID,
 		SessionID:      c.Query("sid"),
 		Properties: map[string]interface{}{
 			"source":      c.Query("src"),
@@ -411,10 +442,22 @@ func (h *Handler) handleAIMessage(c *gin.Context) {
 		return
 	}
 
+	// Enforce org scoping
+	orgID := req.OrganizationID
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			orgID = org.Id()
+		}
+	} else if iamOrg, exists := c.Get("iam_org"); exists {
+		if iamOrgStr, ok := iamOrg.(string); ok && iamOrgStr != "" {
+			orgID = iamOrgStr
+		}
+	}
+
 	event := &events.RawEvent{
 		Event:          "ai.message.created",
 		DistinctID:     req.DistinctID,
-		OrganizationID: req.OrganizationID,
+		OrganizationID: orgID,
 		SessionID:      req.ChatID,
 		Properties:     req.Properties,
 		ModelProvider:  req.ModelProvider,
@@ -466,10 +509,22 @@ func (h *Handler) handleAICompletion(c *gin.Context) {
 		return
 	}
 
+	// Enforce org scoping
+	completionOrgID := req.OrganizationID
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			completionOrgID = org.Id()
+		}
+	} else if iamOrg, exists := c.Get("iam_org"); exists {
+		if iamOrgStr, ok := iamOrg.(string); ok && iamOrgStr != "" {
+			completionOrgID = iamOrgStr
+		}
+	}
+
 	event := &events.RawEvent{
 		Event:          "ai.completion",
 		DistinctID:     req.DistinctID,
-		OrganizationID: req.OrganizationID,
+		OrganizationID: completionOrgID,
 		SessionID:      req.ChatID,
 		ModelProvider:  req.ModelProvider,
 		ModelName:      req.ModelName,
@@ -498,11 +553,25 @@ func (h *Handler) handleAICompletion(c *gin.Context) {
 }
 
 // buildRawEvent creates a RawEvent from the request.
+// SECURITY: If an organization is set in context (from auth middleware),
+// force the OrganizationID to match it, preventing cross-tenant event injection.
 func (h *Handler) buildRawEvent(c *gin.Context, req *EventRequest) *events.RawEvent {
+	// Enforce org scoping: if authenticated with an org, override client-supplied org_id
+	orgID := req.OrganizationID
+	if orgVal, exists := c.Get("organization"); exists {
+		if org, ok := orgVal.(interface{ Id() string }); ok {
+			orgID = org.Id()
+		}
+	} else if iamOrg, exists := c.Get("iam_org"); exists {
+		if iamOrgStr, ok := iamOrg.(string); ok && iamOrgStr != "" {
+			orgID = iamOrgStr
+		}
+	}
+
 	event := &events.RawEvent{
 		Event:           req.Event,
 		DistinctID:      req.DistinctID,
-		OrganizationID:  req.OrganizationID,
+		OrganizationID:  orgID,
 		ProjectID:       req.ProjectID,
 		SessionID:       req.SessionID,
 		VisitID:         req.VisitID,
