@@ -11,6 +11,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/util/bit"
+	"github.com/hanzoai/commerce/util/permission"
 )
 
 var (
@@ -34,7 +39,9 @@ func Init(cfg *auth.IAMConfig) error {
 }
 
 // IAMTokenRequired validates hanzo.id JWT tokens via JWKS.
-// If a valid IAM token is found, it sets iam_* context keys and calls c.Next().
+// If a valid IAM token is found, it resolves the org from the token's "owner"
+// claim and sets both IAM context keys and the standard "organization" +
+// "permissions" keys that downstream handlers expect.
 // If no Bearer token is present or validation fails, it falls through to the
 // next middleware (legacy org-token auth) without aborting.
 func IAMTokenRequired() gin.HandlerFunc {
@@ -58,20 +65,70 @@ func IAMTokenRequired() gin.HandlerFunc {
 
 		claims, err := client.ValidateToken(context.Background(), token)
 		if err != nil {
-			// Not a valid IAM token — fall through to legacy middleware
+			// Not a valid IAM token -- fall through to legacy middleware
 			c.Next()
 			return
 		}
 
-		// Valid IAM token — set context values
+		// Valid IAM token -- set context values
 		c.Set("iam_claims", claims)
 		c.Set("iam_user_id", claims.Subject)
 		c.Set("iam_email", claims.Email)
 		c.Set("iam_org", claims.Owner)
 		c.Set("iam_roles", claims.Roles)
 		c.Set("iam_authenticated", true)
+
+		// Resolve organization from IAM "owner" claim so downstream handlers
+		// get proper tenant scoping via middleware.GetOrganization(c).
+		if claims.Owner != "" {
+			ctx := c.Request.Context()
+			db := datastore.New(ctx)
+			org := organization.New(db)
+
+			// Look up org by name (the IAM "owner" field is the org name)
+			ok, lookupErr := org.Query().Filter("Name=", claims.Owner).Get()
+			if lookupErr != nil || !ok {
+				log.Warn("IAM token owner '%s' does not match any organization: %v", claims.Owner, lookupErr)
+				// Do not abort -- let downstream legacy auth attempt if present.
+				// But the request will lack org scoping.
+			} else {
+				c.Set("organization", org)
+				c.Set("active-organization", org.Id())
+
+				// Map IAM roles to legacy permission bits
+				c.Set("permissions", iamPermissions(claims))
+			}
+		}
+
 		c.Next()
 	}
+}
+
+// iamPermissions converts IAM roles/claims to legacy permission bits.
+func iamPermissions(claims *auth.IAMClaims) bit.Field {
+	perms := permission.None
+
+	if claims.IsAdmin {
+		perms |= permission.Admin | permission.Live
+	}
+
+	// Map standard roles
+	for _, role := range claims.Roles {
+		switch role {
+		case "admin", "owner":
+			perms |= permission.Admin | permission.Live
+		case "member", "user":
+			perms |= permission.Published | permission.Live |
+				permission.ReadCoupon | permission.ReadProduct
+		}
+	}
+
+	// Default: at minimum grant Published if authenticated
+	if perms == permission.None {
+		perms = permission.Published | permission.Live
+	}
+
+	return bit.Field(perms)
 }
 
 // IsIAMAuthenticated checks whether the current request was authenticated via IAM.
