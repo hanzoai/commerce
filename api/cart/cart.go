@@ -27,7 +27,8 @@ type CartResponse struct {
 }
 
 func Set(c *gin.Context) {
-	db := datastore.New(c)
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
 
 	id := c.Params.ByName("cartid")
 
@@ -75,8 +76,6 @@ func Set(c *gin.Context) {
 		return
 	}
 
-	org := middleware.GetOrganization(c)
-
 	if car.Mailchimp.CheckoutUrl == "" {
 		car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
 	}
@@ -102,7 +101,8 @@ func Set(c *gin.Context) {
 }
 
 func Discard(c *gin.Context) {
-	db := datastore.New(c)
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
 
 	id := c.Params.ByName("cartid")
 
@@ -121,8 +121,6 @@ func Discard(c *gin.Context) {
 	} else {
 		http.Render(c, 200, CartResponse{Id: car.Id()})
 	}
-
-	org := middleware.GetOrganization(c)
 
 	// Determine store to use
 	storeId := car.StoreId
@@ -143,15 +141,14 @@ func create(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
-		db := datastore.New(c)
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
 		car := cart.New(db)
 
 		if err := json.Decode(c.Request.Body, car); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
-
-		org := middleware.GetOrganization(c)
 
 		if car.Mailchimp.CheckoutUrl == "" {
 			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
@@ -188,7 +185,8 @@ func update(r *rest.Rest) func(*gin.Context) {
 
 		id := c.Params.ByName(r.ParamId)
 
-		db := datastore.New(c)
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
 		car := cart.New(db)
 
 		// Try to retrieve key from datastore
@@ -208,8 +206,6 @@ func update(r *rest.Rest) func(*gin.Context) {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
-
-		org := middleware.GetOrganization(c)
 
 		if car.Mailchimp.CheckoutUrl == "" {
 			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl
@@ -248,7 +244,8 @@ func patch(r *rest.Rest) func(*gin.Context) {
 
 		id := c.Params.ByName(r.ParamId)
 
-		db := datastore.New(c)
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
 		car := cart.New(db)
 
 		err := car.GetById(id)
@@ -262,8 +259,6 @@ func patch(r *rest.Rest) func(*gin.Context) {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
-
-		org := middleware.GetOrganization(c)
 
 		if car.Mailchimp.CheckoutUrl == "" {
 			car.Mailchimp.CheckoutUrl = org.Mailchimp.CheckoutUrl

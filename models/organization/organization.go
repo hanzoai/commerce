@@ -340,15 +340,23 @@ func (o *Organization) AddOwner(userOrId string) {
 	}
 }
 
-// Get namespace for this organization
+// Namespace returns the datastore namespace for this organization.
+//
+// SECURITY: The "platform" org uses the global (empty) namespace to enable
+// cross-org admin operations. All handlers that use this MUST verify the
+// caller has platform-admin privileges before allowing writes.
+// All other orgs are strictly scoped to their own namespace.
 func (o Organization) Namespace() string {
-	// The `platform` organization is special -- all of it's API calls use the
-	// global namespace, enabling you to populate organizations / users w/o
-	// restrictions
 	if o.Name == "platform" {
 		return ""
 	}
 	return o.Name
+}
+
+// IsPlatformOrg returns true if this is the privileged platform organization.
+// Use this to gate admin-only cross-tenant operations.
+func (o Organization) IsPlatformOrg() bool {
+	return o.Name == "platform"
 }
 
 // Get namespaced context for this organization

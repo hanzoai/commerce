@@ -13,10 +13,18 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+// orgNamespacedDB returns a datastore scoped to the authenticated org's namespace.
+// All listing handlers MUST use this instead of raw datastore.New(c) to ensure
+// tenant isolation.
+func orgNamespacedDB(c *gin.Context) *datastore.Datastore {
+	org := middleware.GetOrganization(c)
+	return datastore.New(org.Namespaced(c))
+}
+
 // Return all listings
 func listListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
-	db := datastore.New(c)
+	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
@@ -29,8 +37,7 @@ func listListing(c *gin.Context) {
 
 // Get single store listing for given product/variant
 func getListing(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
-	db := datastore.New(ctx)
+	db := orgNamespacedDB(c)
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 
@@ -67,7 +74,7 @@ func getListing(c *gin.Context) {
 func createListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
-	db := datastore.New(c)
+	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
@@ -81,7 +88,7 @@ func createListing(c *gin.Context) {
 
 	// Do not override on create, user should explicitly update instead
 	if ok {
-		msg := fmt.Sprintf("'%v' already exists in store '%v' listing")
+		msg := fmt.Sprintf("'%v' already exists in store '%v' listing", key, id)
 		http.Fail(c, 400, msg, errors.New(msg))
 		return
 	}
@@ -107,7 +114,7 @@ func createListing(c *gin.Context) {
 func updateListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
-	db := datastore.New(c)
+	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
@@ -142,7 +149,7 @@ func updateListing(c *gin.Context) {
 func patchListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
-	db := datastore.New(c)
+	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
@@ -175,7 +182,7 @@ func patchListing(c *gin.Context) {
 func deleteListing(c *gin.Context) {
 	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
-	db := datastore.New(c)
+	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {

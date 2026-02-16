@@ -77,7 +77,7 @@ func DefaultConfig() *Config {
 			Port:    6334,
 		},
 		KV: KVConfig{
-			Enabled: true,
+			Enabled: false,
 			Addr:    "localhost:6379",
 			DB:      0,
 		},

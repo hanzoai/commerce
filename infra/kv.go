@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	kv "github.com/hanzoai/kv-go/v9"
 )
 
 // KVConfig holds Valkey/Redis configuration
@@ -52,7 +52,7 @@ type KVConfig struct {
 // KVClient wraps the Redis client for Valkey
 type KVClient struct {
 	config *KVConfig
-	client *redis.Client
+	client *kv.Client
 }
 
 // NewKVClient creates a new Valkey KV client
@@ -73,7 +73,7 @@ func NewKVClient(ctx context.Context, cfg *KVConfig) (*KVClient, error) {
 		cfg.WriteTimeout = 3 * time.Second
 	}
 
-	opts := &redis.Options{
+	opts := &kv.Options{
 		Addr:            cfg.Addr,
 		Password:        cfg.Password,
 		DB:              cfg.DB,
@@ -84,7 +84,7 @@ func NewKVClient(ctx context.Context, cfg *KVConfig) (*KVClient, error) {
 		WriteTimeout:    cfg.WriteTimeout,
 	}
 
-	client := redis.NewClient(opts)
+	client := kv.NewClient(opts)
 
 	// Verify connection
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -109,7 +109,7 @@ func (c *KVClient) key(k string) string {
 // Get retrieves a value by key
 func (c *KVClient) Get(ctx context.Context, key string) (string, error) {
 	val, err := c.client.Get(ctx, c.key(key)).Result()
-	if err == redis.Nil {
+	if err == kv.Nil {
 		return "", nil
 	}
 	if err != nil {
@@ -213,7 +213,7 @@ func (c *KVClient) IncrBy(ctx context.Context, key string, value int64) (int64, 
 // HGet retrieves a hash field
 func (c *KVClient) HGet(ctx context.Context, key, field string) (string, error) {
 	val, err := c.client.HGet(ctx, c.key(key), field).Result()
-	if err == redis.Nil {
+	if err == kv.Nil {
 		return "", nil
 	}
 	if err != nil {
@@ -322,7 +322,7 @@ func (c *KVClient) SRem(ctx context.Context, key string, members ...interface{})
 }
 
 // ZAdd adds members to a sorted set
-func (c *KVClient) ZAdd(ctx context.Context, key string, members ...redis.Z) error {
+func (c *KVClient) ZAdd(ctx context.Context, key string, members ...kv.Z) error {
 	err := c.client.ZAdd(ctx, c.key(key), members...).Err()
 	if err != nil {
 		return fmt.Errorf("kv zadd failed: %w", err)
@@ -340,7 +340,7 @@ func (c *KVClient) ZRange(ctx context.Context, key string, start, stop int64) ([
 }
 
 // ZRangeByScore retrieves sorted set members by score
-func (c *KVClient) ZRangeByScore(ctx context.Context, key string, opt *redis.ZRangeBy) ([]string, error) {
+func (c *KVClient) ZRangeByScore(ctx context.Context, key string, opt *kv.ZRangeBy) ([]string, error) {
 	val, err := c.client.ZRangeByScore(ctx, c.key(key), opt).Result()
 	if err != nil {
 		return nil, fmt.Errorf("kv zrangebyscore failed: %w", err)
@@ -349,12 +349,12 @@ func (c *KVClient) ZRangeByScore(ctx context.Context, key string, opt *redis.ZRa
 }
 
 // Pipeline returns a pipeline for batched operations
-func (c *KVClient) Pipeline() redis.Pipeliner {
+func (c *KVClient) Pipeline() kv.Pipeliner {
 	return c.client.Pipeline()
 }
 
 // Watch executes a transaction with WATCH
-func (c *KVClient) Watch(ctx context.Context, fn func(*redis.Tx) error, keys ...string) error {
+func (c *KVClient) Watch(ctx context.Context, fn func(*kv.Tx) error, keys ...string) error {
 	fullKeys := make([]string, len(keys))
 	for i, k := range keys {
 		fullKeys[i] = c.key(k)
@@ -372,7 +372,7 @@ func (c *KVClient) Publish(ctx context.Context, channel string, message interfac
 }
 
 // Subscribe subscribes to channels
-func (c *KVClient) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
+func (c *KVClient) Subscribe(ctx context.Context, channels ...string) *kv.PubSub {
 	return c.client.Subscribe(ctx, channels...)
 }
 
@@ -404,6 +404,6 @@ func (c *KVClient) Close() error {
 }
 
 // Client returns the underlying Redis client for advanced operations
-func (c *KVClient) Client() *redis.Client {
+func (c *KVClient) Client() *kv.Client {
 	return c.client
 }
