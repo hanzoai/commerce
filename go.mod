@@ -163,6 +163,5 @@ replace github.com/btcsuite/btcd/btcec => ./replace/btcec
 
 // replace github.com/hanzoai/datastore-go/v2 => ../datastore-go // commented out for Docker builds
 
-replace github.com/hanzoai/kv-go/v9 => ../kv-go
 
 go 1.24.0
