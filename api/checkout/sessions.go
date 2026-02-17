@@ -14,7 +14,6 @@ import (
 	sqpaymentlinks "github.com/square/square-go-sdk/checkout/paymentlinks"
 	"github.com/square/square-go-sdk/option"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -38,23 +37,23 @@ type checkoutSessionHat struct {
 }
 
 type checkoutSessionItem struct {
-	ID        string            `json:"id"`
-	Quantity  int               `json:"quantity"`
-	UnitPrice float64           `json:"unitPrice"` // ignored; server computes price
+	ID        string             `json:"id"`
+	Quantity  int                `json:"quantity"`
+	UnitPrice float64            `json:"unitPrice"` // ignored; server computes price
 	Hat       checkoutSessionHat `json:"hat"`
 }
 
 type checkoutSessionRequest struct {
-	Company      string                 `json:"company"`
-	ProviderHint string                 `json:"providerHint"`
-	Currency     string                 `json:"currency"`
-	Tenant       string                 `json:"tenant"`
-	Org          string                 `json:"org"`
-	Project      string                 `json:"project"`
+	Company      string                  `json:"company"`
+	ProviderHint string                  `json:"providerHint"`
+	Currency     string                  `json:"currency"`
+	Tenant       string                  `json:"tenant"`
+	Org          string                  `json:"org"`
+	Project      string                  `json:"project"`
 	Customer     checkoutSessionCustomer `json:"customer"`
 	Items        []checkoutSessionItem   `json:"items"`
-	SuccessURL   string                 `json:"successUrl"`
-	CancelURL    string                 `json:"cancelUrl"`
+	SuccessURL   string                  `json:"successUrl"`
+	CancelURL    string                  `json:"cancelUrl"`
 }
 
 type checkoutSessionResponse struct {
@@ -117,29 +116,23 @@ func isValidRedirect(raw string) bool {
 }
 
 func squareCheckoutClient() (*sqpaymentlinks.Client, string, error) {
-	// Prefer Square production creds in production; otherwise sandbox.
-	// These are injected into the runtime environment by deployment.
-	var token, locationID, baseURL string
-	if config.IsProduction {
-		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
-		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		baseURL = "https://connect.squareup.com"
-	} else {
-		token = strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN"))
-		locationID = strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID"))
+	squareEnv := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
+	isSandbox := squareEnv == "sandbox" || squareEnv == "test"
+
+	baseURL := "https://connect.squareup.com"
+	if isSandbox {
 		baseURL = "https://connect.squareupsandbox.com"
 	}
 
-	if token == "" || locationID == "" {
-		// Fallbacks (helps local/dev setups).
-		if token == "" {
-			token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
+	// Prefer env-specific vars when present; otherwise fall back to the generic names.
+	token := strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
+	locationID := strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
+	if isSandbox {
+		if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
+			token = t
 		}
-		if locationID == "" {
-			locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		}
-		if baseURL == "" {
-			baseURL = "https://connect.squareup.com"
+		if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
+			locationID = l
 		}
 	}
 
@@ -239,11 +232,11 @@ func Sessions(c *gin.Context) {
 		prePop = &square.PrePopulatedData{
 			BuyerEmail: &buyerEmail,
 			BuyerAddress: &square.Address{
-				FirstName:     &buyerName,
-				AddressLine1:  &buyerAddressLine1,
-				Locality:      &buyerCity,
-				PostalCode:    &buyerZip,
-				Country:       nil,
+				FirstName:                    &buyerName,
+				AddressLine1:                 &buyerAddressLine1,
+				Locality:                     &buyerCity,
+				PostalCode:                   &buyerZip,
+				Country:                      nil,
 				AdministrativeDistrictLevel1: nil,
 			},
 		}
@@ -256,10 +249,10 @@ func Sessions(c *gin.Context) {
 	idempotency := uuid.New().String()
 
 	createReq := &sqcheckout.CreatePaymentLinkRequest{
-		IdempotencyKey:  &idempotency,
-		Description:     &desc,
-		Order:           order,
-		CheckoutOptions: checkoutOptions,
+		IdempotencyKey:   &idempotency,
+		Description:      &desc,
+		Order:            order,
+		CheckoutOptions:  checkoutOptions,
 		PrePopulatedData: prePop,
 	}
 
