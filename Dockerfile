@@ -20,7 +20,7 @@ COPY . .
 
 # Build the binary with CGO for SQLite support
 ARG TARGETARCH
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build \
+RUN CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
     -ldflags="-s -w" \
     -o /build/commerce \
     ./cmd/commerce/main.go
