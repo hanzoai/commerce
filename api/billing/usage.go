@@ -3,12 +3,14 @@ package billing
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/meter"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -155,6 +157,31 @@ func RecordUsage(c *gin.Context) {
 		http.Fail(c, 500, "failed to record usage", err)
 		return
 	}
+
+	// Also create a MeterEvent for backward compatibility with the new
+	// meter-based billing system. Look for a meter with eventName "api-usage".
+	go func() {
+		rootKey := db.NewKey("synckey", "", 1, nil)
+		meters := make([]*meter.Meter, 0, 1)
+		q := meter.Query(db).Ancestor(rootKey).
+			Filter("EventName=", "api-usage").
+			Limit(1)
+		if _, err := q.GetAll(&meters); err == nil && len(meters) > 0 {
+			evt := meter.NewEvent(db)
+			evt.MeterId = meters[0].Id()
+			evt.UserId = req.User
+			evt.Value = req.Amount
+			evt.Timestamp = time.Now()
+			evt.Idempotency = req.RequestID
+			evt.Dimensions = Map{
+				"model":    req.Model,
+				"provider": req.Provider,
+			}
+			if err := evt.Create(); err != nil {
+				log.Error("Failed to create backward-compat meter event: %v", err)
+			}
+		}
+	}()
 
 	c.JSON(201, gin.H{
 		"transactionId": trans.Id(),
