@@ -20,4 +20,6 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.GET("/balance/all", GetBalanceAll)
 	api.GET("/usage", GetUsage)
 	api.POST("/usage", RecordUsage)
+	api.POST("/deposit", Deposit)
+	api.POST("/credit", GrantStarterCredit)
 }
