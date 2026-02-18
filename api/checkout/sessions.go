@@ -9,10 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	square "github.com/square/square-go-sdk"
-	sqcheckout "github.com/square/square-go-sdk/checkout"
-	sqpaymentlinks "github.com/square/square-go-sdk/checkout/paymentlinks"
-	"github.com/square/square-go-sdk/option"
+	square "github.com/square/square-go-sdk/v3"
+	sqcheckout "github.com/square/square-go-sdk/v3/checkout"
+	sqpaymentlinks "github.com/square/square-go-sdk/v3/checkout/paymentlinks"
+	"github.com/square/square-go-sdk/v3/core"
+	"github.com/square/square-go-sdk/v3/option"
 
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -140,10 +141,10 @@ func squareCheckoutClient() (*sqpaymentlinks.Client, string, error) {
 		return nil, "", errors.New("square is not configured")
 	}
 
-	client := sqpaymentlinks.NewClient(
+	client := sqpaymentlinks.NewClient(core.NewRequestOptions(
 		option.WithToken(token),
 		option.WithBaseURL(baseURL),
-	)
+	))
 	return client, locationID, nil
 }
 

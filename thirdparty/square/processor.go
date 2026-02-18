@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	square "github.com/square/square-go-sdk"
-	"github.com/square/square-go-sdk/option"
-	"github.com/square/square-go-sdk/payments"
-	"github.com/square/square-go-sdk/refunds"
+	square "github.com/square/square-go-sdk/v3"
+	"github.com/square/square-go-sdk/v3/core"
+	"github.com/square/square-go-sdk/v3/option"
+	"github.com/square/square-go-sdk/v3/payments"
+	"github.com/square/square-go-sdk/v3/refunds"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -65,8 +66,9 @@ func (sp *SquareProcessor) initClient() {
 		opts = append(opts, option.WithBaseURL("https://connect.squareupsandbox.com"))
 	}
 
-	sp.paymentsClient = payments.NewClient(opts...)
-	sp.refundsClient = refunds.NewClient(opts...)
+	reqOpts := core.NewRequestOptions(opts...)
+	sp.paymentsClient = payments.NewClient(reqOpts)
+	sp.refundsClient = refunds.NewClient(reqOpts)
 }
 
 // SquareSupportedCurrencies returns currencies Square supports

@@ -35,13 +35,31 @@ spec:
               value: "8001"
             - name: ENV
               value: "production"
+            - name: KMS_ENABLED
+              value: "true"
+            - name: KMS_URL
+              value: "http://kms.hanzo.svc.cluster.local:8080"
+            - name: KMS_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: commerce-kms-auth
+                  key: client-id
+            - name: KMS_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: commerce-kms-auth
+                  key: client-secret
+            - name: KMS_PROJECT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: commerce-kms-auth
+                  key: project-id
+            - name: KMS_ENVIRONMENT
+              value: "prod"
           volumeMounts:
             - name: config
               mountPath: /app/.env
               subPath: .env
-            - name: square
-              mountPath: /app/square
-              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -67,6 +85,3 @@ spec:
         - name: config
           secret:
             secretName: commerce-config
-        - name: square
-          secret:
-            secretName: commerce-square

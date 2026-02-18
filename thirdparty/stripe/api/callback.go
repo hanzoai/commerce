@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
 	"github.com/hanzoai/commerce/types/integration"
 )
@@ -114,6 +115,23 @@ func organizationCallback(c *gin.Context) {
 		log.Error("Error updating organization %v: %v", orgId, err, ctx)
 		c.Redirect(302, fmt.Sprintf("%v/dash/integrations?error=%v", config.DashboardUrl, err))
 		return
+	}
+
+	// Write Stripe credentials to KMS
+	if v, ok := c.Get("kms"); ok {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			client := kmsClient.Client()
+			path := "/tenants/" + org.Name + "/stripe"
+			if org.Stripe.Live.AccessToken != "" {
+				client.SetSecret(path, "STRIPE_LIVE_ACCESS_TOKEN", org.Stripe.Live.AccessToken)
+			}
+			if org.Stripe.Test.AccessToken != "" {
+				client.SetSecret(path, "STRIPE_TEST_ACCESS_TOKEN", org.Stripe.Test.AccessToken)
+			}
+			if org.Stripe.PublishableKey != "" {
+				client.SetSecret(path, "STRIPE_PUBLISHABLE_KEY", org.Stripe.PublishableKey)
+			}
+		}
 	}
 
 	c.Redirect(302, fmt.Sprintf("%v/dash/integrations?success=true&type=%v", config.DashboardUrl, integration.StripeType))

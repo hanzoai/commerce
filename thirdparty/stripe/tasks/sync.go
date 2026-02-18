@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	sg "github.com/stripe/stripe-go/v75"
+	sg "github.com/stripe/stripe-go/v84"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"

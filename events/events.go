@@ -575,6 +575,86 @@ func (e *Emitter) EmitPageView(ctx context.Context, pv *PageView) error {
 	return nil
 }
 
+// CheckoutSession represents a checkout session for event emission.
+type CheckoutSession struct {
+	SessionID      string
+	OrganizationID string
+	CustomerEmail  string
+	Currency       string
+	TotalAmount    float64
+	ItemCount      int
+	ProviderHint   string
+}
+
+// EmitCheckoutStarted sends checkout started events.
+func (e *Emitter) EmitCheckoutStarted(ctx context.Context, session *CheckoutSession) error {
+	var errs []error
+
+	// Write to datastore (primary)
+	if e.datastoreWriter != nil {
+		if err := e.datastoreWriter.Write(&RawEvent{
+			DistinctID:     session.CustomerEmail,
+			Event:          StandardEvents.CheckoutStarted,
+			OrganizationID: session.OrganizationID,
+			SessionID:      session.SessionID,
+			Revenue:        session.TotalAmount,
+			Properties: map[string]interface{}{
+				"currency":      session.Currency,
+				"item_count":    session.ItemCount,
+				"provider_hint": session.ProviderHint,
+				"session_id":    session.SessionID,
+				"email":         session.CustomerEmail,
+			},
+			Timestamp: time.Now(),
+		}); err != nil {
+			errs = append(errs, fmt.Errorf("datastore: %w", err))
+		}
+	}
+
+	// Forward to Insights HTTP (optional)
+	if e.insightsClient != nil {
+		if err := e.insightsClient.Capture(&insights.Event{
+			DistinctID: session.CustomerEmail,
+			Event:      "checkout_started",
+			Properties: map[string]interface{}{
+				"session_id":    session.SessionID,
+				"currency":      session.Currency,
+				"total_amount":  session.TotalAmount,
+				"item_count":    session.ItemCount,
+				"provider_hint": session.ProviderHint,
+			},
+		}); err != nil {
+			errs = append(errs, fmt.Errorf("insights: %w", err))
+		}
+
+		if session.OrganizationID != "" {
+			e.insightsClient.GroupIdentify("organization", session.OrganizationID, map[string]interface{}{
+				"name": session.OrganizationID,
+			})
+		}
+	}
+
+	// Forward to Analytics HTTP (optional)
+	if e.analyticsClient != nil {
+		if err := e.analyticsClient.TrackCommerceEvent(
+			"checkout_started",
+			session.SessionID,
+			session.TotalAmount,
+			map[string]interface{}{
+				"currency":   session.Currency,
+				"item_count": session.ItemCount,
+			},
+		); err != nil {
+			errs = append(errs, fmt.Errorf("analytics: %w", err))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("event emission errors: %v", errs)
+	}
+	return nil
+}
+
 // EmitRaw writes a raw event directly to the datastore.
 func (e *Emitter) EmitRaw(ctx context.Context, event *RawEvent) error {
 	if e.datastoreWriter == nil {

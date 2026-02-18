@@ -9,6 +9,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/types/analytics"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types/integration"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -222,6 +223,23 @@ func Upsert(c *gin.Context) {
 		if stripes := org.Integrations.FilterByType(integration.StripeType); len(stripes) > 0 {
 			s := stripes[0]
 			org.Stripe = s.Stripe
+
+			// Write Stripe credentials to KMS
+			if v, ok := c.Get("kms"); ok {
+				if kmsClient, ok := v.(*kms.CachedClient); ok {
+					client := kmsClient.Client()
+					path := "/tenants/" + org.Name + "/stripe"
+					if org.Stripe.Live.AccessToken != "" {
+						client.SetSecret(path, "STRIPE_LIVE_ACCESS_TOKEN", org.Stripe.Live.AccessToken)
+					}
+					if org.Stripe.Test.AccessToken != "" {
+						client.SetSecret(path, "STRIPE_TEST_ACCESS_TOKEN", org.Stripe.Test.AccessToken)
+					}
+					if org.Stripe.PublishableKey != "" {
+						client.SetSecret(path, "STRIPE_PUBLISHABLE_KEY", org.Stripe.PublishableKey)
+					}
+				}
+			}
 		}
 
 		// Save organization

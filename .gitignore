@@ -34,7 +34,9 @@ vendor/
 _export
 **/*.coverprofile.*
 .ipynb_checkpoints/
+commerce
 commerced
+commerce_data/
 nohup.out
 
 CLAUDE.md
