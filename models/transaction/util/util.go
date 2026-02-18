@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -71,9 +72,17 @@ func TallyTransactions(ctx context.Context, id, kind string, transs []*transacti
 		Data: make(map[currency.Type]*TransactionData),
 	}
 
+	now := time.Now()
+
 	for _, trans := range transs {
 		if trans.SourceId == trans.DestinationId {
 			log.Warn("Anomylous transaction to self detected: '%v", trans.Id(), ctx)
+			continue
+		}
+
+		// Skip expired deposits — they no longer contribute to balance.
+		if trans.Type == transaction.Deposit && !trans.ExpiresAt.IsZero() && trans.ExpiresAt.Before(now) {
+			log.Info("Skipping expired deposit %v (expired %v)", trans.Id(), trans.ExpiresAt, ctx)
 			continue
 		}
 

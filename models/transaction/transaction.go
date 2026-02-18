@@ -1,6 +1,8 @@
 package transaction
 
 import (
+	"time"
+
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -44,6 +46,10 @@ type Transaction struct {
 	// We store Kind even though it is encoded in id for easier reference
 	SourceId   string `json:"sourceId,omitempty"`
 	SourceKind string `json:"sourceKind,omitempty"`
+
+	// ExpiresAt marks when a deposit credit expires. Zero value means no expiry.
+	// Expired deposits are excluded from balance calculations.
+	ExpiresAt time.Time `json:"expiresAt,omitempty"`
 
 	// Deprecated
 	UserId string `json:"-"`
