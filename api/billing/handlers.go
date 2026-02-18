@@ -16,6 +16,7 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api := r.Group("billing")
 	api.Use(adminRequired)
 
+	// Balance & usage (existing)
 	api.GET("/balance", GetBalance)
 	api.GET("/balance/all", GetBalanceAll)
 	api.GET("/usage", GetUsage)
@@ -23,6 +24,29 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/deposit", Deposit)
 	api.POST("/credit", GrantStarterCredit)
 	api.POST("/refund", Refund)
+
+	// Meters
+	api.POST("/meters", CreateMeter)
+	api.GET("/meters", ListMeters)
+	api.GET("/meters/:id", GetMeter)
+
+	// Meter events
+	api.POST("/meter-events", RecordMeterEvents)
+	api.GET("/meter-events/summary", GetMeterEventsSummary)
+
+	// Credit grants
+	api.POST("/credit-grants", CreateCreditGrant)
+	api.GET("/credit-grants", ListCreditGrants)
+	api.GET("/credit-balance", GetCreditBalance)
+	api.POST("/credit-grants/:id/void", VoidCreditGrant)
+
+	// Pricing rules
+	api.POST("/pricing-rules", CreatePricingRule)
+	api.GET("/pricing-rules", ListPricingRules)
+	api.DELETE("/pricing-rules/:id", DeletePricingRule)
+
+	// Invoice preview
+	api.POST("/invoice-preview", InvoicePreview)
 
 	// ZAP protocol endpoint
 	api.POST("/zap", ZapDispatch)
