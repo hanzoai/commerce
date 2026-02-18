@@ -1,7 +1,7 @@
 package test
 
 import (
-	"github.com/stripe/stripe-go"
+	stripe "github.com/stripe/stripe-go/v84"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/lineitem"
@@ -31,8 +31,9 @@ func fakeEvent(name string, obj interface{}) *stripe.Event {
 	ev.Livemode = true
 	ev.Type = name
 	ev.ID = "evt_000000000000000000000000"
-	ev.Data = new(stripe.EventData)
-	ev.Data.Raw = json.EncodeRaw(obj)
+	ev.Data = &stripe.EventData{
+		Raw: json.EncodeRaw(obj),
+	}
 	return ev
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/ethereum/go-ethereum/crypto"
+	luxcrypto "github.com/luxfi/crypto"
 
 	//"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -121,7 +121,7 @@ func GenerateKeyPair() (string, string, error) {
 	return hex.EncodeToString(privBytes), hex.EncodeToString(pubBytes), nil
 
 	// Remove the extra pubkey byte before serializing hex (drop the first 0x04)
-	//return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)), nil
+	//return hex.EncodeToString(luxcrypto.FromECDSA(priv)), hex.EncodeToString(luxcrypto.FromECDSAPub(&priv.PublicKey)), nil
 }
 
 func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error) {
@@ -134,7 +134,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 		return nil, err
 	}
 
-	privateKey, err := crypto.ToECDSA(pkBytes)
+	privateKey, err := luxcrypto.ToECDSA(pkBytes)
 	if err != nil {
 		log.Error("GetRawTransactionSignature: Could not crypto decode '%s': %v", pkBytes, err)
 		return nil, err
@@ -143,7 +143,7 @@ func GetRawTransactionSignature(rawTransaction []byte, pk string) ([]byte, error
 	log.Debug("GetRawTransactionSignature: Private key decoding successful.")
 	publicKey := privateKey.PublicKey
 	log.Debug("GetRawTransactionSignature: Public key derived: %v", publicKey)
-	publicKeyBytes := crypto.FromECDSAPub(&publicKey)
+	publicKeyBytes := luxcrypto.FromECDSAPub(&publicKey)
 	log.Debug("GetRawTransactionSignature: Public key bytes: %s", publicKeyBytes)
 
 	//Hash the raw transaction twice before the signing

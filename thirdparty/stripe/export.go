@@ -1,7 +1,7 @@
 package stripe
 
 import (
-	_stripe "github.com/stripe/stripe-go/v75"
+	_stripe "github.com/stripe/stripe-go/v84"
 )
 
 type Card _stripe.Card
