@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/jetstream"
+	"github.com/hanzoai/pubsub-go"
+	"github.com/hanzoai/pubsub-go/jetstream"
 )
 
 // PubSubConfig holds NATS configuration

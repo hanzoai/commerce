@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/stripe/stripe-go/v75"
-	"github.com/stripe/stripe-go/v75/client"
-	"github.com/stripe/stripe-go/v75/webhook"
+	"github.com/stripe/stripe-go/v84"
+	"github.com/stripe/stripe-go/v84/client"
+	"github.com/stripe/stripe-go/v84/webhook"
 
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -330,15 +330,18 @@ func (sp *StripeSubscriptionProcessor) CreateSubscription(ctx context.Context, r
 		return nil, err
 	}
 
-	return &processor.Subscription{
-		ID:                 sub.ID,
-		CustomerID:         sub.Customer.ID,
-		PlanID:             req.PlanID,
-		Status:             string(sub.Status),
-		CurrentPeriodStart: sub.CurrentPeriodStart,
-		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
-		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
-	}, nil
+	result := &processor.Subscription{
+		ID:                sub.ID,
+		CustomerID:        sub.Customer.ID,
+		PlanID:            req.PlanID,
+		Status:            string(sub.Status),
+		CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+	}
+	if len(sub.Items.Data) > 0 {
+		result.CurrentPeriodStart = sub.Items.Data[0].CurrentPeriodStart
+		result.CurrentPeriodEnd = sub.Items.Data[0].CurrentPeriodEnd
+	}
+	return result, nil
 }
 
 // GetSubscription retrieves subscription details
@@ -353,15 +356,18 @@ func (sp *StripeSubscriptionProcessor) GetSubscription(ctx context.Context, subs
 		planID = sub.Items.Data[0].Price.ID
 	}
 
-	return &processor.Subscription{
-		ID:                 sub.ID,
-		CustomerID:         sub.Customer.ID,
-		PlanID:             planID,
-		Status:             string(sub.Status),
-		CurrentPeriodStart: sub.CurrentPeriodStart,
-		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
-		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
-	}, nil
+	result := &processor.Subscription{
+		ID:                sub.ID,
+		CustomerID:        sub.Customer.ID,
+		PlanID:            planID,
+		Status:            string(sub.Status),
+		CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+	}
+	if len(sub.Items.Data) > 0 {
+		result.CurrentPeriodStart = sub.Items.Data[0].CurrentPeriodStart
+		result.CurrentPeriodEnd = sub.Items.Data[0].CurrentPeriodEnd
+	}
+	return result, nil
 }
 
 // CancelSubscription cancels a subscription
@@ -403,15 +409,18 @@ func (sp *StripeSubscriptionProcessor) UpdateSubscription(ctx context.Context, s
 		planID = sub.Items.Data[0].Price.ID
 	}
 
-	return &processor.Subscription{
-		ID:                 sub.ID,
-		CustomerID:         sub.Customer.ID,
-		PlanID:             planID,
-		Status:             string(sub.Status),
-		CurrentPeriodStart: sub.CurrentPeriodStart,
-		CurrentPeriodEnd:   sub.CurrentPeriodEnd,
-		CancelAtPeriodEnd:  sub.CancelAtPeriodEnd,
-	}, nil
+	result := &processor.Subscription{
+		ID:                sub.ID,
+		CustomerID:        sub.Customer.ID,
+		PlanID:            planID,
+		Status:            string(sub.Status),
+		CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+	}
+	if len(sub.Items.Data) > 0 {
+		result.CurrentPeriodStart = sub.Items.Data[0].CurrentPeriodStart
+		result.CurrentPeriodEnd = sub.Items.Data[0].CurrentPeriodEnd
+	}
+	return result, nil
 }
 
 // ListSubscriptions lists subscriptions for a customer
@@ -430,15 +439,18 @@ func (sp *StripeSubscriptionProcessor) ListSubscriptions(ctx context.Context, cu
 			planID = s.Items.Data[0].Price.ID
 		}
 
-		subs = append(subs, &processor.Subscription{
-			ID:                 s.ID,
-			CustomerID:         s.Customer.ID,
-			PlanID:             planID,
-			Status:             string(s.Status),
-			CurrentPeriodStart: s.CurrentPeriodStart,
-			CurrentPeriodEnd:   s.CurrentPeriodEnd,
-			CancelAtPeriodEnd:  s.CancelAtPeriodEnd,
-		})
+		sub := &processor.Subscription{
+			ID:                s.ID,
+			CustomerID:        s.Customer.ID,
+			PlanID:            planID,
+			Status:            string(s.Status),
+			CancelAtPeriodEnd: s.CancelAtPeriodEnd,
+		}
+		if len(s.Items.Data) > 0 {
+			sub.CurrentPeriodStart = s.Items.Data[0].CurrentPeriodStart
+			sub.CurrentPeriodEnd = s.Items.Data[0].CurrentPeriodEnd
+		}
+		subs = append(subs, sub)
 	}
 
 	if err := iter.Err(); err != nil {

@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	stripe "github.com/stripe/stripe-go/v75"
-	"github.com/stripe/stripe-go/v75/client"
+	stripe "github.com/stripe/stripe-go/v84"
+	"github.com/stripe/stripe-go/v84/client"
 )
 
 func New(ctx context.Context, accessToken string) *Client {

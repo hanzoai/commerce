@@ -44,6 +44,7 @@ import (
 	planModel "github.com/hanzoai/commerce/models/deprecated/plan"
 	orgModel "github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 )
 
@@ -89,6 +90,9 @@ type Config struct {
 	// Events configuration
 	Events events.Config
 
+	// KMS configuration for secret management
+	KMS kms.Config
+
 	// IAM configuration for hanzo.id JWT validation
 	IAM struct {
 		Enabled      bool   `json:"enabled"`
@@ -111,6 +115,13 @@ func DefaultConfig() *Config {
 		QueryTimeout:   30 * time.Second,
 		Events:         *eventsConfigFromEnv(),
 	}
+
+	cfg.KMS.Enabled = getEnv("KMS_ENABLED", "false") == "true"
+	cfg.KMS.URL = getEnv("KMS_URL", "")
+	cfg.KMS.ClientID = getEnv("KMS_CLIENT_ID", "")
+	cfg.KMS.ClientSecret = getEnv("KMS_CLIENT_SECRET", "")
+	cfg.KMS.ProjectID = getEnv("KMS_PROJECT_ID", "")
+	cfg.KMS.Environment = getEnv("KMS_ENVIRONMENT", "prod")
 
 	cfg.IAM.Enabled = getEnv("IAM_ENABLED", "true") == "true"
 	cfg.IAM.Issuer = getEnv("IAM_ISSUER", "https://hanzo.id")
@@ -276,6 +287,9 @@ type App struct {
 	// Events emitter (sends to Insights + Analytics)
 	Events *events.Emitter
 
+	// KMS client for secret management
+	KMS *kms.CachedClient
+
 	// HTTP router
 	Router *gin.Engine
 
@@ -431,16 +445,41 @@ func (app *App) seedOrganization(orgName string) error {
 	org.Enabled = true
 	org.AddDefaultTokens()
 
-	// Square config from env
-	org.Square.Sandbox.ApplicationId = getEnv("SQUARE_SANDBOX_APPLICATION_ID", "")
-	org.Square.Sandbox.AccessToken = getEnv("SQUARE_SANDBOX_ACCESS_TOKEN", "")
-	org.Square.Sandbox.LocationId = getEnv("SQUARE_SANDBOX_LOCATION_ID", "")
-	org.Square.Production.ApplicationId = getEnv("SQUARE_APPLICATION_ID", "")
-	org.Square.Production.AccessToken = getEnv("SQUARE_ACCESS_TOKEN", "")
-	org.Square.Production.LocationId = getEnv("SQUARE_LOCATION_ID", "")
-	org.Square.WebhookSignatureKey = getEnv("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
-
 	org.MustPut()
+
+	// Write payment credentials to KMS (if enabled)
+	if app.KMS != nil {
+		client := app.KMS.Client()
+		stripePath := "/tenants/" + orgName + "/stripe"
+		squarePath := "/tenants/" + orgName + "/square"
+
+		seedSecrets := []struct{ path, name, envVar string }{
+			// Stripe
+			{stripePath, "STRIPE_LIVE_ACCESS_TOKEN", "STRIPE_SECRET_KEY"},
+			{stripePath, "STRIPE_TEST_ACCESS_TOKEN", "STRIPE_TEST_SECRET_KEY"},
+			{stripePath, "STRIPE_PUBLISHABLE_KEY", "STRIPE_PUBLISHABLE_KEY"},
+			// Square — Production
+			{squarePath, "SQUARE_PRODUCTION_APPLICATION_ID", "SQUARE_APPLICATION_ID"},
+			{squarePath, "SQUARE_PRODUCTION_ACCESS_TOKEN", "SQUARE_ACCESS_TOKEN"},
+			{squarePath, "SQUARE_PRODUCTION_LOCATION_ID", "SQUARE_LOCATION_ID"},
+			// Square — Sandbox
+			{squarePath, "SQUARE_SANDBOX_APPLICATION_ID", "SQUARE_SANDBOX_APPLICATION_ID"},
+			{squarePath, "SQUARE_SANDBOX_ACCESS_TOKEN", "SQUARE_SANDBOX_ACCESS_TOKEN"},
+			{squarePath, "SQUARE_SANDBOX_LOCATION_ID", "SQUARE_SANDBOX_LOCATION_ID"},
+			// Square — Webhook
+			{squarePath, "SQUARE_WEBHOOK_SIGNATURE_KEY", "SQUARE_WEBHOOK_SIGNATURE_KEY"},
+		}
+
+		for _, s := range seedSecrets {
+			if v := os.Getenv(s.envVar); v != "" {
+				if err := client.SetSecret(s.path, s.name, v); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to write %s to KMS: %v\n", s.name, err)
+				} else {
+					fmt.Printf("KMS: wrote %s to %s\n", s.name, s.path)
+				}
+			}
+		}
+	}
 
 	// Get the test-secret-key token for API access
 	tok, err := org.GetTokenByName("test-secret-key")
@@ -550,6 +589,13 @@ func (app *App) Bootstrap() error {
 		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
 	}
 
+	// Initialize KMS client for secret management
+	if app.config.KMS.Enabled && app.config.KMS.URL != "" {
+		kmsClient := kms.NewClient(&app.config.KMS)
+		app.KMS = kms.NewCachedClient(kmsClient)
+		fmt.Println("KMS client initialized")
+	}
+
 	// Initialize events emitter (Insights + Analytics + Datastore)
 	// This creates a unified event storage where both Insights and Analytics
 	// read from the same ClickHouse datastore
@@ -608,6 +654,17 @@ func (app *App) setupRoutes() {
 		if app.config.IAM.Enabled {
 			api.Use(iammiddleware.IAMTokenRequired())
 		}
+
+		// Inject KMS and Events into gin context for handlers
+		api.Use(func(c *gin.Context) {
+			if app.KMS != nil {
+				c.Set("kms", app.KMS)
+			}
+			if app.Events != nil {
+				c.Set("events", app.Events)
+			}
+			c.Next()
+		})
 
 		// Analytics endpoints (astley.js, Cloud AI, etc.)
 		analyticsHandler := analytics.NewHandler(app.Events)

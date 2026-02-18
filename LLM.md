@@ -102,13 +102,19 @@ Secrets management via KMS (Infisical-compatible REST API). KMS is the **single 
 **Architecture**: Credential Hydration (KMS-only, no fallback).
 
 ```
-Request → getOrganizationAndOrder() / Sessions()
-            └─ kms.Hydrate(cc, org)   ← populates org.Stripe, org.Square, etc.
-                 └─ CachedClient.GetSecret() for each provider field
-Downstream code reads org.StripeToken(), org.SquareConfig(), etc. unchanged.
+READ paths (hydration → org fields → downstream):
+  checkout handlers → getOrganizationAndOrder() → kms.Hydrate() → org.StripeToken() etc.
+  checkout sessions → Sessions() → kms.Hydrate() → org.StripeToken()
+  subscriptions     → Subscribe/Update/Unsubscribe → hydrateOrg() → org.StripeToken()
+  stripe webhooks   → Webhook() → getToken() + kms.Hydrate() → GetStripeAccessToken()
+
+WRITE paths (credentials → KMS):
+  seed command      → commerce seed → Client.SetSecret() for Stripe + Square
+  stripe connect    → OAuth callback → org.Update() + Client.SetSecret()
+  integration sync  → admin Upsert → org.Update() + Client.SetSecret()
 ```
 
-**Hydration**: `kms.Hydrate(cc, org)` fetches all provider credentials from KMS and populates the org's integration struct fields. Called once after org resolution. Missing secrets are silently skipped (not every org uses every provider). The CachedClient's 5min TTL prevents repeated KMS calls.
+**Hydration**: `kms.Hydrate(cc, org)` fetches all 25 provider credential fields from KMS and populates the org's integration struct fields. Called once after org resolution at every entry point. Missing secrets are silently skipped. The CachedClient's 5min TTL prevents repeated KMS calls.
 
 **Secret path convention**:
 ```
@@ -123,7 +129,7 @@ Downstream code reads org.StripeToken(), org.SquareConfig(), etc. unchanged.
 /tenants/{orgName}/paypal/PAYPAL_TEST_* (same 5 fields)
 ```
 
-**Seed command**: `commerce seed <org>` writes env vars TO KMS via `Client.SetSecret()`.
+**Write paths**: `commerce seed` writes env vars TO KMS. Stripe Connect OAuth callback writes tokens to KMS after exchange. Admin integration upsert syncs Stripe creds to KMS.
 
 **Config**: `KMS_ENABLED`, `KMS_URL`, `KMS_CLIENT_ID`, `KMS_CLIENT_SECRET`, `KMS_PROJECT_ID`, `KMS_ENVIRONMENT`
 

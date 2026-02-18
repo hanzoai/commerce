@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	luxcrypto "github.com/luxfi/crypto"
 	"github.com/hanzoai/commerce/log"
 )
 
@@ -26,18 +26,18 @@ const (
 )
 
 func GenerateKeyPair() (string, string, string, error) {
-	priv, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	priv, err := ecdsa.GenerateKey(luxcrypto.S256(), rand.Reader)
 	if err != nil {
 		return "", "", "", err
 	}
 
 	// Remove the extra pubkey byte before serializing hex (drop the first 0x04)
-	return hex.EncodeToString(crypto.FromECDSA(priv)), hex.EncodeToString(crypto.FromECDSAPub(&priv.PublicKey)[1:]), PubkeyToAddress(priv.PublicKey), nil
+	return hex.EncodeToString(luxcrypto.FromECDSA(priv)), hex.EncodeToString(luxcrypto.FromECDSAPub(&priv.PublicKey)[1:]), PubkeyToAddress(priv.PublicKey), nil
 }
 
 func PubkeyToAddress(p ecdsa.PublicKey) string {
 	// Remove the '0x' from the address
-	return crypto.PubkeyToAddress(p).Hex()
+	return luxcrypto.PubkeyToAddress(p).Hex()
 }
 
 func MakePayment(client Client, pk string, from string, to string, amount, gasPrice *big.Int, chainId ChainId) (string, error) {

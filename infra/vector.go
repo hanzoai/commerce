@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qdrant/go-client/qdrant"
+	"github.com/hanzoai/vector-go/qdrant"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

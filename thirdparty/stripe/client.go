@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/stripe/stripe-go/v75"
-	"github.com/stripe/stripe-go/v75/client"
+	"github.com/stripe/stripe-go/v84"
+	"github.com/stripe/stripe-go/v84/client"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/plan"
@@ -135,15 +135,14 @@ func (c Client) NewSubscription(source interface{}, sub *subscription.Subscripti
 	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.ApplicationFeePercent
 	sub.EndCancel = s.CancelAtPeriodEnd
-	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
-	// sub.Start = time.Unix(s.Start, 0)
 	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
 
 	if len(s.Items.Data) > 0 {
 		sub.Quantity = int(s.Items.Data[0].Quantity)
+		sub.PeriodStart = time.Unix(s.Items.Data[0].CurrentPeriodStart, 0)
+		sub.PeriodEnd = time.Unix(s.Items.Data[0].CurrentPeriodEnd, 0)
 	}
 	sub.Status = subscription.Status(s.Status)
 
@@ -173,15 +172,14 @@ func (c Client) UpdateSubscription(sub *subscription.Subscription) (*Subscriptio
 	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.ApplicationFeePercent
 	sub.EndCancel = s.CancelAtPeriodEnd
-	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
-	// sub.Start = time.Unix(s.Start, 0)
 	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
 
 	if len(s.Items.Data) > 0 {
 		sub.Quantity = int(s.Items.Data[0].Quantity)
+		sub.PeriodStart = time.Unix(s.Items.Data[0].CurrentPeriodStart, 0)
+		sub.PeriodEnd = time.Unix(s.Items.Data[0].CurrentPeriodEnd, 0)
 	}
 	sub.Status = subscription.Status(s.Status)
 
@@ -203,9 +201,6 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Subscriptio
 	sub.Account.Type = accounts.StripeType
 	sub.FeePercent = s.ApplicationFeePercent
 	sub.EndCancel = s.CancelAtPeriodEnd
-	sub.PeriodStart = time.Unix(s.CurrentPeriodStart, 0)
-	sub.PeriodEnd = time.Unix(s.CurrentPeriodEnd, 0)
-	// sub.Start = time.Unix(s.Start, 0)
 	sub.Ended = time.Unix(s.EndedAt, 0)
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
@@ -213,6 +208,8 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) (*Subscriptio
 
 	if len(s.Items.Data) > 0 {
 		sub.Quantity = int(s.Items.Data[0].Quantity)
+		sub.PeriodStart = time.Unix(s.Items.Data[0].CurrentPeriodStart, 0)
+		sub.PeriodEnd = time.Unix(s.Items.Data[0].CurrentPeriodEnd, 0)
 	}
 	sub.Status = subscription.Status(s.Status)
 

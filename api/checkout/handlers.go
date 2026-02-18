@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
@@ -20,6 +21,15 @@ var orderEndpoint = config.UrlFor("api", "/order/")
 func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
+
+	// Hydrate payment credentials from KMS
+	if v, ok := c.Get("kms"); ok {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			if err := kms.Hydrate(kmsClient, org); err != nil {
+				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
+			}
+		}
+	}
 
 	// Set up the db with the namespaced appengine context
 	ctx := org.Namespaced(c)

@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/balance"
 	"github.com/hanzoai/commerce/api/checkout/bitcoin"
 	"github.com/hanzoai/commerce/api/checkout/ethereum"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/api/checkout/null"
 	"github.com/hanzoai/commerce/api/checkout/paypal"
 	"github.com/hanzoai/commerce/api/checkout/square"
@@ -329,6 +331,25 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 
 	multi.MustCreate(entities)
+
+	// Emit order_completed analytics event (fire and forget)
+	if emitter, ok := c.Get("events"); ok {
+		if ev, ok := emitter.(*events.Emitter); ok {
+			evtOrd := &events.Order{
+				ID:       ord.Id(),
+				UserID:   usr.Id(),
+				Email:    usr.Email,
+				Total:    float64(ord.Total) / 100.0,
+				Currency: string(ord.Currency),
+				Status:   string(ord.Status),
+				OrgID:    org.Name,
+			}
+			go func() {
+				ctx := context.Background()
+				ev.EmitOrderCompleted(ctx, evtOrd)
+			}()
+		}
+	}
 
 	return pay, nil
 }

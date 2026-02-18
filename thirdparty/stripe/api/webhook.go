@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/thirdparty/stripe"
 	"github.com/hanzoai/commerce/thirdparty/stripe/tasks"
 	"github.com/hanzoai/commerce/delay"
@@ -100,6 +101,19 @@ func Webhook(c *gin.Context) {
 		// Act like everything was cool
 		c.String(200, "ok")
 		return
+	}
+
+	// Hydrate credentials from KMS (overrides datastore-stored tokens)
+	if v, ok := c.Get("kms"); ok {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			if err := kms.Hydrate(kmsClient, org); err != nil {
+				log.Error("KMS hydration failed for org %q: %v", org.Name, err, ctx)
+			}
+			// Re-resolve token after hydration
+			if t, err := org.GetStripeAccessToken(event.Account); err == nil && t != "" {
+				token = t
+			}
+		}
 	}
 
 	// Process event accordingly

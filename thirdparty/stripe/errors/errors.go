@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	_stripe "github.com/stripe/stripe-go/v75"
+	_stripe "github.com/stripe/stripe-go/v84"
 )
 
 var (
