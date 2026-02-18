@@ -6,14 +6,28 @@ import (
 	"github.com/hanzoai/commerce/api/subscription/stripe"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
 )
 
 var subscriptionEndpoint = config.UrlFor("api", "/subscription/")
+
+// hydrateOrg populates payment credentials from KMS onto the org.
+func hydrateOrg(c *gin.Context, org *organization.Organization) {
+	if v, ok := c.Get("kms"); ok {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			if err := kms.Hydrate(kmsClient, org); err != nil {
+				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
+			}
+		}
+	}
+}
 
 func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 	// Get organization for this user
@@ -38,6 +52,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 
 func Subscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	hydrateOrg(c, org)
 
 	sub, usr, err := subscribe(c, org)
 	if err != nil {
@@ -80,6 +95,7 @@ func GetSubscribe(c *gin.Context) {
 
 func UpdateSubscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	hydrateOrg(c, org)
 	sub, err := getSubscription(c)
 	if err != nil {
 		http.Fail(c, 404, "No subscription found", err)
@@ -109,6 +125,7 @@ func UpdateSubscribe(c *gin.Context) {
 
 func Unsubscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+	hydrateOrg(c, org)
 	sub, err := getSubscription(c)
 	if err != nil {
 		http.Fail(c, 404, "No subscription found", err)
