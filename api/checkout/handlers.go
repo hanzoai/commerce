@@ -152,6 +152,11 @@ func route(router router.Router, prefix string) {
 	api := router.Group(prefix)
 	api.Use(middleware.AccessControl("*"))
 
+	// Hosted checkout sessions (Stripe-like)
+	if prefix == "/checkout" {
+		api.POST("/sessions", Sessions)
+	}
+
 	// Auth and Capture Flow (Two-step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
 	api.POST("/authorize/:orderid", publishedRequired, Authorize)
