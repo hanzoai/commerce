@@ -346,6 +346,8 @@ github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568 h1:b9VAc4r4
 github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568/go.mod h1:og+Sdlmdd7/78F6twMd6wIofJkIREs6x1EbiEBBrlE0=
 github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1 h1:uQGUlQsmBvZmfUeRgZS8BkUdlPbF2VA0GqKMnUop+Fc=
 github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1/go.mod h1:zJr4NZygb2gyqkQpZ2Yf/UzbOhIhVfLCj8ST925KPrI=
+github.com/hanzoai/kv-go/v9 v9.17.2-hanzo.1 h1:Q3aetBF2tEmmq2cqbrvGWx2YdTuUgfIGX2CRzXpeHjI=
+github.com/hanzoai/kv-go/v9 v9.17.2-hanzo.1/go.mod h1:8Kvj951bJF3okaoSz3aIU0bWiGgZMsbvtVyhkR/P16k=
 github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible h1:xmFYu3gTLpu78mIx6z0bgpYy3MVdMAEFFeKs2YPybVo=
 github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible/go.mod h1:HTKx0R5LWWt7H1eG4pCpNS4PVO6tZIUVVZN/80sHz9o=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
