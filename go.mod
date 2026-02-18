@@ -20,17 +20,17 @@ require (
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.17.2-hanzo.1
-	github.com/hanzoai/pubsub-go v0.0.0
-	github.com/hanzoai/search-go v0.35.1
+	github.com/hanzoai/pubsub-go v1.0.0
+	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
-	github.com/hanzoai/storage-go v0.0.0
-	github.com/hanzoai/vector-go v0.0.0
+	github.com/hanzoai/storage-go v1.0.0
+	github.com/hanzoai/vector-go v0.1.0
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.11.2
 	github.com/luxfi/crypto v1.17.42
-	github.com/luxfi/geth v0.0.0
+	github.com/luxfi/geth v1.16.76
 	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
@@ -170,21 +170,5 @@ require (
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
-
-replace github.com/btcsuite/btcd/btcec => ./replace/btcec
-
-// replace github.com/hanzoai/datastore-go/v2 => ../datastore-go // commented out for Docker builds
-
-replace github.com/hanzoai/search-go => ../search-go
-
-replace github.com/hanzoai/storage-go => ../storage-go
-
-replace github.com/hanzoai/pubsub-go => ../pubsub-go
-
-replace github.com/hanzoai/vector-go => ../vector-go
-
-replace github.com/luxfi/crypto => ../../lux/crypto
-
-replace github.com/luxfi/geth => ../../lux/geth
 
 go 1.26.0
