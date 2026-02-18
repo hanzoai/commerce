@@ -22,6 +22,7 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/usage", RecordUsage)
 	api.POST("/deposit", Deposit)
 	api.POST("/credit", GrantStarterCredit)
+	api.POST("/refund", Refund)
 
 	// ZAP protocol endpoint
 	api.POST("/zap", ZapDispatch)
