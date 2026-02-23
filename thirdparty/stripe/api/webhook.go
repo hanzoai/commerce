@@ -41,11 +41,11 @@ func getToken(ctx context.Context, event *stripe.Event) (*organization.Organizat
 	// TODO: Make it impossible to connect the same user to multiple organizations
 	ok, err := org.Query().Filter("Stripe.UserId=", event.Account).Get()
 	if err != nil {
-		return nil, "", fmt.Errorf("Failed to query organization associated with Stripe account '%s': %v\n%#v", event.Account, err, event, ctx)
+		return nil, "", fmt.Errorf("Failed to query organization associated with Stripe account '%s': %v\n%#v", event.Account, err, event)
 	}
 
 	if !ok {
-		return nil, "", fmt.Errorf("No organization associated with Stripe account '%s'\n%#v", event.Account, event, ctx)
+		return nil, "", fmt.Errorf("No organization associated with Stripe account '%s'\n%#v", event.Account, event)
 	}
 
 	// Look up access token (if we don't have this we won't bother processing event)

@@ -1,0 +1,80 @@
+package subscriptionitem
+
+import (
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/val"
+
+	. "github.com/hanzoai/commerce/types"
+)
+
+var kind = "subscription-item"
+
+// SubscriptionItem represents a single price/product on a subscription.
+// Each subscription has one or more items. For metered items, a MeterId
+// links usage events to this line. For licensed items, Quantity tracks seats.
+type SubscriptionItem struct {
+	mixin.Model
+
+	SubscriptionId string `json:"subscriptionId"`
+	PriceId        string `json:"priceId,omitempty"`
+	PlanId         string `json:"planId,omitempty"`
+	MeterId        string `json:"meterId,omitempty"`
+
+	// Quantity for licensed/per-seat items (0 for metered)
+	Quantity int64 `json:"quantity"`
+
+	// "licensed" or "metered"
+	BillingMode string `json:"billingMode"`
+
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
+}
+
+func (si SubscriptionItem) Kind() string {
+	return kind
+}
+
+func (si *SubscriptionItem) Init(db *datastore.Datastore) {
+	si.Model.Init(db, si)
+}
+
+func (si *SubscriptionItem) Defaults() {
+	si.Parent = si.Db.NewKey("synckey", "", 1, nil)
+	if si.BillingMode == "" {
+		si.BillingMode = "licensed"
+	}
+}
+
+func (si *SubscriptionItem) Load(ps []datastore.Property) (err error) {
+	if err = datastore.LoadStruct(si, ps); err != nil {
+		return err
+	}
+
+	if len(si.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(si.Metadata_), &si.Metadata)
+	}
+
+	return err
+}
+
+func (si *SubscriptionItem) Save() (ps []datastore.Property, err error) {
+	si.Metadata_ = string(json.EncodeBytes(&si.Metadata))
+	return datastore.SaveStruct(si)
+}
+
+func (si *SubscriptionItem) Validator() *val.Validator {
+	return nil
+}
+
+func New(db *datastore.Datastore) *SubscriptionItem {
+	si := new(SubscriptionItem)
+	si.Init(db)
+	si.Defaults()
+	return si
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
+}
