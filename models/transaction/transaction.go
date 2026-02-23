@@ -32,7 +32,7 @@ type Transaction struct {
 	Amount   currency.Cents `json:"amount"`
 	Type     Type           `json:"type"`
 
-	Test bool `json:"test,omitempty"`
+	Test bool `json:"test"`
 
 	// Short text human readable description
 	Notes string `json:"notes,omitempty"`
