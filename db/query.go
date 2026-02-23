@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"unicode"
 )
 
 // sqliteQuery implements the Query interface for SQLite
@@ -345,8 +346,10 @@ func (q *sqliteQuery) buildWhere() (string, []interface{}) {
 
 	// Field filters - use JSON extraction
 	for _, f := range q.filters {
-		// Convert field name to JSON path
-		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", f.field)
+		// Convert Go struct field name (PascalCase) to JSON field name (camelCase).
+		// Go's json.Marshal uses the json tag name, which is typically camelCase.
+		fieldName := toJSONFieldName(f.field)
+		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", fieldName)
 
 		// Handle boolean false: omitempty fields may be absent (NULL in JSON),
 		// so treat NULL as equivalent to false/0 for equality checks.
@@ -396,8 +399,8 @@ func (q *sqliteQuery) buildOrderBy() string {
 
 	var parts []string
 	for _, o := range q.orders {
-		// Use JSON extraction for ordering
-		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", o.field)
+		// Use JSON extraction for ordering (convert PascalCase to camelCase)
+		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", toJSONFieldName(o.field))
 		if o.desc {
 			parts = append(parts, jsonPath+" DESC")
 		} else {
@@ -427,6 +430,35 @@ func (q *sqliteQuery) clone() *sqliteQuery {
 	newQ.orders = append([]queryOrder{}, q.orders...)
 	newQ.projections = append([]string{}, q.projections...)
 	return &newQ
+}
+
+// toJSONFieldName converts a Go struct field name (PascalCase) to its JSON
+// equivalent (camelCase) by lowercasing the first letter of each path segment.
+// This is needed because Go's json.Marshal uses the json struct tag (camelCase)
+// when serializing, but callers use Go field names (PascalCase) in Filter/Order
+// calls. Handles nested paths like "Account.TransactionHash".
+func toJSONFieldName(field string) string {
+	if field == "" {
+		return field
+	}
+	// Handle nested paths (e.g., "Account.TransactionHash" → "account.transactionHash")
+	if strings.Contains(field, ".") {
+		parts := strings.Split(field, ".")
+		for i, p := range parts {
+			parts[i] = lowercaseFirst(p)
+		}
+		return strings.Join(parts, ".")
+	}
+	return lowercaseFirst(field)
+}
+
+func lowercaseFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	runes := []rune(s)
+	runes[0] = unicode.ToLower(runes[0])
+	return string(runes)
 }
 
 // parseFilterString parses "Field=" into field and operator
