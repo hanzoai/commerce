@@ -8,12 +8,16 @@ import (
 type ProcessorType string
 
 const (
-	Stripe   ProcessorType = "stripe"
-	Square   ProcessorType = "square"
-	PayPal   ProcessorType = "paypal"
-	Bitcoin  ProcessorType = "bitcoin"
-	Ethereum ProcessorType = "ethereum"
-	MPC      ProcessorType = "mpc"
+	Stripe       ProcessorType = "stripe"
+	Square       ProcessorType = "square"
+	PayPal       ProcessorType = "paypal"
+	Adyen        ProcessorType = "adyen"
+	Braintree    ProcessorType = "braintree"
+	Recurly      ProcessorType = "recurly"
+	LemonSqueezy ProcessorType = "lemonsqueezy"
+	Bitcoin      ProcessorType = "bitcoin"
+	Ethereum     ProcessorType = "ethereum"
+	MPC          ProcessorType = "mpc"
 )
 
 // PaymentRequest represents a payment to be processed
