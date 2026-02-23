@@ -347,6 +347,26 @@ func (q *sqliteQuery) buildWhere() (string, []interface{}) {
 	for _, f := range q.filters {
 		// Convert field name to JSON path
 		jsonPath := fmt.Sprintf("json_extract(data, '$.%s')", f.field)
+
+		// Handle boolean false: omitempty fields may be absent (NULL in JSON),
+		// so treat NULL as equivalent to false/0 for equality checks.
+		if f.op == "=" {
+			switch v := f.value.(type) {
+			case bool:
+				if !v {
+					conditions = append(conditions, fmt.Sprintf("COALESCE(%s, 0) = ?", jsonPath))
+					args = append(args, 0)
+					continue
+				}
+			case int:
+				if v == 0 {
+					conditions = append(conditions, fmt.Sprintf("COALESCE(%s, 0) = ?", jsonPath))
+					args = append(args, 0)
+					continue
+				}
+			}
+		}
+
 		conditions = append(conditions, fmt.Sprintf("%s %s ?", jsonPath, f.op))
 		args = append(args, f.value)
 	}
