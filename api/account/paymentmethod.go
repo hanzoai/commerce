@@ -68,8 +68,11 @@ func createPaymentMethod(c *gin.Context) {
 
 	p := paymentmethod.New(usr.Db)
 	p.UserId = usr.Id()
+	p.CustomerId = usr.Id()
 	p.Name = req.Name
-	p.PaymentMethodOutput = *out
+	p.ProviderRef = out.PayToken
+	p.ProviderType = string(out.Type)
+	p.Type = string(out.Type)
 
 	if err := p.Create(); err != nil {
 		http.Fail(c, 400, "Failed to add payment method", err)

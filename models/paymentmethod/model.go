@@ -15,6 +15,10 @@ func (p *PaymentMethod) Init(db *datastore.Datastore) {
 }
 
 func (p *PaymentMethod) Defaults() {
+	p.Parent = p.Db.NewKey("synckey", "", 1, nil)
+	if p.Type == "" {
+		p.Type = "card"
+	}
 }
 
 func New(db *datastore.Datastore) *PaymentMethod {
