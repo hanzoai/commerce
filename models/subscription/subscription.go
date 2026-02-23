@@ -96,6 +96,15 @@ type Subscription struct {
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
 
+	// Provider-agnostic support
+	ProviderId   string `json:"providerId,omitempty"`   // External subscription ID (Stripe, etc.)
+	ProviderType string `json:"providerType,omitempty"` // "stripe", "internal"
+
+	// Billing configuration
+	DefaultPaymentMethod string `json:"defaultPaymentMethod,omitempty"` // "stripe:pm_xxx" | "balance"
+	BillingAnchor        int    `json:"billingAnchor,omitempty"`        // Day of month 1-28
+	CurrentInvoiceId     string `json:"currentInvoiceId,omitempty"`
+
 	// Stripe livemode
 	Live bool `json:"live"`
 
