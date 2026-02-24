@@ -28,6 +28,8 @@ RUN CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
 # Production stage
 FROM alpine:3.19
 
+LABEL org.opencontainers.image.source="https://github.com/hanzoai/commerce"
+
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata curl
 
