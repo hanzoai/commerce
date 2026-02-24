@@ -22,7 +22,7 @@ import (
 func create(c *gin.Context) {
 	receivedTime := time.Now()
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 
 	id := c.Params.ByName("organizationid")

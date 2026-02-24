@@ -39,7 +39,7 @@ var (
 	bcDb        *datastore.Datastore
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -101,7 +101,7 @@ var _ = BeforeSuite(func() {
 	bcDb = datastore.New(nsCtx)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

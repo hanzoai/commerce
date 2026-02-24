@@ -31,7 +31,7 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 		}
 	}
 
-	// Set up the db with the namespaced appengine context
+	// Set up the db with the namespaced context
 	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 

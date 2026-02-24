@@ -38,7 +38,7 @@ var (
 	ts          *tokensale.TokenSale
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	// Set EthereumClient to Test Mode
 	ethereum.Test(true)
@@ -77,7 +77,7 @@ var _ = BeforeSuite(func() {
 	})
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

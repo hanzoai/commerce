@@ -74,7 +74,7 @@ func Calculate(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	db := datastore.New(ctx)

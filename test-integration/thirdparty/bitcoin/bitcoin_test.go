@@ -26,7 +26,7 @@ func Test(t *testing.T) {
 	Setup("thirdparty/bitcoin", t)
 }
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c = gincontext.New(ctx)
@@ -80,7 +80,7 @@ var _ = BeforeSuite(func() {
 	bt4.MustCreate()
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
