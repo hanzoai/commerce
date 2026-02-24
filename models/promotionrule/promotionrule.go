@@ -4,10 +4,13 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[PromotionRule]("promotionrule") }
+
 type PromotionRule struct {
-	mixin.Model
+	mixin.EntityBridge[PromotionRule]
 
 	PromotionId string `json:"promotionId"`
 	Attribute   string `json:"attribute"`
@@ -19,8 +22,6 @@ type PromotionRule struct {
 }
 
 func (p *PromotionRule) Load(ps []datastore.Property) (err error) {
-	p.Defaults()
-
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
@@ -36,4 +37,14 @@ func (p *PromotionRule) Save() ([]datastore.Property, error) {
 	p.Values_ = string(json.EncodeBytes(&p.Values))
 
 	return datastore.SaveStruct(p)
+}
+
+func New(db *datastore.Datastore) *PromotionRule {
+	p := new(PromotionRule)
+	p.Init(db)
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("promotionrule")
 }

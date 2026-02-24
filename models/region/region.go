@@ -4,11 +4,14 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+func init() { orm.Register[Region]("region") }
 
 type Country struct {
 	ISO2        string `json:"iso2"`
@@ -20,7 +23,7 @@ type Country struct {
 }
 
 type Region struct {
-	mixin.Model
+	mixin.EntityBridge[Region]
 
 	// Name of region
 	Name string `json:"name"`
@@ -35,17 +38,15 @@ type Region struct {
 	TaxInclusiveEnabled bool `json:"taxInclusiveEnabled"`
 
 	// Countries in this region (serialized to datastore)
-	Countries  []Country `json:"countries" datastore:"-"`
+	Countries  []Country `json:"countries" datastore:"-" orm:"default:[]"`
 	Countries_ string    `json:"-" datastore:",noindex"`
 
 	// Arbitrary metadata
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (r *Region) Load(ps []datastore.Property) (err error) {
-	r.Defaults()
-
 	if err = datastore.LoadStruct(r, ps); err != nil {
 		return err
 	}
@@ -68,4 +69,14 @@ func (r *Region) Save() ([]datastore.Property, error) {
 	r.Metadata_ = string(json.EncodeBytes(&r.Metadata))
 
 	return datastore.SaveStruct(r)
+}
+
+func New(db *datastore.Datastore) *Region {
+	r := new(Region)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("region")
 }

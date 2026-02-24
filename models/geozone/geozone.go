@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[GeoZone]("geozone") }
+
 type GeoZone struct {
-	mixin.Model
+	mixin.EntityBridge[GeoZone]
 
 	Type             string `json:"type"` // "country", "province", "city", "zip"
 	CountryCode      string `json:"countryCode"`
@@ -18,13 +21,11 @@ type GeoZone struct {
 	PostalExpression string `json:"postalExpression"`
 	ServiceZoneId    string `json:"serviceZoneId"`
 
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (g *GeoZone) Load(ps []datastore.Property) (err error) {
-	g.Defaults()
-
 	if err = datastore.LoadStruct(g, ps); err != nil {
 		return err
 	}
@@ -40,4 +41,14 @@ func (g *GeoZone) Save() ([]datastore.Property, error) {
 	g.Metadata_ = string(json.EncodeBytes(&g.Metadata))
 
 	return datastore.SaveStruct(g)
+}
+
+func New(db *datastore.Datastore) *GeoZone {
+	g := new(GeoZone)
+	g.Init(db)
+	return g
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("geozone")
 }
