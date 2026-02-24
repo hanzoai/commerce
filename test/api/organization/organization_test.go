@@ -147,7 +147,7 @@ var _ = Describe("organization", func() {
 			cl.Get("/c/organization/"+org.Id()+"/wallet", &res)
 		})
 		It("Should retrieve created wallet account", func() {
-			orgWallet, _ := org.GetOrCreateWallet(org.Db)
+			orgWallet, _ := org.GetOrCreateWallet(org.Datastore())
 			_, err := orgWallet.CreateAccount("test-wallet-account-2", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
 			Expect(err).ToNot(HaveOccurred())
 			org.MustUpdate()
@@ -157,7 +157,7 @@ var _ = Describe("organization", func() {
 			cl.Get("/c/organization/"+org.Id()+"/wallet/account/test-wallet-account-2", &resRetrieve)
 		})
 		It("Should retrieve withdrawable wallet accounts", func() {
-			orgWallet, _ := org.GetOrCreateWallet(org.Db)
+			orgWallet, _ := org.GetOrCreateWallet(org.Datastore())
 			_, err := orgWallet.CreateAccount("test-wallet-account-3", blockchains.EthereumType, []byte("shamma-lamma-ding-dong"))
 			Expect(err).ToNot(HaveOccurred())
 

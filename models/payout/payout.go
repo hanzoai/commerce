@@ -1,6 +1,7 @@
 package payout
 
 import (
+	"github.com/hanzoai/orm"
 	"fmt"
 	"time"
 
@@ -27,8 +28,11 @@ const (
 var kind = "billing-payout"
 
 // Payout represents an outbound transfer to a bank account or card.
+
+func init() { orm.Register[Payout]("billing-payout") }
+
 type Payout struct {
-	mixin.BaseModel
+	mixin.Model[Payout]
 
 	Amount          int64         `json:"amount"` // cents
 	Currency        currency.Type `json:"currency"`
@@ -45,16 +49,10 @@ type Payout struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (p Payout) Kind() string {
-	return kind
-}
 
-func (p *Payout) Init(db *datastore.Datastore) {
-	p.BaseModel.Init(db, p)
-}
 
 func (p *Payout) Defaults() {
-	p.Parent = p.Db.NewKey("synckey", "", 1, nil)
+	p.Parent = p.Datastore().NewKey("synckey", "", 1, nil)
 	if p.Status == "" {
 		p.Status = Pending
 	}

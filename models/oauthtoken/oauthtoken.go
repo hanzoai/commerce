@@ -4,20 +4,26 @@ import (
 	"math"
 	"time"
 
-	"github.com/hanzoai/commerce/models/mixin"
-
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/jwt"
 	"github.com/hanzoai/commerce/util/rand"
+	"github.com/hanzoai/orm"
 )
+
+var kind = "oauthtoken"
 
 const (
 	Algorithm = "HS256"
 )
 
+
+func init() { orm.Register[Token]("oauthtoken") }
+
 type Token struct {
-	mixin.BaseModel
+	mixin.Model[Token]
 
 	Claims Claims `json:"claims"`
 
@@ -158,4 +164,14 @@ func IsApi(claims Claims) bool {
 
 func IsCustomer(claims Claims) bool {
 	return claims.Type == Customer && claims.UserId != "" && claims.OrganizationName != "" && claims.AppId != ""
+}
+
+func New(db *datastore.Datastore) *Token {
+	t := new(Token)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

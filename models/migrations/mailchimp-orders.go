@@ -50,7 +50,7 @@ var _ = New("mailchimp-orders",
 		}
 
 		// Update cart
-		car := cart.New(ord.Db)
+		car := cart.New(ord.Datastore())
 
 		if ord.CartId != "" {
 			if err := car.GetById(ord.CartId); err != nil {

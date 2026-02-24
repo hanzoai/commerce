@@ -14,7 +14,7 @@ import (
 var FailedToCapturePayment = errors.New("failed to capture Square payment")
 
 func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
-	db := ord.Db
+	db := ord.Datastore()
 
 	payments := make([]*payment.Payment, 0)
 	if err := payment.Query(db).Ancestor(ord.Key()).GetModels(&payments); err != nil {

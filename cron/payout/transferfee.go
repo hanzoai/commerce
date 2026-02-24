@@ -93,7 +93,7 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 	res, err := sc.Payout(tr)
 
 	// Save transfer ID
-	tr.Account.Id = res.ID
+	tr.Account.TransferId = res.ID
 
 	if err != nil {
 		log.Warn("Failed to create Stripe transfer for fee '%s', transfer '%s': %v", fe.Id(), tr.Id(), err, ctx)

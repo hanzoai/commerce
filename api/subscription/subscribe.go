@@ -28,7 +28,7 @@ func subscriptionRequest(c *gin.Context, org *organization.Organization) (*Subsc
 }
 
 func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Subscription, *user.User, error) {
-	ctx := org.Db.Context
+	ctx := org.Datastore().Context
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 
@@ -97,7 +97,7 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 }
 
 func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
-	ctx := org.Db.Context
+	ctx := org.Datastore().Context
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 

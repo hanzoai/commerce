@@ -1,10 +1,14 @@
 package referral
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Referral]("referral") }
 
 type Event string
 
@@ -27,7 +31,7 @@ type Fee struct {
 }
 
 type Referral struct {
-	mixin.BaseModel
+	mixin.Model[Referral]
 
 	Type Event `json:"event"`
 
@@ -46,4 +50,14 @@ type Referral struct {
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
 	Revoked     bool          `json:"revoked"`
+}
+
+func New(db *datastore.Datastore) *Referral {
+	r := new(Referral)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("referral")
 }

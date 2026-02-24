@@ -36,7 +36,7 @@ func (t Token) Document() mixin.Document {
 
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = kind
+	doc.Kind = "token"
 	doc.Id_ = t.Id()
 	doc.Email = t.Email
 	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser

@@ -61,7 +61,7 @@ func withdraw(c *gin.Context) {
 
 	var transactionId string
 
-	nsDb := usr.Db
+	nsDb := usr.Datastore()
 
 	// Check against the balance
 	err = nsDb.RunInTransaction(func(db *datastore.Datastore) error {

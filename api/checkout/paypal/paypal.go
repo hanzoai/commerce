@@ -65,9 +65,7 @@ func Cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (e
 	}
 
 	for i, pay := range payments {
-		pay.BaseModel.Db = db
-		pay.BaseModel.Entity = pay
-
+		pay.Init(db)
 		pay.SetKey(keys[i])
 		pay.Status = payment.Cancelled
 		pay.Account.Error = PaymentCancelled.Error()

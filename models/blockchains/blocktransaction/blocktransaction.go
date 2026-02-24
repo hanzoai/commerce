@@ -1,10 +1,14 @@
 package blocktransaction
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/blockchains"
 )
+
+func init() { orm.Register[BlockTransaction]("blocktransaction") }
 
 // Datastructure for Bitcoin Transaction
 type BitcoinTransaction struct {
@@ -86,7 +90,7 @@ type EthereumTransactionReceipt struct {
 
 // Datastructure combining all the different types of transactions
 type BlockTransaction struct {
-	mixin.BaseModel
+	mixin.Model[BlockTransaction]
 
 	Address string `json:"address"`
 
@@ -100,4 +104,16 @@ type BlockTransaction struct {
 	Status        ProcessStatus `json:"status"`
 	Usage         Usage         `json:"usage"`
 	Confirmations int64         `json:"confirmations"`
+}
+
+func New(db *datastore.Datastore) *BlockTransaction {
+	b := new(BlockTransaction)
+	nsDb := datastore.New(db.Context)
+	nsDb.SetNamespace(BlockchainNamespace)
+	b.Init(nsDb)
+	return b
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("blocktransaction")
 }

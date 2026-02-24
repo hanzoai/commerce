@@ -80,7 +80,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.WalletPassphrase = "1234"
 
 	if false {
-		w, _ := org.GetOrCreateWallet(org.Db)
+		w, _ := org.GetOrCreateWallet(org.Datastore())
 		a1, _ := w.CreateAccount("Test Ethereum", blockchains.EthereumRopstenType, []byte(org.WalletPassphrase))
 		a1.Withdrawable = true
 		a2, _ := w.CreateAccount("Test Bitcoin", blockchains.BitcoinTestnetType, []byte(org.WalletPassphrase))

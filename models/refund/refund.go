@@ -1,9 +1,13 @@
 package refund
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Refund]("refund") }
 
 // Status represents the state of a refund.
 type Status string
@@ -17,7 +21,7 @@ const (
 
 // Refund represents a reversal of a previous payment.
 type Refund struct {
-	mixin.BaseModel
+	mixin.Model[Refund]
 
 	Amount          int64                  `json:"amount"`
 	Currency        currency.Type          `json:"currency"`
@@ -42,4 +46,22 @@ func (r *Refund) MarkFailed(reason string) error {
 	r.Status = Failed
 	r.FailureReason = reason
 	return nil
+}
+
+func (r *Refund) Defaults() {
+	r.Parent = r.Datastore().NewKey("synckey", "", 1, nil)
+	if r.Status == "" {
+		r.Status = Pending
+	}
+}
+
+func New(db *datastore.Datastore) *Refund {
+	r := new(Refund)
+	r.Init(db)
+	r.Defaults()
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("refund")
 }

@@ -8,9 +8,12 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Transaction]("transaction") }
 
 type Type string
 
@@ -23,7 +26,7 @@ const (
 )
 
 type Transaction struct {
-	mixin.BaseModel
+	mixin.Model[Transaction]
 
 	DestinationId   string `json:"destinationId"`
 	DestinationKind string `json:"destinationKind"`
@@ -87,4 +90,15 @@ func (t *Transaction) Save() (ps []datastore.Property, err error) {
 
 func (t *Transaction) Validator() *val.Validator {
 	return nil
+}
+
+func New(db *datastore.Datastore) *Transaction {
+	t := new(Transaction)
+	t.Init(db)
+	t.Parent = db.NewKey("synckey", "", 1, nil)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("transaction")
 }

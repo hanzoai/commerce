@@ -4,8 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
+
+	. "github.com/hanzoai/commerce/types"
 )
+
+var kind = "network-token"
 
 // Status represents the lifecycle state of a network token.
 type Status string
@@ -27,8 +33,11 @@ const (
 
 // NetworkToken represents an EMVCo network token (DPAN) provisioned
 // through a Token Service Provider (TSP).
+
+func init() { orm.Register[NetworkToken]("network-token") }
+
 type NetworkToken struct {
-	mixin.BaseModel
+	mixin.Model[NetworkToken]
 
 	// Reference to the vault card token (tok_...)
 	CardTokenId string `json:"cardTokenId"`
@@ -93,4 +102,25 @@ func (nt *NetworkToken) MarkDeleted() error {
 // IsUsable returns true if the token can be used for transactions.
 func (nt *NetworkToken) IsUsable() bool {
 	return nt.Status == Active
+}
+
+func (nt *NetworkToken) Defaults() {
+	nt.Parent = nt.Datastore().NewKey("synckey", "", 1, nil)
+	if nt.Status == "" {
+		nt.Status = Active
+	}
+	if nt.Metadata == nil {
+		nt.Metadata = make(Map)
+	}
+}
+
+func New(db *datastore.Datastore) *NetworkToken {
+	nt := new(NetworkToken)
+	nt.Init(db)
+	nt.Defaults()
+	return nt
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

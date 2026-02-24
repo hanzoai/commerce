@@ -55,8 +55,7 @@ var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx conte
 	usr.Email = emailAddress
 	usr.FirstName = firstName
 	usr.LastName = lastName
-	usr.Db = ord.Db
-	usr.Entity = usr
+	usr.Init(ord.Datastore())
 
 	email.SendOrderConfirmation(ctx, org, ord, usr)
 })
