@@ -1,11 +1,15 @@
 package fee
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Fee]("fee") }
 
 type Type string
 
@@ -41,7 +45,7 @@ type Ethereum struct {
 }
 
 type Fee struct {
-	mixin.Model
+	mixin.EntityBridge[Fee]
 
 	Name string `json:"name"`
 
@@ -58,7 +62,7 @@ type Fee struct {
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded,omitempty"`
 
-	Status Status `json:"status"`
+	Status Status `json:"status" orm:"default:pending"`
 
 	Ethereum Ethereum `json:"ethereum"`
 	Bitcoin  Bitcoin  `json:"bitcoin"`
@@ -68,4 +72,16 @@ type Fee struct {
 
 	// Internal testing flag
 	Test bool `json:"-"`
+}
+
+// New creates a new Fee wired to the given datastore.
+func New(db *datastore.Datastore) *Fee {
+	f := new(Fee)
+	f.Init(db)
+	return f
+}
+
+// Query returns a datastore query for fees.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("fee")
 }

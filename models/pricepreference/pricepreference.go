@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[PricePreference]("pricepreference") }
+
 type PricePreference struct {
-	mixin.Model
+	mixin.EntityBridge[PricePreference]
 
 	Attribute      string `json:"attribute"`
 	Value          string `json:"value"`
@@ -20,8 +23,6 @@ type PricePreference struct {
 }
 
 func (p *PricePreference) Load(ps []datastore.Property) (err error) {
-	p.Defaults()
-
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
@@ -37,4 +38,14 @@ func (p *PricePreference) Save() ([]datastore.Property, error) {
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	return datastore.SaveStruct(p)
+}
+
+func New(db *datastore.Datastore) *PricePreference {
+	t := new(PricePreference)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("pricepreference")
 }
