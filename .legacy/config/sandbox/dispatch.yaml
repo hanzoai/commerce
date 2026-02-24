@@ -1,3 +1,0 @@
-dispatch:
-  - url: "sandbox.hanzo.ai/*"
-    service: api

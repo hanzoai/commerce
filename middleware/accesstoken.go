@@ -109,7 +109,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
 			header := c.GetHeader("Authorization")
 			if strings.HasPrefix(header, "Bearer ") && strings.TrimPrefix(header, "Bearer ") == svcToken {
-				ctx := GetAppEngine(c)
+				ctx := GetContext(c)
 				db := datastore.New(ctx)
 				org := organization.New(db)
 				if ok, _ := org.Query().Get(); ok {

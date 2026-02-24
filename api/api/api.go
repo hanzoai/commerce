@@ -9,9 +9,7 @@ import (
 	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/collection"
-	"github.com/hanzoai/commerce/models/copy"
 	"github.com/hanzoai/commerce/models/discount"
-	"github.com/hanzoai/commerce/models/media"
 	"github.com/hanzoai/commerce/models/movie"
 	"github.com/hanzoai/commerce/models/note"
 	"github.com/hanzoai/commerce/models/payment"
@@ -40,7 +38,6 @@ import (
 	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
 	billingApi "github.com/hanzoai/commerce/api/billing"
 	authApi "github.com/hanzoai/commerce/api/auth"
-	campaignApi "github.com/hanzoai/commerce/api/campaign"
 	cartApi "github.com/hanzoai/commerce/api/cart"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
@@ -50,7 +47,6 @@ import (
 	deployApi "github.com/hanzoai/commerce/api/deploy"
 	formApi "github.com/hanzoai/commerce/api/form"
 	libraryApi "github.com/hanzoai/commerce/api/library"
-	marketingApi "github.com/hanzoai/commerce/api/marketing"
 	namespaceApi "github.com/hanzoai/commerce/api/namespace"
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
@@ -115,9 +111,7 @@ func Route(api router.Router) {
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
-	rest.New(copy.Copy{}).Route(api, tokenRequired)
 	rest.New(discount.Discount{}).Route(api, tokenRequired)
-	rest.New(media.Media{}).Route(api, tokenRequired)
 	rest.New(movie.Movie{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
@@ -146,7 +140,6 @@ func Route(api router.Router) {
 	accountApi.Route(api, tokenRequired)
 	affiliateApi.Route(api, tokenRequired)
 	billingApi.Route(api, tokenRequired)
-	campaignApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
@@ -219,8 +212,7 @@ func Route(api router.Router) {
 	// Library Api
 	libraryApi.Route(api)
 
-	// Marketing Api
-	marketingApi.Route(api)
+	// Marketing routes moved to github.com/hanzoai/marketing
 
 	// Bitcoin webhook
 	bitcoinApi.Route(api)

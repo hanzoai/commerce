@@ -63,7 +63,6 @@ func init() {
 		Collection(c)
 		Token(c)
 		Coupon(c)
-		Campaign(c)
 		Store(c)
 	})
 }
