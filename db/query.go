@@ -3,12 +3,13 @@ package db
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
+
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // sqliteQuery implements the Query interface for SQLite
@@ -16,6 +17,7 @@ type sqliteQuery struct {
 	db   *SQLiteDB
 	tx   *sql.Tx // Optional transaction context
 	kind string
+	ns   string // namespace for scoping queries
 
 	// Query state
 	filters     []queryFilter
@@ -33,7 +35,7 @@ type sqliteQuery struct {
 type queryFilter struct {
 	field string
 	op    string
-	value interface{}
+	value any
 }
 
 type queryOrder struct {
@@ -41,15 +43,20 @@ type queryOrder struct {
 	desc  bool
 }
 
+// getNamespace extracts the namespace from context.
+func getNamespace(ctx context.Context) string {
+	return nscontext.GetNamespace(ctx)
+}
+
 // Filter adds a filter condition (format: "field=", "field>", etc.)
-func (q *sqliteQuery) Filter(filterStr string, value interface{}) Query {
+func (q *sqliteQuery) Filter(filterStr string, value any) Query {
 	// Parse filter string like "Field=" or "Field>="
 	field, op := parseFilterString(filterStr)
 	return q.FilterField(field, op, value)
 }
 
 // FilterField adds a filter with explicit operator
-func (q *sqliteQuery) FilterField(fieldPath string, op string, value interface{}) Query {
+func (q *sqliteQuery) FilterField(fieldPath string, op string, value any) Query {
 	newQ := q.clone()
 	newQ.filters = append(newQ.filters, queryFilter{
 		field: fieldPath,
@@ -141,7 +148,13 @@ func (q *sqliteQuery) End(cursor Cursor) Query {
 }
 
 // GetAll retrieves all matching entities
-func (q *sqliteQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error) {
+func (q *sqliteQuery) GetAll(ctx context.Context, dst any) ([]Key, error) {
+	q.ns = getNamespace(ctx)
+
+	if dst == nil {
+		return q.Keys(ctx)
+	}
+
 	query, args := q.buildSQL()
 
 	var rows *sql.Rows
@@ -180,7 +193,7 @@ func (q *sqliteQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error
 		}
 
 		elem := reflect.New(elemType)
-		if err := json.Unmarshal(data, elem.Interface()); err != nil {
+		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return nil, err
 		}
 
@@ -193,7 +206,7 @@ func (q *sqliteQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error
 		keys = append(keys, &sqliteKey{
 			kind:      q.kind,
 			stringID:  id,
-			namespace: q.db.config.TenantID,
+			namespace: q.ns,
 		})
 	}
 
@@ -202,7 +215,9 @@ func (q *sqliteQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error
 }
 
 // First retrieves the first matching entity
-func (q *sqliteQuery) First(ctx context.Context, dst interface{}) (Key, error) {
+func (q *sqliteQuery) First(ctx context.Context, dst any) (Key, error) {
+	q.ns = getNamespace(ctx)
+
 	limitedQ := q.Limit(1).(*sqliteQuery)
 	query, args := limitedQ.buildSQL()
 
@@ -223,23 +238,25 @@ func (q *sqliteQuery) First(ctx context.Context, dst interface{}) (Key, error) {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(data, dst); err != nil {
+	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
 
 	return &sqliteKey{
 		kind:      q.kind,
 		stringID:  id,
-		namespace: q.db.config.TenantID,
+		namespace: q.ns,
 	}, nil
 }
 
 // Count returns the number of matching entities
 func (q *sqliteQuery) Count(ctx context.Context) (int, error) {
+	q.ns = getNamespace(ctx)
+
 	where, args := q.buildWhere()
 
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM _entities WHERE kind = ? AND deleted = 0%s`, where)
-	args = append([]interface{}{q.kind}, args...)
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM _entities WHERE kind = ? AND namespace = ? AND deleted = 0%s`, where)
+	args = append([]any{q.kind, q.ns}, args...)
 
 	var row *sql.Row
 	if q.tx != nil {
@@ -255,10 +272,12 @@ func (q *sqliteQuery) Count(ctx context.Context) (int, error) {
 
 // Keys returns only the keys of matching entities
 func (q *sqliteQuery) Keys(ctx context.Context) ([]Key, error) {
+	q.ns = getNamespace(ctx)
+
 	where, args := q.buildWhere()
 
-	query := fmt.Sprintf(`SELECT id FROM _entities WHERE kind = ? AND deleted = 0%s`, where)
-	args = append([]interface{}{q.kind}, args...)
+	query := fmt.Sprintf(`SELECT id FROM _entities WHERE kind = ? AND namespace = ? AND deleted = 0%s`, where)
+	args = append([]any{q.kind, q.ns}, args...)
 
 	query += q.buildOrderBy()
 	query += q.buildLimitOffset()
@@ -286,7 +305,7 @@ func (q *sqliteQuery) Keys(ctx context.Context) ([]Key, error) {
 		keys = append(keys, &sqliteKey{
 			kind:      q.kind,
 			stringID:  id,
-			namespace: q.db.config.TenantID,
+			namespace: q.ns,
 		})
 	}
 
@@ -295,6 +314,8 @@ func (q *sqliteQuery) Keys(ctx context.Context) ([]Key, error) {
 
 // Run returns an iterator over the results
 func (q *sqliteQuery) Run(ctx context.Context) Iterator {
+	q.ns = getNamespace(ctx)
+
 	query, args := q.buildSQL()
 
 	var rows *sql.Rows
@@ -310,13 +331,13 @@ func (q *sqliteQuery) Run(ctx context.Context) Iterator {
 		rows:      rows,
 		err:       err,
 		kind:      q.kind,
-		namespace: q.db.config.TenantID,
+		namespace: q.ns,
 		offset:    0,
 	}
 }
 
 // buildSQL constructs the SQL query
-func (q *sqliteQuery) buildSQL() (string, []interface{}) {
+func (q *sqliteQuery) buildSQL() (string, []any) {
 	where, args := q.buildWhere()
 
 	selectClause := "id, data"
@@ -324,8 +345,8 @@ func (q *sqliteQuery) buildSQL() (string, []interface{}) {
 		selectClause = "DISTINCT " + selectClause
 	}
 
-	query := fmt.Sprintf(`SELECT %s FROM _entities WHERE kind = ? AND deleted = 0%s`, selectClause, where)
-	args = append([]interface{}{q.kind}, args...)
+	query := fmt.Sprintf(`SELECT %s FROM _entities WHERE kind = ? AND namespace = ? AND deleted = 0%s`, selectClause, where)
+	args = append([]any{q.kind, q.ns}, args...)
 
 	query += q.buildOrderBy()
 	query += q.buildLimitOffset()
@@ -334,9 +355,9 @@ func (q *sqliteQuery) buildSQL() (string, []interface{}) {
 }
 
 // buildWhere constructs the WHERE clause
-func (q *sqliteQuery) buildWhere() (string, []interface{}) {
+func (q *sqliteQuery) buildWhere() (string, []any) {
 	var conditions []string
-	var args []interface{}
+	var args []any
 
 	// Ancestor filter
 	if q.ancestor != nil {
@@ -394,7 +415,7 @@ func (q *sqliteQuery) buildWhere() (string, []interface{}) {
 // buildOrderBy constructs the ORDER BY clause
 func (q *sqliteQuery) buildOrderBy() string {
 	if len(q.orders) == 0 {
-		return ""
+		return " ORDER BY rowid ASC"
 	}
 
 	var parts []string
@@ -441,7 +462,7 @@ func toJSONFieldName(field string) string {
 	if field == "" {
 		return field
 	}
-	// Handle nested paths (e.g., "Account.TransactionHash" → "account.transactionHash")
+	// Handle nested paths (e.g., "Account.TransactionHash" -> "account.transactionHash")
 	if strings.Contains(field, ".") {
 		parts := strings.Split(field, ".")
 		for i, p := range parts {
@@ -461,17 +482,17 @@ func lowercaseFirst(s string) string {
 	return string(runes)
 }
 
-// parseFilterString parses "Field=" into field and operator
+// parseFilterString parses "Field=" or "Field =" into field and operator
 func parseFilterString(s string) (field, op string) {
 	// Find the operator at the end
 	operators := []string{">=", "<=", "!=", "=", ">", "<"}
 	for _, opStr := range operators {
 		if strings.HasSuffix(s, opStr) {
-			return strings.TrimSuffix(s, opStr), opStr
+			return strings.TrimSpace(strings.TrimSuffix(s, opStr)), opStr
 		}
 	}
 	// Default to equality
-	return s, "="
+	return strings.TrimSpace(s), "="
 }
 
 // normalizeOp converts operators to SQL
@@ -497,7 +518,7 @@ type sqliteIterator struct {
 	offset    int
 }
 
-func (it *sqliteIterator) Next(dst interface{}) (Key, error) {
+func (it *sqliteIterator) Next(dst any) (Key, error) {
 	if it.err != nil {
 		return nil, it.err
 	}
@@ -520,7 +541,7 @@ func (it *sqliteIterator) Next(dst interface{}) (Key, error) {
 		return nil, err
 	}
 
-	if err := json.Unmarshal(data, dst); err != nil {
+	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
 
