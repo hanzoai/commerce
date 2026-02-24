@@ -14,6 +14,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
+
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // SQLiteDBConfig holds configuration for a SQLite database
@@ -182,13 +184,15 @@ func (db *SQLiteDB) initSchema() error {
 	// Create generic entity storage table
 	_, err = db.writeDB.Exec(`
 		CREATE TABLE IF NOT EXISTS _entities (
-			id TEXT PRIMARY KEY,
+			id TEXT NOT NULL,
 			kind TEXT NOT NULL,
+			namespace TEXT NOT NULL DEFAULT '',
 			parent_id TEXT,
 			data JSON NOT NULL,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			deleted INTEGER DEFAULT 0
+			deleted INTEGER DEFAULT 0,
+			PRIMARY KEY (id, kind, namespace)
 		)
 	`)
 	if err != nil {
@@ -198,6 +202,7 @@ func (db *SQLiteDB) initSchema() error {
 	// Create indexes
 	_, err = db.writeDB.Exec(`
 		CREATE INDEX IF NOT EXISTS idx_entities_kind ON _entities(kind);
+		CREATE INDEX IF NOT EXISTS idx_entities_ns ON _entities(namespace);
 		CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id);
 		CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted);
 	`)
@@ -293,13 +298,24 @@ func (db *SQLiteDB) Close() error {
 }
 
 // Get retrieves an entity by key
-func (db *SQLiteDB) Get(ctx context.Context, key Key, dst interface{}) error {
+func (db *SQLiteDB) Get(ctx context.Context, key Key, dst any) error {
 	if key == nil {
 		return ErrInvalidKey
 	}
 
-	query := `SELECT data FROM _entities WHERE id = ? AND kind = ? AND deleted = 0`
-	row := db.readDB.QueryRowContext(ctx, query, key.Encode(), key.Kind())
+	ns := getNamespace(ctx)
+
+	var row *sql.Row
+	if key.Kind() == "" {
+		// Kind-less fallback: search by just ID and namespace
+		row = db.readDB.QueryRowContext(ctx,
+			`SELECT data FROM _entities WHERE id = ? AND namespace = ? AND deleted = 0 LIMIT 1`,
+			key.Encode(), ns)
+	} else {
+		row = db.readDB.QueryRowContext(ctx,
+			`SELECT data FROM _entities WHERE id = ? AND kind = ? AND namespace = ? AND deleted = 0`,
+			key.Encode(), key.Kind(), ns)
+	}
 
 	var data []byte
 	if err := row.Scan(&data); err != nil {
@@ -309,16 +325,16 @@ func (db *SQLiteDB) Get(ctx context.Context, key Key, dst interface{}) error {
 		return err
 	}
 
-	return json.Unmarshal(data, dst)
+	return unmarshalForDB(data, dst)
 }
 
 // Put stores an entity
-func (db *SQLiteDB) Put(ctx context.Context, key Key, src interface{}) (Key, error) {
+func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 	if key == nil {
 		return nil, ErrInvalidKey
 	}
 
-	data, err := json.Marshal(src)
+	data, err := marshalForDB(src)
 	if err != nil {
 		return nil, fmt.Errorf("db: failed to marshal entity: %w", err)
 	}
@@ -329,16 +345,17 @@ func (db *SQLiteDB) Put(ctx context.Context, key Key, src interface{}) (Key, err
 		parentID = &id
 	}
 
+	ns := getNamespace(ctx)
+
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
 	_, err = db.writeDB.ExecContext(ctx, `
-		INSERT INTO _entities (id, kind, parent_id, data, updated_at)
-		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(id) DO UPDATE SET
-			data = excluded.data,
-			updated_at = CURRENT_TIMESTAMP
-	`, key.Encode(), key.Kind(), parentID, data)
+		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
+	`, key.Encode(), key.Kind(), ns, parentID, data)
 
 	if err != nil {
 		return nil, err
@@ -353,36 +370,38 @@ func (db *SQLiteDB) Delete(ctx context.Context, key Key) error {
 		return ErrInvalidKey
 	}
 
+	ns := getNamespace(ctx)
+
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
 	_, err := db.writeDB.ExecContext(ctx, `
 		UPDATE _entities SET deleted = 1, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND kind = ?
-	`, key.Encode(), key.Kind())
+		WHERE id = ? AND kind = ? AND namespace = ?
+	`, key.Encode(), key.Kind(), ns)
 
 	return err
 }
 
 // GetMulti retrieves multiple entities
-func (db *SQLiteDB) GetMulti(ctx context.Context, keys []Key, dst interface{}) error {
+func (db *SQLiteDB) GetMulti(ctx context.Context, keys []Key, dst any) error {
 	if len(keys) == 0 {
 		return nil
 	}
 
-	// Build query with placeholders
+	ns := getNamespace(ctx)
+
 	placeholders := make([]string, len(keys))
-	args := make([]interface{}, len(keys)*2)
+	args := make([]any, len(keys)*3)
 	for i, k := range keys {
-		placeholders[i] = "(?, ?)"
-		args[i*2] = k.Encode()
-		args[i*2+1] = k.Kind()
+		placeholders[i] = "(?, ?, ?)"
+		args[i*3] = k.Encode()
+		args[i*3+1] = k.Kind()
+		args[i*3+2] = ns
 	}
 
-	query := fmt.Sprintf(`
-		SELECT id, data FROM _entities
-		WHERE (id, kind) IN (%s) AND deleted = 0
-	`, strings.Join(placeholders, ","))
+	query := fmt.Sprintf(`SELECT id, data FROM _entities WHERE (id, kind, namespace) IN (%s) AND deleted = 0`,
+		strings.Join(placeholders, ","))
 
 	rows, err := db.readDB.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -390,7 +409,6 @@ func (db *SQLiteDB) GetMulti(ctx context.Context, keys []Key, dst interface{}) e
 	}
 	defer rows.Close()
 
-	// Build result map
 	results := make(map[string][]byte)
 	for rows.Next() {
 		var id string
@@ -401,36 +419,57 @@ func (db *SQLiteDB) GetMulti(ctx context.Context, keys []Key, dst interface{}) e
 		results[id] = data
 	}
 
-	// Unmarshal into destination slice
 	dstVal := reflect.ValueOf(dst)
-	if dstVal.Kind() != reflect.Ptr || dstVal.Elem().Kind() != reflect.Slice {
-		return errors.New("db: dst must be a pointer to a slice")
+	var sliceVal reflect.Value
+	switch dstVal.Kind() {
+	case reflect.Ptr:
+		if dstVal.Elem().Kind() != reflect.Slice {
+			return errors.New("db: dst must be a slice or pointer to a slice")
+		}
+		sliceVal = dstVal.Elem()
+	case reflect.Slice:
+		sliceVal = dstVal
+	default:
+		return errors.New("db: dst must be a slice or pointer to a slice")
 	}
 
-	sliceVal := dstVal.Elem()
 	elemType := sliceVal.Type().Elem()
+	elemIsPtr := elemType.Kind() == reflect.Ptr
+	baseType := elemType
+	if elemIsPtr {
+		baseType = elemType.Elem()
+	}
 
-	for _, k := range keys {
+	// Fill in-place if slice has the right length, otherwise build new slice
+	inPlace := sliceVal.Len() == len(keys)
+
+	for i, k := range keys {
 		data, ok := results[k.Encode()]
 		if !ok {
-			// Append nil/zero value for missing entities
-			sliceVal = reflect.Append(sliceVal, reflect.Zero(elemType))
+			if inPlace {
+				sliceVal.Index(i).Set(reflect.Zero(elemType))
+			}
 			continue
 		}
 
-		elem := reflect.New(elemType.Elem())
-		if err := json.Unmarshal(data, elem.Interface()); err != nil {
+		elem := reflect.New(baseType)
+		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return err
 		}
-		sliceVal = reflect.Append(sliceVal, elem)
-	}
 
-	dstVal.Elem().Set(sliceVal)
+		if inPlace {
+			if elemIsPtr {
+				sliceVal.Index(i).Set(elem)
+			} else {
+				sliceVal.Index(i).Set(elem.Elem())
+			}
+		}
+	}
 	return nil
 }
 
 // PutMulti stores multiple entities
-func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src interface{}) ([]Key, error) {
+func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src any) ([]Key, error) {
 	if len(keys) == 0 {
 		return keys, nil
 	}
@@ -444,6 +483,8 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src interface{}) (
 		return nil, errors.New("db: keys and src must have same length")
 	}
 
+	ns := getNamespace(ctx)
+
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
@@ -454,11 +495,10 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src interface{}) (
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO _entities (id, kind, parent_id, data, updated_at)
-		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(id) DO UPDATE SET
-			data = excluded.data,
-			updated_at = CURRENT_TIMESTAMP
+		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return nil, err
@@ -466,7 +506,7 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src interface{}) (
 	defer stmt.Close()
 
 	for i, key := range keys {
-		data, err := json.Marshal(srcVal.Index(i).Interface())
+		data, err := marshalForDB(srcVal.Index(i).Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -477,7 +517,7 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src interface{}) (
 			parentID = &id
 		}
 
-		_, err = stmt.ExecContext(ctx, key.Encode(), key.Kind(), parentID, data)
+		_, err = stmt.ExecContext(ctx, key.Encode(), key.Kind(), ns, parentID, data)
 		if err != nil {
 			return nil, err
 		}
@@ -496,6 +536,8 @@ func (db *SQLiteDB) DeleteMulti(ctx context.Context, keys []Key) error {
 		return nil
 	}
 
+	ns := getNamespace(ctx)
+
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
@@ -507,7 +549,7 @@ func (db *SQLiteDB) DeleteMulti(ctx context.Context, keys []Key) error {
 
 	stmt, err := tx.PrepareContext(ctx, `
 		UPDATE _entities SET deleted = 1, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND kind = ?
+		WHERE id = ? AND kind = ? AND namespace = ?
 	`)
 	if err != nil {
 		return err
@@ -515,7 +557,7 @@ func (db *SQLiteDB) DeleteMulti(ctx context.Context, keys []Key) error {
 	defer stmt.Close()
 
 	for _, key := range keys {
-		_, err = stmt.ExecContext(ctx, key.Encode(), key.Kind())
+		_, err = stmt.ExecContext(ctx, key.Encode(), key.Kind(), ns)
 		if err != nil {
 			return err
 		}
@@ -556,7 +598,7 @@ func (db *SQLiteDB) VectorSearch(ctx context.Context, opts *VectorSearchOptions)
 		WHERE embedding MATCH ?
 	`
 
-	args := []interface{}{string(vectorJSON)}
+	args := []any{string(vectorJSON)}
 
 	if opts.Kind != "" {
 		query += " AND kind = ?"
@@ -599,7 +641,7 @@ func (db *SQLiteDB) VectorSearch(ctx context.Context, opts *VectorSearchOptions)
 }
 
 // PutVector stores a vector embedding
-func (db *SQLiteDB) PutVector(ctx context.Context, kind string, id string, vector []float32, metadata map[string]interface{}) error {
+func (db *SQLiteDB) PutVector(ctx context.Context, kind string, id string, vector []float32, metadata map[string]any) error {
 	vectorJSON, err := json.Marshal(vector)
 	if err != nil {
 		return err
@@ -671,8 +713,9 @@ func (db *SQLiteDB) RunInTransaction(ctx context.Context, fn func(tx Transaction
 	defer sqlTx.Rollback()
 
 	tx := &sqliteTransaction{
-		db: db,
-		tx: sqlTx,
+		db:  db,
+		tx:  sqlTx,
+		ctx: ctx,
 	}
 
 	if err := fn(tx); err != nil {
@@ -728,13 +771,24 @@ func generateID() string {
 
 // sqliteTransaction implements Transaction
 type sqliteTransaction struct {
-	db *SQLiteDB
-	tx *sql.Tx
+	db  *SQLiteDB
+	tx  *sql.Tx
+	ctx context.Context
 }
 
-func (t *sqliteTransaction) Get(key Key, dst interface{}) error {
-	query := `SELECT data FROM _entities WHERE id = ? AND kind = ? AND deleted = 0`
-	row := t.tx.QueryRow(query, key.Encode(), key.Kind())
+func (t *sqliteTransaction) Get(key Key, dst any) error {
+	ns := nscontext.GetNamespace(t.ctx)
+
+	var row *sql.Row
+	if key.Kind() == "" {
+		row = t.tx.QueryRow(
+			`SELECT data FROM _entities WHERE id = ? AND namespace = ? AND deleted = 0 LIMIT 1`,
+			key.Encode(), ns)
+	} else {
+		row = t.tx.QueryRow(
+			`SELECT data FROM _entities WHERE id = ? AND kind = ? AND namespace = ? AND deleted = 0`,
+			key.Encode(), key.Kind(), ns)
+	}
 
 	var data []byte
 	if err := row.Scan(&data); err != nil {
@@ -744,11 +798,11 @@ func (t *sqliteTransaction) Get(key Key, dst interface{}) error {
 		return err
 	}
 
-	return json.Unmarshal(data, dst)
+	return unmarshalForDB(data, dst)
 }
 
-func (t *sqliteTransaction) Put(key Key, src interface{}) (Key, error) {
-	data, err := json.Marshal(src)
+func (t *sqliteTransaction) Put(key Key, src any) (Key, error) {
+	data, err := marshalForDB(src)
 	if err != nil {
 		return nil, err
 	}
@@ -759,22 +813,25 @@ func (t *sqliteTransaction) Put(key Key, src interface{}) (Key, error) {
 		parentID = &id
 	}
 
+	ns := nscontext.GetNamespace(t.ctx)
+
 	_, err = t.tx.Exec(`
-		INSERT INTO _entities (id, kind, parent_id, data, updated_at)
-		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(id) DO UPDATE SET
-			data = excluded.data,
-			updated_at = CURRENT_TIMESTAMP
-	`, key.Encode(), key.Kind(), parentID, data)
+		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			data = excluded.data, updated_at = CURRENT_TIMESTAMP
+	`, key.Encode(), key.Kind(), ns, parentID, data)
 
 	return key, err
 }
 
 func (t *sqliteTransaction) Delete(key Key) error {
+	ns := nscontext.GetNamespace(t.ctx)
+
 	_, err := t.tx.Exec(`
 		UPDATE _entities SET deleted = 1, updated_at = CURRENT_TIMESTAMP
-		WHERE id = ? AND kind = ?
-	`, key.Encode(), key.Kind())
+		WHERE id = ? AND kind = ? AND namespace = ?
+	`, key.Encode(), key.Kind(), ns)
 	return err
 }
 
