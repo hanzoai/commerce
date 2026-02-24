@@ -22,6 +22,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/query"
+	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/orm"
 )
 
@@ -101,6 +102,9 @@ func (b *Model[T]) SetKey(key interface{}) error {
 	switch v := key.(type) {
 	case datastore.Key:
 		b.Model.SetKey(DSKeyToOrm(v))
+		if parent := v.Parent(); parent != nil {
+			b.Parent = parent
+		}
 	case orm.Key:
 		b.Model.SetKey(v)
 	case string:
@@ -118,7 +122,25 @@ func (b *Model[T]) SetKey(key interface{}) error {
 	default:
 		return fmt.Errorf("orm bridge: unable to set %v as key", key)
 	}
+	b.updateId()
 	return nil
+}
+
+// updateId encodes the ORM key as a hashid string and sets Id_.
+// This ensures IDs returned to clients are hashid-encoded (matching old BaseModel behavior).
+func (b *Model[T]) updateId() {
+	k := b.Model.Key()
+	if k == nil {
+		return
+	}
+	dsKey := OrmKeyToDS(k)
+	if dsKey == nil {
+		return
+	}
+	encoded := hashid.EncodeKey(b.Context(), dsKey)
+	if encoded != "" {
+		b.Model.Id_ = encoded
+	}
 }
 
 func (b *Model[T]) NewKey() datastore.Key {
@@ -129,20 +151,89 @@ func (b *Model[T]) NewKey() datastore.Key {
 	return OrmKeyToDS(b.Model.Key())
 }
 
-// --- CRUD (inherited from orm.Model[T], no override needed for matching sigs) ---
-// Put, Create, Update, Delete, MustCreate, MustUpdate, MustDelete are
-// inherited from orm.Model[T] with matching signatures.
+// --- CRUD ---
+// Override all CRUD methods to ensure:
+// 1. Keys are auto-allocated before persistence (old BaseModel behavior)
+// 2. Hashid-encoded Id_ is set after persistence
+// 3. PropertyLoadSaver.Save() side effects run before serialization
+
+func (b *Model[T]) ensureKey() {
+	if b.ds == nil {
+		return
+	}
+	if b.Model.Key() == nil {
+		newKey := b.NewKey()
+		b.SetKey(newKey)
+	} else {
+		b.updateId()
+	}
+}
+
+// callSave invokes PropertyLoadSaver.Save() for side effects before ORM serialization.
+// E.g., Coupon.Save() uppercases the code, Order.Save() calculates totals.
+// Only runs if the model has been properly initialized (has a datastore).
+func (b *Model[T]) callSave() {
+	if b.ds == nil {
+		return
+	}
+	type propertySaver interface {
+		Save() ([]datastore.Property, error)
+	}
+	if saver, ok := any(b.self()).(propertySaver); ok {
+		saver.Save()
+	}
+}
+
+func (b *Model[T]) Put() error {
+	b.callSave()
+	b.ensureKey()
+	err := b.Model.Put()
+	b.updateId()
+	return err
+}
+
+func (b *Model[T]) Create() error {
+	b.callSave()
+	b.ensureKey()
+	err := b.Model.Create()
+	b.updateId()
+	return err
+}
+
+func (b *Model[T]) Update() error {
+	b.callSave()
+	b.ensureKey()
+	err := b.Model.Update()
+	b.updateId()
+	return err
+}
+
+func (b *Model[T]) Delete() error {
+	return b.Model.Delete()
+}
 
 // Get overrides orm.Model[T].Get to accept datastore.Key.
 func (b *Model[T]) Get(key datastore.Key) error {
 	if key != nil {
 		b.Model.SetKey(DSKeyToOrm(key))
 	}
-	return b.Model.Get(b.Model.Key())
+	err := b.Model.Get(b.Model.Key())
+	b.updateId()
+	return err
 }
 
-// GetById delegates to orm.Model[T].GetById (matching signature).
-// Inherited directly — no override needed.
+// GetById uses mixin.ModelQuery for hashid decoding, slug fallbacks, etc.
+func (b *Model[T]) GetById(id string) error {
+	ok, err := b.Query().ById(id)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return datastore.ErrNoSuchEntity
+	}
+	b.updateId()
+	return nil
+}
 
 // --- Must variants ---
 
@@ -159,14 +250,32 @@ func (b *Model[T]) MustGet(key datastore.Key) {
 }
 
 func (b *Model[T]) MustGetById(id string) {
-	if err := b.Model.GetById(id); err != nil {
+	if err := b.GetById(id); err != nil {
 		panic(err)
 	}
 }
 
 func (b *Model[T]) MustPut() {
-	if err := b.Model.Put(); err != nil {
+	if err := b.Put(); err != nil {
 		panic(err)
+	}
+}
+
+func (b *Model[T]) MustCreate() {
+	if err := b.Create(); err != nil {
+		panic(fmt.Sprintf("orm bridge: MustCreate: %v", err))
+	}
+}
+
+func (b *Model[T]) MustUpdate() {
+	if err := b.Update(); err != nil {
+		panic(fmt.Sprintf("orm bridge: MustUpdate: %v", err))
+	}
+}
+
+func (b *Model[T]) MustDelete() {
+	if err := b.Delete(); err != nil {
+		panic(fmt.Sprintf("orm bridge: MustDelete: %v", err))
 	}
 }
 
@@ -227,8 +336,9 @@ func (b *Model[T]) GetOrCreate(filterStr string, value interface{}) error {
 		return err
 	}
 	if !ok {
-		return b.Model.Create()
+		return b.Create()
 	}
+	b.updateId()
 	return nil
 }
 
@@ -239,9 +349,9 @@ func (b *Model[T]) GetOrUpdate(filterStr string, value interface{}) error {
 		return err
 	}
 	if !ok {
-		return b.Model.Create()
+		return b.Create()
 	}
-	return b.Model.Update()
+	return b.Update()
 }
 
 // --- Datastore / Transaction ---
