@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
 )
@@ -70,6 +72,10 @@ func NewContext(args ...Options) Context {
 	ctx = context.WithValue(ctx, "testDB", database)
 	ctx = context.WithValue(ctx, "testAppID", opts.AppID)
 	ctx = context.WithValue(ctx, "testTempDir", tempDir)
+
+	// Set global defaults so datastore.New() and query.New() work
+	datastore.SetDefaultDB(database)
+	query.SetDefaultDB(database)
 
 	// Return context with database embedded
 	SharedContext = &testContext{

@@ -1,6 +1,9 @@
 package test
 
 import (
+	"context"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -8,8 +11,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/datastore/query"
+	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 func Test(t *testing.T) {
@@ -19,55 +23,89 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx ae.Context
-	db  *datastore.Datastore
+	testDB  db.DB
+	testMgr *db.Manager
+	tempDir string
+	ds      *datastore.Datastore
 )
 
-// Setup test context and datastore before tests
+// Setup SQLite directly — no ae dependency
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
-	db = datastore.New(ctx)
+	var err error
+	tempDir, err = os.MkdirTemp("", "datastore-test-*")
+	Expect(err).NotTo(HaveOccurred())
+
+	cfg := db.DefaultConfig()
+	cfg.DataDir = tempDir
+	cfg.OrgDataDir = filepath.Join(tempDir, "orgs")
+	cfg.UserDataDir = filepath.Join(tempDir, "users")
+	cfg.EnableDatastore = false
+	cfg.EnableVectorSearch = false
+
+	testMgr, err = db.NewManager(cfg)
+	Expect(err).NotTo(HaveOccurred())
+
+	testDB, err = testMgr.Org("test")
+	Expect(err).NotTo(HaveOccurred())
+
+	datastore.SetDefaultDB(testDB)
+	query.SetDefaultDB(testDB)
+
+	ds = datastore.New(context.Background())
 })
 
-// Tear-down test context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	if testMgr != nil {
+		testMgr.Close()
+	}
+	if tempDir != "" {
+		os.RemoveAll(tempDir)
+	}
 })
 
 var _ = Describe("Key", func() {
 	Context("AllocateID", func() {
 		It("should be non-zero", func() {
-			id := db.AllocateID("test", nil)
+			id := ds.AllocateID("test", nil)
 			Expect(id).NotTo(Equal(0))
 		})
 	})
 
 	Context("Integer key", func() {
 		It("should create key from int", func() {
-			ickey := db.NewIncompleteKey("foo", nil)
-			aekey, _ := db.NewKeyFromInt("foo", 10, nil)
+			ickey := ds.NewIncompleteKey("foo", nil)
+			aekey, _ := ds.NewKeyFromInt("foo", 10, nil)
 			Expect(aekey).NotTo(Equal(ickey))
 		})
 	})
 
 	Context("String key", func() {
 		It("should create key from string", func() {
-			ickey := db.NewIncompleteKey("foo", nil)
-			aekey := db.NewKeyFromString("foo", "bar", nil)
+			ickey := ds.NewIncompleteKey("foo", nil)
+			aekey := ds.NewKeyFromString("foo", "bar", nil)
 			Expect(aekey).NotTo(Equal(ickey))
 		})
 	})
 })
 
 var _ = Describe("Datastore.DecodeKey", func() {
-	kind := "decodekey-test"
-	Context("Key encoded with datastore", func() {
-		It("should be the same", func() {
-			key := db.NewKeyFromString(kind, "decodekey-testkey", nil)
-			decodedKey, err := db.DecodeKey(key.Encode())
+	Context("Key encoded with datastore (string key)", func() {
+		It("should preserve the string ID", func() {
+			key := ds.NewKeyFromString("decodekey-test", "decodekey-testkey", nil)
+			decodedKey, err := ds.DecodeKey(key.Encode())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decodedKey.StringID()).To(Equal(key.StringID()))
+		})
+	})
+
+	Context("Key encoded with datastore (integer key via EncodeKey)", func() {
+		It("should preserve kind and intID", func() {
+			key := ds.NewKey("user", "", 42, nil)
+			encoded := ds.EncodeKey(key)
+			decodedKey, err := ds.DecodeKey(encoded)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(decodedKey.Kind()).To(Equal(key.Kind()))
-			Expect(decodedKey.StringID()).To(Equal(key.StringID()))
+			Expect(decodedKey.IntID()).To(Equal(key.IntID()))
 		})
 	})
 })
@@ -88,20 +126,20 @@ var _ = Describe("Datastore.Get", func() {
 	Context("When storing entity with Datastore.Put", func() {
 		BeforeEach(func() {
 			var err error
-			key, err = db.Put(kind, entity)
+			key, err = ds.Put(kind, entity)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("Retrieved entity should not be empty", func() {
 			retrievedEntity := &Entity{}
-			err := db.Get(key, retrievedEntity)
+			err := ds.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
 
 		It("Retrieved entity should equal what was inserted", func() {
 			retrievedEntity := &Entity{}
-			err := db.Get(key, retrievedEntity)
+			err := ds.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).To(Equal(entity))
 		})
@@ -110,11 +148,11 @@ var _ = Describe("Datastore.Get", func() {
 	Context("When storing entity with Put and GetById", func() {
 		retrievedEntity := &Entity{}
 		BeforeEach(func() {
-			key := db.NewKeyFromString(kind, "key", nil)
-			_, err := db.Put(key, entity)
+			key := ds.NewKeyFromString(kind, "key", nil)
+			_, err := ds.Put(key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = db.GetById(key.Encode(), retrievedEntity)
+			err = ds.GetById(key.Encode(), retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -136,12 +174,10 @@ var _ = Describe("Put", func() {
 			a := &Entity{"test-wrapper-put"}
 			b := &Entity{}
 
-			// Store entity
-			key, err := db.Put(kind, a)
+			key, err := ds.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Try to retrieve entity
-			err = db.Get(key, b)
+			err = ds.Get(key, b)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(a).To(Equal(b))
@@ -153,11 +189,10 @@ var _ = Describe("Put", func() {
 			a := &Entity{"test-put-get"}
 			b := &Entity{}
 
-			// Store entity
-			key, err := db.Put(kind, a)
+			key, err := ds.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = db.Get(key, b)
+			err = ds.Get(key, b)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(a).To(Equal(b))
 		})
@@ -167,10 +202,9 @@ var _ = Describe("Put", func() {
 		It("should be the same", func() {
 			a := &Entity{"test-query-put"}
 			b := &Entity{}
-			// Store entity
-			_, err := db.Put(kind, a)
+			_, err := ds.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
-			_, err = db.Query(kind).
+			_, err = ds.Query(kind).
 				Filter("Field =", a.Field).
 				Run().
 				Next(b)
@@ -190,14 +224,14 @@ var _ = Describe("Datastore.GetMulti", func() {
 			keys := make([]datastore.Key, len(a))
 			for i := range keys {
 				a[i].Field = str(i)
-				key := db.NewKeyFromString(kind, str(i), nil)
+				key := ds.NewKeyFromString(kind, str(i), nil)
 				keys[i] = key
-				_, err := db.Put(key, &a[i])
+				_, err := ds.Put(key, &a[i])
 				Expect(err).ToNot(HaveOccurred())
 			}
 
 			b := make([]Entity, 10)
-			err := db.GetMulti(keys, b)
+			err := ds.GetMulti(keys, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 			Expect(b).To(HaveLen(len(a)))
