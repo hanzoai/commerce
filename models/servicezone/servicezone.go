@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[ServiceZone]("servicezone") }
 
 type ServiceZone struct {
-	mixin.EntityBridge[ServiceZone]
+	mixin.Model[ServiceZone]
 
 	Name             string `json:"name"`
 	FulfillmentSetId string `json:"fulfillmentSetId"`

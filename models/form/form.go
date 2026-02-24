@@ -40,7 +40,7 @@ type ThankYou struct {
 }
 
 type Form struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Name of list
 	Name string `json:"name"`

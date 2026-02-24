@@ -9,7 +9,7 @@ func (m Meter) Kind() string {
 }
 
 func (m *Meter) Init(db *datastore.Datastore) {
-	m.Model.Init(db, m)
+	m.BaseModel.Init(db, m)
 }
 
 func (m *Meter) Defaults() {

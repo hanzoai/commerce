@@ -10,7 +10,7 @@ type FacebookAdSet struct {
 }
 
 type AdSet struct {
-	mixin.Model
+	mixin.BaseModel
 	FacebookAdSet
 
 	AdCampaignId string `json:"adCampaignId"`

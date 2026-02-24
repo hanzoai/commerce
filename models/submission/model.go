@@ -13,7 +13,7 @@ func (s Submission) Kind() string {
 }
 
 func (s *Submission) Init(db *datastore.Datastore) {
-	s.Model.Init(db, s)
+	s.BaseModel.Init(db, s)
 }
 
 func (s *Submission) Defaults() {

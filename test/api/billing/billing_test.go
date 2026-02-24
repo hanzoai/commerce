@@ -491,7 +491,7 @@ var _ = Describe("billing", func() {
 
 			Expect(res.Id).NotTo(BeEmpty())
 			Expect(res.MeterId).To(Equal(meterId))
-			Expect(res.Model).To(Equal("per_unit"))
+			Expect(res.BaseModel).To(Equal("per_unit"))
 			Expect(res.UnitPrice).To(Equal(int64(1)))
 
 			pricingRuleId = res.Id

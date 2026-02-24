@@ -12,7 +12,7 @@ func (b BlockAddress) Kind() string {
 }
 
 func (b *BlockAddress) Init(db *datastore.Datastore) {
-	b.Model.Init(db, b)
+	b.BaseModel.Init(db, b)
 }
 
 func (b *BlockAddress) Defaults() {

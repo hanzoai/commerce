@@ -33,7 +33,7 @@ const (
 )
 
 type Cart struct {
-	mixin.EntityBridge[Cart]
+	mixin.Model[Cart]
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`

@@ -20,7 +20,7 @@ const (
 func init() { orm.Register[ShippingOption]("shippingoption") }
 
 type ShippingOption struct {
-	mixin.EntityBridge[ShippingOption]
+	mixin.Model[ShippingOption]
 
 	Name          string         `json:"name"`
 	PriceType     PriceType      `json:"priceType"`

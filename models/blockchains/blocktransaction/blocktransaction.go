@@ -86,7 +86,7 @@ type EthereumTransactionReceipt struct {
 
 // Datastructure combining all the different types of transactions
 type BlockTransaction struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Address string `json:"address"`
 
