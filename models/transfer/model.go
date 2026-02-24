@@ -9,7 +9,7 @@ func (t Transfer) Kind() string {
 }
 
 func (t *Transfer) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *Transfer) Defaults() {

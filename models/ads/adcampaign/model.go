@@ -12,7 +12,7 @@ func (a AdCampaign) Kind() string {
 }
 
 func (a *AdCampaign) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+	a.BaseModel.Init(db, a)
 }
 
 func (a *AdCampaign) Defaults() {

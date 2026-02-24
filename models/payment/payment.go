@@ -26,7 +26,7 @@ const (
 )
 
 type Payment struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Deprecated
 	Type accounts.Type `json:"type"`

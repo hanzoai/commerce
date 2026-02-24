@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[PriceSet]("priceset") }
 
 type PriceSet struct {
-	mixin.EntityBridge[PriceSet]
+	mixin.Model[PriceSet]
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`

@@ -34,7 +34,7 @@ func Init(a *Aggregate, name string, t time.Time, freq Frequency) {
 }
 
 type Aggregate struct {
-	mixin.EntityBridge[Aggregate]
+	mixin.Model[Aggregate]
 
 	Instance     string    `json:"instance"`
 	Name         string    `json:"name"`

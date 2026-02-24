@@ -14,7 +14,7 @@ import (
 )
 
 type Return struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`

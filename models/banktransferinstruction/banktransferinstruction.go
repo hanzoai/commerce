@@ -16,7 +16,7 @@ var kind = "bank-transfer-instruction"
 // for receiving inbound wire/ACH/SEPA transfers. Each instruction carries a
 // unique payment reference that is used to reconcile incoming funds.
 type BankTransferInstruction struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId    string        `json:"customerId"`
 	Currency      currency.Type `json:"currency"`
@@ -39,7 +39,7 @@ func (i BankTransferInstruction) Kind() string {
 }
 
 func (i *BankTransferInstruction) Init(db *datastore.Datastore) {
-	i.Model.Init(db, i)
+	i.BaseModel.Init(db, i)
 }
 
 func (i *BankTransferInstruction) Defaults() {

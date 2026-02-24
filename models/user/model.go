@@ -13,7 +13,7 @@ func (u User) Kind() string {
 }
 
 func (u *User) Init(db *datastore.Datastore) {
-	u.Model.Init(db, u)
+	u.BaseModel.Init(db, u)
 }
 
 func (u *User) Defaults() {

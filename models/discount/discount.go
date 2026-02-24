@@ -57,7 +57,7 @@ type Target struct {
 }
 
 type Discount struct {
-	mixin.EntityBridge[Discount]
+	mixin.Model[Discount]
 
 	Name string `json:"name"`
 

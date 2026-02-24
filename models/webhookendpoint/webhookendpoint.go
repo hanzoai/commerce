@@ -11,7 +11,7 @@ import (
 
 // WebhookEndpoint configures an HTTP endpoint that receives billing events.
 type WebhookEndpoint struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// URL to POST events to
 	Url string `json:"url"`

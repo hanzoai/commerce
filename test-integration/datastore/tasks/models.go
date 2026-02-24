@@ -8,7 +8,7 @@ import (
 
 // Model 1
 type Model struct {
-	mixin.Model
+	mixin.BaseModel
 	Count int
 }
 
@@ -17,7 +17,7 @@ func (m Model) Kind() string {
 }
 
 func (m *Model) Init(db *datastore.Datastore) {
-	m.Model = mixin.Model{Db: db, Entity: m}
+	m.BaseModel = mixin.BaseModel{Db: db, Entity: m}
 }
 
 func (m Model) Document() mixin.Document {
@@ -36,7 +36,7 @@ func NewModel(db *datastore.Datastore) *Model {
 
 // Model 2
 type Model2 struct {
-	mixin.Model
+	mixin.BaseModel
 	Count int
 }
 
@@ -45,7 +45,7 @@ func (m Model2) Kind() string {
 }
 
 func (m *Model2) Init(db *datastore.Datastore) {
-	m.Model = mixin.Model{Db: db, Entity: m}
+	m.BaseModel = mixin.BaseModel{Db: db, Entity: m}
 }
 
 func (m Model2) Document() mixin.Document {

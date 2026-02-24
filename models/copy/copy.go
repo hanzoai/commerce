@@ -18,7 +18,7 @@ const (
 )
 
 type Copy struct {
-	mixin.EntityBridge[Copy]
+	mixin.Model[Copy]
 	AdIntegration
 
 	Type Type   `json:"type" orm:"default:content"`

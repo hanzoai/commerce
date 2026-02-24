@@ -23,7 +23,7 @@ const (
 )
 
 type Transaction struct {
-	mixin.Model
+	mixin.BaseModel
 
 	DestinationId   string `json:"destinationId"`
 	DestinationKind string `json:"destinationKind"`

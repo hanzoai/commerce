@@ -9,7 +9,7 @@ import (
 )
 
 type TaxRegion struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CountryCode  string `json:"countryCode"`
 	ProvinceCode string `json:"provinceCode"`

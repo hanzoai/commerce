@@ -9,7 +9,7 @@ func (inv BillingInvoice) Kind() string {
 }
 
 func (inv *BillingInvoice) Init(db *datastore.Datastore) {
-	inv.Model.Init(db, inv)
+	inv.BaseModel.Init(db, inv)
 }
 
 func (inv *BillingInvoice) Defaults() {

@@ -9,7 +9,7 @@ func (r Referral) Kind() string {
 }
 
 func (r *Referral) Init(db *datastore.Datastore) {
-	r.Model.Init(db, r)
+	r.BaseModel.Init(db, r)
 }
 
 func (r *Referral) Defaults() {

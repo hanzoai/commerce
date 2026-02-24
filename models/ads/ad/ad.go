@@ -13,7 +13,7 @@ type FacebookAd struct {
 }
 
 type Ad struct {
-	mixin.Model
+	mixin.BaseModel
 	FacebookAd
 	FacebookAdTypePlacements
 

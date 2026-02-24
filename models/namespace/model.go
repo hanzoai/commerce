@@ -12,7 +12,7 @@ func (n Namespace) Kind() string {
 }
 
 func (n *Namespace) Init(db *datastore.Datastore) {
-	n.Model.Init(db, n)
+	n.BaseModel.Init(db, n)
 	n.SetNamespace(consts.Namespace)
 	n.Parent = db.NewKey(n.Kind(), "", consts.RootKey, nil)
 	n.UseStringKey = true

@@ -9,7 +9,7 @@ import (
 
 // CryptoBalance tracks custodial crypto holdings for a customer.
 type CryptoBalance struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Customer who owns the balance
 	CustomerId string `json:"customerId"`

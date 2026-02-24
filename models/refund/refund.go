@@ -17,7 +17,7 @@ const (
 
 // Refund represents a reversal of a previous payment.
 type Refund struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Amount          int64                  `json:"amount"`
 	Currency        currency.Type          `json:"currency"`

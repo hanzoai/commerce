@@ -15,7 +15,7 @@ var kind = "balance-transaction"
 // BalanceTransaction records a single change to a customer's balance.
 // Positive amount = credit (adds to balance), negative = debit.
 type BalanceTransaction struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId string        `json:"customerId"`
 	Amount     int64         `json:"amount"` // positive = credit, negative = debit
@@ -39,7 +39,7 @@ func (bt BalanceTransaction) Kind() string {
 }
 
 func (bt *BalanceTransaction) Init(db *datastore.Datastore) {
-	bt.Model.Init(db, bt)
+	bt.BaseModel.Init(db, bt)
 }
 
 func (bt *BalanceTransaction) Defaults() {

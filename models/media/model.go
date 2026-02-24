@@ -9,7 +9,7 @@ func (a Media) Kind() string {
 }
 
 func (a *Media) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+	a.BaseModel.Init(db, a)
 }
 
 func (a *Media) Defaults() {

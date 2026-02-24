@@ -66,7 +66,7 @@ type EthereumBlock struct {
 //
 
 type Block struct {
-	mixin.Model
+	mixin.BaseModel
 
 	BitcoinBlock
 	EthereumBlock

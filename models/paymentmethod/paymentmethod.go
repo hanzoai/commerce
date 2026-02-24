@@ -27,7 +27,7 @@ type BankAccountDetails struct {
 
 // PaymentMethod represents a customer's payment instrument.
 type PaymentMethod struct {
-	mixin.Model
+	mixin.BaseModel
 
 	UserId         string                 `json:"userId,omitempty"`
 	CustomerId     string                 `json:"customerId,omitempty"`

@@ -13,7 +13,7 @@ func (s Subscriber) Kind() string {
 }
 
 func (s *Subscriber) Init(db *datastore.Datastore) {
-	s.Model.Init(db, s)
+	s.BaseModel.Init(db, s)
 
 	s.Tags = []string{}
 }

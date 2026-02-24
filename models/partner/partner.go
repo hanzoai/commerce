@@ -14,7 +14,7 @@ import (
 func init() { orm.Register[Partner]("partner") }
 
 type Partner struct {
-	mixin.EntityBridge[Partner]
+	mixin.Model[Partner]
 
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`

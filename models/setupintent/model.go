@@ -9,7 +9,7 @@ func (si SetupIntent) Kind() string {
 }
 
 func (si *SetupIntent) Init(db *datastore.Datastore) {
-	si.Model.Init(db, si)
+	si.BaseModel.Init(db, si)
 }
 
 func (si *SetupIntent) Defaults() {
