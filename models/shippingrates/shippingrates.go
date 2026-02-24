@@ -1,9 +1,11 @@
 package shippingrates
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/georate"
+	"github.com/hanzoai/orm"
 )
 
 type GeoRate struct {
@@ -13,12 +15,14 @@ type GeoRate struct {
 	ShippingName string `json:"shippingName"`
 }
 
+func init() { orm.Register[ShippingRates]("shippingrates") }
+
 type ShippingRates struct {
-	mixin.BaseModel
+	mixin.Model[ShippingRates]
 
 	StoreId string `json:"storeId"`
 
-	GeoRates []GeoRate `json:"geoRates"`
+	GeoRates []GeoRate `json:"geoRates" orm:"default:[]"`
 	// TODO: Support Mass / Dimension Based Rates
 	// DimRates []DimRate `json:"dimRates"`
 }
@@ -38,4 +42,16 @@ func (t ShippingRates) Match(ctr, st, ct, pc string, c currency.Cents) (*GeoRate
 	}
 
 	return nil, level, i
+}
+
+// New creates a new ShippingRates wired to the given datastore.
+func New(db *datastore.Datastore) *ShippingRates {
+	t := new(ShippingRates)
+	t.Init(db)
+	return t
+}
+
+// Query returns a datastore query for shipping rates.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("shippingrates")
 }

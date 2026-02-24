@@ -1,10 +1,14 @@
 package block
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/blockchains"
 )
+
+func init() { orm.Register[Block]("block") }
 
 //
 // Datastructure for Bitcoin Block
@@ -66,7 +70,7 @@ type EthereumBlock struct {
 //
 
 type Block struct {
-	mixin.BaseModel
+	mixin.Model[Block]
 
 	BitcoinBlock
 	EthereumBlock
@@ -75,4 +79,16 @@ type Block struct {
 
 	// Status        ProcessStatus `json:"status"`
 	Confirmations int64 `json:"confirmations"`
+}
+
+func New(db *datastore.Datastore) *Block {
+	b := new(Block)
+	nsDb := datastore.New(db.Context)
+	nsDb.SetNamespace(BlockchainNamespace)
+	b.Init(nsDb)
+	return b
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("block")
 }

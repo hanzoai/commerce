@@ -31,7 +31,7 @@ var _ = New("damon-projected-counters",
 		// Calculate Projected
 		for _, item := range ord.Items {
 			log.Warn("item %v", item.ProjectedPrice, db.Context)
-			prod := product.New(ord.Db)
+			prod := product.New(ord.Datastore())
 			if err := prod.GetById(item.ProductId); err == nil {
 				projectedPrice += item.Quantity * int(prod.ProjectedPrice)
 			}
@@ -42,7 +42,7 @@ var _ = New("damon-projected-counters",
 		}
 
 		for _, item := range ord.Items {
-			prod := product.New(ord.Db)
+			prod := product.New(ord.Datastore())
 			if err := prod.GetById(item.ProductId); err != nil {
 				log.Error("no product found %v", err, ctx)
 			}

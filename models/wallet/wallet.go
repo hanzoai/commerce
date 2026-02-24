@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"strings"
 	"time"
 
@@ -11,10 +12,13 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
 	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[Wallet]("wallet") }
+
 type Wallet struct {
-	mixin.BaseModel
+	mixin.Model[Wallet]
 
 	Accounts []Account `json:"accounts,omitempty"`
 }
@@ -91,12 +95,12 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	w.Accounts = append(w.Accounts, *a)
 
 	// Create a blockaddress so we track this in the readers
-	ba := blockaddress.New(w.Db)
+	ba := blockaddress.New(w.Datastore())
 	ba.Address = a.Address
 	ba.Type = typ
 	ba.WalletId = w.Id()
 
-	ns, err := hashid.GetNamespace(w.Db.Context, w.Id())
+	ns, err := hashid.GetNamespace(w.Datastore().Context, w.Id())
 	if err != nil {
 		log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
 	}
@@ -140,4 +144,19 @@ func (w *Wallet) GetAccountByName(name string) (*Account, bool) {
 	}
 
 	return nil, false
+}
+
+func (w *Wallet) Defaults() {
+	w.Accounts = make([]Account, 0)
+}
+
+func New(db *datastore.Datastore) *Wallet {
+	w := new(Wallet)
+	w.Init(db)
+	w.Defaults()
+	return w
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("wallet")
 }

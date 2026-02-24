@@ -112,7 +112,7 @@ func Send(c *gin.Context) {
 }
 
 func ReturnWallet(o *organization.Organization) (*wallet.Wallet, error) {
-	ret, err := o.GetOrCreateWallet(o.Db)
+	ret, err := o.GetOrCreateWallet(o.Datastore())
 	if err != nil {
 		return nil, err
 	}

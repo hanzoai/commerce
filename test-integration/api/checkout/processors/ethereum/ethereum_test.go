@@ -104,7 +104,7 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(usr.WalletId).ToNot(Equal(""))
 
 			// User wallet should exist
-			err = usr.LoadWallet(usr.Db)
+			err = usr.LoadWallet(usr.Datastore())
 			Expect(err).ToNot(HaveOccurred())
 
 			uWal := usr.Wallet

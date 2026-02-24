@@ -30,7 +30,7 @@ func bumpVersion(version string) string {
 	version = strings.Trim(version[1:], "\n")
 	prev, err := strconv.Atoi(version)
 	if err != nil {
-		log.Panicln("Failed to convert to int: %v", err)
+		log.Panicf("Failed to convert to int: %v", err)
 	}
 	return "v" + strconv.Itoa(prev+1)
 }

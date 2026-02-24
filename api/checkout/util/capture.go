@@ -81,7 +81,7 @@ func (r *Referrent) Total() currency.Cents {
 
 func UpdateReferral(org *organization.Organization, ord *order.Order) {
 	ctx := org.Context()
-	db := ord.Db
+	db := ord.Datastore()
 
 	// Check for referrer
 	if ord.ReferrerId == "" {
@@ -138,7 +138,7 @@ func UpdateReferral(org *organization.Organization, ord *order.Order) {
 
 func UpdateCart(ctx context.Context, ord *order.Order) {
 	// Update cart
-	car := cart.New(ord.Db)
+	car := cart.New(ord.Datastore())
 
 	if ord.CartId != "" {
 		if err := car.GetById(ord.CartId); err != nil {
@@ -193,7 +193,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 		client := mailchimp.New(ctx, org.Mailchimp)
 
 		// Update cart
-		car := cart.New(ord.Db)
+		car := cart.New(ord.Datastore())
 
 		// Determine store to use
 		storeId := ord.StoreId
@@ -212,7 +212,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 			}
 		}
 
-		stor := store.New(ord.Db)
+		stor := store.New(ord.Datastore())
 		stor.MustGetById(storeId)
 
 		// Subscribe user to list
@@ -228,7 +228,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 		referralLink := ""
 
 		referrers := make([]referrer.Referrer, 0)
-		if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+		if _, err := referrer.Query(ord.Datastore()).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
 			log.Warn("Failed to load referrals for user: %v", err, ctx)
 		}
 
@@ -256,7 +256,7 @@ func UpdateMailchimp(ctx context.Context, org *organization.Organization, ord *o
 func HandleDeposit(ord *order.Order) {
 	// Handle Deposit Logic
 	if ord.Mode == order.DepositMode && ord.PaymentStatus == payment.Paid {
-		trans := transaction.New(ord.Db)
+		trans := transaction.New(ord.Datastore())
 		trans.DestinationId = ord.UserId
 		trans.DestinationKind = "user"
 		trans.Type = transaction.Deposit
@@ -272,7 +272,7 @@ func UpdateWoopraIntegration(ctx context.Context, org *organization.Organization
 	{
 		in := org.Integrations.FindByType(integration.WoopraType)
 		if in != nil {
-			usr := user.New(ord.Db)
+			usr := user.New(ord.Datastore())
 			if err := usr.GetById(ord.UserId); err != nil {
 				log.Error("no user found %v", err, ctx)
 				return

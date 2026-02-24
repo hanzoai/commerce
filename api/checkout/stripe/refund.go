@@ -29,7 +29,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	// Get namespaced context off order
-	db := ord.Db
+	db := ord.Datastore()
 	ctx := db.Context
 
 	log.JSON(ord)

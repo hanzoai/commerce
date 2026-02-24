@@ -7,11 +7,12 @@ import (
 	"github.com/hanzoai/commerce/models/types/refs"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
-
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+// Registration handled by models/plan
 
 // Based On Stripe Plan
 // Stripe\Plan JSON: {
@@ -31,7 +32,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 // }
 
 type Plan struct {
-	mixin.BaseModel
+	mixin.Model[Plan]
 
 	// Unique human readable id
 	Slug string `json:"slug"`
@@ -82,4 +83,14 @@ func (p *Plan) Save() (ps []datastore.Property, err error) {
 
 func (p *Plan) Validator() *val.Validator {
 	return val.New()
+}
+
+func New(db *datastore.Datastore) *Plan {
+	p := new(Plan)
+	p.Init(db)
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("plan")
 }

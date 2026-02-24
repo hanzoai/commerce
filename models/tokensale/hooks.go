@@ -8,7 +8,7 @@ import (
 // Hooks
 func (ts *TokenSale) BeforeCreate() error {
 	ts.WalletPassphrase = rand.SecretKey()
-	w, err := ts.GetOrCreateWallet(ts.Db)
+	w, err := ts.GetOrCreateWallet(ts.Datastore())
 	if err != nil {
 		return err
 	}
