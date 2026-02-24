@@ -666,8 +666,8 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	p := &Payout{}
 	p.Init(db)
-	if p.Db != db {
-		t.Error("expected Db to be set")
+	if p.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

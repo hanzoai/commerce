@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/timeutil"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -61,8 +62,10 @@ const (
 	Unpaid   Status = "unpaid"
 )
 
+func init() { orm.Register[Subscription]("subscription") }
+
 type Subscription struct {
-	mixin.BaseModel
+	mixin.Model[Subscription]
 
 	Number int `json:"number,omitempty" datastore:"-"`
 
@@ -93,7 +96,7 @@ type Subscription struct {
 	Quantity int       `json:"quantity"`
 	Status   Status    `json:"status"`
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:"-"`
 
 	// Provider-agnostic support
@@ -180,4 +183,16 @@ func (s Subscription) PeriodsRemaining() int {
 		return months
 	}
 	return years
+}
+
+// New creates a new Subscription wired to the given datastore.
+func New(db *datastore.Datastore) *Subscription {
+	s := new(Subscription)
+	s.Init(db)
+	return s
+}
+
+// Query returns a datastore query for subscriptions.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("subscription")
 }

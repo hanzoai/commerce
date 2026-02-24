@@ -82,7 +82,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		})
 
 		It("Should UpdateAndTally Only Applicable Coupons", func() {
-			ord2 := order.New(ord.Db)
+			ord2 := order.New(ord.Datastore())
 			ord2.CouponCodes = []string{"sad-coupon"}
 			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", Quantity: 1}}
 			err := ord2.UpdateAndTally(nil)
@@ -90,7 +90,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 			Expect(ord2.Total).To(Equal(currency.Cents(2000)))
 
-			ord2 = order.New(ord.Db)
+			ord2 = order.New(ord.Datastore())
 			ord2.CouponCodes = []string{"sad-coupon"}
 			ord2.Items = []lineitem.LineItem{{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
 			err = ord2.UpdateAndTally(nil)
@@ -100,7 +100,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		})
 
 		It("Should Serialize Line Items", func() {
-			ord2 := order.New(ord.Db)
+			ord2 := order.New(ord.Datastore())
 			ord2.CouponCodes = []string{"sad-coupon"}
 			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", ProductName: "Doge Shirt", Quantity: 1}}
 
@@ -238,7 +238,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 		})
 
 		It("Should UpdateAndTally Only Applicable Coupons", func() {
-			ord2 := order.New(ord.Db)
+			ord2 := order.New(ord.Datastore())
 			ord2.CouponCodes = []string{"sad-coupon"}
 			ord2.Items = []lineitem.LineItem{{ProductSlug: "doge-shirt", Quantity: 1}}
 			ord2.ShippingAddress.Country = "us"
@@ -256,7 +256,7 @@ var _ = Describe("Order.UpdateAndTally", func() {
 			Expect(ord2.Shipping).To(Equal(shipping))
 			Expect(ord2.Total).To(Equal(ord2.Subtotal + tax + shipping))
 
-			ord2 = order.New(ord.Db)
+			ord2 = order.New(ord.Datastore())
 			ord2.CouponCodes = []string{"sad-coupon"}
 			ord2.Items = []lineitem.LineItem{{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
 			ord2.ShippingAddress.Country = "us"

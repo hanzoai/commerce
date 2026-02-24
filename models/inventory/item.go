@@ -4,14 +4,17 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[InventoryItem]("inventoryitem") }
+
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type InventoryItem struct {
-	mixin.BaseModel
+	mixin.Model[InventoryItem]
 
 	SKU              string `json:"sku"`
 	OriginCountry    string `json:"originCountry"`
@@ -60,4 +63,19 @@ func (r *InventoryItem) Save() ([]datastore.Property, error) {
 
 	// Save properties
 	return datastore.SaveStruct(r)
+}
+
+func (r *InventoryItem) Defaults() {
+	r.Metadata = make(Map)
+}
+
+func New(db *datastore.Datastore) *InventoryItem {
+	r := new(InventoryItem)
+	r.Init(db)
+	r.Defaults()
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("inventoryitem")
 }

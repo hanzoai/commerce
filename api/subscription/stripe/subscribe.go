@@ -12,7 +12,7 @@ func Subscribe(org *organization.Organization, usr *user.User, sub *subscription
 	// Create stripe client
 	log.Debug("Entering Subscribe")
 
-	client := stripe.New(usr.Db.Context, org.StripeToken())
+	client := stripe.New(usr.Datastore().Context, org.StripeToken())
 
 	// Do authorization
 	tok, err := client.AuthorizeSubscription(sub)
@@ -39,7 +39,7 @@ func Subscribe(org *organization.Organization, usr *user.User, sub *subscription
 
 func UpdateSubscription(org *organization.Organization, sub *subscription.Subscription) error {
 	// Create stripe client
-	client := stripe.New(sub.Db.Context, org.StripeToken())
+	client := stripe.New(sub.Datastore().Context, org.StripeToken())
 
 	_, err := client.UpdateSubscription(sub)
 	return err
@@ -49,7 +49,7 @@ func UpdateSubscription(org *organization.Organization, sub *subscription.Subscr
 func Unsubscribe(org *organization.Organization, sub *subscription.Subscription) error {
 	// Create stripe client
 
-	client := stripe.New(sub.Db.Context, org.StripeToken())
+	client := stripe.New(sub.Datastore().Context, org.StripeToken())
 
 	_, err := client.CancelSubscription(sub)
 	return err

@@ -15,7 +15,7 @@ var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
 func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	// Get namespaced context off order
-	db := ord.Db
+	db := ord.Datastore()
 	ctx := db.Context
 
 	// Get payments for this order

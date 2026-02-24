@@ -23,9 +23,12 @@ import (
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[User]("user") }
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
@@ -49,7 +52,7 @@ type KYCData struct {
 }
 
 type User struct {
-	mixin.BaseModel
+	mixin.Model[User]
 	mixin.Salesforce
 	wallet.WalletHolder
 
@@ -128,12 +131,6 @@ type User struct {
 	Test bool `json:"test"`
 }
 
-// Id implements referrer.Referrent.
-// Subtle: this method shadows the method (Model).Id of User.BaseModel.
-func (u *User) Id() string {
-	panic("unimplemented")
-}
-
 // Total implements referrer.Referrent.
 func (u *User) Total() currency.Cents {
 	panic("unimplemented")
@@ -144,24 +141,6 @@ func (u *User) Load(ps []datastore.Property) (err error) {
 	if err = datastore.LoadStruct(u, ps); err != nil {
 		return err
 	}
-
-	// Update balance when queried out
-	// now := time.Now()
-	// var transactions []transaction.Transaction
-	// if _, err = transaction.Query(u.Db).Filter("CreatedAt >=", u.Credit.LastUpdated).GetAll(&transactions); err != nil {
-	// 	return
-	// }
-
-	// for _, trans := range transactions {
-	// 	switch trans.Type {
-	// 	case transaction.Deposit:
-	// 		u.Credit.Amount += trans.Amount
-	// 	case transaction.Withdraw:
-	// 		u.Credit.Amount -= trans.Amount
-	// 	}
-	// }
-
-	// u.Credit.LastUpdated = now
 
 	// Deserialize from datastore
 	if len(u.Metadata_) > 0 {
@@ -218,37 +197,6 @@ func (u *User) Validator() *val.Validator {
 	return val.New().Check("FirstName").Exists().
 		Check("LastName").Exists().
 		Check("Email").Exists()
-	// // Name cannot be empty string.
-	// if u.FirstName == "" {
-	// 	errs = append(errs, binding.Error{
-	// 		FieldNames:     []string{"FirstName"},
-	// 		Classification: "InputError",
-	// 		Message:        "User first name cannot be empty.",
-	// 	})
-	// }
-
-	// if u.LastName == "" {
-	// 	errs = append(errs, binding.Error{
-	// 		FieldNames:     []string{"LastName"},
-	// 		Classification: "InputError",
-	// 		Message:        "User last name cannot be empty.",
-	// 	})
-	// }
-
-	// if u.Email == "" {
-	// 	errs = append(errs, binding.Error{
-	// 		FieldNames:     []string{"Email"},
-	// 		Classification: "InputError",
-	// 		Message:        "User email cannot be empty.",
-	// 	})
-	// }
-
-	// // Validate cart implicitly.
-	// // errs = u.Cart.Validate(req, errs)
-	// errs = u.BillingAddress.Validate(req, errs)
-	// errs = u.ShippingAddress.Validate(req, errs)
-
-	// return errs
 }
 
 // Populates current entity from datastore by Email.
@@ -292,13 +240,14 @@ func (u *User) GetByUsername(un string) error {
 }
 
 func (u *User) LoadReferrals() error {
+	db := u.Datastore()
 	u.Referrers = make([]referrer.Referrer, 0)
-	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+	if _, err := referrer.Query(db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
 		return err
 	}
 
 	u.Referrals = make([]referral.Referral, 0)
-	if _, err := referral.Query(u.Db).Filter("Referrer.UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+	if _, err := referral.Query(db).Filter("Referrer.UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
 		return err
 	}
 
@@ -308,8 +257,9 @@ func (u *User) LoadReferrals() error {
 }
 
 func (u *User) LoadPaymentMethods() error {
+	db := u.Datastore()
 	u.PaymentMethods = make([]paymentmethod.PaymentMethod, 0)
-	if _, err := paymentmethod.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.PaymentMethods); err != nil {
+	if _, err := paymentmethod.Query(db).Filter("UserId=", u.Id()).GetAll(&u.PaymentMethods); err != nil {
 		return err
 	}
 
@@ -319,13 +269,14 @@ func (u *User) LoadPaymentMethods() error {
 }
 
 func (u *User) LoadOrders() error {
+	db := u.Datastore()
 	u.Orders = make([]order.Order, 0)
-	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
+	if _, err := order.Query(db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
 		return err
 	}
 
 	for i, o := range u.Orders {
-		if err := o.LoadWallet(u.Db); err != nil {
+		if err := o.LoadWallet(db); err != nil {
 			return err
 		}
 
@@ -340,7 +291,8 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 		return nil
 	}
 
-	aff := affiliate.New(u.Db)
+	db := u.Datastore()
+	aff := affiliate.New(db)
 
 	if err := aff.GetById(u.AffiliateId); err != nil {
 		return err
@@ -349,7 +301,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 	u.Affiliate = *aff
 
 	u.PendingFees = make([]fee.Fee, 0)
-	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
+	if _, err := fee.Query(db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
 
@@ -357,13 +309,14 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) LoadTokenTransactions() error {
+	db := u.Datastore()
 	u.TokenTransactions = make([]*tokentransaction.Transaction, 0)
-	if _, err := tokentransaction.Query(u.Db).Filter("SendingUserId=", u.Id()).GetAll(&u.TokenTransactions); err != nil {
+	if _, err := tokentransaction.Query(db).Filter("SendingUserId=", u.Id()).GetAll(&u.TokenTransactions); err != nil {
 		return err
 	}
 
 	tt := make([]*tokentransaction.Transaction, 0)
-	if _, err := tokentransaction.Query(u.Db).Filter("ReceivingUserId=", u.Id()).GetAll(&tt); err != nil {
+	if _, err := tokentransaction.Query(db).Filter("ReceivingUserId=", u.Id()).GetAll(&tt); err != nil {
 		return err
 	}
 
@@ -373,7 +326,7 @@ func (u *User) LoadTokenTransactions() error {
 }
 
 func (u *User) CalculateBalances(test bool) error {
-	res, err := util.GetTransactions(u.Context(), u.Id(), kind, test)
+	res, err := util.GetTransactions(u.Context(), u.Id(), "user", test)
 
 	u.Transactions = res.Data
 
@@ -405,4 +358,19 @@ func (u *User) AddOrganization(orgId string) {
 	if !u.InOrganization(orgId) {
 		u.Organizations = append(u.Organizations, orgId)
 	}
+}
+
+func New(db *datastore.Datastore) *User {
+	u := new(User)
+	u.Init(db)
+	u.Metadata = make(map[string]interface{})
+	u.History = make([]Event, 0)
+	u.Organizations = make([]string, 0)
+	u.KYC.Documents = make([]string, 0)
+	u.KYC.Status = KYCStatusInitiated
+	return u
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("user")
 }

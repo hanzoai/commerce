@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"github.com/hanzoai/orm"
 	"context"
 	"strings"
 	"time"
@@ -30,8 +31,13 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
+var kind = "organization"
+
+
+func init() { orm.Register[Organization]("organization") }
+
 type Organization struct {
-	mixin.BaseModel
+	mixin.Model[Organization]
 	mixin.AccessTokens
 	wallet.WalletHolder
 
@@ -233,7 +239,7 @@ func (o *Organization) ResetReferenceToken(usr *user.User, claims oauthtoken.Cla
 		return nil, err
 	}
 
-	tok := oauthtoken.New(o.Db)
+	tok := oauthtoken.New(o.Datastore())
 
 	log.Info("Creating New Reference Token for user '%s' from org '%s'.", usr.Id(), o.Name, o.Context())
 
@@ -263,7 +269,7 @@ func (o *Organization) GetReferenceToken(usr *user.User) (*oauthtoken.Token, boo
 
 	log.Info("Getting Reference Token for user '%s' from org '%s'.", usr.Id(), o.Name, o.Context())
 
-	tok := oauthtoken.New(o.Db)
+	tok := oauthtoken.New(o.Datastore())
 
 	if ok, err := tok.Query().Filter("Claims.OrganizationName=", o.Name).Filter("Claims.Type=", oauthtoken.Reference).Filter("Revoked=", false).Filter("Claims.UserId=", usr.Id()).Get(); !ok {
 		log.Info("Failed to get Reference Token for user '%s' from org '%s': %s", usr.Id(), o.Name, err, o.Context())
@@ -441,4 +447,38 @@ func (o Organization) GetDefaultApp() (*app.App, error) {
 	}
 
 	return a, nil
+}
+
+func (o *Organization) Defaults() {
+	o.Admins = make([]string, 0)
+	o.Moderators = make([]string, 0)
+
+	o.Enabled = true
+
+	o.Fees.Card.Flat = 50
+	o.Fees.Card.Percent = 0.05
+	o.Fees.Bitcoin.Flat = 0
+	o.Fees.Bitcoin.Percent = 0.05
+	o.Fees.Ethereum.Flat = 0
+	o.Fees.Ethereum.Percent = 0.05
+	o.Fees.Affiliate.Flat = 30
+	o.Fees.Affiliate.Percent = 0.30
+
+	o.Partners = make([]pricing.Partner, 0)
+}
+
+func (o *Organization) Init(db *datastore.Datastore) {
+	o.Model.Init(db)
+	o.AccessTokens.Init(o)
+}
+
+func New(db *datastore.Datastore) *Organization {
+	o := new(Organization)
+	o.Init(db)
+	o.Defaults()
+	return o
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

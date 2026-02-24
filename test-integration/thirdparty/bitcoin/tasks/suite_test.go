@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 
 	ord.UserId = usr.Id()
 
-	w, _ = ord.GetOrCreateWallet(ord.Db)
+	w, _ = ord.GetOrCreateWallet(ord.Datastore())
 
 	ord.MustCreate()
 

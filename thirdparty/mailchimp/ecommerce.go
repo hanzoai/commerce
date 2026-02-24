@@ -125,7 +125,7 @@ func (api API) CreateCustomer(storeId string, usr *user.User) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Datastore().Context)
 			return err
 		}
 
@@ -153,7 +153,7 @@ func (api API) UpdateCustomer(storeId string, usr *user.User) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Datastore().Context)
 			return err
 		}
 
@@ -218,7 +218,7 @@ func (api API) DeleteCustomer(storeId string, usr *user.User) *Error {
 	return wrapError(func() error {
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Datastore().Context)
 			return err
 		}
 
@@ -303,7 +303,7 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) *Error {
 func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 	return wrapError(func() error {
 		// Fetch user
-		usr := user.New(ord.Db)
+		usr := user.New(ord.Datastore())
 		if err := usr.GetById(ord.UserId); err != nil {
 			return err
 		}
@@ -377,16 +377,16 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 			UpdatedAtForeign:   ord.UpdatedAt,
 		}
 
-		log.Debug("Create Order Request: '%v'", json.Encode(req), ord.Db.Context)
+		log.Debug("Create Order Request: '%v'", json.Encode(req), ord.Datastore().Context)
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Datastore().Context)
 			return err
 		}
 
 		res, err := stor.CreateOrder(req)
-		log.Debug("Create Order Response: '%v'", json.Encode(res), ord.Db.Context)
+		log.Debug("Create Order Response: '%v'", json.Encode(res), ord.Datastore().Context)
 		return err
 	})
 }
@@ -394,7 +394,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) *Error {
 func (api API) UpdateOrder(storeId string, ord *order.Order) *Error {
 	return wrapError(func() error {
 		// Fetch user
-		usr := user.New(ord.Db)
+		usr := user.New(ord.Datastore())
 		if err := usr.GetById(ord.UserId); err != nil {
 			return err
 		}
@@ -470,7 +470,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Datastore().Context)
 			return err
 		}
 
@@ -483,7 +483,7 @@ func (api API) DeleteOrder(storeId string, ord *order.Order) *Error {
 	return wrapError(func() error {
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Datastore().Context)
 			return err
 		}
 
@@ -524,7 +524,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Datastore().Context)
 			return err
 		}
 
@@ -565,7 +565,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Datastore().Context)
 			return err
 		}
 
@@ -578,7 +578,7 @@ func (api API) DeleteProduct(storeId string, prod *product.Product) *Error {
 	return wrapError(func() error {
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Datastore().Context)
 			return err
 		}
 
@@ -606,13 +606,13 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) *
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Datastore().Context)
 			return err
 		}
 
 		prod, err := stor.GetProduct(productId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Datastore().Context)
 			return err
 		}
 
@@ -640,13 +640,13 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) *
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Datastore().Context)
 			return err
 		}
 
 		prod, err := stor.GetProduct(productId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Datastore().Context)
 			return err
 		}
 
@@ -659,13 +659,13 @@ func (api API) DeleteVariant(storeId, productId string, vari *variant.Variant) *
 	return wrapError(func() error {
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Datastore().Context)
 			return err
 		}
 
 		prod, err := stor.GetProduct(productId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+			log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Datastore().Context)
 			return err
 		}
 

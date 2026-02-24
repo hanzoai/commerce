@@ -47,7 +47,7 @@ func New(name string, fn interface{}) func(c context.Context) mixin.Entity {
 // Get db namespaced for our fixtures org
 func getNamespaceDb(c context.Context) *datastore.Datastore {
 	org := Organization(c).(*organization.Organization)
-	ctx := org.Namespaced(org.Db.Context)
+	ctx := org.Namespaced(org.Datastore().Context)
 	db := datastore.New(ctx)
 	return db
 }

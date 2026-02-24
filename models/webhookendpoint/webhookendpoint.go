@@ -5,13 +5,16 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[WebhookEndpoint]("webhook-endpoint") }
+
 // WebhookEndpoint configures an HTTP endpoint that receives billing events.
 type WebhookEndpoint struct {
-	mixin.BaseModel
+	mixin.Model[WebhookEndpoint]
 
 	// URL to POST events to
 	Url string `json:"url"`
@@ -72,4 +75,22 @@ func (w *WebhookEndpoint) MatchesEvent(eventType string) bool {
 		}
 	}
 	return false
+}
+
+func (w *WebhookEndpoint) Defaults() {
+	w.Parent = w.Datastore().NewKey("synckey", "", 1, nil)
+	if w.Status == "" {
+		w.Status = "enabled"
+	}
+}
+
+func New(db *datastore.Datastore) *WebhookEndpoint {
+	w := new(WebhookEndpoint)
+	w.Init(db)
+	w.Defaults()
+	return w
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("webhook-endpoint")
 }

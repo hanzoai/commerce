@@ -4,14 +4,17 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[InventoryLevel]("inventorylevel") }
+
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type InventoryLevel struct {
-	mixin.BaseModel
+	mixin.Model[InventoryLevel]
 
 	InventoryItemId  string `json:"inventoryItemId"`
 	LocationId       string `json:"locationId"`
@@ -57,4 +60,19 @@ func (l *InventoryLevel) Save() ([]datastore.Property, error) {
 
 	// Save properties
 	return datastore.SaveStruct(l)
+}
+
+func (l *InventoryLevel) Defaults() {
+	l.Metadata = make(Map)
+}
+
+func New(db *datastore.Datastore) *InventoryLevel {
+	l := new(InventoryLevel)
+	l.Init(db)
+	l.Defaults()
+	return l
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("inventorylevel")
 }

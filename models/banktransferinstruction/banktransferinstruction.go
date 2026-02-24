@@ -6,20 +6,21 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
-var kind = "bank-transfer-instruction"
+func init() { orm.Register[BankTransferInstruction]("bank-transfer-instruction") }
 
 // BankTransferInstruction represents bank account details issued to a customer
 // for receiving inbound wire/ACH/SEPA transfers. Each instruction carries a
 // unique payment reference that is used to reconcile incoming funds.
 type BankTransferInstruction struct {
-	mixin.BaseModel
+	mixin.Model[BankTransferInstruction]
 
 	CustomerId    string        `json:"customerId"`
-	Currency      currency.Type `json:"currency"`
+	Currency      currency.Type `json:"currency" orm:"default:usd"`
 	Type          string        `json:"type"`                    // "ach" | "wire" | "sepa"
 	Reference     string        `json:"reference"`               // unique payment reference
 	BankName      string        `json:"bankName"`
@@ -28,28 +29,10 @@ type BankTransferInstruction struct {
 	RoutingNumber string        `json:"routingNumber,omitempty"`
 	IBAN          string        `json:"iban,omitempty"`
 	BIC           string        `json:"bic,omitempty"`
-	Status        string        `json:"status"` // "active" | "expired"
+	Status        string        `json:"status" orm:"default:active"` // "active" | "expired"
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (i BankTransferInstruction) Kind() string {
-	return kind
-}
-
-func (i *BankTransferInstruction) Init(db *datastore.Datastore) {
-	i.BaseModel.Init(db, i)
-}
-
-func (i *BankTransferInstruction) Defaults() {
-	i.Parent = i.Db.NewKey("synckey", "", 1, nil)
-	if i.Status == "" {
-		i.Status = "active"
-	}
-	if i.Currency == "" {
-		i.Currency = "usd"
-	}
 }
 
 func (i *BankTransferInstruction) Load(ps []datastore.Property) (err error) {
@@ -76,10 +59,10 @@ func (i *BankTransferInstruction) Validator() *val.Validator {
 func New(db *datastore.Datastore) *BankTransferInstruction {
 	i := new(BankTransferInstruction)
 	i.Init(db)
-	i.Defaults()
+	i.Parent = db.NewKey("synckey", "", 1, nil)
 	return i
 }
 
 func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+	return db.Query("bank-transfer-instruction")
 }

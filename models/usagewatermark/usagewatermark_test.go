@@ -197,18 +197,16 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	w := &UsageWatermark{}
 	w.Init(db)
-	if w.Db != db {
-		t.Error("expected Db to be set")
+	if w.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- Defaults (via New) ---
 
 func TestDefaults(t *testing.T) {
 	db := testDB()
-	w := &UsageWatermark{}
-	w.Init(db)
-	w.Defaults()
+	w := New(db)
 	if w.Parent == nil {
 		t.Error("expected Parent to be set")
 	}

@@ -507,8 +507,8 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	pi := &PaymentIntent{}
 	pi.Init(db)
-	if pi.Db != db {
-		t.Error("expected Db to be set")
+	if pi.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

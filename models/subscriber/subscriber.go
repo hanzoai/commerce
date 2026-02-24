@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 	. "github.com/hanzoai/commerce/util/strings"
@@ -41,8 +42,10 @@ func normalizeName(s string) string {
 	return string(b)
 }
 
+func init() { orm.Register[Subscriber]("subscriber") }
+
 type Subscriber struct {
-	mixin.BaseModel
+	mixin.Model[Subscriber]
 
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
@@ -56,9 +59,9 @@ type Subscriber struct {
 
 	Client client.Client `json:"client"`
 
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags" orm:"default:[]"`
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
@@ -148,9 +151,6 @@ func (s Subscriber) MergeFields() map[string]interface{} {
 }
 
 func (s *Subscriber) Load(ps []datastore.Property) (err error) {
-	// Ensure we're initialized
-	s.Defaults()
-
 	// Load supported properties
 	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
@@ -181,4 +181,16 @@ func FromJSON(db *datastore.Datastore, data []byte) *Subscriber {
 	s := New(db)
 	json.DecodeBytes(data, s)
 	return s
+}
+
+// New creates a new Subscriber wired to the given datastore.
+func New(db *datastore.Datastore) *Subscriber {
+	s := new(Subscriber)
+	s.Init(db)
+	return s
+}
+
+// Query returns a datastore query for subscribers.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("subscriber")
 }

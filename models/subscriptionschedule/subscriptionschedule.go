@@ -1,6 +1,7 @@
 package subscriptionschedule
 
 import (
+	"github.com/hanzoai/orm"
 	"fmt"
 	"time"
 
@@ -42,8 +43,11 @@ type Phase struct {
 var kind = "subscription-schedule"
 
 // SubscriptionSchedule represents a scheduled set of subscription phases.
+
+func init() { orm.Register[SubscriptionSchedule](kind) }
+
 type SubscriptionSchedule struct {
-	mixin.BaseModel
+	mixin.Model[SubscriptionSchedule]
 
 	CustomerId     string    `json:"customerId"`
 	SubscriptionId string    `json:"subscriptionId,omitempty"`
@@ -56,24 +60,6 @@ type SubscriptionSchedule struct {
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (s SubscriptionSchedule) Kind() string {
-	return kind
-}
-
-func (s *SubscriptionSchedule) Init(db *datastore.Datastore) {
-	s.BaseModel.Init(db, s)
-}
-
-func (s *SubscriptionSchedule) Defaults() {
-	s.Parent = s.Db.NewKey("synckey", "", 1, nil)
-	if s.Status == "" {
-		s.Status = NotStarted
-	}
-	if s.EndBehavior == "" {
-		s.EndBehavior = "release"
-	}
 }
 
 func (s *SubscriptionSchedule) Load(ps []datastore.Property) (err error) {
@@ -137,7 +123,13 @@ func (s *SubscriptionSchedule) Start(subscriptionId string) {
 func New(db *datastore.Datastore) *SubscriptionSchedule {
 	s := new(SubscriptionSchedule)
 	s.Init(db)
-	s.Defaults()
+	s.Parent = db.NewKey("synckey", "", 1, nil)
+	if s.Status == "" {
+		s.Status = NotStarted
+	}
+	if s.EndBehavior == "" {
+		s.EndBehavior = "release"
+	}
 	return s
 }
 

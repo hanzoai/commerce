@@ -14,7 +14,7 @@ var AlreadyReservedError = errors.New("Product is reserved.")
 
 func (o *Order) MakeReservations() error {
 	for _, item := range o.Items {
-		if err := o.Db.RunInTransaction(func(db *datastore.Datastore) error {
+		if err := o.Datastore().RunInTransaction(func(db *datastore.Datastore) error {
 			p := product.New(db)
 
 			if err := p.GetById(item.ProductId); err != nil {
@@ -55,7 +55,7 @@ func (o *Order) MakeReservations() error {
 
 func (o *Order) CancelReservations() error {
 	for _, item := range o.Items {
-		if err := o.Db.RunInTransaction(func(db *datastore.Datastore) error {
+		if err := o.Datastore().RunInTransaction(func(db *datastore.Datastore) error {
 			p := product.New(db)
 
 			if err := p.GetById(item.ProductId); err != nil {

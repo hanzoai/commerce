@@ -326,8 +326,8 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	w := &WebhookEndpoint{}
 	w.Init(db)
-	if w.Db != db {
-		t.Error("expected Db to be set")
+	if w.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

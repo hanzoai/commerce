@@ -666,18 +666,16 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	s := &SubscriptionSchedule{}
 	s.Init(db)
-	if s.Db != db {
-		t.Error("expected Db to be set")
+	if s.Datastore() != db {
+		t.Error("expected Datastore() to be set")
 	}
 }
 
-// --- Defaults ---
+// --- New sets defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestNew_SetsDefaults(t *testing.T) {
 	db := testDB()
-	s := &SubscriptionSchedule{}
-	s.Init(db)
-	s.Defaults()
+	s := New(db)
 	if s.Status != NotStarted {
 		t.Errorf("expected %s, got %s", NotStarted, s.Status)
 	}
@@ -686,21 +684,6 @@ func TestDefaults(t *testing.T) {
 	}
 	if s.Parent == nil {
 		t.Error("expected Parent to be set")
-	}
-}
-
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
-	db := testDB()
-	s := &SubscriptionSchedule{}
-	s.Init(db)
-	s.Status = Active
-	s.EndBehavior = "cancel"
-	s.Defaults()
-	if s.Status != Active {
-		t.Errorf("expected %s, got %s", Active, s.Status)
-	}
-	if s.EndBehavior != "cancel" {
-		t.Errorf("expected cancel, got %s", s.EndBehavior)
 	}
 }
 

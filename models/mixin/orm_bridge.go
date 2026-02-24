@@ -29,10 +29,11 @@ import (
 // The orm.Model[T] must be the first field so self() pointer arithmetic works.
 type Model[T any] struct {
 	orm.Model[T]
-	ds      *datastore.Datastore `json:"-" datastore:"-"`
-	Parent  datastore.Key       `json:"-" datastore:"-"`
-	Mock    bool                `json:"-" datastore:"-"`
-	loaded_ bool                `json:"-" datastore:"-"`
+	ds           *datastore.Datastore `json:"-" datastore:"-"`
+	Parent       datastore.Key        `json:"-" datastore:"-"`
+	Mock         bool                 `json:"-" datastore:"-"`
+	UseStringKey bool                 `json:"-" datastore:"-"`
+	loaded_      bool                 `json:"-" datastore:"-"`
 }
 
 // self returns a pointer to the outermost struct T that embeds this bridge.

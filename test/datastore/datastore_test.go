@@ -111,7 +111,7 @@ var _ = Describe("Datastore.Get", func() {
 		retrievedEntity := &Entity{}
 		BeforeEach(func() {
 			key := db.NewKeyFromString(kind, "key", nil)
-			_, err := db.PutWithKey(key, entity)
+			_, err := db.Put(key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = db.GetById(key.Encode(), retrievedEntity)
@@ -192,7 +192,7 @@ var _ = Describe("Datastore.GetMulti", func() {
 				a[i].Field = str(i)
 				key := db.NewKeyFromString(kind, str(i), nil)
 				keys[i] = key
-				_, err := db.PutWithKey(key, &a[i])
+				_, err := db.Put(key, &a[i])
 				Expect(err).ToNot(HaveOccurred())
 			}
 

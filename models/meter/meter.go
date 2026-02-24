@@ -1,6 +1,7 @@
 package meter
 
 import (
+	"github.com/hanzoai/orm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -9,6 +10,8 @@ import (
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+var kind = "meter"
 
 // AggregationType controls how meter events are aggregated.
 type AggregationType string
@@ -21,8 +24,11 @@ const (
 
 // Meter defines a named usage metric with a specific aggregation strategy.
 // Each meter has a unique EventName per org (e.g. "input_tokens", "api_calls").
+
+func init() { orm.Register[Meter]("meter") }
+
 type Meter struct {
-	mixin.BaseModel
+	mixin.Model[Meter]
 
 	Name            string          `json:"name"`
 	EventName       string          `json:"eventName"`
@@ -64,4 +70,19 @@ func (m *Meter) Save() (ps []datastore.Property, err error) {
 
 func (m *Meter) Validator() *val.Validator {
 	return nil
+}
+
+func (m *Meter) Defaults() {
+	m.Parent = m.Datastore().NewKey("synckey", "", 1, nil)
+}
+
+func New(db *datastore.Datastore) *Meter {
+	m := new(Meter)
+	m.Init(db)
+	m.Defaults()
+	return m
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

@@ -1,13 +1,27 @@
 package taxraterule
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[TaxRateRule]("taxraterule") }
+
 type TaxRateRule struct {
-	mixin.BaseModel
+	mixin.Model[TaxRateRule]
 
 	TaxRateId   string `json:"taxRateId"`
 	Reference   string `json:"reference"`
 	ReferenceId string `json:"referenceId"`
+}
+
+func New(db *datastore.Datastore) *TaxRateRule {
+	t := new(TaxRateRule)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("taxraterule")
 }

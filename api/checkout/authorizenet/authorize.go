@@ -16,7 +16,7 @@ import (
 var NothingToAuthorizeError = errors.New("Nothing to Authorize (Items or Subscriptions)")
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
-	ctx := ord.Db.Context
+	ctx := ord.Datastore().Context
 
 	// Create stripe client
 	con := org.AuthorizeNetToken(ord.Test)

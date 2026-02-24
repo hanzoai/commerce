@@ -68,7 +68,7 @@ var _ = New("damon-users-mailchimp-refunded",
 			// Determine store to use
 			storeId := defaultStore
 
-			stor := store.New(usr.Db)
+			stor := store.New(usr.Datastore())
 			stor.MustGetById(storeId)
 
 			// Subscribe user to list

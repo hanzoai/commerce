@@ -170,34 +170,28 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	cb := &CustomerBalance{}
 	cb.Init(db)
-	if cb.Db != db {
-		t.Error("expected Db to be set")
+	if cb.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- ORM Defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestInit_OrmDefaults(t *testing.T) {
 	db := testDB()
 	cb := &CustomerBalance{}
 	cb.Init(db)
-	cb.Defaults()
+	// orm:"default:usd" applied by Init
 	if cb.Currency != "usd" {
 		t.Errorf("expected usd, got %s", cb.Currency)
 	}
-	if cb.Parent == nil {
-		t.Error("expected Parent to be set")
-	}
 }
 
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
+func TestNew_SetsParent(t *testing.T) {
 	db := testDB()
-	cb := &CustomerBalance{}
-	cb.Init(db)
-	cb.Currency = "eur"
-	cb.Defaults()
-	if cb.Currency != "eur" {
-		t.Errorf("expected eur, got %s", cb.Currency)
+	cb := New(db)
+	if cb.Parent == nil {
+		t.Error("expected Parent to be set")
 	}
 }
 

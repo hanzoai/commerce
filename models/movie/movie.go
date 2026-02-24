@@ -1,6 +1,7 @@
 package movie
 
 import (
+	"github.com/hanzoai/orm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/val"
@@ -8,11 +9,16 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
+var kind = "movie"
+
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Prune down since Product Listing has a lot of this info now
+
+func init() { orm.Register[Movie]("movie") }
+
 type Movie struct {
-	mixin.BaseModel
+	mixin.Model[Movie]
 
 	// Unique human readable id
 	Slug string `json:"slug"`
@@ -85,4 +91,18 @@ func (m Movie) DisplayImage() Media {
 		}
 	}
 	return Media{}
+}
+
+func (m *Movie) Defaults() {
+}
+
+func New(db *datastore.Datastore) *Movie {
+	m := new(Movie)
+	m.Init(db)
+	m.Defaults()
+	return m
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

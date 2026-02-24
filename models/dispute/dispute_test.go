@@ -300,8 +300,8 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	d := &Dispute{}
 	d.Init(db)
-	if d.Db != db {
-		t.Error("expected Db to be set")
+	if d.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

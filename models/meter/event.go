@@ -1,6 +1,7 @@
 package meter
 
 import (
+	"github.com/hanzoai/orm"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -14,8 +15,11 @@ import (
 var eventKind = "meter-event"
 
 // MeterEvent records a single usage data point for a meter.
+
+func init() { orm.Register[MeterEvent]("meter-event") }
+
 type MeterEvent struct {
-	mixin.BaseModel
+	mixin.Model[MeterEvent]
 
 	MeterId   string    `json:"meterId"`
 	UserId    string    `json:"userId"`
@@ -33,16 +37,10 @@ type MeterEvent struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (e MeterEvent) Kind() string {
-	return eventKind
-}
 
-func (e *MeterEvent) Init(db *datastore.Datastore) {
-	e.BaseModel.Init(db, e)
-}
 
 func (e *MeterEvent) Defaults() {
-	e.Parent = e.Db.NewKey("synckey", "", 1, nil)
+	e.Parent = e.Datastore().NewKey("synckey", "", 1, nil)
 	if e.Timestamp.IsZero() {
 		e.Timestamp = time.Now()
 	}

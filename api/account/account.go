@@ -73,13 +73,13 @@ func update(c *gin.Context) {
 func patch(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
-	ctx := org.Db.Context
+	ctx := org.Datastore().Context
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
 	req := &confirmPasswordReq{User: usr}
 
-	usr2 := user.New(usr.Db)
+	usr2 := user.New(usr.Datastore())
 	// Email can't already exist or if it does, can't have a password
 	if err := usr2.GetByEmail(req.Email); err == nil {
 		if usr2.Id() != usr.Id() {

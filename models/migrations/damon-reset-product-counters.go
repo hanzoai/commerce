@@ -69,7 +69,7 @@ var _ = New("damon-reset-product-counters",
 			log.Error("no org found %v", err, ctx)
 		}
 
-		usr := user.New(ord.Db)
+		usr := user.New(ord.Datastore())
 		if err := usr.GetById(ord.UserId); err != nil {
 			log.Error("no user found %v", err, ctx)
 		}
@@ -84,7 +84,7 @@ var _ = New("damon-reset-product-counters",
 		}
 
 		for _, item := range ord.Items {
-			prod := product.New(ord.Db)
+			prod := product.New(ord.Datastore())
 			if err := prod.GetById(item.ProductId); err != nil {
 				log.Error("no product found %v", err, ctx)
 			}

@@ -276,18 +276,16 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	bt := &BalanceTransaction{}
 	bt.Init(db)
-	if bt.Db != db {
-		t.Error("expected Db to be set")
+	if bt.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- Defaults via New ---
 
-func TestDefaults(t *testing.T) {
+func TestNew_Defaults(t *testing.T) {
 	db := testDB()
-	bt := &BalanceTransaction{}
-	bt.Init(db)
-	bt.Defaults()
+	bt := New(db)
 	if bt.Currency != "usd" {
 		t.Errorf("expected usd, got %s", bt.Currency)
 	}
@@ -296,14 +294,13 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
+func TestInit_OrmDefault(t *testing.T) {
 	db := testDB()
 	bt := &BalanceTransaction{}
 	bt.Init(db)
-	bt.Currency = "gbp"
-	bt.Defaults()
-	if bt.Currency != "gbp" {
-		t.Errorf("expected gbp, got %s", bt.Currency)
+	// orm:"default:usd" applied by Init
+	if bt.Currency != "usd" {
+		t.Errorf("expected usd, got %s", bt.Currency)
 	}
 }
 

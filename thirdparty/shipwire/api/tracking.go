@@ -50,7 +50,7 @@ func getOrderFromShipwire(c *gin.Context, org *organization.Organization, ord *o
 	}
 
 	log.Warn("Failed to fetch Shipwire order", c)
-	return fmt.Errorf("No matching order found for Shipwire order %s", id)
+	return fmt.Errorf("No matching order found for Shipwire order %d", id)
 }
 
 func getOrderForTracking(c *gin.Context, t Tracking) (*order.Order, error) {

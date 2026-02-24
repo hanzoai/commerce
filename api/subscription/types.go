@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/user"
 )
@@ -31,7 +30,7 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 	}
 
 	// Ensure model mixin is setup correctly
-	sr.User_.BaseModel = mixin.BaseModel{Db: db, Entity: sr.User_}
+	sr.User_.Init(db)
 
 	// Normalize a few things we get in
 	sr.User_.Email = strings.ToLower(strings.TrimSpace(sr.User_.Email))
@@ -42,8 +41,7 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 
 func (sr *SubscriptionReq) Subscription() (*subscription.Subscription, error) {
 	sub := sr.Subscription_
-	sub.BaseModel.Entity = sr.Subscription_
-	sub.BaseModel.Db = sr.Db
+	sub.Init(sr.Db)
 
 	return sub, nil
 }

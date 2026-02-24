@@ -91,7 +91,7 @@ func (u User) Document() mixin.Document {
 
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = kind
+	doc.Kind = "user"
 	doc.Id_ = u.Id()
 	doc.Email = u.Email
 	doc.EmailPartials = searchpartial.Partials(emailUser) + " " + emailUser

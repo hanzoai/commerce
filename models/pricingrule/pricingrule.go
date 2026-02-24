@@ -6,9 +6,12 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[PricingRule]("billing-pricing-rule") }
 
 // PricingModel defines how usage is converted to cost.
 type PricingModel string
@@ -30,13 +33,13 @@ type Tier struct {
 // UnitPrice is used directly. For tiered/volume pricing, the Tiers
 // array defines the pricing bands.
 type PricingRule struct {
-	mixin.BaseModel
+	mixin.Model[PricingRule]
 
 	MeterId     string        `json:"meterId"`
 	PlanId      string        `json:"planId,omitempty"`
 	PricingType PricingModel  `json:"model"`
 	Currency    currency.Type `json:"currency"`
-	UnitPrice int64         `json:"unitPrice"` // cents, for per_unit model
+	UnitPrice   int64         `json:"unitPrice"` // cents, for per_unit model
 
 	Tiers  []Tier `json:"tiers,omitempty" datastore:"-"`
 	Tiers_ string `json:"-" datastore:",noindex"`
@@ -132,4 +135,21 @@ func (p *PricingRule) calculateVolume(quantity int64) int64 {
 	}
 
 	return 0
+}
+
+func New(db *datastore.Datastore) *PricingRule {
+	p := new(PricingRule)
+	p.Init(db)
+	p.Parent = db.NewKey("synckey", "", 1, nil)
+	if p.Currency == "" {
+		p.Currency = "usd"
+	}
+	if p.PricingType == "" {
+		p.PricingType = PerUnit
+	}
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("billing-pricing-rule")
 }

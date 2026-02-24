@@ -1,10 +1,14 @@
 package referralprogram
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[ReferralProgram]("referralprogram") }
 
 type ActionType string
 type TriggerType string
@@ -72,11 +76,21 @@ type Trigger struct {
 }
 
 type ReferralProgram struct {
-	mixin.BaseModel
+	mixin.Model[ReferralProgram]
 
 	Name string `json:"name"`
 
 	// Trigger is the number of referrals, 0 means it triggers on every referral
 	Triggers []int    `json:"triggers"` // Deprecate soon, keep until that point in time
 	Actions  []Action `json:"actions"`
+}
+
+func New(db *datastore.Datastore) *ReferralProgram {
+	r := new(ReferralProgram)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("referralprogram")
 }

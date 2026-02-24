@@ -59,7 +59,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	ctx := ord.Context()
 
 	if ord.Total == ord.Refunded && ord.ReferralId != "" {
-		rfl := referral.New(ord.Db)
+		rfl := referral.New(ord.Datastore())
 		if err := rfl.GetById(ord.ReferralId); err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 			return err
 		}
 
-		usr := user.New(ord.Db)
+		usr := user.New(ord.Datastore())
 		if err := usr.GetById(rfl.Referrer.UserId); err != nil {
 			log.Warn("Could not get referring user '%s'", rfl.Referrer.UserId, ctx)
 			return err
@@ -147,7 +147,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		if ord.Total == ord.Refunded {
 			if err := ord.GetItemEntities(); err != nil {
 				for _, item := range ord.Items {
-					prod := product.New(ord.Db)
+					prod := product.New(ord.Datastore())
 
 					if err := prod.GetById(item.ProductId); err != nil {
 						log.Error("no product found %v", err, c)
@@ -161,7 +161,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 				// Create new mailchimp client
 				client := mailchimp.New(ctx, org.Mailchimp)
 
-				usr := user.New(ord.Db)
+				usr := user.New(ord.Datastore())
 				if err := usr.GetById(ord.UserId); err != nil {
 					log.Warn("Could not get order's user '%s'", ord.UserId, ctx)
 					return err
@@ -189,7 +189,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 						storeId = org.DefaultStore
 					}
 
-					stor := store.New(ord.Db)
+					stor := store.New(ord.Datastore())
 					stor.MustGetById(storeId)
 
 					// Subscribe user to list
@@ -214,7 +214,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 
 	in := org.Integrations.FindByType(integration.WoopraType)
 	if in != nil {
-		usr := user.New(ord.Db)
+		usr := user.New(ord.Datastore())
 		if err := usr.GetById(ord.UserId); err != nil {
 			log.Error("no user found %v", err, c)
 			return nil

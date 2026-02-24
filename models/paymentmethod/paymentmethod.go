@@ -3,9 +3,13 @@ package paymentmethod
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/orm"
 )
+
+var kind = "paymentmethod"
 
 // CardDetails holds card-specific information for a payment method.
 type CardDetails struct {
@@ -26,8 +30,11 @@ type BankAccountDetails struct {
 }
 
 // PaymentMethod represents a customer's payment instrument.
+
+func init() { orm.Register[PaymentMethod]("paymentmethod") }
+
 type PaymentMethod struct {
-	mixin.BaseModel
+	mixin.Model[PaymentMethod]
 
 	UserId         string                 `json:"userId,omitempty"`
 	CustomerId     string                 `json:"customerId,omitempty"`
@@ -41,4 +48,22 @@ type PaymentMethod struct {
 	IsDefault      bool                   `json:"isDefault,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 	Created        time.Time              `json:"created,omitempty"`
+}
+
+func (p *PaymentMethod) Defaults() {
+	p.Parent = p.Datastore().NewKey("synckey", "", 1, nil)
+	if p.Type == "" {
+		p.Type = "card"
+	}
+}
+
+func New(db *datastore.Datastore) *PaymentMethod {
+	p := new(PaymentMethod)
+	p.Init(db)
+	p.Defaults()
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

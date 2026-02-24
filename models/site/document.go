@@ -20,7 +20,7 @@ func (d Document) Id() string {
 
 func (s Site) Document() mixin.Document {
 	return &Document{
-		Kind:   kind,
+		Kind:   "site",
 		Id_:    s.Id(),
 		Name:   s.Name,
 		Domain: s.Domain,

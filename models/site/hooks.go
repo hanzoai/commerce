@@ -10,7 +10,7 @@ import (
 func (s *Site) BeforeCreate() error {
 	log.Debug("Creating site on Netlify", s.Context())
 
-	client := netlify.NewFromNamespace(s.Db.Context, s.Namespace())
+	client := netlify.NewFromNamespace(s.Context(), s.Namespace())
 	nsite, err := client.CreateSite(s.Netlify())
 	if err != nil {
 		log.Error("netlify.CreateSite failed: %v", err, s.Context())
@@ -47,7 +47,7 @@ func (s *Site) AfterUpdate(previous *Site) error {
 
 // Delete
 func (s *Site) BeforeDelete() error {
-	client := netlify.NewFromNamespace(s.Db.Context, s.Namespace())
+	client := netlify.NewFromNamespace(s.Context(), s.Namespace())
 	if err := client.DeleteSite(s.Netlify()); err != nil {
 		return err
 	}
