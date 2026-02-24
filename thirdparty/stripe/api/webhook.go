@@ -91,8 +91,8 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
-	// Get App Engine context
-	ctx := middleware.GetAppEngine(c)
+	// Get request context
+	ctx := middleware.GetContext(c)
 
 	// Ensure event is associated with a connected account with a valid stripe token
 	org, token, err := getToken(ctx, event)

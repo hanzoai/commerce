@@ -82,7 +82,7 @@ func withdraw(c *gin.Context) {
 			return ErrorInsufficientFunds
 		}
 
-		transactionId, err = blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
+		transactionId, err = blockchain.MakePayment(middleware.GetContext(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 		if err != nil {
 			log.Error("Failed to create transaction %v", err, c)
 			return err

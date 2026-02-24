@@ -14,7 +14,7 @@ import (
 )
 
 func setStore(c *gin.Context) error {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	id := c.Params.ByName("storeid")
 

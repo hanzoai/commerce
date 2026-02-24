@@ -52,7 +52,7 @@ func Init() {
 
 	// Setup routes for delay funcs
 	router.POST(delay.Path, func(c *gin.Context) {
-		ctx := middleware.GetAppEngine(c)
+		ctx := middleware.GetContext(c)
 		delay.RunFunc(ctx, c.Writer, c.Request)
 	})
 
