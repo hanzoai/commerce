@@ -5,12 +5,15 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Price]("price") }
+
 type Price struct {
-	mixin.Model
+	mixin.EntityBridge[Price]
 
 	PriceSetId   string         `json:"priceSetId"`
 	CurrencyCode string         `json:"currencyCode"`
@@ -24,8 +27,6 @@ type Price struct {
 }
 
 func (p *Price) Load(ps []datastore.Property) (err error) {
-	p.Defaults()
-
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
@@ -41,4 +42,14 @@ func (p *Price) Save() ([]datastore.Property, error) {
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	return datastore.SaveStruct(p)
+}
+
+func New(db *datastore.Datastore) *Price {
+	t := new(Price)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("price")
 }

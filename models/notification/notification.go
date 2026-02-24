@@ -4,9 +4,12 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Notification]("notification") }
 
 type Channel string
 
@@ -25,27 +28,25 @@ const (
 )
 
 type Notification struct {
-	mixin.Model
+	mixin.EntityBridge[Notification]
 
 	To         string             `json:"to"`
 	Channel    Channel            `json:"channel"`
 	TemplateId string             `json:"templateId"`
-	Status     NotificationStatus `json:"status"`
+	Status     NotificationStatus `json:"status" orm:"default:pending"`
 	ProviderId string             `json:"providerId"`
 	ExternalId string             `json:"externalId"`
 
 	// Data stored as JSON in datastore
-	Data  Map    `json:"data,omitempty" datastore:"-"`
+	Data  Map    `json:"data,omitempty" datastore:"-" orm:"default:{}"`
 	Data_ string `json:"-" datastore:",noindex"`
 
 	// Arbitrary metadata
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (n *Notification) Load(ps []datastore.Property) (err error) {
-	n.Defaults()
-
 	if err = datastore.LoadStruct(n, ps); err != nil {
 		return err
 	}
@@ -68,4 +69,14 @@ func (n *Notification) Save() ([]datastore.Property, error) {
 	n.Metadata_ = string(json.EncodeBytes(&n.Metadata))
 
 	return datastore.SaveStruct(n)
+}
+
+func New(db *datastore.Datastore) *Notification {
+	n := new(Notification)
+	n.Init(db)
+	return n
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("notification")
 }

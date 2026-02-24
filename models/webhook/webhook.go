@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 )
 
 type Events map[string]bool
 
+func init() { orm.Register[Webhook]("webhook") }
+
 type Webhook struct {
-	mixin.Model
+	mixin.EntityBridge[Webhook]
 
 	// Name
 	Name string `json:"name"`
@@ -27,7 +30,7 @@ type Webhook struct {
 	AccessToken string `json:"accessToken"`
 
 	// Events to selectively send.
-	Events  Events `json:"events" datastore:"-"`
+	Events  Events `json:"events" datastore:"-" orm:"default:{}"`
 	Events_ string `json:"-" datastore:",noindex"`
 
 	// Whether this webhook is enabled or not.
@@ -36,7 +39,9 @@ type Webhook struct {
 
 func (s *Webhook) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
-	s.Defaults()
+	if s.Events == nil {
+		s.Events = make(Events)
+	}
 
 	// Load supported properties
 	if err = datastore.LoadStruct(s, ps); err != nil {
@@ -57,4 +62,14 @@ func (s *Webhook) Save() (ps []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(s)
+}
+
+func New(db *datastore.Datastore) *Webhook {
+	w := new(Webhook)
+	w.Init(db)
+	return w
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("webhook")
 }
