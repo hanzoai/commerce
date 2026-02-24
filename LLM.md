@@ -21,7 +21,7 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 ## Multi-Tenancy
 
 - Namespace-based: `Organization.Name` IS the namespace
-- `middleware.Namespace()` sets appengine context namespace for downstream datastore
+- `middleware.Namespace()` sets context namespace for downstream datastore
 - `rest.New()` auto-applies namespace middleware unless `DefaultNamespace = true`
 - Dual auth: legacy access token (org-bound) + IAM JWT (OIDC/JWKS via hanzo.id)
 - `"platform"` org returns empty namespace (intentional admin bypass)
@@ -193,6 +193,16 @@ Push to GHCR (Docker Hub credentials not available locally):
 docker build --platform linux/amd64 -t ghcr.io/hanzoai/commerce:hotfix .
 docker push ghcr.io/hanzoai/commerce:hotfix
 ```
+
+## App Engine Migration (2026-02-24)
+
+All App Engine dependencies removed. Context handling modernized:
+- `middleware.RequestContext()` (was `AppEngine()`) — stores Go request context in Gin
+- `middleware.GetContext(c)` (was `GetAppEngine()`) — retrieves it; falls back to `c.Request.Context()`
+- Gin context key changed from `"appengine"` → `"context"` everywhere
+- Legacy aliases `AppEngine`/`GetAppEngine` kept as `var` for backward compat
+- Legacy GAE Python utils moved to `.legacy/` (bulkloader, datastore-admin, salesforce-metadata)
+- ORM: all models use `mixin.Model[T]` with generic CRUD, namespace support, and `orm.Register[T]()`
 
 ## Gotchas
 
