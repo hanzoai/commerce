@@ -39,7 +39,7 @@ func search(c *gin.Context) {
 		return
 	}
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	q := db.Query(counter.ShardKind)
 
@@ -82,7 +82,7 @@ func search(c *gin.Context) {
 func searchProduct(c *gin.Context) {
 	productId := c.Params.ByName("productid")
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	prod := product.New(db)
 
@@ -133,7 +133,7 @@ func searchProduct(c *gin.Context) {
 }
 
 func topLine(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 
 	tag1 := "order.revenue"

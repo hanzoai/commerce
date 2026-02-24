@@ -102,7 +102,7 @@ func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.
 		}
 	}
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	if err := org.GetById(claims.OrganizationName); err != nil {

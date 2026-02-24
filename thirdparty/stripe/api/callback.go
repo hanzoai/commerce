@@ -34,7 +34,7 @@ func Callback(c *gin.Context) {
 
 func organizationCallback(c *gin.Context) {
 	url := c.Request.URL
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	org := organization.New(db)
 
@@ -150,7 +150,7 @@ func affiliateCallback(c *gin.Context) {
 	affId := parts[1]
 
 	// Fetch organization
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	org := organization.New(db)
 

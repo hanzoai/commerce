@@ -23,14 +23,18 @@ func (l *Logger) Verbose() bool {
 	return l.verboseRequested || std.verbose
 }
 
-// Check if we've been pased a gin or app engine context
+// Check if we have been passed a gin context
 func (l *Logger) detectContext(ctx interface{}) {
 	l.verboseRequested = false
 
 	switch ctx := ctx.(type) {
 	case *gin.Context:
-		// Get App Engine from session
-		l.backend.context = ctx.MustGet("appengine").(context.Context)
+		// Get request context from session
+		if reqCtx, exists := ctx.Get("context"); exists {
+			l.backend.context = reqCtx.(context.Context)
+		} else {
+			l.backend.context = ctx.Request.Context()
+		}
 		l.verboseRequested = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
@@ -65,13 +69,13 @@ func (l *Logger) dumpObject(args []interface{}) ([]interface{}, interface{}) {
 	return args, nil
 }
 
-// Process args, setting app engine context if passed one.
+// Process args, setting context if passed one.
 func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 	if len(args) == 0 {
 		return args
 	}
 
-	// Check if we've been passed an App Engine or Gin context
+	// Check if we have been passed a Gin context
 	l.detectContext(args[len(args)-1])
 
 	// Remove context from args if we were passed one

@@ -14,7 +14,7 @@ import (
 )
 
 func createDeploy(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	org := middleware.GetOrganization(c)
 	siteid := c.Params.ByName("siteid")
 

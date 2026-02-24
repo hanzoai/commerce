@@ -27,9 +27,9 @@ var (
 	accessToken string
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
-	// Create new appengine context
+	// Create new test context
 	ctx = ae.NewContext()
 
 	// Mock gin context for fixtures
@@ -59,7 +59,7 @@ var _ = BeforeSuite(func() {
 	billingApi.Route(cl.Router)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

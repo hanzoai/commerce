@@ -12,7 +12,7 @@ import (
 	"github.com/hanzoai/commerce/util/spew"
 )
 
-// Create a new App Engine-aware logger
+// Create a new logger
 func New() *Logger {
 	log := new(Logger)
 	log.backend = NewBackend(nil)

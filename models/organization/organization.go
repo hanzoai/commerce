@@ -366,12 +366,12 @@ func (o Organization) IsPlatformOrg() bool {
 	return o.Name == "platform"
 }
 
-// Get namespaced context for this organization
+// Namespaced returns a context scoped to this organization's namespace.
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
-		if aeCtx := c.Value("appengine"); aeCtx != nil {
-			if aeContextVal, ok := aeCtx.(context.Context); ok {
-				ctx = aeContextVal
+		if reqCtx := c.Value("context"); reqCtx != nil {
+			if ctxVal, ok := reqCtx.(context.Context); ok {
+				ctx = ctxVal
 			}
 		}
 	}

@@ -134,7 +134,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 			return
 		}
 
-		ctx := GetAppEngine(c)
+		ctx := GetContext(c)
 		db := datastore.New(ctx)
 		org := organization.New(db)
 

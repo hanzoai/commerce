@@ -43,7 +43,7 @@ var (
 	u           *user.User
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -86,7 +86,7 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(org.Namespaced(ctx))
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

@@ -27,7 +27,7 @@ type Client struct {
 }
 
 func New(c *gin.Context, username, password string) *Client {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 
 	ctx, _ = context.WithTimeout(ctx, time.Second*30)
 	client := &http.Client{Timeout: 30 * time.Second}

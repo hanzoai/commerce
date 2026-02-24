@@ -33,7 +33,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
 
-	// Set up the db with the namespaced appengine context
+	// Set up the db with the namespaced context
 	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 

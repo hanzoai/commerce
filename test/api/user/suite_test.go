@@ -28,9 +28,9 @@ var (
 	cl   *ginclient.Client
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
-	// Create new appengine context
+	// Create new test context
 	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
@@ -58,7 +58,7 @@ var _ = BeforeSuite(func() {
 	api.Route(cl.Router)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

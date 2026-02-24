@@ -29,7 +29,7 @@ var (
 	db  *datastore.Datastore
 )
 
-// Setup appengine context, gin context, and datastore before tests
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	db = datastore.New(ctx)

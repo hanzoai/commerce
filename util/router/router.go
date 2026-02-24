@@ -33,7 +33,7 @@ func New(moduleName string) *gin.RouterGroup {
 
 	router.Use(middleware.NotFoundHandler())
 	router.Use(middleware.AddHost())
-	router.Use(middleware.AppEngine())
+	router.Use(middleware.RequestContext())
 	router.Use(middleware.DetectOverrides())
 
 	if config.IsDevelopment {
