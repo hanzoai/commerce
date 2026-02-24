@@ -3,13 +3,17 @@ package discount
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/discount/rule"
 	"github.com/hanzoai/commerce/models/discount/scope"
 	"github.com/hanzoai/commerce/models/discount/target"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/timeutil"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Discount]("discount") }
 
 type Type string
 
@@ -53,7 +57,7 @@ type Target struct {
 }
 
 type Discount struct {
-	mixin.Model
+	mixin.EntityBridge[Discount]
 
 	Name string `json:"name"`
 
@@ -69,10 +73,10 @@ type Discount struct {
 	Target Target `json:"target"`
 
 	// Rules for this discount
-	Rules []Rule `json:"rules"`
+	Rules []Rule `json:"rules" orm:"default:[]"`
 
 	// Whether discount is enabled.
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled" orm:"default:true"`
 }
 
 func (d Discount) ValidFor(t time.Time) bool {
@@ -109,4 +113,14 @@ func (d Discount) ScopeId() string {
 		return d.Scope.ProductId
 	}
 	return ""
+}
+
+func New(db *datastore.Datastore) *Discount {
+	d := new(Discount)
+	d.Init(db)
+	return d
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("discount")
 }

@@ -8,12 +8,15 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[AnalyticsEvent]("analyticsevent") }
+
 type AnalyticsEvent struct {
-	mixin.Model
+	mixin.EntityBridge[AnalyticsEvent]
 
 	analyticsidentifier.Ids
 
@@ -26,14 +29,16 @@ type AnalyticsEvent struct {
 
 	Name            string        `json:"name"` // Event appended with special data (used by pageview and pageleave)
 	Event           string        `json:"event"`
-	Data            Map           `json:"data" datastore:"-"`
+	Data            Map           `json:"data" datastore:"-" orm:"default:{}"`
 	Data_           string        `json:"-" datastore:",noindex"`
 	RequestMetadata client.Client `json:"requestMetadata"`
 }
 
 func (e *AnalyticsEvent) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
-	e.Defaults()
+	if e.Data == nil {
+		e.Data = make(Map)
+	}
 
 	// Load supported properties
 	if err = datastore.LoadStruct(e, ps); err != nil {
@@ -59,4 +64,14 @@ func (e *AnalyticsEvent) Save() (ps []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(e)
+}
+
+func New(db *datastore.Datastore) *AnalyticsEvent {
+	e := new(AnalyticsEvent)
+	e.Init(db)
+	return e
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("analyticsevent")
 }
