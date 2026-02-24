@@ -112,7 +112,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				ctx := GetAppEngine(c)
 				db := datastore.New(ctx)
 				org := organization.New(db)
-				if ok, _ := org.Query().First(); ok {
+				if ok, _ := org.Query().Get(); ok {
 					org.Live = true
 					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
 					c.Set("organization", org)
