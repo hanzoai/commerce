@@ -21,7 +21,7 @@ var (
 	db  *datastore.Datastore
 )
 
-// Setup appengine context and datastore before tests
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	db = datastore.New(ctx)
@@ -33,7 +33,7 @@ var _ = BeforeSuite(func() {
 	org.MustUpdate()
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

@@ -57,7 +57,7 @@ func daily(c *gin.Context) {
 	}
 
 	// Get Dailies
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 
 	res := dailyRes{

@@ -34,7 +34,7 @@ var (
 	subProd *product.Product
 )
 
-// Setup appengine context and datastore before tests
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	db = datastore.New(ctx)
@@ -151,7 +151,7 @@ var _ = BeforeSuite(func() {
 	tr2.MustDelete()
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

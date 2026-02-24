@@ -37,7 +37,7 @@ var (
 	usr         *user.User
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	// Create a new app engine context
 	ctx = ae.NewContext()
@@ -109,7 +109,7 @@ var _ = BeforeSuite(func() {
 	cl.IgnoreErrors(true)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

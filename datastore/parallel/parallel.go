@@ -142,14 +142,8 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 	}
 
 	ctx := c.Request.Context()
-	// Try to get the context from gin context
-	if appCtx := c.Value("appengine"); appCtx != nil {
-		if ctxVal, ok := appCtx.(context.Context); ok {
-			ctx = ctxVal
-		}
-	}
-	if appCtx := c.Value("context"); appCtx != nil {
-		if ctxVal, ok := appCtx.(context.Context); ok {
+	if reqCtx := c.Value("context"); reqCtx != nil {
+		if ctxVal, ok := reqCtx.(context.Context); ok {
 			ctx = ctxVal
 		}
 	}
