@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/base64"
 	"errors"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -101,6 +102,24 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		if iammiddleware.IsIAMAuthenticated(c) {
 			c.Next()
 			return
+		}
+
+		// Service token: shared secret for service-to-service calls (e.g., bot-gateway → commerce).
+		// Set COMMERCE_SERVICE_TOKEN env var on both the caller and Commerce.
+		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
+			header := c.GetHeader("Authorization")
+			if strings.HasPrefix(header, "Bearer ") && strings.TrimPrefix(header, "Bearer ") == svcToken {
+				ctx := GetAppEngine(c)
+				db := datastore.New(ctx)
+				org := organization.New(db)
+				if ok, _ := org.Query().First(); ok {
+					org.Live = true
+					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+					c.Set("organization", org)
+					c.Next()
+					return
+				}
+			}
 		}
 
 		// Parse token
