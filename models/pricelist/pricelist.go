@@ -6,16 +6,19 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[PriceList]("pricelist") }
+
 type PriceList struct {
-	mixin.Model
+	mixin.EntityBridge[PriceList]
 
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
-	Status      string     `json:"status"`
+	Status      string     `json:"status" orm:"default:draft"`
 	Type        string     `json:"type"`
 	StartsAt    *time.Time `json:"startsAt,omitempty"`
 	EndsAt      *time.Time `json:"endsAt,omitempty"`
@@ -25,8 +28,6 @@ type PriceList struct {
 }
 
 func (p *PriceList) Load(ps []datastore.Property) (err error) {
-	p.Defaults()
-
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
@@ -42,4 +43,14 @@ func (p *PriceList) Save() ([]datastore.Property, error) {
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	return datastore.SaveStruct(p)
+}
+
+func New(db *datastore.Datastore) *PriceList {
+	t := new(PriceList)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("pricelist")
 }
