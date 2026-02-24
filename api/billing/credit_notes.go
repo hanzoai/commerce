@@ -7,7 +7,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/creditnote"
+	"github.com/hanzoai/commerce/models/credit"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -16,7 +16,7 @@ type createCreditNoteRequest struct {
 	CustomerId      string                        `json:"customerId,omitempty"`
 	Amount          int64                         `json:"amount,omitempty"`
 	Reason          string                        `json:"reason,omitempty"`
-	LineItems       []creditnote.CreditNoteLineItem `json:"lineItems,omitempty"`
+	LineItems       []credit.CreditNoteLineItem `json:"lineItems,omitempty"`
 	OutOfBandAmount int64                         `json:"outOfBandAmount,omitempty"`
 	Memo            string                        `json:"memo,omitempty"`
 }
@@ -64,7 +64,7 @@ func GetCreditNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
-	cn := creditnote.New(db)
+	cn := credit.New(db)
 	if err := cn.GetById(c.Param("id")); err != nil {
 		http.Fail(c, 404, "credit note not found", err)
 		return
@@ -81,8 +81,8 @@ func ListCreditNotes(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	notes := make([]*creditnote.CreditNote, 0)
-	q := creditnote.Query(db).Ancestor(rootKey)
+	notes := make([]*credit.CreditNote, 0)
+	q := credit.Query(db).Ancestor(rootKey)
 
 	if invId := c.Query("invoiceId"); invId != "" {
 		q = q.Filter("InvoiceId=", invId)
@@ -93,7 +93,7 @@ func ListCreditNotes(c *gin.Context) {
 
 	iter := q.Order("-Created").Run()
 	for {
-		cn := creditnote.New(db)
+		cn := credit.New(db)
 		if _, err := iter.Next(cn); err != nil {
 			break
 		}
@@ -114,7 +114,7 @@ func VoidCreditNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 
-	cn := creditnote.New(db)
+	cn := credit.New(db)
 	if err := cn.GetById(c.Param("id")); err != nil {
 		http.Fail(c, 404, "credit note not found", err)
 		return
@@ -134,7 +134,7 @@ func VoidCreditNote(c *gin.Context) {
 	c.JSON(200, creditNoteResponse(cn))
 }
 
-func creditNoteResponse(cn *creditnote.CreditNote) map[string]interface{} {
+func creditNoteResponse(cn *credit.CreditNote) map[string]interface{} {
 	resp := map[string]interface{}{
 		"id":         cn.Id(),
 		"invoiceId":  cn.InvoiceId,

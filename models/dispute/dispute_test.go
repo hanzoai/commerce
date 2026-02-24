@@ -1,11 +1,17 @@
 package dispute
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // Dispute has no lifecycle methods. Tests cover struct initialization,
 // field assignment, status constants, and evidence struct.
@@ -276,6 +282,75 @@ func TestMultipleDisputesIndependent(t *testing.T) {
 	d1.Status = UnderReview
 	if d2.Status != Won {
 		t.Errorf("changing d1 should not affect d2, got %s", d2.Status)
+	}
+}
+
+// --- Kind ---
+
+func TestKind(t *testing.T) {
+	d := &Dispute{}
+	if d.Kind() != "dispute" {
+		t.Errorf("expected 'dispute', got %q", d.Kind())
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	d := &Dispute{}
+	d.Init(db)
+	if d.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	d := &Dispute{}
+	d.Init(db)
+	d.Defaults()
+	if d.Status != NeedsResponse {
+		t.Errorf("expected %s, got %s", NeedsResponse, d.Status)
+	}
+	if d.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	d := &Dispute{}
+	d.Init(db)
+	d.Status = Won
+	d.Defaults()
+	if d.Status != Won {
+		t.Errorf("expected %s, got %s", Won, d.Status)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	d := New(db)
+	if d == nil {
+		t.Fatal("expected non-nil Dispute")
+	}
+	if d.Status != NeedsResponse {
+		t.Errorf("expected %s, got %s", NeedsResponse, d.Status)
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }
 

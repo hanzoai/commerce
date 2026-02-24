@@ -836,3 +836,651 @@ func (f *failResultProcessor) GetTransaction(_ context.Context, _ string) (*proc
 func (f *failResultProcessor) ValidateWebhook(_ context.Context, _ []byte, _ string) (*processor.WebhookEvent, error) {
 	return nil, fmt.Errorf("not impl")
 }
+
+// ---------------------------------------------------------------------------
+// Tests: parseTransactionID edge cases
+// ---------------------------------------------------------------------------
+
+func TestParseTransactionID_EmptyRawID(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, _, err := r.parseTransactionID("stripe:")
+	if err == nil {
+		t.Fatal("expected error for empty raw ID")
+	}
+}
+
+func TestParseTransactionID_NoColon(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, _, err := r.parseTransactionID("no-colon-here")
+	if err == nil {
+		t.Fatal("expected error for no colon")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: prefixResult nil safety
+// ---------------------------------------------------------------------------
+
+func TestPrefixResult_NilResult(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	// Should not panic.
+	r.prefixResult(nil, "stripe")
+}
+
+// ---------------------------------------------------------------------------
+// Tests: getProcessor errors
+// ---------------------------------------------------------------------------
+
+func TestGetProcessor_NotFound(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, err := r.getProcessor(context.Background(), "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for missing processor")
+	}
+}
+
+func TestGetProcessor_NotAvailable(t *testing.T) {
+	m := newMock("stripe", false) // not available
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"stripe"}})
+
+	_, err := r.getProcessor(context.Background(), "stripe")
+	if err == nil {
+		t.Fatal("expected error for unavailable processor")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Capture error paths
+// ---------------------------------------------------------------------------
+
+func TestCapture_ProcessorNotFound(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, err := r.Capture(context.Background(), "nonexistent:tx-1", 1000)
+	if err == nil {
+		t.Fatal("expected error for missing processor")
+	}
+}
+
+func TestCapture_ProcessorUnavailable(t *testing.T) {
+	m := newMock("stripe", false)
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"stripe"}})
+
+	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	if err == nil {
+		t.Fatal("expected error for unavailable processor")
+	}
+}
+
+func TestCapture_ProcessorError(t *testing.T) {
+	m := newMock("stripe", true)
+	m.captureErr = fmt.Errorf("capture failed")
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	if err == nil {
+		t.Fatal("expected error for capture failure")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Refund error paths
+// ---------------------------------------------------------------------------
+
+func TestRefund_NoPrefixReturnsError(t *testing.T) {
+	m := newMock("stripe", true)
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	_, err := r.Refund(context.Background(), processor.RefundRequest{
+		TransactionID: "no_prefix_id",
+		Amount:        500,
+	})
+	if err == nil {
+		t.Fatal("expected error for unprefixed transaction ID")
+	}
+}
+
+func TestRefund_ProcessorNotFound(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, err := r.Refund(context.Background(), processor.RefundRequest{
+		TransactionID: "nonexistent:tx-1",
+		Amount:        500,
+	})
+	if err == nil {
+		t.Fatal("expected error for missing processor")
+	}
+}
+
+func TestRefund_ProcessorError(t *testing.T) {
+	m := newMock("stripe", true)
+	m.refundErr = fmt.Errorf("refund failed")
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	_, err := r.Refund(context.Background(), processor.RefundRequest{
+		TransactionID: "stripe:tx-1",
+		Amount:        500,
+	})
+	if err == nil {
+		t.Fatal("expected error for refund failure")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: GetTransaction error paths
+// ---------------------------------------------------------------------------
+
+func TestGetTransaction_PrefixedButProcessorNotFound(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
+
+	_, err := r.GetTransaction(context.Background(), "nonexistent:tx-1")
+	if err == nil {
+		t.Fatal("expected error for missing processor")
+	}
+}
+
+func TestGetTransaction_PrefixedButProcessorError(t *testing.T) {
+	m := newMock("stripe", true)
+	m.txErr = fmt.Errorf("not found")
+	reg := setupRegistry(m)
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	_, err := r.GetTransaction(context.Background(), "stripe:tx-bad")
+	if err == nil {
+		t.Fatal("expected error for transaction not found")
+	}
+}
+
+func TestGetTransaction_WithoutPrefix_AllFail(t *testing.T) {
+	m1 := newMock("stripe", true)
+	m1.txErr = fmt.Errorf("not found")
+	m2 := newMock("square", true)
+	m2.txErr = fmt.Errorf("not found")
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe", "square"},
+	})
+
+	_, err := r.GetTransaction(context.Background(), "raw_tx_missing")
+	if err == nil {
+		t.Fatal("expected error when all processors fail")
+	}
+}
+
+func TestGetTransaction_WithoutPrefix_UnavailableSkipped(t *testing.T) {
+	m1 := newMock("stripe", false) // unavailable
+	m2 := newMock("square", true)
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe", "square"},
+	})
+
+	tx, err := r.GetTransaction(context.Background(), "raw_tx_456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tx.ID != "square:raw_tx_456" {
+		t.Fatalf("expected square-prefixed ID, got %q", tx.ID)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: ValidateWebhook - unavailable processor skipped
+// ---------------------------------------------------------------------------
+
+func TestValidateWebhook_UnavailableSkipped(t *testing.T) {
+	m1 := newMock("stripe", false) // unavailable
+	m2 := newMock("square", true)
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe", "square"},
+	})
+
+	event, err := r.ValidateWebhook(context.Background(), []byte("payload"), "sig")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if event.Processor != "square" {
+		t.Fatalf("expected square, got %s", event.Processor)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: IsAvailable - registry lookup error
+// ---------------------------------------------------------------------------
+
+func TestIsAvailable_RegistryError(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	// "stripe" not registered, so Get will fail.
+	r := NewRouter(reg, Config{
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	if r.IsAvailable(context.Background()) {
+		t.Fatal("expected not available when processor not in registry")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: selectCandidates - default strategy
+// ---------------------------------------------------------------------------
+
+func TestSelectCandidates_DefaultStrategy(t *testing.T) {
+	m := newMock("stripe", true)
+	reg := setupRegistry(m)
+
+	r := NewRouter(reg, Config{
+		Strategy:   Strategy("unknown_strategy"),
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	result, err := r.Charge(context.Background(), baseReq())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.TransactionID != "stripe:tx_stripe" {
+		t.Fatalf("expected stripe txID, got %q", result.TransactionID)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: WeightedRandom with no weights (falls back to shuffled)
+// ---------------------------------------------------------------------------
+
+func TestWeightedRandom_NoWeights(t *testing.T) {
+	m1 := newMock("stripe", true)
+	m2 := newMock("square", true)
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   WeightedRandom,
+		Processors: []processor.ProcessorType{"stripe", "square"},
+		Weights:    nil, // No weights.
+	})
+
+	for i := 0; i < 10; i++ {
+		result, err := r.Charge(context.Background(), baseReq())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !result.Success {
+			t.Fatal("expected success")
+		}
+	}
+
+	total := atomic.LoadInt64(&m1.chargeCalls) + atomic.LoadInt64(&m2.chargeCalls)
+	if total != 10 {
+		t.Fatalf("expected 10 total calls, got %d", total)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: WeightedRandom with zero/negative weight defaults to 1
+// ---------------------------------------------------------------------------
+
+func TestWeightedRandom_ZeroWeight(t *testing.T) {
+	m1 := newMock("stripe", true)
+	m2 := newMock("square", true)
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   WeightedRandom,
+		Processors: []processor.ProcessorType{"stripe", "square"},
+		Weights: map[processor.ProcessorType]int{
+			"stripe": 0,  // defaults to 1
+			"square": -1, // defaults to 1
+		},
+	})
+
+	for i := 0; i < 20; i++ {
+		_, err := r.Charge(context.Background(), baseReq())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	total := atomic.LoadInt64(&m1.chargeCalls) + atomic.LoadInt64(&m2.chargeCalls)
+	if total != 20 {
+		t.Fatalf("expected 20 total, got %d", total)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: RoundRobin with empty processors
+// ---------------------------------------------------------------------------
+
+func TestRoundRobin_EmptyProcessors(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{
+		Strategy:   RoundRobin,
+		Processors: []processor.ProcessorType{},
+	})
+
+	_, err := r.Charge(context.Background(), baseReq())
+	if err == nil {
+		t.Fatal("expected error with no processors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: LeastLoad with empty processors
+// ---------------------------------------------------------------------------
+
+func TestLeastLoad_EmptyProcessors(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	r := NewRouter(reg, Config{
+		Strategy:   LeastLoad,
+		Processors: []processor.ProcessorType{},
+	})
+
+	_, err := r.Charge(context.Background(), baseReq())
+	if err == nil {
+		t.Fatal("expected error with no processors")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Circuit breaker - half-open max exceeded
+// ---------------------------------------------------------------------------
+
+func TestCircuitBreaker_HalfOpenMaxExceeded(t *testing.T) {
+	m1 := newMock("stripe", true)
+	m1.chargeErr = fmt.Errorf("fail")
+	m2 := newMock("square", true)
+	reg := setupRegistry(m1, m2)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe", "square"},
+		CircuitBreaker: CircuitBreakerConfig{
+			FailureThreshold: 2,
+			ResetTimeout:     50 * time.Millisecond,
+			HalfOpenMax:      1,
+		},
+	})
+
+	// Open the breaker.
+	for i := 0; i < 2; i++ {
+		r.Charge(context.Background(), baseReq())
+	}
+
+	// Wait for reset timeout to enter half-open.
+	time.Sleep(60 * time.Millisecond)
+
+	// First call should go to stripe (half-open probe), fails, re-opens.
+	r.Charge(context.Background(), baseReq())
+
+	// Immediately after, another call should skip stripe (half-open max exceeded/re-opened).
+	stripeBefore := atomic.LoadInt64(&m1.chargeCalls)
+	result, err := r.Charge(context.Background(), baseReq())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.TransactionID != "square:tx_square" {
+		t.Fatalf("expected square, got %q", result.TransactionID)
+	}
+	// Stripe should not have been called (still open after half-open failure).
+	stripeAfter := atomic.LoadInt64(&m1.chargeCalls)
+	if stripeAfter != stripeBefore {
+		t.Fatal("stripe should not have been called while circuit re-opened")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Circuit breaker - failure in half-open re-opens
+// ---------------------------------------------------------------------------
+
+func TestCircuitBreaker_FailureInHalfOpenReopens(t *testing.T) {
+	cb := newCircuitBreaker(CircuitBreakerConfig{
+		FailureThreshold: 1,
+		ResetTimeout:     10 * time.Millisecond,
+		HalfOpenMax:      1,
+	})
+
+	// Trigger open.
+	cb.failure()
+	if cb.state != cbOpen {
+		t.Fatal("expected open state")
+	}
+
+	// Wait for reset timeout.
+	time.Sleep(15 * time.Millisecond)
+
+	// Allow should transition to half-open.
+	if !cb.allow() {
+		t.Fatal("expected allow in half-open")
+	}
+	if cb.state != cbHalfOpen {
+		t.Fatal("expected half-open state")
+	}
+
+	// Failure in half-open re-opens.
+	cb.failure()
+	if cb.state != cbOpen {
+		t.Fatal("expected re-open after failure in half-open")
+	}
+
+	// Subsequent allow should return false (just re-opened).
+	if cb.allow() {
+		t.Fatal("expected deny immediately after re-open")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: routePayment - all circuit breakers open, no processor available
+// ---------------------------------------------------------------------------
+
+func TestRoutePayment_NoCBAllowed(t *testing.T) {
+	m1 := newMock("stripe", true)
+	m1.chargeErr = fmt.Errorf("fail")
+	reg := setupRegistry(m1)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+		CircuitBreaker: CircuitBreakerConfig{
+			FailureThreshold: 1,
+			ResetTimeout:     10 * time.Second,
+			HalfOpenMax:      1,
+		},
+	})
+
+	// Open the breaker with 1 failure.
+	r.Charge(context.Background(), baseReq())
+
+	// Now all breakers are open, should get NO_PROCESSOR error.
+	_, err := r.Charge(context.Background(), baseReq())
+	if err == nil {
+		t.Fatal("expected error when all circuit breakers are open")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: routePayment - processor not in registry
+// ---------------------------------------------------------------------------
+
+func TestRoutePayment_ProcessorNotInRegistry(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	// "unknown" is listed but not registered.
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "unknown",
+		Processors: []processor.ProcessorType{"unknown"},
+	})
+
+	_, err := r.Charge(context.Background(), baseReq())
+	if err == nil {
+		t.Fatal("expected error for unregistered processor")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: routePayment - processor not available
+// ---------------------------------------------------------------------------
+
+func TestRoutePayment_ProcessorNotAvailable(t *testing.T) {
+	m := newMock("stripe", false) // not available
+	reg := setupRegistry(m)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	_, err := r.Charge(context.Background(), baseReq())
+	if err == nil {
+		t.Fatal("expected error for unavailable processor")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: CurrencyBased - unknown currency falls back
+// ---------------------------------------------------------------------------
+
+func TestCurrencyBased_FallbackToPrimary(t *testing.T) {
+	mStripe := newMock("stripe", true)
+	mAdyen := newMock("adyen", true)
+	reg := setupRegistry(mStripe, mAdyen)
+
+	r := NewRouter(reg, Config{
+		Strategy:   CurrencyBased,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe", "adyen"},
+		CurrencyMap: map[string]processor.ProcessorType{
+			"eur": "adyen",
+		},
+	})
+
+	// GBP not in map -> falls back to primary (stripe).
+	gbpReq := baseReq()
+	gbpReq.Currency = currency.GBP
+	result, err := r.Charge(context.Background(), gbpReq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.TransactionID != "stripe:tx_stripe" {
+		t.Fatalf("expected stripe for GBP fallback, got %q", result.TransactionID)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: NewRouter - processor not in registry (skip in currency collection)
+// ---------------------------------------------------------------------------
+
+func TestNewRouter_ProcessorNotInRegistry(t *testing.T) {
+	reg := processor.NewRegistry(nil)
+	// "ghost" is not registered.
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Processors: []processor.ProcessorType{"ghost"},
+	})
+
+	// Should create router without error, just no currencies.
+	currencies := r.SupportedCurrencies()
+	if len(currencies) != 0 {
+		t.Fatalf("expected empty currencies for unregistered processor, got %d", len(currencies))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tests: Refund - empty RefundID not prefixed
+// ---------------------------------------------------------------------------
+
+func TestRefund_EmptyRefundIDNotPrefixed(t *testing.T) {
+	m := &emptyRefundProcessor{
+		BaseProcessor: processor.NewBaseProcessor("stripe", []currency.Type{currency.USD}),
+	}
+	m.SetConfigured(true)
+	reg := processor.NewRegistry(nil)
+	reg.Register(m)
+
+	r := NewRouter(reg, Config{
+		Strategy:   PrimaryFallback,
+		Primary:    "stripe",
+		Processors: []processor.ProcessorType{"stripe"},
+	})
+
+	result, err := r.Refund(context.Background(), processor.RefundRequest{
+		TransactionID: "stripe:tx-1",
+		Amount:        500,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RefundID != "" {
+		t.Fatalf("expected empty refund ID, got %q", result.RefundID)
+	}
+}
+
+// emptyRefundProcessor returns a result with empty RefundID.
+type emptyRefundProcessor struct {
+	*processor.BaseProcessor
+}
+
+func (e *emptyRefundProcessor) IsAvailable(_ context.Context) bool { return true }
+func (e *emptyRefundProcessor) Charge(_ context.Context, _ processor.PaymentRequest) (*processor.PaymentResult, error) {
+	return nil, fmt.Errorf("not impl")
+}
+func (e *emptyRefundProcessor) Authorize(_ context.Context, _ processor.PaymentRequest) (*processor.PaymentResult, error) {
+	return nil, fmt.Errorf("not impl")
+}
+func (e *emptyRefundProcessor) Capture(_ context.Context, _ string, _ currency.Cents) (*processor.PaymentResult, error) {
+	return nil, fmt.Errorf("not impl")
+}
+func (e *emptyRefundProcessor) Refund(_ context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
+	return &processor.RefundResult{
+		Success:  true,
+		RefundID: "", // empty
+	}, nil
+}
+func (e *emptyRefundProcessor) GetTransaction(_ context.Context, _ string) (*processor.Transaction, error) {
+	return nil, fmt.Errorf("not impl")
+}
+func (e *emptyRefundProcessor) ValidateWebhook(_ context.Context, _ []byte, _ string) (*processor.WebhookEvent, error) {
+	return nil, fmt.Errorf("not impl")
+}

@@ -1,9 +1,16 @@
 package payout
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- MarkInTransit ---
 
@@ -527,5 +534,198 @@ func TestPayoutFieldAssignment(t *testing.T) {
 	}
 	if p.DestinationType != "card" {
 		t.Errorf("expected card, got %s", p.DestinationType)
+	}
+}
+
+// --- Save serializes Metadata_ ---
+
+func TestSave_SerializesMetadata(t *testing.T) {
+	p := &Payout{
+		Metadata: map[string]interface{}{"batch": "weekly"},
+	}
+	ps, err := p.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if ps == nil {
+		t.Fatal("expected non-nil properties")
+	}
+	if p.Metadata_ == "" {
+		t.Error("expected Metadata_ to be populated after Save")
+	}
+}
+
+func TestSave_NilMetadata(t *testing.T) {
+	p := &Payout{}
+	_, err := p.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if p.Metadata_ == "" {
+		t.Error("expected Metadata_ to be set")
+	}
+}
+
+// --- Load deserializes Metadata_ ---
+
+func TestLoad_DeserializesMetadata(t *testing.T) {
+	p := &Payout{
+		Metadata: map[string]interface{}{"period": "2026-02"},
+	}
+	_, err := p.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	saved := p.Metadata_
+
+	p2 := &Payout{}
+	p2.Metadata_ = saved
+	props := []datastore.Property{
+		{Name: "Metadata_", Value: saved},
+	}
+	err = p2.Load(props)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if p2.Metadata == nil {
+		t.Fatal("expected non-nil Metadata after Load")
+	}
+	if p2.Metadata["period"] != "2026-02" {
+		t.Errorf("expected period=2026-02, got %v", p2.Metadata["period"])
+	}
+}
+
+func TestLoad_EmptyMetadataString(t *testing.T) {
+	p := &Payout{}
+	err := p.Load([]datastore.Property{})
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if p.Metadata != nil {
+		t.Error("expected nil metadata when Metadata_ is empty")
+	}
+}
+
+// --- Save/Load round trip ---
+
+func TestSaveLoadRoundTrip(t *testing.T) {
+	p := &Payout{
+		Amount:          50000,
+		Currency:        "usd",
+		Status:          Pending,
+		DestinationType: "bank_account",
+		DestinationId:   "ba_123",
+		Description:     "Monthly payout",
+		ProviderRef:     "po_abc",
+		Metadata:        map[string]interface{}{"batch_id": "batch_42"},
+	}
+
+	ps, err := p.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	p2 := &Payout{}
+	err = p2.Load(ps)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if p2.DestinationType != "bank_account" {
+		t.Errorf("expected bank_account, got %s", p2.DestinationType)
+	}
+	if p2.Description != "Monthly payout" {
+		t.Errorf("expected 'Monthly payout', got %s", p2.Description)
+	}
+}
+
+// --- Load error paths ---
+
+func TestLoad_LoadStructError(t *testing.T) {
+	p := &Payout{}
+	props := []datastore.Property{
+		{Name: "bad", Value: func() {}},
+	}
+	err := p.Load(props)
+	if err == nil {
+		t.Fatal("expected error from LoadStruct with unmarshalable property")
+	}
+}
+
+func TestLoad_InvalidMetadataJSON(t *testing.T) {
+	p := &Payout{}
+	p.Metadata_ = "not-valid-json"
+	err := p.Load([]datastore.Property{})
+	if err == nil {
+		t.Fatal("expected error for invalid Metadata_ JSON")
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	p := &Payout{}
+	p.Init(db)
+	if p.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	p := &Payout{}
+	p.Init(db)
+	p.Defaults()
+	if p.Status != Pending {
+		t.Errorf("expected %s, got %s", Pending, p.Status)
+	}
+	if p.Currency != "usd" {
+		t.Errorf("expected usd, got %s", p.Currency)
+	}
+	if p.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	p := &Payout{}
+	p.Init(db)
+	p.Status = Paid
+	p.Currency = "gbp"
+	p.Defaults()
+	if p.Status != Paid {
+		t.Errorf("expected %s, got %s", Paid, p.Status)
+	}
+	if p.Currency != "gbp" {
+		t.Errorf("expected gbp, got %s", p.Currency)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	p := New(db)
+	if p == nil {
+		t.Fatal("expected non-nil Payout")
+	}
+	if p.Status != Pending {
+		t.Errorf("expected %s, got %s", Pending, p.Status)
+	}
+	if p.Currency != "usd" {
+		t.Errorf("expected usd, got %s", p.Currency)
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }
