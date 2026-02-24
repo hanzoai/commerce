@@ -6,7 +6,7 @@ import (
 )
 
 type User struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.AccessTokens
 
 	Name    string
@@ -18,7 +18,7 @@ func (u User) Kind() string {
 }
 
 func (u *User) Init(db *datastore.Datastore) {
-	u.Model = mixin.Model{Db: db, Entity: u}
+	u.BaseModel = mixin.BaseModel{Db: db, Entity: u}
 	u.AccessTokens = mixin.AccessTokens{Entity: u}
 }
 

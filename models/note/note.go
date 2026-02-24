@@ -11,7 +11,7 @@ import (
 func init() { orm.Register[Note]("note") }
 
 type Note struct {
-	mixin.EntityBridge[Note]
+	mixin.Model[Note]
 
 	Enabled bool `json:"enabled" orm:"default:true"`
 

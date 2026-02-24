@@ -38,7 +38,7 @@ func GetSearchIndex() SearchIndex {
 	return searchIndexProvider
 }
 
-func (m Model) PutDocument() error {
+func (m BaseModel) PutDocument() error {
 	hook, ok := m.Entity.(Searchable)
 	if !ok {
 		// Not a searchable model, do nothing
@@ -61,7 +61,7 @@ func (m Model) PutDocument() error {
 	return nil
 }
 
-func (m Model) DeleteDocument() error {
+func (m BaseModel) DeleteDocument() error {
 	hook, ok := m.Entity.(Searchable)
 	if !ok {
 		// Not a searchable model, do nothing

@@ -7,7 +7,7 @@ import (
 )
 
 type AdConfig struct {
-	mixin.Model
+	mixin.BaseModel
 	FacebookAdTypePlacements
 
 	AdCampaignId string `json:"adCampaignId"`

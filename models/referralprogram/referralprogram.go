@@ -72,7 +72,7 @@ type Trigger struct {
 }
 
 type ReferralProgram struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Name string `json:"name"`
 

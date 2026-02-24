@@ -15,7 +15,7 @@ func init() { orm.Register[Bundle]("bundle") }
 
 // A bundle of Products/Variants to be listed on a store
 type Bundle struct {
-	mixin.EntityBridge[Bundle]
+	mixin.Model[Bundle]
 
 	// Unique human readable identifier
 	Slug string `json:"slug"`

@@ -12,7 +12,7 @@ func (nt NetworkToken) Kind() string {
 }
 
 func (nt *NetworkToken) Init(db *datastore.Datastore) {
-	nt.Model.Init(db, nt)
+	nt.BaseModel.Init(db, nt)
 }
 
 func (nt *NetworkToken) Defaults() {

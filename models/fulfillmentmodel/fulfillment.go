@@ -28,7 +28,7 @@ type FulfillmentItem struct {
 }
 
 type Fulfillment struct {
-	mixin.EntityBridge[Fulfillment]
+	mixin.Model[Fulfillment]
 
 	OrderId          string     `json:"orderId"`
 	ShippingOptionId string     `json:"shippingOptionId"`

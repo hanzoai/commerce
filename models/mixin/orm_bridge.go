@@ -1,13 +1,13 @@
 package mixin
 
-// EntityBridge[T] wraps orm.Model[T] and implements the full mixin.Entity
-// interface. Embed this in model structs instead of mixin.Model to use ORM
+// Model[T] wraps orm.Model[T] and implements the full mixin.Entity
+// interface. Embed this in model structs instead of mixin.BaseModel to use ORM
 // generics while remaining compatible with the REST layer.
 //
 // Usage:
 //
 //	type Note struct {
-//	    mixin.EntityBridge[Note]
+//	    mixin.Model[Note]
 //	    Enabled bool   `json:"enabled" orm:"default:true"`
 //	    Message string `json:"message"`
 //	}
@@ -25,9 +25,9 @@ import (
 	"github.com/hanzoai/orm"
 )
 
-// EntityBridge[T] embeds orm.Model[T] and provides mixin.Entity compatibility.
+// Model[T] embeds orm.Model[T] and provides mixin.Entity compatibility.
 // The orm.Model[T] must be the first field so self() pointer arithmetic works.
-type EntityBridge[T any] struct {
+type Model[T any] struct {
 	orm.Model[T]
 	ds      *datastore.Datastore `json:"-" datastore:"-"`
 	Parent  datastore.Key       `json:"-" datastore:"-"`
@@ -36,8 +36,8 @@ type EntityBridge[T any] struct {
 }
 
 // self returns a pointer to the outermost struct T that embeds this bridge.
-// Works because EntityBridge[T] is at offset 0 of T.
-func (b *EntityBridge[T]) self() *T {
+// Works because Model[T] is at offset 0 of T.
+func (b *Model[T]) self() *T {
 	return (*T)(reflect.NewAt(
 		reflect.TypeOf((*T)(nil)).Elem(),
 		reflect.ValueOf(b).UnsafePointer(),
@@ -48,7 +48,7 @@ func (b *EntityBridge[T]) self() *T {
 
 // Init wires the bridge to a commerce datastore.
 // Creates an ORM adapter, initializes the orm.Model, and applies defaults.
-func (b *EntityBridge[T]) Init(db *datastore.Datastore) {
+func (b *Model[T]) Init(db *datastore.Datastore) {
 	b.ds = db
 	adapter := NewDatastoreAdapter(db)
 	b.Model.Init(adapter)
@@ -57,14 +57,14 @@ func (b *EntityBridge[T]) Init(db *datastore.Datastore) {
 
 // --- Context / Namespace ---
 
-func (b *EntityBridge[T]) Context() context.Context {
+func (b *Model[T]) Context() context.Context {
 	if b.ds != nil {
 		return b.ds.Context
 	}
 	return context.Background()
 }
 
-func (b *EntityBridge[T]) SetContext(ctx context.Context) {
+func (b *Model[T]) SetContext(ctx context.Context) {
 	if b.ds == nil {
 		b.ds = datastore.New(ctx)
 		adapter := NewDatastoreAdapter(b.ds)
@@ -74,14 +74,14 @@ func (b *EntityBridge[T]) SetContext(ctx context.Context) {
 	}
 }
 
-func (b *EntityBridge[T]) SetNamespace(namespace string) {
+func (b *Model[T]) SetNamespace(namespace string) {
 	if b.ds != nil {
 		b.ds.SetNamespace(namespace)
 	}
 	b.Model.SetNamespace(namespace)
 }
 
-func (b *EntityBridge[T]) Namespace() string {
+func (b *Model[T]) Namespace() string {
 	if b.ds != nil {
 		return b.ds.GetNamespace()
 	}
@@ -91,12 +91,12 @@ func (b *EntityBridge[T]) Namespace() string {
 // --- Key management ---
 // These shadow orm.Model[T]'s methods to return datastore.Key instead of orm.Key.
 
-func (b *EntityBridge[T]) Key() datastore.Key {
+func (b *Model[T]) Key() datastore.Key {
 	ormKey := b.Model.Key()
 	return OrmKeyToDS(ormKey)
 }
 
-func (b *EntityBridge[T]) SetKey(key interface{}) error {
+func (b *Model[T]) SetKey(key interface{}) error {
 	switch v := key.(type) {
 	case datastore.Key:
 		b.Model.SetKey(DSKeyToOrm(v))
@@ -120,7 +120,7 @@ func (b *EntityBridge[T]) SetKey(key interface{}) error {
 	return nil
 }
 
-func (b *EntityBridge[T]) NewKey() datastore.Key {
+func (b *Model[T]) NewKey() datastore.Key {
 	if b.ds != nil {
 		kind := b.Model.Kind()
 		return b.ds.AllocateOrphanKey(kind, b.Parent)
@@ -133,7 +133,7 @@ func (b *EntityBridge[T]) NewKey() datastore.Key {
 // inherited from orm.Model[T] with matching signatures.
 
 // Get overrides orm.Model[T].Get to accept datastore.Key.
-func (b *EntityBridge[T]) Get(key datastore.Key) error {
+func (b *Model[T]) Get(key datastore.Key) error {
 	if key != nil {
 		b.Model.SetKey(DSKeyToOrm(key))
 	}
@@ -145,25 +145,25 @@ func (b *EntityBridge[T]) Get(key datastore.Key) error {
 
 // --- Must variants ---
 
-func (b *EntityBridge[T]) MustSetKey(key interface{}) {
+func (b *Model[T]) MustSetKey(key interface{}) {
 	if err := b.SetKey(key); err != nil {
 		panic(err)
 	}
 }
 
-func (b *EntityBridge[T]) MustGet(key datastore.Key) {
+func (b *Model[T]) MustGet(key datastore.Key) {
 	if err := b.Get(key); err != nil {
 		panic(err)
 	}
 }
 
-func (b *EntityBridge[T]) MustGetById(id string) {
+func (b *Model[T]) MustGetById(id string) {
 	if err := b.Model.GetById(id); err != nil {
 		panic(err)
 	}
 }
 
-func (b *EntityBridge[T]) MustPut() {
+func (b *Model[T]) MustPut() {
 	if err := b.Model.Put(); err != nil {
 		panic(err)
 	}
@@ -171,23 +171,23 @@ func (b *EntityBridge[T]) MustPut() {
 
 // --- Existence checks ---
 
-func (b *EntityBridge[T]) Exists() (bool, error) {
+func (b *Model[T]) Exists() (bool, error) {
 	return b.Model.Exists()
 }
 
-func (b *EntityBridge[T]) IdExists(id string) (datastore.Key, bool, error) {
+func (b *Model[T]) IdExists(id string) (datastore.Key, bool, error) {
 	q := b.queryDS()
 	return q.IdExists(id)
 }
 
-func (b *EntityBridge[T]) KeyExists(key datastore.Key) (bool, error) {
+func (b *Model[T]) KeyExists(key datastore.Key) (bool, error) {
 	q := b.queryDS()
 	return q.KeyExists(key)
 }
 
 // --- Document/Search ---
 
-func (b *EntityBridge[T]) PutDocument() error {
+func (b *Model[T]) PutDocument() error {
 	entity := b.self()
 	hook, ok := any(entity).(Searchable)
 	if !ok {
@@ -202,7 +202,7 @@ func (b *EntityBridge[T]) PutDocument() error {
 	return nil
 }
 
-func (b *EntityBridge[T]) DeleteDocument() error {
+func (b *Model[T]) DeleteDocument() error {
 	entity := b.self()
 	hook, ok := any(entity).(Searchable)
 	if !ok {
@@ -219,7 +219,7 @@ func (b *EntityBridge[T]) DeleteDocument() error {
 
 // --- GetOrCreate / GetOrUpdate ---
 
-func (b *EntityBridge[T]) GetOrCreate(filterStr string, value interface{}) error {
+func (b *Model[T]) GetOrCreate(filterStr string, value interface{}) error {
 	q := b.Query()
 	ok, err := q.Filter(filterStr, value).Get()
 	if err != nil {
@@ -231,7 +231,7 @@ func (b *EntityBridge[T]) GetOrCreate(filterStr string, value interface{}) error
 	return nil
 }
 
-func (b *EntityBridge[T]) GetOrUpdate(filterStr string, value interface{}) error {
+func (b *Model[T]) GetOrUpdate(filterStr string, value interface{}) error {
 	q := b.Query()
 	ok, err := q.Filter(filterStr, value).Get()
 	if err != nil {
@@ -245,11 +245,11 @@ func (b *EntityBridge[T]) GetOrUpdate(filterStr string, value interface{}) error
 
 // --- Datastore / Transaction ---
 
-func (b *EntityBridge[T]) Datastore() *datastore.Datastore {
+func (b *Model[T]) Datastore() *datastore.Datastore {
 	return b.ds
 }
 
-func (b *EntityBridge[T]) RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error {
+func (b *Model[T]) RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error {
 	return datastore.RunInTransaction(b.Context(), func(db *datastore.Datastore) error {
 		return fn()
 	}, opts)
@@ -258,12 +258,12 @@ func (b *EntityBridge[T]) RunInTransaction(fn func() error, opts *datastore.Tran
 // --- Query ---
 
 // queryDS returns a raw datastore query (for internal use).
-func (b *EntityBridge[T]) queryDS() datastore.Query {
+func (b *Model[T]) queryDS() datastore.Query {
 	return query.New(b.Context(), b.Model.Kind())
 }
 
 // Query returns a mixin.ModelQuery for this entity.
-func (b *EntityBridge[T]) Query() *ModelQuery {
+func (b *Model[T]) Query() *ModelQuery {
 	q := new(ModelQuery)
 	entity, ok := any(b.self()).(Entity)
 	if ok {
@@ -276,7 +276,7 @@ func (b *EntityBridge[T]) Query() *ModelQuery {
 
 // --- Utility methods ---
 
-func (b *EntityBridge[T]) Zero() Entity {
+func (b *Model[T]) Zero() Entity {
 	typ := reflect.TypeOf((*T)(nil)).Elem()
 	entity := reflect.New(typ).Interface()
 	if e, ok := entity.(Entity); ok {
@@ -285,7 +285,7 @@ func (b *EntityBridge[T]) Zero() Entity {
 	return nil
 }
 
-func (b *EntityBridge[T]) Clone() Entity {
+func (b *Model[T]) Clone() Entity {
 	entity := b.self()
 	data, err := json.Marshal(entity)
 	if err != nil {
@@ -299,7 +299,7 @@ func (b *EntityBridge[T]) Clone() Entity {
 	return nil
 }
 
-func (b *EntityBridge[T]) CloneFromJSON() Entity {
+func (b *Model[T]) CloneFromJSON() Entity {
 	data := b.JSON()
 	clone := new(T)
 	json.Unmarshal(data, clone)
@@ -309,7 +309,7 @@ func (b *EntityBridge[T]) CloneFromJSON() Entity {
 	return nil
 }
 
-func (b *EntityBridge[T]) Slice() interface{} {
+func (b *Model[T]) Slice() interface{} {
 	typ := reflect.TypeOf((*T)(nil))
 	sliceType := reflect.SliceOf(typ)
 	slice := reflect.MakeSlice(sliceType, 0, 0)
@@ -318,35 +318,35 @@ func (b *EntityBridge[T]) Slice() interface{} {
 	return ptr.Interface()
 }
 
-func (b *EntityBridge[T]) JSON() []byte {
+func (b *Model[T]) JSON() []byte {
 	data, _ := json.Marshal(b.self())
 	return data
 }
 
-func (b *EntityBridge[T]) JSONString() string {
+func (b *Model[T]) JSONString() string {
 	return string(b.JSON())
 }
 
 // --- Timestamp accessors for compatibility ---
 
-func (b *EntityBridge[T]) Created() bool {
+func (b *Model[T]) Created() bool {
 	return !b.Model.CreatedAt.IsZero()
 }
 
-func (b *EntityBridge[T]) GetCreatedAt() time.Time {
+func (b *Model[T]) GetCreatedAt() time.Time {
 	return b.Model.CreatedAt
 }
 
-func (b *EntityBridge[T]) GetUpdatedAt() time.Time {
+func (b *Model[T]) GetUpdatedAt() time.Time {
 	return b.Model.UpdatedAt
 }
 
 // --- Load guard ---
 
 // loaded_ prevents duplicate deserialization in Load() methods.
-// Matches mixin.Model.Loaded() semantics: returns true if already loaded,
+// Matches mixin.BaseModel.Loaded() semantics: returns true if already loaded,
 // otherwise marks as loaded and returns false.
-func (b *EntityBridge[T]) Loaded() bool {
+func (b *Model[T]) Loaded() bool {
 	if b.loaded_ {
 		return true
 	}
@@ -354,5 +354,5 @@ func (b *EntityBridge[T]) Loaded() bool {
 	return false
 }
 
-// Compile-time verification that EntityBridge satisfies Entity.
+// Compile-time verification that Model satisfies Entity.
 // We can't do this generically, but each migrated model will verify via the REST layer.

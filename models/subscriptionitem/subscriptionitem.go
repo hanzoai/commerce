@@ -15,7 +15,7 @@ var kind = "subscription-item"
 // Each subscription has one or more items. For metered items, a MeterId
 // links usage events to this line. For licensed items, Quantity tracks seats.
 type SubscriptionItem struct {
-	mixin.Model
+	mixin.BaseModel
 
 	SubscriptionId string `json:"subscriptionId"`
 	PriceId        string `json:"priceId,omitempty"`
@@ -37,7 +37,7 @@ func (si SubscriptionItem) Kind() string {
 }
 
 func (si *SubscriptionItem) Init(db *datastore.Datastore) {
-	si.Model.Init(db, si)
+	si.BaseModel.Init(db, si)
 }
 
 func (si *SubscriptionItem) Defaults() {

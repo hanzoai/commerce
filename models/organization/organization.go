@@ -31,7 +31,7 @@ import (
 )
 
 type Organization struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.AccessTokens
 	wallet.WalletHolder
 

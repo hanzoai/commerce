@@ -117,7 +117,7 @@ func (q *ModelQuery) ById(id string) (bool, error) {
 }
 
 // Return a query for this entity kind
-func (m *Model) Query() *ModelQuery {
+func (m *BaseModel) Query() *ModelQuery {
 	q := new(ModelQuery)
 	q.entity = m.Entity.(Entity)
 	log.Debug(m.Context())

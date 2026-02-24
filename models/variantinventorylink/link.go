@@ -5,7 +5,7 @@ import (
 )
 
 type VariantInventoryLink struct {
-	mixin.Model
+	mixin.BaseModel
 
 	VariantId       string `json:"variantId"`
 	InventoryItemId string `json:"inventoryItemId"`

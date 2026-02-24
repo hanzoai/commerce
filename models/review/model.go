@@ -9,7 +9,7 @@ func (r Review) Kind() string {
 }
 
 func (r *Review) Init(db *datastore.Datastore) {
-	r.Model.Init(db, r)
+	r.BaseModel.Init(db, r)
 }
 
 func (r *Review) Defaults() {

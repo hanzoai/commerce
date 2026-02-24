@@ -7,7 +7,7 @@ import (
 )
 
 type Namespace struct {
-	mixin.Model
+	mixin.BaseModel
 
 	IntId int64
 	Name  string
@@ -39,7 +39,7 @@ func (n *Namespace) Put() (err error) {
 			log.Warn("Namespace exists: %v", n.Name)
 			return NamespaceExists
 		} else {
-			return n.Model.Put()
+			return n.BaseModel.Put()
 		}
 	}, &datastore.TransactionOptions{XG: true})
 }

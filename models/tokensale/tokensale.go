@@ -8,7 +8,7 @@ import (
 )
 
 type TokenSale struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Auditor Wallet
 	wallet.WalletHolder `json:"-"`

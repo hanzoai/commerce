@@ -21,7 +21,7 @@ const (
 
 // SetupIntent represents a flow to save a payment method for future use.
 type SetupIntent struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId         string                 `json:"customerId,omitempty"`
 	PaymentMethodId    string                 `json:"paymentMethodId,omitempty"`

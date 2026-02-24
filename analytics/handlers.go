@@ -47,8 +47,7 @@ func create(c *gin.Context) {
 		for _, event := range events {
 			offset := event.Timestamp.Sub(mostRecentTime)
 
-			event.Db = db
-			event.Entity = event
+			event.Init(db)
 			event.RequestMetadata = client.New(c)
 			event.CalculatedTimestamp = receivedTime.Add(offset)
 			if err := event.Put(); err != nil {

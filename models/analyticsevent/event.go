@@ -16,7 +16,7 @@ import (
 func init() { orm.Register[AnalyticsEvent]("analyticsevent") }
 
 type AnalyticsEvent struct {
-	mixin.EntityBridge[AnalyticsEvent]
+	mixin.Model[AnalyticsEvent]
 
 	analyticsidentifier.Ids
 

@@ -8,7 +8,7 @@ import (
 )
 
 type Redemption struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Coupon code (need not be unique).
 	Code string `json:"code"`

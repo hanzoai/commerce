@@ -9,7 +9,7 @@ func (t TaxRegion) Kind() string {
 }
 
 func (t *TaxRegion) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *TaxRegion) Defaults() {

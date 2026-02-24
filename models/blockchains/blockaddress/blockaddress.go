@@ -18,7 +18,7 @@ type WatchedAddress struct {
 // BlockAddress denotes an address on the blockchain that we wnat ot keep track
 // of
 type BlockAddress struct {
-	mixin.Model
+	mixin.BaseModel
 
 	WatchedAddress
 

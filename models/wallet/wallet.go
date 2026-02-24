@@ -14,7 +14,7 @@ import (
 )
 
 type Wallet struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Accounts []Account `json:"accounts,omitempty"`
 }
