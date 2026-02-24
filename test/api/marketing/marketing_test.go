@@ -37,7 +37,7 @@ var (
 	org         *organization.Organization
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -68,7 +68,7 @@ var _ = BeforeSuite(func() {
 	})
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

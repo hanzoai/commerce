@@ -100,7 +100,7 @@ func (c *Context) cloneKeys(keys map[any]any) {
 		}
 
 		// Skip context keys that cannot be serialized
-		if keyStr == "appengine" || keyStr == "context" {
+		if keyStr == "context" {
 			continue
 		}
 
@@ -135,7 +135,6 @@ func (c Context) Context(ctx context.Context) (ginCtx *gin.Context, err error) {
 	}
 
 	// ...otherwise use context to update gin context
-	ginCtx.Set("appengine", ctx)
 	ginCtx.Set("context", ctx)
 
 	// Fetch organization if organization-id is set

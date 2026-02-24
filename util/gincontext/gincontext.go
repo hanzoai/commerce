@@ -19,7 +19,7 @@ func New(ctx context.Context) *gin.Context {
 }
 
 func SetDefaults(c *gin.Context, ctx context.Context) {
-	c.Set("appengine", ctx)
+	c.Set("context", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)
 	db := datastore.New(ctx)

@@ -94,18 +94,11 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 	return err
 }
 
-// Set context for datastore
+// SetContext extracts the Go context from a Gin context (if applicable) and stores it.
 func (d *Datastore) SetContext(ctx context.Context) {
 	if c, ok := ctx.(*gin.Context); ok {
-		// Try to get the context from gin
-		if appCtx := c.Value("appengine"); appCtx != nil {
-			if ctxVal, ok := appCtx.(context.Context); ok {
-				ctx = ctxVal
-			}
-		}
-		// Try the new "context" key
-		if appCtx := c.Value("context"); appCtx != nil {
-			if ctxVal, ok := appCtx.(context.Context); ok {
+		if reqCtx := c.Value("context"); reqCtx != nil {
+			if ctxVal, ok := reqCtx.(context.Context); ok {
 				ctx = ctxVal
 			}
 		}
