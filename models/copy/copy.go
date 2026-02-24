@@ -3,9 +3,12 @@ package copy
 import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/ads"
 )
+
+func init() { orm.Register[Copy]("copy") }
 
 type Type string
 
@@ -15,10 +18,10 @@ const (
 )
 
 type Copy struct {
-	mixin.Model
+	mixin.EntityBridge[Copy]
 	AdIntegration
 
-	Type Type   `json:"type"`
+	Type Type   `json:"type" orm:"default:content"`
 	Text string `json:"text" datastore:",noindex"`
 
 	ParentCopyId string `json:"parentCopyId"`
@@ -29,7 +32,7 @@ type Copy struct {
 }
 
 func (m Copy) Fork() *Copy {
-	m2 := New(m.Db)
+	m2 := New(m.Datastore())
 
 	m2.AdIntegration = m.AdIntegration
 	m2.Type = m.Type
@@ -42,7 +45,9 @@ func (m Copy) Fork() *Copy {
 
 func (m *Copy) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
-	m.Defaults()
+	if m.Type == "" {
+		m.Type = ContentType
+	}
 
 	// Load supported properties
 	return datastore.LoadStruct(m, ps)
@@ -62,4 +67,14 @@ func (m Copy) GetParentCopyId() string {
 
 func (m Copy) GetCopySearchFieldAndIds() (string, []string) {
 	return "ParentCopyId", []string{m.Id()}
+}
+
+func New(db *datastore.Datastore) *Copy {
+	a := new(Copy)
+	a.Init(db)
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("copy")
 }
