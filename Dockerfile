@@ -9,7 +9,7 @@ RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
 
 WORKDIR /build
 
-# Copy go mod files
+# Copy go mod files first for layer caching
 COPY go.mod go.sum ./
 
 # Download dependencies
@@ -26,7 +26,7 @@ RUN CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
     ./cmd/commerce/main.go
 
 # Production stage
-FROM alpine:3.19
+FROM alpine:3.21
 
 LABEL org.opencontainers.image.source="https://github.com/hanzoai/commerce"
 
@@ -43,7 +43,6 @@ COPY --from=builder /build/commerce /app/commerce
 
 # Copy templates and static assets
 COPY --from=builder /build/templates /app/templates
-COPY --from=builder /build/analytics/templates /app/analytics/templates
 COPY --from=builder /build/api/templates /app/api/templates
 
 # Create data directories
@@ -62,7 +61,7 @@ ENV PORT=8001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8001/health || exit 1
+    CMD curl -f http://localhost:8001/api/v1/ping || exit 1
 
 # Default command
 ENTRYPOINT ["/app/commerce"]
