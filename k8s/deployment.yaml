@@ -6,12 +6,9 @@ metadata:
   labels:
     app: commerce
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    type: Recreate
   selector:
     matchLabels:
       app: commerce
@@ -60,6 +57,8 @@ spec:
             - name: config
               mountPath: /app/.env
               subPath: .env
+            - name: data
+              mountPath: /app/commerce_data
           resources:
             requests:
               cpu: 100m
@@ -85,3 +84,6 @@ spec:
         - name: config
           secret:
             secretName: commerce-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: commerce-data
