@@ -1,8 +1,15 @@
-package creditnote
+package credit
 
 import (
+	"context"
 	"testing"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- MarkVoid ---
 
@@ -349,5 +356,303 @@ func TestCreditNoteLineItemsSum(t *testing.T) {
 	}
 	if total != 6000 {
 		t.Errorf("expected sum 6000, got %d", total)
+	}
+}
+
+// --- Save serializes LineItems_ and Metadata_ ---
+
+func TestSave_SerializesLineItems(t *testing.T) {
+	cn := &CreditNote{
+		LineItems: []CreditNoteLineItem{
+			{Description: "Widget", Amount: 2500, Currency: "usd", Quantity: 1, UnitPrice: 2500},
+			{Description: "Gadget", Amount: 5000, Currency: "usd", Quantity: 2, UnitPrice: 2500},
+		},
+		Metadata: map[string]interface{}{"order": "ord_123"},
+	}
+	ps, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if ps == nil {
+		t.Fatal("expected non-nil properties")
+	}
+	if cn.LineItems_ == "" {
+		t.Error("expected LineItems_ to be populated after Save")
+	}
+	if cn.Metadata_ == "" {
+		t.Error("expected Metadata_ to be populated after Save")
+	}
+}
+
+func TestSave_NilLineItems(t *testing.T) {
+	cn := &CreditNote{}
+	_, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if cn.LineItems_ == "" {
+		t.Error("expected LineItems_ to be set")
+	}
+}
+
+func TestSave_EmptyLineItems(t *testing.T) {
+	cn := &CreditNote{
+		LineItems: []CreditNoteLineItem{},
+	}
+	_, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if cn.LineItems_ == "" {
+		t.Error("expected LineItems_ to be set")
+	}
+}
+
+func TestSave_NilMetadata(t *testing.T) {
+	cn := &CreditNote{}
+	_, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if cn.Metadata_ == "" {
+		t.Error("expected Metadata_ to be set")
+	}
+}
+
+func TestSave_EmptyMetadata(t *testing.T) {
+	cn := &CreditNote{
+		Metadata: map[string]interface{}{},
+	}
+	_, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if cn.Metadata_ == "" {
+		t.Error("expected Metadata_ to be set")
+	}
+}
+
+// --- Load deserializes LineItems_ and Metadata_ ---
+
+func TestLoad_DeserializesLineItems(t *testing.T) {
+	cn := &CreditNote{
+		LineItems: []CreditNoteLineItem{
+			{Description: "Test", Amount: 100, Currency: "usd", Quantity: 1, UnitPrice: 100},
+		},
+		Metadata: map[string]interface{}{"foo": "bar"},
+	}
+	_, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	savedItems := cn.LineItems_
+	savedMeta := cn.Metadata_
+
+	cn2 := &CreditNote{}
+	cn2.LineItems_ = savedItems
+	cn2.Metadata_ = savedMeta
+	props := []datastore.Property{
+		{Name: "LineItems_", Value: savedItems},
+		{Name: "Metadata_", Value: savedMeta},
+	}
+	err = cn2.Load(props)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if len(cn2.LineItems) != 1 {
+		t.Fatalf("expected 1 line item, got %d", len(cn2.LineItems))
+	}
+	if cn2.LineItems[0].Description != "Test" {
+		t.Errorf("expected Test, got %s", cn2.LineItems[0].Description)
+	}
+	if cn2.Metadata == nil {
+		t.Fatal("expected non-nil Metadata")
+	}
+	if cn2.Metadata["foo"] != "bar" {
+		t.Errorf("expected foo=bar, got %v", cn2.Metadata["foo"])
+	}
+}
+
+func TestLoad_EmptyStrings(t *testing.T) {
+	cn := &CreditNote{}
+	err := cn.Load([]datastore.Property{})
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if cn.LineItems != nil {
+		t.Error("expected nil LineItems when LineItems_ is empty")
+	}
+	if cn.Metadata != nil {
+		t.Error("expected nil Metadata when Metadata_ is empty")
+	}
+}
+
+func TestLoad_OnlyLineItems(t *testing.T) {
+	cn := &CreditNote{
+		LineItems: []CreditNoteLineItem{
+			{Description: "Only", Amount: 500},
+		},
+	}
+	_, _ = cn.Save()
+	savedItems := cn.LineItems_
+
+	cn2 := &CreditNote{}
+	cn2.LineItems_ = savedItems
+	props := []datastore.Property{
+		{Name: "LineItems_", Value: savedItems},
+	}
+	err := cn2.Load(props)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if len(cn2.LineItems) != 1 {
+		t.Fatalf("expected 1 line item, got %d", len(cn2.LineItems))
+	}
+	if cn2.Metadata != nil {
+		t.Error("expected nil Metadata")
+	}
+}
+
+// --- Save/Load round trip ---
+
+func TestSaveLoadRoundTrip(t *testing.T) {
+	cn := &CreditNote{
+		InvoiceId:  "inv_rt",
+		CustomerId: "cus_rt",
+		Number:     "CN-0042",
+		Amount:     7500,
+		Currency:   "eur",
+		Status:     Issued,
+		Reason:     "order_change",
+		LineItems: []CreditNoteLineItem{
+			{Description: "Widget", Amount: 2500, Currency: "eur", Quantity: 1, UnitPrice: 2500},
+			{Description: "Gadget", Amount: 5000, Currency: "eur", Quantity: 2, UnitPrice: 2500},
+		},
+		Metadata: map[string]interface{}{"source": "api"},
+	}
+
+	ps, err := cn.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	cn2 := &CreditNote{}
+	err = cn2.Load(ps)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if cn2.InvoiceId != "inv_rt" {
+		t.Errorf("expected inv_rt, got %s", cn2.InvoiceId)
+	}
+	if cn2.Number != "CN-0042" {
+		t.Errorf("expected CN-0042, got %s", cn2.Number)
+	}
+	if string(cn2.Currency) != "eur" {
+		t.Errorf("expected eur, got %s", cn2.Currency)
+	}
+}
+
+// --- Load error paths ---
+
+func TestLoad_LoadStructError(t *testing.T) {
+	cn := &CreditNote{}
+	props := []datastore.Property{
+		{Name: "bad", Value: func() {}},
+	}
+	err := cn.Load(props)
+	if err == nil {
+		t.Fatal("expected error from LoadStruct with unmarshalable property")
+	}
+}
+
+func TestLoad_InvalidLineItemsJSON(t *testing.T) {
+	cn := &CreditNote{}
+	cn.LineItems_ = "not-valid-json"
+	err := cn.Load([]datastore.Property{})
+	if err == nil {
+		t.Fatal("expected error for invalid LineItems_ JSON")
+	}
+}
+
+func TestLoad_InvalidMetadataJSON(t *testing.T) {
+	cn := &CreditNote{}
+	cn.Metadata_ = "not-valid-json"
+	// LineItems_ is empty so it skips that, but Metadata_ is invalid
+	err := cn.Load([]datastore.Property{})
+	if err == nil {
+		t.Fatal("expected error for invalid Metadata_ JSON")
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	cn := &CreditNote{}
+	cn.Init(db)
+	if cn.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults_SetsStatusAndCurrency(t *testing.T) {
+	db := testDB()
+	cn := &CreditNote{}
+	cn.Init(db)
+	cn.Defaults()
+	if cn.Status != Issued {
+		t.Errorf("expected %s, got %s", Issued, cn.Status)
+	}
+	if cn.Currency != "usd" {
+		t.Errorf("expected usd, got %s", cn.Currency)
+	}
+	if cn.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	cn := &CreditNote{}
+	cn.Init(db)
+	cn.Status = Void
+	cn.Currency = "eur"
+	cn.Defaults()
+	if cn.Status != Void {
+		t.Errorf("expected %s, got %s", Void, cn.Status)
+	}
+	if cn.Currency != "eur" {
+		t.Errorf("expected eur, got %s", cn.Currency)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	cn := New(db)
+	if cn == nil {
+		t.Fatal("expected non-nil CreditNote")
+	}
+	if cn.Status != Issued {
+		t.Errorf("expected %s, got %s", Issued, cn.Status)
+	}
+	if cn.Currency != "usd" {
+		t.Errorf("expected usd, got %s", cn.Currency)
+	}
+	if cn.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }
