@@ -6,15 +6,18 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[Collection]("collection") }
+
 // A collection of Products/Variants to be listed on a store
 type Collection struct {
-	mixin.Model
+	mixin.EntityBridge[Collection]
 
 	// Unique human readable identifier
 	Slug string `json:"slug"`
@@ -26,7 +29,7 @@ type Collection struct {
 	Description string `datastore:",noindex" json:"description"`
 
 	// Image/Video/Other Media to show in a gallery
-	Media []Media `json:"media"`
+	Media []Media `json:"media" orm:"default:[]"`
 
 	// Is the collection available
 	Available bool `json:"available"`
@@ -49,10 +52,10 @@ type Collection struct {
 	OutOfStock bool `json:"outOfStock"`
 
 	// Lists of products or specific product variants that are part of this collection
-	ProductIds []string `json:"productIds"`
-	VariantIds []string `json:"variantIds"`
+	ProductIds []string `json:"productIds" orm:"default:[]"`
+	VariantIds []string `json:"variantIds" orm:"default:[]"`
 
-	History []Event `json:"-"`
+	History []Event `json:"-" orm:"default:[]"`
 }
 
 func (c *Collection) Validator() *val.Validator {
@@ -67,4 +70,14 @@ func (c Collection) GetDescriptionParagraphs() []string {
 
 func (c Collection) DisplayTitle() string {
 	return DisplayTitle(c.Name)
+}
+
+func New(db *datastore.Datastore) *Collection {
+	c := new(Collection)
+	c.Init(db)
+	return c
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("collection")
 }
