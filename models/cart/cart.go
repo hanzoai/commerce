@@ -14,12 +14,15 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	"github.com/hanzoai/commerce/models/lineitem"
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+func init() { orm.Register[Cart]("cart") }
 
 type Status string
 
@@ -30,7 +33,7 @@ const (
 )
 
 type Cart struct {
-	mixin.Model
+	mixin.EntityBridge[Cart]
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
@@ -48,7 +51,7 @@ type Cart struct {
 	OrderId string `json:"orderId,omitempty"`
 
 	// Status
-	Status Status `json:"status"`
+	Status Status `json:"status" orm:"default:active"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
@@ -77,10 +80,10 @@ type Cart struct {
 	ShippingAddress Address `json:"shippingAddress,omitempty"`
 
 	// Individual line items
-	Items  []lineitem.LineItem `json:"items" datastore:"-"`
+	Items  []lineitem.LineItem `json:"items" datastore:"-" orm:"default:[]"`
 	Items_ string              `json:"-" datastore:",noindex"`
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex" orm:"default:[]"`
 	CouponCodes []string        `json:"couponCodes,omitempty" datastore:",noindex"`
 	ReferrerId  string          `json:"referrerId,omitempty"`
 
@@ -88,7 +91,7 @@ type Cart struct {
 	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Gift        bool   `json:"gift"`                                       // Is this a gift?
@@ -113,7 +116,15 @@ func (c *Cart) Load(ps []datastore.Property) (err error) {
 	}
 
 	// Ensure we're initialized
-	c.Defaults()
+	if c.Items == nil {
+		c.Items = make([]lineitem.LineItem, 0)
+	}
+	if c.Metadata == nil {
+		c.Metadata = make(Map)
+	}
+	if c.Coupons == nil {
+		c.Coupons = make([]coupon.Coupon, 0)
+	}
 
 	// Load supported properties
 	if err = datastore.LoadStruct(c, ps); err != nil {
@@ -123,7 +134,7 @@ func (c *Cart) Load(ps []datastore.Property) (err error) {
 	// Initialize coupons
 	// TODO: See if this is necessary
 	for i := range c.Coupons {
-		c.Coupons[i].Init(c.Model.Db)
+		c.Coupons[i].Init(c.Datastore())
 	}
 
 	// Deserialize from datastore
@@ -258,4 +269,14 @@ func (c Cart) Description() string {
 		buffer.WriteString(strconv.Itoa(item.Quantity))
 	}
 	return buffer.String()
+}
+
+func New(db *datastore.Datastore) *Cart {
+	c := new(Cart)
+	c.Init(db)
+	return c
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("cart")
 }
