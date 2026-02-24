@@ -1,8 +1,15 @@
 package paymentintent
 
 import (
+	"context"
 	"testing"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- Confirm ---
 
@@ -360,5 +367,226 @@ func TestFullLifecycle_ConfirmThenCancel(t *testing.T) {
 	}
 	if pi.Status != Canceled {
 		t.Errorf("expected Canceled, got %s", pi.Status)
+	}
+}
+
+// --- Kind ---
+
+func TestKind(t *testing.T) {
+	pi := &PaymentIntent{}
+	if pi.Kind() != "payment-intent" {
+		t.Errorf("expected 'payment-intent', got %q", pi.Kind())
+	}
+}
+
+// --- Struct zero values ---
+
+func TestPaymentIntentZeroValue(t *testing.T) {
+	pi := &PaymentIntent{}
+	if pi.Amount != 0 {
+		t.Errorf("expected 0, got %d", pi.Amount)
+	}
+	if pi.Status != "" {
+		t.Errorf("expected empty, got %s", pi.Status)
+	}
+	if pi.CaptureMethod != "" {
+		t.Errorf("expected empty, got %s", pi.CaptureMethod)
+	}
+	if pi.ConfirmationMethod != "" {
+		t.Errorf("expected empty, got %s", pi.ConfirmationMethod)
+	}
+	if pi.AmountCapturable != 0 {
+		t.Errorf("expected 0, got %d", pi.AmountCapturable)
+	}
+	if pi.AmountReceived != 0 {
+		t.Errorf("expected 0, got %d", pi.AmountReceived)
+	}
+	if pi.Metadata != nil {
+		t.Error("expected nil metadata")
+	}
+	if !pi.CanceledAt.IsZero() {
+		t.Error("expected zero CanceledAt")
+	}
+}
+
+// --- Field assignment ---
+
+func TestPaymentIntentFieldAssignment(t *testing.T) {
+	pi := &PaymentIntent{
+		CustomerId:         "cus_123",
+		Amount:             5000,
+		Currency:           "usd",
+		Status:             RequiresPaymentMethod,
+		PaymentMethodId:    "pm_abc",
+		CaptureMethod:      "manual",
+		ConfirmationMethod: "manual",
+		Description:        "Test payment",
+		ReceiptEmail:       "test@example.com",
+		ProviderRef:        "ch_xyz",
+		ProviderType:       "stripe",
+		ClientSecret:       "pi_secret_123",
+		InvoiceId:          "inv_456",
+		SetupFutureUsage:   "off_session",
+		LastError:          "card_declined",
+	}
+	if pi.CustomerId != "cus_123" {
+		t.Errorf("expected cus_123, got %s", pi.CustomerId)
+	}
+	if pi.Description != "Test payment" {
+		t.Errorf("expected description, got %s", pi.Description)
+	}
+	if pi.ReceiptEmail != "test@example.com" {
+		t.Errorf("expected email, got %s", pi.ReceiptEmail)
+	}
+	if pi.ProviderType != "stripe" {
+		t.Errorf("expected stripe, got %s", pi.ProviderType)
+	}
+	if pi.ClientSecret != "pi_secret_123" {
+		t.Errorf("expected secret, got %s", pi.ClientSecret)
+	}
+	if pi.InvoiceId != "inv_456" {
+		t.Errorf("expected inv_456, got %s", pi.InvoiceId)
+	}
+	if pi.SetupFutureUsage != "off_session" {
+		t.Errorf("expected off_session, got %s", pi.SetupFutureUsage)
+	}
+	if pi.LastError != "card_declined" {
+		t.Errorf("expected card_declined, got %s", pi.LastError)
+	}
+}
+
+// --- Cancel preserves reason and timestamp ---
+
+func TestCancel_SetsTimestamp(t *testing.T) {
+	pi := &PaymentIntent{Status: RequiresPaymentMethod}
+	if err := pi.Cancel("abandoned"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if pi.CanceledAt.IsZero() {
+		t.Error("expected CanceledAt to be set")
+	}
+	if pi.CancellationReason != "abandoned" {
+		t.Errorf("expected abandoned, got %s", pi.CancellationReason)
+	}
+}
+
+// --- MarkSucceeded clears AmountCapturable ---
+
+func TestMarkSucceeded_ClearsAmountCapturable(t *testing.T) {
+	pi := &PaymentIntent{
+		Status:           Processing,
+		Amount:           5000,
+		AmountCapturable: 5000,
+	}
+	pi.MarkSucceeded("ch_test", 5000)
+	if pi.AmountCapturable != 0 {
+		t.Errorf("expected 0, got %d", pi.AmountCapturable)
+	}
+}
+
+// --- Metadata ---
+
+func TestPaymentIntentMetadata(t *testing.T) {
+	pi := &PaymentIntent{
+		Metadata: map[string]interface{}{
+			"order_id": "ord_123",
+			"customer": "vip",
+		},
+	}
+	if len(pi.Metadata) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(pi.Metadata))
+	}
+	if pi.Metadata["order_id"] != "ord_123" {
+		t.Errorf("expected ord_123, got %v", pi.Metadata["order_id"])
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	pi := &PaymentIntent{}
+	pi.Init(db)
+	if pi.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	pi := &PaymentIntent{}
+	pi.Init(db)
+	pi.Defaults()
+	if pi.Status != RequiresPaymentMethod {
+		t.Errorf("expected %s, got %s", RequiresPaymentMethod, pi.Status)
+	}
+	if pi.Currency != "usd" {
+		t.Errorf("expected usd, got %s", pi.Currency)
+	}
+	if pi.CaptureMethod != "automatic" {
+		t.Errorf("expected automatic, got %s", pi.CaptureMethod)
+	}
+	if pi.ConfirmationMethod != "automatic" {
+		t.Errorf("expected automatic, got %s", pi.ConfirmationMethod)
+	}
+	if pi.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	pi := &PaymentIntent{}
+	pi.Init(db)
+	pi.Status = Succeeded
+	pi.Currency = "eur"
+	pi.CaptureMethod = "manual"
+	pi.ConfirmationMethod = "manual"
+	pi.Defaults()
+	if pi.Status != Succeeded {
+		t.Errorf("expected %s, got %s", Succeeded, pi.Status)
+	}
+	if pi.Currency != "eur" {
+		t.Errorf("expected eur, got %s", pi.Currency)
+	}
+	if pi.CaptureMethod != "manual" {
+		t.Errorf("expected manual, got %s", pi.CaptureMethod)
+	}
+	if pi.ConfirmationMethod != "manual" {
+		t.Errorf("expected manual, got %s", pi.ConfirmationMethod)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	pi := New(db)
+	if pi == nil {
+		t.Fatal("expected non-nil PaymentIntent")
+	}
+	if pi.Status != RequiresPaymentMethod {
+		t.Errorf("expected %s, got %s", RequiresPaymentMethod, pi.Status)
+	}
+	if pi.Currency != "usd" {
+		t.Errorf("expected usd, got %s", pi.Currency)
+	}
+	if pi.CaptureMethod != "automatic" {
+		t.Errorf("expected automatic, got %s", pi.CaptureMethod)
+	}
+	if pi.ConfirmationMethod != "automatic" {
+		t.Errorf("expected automatic, got %s", pi.ConfirmationMethod)
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }

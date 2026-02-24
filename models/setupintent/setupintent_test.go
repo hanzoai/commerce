@@ -1,8 +1,15 @@
 package setupintent
 
 import (
+	"context"
 	"testing"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- Confirm ---
 
@@ -224,5 +231,184 @@ func TestFullLifecycle_ConfirmThenCancel(t *testing.T) {
 	}
 	if si.Status != Canceled {
 		t.Errorf("expected Canceled, got %s", si.Status)
+	}
+}
+
+// --- Kind ---
+
+func TestKind(t *testing.T) {
+	si := &SetupIntent{}
+	if si.Kind() != "setup-intent" {
+		t.Errorf("expected 'setup-intent', got %q", si.Kind())
+	}
+}
+
+// --- Struct zero values ---
+
+func TestSetupIntentZeroValue(t *testing.T) {
+	si := &SetupIntent{}
+	if si.Status != "" {
+		t.Errorf("expected empty, got %s", si.Status)
+	}
+	if si.Usage != "" {
+		t.Errorf("expected empty, got %s", si.Usage)
+	}
+	if si.PaymentMethodId != "" {
+		t.Errorf("expected empty, got %s", si.PaymentMethodId)
+	}
+	if si.CustomerId != "" {
+		t.Errorf("expected empty, got %s", si.CustomerId)
+	}
+	if si.ProviderRef != "" {
+		t.Errorf("expected empty, got %s", si.ProviderRef)
+	}
+	if si.ProviderType != "" {
+		t.Errorf("expected empty, got %s", si.ProviderType)
+	}
+	if si.CancellationReason != "" {
+		t.Errorf("expected empty, got %s", si.CancellationReason)
+	}
+	if si.LastError != "" {
+		t.Errorf("expected empty, got %s", si.LastError)
+	}
+	if si.ClientSecret != "" {
+		t.Errorf("expected empty, got %s", si.ClientSecret)
+	}
+	if !si.CanceledAt.IsZero() {
+		t.Error("expected zero CanceledAt")
+	}
+	if si.Metadata != nil {
+		t.Error("expected nil metadata")
+	}
+}
+
+// --- Field assignment ---
+
+func TestSetupIntentFieldAssignment(t *testing.T) {
+	si := &SetupIntent{
+		CustomerId:      "cus_456",
+		PaymentMethodId: "pm_789",
+		Status:          RequiresPaymentMethod,
+		Usage:           "off_session",
+		ProviderRef:     "seti_abc",
+		ProviderType:    "stripe",
+		ClientSecret:    "seti_secret_123",
+		LastError:       "some_error",
+	}
+	if si.CustomerId != "cus_456" {
+		t.Errorf("expected cus_456, got %s", si.CustomerId)
+	}
+	if si.Usage != "off_session" {
+		t.Errorf("expected off_session, got %s", si.Usage)
+	}
+	if si.ProviderType != "stripe" {
+		t.Errorf("expected stripe, got %s", si.ProviderType)
+	}
+	if si.ClientSecret != "seti_secret_123" {
+		t.Errorf("expected secret, got %s", si.ClientSecret)
+	}
+	if si.LastError != "some_error" {
+		t.Errorf("expected some_error, got %s", si.LastError)
+	}
+}
+
+// --- Cancel sets timestamp ---
+
+func TestCancel_SetsTimestamp(t *testing.T) {
+	si := &SetupIntent{Status: RequiresPaymentMethod}
+	if err := si.Cancel("abandoned"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if si.CanceledAt.IsZero() {
+		t.Error("expected CanceledAt to be set")
+	}
+	if si.CancellationReason != "abandoned" {
+		t.Errorf("expected abandoned, got %s", si.CancellationReason)
+	}
+}
+
+// --- Metadata ---
+
+func TestSetupIntentMetadata(t *testing.T) {
+	si := &SetupIntent{
+		Metadata: map[string]interface{}{
+			"purpose": "subscription_setup",
+		},
+	}
+	if len(si.Metadata) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(si.Metadata))
+	}
+	if si.Metadata["purpose"] != "subscription_setup" {
+		t.Errorf("expected subscription_setup, got %v", si.Metadata["purpose"])
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	si := &SetupIntent{}
+	si.Init(db)
+	if si.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	si := &SetupIntent{}
+	si.Init(db)
+	si.Defaults()
+	if si.Status != RequiresPaymentMethod {
+		t.Errorf("expected %s, got %s", RequiresPaymentMethod, si.Status)
+	}
+	if si.Usage != "off_session" {
+		t.Errorf("expected off_session, got %s", si.Usage)
+	}
+	if si.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	si := &SetupIntent{}
+	si.Init(db)
+	si.Status = Succeeded
+	si.Usage = "on_session"
+	si.Defaults()
+	if si.Status != Succeeded {
+		t.Errorf("expected %s, got %s", Succeeded, si.Status)
+	}
+	if si.Usage != "on_session" {
+		t.Errorf("expected on_session, got %s", si.Usage)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	si := New(db)
+	if si == nil {
+		t.Fatal("expected non-nil SetupIntent")
+	}
+	if si.Status != RequiresPaymentMethod {
+		t.Errorf("expected %s, got %s", RequiresPaymentMethod, si.Status)
+	}
+	if si.Usage != "off_session" {
+		t.Errorf("expected off_session, got %s", si.Usage)
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }
