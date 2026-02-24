@@ -3,46 +3,40 @@ package analyticsidentifier
 import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+func init() { orm.Register[AnalyticsIdentifier]("analyticsidentifier") }
 
 type Ids struct {
 	// Unique Identifier set on the client to identify the browser + device
 	UUId string `json:"uuid"`
 
-	// These are secondary identifiers that are populated on newsletter signup
-	// or user signup/login
-
 	// User Id
 	UserId string `json:"userId"`
-	// UserIdAddedOn time.Time `json:"userIdAddedOn"`
-
-	// Unused as of yet
-	// // Subscriber Id
-	// SubId        string    `json:"subscriberId"`
-	// SubIdAddedOn time.Time `json:"subIdAddedOn"`
-
-	// These are optional identifiers for third party analytics
-
-	// GA Ids
 
 	// Google Analytics Long Id
 	GAId string `json:"ga"`
-	// GAIdAddedOn time.Time `json:"gaIdAddedOn"`
-
-	// Google Analytics Short Id
-	// GAShortId string `json:"gid"`
-	// GAShortIdAddedOn time.Time `json:"gaIdAddedOn"`
-
-	// FB Ids
 
 	// Facebook Id
 	FBId string `json:"fr"`
-	// FBIdAddedOn time.Time `json:"fbIdAddedOn"`
 }
 
 type AnalyticsIdentifier struct {
-	mixin.Model
+	mixin.EntityBridge[AnalyticsIdentifier]
 	Ids
+}
+
+// New creates a new AnalyticsIdentifier wired to the given datastore.
+func New(db *datastore.Datastore) *AnalyticsIdentifier {
+	e := new(AnalyticsIdentifier)
+	e.Init(db)
+	return e
+}
+
+// Query returns a datastore query for analytics identifiers.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("analyticsidentifier")
 }

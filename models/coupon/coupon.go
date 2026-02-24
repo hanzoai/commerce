@@ -9,7 +9,10 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/timeutil"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Coupon]("coupon") }
 
 type Type string
 
@@ -23,7 +26,7 @@ const (
 var Types = []Type{Flat, Percent, FreeShipping}
 
 type Coupon struct {
-	mixin.Model
+	mixin.EntityBridge[Coupon]
 
 	Name string `json:"name"`
 
@@ -57,7 +60,7 @@ type Coupon struct {
 	ProductId string `json:"productId,omitempty"`
 
 	// Whether coupon is valid.
-	Enabled bool `json:"enabled"`
+	Enabled bool `json:"enabled" orm:"default:true"`
 
 	// Coupon amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
 	// TODO: This needs to be currency.Cents in Hanzo.
@@ -150,4 +153,14 @@ func (c Coupon) ItemId() string {
 		return c.FreeProductId
 	}
 	return ""
+}
+
+func New(db *datastore.Datastore) *Coupon {
+	c := new(Coupon)
+	c.Init(db)
+	return c
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("coupon")
 }

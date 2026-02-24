@@ -1,16 +1,33 @@
 package note
 
 import (
-	"github.com/hanzoai/commerce/models/mixin"
 	"time"
+
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
-type Note struct {
-	mixin.Model
+func init() { orm.Register[Note]("note") }
 
-	Enabled bool `json:"enabled"`
+type Note struct {
+	mixin.EntityBridge[Note]
+
+	Enabled bool `json:"enabled" orm:"default:true"`
 
 	Time    time.Time `json:"time"`
 	Source  string    `json:"source"`
 	Message string    `json:"message"`
+}
+
+// New creates a new Note wired to the given datastore.
+func New(db *datastore.Datastore) *Note {
+	n := new(Note)
+	n.Init(db)
+	return n
+}
+
+// Query returns a datastore query for notes.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("note")
 }

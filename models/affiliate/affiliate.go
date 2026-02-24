@@ -1,14 +1,18 @@
 package affiliate
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/schedule"
 	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[Affiliate]("affiliate") }
+
 type Affiliate struct {
-	mixin.Model
+	mixin.EntityBridge[Affiliate]
 
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`
@@ -34,4 +38,16 @@ type Affiliate struct {
 		Live connect.Token
 		Test connect.Token
 	} `json:"-"`
+}
+
+func New(db *datastore.Datastore) *Affiliate {
+	a := new(Affiliate)
+	a.Init(db)
+	a.Schedule.Period = 30
+	a.Schedule.Type = schedule.DailyRolling
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("affiliate")
 }
