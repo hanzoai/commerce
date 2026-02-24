@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[Role]("role") }
 
 type Role struct {
-	mixin.EntityBridge[Role]
+	mixin.Model[Role]
 
 	Name string `json:"name"`
 

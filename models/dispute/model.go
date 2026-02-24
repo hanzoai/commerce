@@ -9,7 +9,7 @@ func (d Dispute) Kind() string {
 }
 
 func (d *Dispute) Init(db *datastore.Datastore) {
-	d.Model.Init(db, d)
+	d.BaseModel.Init(db, d)
 }
 
 func (d *Dispute) Defaults() {

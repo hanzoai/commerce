@@ -7,7 +7,7 @@ import (
 
 // Datastructure for Bitcoin Transaction
 type Transaction struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Amount           float64   `json:"amount"`
 	Fees             float64   `json:"fees"`

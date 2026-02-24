@@ -12,7 +12,7 @@ func (b BlockTransaction) Kind() string {
 }
 
 func (b *BlockTransaction) Init(db *datastore.Datastore) {
-	b.Model.Init(db, b)
+	b.BaseModel.Init(db, b)
 }
 
 func (b *BlockTransaction) Defaults() {

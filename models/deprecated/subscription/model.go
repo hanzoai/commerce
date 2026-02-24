@@ -11,7 +11,7 @@ func (s Subscription) Kind() string {
 }
 
 func (s *Subscription) Init(db *datastore.Datastore) {
-	s.Model.Init(db, s)
+	s.BaseModel.Init(db, s)
 }
 
 func (s *Subscription) Defaults() {

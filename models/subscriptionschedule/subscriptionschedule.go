@@ -43,7 +43,7 @@ var kind = "subscription-schedule"
 
 // SubscriptionSchedule represents a scheduled set of subscription phases.
 type SubscriptionSchedule struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId     string    `json:"customerId"`
 	SubscriptionId string    `json:"subscriptionId,omitempty"`
@@ -63,7 +63,7 @@ func (s SubscriptionSchedule) Kind() string {
 }
 
 func (s *SubscriptionSchedule) Init(db *datastore.Datastore) {
-	s.Model.Init(db, s)
+	s.BaseModel.Init(db, s)
 }
 
 func (s *SubscriptionSchedule) Defaults() {

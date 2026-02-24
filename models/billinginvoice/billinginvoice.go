@@ -60,7 +60,7 @@ type LineItem struct {
 // and payment tracking. This is distinct from the legacy Invoice model (Kind="payment")
 // which is actually a charge/payment record.
 type BillingInvoice struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Customer
 	UserId        string `json:"userId"`

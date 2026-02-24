@@ -7,7 +7,7 @@ import (
 )
 
 type User struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.AccessTokens
 
 	Email string
@@ -27,7 +27,7 @@ func (u *User) Defaults() {
 }
 
 func (u *User) Init(db *datastore.Datastore) {
-	u.Model.Init(db, u)
+	u.BaseModel.Init(db, u)
 	u.AccessTokens = mixin.AccessTokens{Entity: u}
 }
 

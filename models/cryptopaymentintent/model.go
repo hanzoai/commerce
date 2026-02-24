@@ -14,7 +14,7 @@ func (cpi CryptoPaymentIntent) Kind() string {
 }
 
 func (cpi *CryptoPaymentIntent) Init(db *datastore.Datastore) {
-	cpi.Model.Init(db, cpi)
+	cpi.BaseModel.Init(db, cpi)
 }
 
 func (cpi *CryptoPaymentIntent) Defaults() {

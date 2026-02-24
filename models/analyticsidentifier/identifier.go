@@ -25,7 +25,7 @@ type Ids struct {
 }
 
 type AnalyticsIdentifier struct {
-	mixin.EntityBridge[AnalyticsIdentifier]
+	mixin.Model[AnalyticsIdentifier]
 	Ids
 }
 

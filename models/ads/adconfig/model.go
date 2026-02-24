@@ -11,7 +11,7 @@ func (a AdConfig) Kind() string {
 }
 
 func (a *AdConfig) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+	a.BaseModel.Init(db, a)
 }
 
 func (a *AdConfig) Defaults() {

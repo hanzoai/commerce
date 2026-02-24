@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[ShippingProfile]("shippingprofile") }
 
 type ShippingProfile struct {
-	mixin.EntityBridge[ShippingProfile]
+	mixin.Model[ShippingProfile]
 
 	Name string `json:"name"`
 	Type string `json:"type"` // "default", "gift_card", "custom"

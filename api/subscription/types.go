@@ -31,7 +31,7 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 	}
 
 	// Ensure model mixin is setup correctly
-	sr.User_.Model = mixin.Model{Db: db, Entity: sr.User_}
+	sr.User_.BaseModel = mixin.BaseModel{Db: db, Entity: sr.User_}
 
 	// Normalize a few things we get in
 	sr.User_.Email = strings.ToLower(strings.TrimSpace(sr.User_.Email))
@@ -42,8 +42,8 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 
 func (sr *SubscriptionReq) Subscription() (*subscription.Subscription, error) {
 	sub := sr.Subscription_
-	sub.Model.Entity = sr.Subscription_
-	sub.Model.Db = sr.Db
+	sub.BaseModel.Entity = sr.Subscription_
+	sub.BaseModel.Db = sr.Db
 
 	return sub, nil
 }

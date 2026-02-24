@@ -15,7 +15,7 @@ import (
 // Get line items from datastore
 func (o *Order) GetCoupons() error {
 	o.DedupeCouponCodes()
-	db := o.Model.Db
+	db := o.BaseModel.Db
 	ctx := db.Context
 
 	log.Debug("CouponCodes: %#v", o.CouponCodes)
@@ -58,7 +58,7 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 
 	num := len(o.CouponCodes)
 
-	ctx := o.Model.Db.Context
+	ctx := o.BaseModel.Db.Context
 
 	log.Debug("Applying coupons: %v", o.CouponCodes, ctx)
 	for i := 0; i < num; i++ {

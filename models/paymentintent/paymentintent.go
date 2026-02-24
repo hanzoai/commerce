@@ -23,7 +23,7 @@ const (
 
 // PaymentIntent represents a payment flow from creation to completion.
 type PaymentIntent struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId         string                 `json:"customerId,omitempty"`
 	Amount             int64                  `json:"amount"`

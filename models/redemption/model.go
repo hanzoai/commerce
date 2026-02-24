@@ -9,7 +9,7 @@ func (r Redemption) Kind() string {
 }
 
 func (r *Redemption) Init(db *datastore.Datastore) {
-	r.Model.Init(db, r)
+	r.BaseModel.Init(db, r)
 }
 
 func (r *Redemption) Defaults() {

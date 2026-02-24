@@ -11,7 +11,7 @@ func (ts TokenSale) Kind() string {
 }
 
 func (ts *TokenSale) Init(db *datastore.Datastore) {
-	ts.Model.Init(db, ts)
+	ts.BaseModel.Init(db, ts)
 }
 
 func (ts *TokenSale) Defaults() {

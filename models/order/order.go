@@ -69,7 +69,7 @@ func init() {
 }
 
 type Order struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.Salesforce `json:"-"`
 	wallet.WalletHolder
 
@@ -261,12 +261,12 @@ func (o *Order) Load(ps []datastore.Property) (err error) {
 
 	// Initalize coupons
 	for _, coup := range o.Coupons {
-		coup.Init(o.Model.Db)
+		coup.Init(o.BaseModel.Db)
 	}
 
 	// Initalize discounts
 	for _, dis := range o.Discounts {
-		dis.Init(o.Model.Db)
+		dis.Init(o.BaseModel.Db)
 	}
 
 	return err

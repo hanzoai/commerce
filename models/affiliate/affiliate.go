@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[Affiliate]("affiliate") }
 
 type Affiliate struct {
-	mixin.EntityBridge[Affiliate]
+	mixin.Model[Affiliate]
 
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`

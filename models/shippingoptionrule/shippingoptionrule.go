@@ -9,7 +9,7 @@ import (
 func init() { orm.Register[ShippingOptionRule]("shippingoptionrule") }
 
 type ShippingOptionRule struct {
-	mixin.EntityBridge[ShippingOptionRule]
+	mixin.Model[ShippingOptionRule]
 
 	Attribute        string `json:"attribute"`
 	Operator         string `json:"operator"` // "eq", "ne", "gt", "lt", "gte", "lte", "in", "nin"

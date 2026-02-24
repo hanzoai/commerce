@@ -15,7 +15,7 @@ var eventKind = "meter-event"
 
 // MeterEvent records a single usage data point for a meter.
 type MeterEvent struct {
-	mixin.Model
+	mixin.BaseModel
 
 	MeterId   string    `json:"meterId"`
 	UserId    string    `json:"userId"`
@@ -38,7 +38,7 @@ func (e MeterEvent) Kind() string {
 }
 
 func (e *MeterEvent) Init(db *datastore.Datastore) {
-	e.Model.Init(db, e)
+	e.BaseModel.Init(db, e)
 }
 
 func (e *MeterEvent) Defaults() {
