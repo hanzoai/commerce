@@ -333,8 +333,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	multi.MustCreate(entities)
 
 	// Emit order_completed analytics event (fire and forget)
-	if emitter, ok := c.Get("events"); ok {
-		if ev, ok := emitter.(*events.Emitter); ok {
+	if client, ok := c.Get("events"); ok {
+		if ev, ok := client.(*events.Client); ok {
 			evtOrd := &events.Order{
 				ID:       ord.Id(),
 				UserID:   usr.Id(),
