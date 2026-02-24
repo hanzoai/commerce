@@ -13,7 +13,7 @@ import (
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
 func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
-	db := ord.Db
+	db := ord.Datastore()
 
 	// Get payments for this order
 	payments := make([]*payment.Payment, 0)
@@ -29,8 +29,7 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			// Update payment
 			p.Captured = true
 			p.Status = payment.Paid
-			p.BaseModel.Db = db
-			p.BaseModel.Entity = p
+			p.Init(db)
 			p.Put()
 
 			trans := transaction.New(db)

@@ -225,7 +225,7 @@ func OrderBadCardTest(isCharge bool, stor *store.Store) {
 	}
 
 	// Returning user, should reuse stripe customer id
-	body := fmt.Sprintf(requests.InvalidOrderBadCard)
+	body := requests.InvalidOrderBadCard
 	cl.Post(path, body, nil, 402)
 }
 

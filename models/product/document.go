@@ -70,7 +70,7 @@ func (d *Document) Init() {
 func (p Product) Document() mixin.Document {
 	doc := &Document{}
 	doc.Init()
-	doc.Kind = kind
+	doc.Kind = "product"
 	doc.Id_ = p.Id()
 	doc.Slug = p.Slug
 	doc.SKU = p.SKU

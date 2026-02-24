@@ -71,7 +71,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 
 	tasks.CaptureAsync.Call(org.Context(), org.Id(), ord.Id())
 
-	usr := user.New(ord.Db)
+	usr := user.New(ord.Datastore())
 	err = usr.GetById(ord.UserId)
 	if err != nil {
 		log.Error("Capture could not find User %v: %v", usr.Id(), err, c)

@@ -9,6 +9,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -56,11 +57,13 @@ type LineItem struct {
 	PeriodEnd   time.Time `json:"periodEnd,omitempty"`
 }
 
+func init() { orm.Register[BillingInvoice]("billing-invoice") }
+
 // BillingInvoice is a proper billing invoice with line items, status lifecycle,
 // and payment tracking. This is distinct from the legacy Invoice model (Kind="payment")
 // which is actually a charge/payment record.
 type BillingInvoice struct {
-	mixin.BaseModel
+	mixin.Model[BillingInvoice]
 
 	// Customer
 	UserId        string `json:"userId"`
@@ -83,10 +86,10 @@ type BillingInvoice struct {
 	AmountDue     int64   `json:"amountDue"`
 	AmountPaid    int64   `json:"amountPaid"`
 
-	Currency currency.Type `json:"currency"`
+	Currency currency.Type `json:"currency" orm:"default:usd"`
 
 	// Status lifecycle: draft -> open -> paid | void | uncollectible
-	Status   Status    `json:"status"`
+	Status   Status    `json:"status" orm:"default:draft"`
 	DueDate  time.Time `json:"dueDate,omitempty"`
 	PaidAt   time.Time `json:"paidAt,omitempty"`
 	VoidedAt time.Time `json:"voidedAt,omitempty"`
@@ -198,4 +201,15 @@ func (inv *BillingInvoice) RecalculateSubtotal() {
 func (inv *BillingInvoice) SetNumber(n int) {
 	inv.Number = n
 	inv.NumberStr = fmt.Sprintf("INV-%04d", n)
+}
+
+func New(db *datastore.Datastore) *BillingInvoice {
+	inv := new(BillingInvoice)
+	inv.Init(db)
+	inv.Parent = db.NewKey("synckey", "", 1, nil)
+	return inv
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("billing-invoice")
 }

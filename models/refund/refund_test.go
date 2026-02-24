@@ -403,8 +403,8 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	r := &Refund{}
 	r.Init(db)
-	if r.Db != db {
-		t.Error("expected Db to be set")
+	if r.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

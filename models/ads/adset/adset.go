@@ -1,16 +1,20 @@
 package adset
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/ads"
 )
+
+func init() { orm.Register[AdSet]("adset") }
 
 type FacebookAdSet struct {
 }
 
 type AdSet struct {
-	mixin.BaseModel
+	mixin.Model[AdSet]
 	FacebookAdSet
 
 	AdCampaignId string `json:"adCampaignId"`
@@ -41,4 +45,15 @@ func (a AdSet) GetCopySearchFieldAndIds() (string, []string) {
 
 func (a AdSet) GetMediaSearchFieldAndIds() (string, []string) {
 	return "AdSetId", []string{a.Id()}
+}
+
+func New(db *datastore.Datastore) *AdSet {
+	a := new(AdSet)
+	a.Init(db)
+	a.Status = PendingStatus
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("adset")
 }

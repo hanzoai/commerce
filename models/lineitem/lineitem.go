@@ -232,7 +232,7 @@ func (li LineItem) String() string {
 		return fmt.Sprintf("%v", li.ProductId)
 	}
 
-	return fmt.Sprintf("%v", li)
+	return fmt.Sprintf("LineItem{Quantity:%d}", li.Quantity)
 }
 
 // func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Errors {

@@ -214,7 +214,7 @@ func SendUserConfirmEmail(c context.Context, org *organization.Organization, usr
 	}
 
 	// Create token
-	tok := token.New(usr.Db)
+	tok := token.New(usr.Datastore())
 	tok.Email = usr.Email
 	tok.UserId = usr.Id()
 	tok.Expires = time.Now().Add(time.Hour * 24 * 7)
@@ -299,7 +299,7 @@ func SendOrderConfirmation(c context.Context, org *organization.Organization, or
 
 	referralCode := ""
 	referrers := make([]referrer.Referrer, 0)
-	if _, err := referrer.Query(ord.Db).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
+	if _, err := referrer.Query(ord.Datastore()).Filter("UserId=", usr.Id()).GetAll(&referrers); err != nil {
 		log.Warn("Failed to load referrals for user: %v", err, c)
 	}
 

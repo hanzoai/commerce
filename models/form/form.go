@@ -14,7 +14,10 @@ import (
 	"github.com/hanzoai/commerce/util/fs"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Form]("form") }
 
 var jsTemplate = ""
 var Submit = form.Submit
@@ -40,7 +43,7 @@ type ThankYou struct {
 }
 
 type Form struct {
-	mixin.BaseModel
+	mixin.Model[Form]
 
 	// Name of list
 	Name string `json:"name"`
@@ -85,6 +88,14 @@ type Form struct {
 	} `json:"mailchimp,omitempty"`
 }
 
+func (f *Form) Defaults() {
+	f.Facebook.Value = "0.00"
+	f.Facebook.Currency = "USD"
+	f.ThankYou.Type = thankyou.Disabled
+	f.EmailList.Enabled = true
+	f.Type = "subscribe"
+}
+
 func (f *Form) Validator() *val.Validator {
 	return val.New()
 }
@@ -95,7 +106,7 @@ func (f *Form) AddSubscriber(s *subscriber.Subscriber) error {
 	s.Parent = fkey
 	s.Normalize()
 
-	return f.Db.RunInTransaction(func(db *datastore.Datastore) error {
+	return f.Datastore().RunInTransaction(func(db *datastore.Datastore) error {
 		keys, err := subscriber.Query(db).Ancestor(fkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
@@ -127,6 +138,17 @@ func (f *Form) Js() string {
 	}
 
 	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{f.Name, f.Type, f.ThankYou}))
+}
+
+func New(db *datastore.Datastore) *Form {
+	f := new(Form)
+	f.Init(db)
+	f.Defaults()
+	return f
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("form")
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *Form {

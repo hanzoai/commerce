@@ -21,9 +21,9 @@ var PlatformAccountDecryptionFailed = errors.New("Platform Account Decryption Fa
 
 // This creates the wallet for
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User) error {
-	// ctx := org.Db.Context
+	// ctx := org.Datastore().Context
 
-	w, err := ord.GetOrCreateWallet(ord.Db)
+	w, err := ord.GetOrCreateWallet(ord.Datastore())
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 	ord.WalletPassphrase = rand.SecretKey()
 
 	// if ord.Test {
-	// pw := wallet.New(org.Db)
+	// pw := wallet.New(org.Datastore())
 	// if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
 	// 	if err != nil {
 	// 		return err
@@ -59,7 +59,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User)
 	// 	return err
 	// }
 
-	// client := bitcoin.New(org.Db.Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
+	// client := bitcoin.New(org.Datastore().Context, config.Bitcoin.TestNetNodes[0], config.Bitcoin.TestNetUsernames[0], config.Bitcoin.TestNetPasswords[0])
 	// // client.Test(true)
 
 	// oris, err := bitcoin.GetBitcoinTransactions(ctx, account.Address)

@@ -7,9 +7,12 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Invoice]("payment") }
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
@@ -35,7 +38,7 @@ const (
 )
 
 type Invoice struct {
-	mixin.BaseModel
+	mixin.Model[Invoice]
 
 	// Immutable buyer data from time of payment, may or may not be associated
 	// with a user.
@@ -76,18 +79,14 @@ type Invoice struct {
 	Metadata_ string `json:"-" datastore:"-"`
 }
 
-func (p Invoice) Kind() string {
-	return "payment"
-}
-
-func (p *Invoice) Init() {
+func (p *Invoice) Defaults() {
 	p.Status = Unpaid
 	p.Metadata = make(Map)
 }
 
 func (p *Invoice) Load(ps []datastore.Property) (err error) {
 	// Ensure we're initialized
-	p.Init()
+	p.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(datastore.LoadStruct(p, ps)); err != nil {
@@ -120,7 +119,7 @@ func (p *Invoice) Validator() *val.Validator {
 
 func New(db *datastore.Datastore) *Invoice {
 	p := new(Invoice)
-	p.Init()
-	p.BaseModel = mixin.BaseModel{Db: db, Entity: p}
+	p.Init(db)
+	p.Defaults()
 	return p
 }

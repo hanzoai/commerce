@@ -225,34 +225,21 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	si := &SubscriptionItem{}
 	si.Init(db)
-	if si.Db != db {
-		t.Error("expected Db to be set")
+	if si.Datastore() != db {
+		t.Error("expected Datastore() to be set")
 	}
 }
 
-// --- Defaults ---
+// --- New sets defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestNew_SetsDefaults(t *testing.T) {
 	db := testDB()
-	si := &SubscriptionItem{}
-	si.Init(db)
-	si.Defaults()
+	si := New(db)
 	if si.BillingMode != "licensed" {
 		t.Errorf("expected licensed, got %s", si.BillingMode)
 	}
 	if si.Parent == nil {
 		t.Error("expected Parent to be set")
-	}
-}
-
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
-	db := testDB()
-	si := &SubscriptionItem{}
-	si.Init(db)
-	si.BillingMode = "metered"
-	si.Defaults()
-	if si.BillingMode != "metered" {
-		t.Errorf("expected metered, got %s", si.BillingMode)
 	}
 }
 

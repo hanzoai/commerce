@@ -590,41 +590,31 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	cn := &CreditNote{}
 	cn.Init(db)
-	if cn.Db != db {
-		t.Error("expected Db to be set")
+	if cn.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- ORM Defaults ---
 
-func TestDefaults_SetsStatusAndCurrency(t *testing.T) {
+func TestInit_OrmDefaults(t *testing.T) {
 	db := testDB()
 	cn := &CreditNote{}
 	cn.Init(db)
-	cn.Defaults()
+	// orm:"default:issued" and orm:"default:usd" applied by Init
 	if cn.Status != Issued {
 		t.Errorf("expected %s, got %s", Issued, cn.Status)
 	}
 	if cn.Currency != "usd" {
 		t.Errorf("expected usd, got %s", cn.Currency)
 	}
-	if cn.Parent == nil {
-		t.Error("expected Parent to be set")
-	}
 }
 
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
+func TestNew_SetsParent(t *testing.T) {
 	db := testDB()
-	cn := &CreditNote{}
-	cn.Init(db)
-	cn.Status = Void
-	cn.Currency = "eur"
-	cn.Defaults()
-	if cn.Status != Void {
-		t.Errorf("expected %s, got %s", Void, cn.Status)
-	}
-	if cn.Currency != "eur" {
-		t.Errorf("expected eur, got %s", cn.Currency)
+	cn := New(db)
+	if cn.Parent == nil {
+		t.Error("expected Parent to be set")
 	}
 }
 
@@ -642,8 +632,8 @@ func TestNew(t *testing.T) {
 	if cn.Currency != "usd" {
 		t.Errorf("expected usd, got %s", cn.Currency)
 	}
-	if cn.Db != db {
-		t.Error("expected Db to be set")
+	if cn.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 

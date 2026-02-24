@@ -13,16 +13,19 @@ import (
 	"github.com/hanzoai/commerce/models/movie"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[Watchlist]("watchlist") }
+
 type Status string
 
 type Watchlist struct {
-	mixin.BaseModel
+	mixin.Model[Watchlist]
 
 	// Associated user .
 	UserId string `json:"userId,omitempty"`
@@ -147,4 +150,20 @@ func (c Watchlist) Description() string {
 		buffer.WriteString(item.Name)
 	}
 	return buffer.String()
+}
+
+func (w *Watchlist) Defaults() {
+	w.Movies = make([]movie.Movie, 0)
+	w.Metadata = make(Map)
+}
+
+func New(db *datastore.Datastore) *Watchlist {
+	w := new(Watchlist)
+	w.Init(db)
+	w.Defaults()
+	return w
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("watchlist")
 }

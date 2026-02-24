@@ -19,13 +19,16 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/timeutil"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Referrer]("referrer") }
+
 // Is a link that can refer customers to buy products
 type Referrer struct {
-	mixin.BaseModel
+	mixin.Model[Referrer]
 
 	Code      string                          `json:"code"`
 	Program   referralprogram.ReferralProgram `json:"program"`
@@ -82,7 +85,7 @@ func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referra
 
 	log.Debug("Creating referral")
 	// Create new referral
-	rfl := referral.New(r.Db)
+	rfl := referral.New(r.Datastore())
 	rfl.Type = event
 	rfl.Referrer.Id = r.Id()
 	rfl.Referrer.AffiliateId = r.AffiliateId
@@ -128,7 +131,7 @@ func (r *Referrer) LoadReferralProgram() error {
 		return nil
 	}
 
-	prog := referralprogram.New(r.Db)
+	prog := referralprogram.New(r.Datastore())
 
 	if err := prog.GetById(r.ProgramId); err != nil {
 		return err
@@ -144,7 +147,7 @@ func (r *Referrer) LoadAffiliate() error {
 		return nil
 	}
 
-	aff := affiliate.New(r.Db)
+	aff := affiliate.New(r.Datastore())
 
 	if err := aff.GetById(r.AffiliateId); err != nil {
 		return err
@@ -157,13 +160,13 @@ func (r *Referrer) LoadAffiliate() error {
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {
 	referrals := make([]*referral.Referral, 0)
-	_, err := referral.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(referrals)
+	_, err := referral.Query(r.Datastore()).Filter("ReferrerId=", r.Id()).GetAll(referrals)
 	return referrals, err
 }
 
 func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 	transactions := make([]*transaction.Transaction, 0)
-	_, err := transaction.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(transactions)
+	_, err := transaction.Query(r.Datastore()).Filter("ReferrerId=", r.Id()).GetAll(transactions)
 	return transactions, err
 }
 
@@ -181,7 +184,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	case referralprogram.CreditGreaterThanOrEquals:
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Db).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Datastore()).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
 			return false, err
 		}
 
@@ -217,7 +220,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 		log.Debug("ReferralsGreaterThanOrEquals Trigger")
 
 		// Count number of referrals
-		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
+		if count, err := referral.Query(r.Datastore()).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
 			return false, err
 			// Check trigger
 		} else if count >= trig.ReferralsGreaterThanOrEquals {
@@ -317,7 +320,7 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 
 // Credit user with store credit by saving transaction
 func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type, test bool) error {
-	trans := transaction.New(r.Db)
+	trans := transaction.New(r.Datastore())
 	trans.Type = transaction.Deposit
 	trans.Amount = amount
 	trans.Currency = cur
@@ -332,4 +335,19 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type, test
 	log.Debug("Currency amount: %v", trans.Amount)
 	log.Debug("Destination ID: %v", trans.DestinationId)
 	return trans.Create()
+}
+
+func (r *Referrer) Defaults() {
+	r.State = make(Map)
+}
+
+func New(db *datastore.Datastore) *Referrer {
+	r := new(Referrer)
+	r.Init(db)
+	r.Defaults()
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("referrer")
 }

@@ -66,7 +66,7 @@ func createPaymentMethod(c *gin.Context) {
 		return
 	}
 
-	p := paymentmethod.New(usr.Db)
+	p := paymentmethod.New(usr.Datastore())
 	p.UserId = usr.Id()
 	p.CustomerId = usr.Id()
 	p.Name = req.Name

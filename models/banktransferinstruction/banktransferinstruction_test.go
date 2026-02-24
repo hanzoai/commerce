@@ -296,41 +296,31 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	i := &BankTransferInstruction{}
 	i.Init(db)
-	if i.Db != db {
-		t.Error("expected Db to be set")
+	if i.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- ORM Defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestInit_OrmDefaults(t *testing.T) {
 	db := testDB()
 	i := &BankTransferInstruction{}
 	i.Init(db)
-	i.Defaults()
+	// orm:"default:active" and orm:"default:usd" applied by Init
 	if i.Status != "active" {
 		t.Errorf("expected active, got %s", i.Status)
 	}
 	if i.Currency != "usd" {
 		t.Errorf("expected usd, got %s", i.Currency)
 	}
-	if i.Parent == nil {
-		t.Error("expected Parent to be set")
-	}
 }
 
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
+func TestNew_SetsParent(t *testing.T) {
 	db := testDB()
-	i := &BankTransferInstruction{}
-	i.Init(db)
-	i.Status = "expired"
-	i.Currency = "eur"
-	i.Defaults()
-	if i.Status != "expired" {
-		t.Errorf("expected expired, got %s", i.Status)
-	}
-	if i.Currency != "eur" {
-		t.Errorf("expected eur, got %s", i.Currency)
+	i := New(db)
+	if i.Parent == nil {
+		t.Error("expected Parent to be set")
 	}
 }
 

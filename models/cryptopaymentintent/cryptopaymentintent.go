@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // Status represents the lifecycle state of a crypto payment.
@@ -30,15 +34,17 @@ const (
 	Arbitrum Chain = "arbitrum"
 )
 
+func init() { orm.Register[CryptoPaymentIntent]("crypto-payment-intent") }
+
 // CryptoPaymentIntent represents a custodial crypto/stablecoin payment flow.
 type CryptoPaymentIntent struct {
-	mixin.BaseModel
+	mixin.Model[CryptoPaymentIntent]
 
 	// Amount in smallest unit of settlement currency (cents for USD)
 	Amount int64 `json:"amount"`
 
 	// Settlement currency (fiat, e.g., "usd")
-	Currency string `json:"currency"`
+	Currency string `json:"currency" orm:"default:usd"`
 
 	// Blockchain where deposit is expected
 	Chain Chain `json:"chain"`
@@ -53,7 +59,7 @@ type CryptoPaymentIntent struct {
 	CustomerRef string `json:"customerRef,omitempty"`
 
 	// Current status
-	Status Status `json:"status"`
+	Status Status `json:"status" orm:"default:pending"`
 
 	// Number of confirmations received
 	Confirmations int `json:"confirmations"`
@@ -74,7 +80,7 @@ type CryptoPaymentIntent struct {
 	SettlementAmount int64 `json:"settlementAmount"`
 
 	// Settlement currency
-	SettlementCurrency string `json:"settlementCurrency"`
+	SettlementCurrency string `json:"settlementCurrency" orm:"default:usd"`
 
 	// Exchange rate at time of settlement
 	ExchangeRate string `json:"exchangeRate,omitempty"`
@@ -88,7 +94,17 @@ type CryptoPaymentIntent struct {
 	// OFAC screening result
 	ScreeningStatus string `json:"screeningStatus,omitempty"` // clear, flagged, blocked
 
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata Map `json:"metadata,omitempty" orm:"default:{}"`
+}
+
+// Defaults sets runtime-computed defaults that cannot be expressed as struct tags.
+func (cpi *CryptoPaymentIntent) Defaults() {
+	if cpi.ExpiresAt.IsZero() {
+		cpi.ExpiresAt = time.Now().Add(30 * time.Minute)
+	}
+	if cpi.RequiredConfirmations == 0 && cpi.Chain != "" {
+		cpi.RequiredConfirmations = RequiredConfirmationsForChain(cpi.Chain)
+	}
 }
 
 // MarkConfirming transitions to confirming state when deposit is detected.
@@ -161,4 +177,16 @@ func RequiredConfirmationsForChain(chain Chain) int {
 	default:
 		return 12
 	}
+}
+
+func New(db *datastore.Datastore) *CryptoPaymentIntent {
+	cpi := new(CryptoPaymentIntent)
+	cpi.Init(db)
+	cpi.Parent = db.NewKey("synckey", "", 1, nil)
+	cpi.Defaults()
+	return cpi
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("crypto-payment-intent")
 }

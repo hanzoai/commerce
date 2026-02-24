@@ -81,7 +81,7 @@ var _ = New("damon-reset-order-projected-counters",
 		// Calculate Projected
 		for _, item := range ord.Items {
 			log.Warn("item %v", item.ProjectedPrice, db.Context)
-			prod := product.New(ord.Db)
+			prod := product.New(ord.Datastore())
 			if err := prod.GetById(item.ProductId); err == nil {
 				projectedPrice += item.Quantity * int(prod.ProjectedPrice)
 			}
