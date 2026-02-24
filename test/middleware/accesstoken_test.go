@@ -84,7 +84,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			// Make request
 			client.Get("/", nil)
 
-			// middleware generates namespaced appengine context
+			// middleware generates namespaced context
 			org := middleware.GetOrganization(client.Context)
 
 			ctx2 := org.Namespaced(ctx)
