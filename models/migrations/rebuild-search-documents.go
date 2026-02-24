@@ -19,7 +19,7 @@ var _ = New("rebuild-search-documents",
 		c.Set("namespace", "damon")
 		db.SetNamespace("damon")
 
-		// Search functionality removed - appengine/search is deprecated
+		// Search functionality removed
 		// Document operations now handled by individual model PutDocument() calls
 
 		return NoArgs
