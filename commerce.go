@@ -31,7 +31,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
-	"github.com/hanzoai/commerce/api/analytics"
 	"github.com/hanzoai/commerce/auth"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
@@ -78,7 +77,10 @@ type Config struct {
 	// Database configuration
 	Database db.Config
 
-	// Analytics DSN (optional)
+	// Analytics collector endpoint (optional)
+	AnalyticsEndpoint string
+
+	// Analytics DSN (optional, for direct ClickHouse queries)
 	DatastoreDSN string
 
 	// Infrastructure configuration
@@ -86,9 +88,6 @@ type Config struct {
 
 	// Query timeout
 	QueryTimeout time.Duration
-
-	// Events configuration
-	Events events.Config
 
 	// KMS configuration for secret management
 	KMS kms.Config
@@ -105,15 +104,15 @@ type Config struct {
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	cfg := &Config{
-		DataDir:        getEnv("COMMERCE_DIR", "./commerce_data"),
-		Dev:            getEnv("COMMERCE_DEV", "false") == "true",
-		Secret:         getEnv("COMMERCE_SECRET", "change-me-in-production"),
-		HTTPAddr:       getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
-		AllowedOrigins: []string{"*"},
-		DatastoreDSN:   getEnv("DATASTORE_URL", ""),
-		Infra:          *infraConfigFromEnv(),
-		QueryTimeout:   30 * time.Second,
-		Events:         *eventsConfigFromEnv(),
+		DataDir:           getEnv("COMMERCE_DIR", "./commerce_data"),
+		Dev:               getEnv("COMMERCE_DEV", "false") == "true",
+		Secret:            getEnv("COMMERCE_SECRET", "change-me-in-production"),
+		HTTPAddr:          getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
+		AllowedOrigins:    []string{"*"},
+		AnalyticsEndpoint: getEnv("ANALYTICS_ENDPOINT", ""),
+		DatastoreDSN:      getEnv("DATASTORE_URL", ""),
+		Infra:             *infraConfigFromEnv(),
+		QueryTimeout:      30 * time.Second,
 	}
 
 	cfg.KMS.Enabled = getEnv("KMS_ENABLED", "false") == "true"
@@ -129,28 +128,6 @@ func DefaultConfig() *Config {
 	cfg.IAM.ClientSecret = getEnv("IAM_CLIENT_SECRET", "")
 
 	return cfg
-}
-
-// eventsConfigFromEnv loads events config from environment
-func eventsConfigFromEnv() *events.Config {
-	// Enable datastore when DATASTORE_URL is set
-	datastoreDSN := getEnv("DATASTORE_URL", "")
-
-	return &events.Config{
-		// Datastore (ClickHouse) - primary storage for unified analytics
-		// Automatically enabled when COMMERCE_DATASTORE is configured
-		DatastoreEnabled: datastoreDSN != "",
-
-		// Insights (PostHog) HTTP forwarding (optional)
-		InsightsEnabled:  getEnv("INSIGHTS_ENABLED", "false") == "true",
-		InsightsEndpoint: getEnv("INSIGHTS_ENDPOINT", "https://insights.hanzo.ai"),
-		InsightsAPIKey:   getEnv("INSIGHTS_API_KEY", ""),
-
-		// Analytics (Umami-like) HTTP forwarding (optional)
-		AnalyticsEnabled:   getEnv("ANALYTICS_ENABLED", "false") == "true",
-		AnalyticsEndpoint:  getEnv("ANALYTICS_ENDPOINT", "https://analytics.hanzo.ai"),
-		AnalyticsWebsiteID: getEnv("ANALYTICS_WEBSITE_ID", ""),
-	}
 }
 
 // infraConfigFromEnv loads infrastructure config from environment.
@@ -284,8 +261,8 @@ type App struct {
 	// Hook system
 	Hooks *hooks.Registry
 
-	// Events emitter (sends to Insights + Analytics)
-	Events *events.Emitter
+	// Events client (sends to analytics-collector via HTTP)
+	Events *events.Client
 
 	// KMS client for secret management
 	KMS *kms.CachedClient
@@ -596,10 +573,10 @@ func (app *App) Bootstrap() error {
 		fmt.Println("KMS client initialized")
 	}
 
-	// Initialize events emitter (Insights + Analytics + Datastore)
-	// This creates a unified event storage where both Insights and Analytics
-	// read from the same ClickHouse datastore
-	app.Events = events.NewEmitterWithDatastore(&app.config.Events, app.DB.Datastore())
+	// Initialize analytics client (sends events to analytics-collector via HTTP)
+	if app.config.AnalyticsEndpoint != "" {
+		app.Events = events.NewClient(app.config.AnalyticsEndpoint)
+	}
 
 	// Initialize router
 	app.Router = gin.New()
@@ -665,10 +642,6 @@ func (app *App) setupRoutes() {
 			}
 			c.Next()
 		})
-
-		// Analytics endpoints (astley.js, Cloud AI, etc.)
-		analyticsHandler := analytics.NewHandler(app.Events)
-		analyticsHandler.Route(api)
 
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
