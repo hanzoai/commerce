@@ -11,7 +11,7 @@ func (t TaxRates) Kind() string {
 }
 
 func (t *TaxRates) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *TaxRates) Defaults() {

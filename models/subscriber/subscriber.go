@@ -42,7 +42,7 @@ func normalizeName(s string) string {
 }
 
 type Subscriber struct {
-	mixin.Model
+	mixin.BaseModel
 
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`

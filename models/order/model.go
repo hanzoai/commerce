@@ -17,7 +17,7 @@ func (o Order) Kind() string {
 }
 
 func (o *Order) Init(db *datastore.Datastore) {
-	o.Model.Init(db, o)
+	o.BaseModel.Init(db, o)
 }
 
 func (o *Order) Defaults() {

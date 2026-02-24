@@ -11,7 +11,7 @@ import (
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Review struct {
-	mixin.Model
+	mixin.BaseModel
 
 	UserId string `json:"userId"`
 

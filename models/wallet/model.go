@@ -9,7 +9,7 @@ func (w Wallet) Kind() string {
 }
 
 func (w *Wallet) Init(db *datastore.Datastore) {
-	w.Model.Init(db, w)
+	w.BaseModel.Init(db, w)
 }
 
 func (w *Wallet) Defaults() {

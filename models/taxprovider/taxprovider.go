@@ -9,7 +9,7 @@ import (
 func init() { orm.Register[TaxProvider]("taxprovider") }
 
 type TaxProvider struct {
-	mixin.EntityBridge[TaxProvider]
+	mixin.Model[TaxProvider]
 
 	Name      string `json:"name"`
 	IsEnabled bool   `json:"isEnabled" orm:"default:true"`

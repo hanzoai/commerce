@@ -16,7 +16,7 @@ var (
 // Create a new entity instance of a given type
 func newEntity(db *datastore.Datastore, entityType reflect.Type) mixin.Entity {
 	entity := reflect.New(entityType).Interface().(mixin.Entity)
-	model := mixin.Model{Db: db, Entity: entity}
+	model := mixin.BaseModel{Db: db, Entity: entity}
 
 	// Set model on entity
 	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")

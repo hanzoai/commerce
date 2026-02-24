@@ -62,7 +62,7 @@ const (
 )
 
 type Subscription struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Number int `json:"number,omitempty" datastore:"-"`
 

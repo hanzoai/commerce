@@ -32,7 +32,7 @@ const (
 
 // CryptoPaymentIntent represents a custodial crypto/stablecoin payment flow.
 type CryptoPaymentIntent struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Amount in smallest unit of settlement currency (cents for USD)
 	Amount int64 `json:"amount"`

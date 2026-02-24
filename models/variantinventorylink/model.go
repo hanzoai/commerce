@@ -9,7 +9,7 @@ func (l VariantInventoryLink) Kind() string {
 }
 
 func (l *VariantInventoryLink) Init(db *datastore.Datastore) {
-	l.Model.Init(db, l)
+	l.BaseModel.Init(db, l)
 }
 
 func (l *VariantInventoryLink) Defaults() {

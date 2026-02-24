@@ -9,7 +9,7 @@ func (s Site) Kind() string {
 }
 
 func (s *Site) Init(db *datastore.Datastore) {
-	s.Model.Init(db, s)
+	s.BaseModel.Init(db, s)
 }
 
 func (s *Site) Defaults() {

@@ -31,7 +31,7 @@ type DisputeEvidence struct {
 
 // Dispute represents a customer challenge to a charge.
 type Dispute struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Amount          int64                  `json:"amount"`
 	Currency        currency.Type          `json:"currency"`

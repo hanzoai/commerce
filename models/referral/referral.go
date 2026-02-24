@@ -27,7 +27,7 @@ type Fee struct {
 }
 
 type Referral struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Type Event `json:"event"`
 

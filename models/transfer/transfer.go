@@ -58,7 +58,7 @@ type Account struct {
 }
 
 type Transfer struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Account
 

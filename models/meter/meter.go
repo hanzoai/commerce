@@ -22,7 +22,7 @@ const (
 // Meter defines a named usage metric with a specific aggregation strategy.
 // Each meter has a unique EventName per org (e.g. "input_tokens", "api_calls").
 type Meter struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Name            string          `json:"name"`
 	EventName       string          `json:"eventName"`

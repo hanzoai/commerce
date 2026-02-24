@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[TaxRate]("taxrate") }
 
 type TaxRate struct {
-	mixin.EntityBridge[TaxRate]
+	mixin.Model[TaxRate]
 
 	Rate         float64 `json:"rate"`
 	Code         string  `json:"code"`

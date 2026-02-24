@@ -34,7 +34,7 @@ var kind = "credit-note"
 // CreditNote represents a credit issued against an invoice. Credits can be
 // applied to customer balance or refunded to the original payment method.
 type CreditNote struct {
-	mixin.Model
+	mixin.BaseModel
 
 	InvoiceId  string        `json:"invoiceId"`
 	CustomerId string        `json:"customerId"`
@@ -69,7 +69,7 @@ func (cn CreditNote) Kind() string {
 }
 
 func (cn *CreditNote) Init(db *datastore.Datastore) {
-	cn.Model.Init(db, cn)
+	cn.BaseModel.Init(db, cn)
 }
 
 func (cn *CreditNote) Defaults() {
