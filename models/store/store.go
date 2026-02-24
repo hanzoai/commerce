@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/reflect"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -58,8 +59,10 @@ var ListingFields = reflect.FieldNames(Listing{})
 type Listings map[string]Listing
 type ShippingRateTable map[string]shipping.Rates
 
+func init() { orm.Register[Store]("store") }
+
 type Store struct {
-	mixin.Model
+	mixin.EntityBridge[Store]
 
 	// Full name of store
 	Name string `json:"name"`
@@ -84,7 +87,7 @@ type Store struct {
 	// ShippingRateTable_ string            `json:"-" datastore:",noindex"`
 
 	// Overrides per item
-	Listings  Listings `json:"listings" datastore:"-"`
+	Listings  Listings `json:"listings" datastore:"-" orm:"default:{}"`
 	Listings_ string   `json:"-" datastore:",noindex"`
 
 	Salesforce struct {
@@ -100,6 +103,13 @@ type Store struct {
 		ListId string `json:"listId"`
 		APIKey string `json:"apiKey"`
 	} `json:"mailchimp,omitempty"`
+}
+
+// Defaults sets runtime defaults that cannot be expressed as orm tags.
+func (s *Store) Defaults() {
+	if s.Currency == "" {
+		s.Currency = currency.USD
+	}
 }
 
 func (s *Store) Load(ps []datastore.Property) (err error) {
