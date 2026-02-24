@@ -29,9 +29,10 @@ import (
 // The orm.Model[T] must be the first field so self() pointer arithmetic works.
 type EntityBridge[T any] struct {
 	orm.Model[T]
-	ds     *datastore.Datastore `json:"-" datastore:"-"`
-	Parent datastore.Key        `json:"-" datastore:"-"`
-	Mock   bool                 `json:"-" datastore:"-"`
+	ds      *datastore.Datastore `json:"-" datastore:"-"`
+	Parent  datastore.Key       `json:"-" datastore:"-"`
+	Mock    bool                `json:"-" datastore:"-"`
+	loaded_ bool                `json:"-" datastore:"-"`
 }
 
 // self returns a pointer to the outermost struct T that embeds this bridge.
@@ -338,6 +339,19 @@ func (b *EntityBridge[T]) GetCreatedAt() time.Time {
 
 func (b *EntityBridge[T]) GetUpdatedAt() time.Time {
 	return b.Model.UpdatedAt
+}
+
+// --- Load guard ---
+
+// loaded_ prevents duplicate deserialization in Load() methods.
+// Matches mixin.Model.Loaded() semantics: returns true if already loaded,
+// otherwise marks as loaded and returns false.
+func (b *EntityBridge[T]) Loaded() bool {
+	if b.loaded_ {
+		return true
+	}
+	b.loaded_ = true
+	return false
 }
 
 // Compile-time verification that EntityBridge satisfies Entity.
