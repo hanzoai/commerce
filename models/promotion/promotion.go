@@ -6,16 +6,19 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Promotion]("promotion") }
+
 type Promotion struct {
-	mixin.Model
+	mixin.EntityBridge[Promotion]
 
 	Code           string     `json:"code"`
 	Type           string     `json:"type"`
-	Status         string     `json:"status"`
+	Status         string     `json:"status" orm:"default:draft"`
 	IsAutomatic    bool       `json:"isAutomatic"`
 	IsTaxInclusive bool       `json:"isTaxInclusive"`
 	CampaignId     string     `json:"campaignId"`
@@ -27,8 +30,6 @@ type Promotion struct {
 }
 
 func (p *Promotion) Load(ps []datastore.Property) (err error) {
-	p.Defaults()
-
 	if err = datastore.LoadStruct(p, ps); err != nil {
 		return err
 	}
@@ -44,4 +45,14 @@ func (p *Promotion) Save() ([]datastore.Property, error) {
 	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	return datastore.SaveStruct(p)
+}
+
+func New(db *datastore.Datastore) *Promotion {
+	p := new(Promotion)
+	p.Init(db)
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("promotion")
 }

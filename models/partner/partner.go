@@ -1,16 +1,20 @@
 package partner
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/schedule"
 	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Partner]("partner") }
+
 type Partner struct {
-	mixin.Model
+	mixin.EntityBridge[Partner]
 
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`
@@ -37,4 +41,16 @@ type Partner struct {
 		Live connect.Token
 		Test connect.Token
 	} `json:"-"`
+}
+
+// New creates a new Partner wired to the given datastore.
+func New(db *datastore.Datastore) *Partner {
+	p := new(Partner)
+	p.Init(db)
+	return p
+}
+
+// Query returns a datastore query for partners.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("partner")
 }

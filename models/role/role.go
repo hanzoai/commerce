@@ -4,27 +4,28 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Role]("role") }
+
 type Role struct {
-	mixin.Model
+	mixin.EntityBridge[Role]
 
 	Name string `json:"name"`
 
 	// Permissions stored as JSON in datastore
-	Permissions  []string `json:"permissions" datastore:"-"`
+	Permissions  []string `json:"permissions" datastore:"-" orm:"default:[]"`
 	Permissions_ string   `json:"-" datastore:",noindex"`
 
 	// Arbitrary metadata
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (r *Role) Load(ps []datastore.Property) (err error) {
-	r.Defaults()
-
 	if err = datastore.LoadStruct(r, ps); err != nil {
 		return err
 	}
@@ -47,4 +48,14 @@ func (r *Role) Save() ([]datastore.Property, error) {
 	r.Metadata_ = string(json.EncodeBytes(&r.Metadata))
 
 	return datastore.SaveStruct(r)
+}
+
+func New(db *datastore.Datastore) *Role {
+	r := new(Role)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("role")
 }

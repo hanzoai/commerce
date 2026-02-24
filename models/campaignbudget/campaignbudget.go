@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[CampaignBudget]("campaignbudget") }
+
 type CampaignBudget struct {
-	mixin.Model
+	mixin.EntityBridge[CampaignBudget]
 
 	CampaignId   string `json:"campaignId"`
 	Type         string `json:"type"`
@@ -22,8 +25,6 @@ type CampaignBudget struct {
 }
 
 func (c *CampaignBudget) Load(ps []datastore.Property) (err error) {
-	c.Defaults()
-
 	if err = datastore.LoadStruct(c, ps); err != nil {
 		return err
 	}
@@ -39,4 +40,14 @@ func (c *CampaignBudget) Save() ([]datastore.Property, error) {
 	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
 
 	return datastore.SaveStruct(c)
+}
+
+func New(db *datastore.Datastore) *CampaignBudget {
+	c := new(CampaignBudget)
+	c.Init(db)
+	return c
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("campaignbudget")
 }
