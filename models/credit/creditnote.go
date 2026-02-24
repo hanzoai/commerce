@@ -1,4 +1,4 @@
-package creditnote
+package credit
 
 import (
 	"fmt"
