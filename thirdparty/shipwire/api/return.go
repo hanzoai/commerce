@@ -49,7 +49,7 @@ func createReturn(c *gin.Context) {
 	}
 
 	// Save return info
-	rtn := return_.New(ord.Db)
+	rtn := return_.New(ord.Datastore())
 	rtn.ExternalID = strconv.Itoa(r.ID)
 	rtn.Summary = opts.Summary
 	rtn.CancelledAt = r.Events.Resource.CancelledDate.Time

@@ -40,7 +40,7 @@ import (
 // Decode authorization request, grab user and payment information off it
 func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
 	a := new(Authorization)
-	db := ord.Db
+	db := ord.Datastore()
 
 	// Decode request
 	if err := json.Decode(c.Request.Body, a); err != nil {
@@ -91,7 +91,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.Currency = stor.Currency // Set currency
 		log.Info("Using Store '%v'", stor.Id(), c)
 	} else if ord.StoreId != "" {
-		stor = store.New(ord.Db)
+		stor = store.New(ord.Datastore())
 		if err := stor.GetById(ord.StoreId); err != nil {
 			log.Warn("Store '%v' does not exist: %v", ord.StoreId, err, c)
 			stor = nil
@@ -130,14 +130,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Validate token sale only if both password and id are set
 	if (ord.TokenSaleId != "") && (tsPass != nil) {
-		ts := tokensale.New(ord.Db)
+		ts := tokensale.New(ord.Datastore())
 		if err := ts.GetById(ord.TokenSaleId); err != nil {
 			log.Error("Token sale not found error: %v", err, c)
 			return nil, TokenSaleNotFound
 		}
 
 		// Create ethereum block chain wallets for funding
-		w, err := usr.GetOrCreateWallet(usr.Db)
+		w, err := usr.GetOrCreateWallet(usr.Datastore())
 		if err != nil {
 			log.Error("Wallet creation error: %v", err, c)
 			return nil, WalletCreationError

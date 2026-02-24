@@ -225,7 +225,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	ctx := org.Db.Context
+	ctx := org.Datastore().Context
 	if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
@@ -253,7 +253,7 @@ func create(c *gin.Context) {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
 
-	ref := referrer.New(usr.Db)
+	ref := referrer.New(usr.Datastore())
 
 	// if ReferrerId refers to non-existing token, then remove from order
 	if usr.ReferrerId != "" {
@@ -262,7 +262,7 @@ func create(c *gin.Context) {
 			usr.ReferrerId = ""
 		} else {
 			// Try to save referral, save updated referrer
-			if _, err := ref.SaveReferral(org.Db.Context, org.Id(), referral.NewUser, &Referrent{
+			if _, err := ref.SaveReferral(org.Datastore().Context, org.Id(), referral.NewUser, &Referrent{
 				usr.Id(),
 				usr.Kind(),
 			}, usr.Id(), !org.Live); err != nil {
@@ -310,7 +310,7 @@ func create(c *gin.Context) {
 
 	if usr.FormId != "" {
 		log.Info("Adding User %v To Form %v", usr.Id(), usr.FormId, c)
-		f := form.New(usr.Db)
+		f := form.New(usr.Datastore())
 
 		if err := f.GetById(usr.FormId); err != nil {
 			log.Warn("Form %v does not exist.", usr.FormId, c)

@@ -34,7 +34,7 @@ func GetWithdrawableAccounts(c *gin.Context) {
 	}
 
 	// Fetch the wallet
-	w, err := org.GetOrCreateWallet(org.Db)
+	w, err := org.GetOrCreateWallet(org.Datastore())
 	if err != nil {
 		http.Fail(c, 400, "Failed to lookup wallets", err)
 	}

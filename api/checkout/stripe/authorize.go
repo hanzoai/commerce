@@ -11,7 +11,7 @@ import (
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	// Create stripe client
-	client := stripe.New(ord.Db.Context, org.StripeToken())
+	client := stripe.New(ord.Datastore().Context, org.StripeToken())
 
 	// Do authorization
 	tok, err := client.Authorize(pay)
@@ -23,11 +23,11 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
-		log.Debug("New stripe customer", ord.Db.Context)
+		log.Debug("New stripe customer", ord.Datastore().Context)
 		return firstTime(client, tok, usr, ord, pay)
 	} else {
 		// Existing customer, new card
-		log.Debug("Returning stripe customer", ord.Db.Context)
+		log.Debug("Returning stripe customer", ord.Datastore().Context)
 		return returning(client, tok, usr, ord, pay)
 	}
 }
@@ -70,7 +70,7 @@ func dedupeCards(client *stripe.Client, card *stripe.Card, cust *stripe.Customer
 		// Delete any dupes
 		if _, ok := seen[source.Card.Last4]; ok {
 			if _, err := client.DeleteCard(source.Card.ID, usr); err != nil {
-				log.Warn("Unable to delete card '%s': %v", card.ID, err, usr.Db.Context)
+				log.Warn("Unable to delete card '%s': %v", card.ID, err, usr.Datastore().Context)
 			}
 		} else {
 			seen[source.Card.Last4] = true
@@ -86,7 +86,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Livemode
 
-	log.Warn("Stripe New customer: %v", cust, ord.Db.Context)
+	log.Warn("Stripe New customer: %v", cust, ord.Datastore().Context)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
@@ -118,7 +118,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	updatePaymentFromCard(pay, card)
 	updateUserFromPayment(usr, pay)
 
-	log.Warn("Stripe Returning: %v", pay, ord.Db.Context)
+	log.Warn("Stripe Returning: %v", pay, ord.Datastore().Context)
 
 	// Update customer (which will set new card as default)
 	cust, err := client.UpdateCustomer(usr)

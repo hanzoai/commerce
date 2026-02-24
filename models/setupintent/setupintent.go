@@ -4,8 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
+
+var kind = "setup-intent"
 
 // Status represents the state of a SetupIntent.
 type Status string
@@ -19,9 +23,11 @@ const (
 	Canceled              Status = "canceled"
 )
 
+func init() { orm.Register[SetupIntent](kind) }
+
 // SetupIntent represents a flow to save a payment method for future use.
 type SetupIntent struct {
-	mixin.BaseModel
+	mixin.Model[SetupIntent]
 
 	CustomerId         string                 `json:"customerId,omitempty"`
 	PaymentMethodId    string                 `json:"paymentMethodId,omitempty"`
@@ -64,3 +70,23 @@ func (si *SetupIntent) Cancel(reason string) error {
 	si.CanceledAt = time.Now()
 	return nil
 }
+
+// New creates a new SetupIntent wired to the given datastore.
+func New(db *datastore.Datastore) *SetupIntent {
+	si := new(SetupIntent)
+	si.Init(db)
+	si.Parent = db.NewKey("synckey", "", 1, nil)
+	if si.Status == "" {
+		si.Status = RequiresPaymentMethod
+	}
+	if si.Usage == "" {
+		si.Usage = "off_session"
+	}
+	return si
+}
+
+// Query returns a datastore query for setup intents.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
+}
+

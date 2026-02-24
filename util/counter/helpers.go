@@ -126,7 +126,7 @@ func IncrOrder(ctx context.Context, ord *order.Order) error {
 		return err
 	}
 	for _, item := range ord.Items {
-		prod := product.New(ord.Db)
+		prod := product.New(ord.Datastore())
 		if err := prod.GetById(item.ProductId); err != nil {
 			return err
 		}
@@ -182,7 +182,7 @@ func IncrOrderRefund(ctx context.Context, ord *order.Order, refund int, t time.T
 		return err
 	}
 	for _, item := range ord.Items {
-		prod := product.New(ord.Db)
+		prod := product.New(ord.Datastore())
 		if err := prod.GetById(item.ProductId); err != nil {
 			return err
 		}
@@ -241,7 +241,7 @@ func IncrOrderShip(ctx context.Context, ord *order.Order, t time.Time) error {
 		return err
 	}
 	for _, item := range ord.Items {
-		prod := product.New(ord.Db)
+		prod := product.New(ord.Datastore())
 		if err := prod.GetById(item.ProductId); err != nil {
 			return err
 		}
@@ -268,7 +268,7 @@ func IncrProductShip(ctx context.Context, prod *product.Product, ord *order.Orde
 }
 
 func IncrOrderReturn(ctx context.Context, items []lineitem.LineItem, rtn *return_.Return) error {
-	ord := order.New(rtn.Db)
+	ord := order.New(rtn.Datastore())
 	if err := ord.GetById(rtn.OrderId); err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func IncrOrderReturn(ctx context.Context, items []lineitem.LineItem, rtn *return
 		return err
 	}
 	for _, item := range items {
-		prod := product.New(rtn.Db)
+		prod := product.New(rtn.Datastore())
 		if err := prod.GetById(item.ProductId); err != nil {
 			return err
 		}

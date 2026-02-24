@@ -1,15 +1,19 @@
 package variant
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/productcachedvalues"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Variant]("variant") }
+
 type Variant struct {
-	mixin.BaseModel
+	mixin.Model[Variant]
 	mixin.Salesforce
 	productcachedvalues.ProductCachedValues
 
@@ -59,4 +63,19 @@ func (v *Variant) Validator() *val.Validator {
 	// 	})
 	// }
 	// return errs
+}
+
+func (v *Variant) Defaults() {
+	v.Options = make([]Option, 0)
+}
+
+func New(db *datastore.Datastore) *Variant {
+	v := new(Variant)
+	v.Init(db)
+	v.Defaults()
+	return v
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("variant")
 }

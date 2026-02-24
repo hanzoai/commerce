@@ -6,15 +6,16 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 )
 
-var kind = "usage-watermark"
+func init() { orm.Register[UsageWatermark]("usage-watermark") }
 
 // UsageWatermark records the last aggregated position for a subscription item
 // within an invoice period. This prevents double-invoicing of usage events
 // and supports late-arriving event handling.
 type UsageWatermark struct {
-	mixin.BaseModel
+	mixin.Model[UsageWatermark]
 
 	SubscriptionItemId string `json:"subscriptionItemId"`
 	MeterId            string `json:"meterId"`
@@ -33,18 +34,6 @@ type UsageWatermark struct {
 	LastEventTimestamp time.Time `json:"lastEventTimestamp"`
 }
 
-func (w UsageWatermark) Kind() string {
-	return kind
-}
-
-func (w *UsageWatermark) Init(db *datastore.Datastore) {
-	w.BaseModel.Init(db, w)
-}
-
-func (w *UsageWatermark) Defaults() {
-	w.Parent = w.Db.NewKey("synckey", "", 1, nil)
-}
-
 func (w *UsageWatermark) Load(ps []datastore.Property) (err error) {
 	return datastore.LoadStruct(w, ps)
 }
@@ -60,10 +49,10 @@ func (w *UsageWatermark) Validator() *val.Validator {
 func New(db *datastore.Datastore) *UsageWatermark {
 	w := new(UsageWatermark)
 	w.Init(db)
-	w.Defaults()
+	w.Parent = db.NewKey("synckey", "", 1, nil)
 	return w
 }
 
 func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+	return db.Query("usage-watermark")
 }
