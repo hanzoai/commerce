@@ -92,17 +92,17 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	for i := 0; i < len(tasks); i++ {
 		switch v := tasks[i].Function.(type) {
 		case *delay.Function:
-			v.Call(middleware.GetAppEngine(ctx), args...)
+			v.Call(middleware.GetContext(ctx), args...)
 		case func(context.Context):
-			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
+			v(middleware.GetContext(ctx)) // TODO: Remove after updating older tasks.
 		case func(context.Context, ...interface{}):
-			v(middleware.GetAppEngine(ctx), args...)
+			v(middleware.GetContext(ctx), args...)
 		case func(*gin.Context):
 			v(ctx)
 		case func(*gin.Context, ...interface{}):
 			v(ctx, args...)
 		case *Delay:
-			v.Function.Call(middleware.GetAppEngine(ctx), fakecontext.NewContext(ctx))
+			v.Function.Call(middleware.GetContext(ctx), fakecontext.NewContext(ctx))
 		default:
 			log.Panic("Don't know how to call %v", reflect.ValueOf(v).Type(), ctx)
 		}
@@ -174,7 +174,7 @@ func Func(name string, fn interface{}) *delay.Function {
 		}
 
 		// Recreate gin context from fakecontext if possible, otherwise
-		// create a new one using this appengine context.
+		// create a new one using this context.
 		ctx := getGinContext(c, fakectx, ok)
 
 		// Build arguments for fn

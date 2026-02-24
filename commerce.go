@@ -645,7 +645,7 @@ func (app *App) setupRoutes() {
 	{
 		// Core middleware required by Commerce API handlers
 		api.Use(middleware.AddHost())
-		api.Use(middleware.AppEngine())
+		api.Use(middleware.RequestContext())
 		api.Use(middleware.DetectOverrides())
 		api.Use(middleware.ErrorHandlerJSON())
 		api.Use(middleware.AccessControl("*"))

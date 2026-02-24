@@ -65,7 +65,7 @@ var _ = NewBigQuery("bigquery-export-kanoa-user-order",
 		t := time.Now()
 		suffix := t.Format("20060102T150405")
 
-		ctx := middleware.GetAppEngine(c)
+		ctx := middleware.GetContext(c)
 
 		client, err := bigquery.NewClient(ctx)
 		if err != nil {
