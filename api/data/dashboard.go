@@ -34,7 +34,7 @@ func dashboard(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
-	data, err := counter.GetDashboardData(org.Db.Context, period, date, -8*3600, org)
+	data, err := counter.GetDashboardData(org.Context(), period, date, -8*3600, org)
 	if err != nil {
 		http.Fail(c, 500, "Failed to load data", err)
 	} else {

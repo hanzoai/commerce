@@ -43,7 +43,7 @@ func reset(c *gin.Context) {
 	}
 
 	// Create token
-	tok := token.New(usr.Db)
+	tok := token.New(usr.Datastore())
 	tok.Email = usr.Email
 	tok.UserId = usr.Id()
 	tok.Expires = time.Now().Add(time.Hour * 72)

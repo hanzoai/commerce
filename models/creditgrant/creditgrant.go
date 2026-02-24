@@ -8,24 +8,25 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
-var kind = "credit-grant"
+func init() { orm.Register[CreditGrant]("credit-grant") }
 
 // CreditGrant represents a discrete credit allocation for a user.
 // Grants can have expiry dates, priority ordering, and meter eligibility
 // restrictions. The burn-down algorithm consumes grants in priority order
 // (lower priority number = consumed first), then by earliest expiry.
 type CreditGrant struct {
-	mixin.BaseModel
+	mixin.Model[CreditGrant]
 
 	UserId         string        `json:"userId"`
 	Name           string        `json:"name"`
 	AmountCents    int64         `json:"amountCents"`
 	RemainingCents int64         `json:"remainingCents"`
-	Currency       currency.Type `json:"currency"`
+	Currency       currency.Type `json:"currency" orm:"default:usd"`
 
 	EffectiveAt time.Time `json:"effectiveAt"`
 	ExpiresAt   time.Time `json:"expiresAt,omitempty"`
@@ -44,24 +45,6 @@ type CreditGrant struct {
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (g CreditGrant) Kind() string {
-	return kind
-}
-
-func (g *CreditGrant) Init(db *datastore.Datastore) {
-	g.BaseModel.Init(db, g)
-}
-
-func (g *CreditGrant) Defaults() {
-	g.Parent = g.Db.NewKey("synckey", "", 1, nil)
-	if g.EffectiveAt.IsZero() {
-		g.EffectiveAt = time.Now()
-	}
-	if g.Currency == "" {
-		g.Currency = "usd"
-	}
 }
 
 func (g *CreditGrant) Load(ps []datastore.Property) (err error) {
@@ -125,13 +108,21 @@ func (g *CreditGrant) IsEligibleForMeter(meterId string) bool {
 	return false
 }
 
+// Defaults sets runtime-computed defaults that cannot be expressed as struct tags.
+func (g *CreditGrant) Defaults() {
+	if g.EffectiveAt.IsZero() {
+		g.EffectiveAt = time.Now()
+	}
+}
+
 func New(db *datastore.Datastore) *CreditGrant {
 	g := new(CreditGrant)
 	g.Init(db)
+	g.Parent = db.NewKey("synckey", "", 1, nil)
 	g.Defaults()
 	return g
 }
 
 func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+	return db.Query("credit-grant")
 }

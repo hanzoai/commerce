@@ -49,7 +49,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 		log.Debug("Order before: %+v", ord, ctx)
 		ord.UpdatePaymentStatus()
 		if ord.Total == ord.Refunded && ord.ReferralId != "" {
-			rfl := referral.New(ord.Db)
+			rfl := referral.New(ord.Datastore())
 			if err := rfl.GetById(ord.ReferralId); err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 				return err
 			}
 
-			usr := user.New(ord.Db)
+			usr := user.New(ord.Datastore())
 			if err := usr.GetById(rfl.Referrer.UserId); err != nil {
 				log.Warn("Could not get referring user '%s'", rfl.Referrer.UserId, ctx)
 				return err
@@ -130,7 +130,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx context.Context, ns
 
 			in := org.Integrations.FindByType(integration.WoopraType)
 			if in != nil {
-				usr := user.New(ord.Db)
+				usr := user.New(ord.Datastore())
 				if err := usr.GetById(ord.UserId); err != nil {
 
 				}

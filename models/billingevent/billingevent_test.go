@@ -302,24 +302,29 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	e := &BillingEvent{}
 	e.Init(db)
-	if e.Db != db {
-		t.Error("expected Db to be set")
+	if e.Datastore() != db {
+		t.Error("expected Datastore to be set")
 	}
 }
 
-// --- Defaults ---
+// --- ORM Defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestInit_OrmDefaults(t *testing.T) {
 	db := testDB()
 	e := &BillingEvent{}
 	e.Init(db)
-	e.Defaults()
+	// orm:"default:true" applied by Init
 	if !e.Pending {
 		t.Error("expected Pending true")
 	}
 	if !e.Livemode {
 		t.Error("expected Livemode true")
 	}
+}
+
+func TestNew_SetsParent(t *testing.T) {
+	db := testDB()
+	e := New(db)
 	if e.Parent == nil {
 		t.Error("expected Parent to be set")
 	}

@@ -28,7 +28,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		return NegativeRefund
 	}
 
-	db := ord.Db
+	db := ord.Datastore()
 	ctx := db.Context
 
 	if int64(refundAmount) > int64(ord.Total) {

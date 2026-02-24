@@ -1,6 +1,7 @@
 package subscriptionitem
 
 import (
+	"github.com/hanzoai/orm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
@@ -14,8 +15,11 @@ var kind = "subscription-item"
 // SubscriptionItem represents a single price/product on a subscription.
 // Each subscription has one or more items. For metered items, a MeterId
 // links usage events to this line. For licensed items, Quantity tracks seats.
+
+func init() { orm.Register[SubscriptionItem](kind) }
+
 type SubscriptionItem struct {
-	mixin.BaseModel
+	mixin.Model[SubscriptionItem]
 
 	SubscriptionId string `json:"subscriptionId"`
 	PriceId        string `json:"priceId,omitempty"`
@@ -30,21 +34,6 @@ type SubscriptionItem struct {
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (si SubscriptionItem) Kind() string {
-	return kind
-}
-
-func (si *SubscriptionItem) Init(db *datastore.Datastore) {
-	si.BaseModel.Init(db, si)
-}
-
-func (si *SubscriptionItem) Defaults() {
-	si.Parent = si.Db.NewKey("synckey", "", 1, nil)
-	if si.BillingMode == "" {
-		si.BillingMode = "licensed"
-	}
 }
 
 func (si *SubscriptionItem) Load(ps []datastore.Property) (err error) {
@@ -71,7 +60,10 @@ func (si *SubscriptionItem) Validator() *val.Validator {
 func New(db *datastore.Datastore) *SubscriptionItem {
 	si := new(SubscriptionItem)
 	si.Init(db)
-	si.Defaults()
+	si.Parent = db.NewKey("synckey", "", 1, nil)
+	if si.BillingMode == "" {
+		si.BillingMode = "licensed"
+	}
 	return si
 }
 

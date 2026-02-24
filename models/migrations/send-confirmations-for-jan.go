@@ -32,7 +32,7 @@ package migrations
 // 		if ord.CreatedAt.IsZero() {
 // 			ord.MustCreate()
 // 			sendMail = true
-// 			log.Warn("Fixing Uninitialized Order %v", ord.Id(), ord.Db.Context)
+// 			log.Warn("Fixing Uninitialized Order %v", ord.Id(), ord.Datastore().Context)
 // 		}
 
 // 		t1, err := time.Parse(time.RFC3339, "2016-01-06T13:30:00-06:00")
@@ -49,25 +49,25 @@ package migrations
 // 		}
 
 // 		if !sendMail {
-// 			log.Warn("NOT SENDING Order %v", ord.Id(), ord.Db.Context)
+// 			log.Warn("NOT SENDING Order %v", ord.Id(), ord.Datastore().Context)
 // 			return
 // 		}
 
-// 		log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
+// 		log.Warn("SENDING Order %v", ord.Id(), ord.Datastore().Context)
 
-// 		usr := user.New(ord.Db)
+// 		usr := user.New(ord.Datastore())
 // 		usr.GetById(ord.UserId)
 
-// 		org := organization.New(ord.Db)
+// 		org := organization.New(ord.Datastore())
 // 		org.Email.Defaults.Enabled = defaultEnabled
 // 		org.Email.Defaults.FromName = defaultFromName
 // 		org.Email.Defaults.FromEmail = defaultFromEmail
 // 		org.Email.Order.Confirmation = orderConfirmation
 // 		org.Mandrill.APIKey = apiKey
 
-// 		// log.Warn("API email config %v", org.Email, ord.Db.Context)
-// 		// log.Warn("API Key %v", org.Mandrill.APIKey, ord.Db.Context)
+// 		// log.Warn("API email config %v", org.Email, ord.Datastore().Context)
+// 		// log.Warn("API Key %v", org.Mandrill.APIKey, ord.Datastore().Context)
 
-// 		email.SendOrderConfirmationEmail(ord.Db.Context, org, ord, usr)
+// 		email.SendOrderConfirmationEmail(ord.Datastore().Context, org, ord, usr)
 // 	},
 // )

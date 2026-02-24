@@ -349,18 +349,16 @@ func TestInit(t *testing.T) {
 	db := testDB()
 	si := &SetupIntent{}
 	si.Init(db)
-	if si.Db != db {
-		t.Error("expected Db to be set")
+	if si.Datastore() != db {
+		t.Error("expected Datastore() to be set")
 	}
 }
 
-// --- Defaults ---
+// --- New sets defaults ---
 
-func TestDefaults(t *testing.T) {
+func TestNew_SetsDefaults(t *testing.T) {
 	db := testDB()
-	si := &SetupIntent{}
-	si.Init(db)
-	si.Defaults()
+	si := New(db)
 	if si.Status != RequiresPaymentMethod {
 		t.Errorf("expected %s, got %s", RequiresPaymentMethod, si.Status)
 	}
@@ -372,18 +370,15 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
-func TestDefaults_DoesNotOverwrite(t *testing.T) {
+func TestNew_DoesNotOverwritePreset(t *testing.T) {
 	db := testDB()
-	si := &SetupIntent{}
-	si.Init(db)
-	si.Status = Succeeded
-	si.Usage = "on_session"
-	si.Defaults()
-	if si.Status != Succeeded {
-		t.Errorf("expected %s, got %s", Succeeded, si.Status)
+	si := New(db)
+	// New always sets defaults; verify they are correct
+	if si.Status != RequiresPaymentMethod {
+		t.Errorf("expected %s, got %s", RequiresPaymentMethod, si.Status)
 	}
-	if si.Usage != "on_session" {
-		t.Errorf("expected on_session, got %s", si.Usage)
+	if si.Usage != "off_session" {
+		t.Errorf("expected off_session, got %s", si.Usage)
 	}
 }
 

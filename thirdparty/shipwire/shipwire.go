@@ -103,11 +103,11 @@ func (c *Client) Resource(method, url string, body interface{}, dst interface{})
 
 	// Handle errors
 	if res.Error != "" {
-		return &res, fmt.Errorf(res.Error)
+		return &res, fmt.Errorf("%s", res.Error)
 	}
 
 	if len(res.Errors) > 0 {
-		return &res, fmt.Errorf(res.Errors[0].Message)
+		return &res, fmt.Errorf("%s", res.Errors[0].Message)
 	}
 
 	// Try to automatically decode inner response that we care about

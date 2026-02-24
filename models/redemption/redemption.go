@@ -5,10 +5,13 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[Redemption]("redemption") }
+
 type Redemption struct {
-	mixin.BaseModel
+	mixin.Model[Redemption]
 
 	// Coupon code (need not be unique).
 	Code string `json:"code"`
@@ -24,4 +27,14 @@ func (r *Redemption) Save() (props []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(r)
+}
+
+func New(db *datastore.Datastore) *Redemption {
+	r := new(Redemption)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("redemption")
 }

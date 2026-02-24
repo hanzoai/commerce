@@ -12,9 +12,12 @@ import (
 	"github.com/hanzoai/commerce/models/variant"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Product]("product") }
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
@@ -44,7 +47,7 @@ type Reservation struct {
 
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
-	mixin.BaseModel
+	mixin.Model[Product]
 	productcachedvalues.ProductCachedValues
 
 	Ref refs.EcommerceRef `json:"ref,omitempty"`
@@ -217,4 +220,21 @@ func (p Product) VariantOptions(name string) (options []string) {
 	}
 
 	return options
+}
+
+func (p *Product) Defaults() {
+	p.Variants = make([]*variant.Variant, 0)
+	p.Options = make([]*Option, 0)
+	p.Taxable = true
+}
+
+func New(db *datastore.Datastore) *Product {
+	p := new(Product)
+	p.Init(db)
+	p.Defaults()
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("product")
 }

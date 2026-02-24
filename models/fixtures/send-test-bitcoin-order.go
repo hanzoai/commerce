@@ -20,7 +20,7 @@ var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 
-	ctx := org.Db.Context
+	ctx := org.Datastore().Context
 
 	db := getNamespaceDb(c)
 

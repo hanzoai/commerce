@@ -3,11 +3,15 @@ package transfer
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Transfer]("transfer") }
 
 type Type string
 
@@ -30,7 +34,7 @@ const (
 )
 
 type StripeAccount struct {
-	Id   string `json:"transferId,omimtempty"`
+	TransferId string `json:"transferId,omitempty"`
 	Type string `json:"type,omitempty"`
 
 	ApplicationFee int64 `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
@@ -58,7 +62,7 @@ type Account struct {
 }
 
 type Transfer struct {
-	mixin.BaseModel
+	mixin.Model[Transfer]
 
 	Account
 
@@ -71,9 +75,19 @@ type Transfer struct {
 	AmountReversed currency.Cents `json:"amountReversed,omitempty"`
 
 	Type   Type   `json:"type"`
-	Status Status `json:"status"`
+	Status Status `json:"status" orm:"default:pending"`
 	Live   bool   `json:"live,omitempty"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
+}
+
+func New(db *datastore.Datastore) *Transfer {
+	t := new(Transfer)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("transfer")
 }

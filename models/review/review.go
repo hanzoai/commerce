@@ -4,14 +4,17 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[Review]("review") }
+
 type Review struct {
-	mixin.BaseModel
+	mixin.Model[Review]
 
 	UserId string `json:"userId"`
 
@@ -25,7 +28,7 @@ type Review struct {
 
 	Enabled bool `json:"-"`
 
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
@@ -49,4 +52,16 @@ func (r *Review) Save() (p []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(r)
+}
+
+// New creates a new Review wired to the given datastore.
+func New(db *datastore.Datastore) *Review {
+	r := new(Review)
+	r.Init(db)
+	return r
+}
+
+// Query returns a datastore query for reviews.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("review")
 }

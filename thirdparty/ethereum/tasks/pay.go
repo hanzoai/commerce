@@ -147,7 +147,7 @@ func EthereumProcessPaymentImpl(
 			var chainId ethereum.ChainId
 			var account *wallet.Account
 
-			pw := wallet.New(org.Db)
+			pw := wallet.New(org.Datastore())
 			if ok, err := pw.Query().Filter("Id_=", "platform-wallet").Get(); !ok {
 				if err != nil {
 					return err
@@ -200,7 +200,7 @@ func EthereumProcessPaymentImpl(
 			client := ethereum.New(ctx, address)
 
 			// Get From Address
-			ow, err := ord.GetOrCreateWallet(ord.Db)
+			ow, err := ord.GetOrCreateWallet(ord.Datastore())
 			if err != nil {
 				log.Error("Order Wallet Not Found: %v", err, ctx)
 				return OrderWalletNotFound

@@ -29,7 +29,7 @@ func fakeEvent(name string, obj interface{}) *stripe.Event {
 	ev := new(stripe.Event)
 	ev.Account = "1"
 	ev.Livemode = true
-	ev.Type = name
+	ev.Type = stripe.EventType(name)
 	ev.ID = "evt_000000000000000000000000"
 	ev.Data = &stripe.EventData{
 		Raw: json.EncodeRaw(obj),

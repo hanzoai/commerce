@@ -122,8 +122,8 @@ func PaymentToNewTransaction(pay *payment.Payment) *authorizenet.NewTransaction 
 			Country: pay.Buyer.BillingAddress.Country,
 		},
 	}
-	log.Warn("Payment %v", json2.Encode(pay), pay.Db.Context)
-	log.Warn("New Transaction %v", json2.Encode(newTransaction), pay.Db.Context)
+	log.Warn("Payment %v", json2.Encode(pay), pay.Datastore().Context)
+	log.Warn("New Transaction %v", json2.Encode(newTransaction), pay.Datastore().Context)
 	return &newTransaction
 }
 

@@ -68,7 +68,7 @@ var _ = New("luckybets", func(c *gin.Context) *organization.Organization {
 
 	org.WalletPassphrase = "wsnwN6aBysgUGD55WugaJzpMFJRrqFfcxnWPELEsd7aP7abQNK7byMebf5nD9JJpgGytykBamThQVKpXuBKRKVRWU3GTUAHAmvAq8gFypJ2aAbVcU569NYbFRpR7b8zH"
 
-	wal, err := org.GetOrCreateWallet(org.Db)
+	wal, err := org.GetOrCreateWallet(org.Datastore())
 	if err != nil {
 		panic(err)
 	}

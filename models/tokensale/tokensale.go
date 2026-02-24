@@ -1,14 +1,18 @@
 package tokensale
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	// "github.com/hanzoai/commerce/models/payment"
 	// "github.com/hanzoai/commerce/models/types/pricing"
 	"github.com/hanzoai/commerce/models/wallet"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[TokenSale]("tokensale") }
+
 type TokenSale struct {
-	mixin.BaseModel
+	mixin.Model[TokenSale]
 
 	// Auditor Wallet
 	wallet.WalletHolder `json:"-"`
@@ -36,3 +40,13 @@ type TokenSale struct {
 // 	fees.Id = ts.Id()
 // 	return &fees, ts.Partners
 // }
+
+func New(db *datastore.Datastore) *TokenSale {
+	ts := new(TokenSale)
+	ts.Init(db)
+	return ts
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("tokensale")
+}

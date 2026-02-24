@@ -24,7 +24,7 @@ func (o *Order) filterValidDiscounts(discounts []*discount.Discount) []*discount
 }
 
 func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
-	db := o.Db
+	db := o.Datastore()
 	ctx := db.Context
 
 	channels := 2 + len(o.Items)

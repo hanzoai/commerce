@@ -44,7 +44,7 @@ var _ = BeforeSuite(func() {
 	ord = fixtures.Order(c).(*order.Order)
 
 	// Add a subscription item
-	subProd = product.Fake(ord.Db)
+	subProd = product.Fake(ord.Datastore())
 	subProd.IsSubscribeable = true
 	subProd.Interval = Monthly
 	subProd.IntervalCount = 1
@@ -56,10 +56,10 @@ var _ = BeforeSuite(func() {
 		Quantity:  1,
 	})
 
-	stor = store.New(ord.Db)
+	stor = store.New(ord.Datastore())
 	stor.MustCreate()
 
-	stor2 = store.New(ord.Db)
+	stor2 = store.New(ord.Datastore())
 	stor2.MustCreate()
 
 	sr, err := stor.GetShippingRates()
@@ -128,7 +128,7 @@ var _ = BeforeSuite(func() {
 
 	fixtures.Coupon(c)
 
-	stor2 = store.New(ord.Db)
+	stor2 = store.New(ord.Datastore())
 	stor2.MustCreate()
 
 	sr2, err := stor2.GetShippingRates()
@@ -139,7 +139,7 @@ var _ = BeforeSuite(func() {
 	tr2, err := stor2.GetTaxRates()
 	Expect(err).NotTo(HaveOccurred())
 
-	stor3 = store.New(ord.Db)
+	stor3 = store.New(ord.Datastore())
 	stor3.MustCreate()
 	stor3.Currency = currency.ETH
 

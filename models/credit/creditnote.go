@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -29,19 +30,19 @@ type CreditNoteLineItem struct {
 	UnitPrice   int64         `json:"unitPrice,omitempty"`
 }
 
-var kind = "credit-note"
+func init() { orm.Register[CreditNote]("credit-note") }
 
 // CreditNote represents a credit issued against an invoice. Credits can be
 // applied to customer balance or refunded to the original payment method.
 type CreditNote struct {
-	mixin.BaseModel
+	mixin.Model[CreditNote]
 
 	InvoiceId  string        `json:"invoiceId"`
 	CustomerId string        `json:"customerId"`
 	Number     string        `json:"number"` // "CN-0001"
 	Amount     int64         `json:"amount"` // total credit in cents
-	Currency   currency.Type `json:"currency"`
-	Status     Status        `json:"status"`
+	Currency   currency.Type `json:"currency" orm:"default:usd"`
+	Status     Status        `json:"status" orm:"default:issued"`
 
 	// "duplicate" | "fraudulent" | "order_change" | "product_unsatisfactory"
 	Reason string `json:"reason,omitempty"`
@@ -62,24 +63,6 @@ type CreditNote struct {
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (cn CreditNote) Kind() string {
-	return kind
-}
-
-func (cn *CreditNote) Init(db *datastore.Datastore) {
-	cn.BaseModel.Init(db, cn)
-}
-
-func (cn *CreditNote) Defaults() {
-	cn.Parent = cn.Db.NewKey("synckey", "", 1, nil)
-	if cn.Status == "" {
-		cn.Status = Issued
-	}
-	if cn.Currency == "" {
-		cn.Currency = "usd"
-	}
 }
 
 func (cn *CreditNote) Load(ps []datastore.Property) (err error) {
@@ -127,10 +110,10 @@ func (cn *CreditNote) SetNumber(n int) {
 func New(db *datastore.Datastore) *CreditNote {
 	cn := new(CreditNote)
 	cn.Init(db)
-	cn.Defaults()
+	cn.Parent = db.NewKey("synckey", "", 1, nil)
 	return cn
 }
 
 func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+	return db.Query("credit-note")
 }

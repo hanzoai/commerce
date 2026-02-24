@@ -3,9 +3,13 @@ package dispute
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+func init() { orm.Register[Dispute]("dispute") }
 
 // Status represents the state of a dispute.
 type Status string
@@ -31,7 +35,7 @@ type DisputeEvidence struct {
 
 // Dispute represents a customer challenge to a charge.
 type Dispute struct {
-	mixin.BaseModel
+	mixin.Model[Dispute]
 
 	Amount          int64                  `json:"amount"`
 	Currency        currency.Type          `json:"currency"`
@@ -43,4 +47,22 @@ type Dispute struct {
 	Evidence        *DisputeEvidence       `json:"evidence,omitempty"`
 	Metadata        map[string]interface{} `json:"metadata,omitempty"`
 	Created         time.Time              `json:"created,omitempty"`
+}
+
+func (d *Dispute) Defaults() {
+	d.Parent = d.Datastore().NewKey("synckey", "", 1, nil)
+	if d.Status == "" {
+		d.Status = NeedsResponse
+	}
+}
+
+func New(db *datastore.Datastore) *Dispute {
+	d := new(Dispute)
+	d.Init(db)
+	d.Defaults()
+	return d
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("dispute")
 }

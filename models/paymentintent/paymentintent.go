@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/orm"
 )
+
+var kind = "payment-intent"
 
 // Status represents the state of a PaymentIntent.
 type Status string
@@ -22,8 +26,11 @@ const (
 )
 
 // PaymentIntent represents a payment flow from creation to completion.
+
+func init() { orm.Register[PaymentIntent]("payment-intent") }
+
 type PaymentIntent struct {
-	mixin.BaseModel
+	mixin.Model[PaymentIntent]
 
 	CustomerId         string                 `json:"customerId,omitempty"`
 	Amount             int64                  `json:"amount"`
@@ -97,4 +104,31 @@ func (pi *PaymentIntent) Cancel(reason string) error {
 	pi.CancellationReason = reason
 	pi.CanceledAt = time.Now()
 	return nil
+}
+
+func (pi *PaymentIntent) Defaults() {
+	pi.Parent = pi.Datastore().NewKey("synckey", "", 1, nil)
+	if pi.Status == "" {
+		pi.Status = RequiresPaymentMethod
+	}
+	if pi.Currency == "" {
+		pi.Currency = "usd"
+	}
+	if pi.CaptureMethod == "" {
+		pi.CaptureMethod = "automatic"
+	}
+	if pi.ConfirmationMethod == "" {
+		pi.ConfirmationMethod = "automatic"
+	}
+}
+
+func New(db *datastore.Datastore) *PaymentIntent {
+	pi := new(PaymentIntent)
+	pi.Init(db)
+	pi.Defaults()
+	return pi
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

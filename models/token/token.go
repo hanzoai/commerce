@@ -3,11 +3,15 @@ package token
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
+func init() { orm.Register[Token]("token") }
+
 type Token struct {
-	mixin.BaseModel
+	mixin.Model[Token]
 
 	Email   string    `json:"email"`
 	UserId  string    `json:"userId"`
@@ -20,4 +24,14 @@ func (t Token) Expired() bool {
 		return true
 	}
 	return false
+}
+
+func New(db *datastore.Datastore) *Token {
+	t := new(Token)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("token")
 }
