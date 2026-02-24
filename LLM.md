@@ -146,9 +146,60 @@ WRITE paths (credentials → KMS):
 
 Org resolved from `X-Hanzo-Org` header or request body `org`/`tenant` field. Per-request Stripe client (multi-tenant safe). Emits `checkout_started` analytics event.
 
+## SQLite Query Engine (2026-02-23)
+
+**Critical: PascalCase→camelCase conversion**. The SQLite query builder converts Go struct
+field names (PascalCase) to JSON field names (camelCase) automatically via `toJSONFieldName()`.
+This is needed because `json.Marshal()` uses json struct tags (camelCase), but callers use Go
+field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration).
+
+- `Filter("Test=", false)` → `json_extract(data, '$.test') = 0` (not `$.Test`)
+- `Filter("DestinationKind=", kind)` → `json_extract(data, '$.destinationKind')`
+- Nested paths handled: `Filter("Account.TransactionHash=", h)` → `$.account.transactionHash`
+- Boolean false/0 handled via COALESCE: `COALESCE(json_extract(...), 0) = 0` (handles NULL from omitempty)
+
+**Data directory**: `{COMMERCE_DIR}/orgs/{orgName}/data.db` per org. System data in `orgs/system/data.db`.
+
+**PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
+
+## Billing API (2026-02-23)
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/v1/billing/balance` | GET | Balance by user+currency (cents) |
+| `/api/v1/billing/balance/all` | GET | All currency balances |
+| `/api/v1/billing/usage` | POST | Record API usage (withdraw) |
+| `/api/v1/billing/deposit` | POST | Create deposit transaction |
+| `/api/v1/billing/credit` | POST | Grant starter credit ($5, 30-day expiry) |
+| `/api/v1/billing/zap` | POST | Clear balance |
+
+All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
+
+**Current org**: `hanzo` (ID: `gzh2BOBnV6gKZQ0CP`)
+
+## Cross-Compilation (2026-02-23)
+
+Colima QEMU crashes Go's HTTP/2 and module loader on ARM Mac. Use zig for cross-compilation:
+
+```bash
+go mod vendor
+CC="zig cc -target x86_64-linux-musl" CXX="zig c++ -target x86_64-linux-musl" \
+  CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+  go build -mod=vendor -ldflags="-s -w -extldflags '-static'" -o commerce ./cmd/commerce/main.go
+```
+
+Push to GHCR (Docker Hub credentials not available locally):
+```bash
+docker build --platform linux/amd64 -t ghcr.io/hanzoai/commerce:hotfix .
+docker push ghcr.io/hanzoai/commerce:hotfix
+```
+
 ## Gotchas
 
 - Healthcheck: use `curl -f` not `wget --spider` (Gin only handles GET)
 - Meilisearch v0.35.1 changed `AddDocuments`/`DeleteDocuments` signatures
-- Production Dockerfile uses `CGO_ENABLED=0` for static binary
+- Production Dockerfile uses CGO_ENABLED=1 for SQLite (not CGO_ENABLED=0)
 - Global entities (Organization, User, Token) use `DefaultNamespace = true` by design
+- PVC is ReadWriteOnce — use Recreate deployment strategy, not RollingUpdate
+- Filter field names are PascalCase (Go struct) — auto-converted to camelCase JSON
+- Boolean `false` with `omitempty` may be omitted from JSON — COALESCE handles NULL=false

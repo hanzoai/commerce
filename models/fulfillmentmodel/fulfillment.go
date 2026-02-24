@@ -6,9 +6,12 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[Fulfillment]("fulfillment") }
 
 type FulfillmentLabel struct {
 	TrackingNumber string `json:"trackingNumber"`
@@ -25,7 +28,7 @@ type FulfillmentItem struct {
 }
 
 type Fulfillment struct {
-	mixin.Model
+	mixin.EntityBridge[Fulfillment]
 
 	OrderId          string     `json:"orderId"`
 	ShippingOptionId string     `json:"shippingOptionId"`
@@ -36,19 +39,17 @@ type Fulfillment struct {
 	DeliveredAt      *time.Time `json:"deliveredAt,omitempty"`
 	CanceledAt       *time.Time `json:"canceledAt,omitempty"`
 
-	Items  []FulfillmentItem `json:"items" datastore:"-"`
+	Items  []FulfillmentItem `json:"items" datastore:"-" orm:"default:[]"`
 	Items_ string            `json:"-" datastore:",noindex"`
 
-	Labels  []FulfillmentLabel `json:"labels" datastore:"-"`
+	Labels  []FulfillmentLabel `json:"labels" datastore:"-" orm:"default:[]"`
 	Labels_ string             `json:"-" datastore:",noindex"`
 
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (f *Fulfillment) Load(ps []datastore.Property) (err error) {
-	f.Defaults()
-
 	if err = datastore.LoadStruct(f, ps); err != nil {
 		return err
 	}
@@ -74,4 +75,14 @@ func (f *Fulfillment) Save() ([]datastore.Property, error) {
 	f.Metadata_ = string(json.EncodeBytes(&f.Metadata))
 
 	return datastore.SaveStruct(f)
+}
+
+func New(db *datastore.Datastore) *Fulfillment {
+	f := new(Fulfillment)
+	f.Init(db)
+	return f
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("fulfillment")
 }

@@ -3,10 +3,15 @@ package campaign
 import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/category"
+	"github.com/hanzoai/orm"
+
+	"github.com/hanzoai/commerce/datastore"
 )
 
+func init() { orm.Register[Campaign]("campaign") }
+
 type Campaign struct {
-	mixin.Model
+	mixin.EntityBridge[Campaign]
 
 	Slug string `json:"slug"`
 
@@ -26,9 +31,19 @@ type Campaign struct {
 	Thumbnail       string            `json:"thumbnail"`
 	OriginalUrl     string            `json:"originalUrl"`
 	StoreUrl        string            `json:"storeUrl"`
-	ProductIds      []string          `datastore:"-" json:"productIds"`
+	ProductIds      []string          `datastore:"-" json:"productIds" orm:"default:[]"`
 
 	GoogleAnalytics string   `json:"googleAnalytics"`
 	FacebookTag     string   `json:"facebookTag"`
-	Links           []string `json:"links"`
+	Links           []string `json:"links" orm:"default:[]"`
+}
+
+func New(db *datastore.Datastore) *Campaign {
+	c := new(Campaign)
+	c.Init(db)
+	return c
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("campaign")
 }

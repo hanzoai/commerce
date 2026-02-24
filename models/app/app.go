@@ -3,10 +3,12 @@ package app
 import (
 	"time"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/oauthtoken"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/orm"
 )
 
 const (
@@ -16,8 +18,10 @@ const (
 	TestSecretKey    = "test-secret-key"
 )
 
+func init() { orm.Register[App]("app") }
+
 type App struct {
-	mixin.Model
+	mixin.EntityBridge[App]
 
 	Name string `json:"name"`
 
@@ -29,7 +33,7 @@ type App struct {
 func (a *App) NewApiKey(name string, claims oauthtoken.Claims) (*oauthtoken.Token, error) {
 	a.RevokeApiKeyByName(name)
 
-	tok := oauthtoken.New(a.Db)
+	tok := oauthtoken.New(a.Datastore())
 	tok.Name = name
 
 	claims.AppId = a.Id()
@@ -51,7 +55,7 @@ func (a *App) NewApiKey(name string, claims oauthtoken.Claims) (*oauthtoken.Toke
 }
 
 func (a *App) GetApiKeyByName(name string) (*oauthtoken.Token, bool, error) {
-	tok := oauthtoken.New(a.Db)
+	tok := oauthtoken.New(a.Datastore())
 
 	if ok, err := tok.Query().Filter("Claims.AppId=", a.Id()).Filter("Claims.Type=", oauthtoken.Api).Filter("Revoked=", false).Filter("Name=", name).Get(); !ok {
 		return nil, false, err
@@ -72,7 +76,7 @@ func (a *App) RevokeApiKeyByName(name string) (*oauthtoken.Token, bool, error) {
 func (a *App) LoadApiKeys() error {
 	slice := make([]*oauthtoken.Token, 0)
 
-	_, err := oauthtoken.Query(a.Db).
+	_, err := oauthtoken.Query(a.Datastore()).
 		Filter("Claims.AppName=", a.Name).
 		Filter("Claims.Type=", oauthtoken.Api).
 		Filter("Revoked=", false).
@@ -129,4 +133,14 @@ func (a *App) ResetDefaultKeys() {
 		testPubKey,
 		testSecretKey,
 	}
+}
+
+func New(db *datastore.Datastore) *App {
+	a := new(App)
+	a.Init(db)
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("app")
 }
