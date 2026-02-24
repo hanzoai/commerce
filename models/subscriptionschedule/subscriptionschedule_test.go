@@ -1,9 +1,16 @@
 package subscriptionschedule
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- Release ---
 
@@ -411,5 +418,314 @@ func TestCanceledThenRelease(t *testing.T) {
 	err := s.Release()
 	if err == nil {
 		t.Fatal("expected error releasing canceled schedule")
+	}
+}
+
+// --- Save serializes Phases_ and Metadata_ ---
+
+func TestSave_SerializesPhases(t *testing.T) {
+	now := time.Now()
+	s := &SubscriptionSchedule{
+		Phases: []Phase{
+			{PlanId: "plan_a", StartDate: now, EndDate: now.Add(30 * 24 * time.Hour)},
+		},
+		Metadata: map[string]interface{}{"campaign": "launch"},
+	}
+	ps, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if ps == nil {
+		t.Fatal("expected non-nil properties")
+	}
+	if s.Phases_ == "" {
+		t.Error("expected Phases_ to be populated after Save")
+	}
+	if s.Metadata_ == "" {
+		t.Error("expected Metadata_ to be populated after Save")
+	}
+}
+
+func TestSave_NilPhases(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	_, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if s.Phases_ == "" {
+		t.Error("expected Phases_ to be set")
+	}
+}
+
+func TestSave_EmptyPhases(t *testing.T) {
+	s := &SubscriptionSchedule{
+		Phases: []Phase{},
+	}
+	_, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if s.Phases_ == "" {
+		t.Error("expected Phases_ to be set")
+	}
+}
+
+func TestSave_NilMetadata(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	_, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if s.Metadata_ == "" {
+		t.Error("expected Metadata_ to be set")
+	}
+}
+
+// --- Load deserializes Phases_ and Metadata_ ---
+
+func TestLoad_DeserializesPhases(t *testing.T) {
+	now := time.Now().Truncate(time.Second)
+	s := &SubscriptionSchedule{
+		Phases: []Phase{
+			{PlanId: "plan_x", StartDate: now, EndDate: now.Add(30 * 24 * time.Hour),
+				Items: []PhaseItem{{PriceId: "price_1", Quantity: 3}}},
+		},
+		Metadata: map[string]interface{}{"test": "value"},
+	}
+	_, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	savedPhases := s.Phases_
+	savedMeta := s.Metadata_
+
+	s2 := &SubscriptionSchedule{}
+	s2.Phases_ = savedPhases
+	s2.Metadata_ = savedMeta
+	props := []datastore.Property{
+		{Name: "Phases_", Value: savedPhases},
+		{Name: "Metadata_", Value: savedMeta},
+	}
+	err = s2.Load(props)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if len(s2.Phases) != 1 {
+		t.Fatalf("expected 1 phase, got %d", len(s2.Phases))
+	}
+	if s2.Phases[0].PlanId != "plan_x" {
+		t.Errorf("expected plan_x, got %s", s2.Phases[0].PlanId)
+	}
+	if len(s2.Phases[0].Items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(s2.Phases[0].Items))
+	}
+	if s2.Phases[0].Items[0].PriceId != "price_1" {
+		t.Errorf("expected price_1, got %s", s2.Phases[0].Items[0].PriceId)
+	}
+	if s2.Metadata == nil {
+		t.Fatal("expected non-nil Metadata")
+	}
+	if s2.Metadata["test"] != "value" {
+		t.Errorf("expected test=value, got %v", s2.Metadata["test"])
+	}
+}
+
+func TestLoad_EmptyStrings(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	err := s.Load([]datastore.Property{})
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if s.Phases != nil {
+		t.Error("expected nil Phases when Phases_ is empty")
+	}
+	if s.Metadata != nil {
+		t.Error("expected nil Metadata when Metadata_ is empty")
+	}
+}
+
+// --- Save/Load round trip ---
+
+func TestSaveLoadRoundTrip(t *testing.T) {
+	s := &SubscriptionSchedule{
+		CustomerId:  "cus_rt",
+		Status:      Active,
+		EndBehavior: "cancel",
+		Phases: []Phase{
+			{PlanId: "plan_rt", StartDate: time.Now().Truncate(time.Second)},
+		},
+		Metadata: map[string]interface{}{"source": "api"},
+	}
+
+	ps, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+
+	s2 := &SubscriptionSchedule{}
+	err = s2.Load(ps)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if s2.CustomerId != "cus_rt" {
+		t.Errorf("expected cus_rt, got %s", s2.CustomerId)
+	}
+	if s2.EndBehavior != "cancel" {
+		t.Errorf("expected cancel, got %s", s2.EndBehavior)
+	}
+}
+
+// --- SubscriptionSchedule zero value ---
+
+func TestSubscriptionScheduleZeroValue(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	if s.CustomerId != "" {
+		t.Errorf("expected empty, got %q", s.CustomerId)
+	}
+	if s.SubscriptionId != "" {
+		t.Errorf("expected empty, got %q", s.SubscriptionId)
+	}
+	if s.Status != "" {
+		t.Errorf("expected empty, got %s", s.Status)
+	}
+	if s.EndBehavior != "" {
+		t.Errorf("expected empty, got %q", s.EndBehavior)
+	}
+	if s.Phases != nil {
+		t.Error("expected nil phases")
+	}
+	if s.Metadata != nil {
+		t.Error("expected nil metadata")
+	}
+	if !s.StartDate.IsZero() {
+		t.Error("expected zero StartDate")
+	}
+}
+
+// --- Phase TrialEnd ---
+
+func TestPhaseTrialEnd(t *testing.T) {
+	now := time.Now()
+	trial := now.Add(14 * 24 * time.Hour)
+	phase := Phase{
+		PlanId:   "plan_trial",
+		TrialEnd: trial,
+	}
+	if phase.TrialEnd.IsZero() {
+		t.Error("expected non-zero TrialEnd")
+	}
+}
+
+// --- Phase ProrationBehavior ---
+
+func TestPhaseProrationBehavior(t *testing.T) {
+	cases := []string{"create_prorations", "none"}
+	for _, pb := range cases {
+		phase := Phase{ProrationBehavior: pb}
+		if phase.ProrationBehavior != pb {
+			t.Errorf("expected %s, got %s", pb, phase.ProrationBehavior)
+		}
+	}
+}
+
+// --- Load error paths ---
+
+func TestLoad_LoadStructError(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	props := []datastore.Property{
+		{Name: "bad", Value: func() {}},
+	}
+	err := s.Load(props)
+	if err == nil {
+		t.Fatal("expected error from LoadStruct with unmarshalable property")
+	}
+}
+
+func TestLoad_InvalidPhasesJSON(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	s.Phases_ = "not-valid-json"
+	err := s.Load([]datastore.Property{})
+	if err == nil {
+		t.Fatal("expected error for invalid Phases_ JSON")
+	}
+}
+
+func TestLoad_InvalidMetadataJSON(t *testing.T) {
+	s := &SubscriptionSchedule{}
+	s.Metadata_ = "not-valid-json"
+	// Phases_ is empty so it skips that, but Metadata_ is invalid
+	err := s.Load([]datastore.Property{})
+	if err == nil {
+		t.Fatal("expected error for invalid Metadata_ JSON")
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	s := &SubscriptionSchedule{}
+	s.Init(db)
+	if s.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	s := &SubscriptionSchedule{}
+	s.Init(db)
+	s.Defaults()
+	if s.Status != NotStarted {
+		t.Errorf("expected %s, got %s", NotStarted, s.Status)
+	}
+	if s.EndBehavior != "release" {
+		t.Errorf("expected release, got %s", s.EndBehavior)
+	}
+	if s.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	s := &SubscriptionSchedule{}
+	s.Init(db)
+	s.Status = Active
+	s.EndBehavior = "cancel"
+	s.Defaults()
+	if s.Status != Active {
+		t.Errorf("expected %s, got %s", Active, s.Status)
+	}
+	if s.EndBehavior != "cancel" {
+		t.Errorf("expected cancel, got %s", s.EndBehavior)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	s := New(db)
+	if s == nil {
+		t.Fatal("expected non-nil SubscriptionSchedule")
+	}
+	if s.Status != NotStarted {
+		t.Errorf("expected %s, got %s", NotStarted, s.Status)
+	}
+	if s.EndBehavior != "release" {
+		t.Errorf("expected release, got %s", s.EndBehavior)
+	}
+}
+
+// --- Query ---
+
+func TestQueryFunc(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }

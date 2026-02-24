@@ -6,7 +6,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
-	"github.com/hanzoai/commerce/models/creditnote"
+	"github.com/hanzoai/commerce/models/credit"
 	"github.com/hanzoai/commerce/models/paymentintent"
 	"github.com/hanzoai/commerce/models/refund"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -110,13 +110,13 @@ type CreateCreditNoteParams struct {
 	CustomerId      string
 	Amount          int64
 	Reason          string
-	LineItems       []creditnote.CreditNoteLineItem
+	LineItems       []credit.CreditNoteLineItem
 	OutOfBandAmount int64
 	Memo            string
 }
 
 // CreateCreditNote creates a credit note against an invoice.
-func CreateCreditNote(db *datastore.Datastore, params CreateCreditNoteParams) (*creditnote.CreditNote, error) {
+func CreateCreditNote(db *datastore.Datastore, params CreateCreditNoteParams) (*credit.CreditNote, error) {
 	if params.InvoiceId == "" {
 		return nil, fmt.Errorf("invoiceId is required")
 	}
@@ -126,7 +126,7 @@ func CreateCreditNote(db *datastore.Datastore, params CreateCreditNoteParams) (*
 		return nil, fmt.Errorf("invoice not found: %w", err)
 	}
 
-	cn := creditnote.New(db)
+	cn := credit.New(db)
 	cn.InvoiceId = params.InvoiceId
 	cn.CustomerId = params.CustomerId
 	if cn.CustomerId == "" {
@@ -152,8 +152,8 @@ func CreateCreditNote(db *datastore.Datastore, params CreateCreditNoteParams) (*
 
 	// Auto-number (simple increment based on query count)
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	existing := make([]*creditnote.CreditNote, 0)
-	if _, err := creditnote.Query(db).Ancestor(rootKey).GetAll(&existing); err == nil {
+	existing := make([]*credit.CreditNote, 0)
+	if _, err := credit.Query(db).Ancestor(rootKey).GetAll(&existing); err == nil {
 		cn.SetNumber(len(existing) + 1)
 	} else {
 		cn.SetNumber(1)
