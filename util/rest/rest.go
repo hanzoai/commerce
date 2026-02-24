@@ -288,7 +288,7 @@ func (r Rest) newKind() mixin.Kind {
 
 // Returns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 
 	// Set timeout
 	ctx, _ = context.WithTimeout(ctx, time.Second*20)

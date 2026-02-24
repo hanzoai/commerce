@@ -39,7 +39,7 @@ var (
 	stor        *store.Store
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	var err error
 
@@ -139,7 +139,7 @@ var _ = BeforeSuite(func() {
 	tr.MustUpdate()
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

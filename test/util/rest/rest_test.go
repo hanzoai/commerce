@@ -31,7 +31,7 @@ const (
 	Perm3
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
@@ -44,7 +44,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

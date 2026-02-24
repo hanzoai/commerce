@@ -21,7 +21,7 @@ type FromToFinal struct {
 func Lookup(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
-	// Set up the db with the namespaced appengine context
+	// Set up the db with the namespaced context
 	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 

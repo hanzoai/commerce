@@ -10,7 +10,7 @@ import (
 )
 
 func decodeKey(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	id := c.Params.ByName("id")
 	key, err := hashid.DecodeKey(ctx, id)
 	if err != nil {

@@ -22,7 +22,7 @@ var (
 	bcDb *datastore.Datastore
 )
 
-// Setup appengine context and datastore before tests
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	c := gincontext.New(ctx)
@@ -38,7 +38,7 @@ var _ = BeforeSuite(func() {
 	bcDb = datastore.New(nsCtx)
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

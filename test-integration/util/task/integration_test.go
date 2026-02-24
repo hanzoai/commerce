@@ -16,12 +16,12 @@ func Test(t *testing.T) {
 
 var ctx ae.Context
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
