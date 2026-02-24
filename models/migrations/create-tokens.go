@@ -17,7 +17,7 @@ var _ = New("create-tokens",
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
-		tok := token.New(usr.Db)
+		tok := token.New(usr.Datastore())
 		tok.Email = usr.Email
 		tok.UserId = usr.Id()
 		tok.Expires = time.Now().Add(time.Hour * 168)

@@ -5,15 +5,18 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[BillingEvent]("billing-event") }
 
 // BillingEvent is an append-only record of a billing state change.
 // Events are the source of truth for all billing mutations and drive
 // webhook delivery to external consumers.
 type BillingEvent struct {
-	mixin.BaseModel
+	mixin.Model[BillingEvent]
 
 	// Event type, e.g. "payment_intent.succeeded", "invoice.paid", "subscription.updated"
 	Type string `json:"type"`
@@ -36,10 +39,10 @@ type BillingEvent struct {
 	PreviousData_ string `json:"-" datastore:",noindex"`
 
 	// Whether webhooks have been fully dispatched
-	Pending bool `json:"pending"`
+	Pending bool `json:"pending" orm:"default:true"`
 
 	// Live vs test mode
-	Livemode bool `json:"livemode"`
+	Livemode bool `json:"livemode" orm:"default:true"`
 }
 
 func (e *BillingEvent) Load(ps []datastore.Property) (err error) {
@@ -68,4 +71,15 @@ func (e *BillingEvent) Save() (ps []datastore.Property, err error) {
 
 func (e *BillingEvent) Validator() *val.Validator {
 	return nil
+}
+
+func New(db *datastore.Datastore) *BillingEvent {
+	e := new(BillingEvent)
+	e.Init(db)
+	e.Parent = db.NewKey("synckey", "", 1, nil)
+	return e
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("billing-event")
 }

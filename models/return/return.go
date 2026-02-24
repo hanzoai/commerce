@@ -8,13 +8,16 @@ import (
 	"github.com/hanzoai/commerce/models/types/fulfillment"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	"github.com/hanzoai/commerce/models/lineitem"
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[Return]("return") }
+
 type Return struct {
-	mixin.BaseModel
+	mixin.Model[Return]
 
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
@@ -95,4 +98,20 @@ func (c *Return) Save() (ps []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(c)
+}
+
+func (r *Return) Defaults() {
+	r.Items = make([]lineitem.LineItem, 0)
+	r.Metadata = make(Map)
+}
+
+func New(db *datastore.Datastore) *Return {
+	r := new(Return)
+	r.Init(db)
+	r.Defaults()
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("return")
 }

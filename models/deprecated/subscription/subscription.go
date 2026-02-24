@@ -13,9 +13,10 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/timeutil"
 	"github.com/hanzoai/commerce/util/val"
-
 	. "github.com/hanzoai/commerce/types"
 )
+
+// Registration handled by models/subscription
 
 // Based On Stripe Subscription
 // Stripe\Subscription JSON: {
@@ -62,7 +63,7 @@ const (
 )
 
 type Subscription struct {
-	mixin.BaseModel
+	mixin.Model[Subscription]
 
 	Number int `json:"number,omitempty" datastore:"-"`
 
@@ -171,4 +172,15 @@ func (s Subscription) PeriodsRemaining() int {
 		return months
 	}
 	return years
+}
+
+func New(db *datastore.Datastore) *Subscription {
+	s := new(Subscription)
+	s.Init(db)
+	s.Metadata = make(map[string]interface{})
+	return s
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("subscription")
 }

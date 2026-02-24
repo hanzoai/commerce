@@ -28,7 +28,7 @@ var _ = New("damon-order-projected-refund-counters",
 		ctx := db.Context
 
 		for _, item := range ord.Items {
-			prod := product.New(ord.Db)
+			prod := product.New(ord.Datastore())
 			if err := prod.GetById(item.ProductId); err != nil {
 				log.Error("no product found %v", err, ctx)
 			}
