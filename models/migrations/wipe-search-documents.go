@@ -13,7 +13,7 @@ var _ = New("wipe-search-documents",
 		db.SetNamespace("damon")
 		ctx := db.Context
 
-		// Search functionality removed - appengine/search is deprecated
+		// Search functionality removed
 		log.Info("wipe-search-documents: search functionality removed (no-op)", ctx)
 
 		return NoArgs
