@@ -25,6 +25,7 @@ import (
 	"github.com/hanzoai/commerce/types/socialmedia"
 	"github.com/hanzoai/commerce/types/website"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/val"
 
@@ -375,10 +376,7 @@ func (o Organization) Namespaced(ctx context.Context) context.Context {
 		}
 	}
 
-	// Store namespace in context for datastore operations
-	type contextKey string
-	const namespaceKey contextKey = "namespace"
-	return context.WithValue(ctx, namespaceKey, o.Namespace())
+	return nscontext.WithNamespace(ctx, o.Namespace())
 }
 
 func (o Organization) SquareConfig(sandbox bool) integration.SquareConnection {
