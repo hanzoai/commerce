@@ -14,7 +14,7 @@ type GeoRate struct {
 }
 
 type ShippingRates struct {
-	mixin.Model
+	mixin.BaseModel
 
 	StoreId string `json:"storeId"`
 

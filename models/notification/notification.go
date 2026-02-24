@@ -28,7 +28,7 @@ const (
 )
 
 type Notification struct {
-	mixin.EntityBridge[Notification]
+	mixin.Model[Notification]
 
 	To         string             `json:"to"`
 	Channel    Channel            `json:"channel"`

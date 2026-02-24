@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[FulfillmentProvider]("fulfillmentprovider") }
 
 type FulfillmentProvider struct {
-	mixin.EntityBridge[FulfillmentProvider]
+	mixin.Model[FulfillmentProvider]
 
 	Name      string `json:"name"`
 	IsEnabled bool   `json:"isEnabled"`

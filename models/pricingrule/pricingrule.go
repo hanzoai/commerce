@@ -30,7 +30,7 @@ type Tier struct {
 // UnitPrice is used directly. For tiered/volume pricing, the Tiers
 // array defines the pricing bands.
 type PricingRule struct {
-	mixin.Model
+	mixin.BaseModel
 
 	MeterId     string        `json:"meterId"`
 	PlanId      string        `json:"planId,omitempty"`

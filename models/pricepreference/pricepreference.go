@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[PricePreference]("pricepreference") }
 
 type PricePreference struct {
-	mixin.EntityBridge[PricePreference]
+	mixin.Model[PricePreference]
 
 	Attribute      string `json:"attribute"`
 	Value          string `json:"value"`

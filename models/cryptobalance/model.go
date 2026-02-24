@@ -12,7 +12,7 @@ func (cb CryptoBalance) Kind() string {
 }
 
 func (cb *CryptoBalance) Init(db *datastore.Datastore) {
-	cb.Model.Init(db, cb)
+	cb.BaseModel.Init(db, cb)
 }
 
 func (cb *CryptoBalance) Defaults() {

@@ -9,7 +9,7 @@ func (pi PaymentIntent) Kind() string {
 }
 
 func (pi *PaymentIntent) Init(db *datastore.Datastore) {
-	pi.Model.Init(db, pi)
+	pi.BaseModel.Init(db, pi)
 }
 
 func (pi *PaymentIntent) Defaults() {

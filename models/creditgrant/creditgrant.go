@@ -19,7 +19,7 @@ var kind = "credit-grant"
 // restrictions. The burn-down algorithm consumes grants in priority order
 // (lower priority number = consumed first), then by earliest expiry.
 type CreditGrant struct {
-	mixin.Model
+	mixin.BaseModel
 
 	UserId         string        `json:"userId"`
 	Name           string        `json:"name"`
@@ -51,7 +51,7 @@ func (g CreditGrant) Kind() string {
 }
 
 func (g *CreditGrant) Init(db *datastore.Datastore) {
-	g.Model.Init(db, g)
+	g.BaseModel.Init(db, g)
 }
 
 func (g *CreditGrant) Defaults() {

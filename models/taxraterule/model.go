@@ -9,7 +9,7 @@ func (t TaxRateRule) Kind() string {
 }
 
 func (t *TaxRateRule) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *TaxRateRule) Defaults() {

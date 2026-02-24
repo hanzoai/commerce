@@ -13,7 +13,7 @@ import (
 // Events are the source of truth for all billing mutations and drive
 // webhook delivery to external consumers.
 type BillingEvent struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Event type, e.g. "payment_intent.succeeded", "invoice.paid", "subscription.updated"
 	Type string `json:"type"`

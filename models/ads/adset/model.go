@@ -13,7 +13,7 @@ func (a AdSet) Kind() string {
 }
 
 func (a *AdSet) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+	a.BaseModel.Init(db, a)
 }
 
 func (a *AdSet) Defaults() {

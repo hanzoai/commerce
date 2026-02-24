@@ -9,7 +9,7 @@ func (v Variant) Kind() string {
 }
 
 func (v *Variant) Init(db *datastore.Datastore) {
-	v.Model.Init(db, v)
+	v.BaseModel.Init(db, v)
 }
 
 func (v *Variant) Defaults() {

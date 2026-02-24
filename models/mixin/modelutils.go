@@ -7,7 +7,7 @@ import (
 )
 
 // Create a new zero'd entity of this type
-func (m *Model) Zero() Entity {
+func (m *BaseModel) Zero() Entity {
 	// Get type of entity
 	entity := reflect.ValueOf(m.Entity)
 
@@ -25,7 +25,7 @@ func (m *Model) Zero() Entity {
 }
 
 // Create a clone of current entity
-func (m *Model) Clone() Entity {
+func (m *BaseModel) Clone() Entity {
 	entity := m.Zero()
 	if err := reflect.Copy(m.Entity, entity); err != nil {
 		log.Warn("Unable to copy of model: %v", err, m.Db.Context)
@@ -34,7 +34,7 @@ func (m *Model) Clone() Entity {
 }
 
 // Create a clone of currenty entity using only JSON-serializable data
-func (m *Model) CloneFromJSON() Entity {
+func (m *BaseModel) CloneFromJSON() Entity {
 	buf := json.EncodeBuffer(m.Entity)
 	entity := m.Zero()
 	json.DecodeBuffer(buf, entity)
@@ -42,7 +42,7 @@ func (m *Model) CloneFromJSON() Entity {
 }
 
 // Create a slice of entity type suitable for use with datastore.GetAll, etc.
-func (m *Model) Slice() interface{} {
+func (m *BaseModel) Slice() interface{} {
 	typ := reflect.TypeOf(m.Entity)
 	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)
 	ptr := reflect.New(slice.Type())
@@ -51,10 +51,10 @@ func (m *Model) Slice() interface{} {
 }
 
 // Serialize entity to JSON
-func (m *Model) JSON() []byte {
+func (m *BaseModel) JSON() []byte {
 	return json.EncodeBytes(m.Entity)
 }
 
-func (m *Model) JSONString() string {
+func (m *BaseModel) JSONString() string {
 	return string(m.JSON())
 }

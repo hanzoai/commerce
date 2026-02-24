@@ -9,7 +9,7 @@ func (w WebhookEndpoint) Kind() string {
 }
 
 func (w *WebhookEndpoint) Init(db *datastore.Datastore) {
-	w.Model.Init(db, w)
+	w.BaseModel.Init(db, w)
 }
 
 func (w *WebhookEndpoint) Defaults() {

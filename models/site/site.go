@@ -6,7 +6,7 @@ import (
 )
 
 type Site struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Domain string `json:"domain"`
 	Name   string `json:"name"`

@@ -11,7 +11,7 @@ import (
 func init() { orm.Register[Campaign]("campaign") }
 
 type Campaign struct {
-	mixin.EntityBridge[Campaign]
+	mixin.Model[Campaign]
 
 	Slug string `json:"slug"`
 

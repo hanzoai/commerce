@@ -205,7 +205,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Context())
 			return err
 		}
 
@@ -269,7 +269,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) *Error {
 
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Context())
 			return err
 		}
 
@@ -291,7 +291,7 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) *Error {
 	return wrapError(func() error {
 		stor, err := api.Client.GetStore(storeId, nil)
 		if err != nil {
-			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+			log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Context())
 			return err
 		}
 
