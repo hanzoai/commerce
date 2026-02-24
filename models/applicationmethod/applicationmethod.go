@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[ApplicationMethod]("applicationmethod") }
+
 type ApplicationMethod struct {
-	mixin.Model
+	mixin.EntityBridge[ApplicationMethod]
 
 	PromotionId  string `json:"promotionId"`
 	Value        int    `json:"value"`
@@ -24,8 +27,6 @@ type ApplicationMethod struct {
 }
 
 func (a *ApplicationMethod) Load(ps []datastore.Property) (err error) {
-	a.Defaults()
-
 	if err = datastore.LoadStruct(a, ps); err != nil {
 		return err
 	}
@@ -41,4 +42,14 @@ func (a *ApplicationMethod) Save() ([]datastore.Property, error) {
 	a.Metadata_ = string(json.EncodeBytes(&a.Metadata))
 
 	return datastore.SaveStruct(a)
+}
+
+func New(db *datastore.Datastore) *ApplicationMethod {
+	a := new(ApplicationMethod)
+	a.Init(db)
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("applicationmethod")
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -16,8 +17,10 @@ const (
 	Calculated PriceType = "calculated"
 )
 
+func init() { orm.Register[ShippingOption]("shippingoption") }
+
 type ShippingOption struct {
-	mixin.Model
+	mixin.EntityBridge[ShippingOption]
 
 	Name          string         `json:"name"`
 	PriceType     PriceType      `json:"priceType"`
@@ -27,13 +30,11 @@ type ShippingOption struct {
 	ProfileId     string         `json:"profileId"`
 	DataJSON      string         `json:"data" datastore:",noindex"`
 
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (s *ShippingOption) Load(ps []datastore.Property) (err error) {
-	s.Defaults()
-
 	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
@@ -49,4 +50,14 @@ func (s *ShippingOption) Save() ([]datastore.Property, error) {
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
 	return datastore.SaveStruct(s)
+}
+
+func New(db *datastore.Datastore) *ShippingOption {
+	s := new(ShippingOption)
+	s.Init(db)
+	return s
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("shippingoption")
 }

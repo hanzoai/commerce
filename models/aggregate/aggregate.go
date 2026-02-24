@@ -6,9 +6,12 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+func init() { orm.Register[Aggregate]("aggregate") }
 
 type Frequency string
 
@@ -31,19 +34,21 @@ func Init(a *Aggregate, name string, t time.Time, freq Frequency) {
 }
 
 type Aggregate struct {
-	mixin.Model
+	mixin.EntityBridge[Aggregate]
 
 	Instance     string    `json:"instance"`
 	Name         string    `json:"name"`
 	Type         string    `json:"type"`
 	BinTimestamp time.Time `json:"binTimestamp"`
 	Value        int64     `json:"value"`
-	VectorValue  []int64   `json:"vectorValue,omitempty"`
+	VectorValue  []int64   `json:"vectorValue,omitempty" orm:"default:[]"`
 }
 
 func (a *Aggregate) Load(p []datastore.Property) (err error) {
 	// Ensure we're initialized
-	a.Defaults()
+	if a.VectorValue == nil {
+		a.VectorValue = make([]int64, 0)
+	}
 
 	// Load supported properties
 	return datastore.LoadStruct(a, p)
@@ -52,4 +57,14 @@ func (a *Aggregate) Load(p []datastore.Property) (err error) {
 func (a *Aggregate) Save() (p []datastore.Property, err error) {
 	// Save properties
 	return datastore.SaveStruct(a)
+}
+
+func New(db *datastore.Datastore) *Aggregate {
+	a := new(Aggregate)
+	a.Init(db)
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("aggregate")
 }

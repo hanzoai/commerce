@@ -4,14 +4,17 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[SalesChannel]("saleschannel") }
+
 type SalesChannel struct {
-	mixin.Model
+	mixin.EntityBridge[SalesChannel]
 
 	// Name of sales channel
 	Name string `json:"name"`
@@ -23,13 +26,11 @@ type SalesChannel struct {
 	IsDisabled bool `json:"isDisabled"`
 
 	// Arbitrary metadata
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (s *SalesChannel) Load(ps []datastore.Property) (err error) {
-	s.Defaults()
-
 	if err = datastore.LoadStruct(s, ps); err != nil {
 		return err
 	}
@@ -45,4 +46,14 @@ func (s *SalesChannel) Save() ([]datastore.Property, error) {
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
 	return datastore.SaveStruct(s)
+}
+
+func New(db *datastore.Datastore) *SalesChannel {
+	s := new(SalesChannel)
+	s.Init(db)
+	return s
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("saleschannel")
 }
