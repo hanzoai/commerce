@@ -4,12 +4,15 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
+func init() { orm.Register[TaxRate]("taxrate") }
+
 type TaxRate struct {
-	mixin.Model
+	mixin.EntityBridge[TaxRate]
 
 	Rate         float64 `json:"rate"`
 	Code         string  `json:"code"`
@@ -19,13 +22,11 @@ type TaxRate struct {
 	TaxRegionId  string  `json:"taxRegionId"`
 
 	// Arbitrary key/value pairs associated with this tax rate
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (t *TaxRate) Load(ps []datastore.Property) (err error) {
-	t.Defaults()
-
 	if err = datastore.LoadStruct(t, ps); err != nil {
 		return err
 	}
@@ -41,4 +42,14 @@ func (t *TaxRate) Save() ([]datastore.Property, error) {
 	t.Metadata_ = string(json.EncodeBytes(&t.Metadata))
 
 	return datastore.SaveStruct(t)
+}
+
+func New(db *datastore.Datastore) *TaxRate {
+	t := new(TaxRate)
+	t.Init(db)
+	return t
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("taxrate")
 }
