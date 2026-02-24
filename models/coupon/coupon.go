@@ -26,7 +26,7 @@ const (
 var Types = []Type{Flat, Percent, FreeShipping}
 
 type Coupon struct {
-	mixin.EntityBridge[Coupon]
+	mixin.Model[Coupon]
 
 	Name string `json:"name"`
 

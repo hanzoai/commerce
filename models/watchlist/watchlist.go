@@ -22,7 +22,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 type Watchlist struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Associated user .
 	UserId string `json:"userId,omitempty"`

@@ -21,7 +21,7 @@ const (
 func init() { orm.Register[App]("app") }
 
 type App struct {
-	mixin.EntityBridge[App]
+	mixin.Model[App]
 
 	Name string `json:"name"`
 

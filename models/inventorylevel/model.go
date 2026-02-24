@@ -13,7 +13,7 @@ func (l InventoryLevel) Kind() string {
 }
 
 func (l *InventoryLevel) Init(db *datastore.Datastore) {
-	l.Model.Init(db, l)
+	l.BaseModel.Init(db, l)
 }
 
 func (l *InventoryLevel) Defaults() {

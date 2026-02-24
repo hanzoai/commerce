@@ -31,7 +31,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 // }
 
 type Plan struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Unique human readable id
 	Slug string `json:"slug"`

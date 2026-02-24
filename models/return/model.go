@@ -14,7 +14,7 @@ func (r Return) Kind() string {
 }
 
 func (r *Return) Init(db *datastore.Datastore) {
-	r.Model.Init(db, r)
+	r.BaseModel.Init(db, r)
 }
 
 func (r *Return) Defaults() {

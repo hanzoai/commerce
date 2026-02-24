@@ -9,7 +9,7 @@ func (p PricingRule) Kind() string {
 }
 
 func (p *PricingRule) Init(db *datastore.Datastore) {
-	p.Model.Init(db, p)
+	p.BaseModel.Init(db, p)
 }
 
 func (p *PricingRule) Defaults() {

@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[CampaignBudget]("campaignbudget") }
 
 type CampaignBudget struct {
-	mixin.EntityBridge[CampaignBudget]
+	mixin.Model[CampaignBudget]
 
 	CampaignId   string `json:"campaignId"`
 	Type         string `json:"type"`

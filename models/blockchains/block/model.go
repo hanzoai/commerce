@@ -12,7 +12,7 @@ func (b Block) Kind() string {
 }
 
 func (b *Block) Init(db *datastore.Datastore) {
-	b.Model.Init(db, b)
+	b.BaseModel.Init(db, b)
 }
 
 func (b *Block) Defaults() {

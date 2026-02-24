@@ -14,7 +14,7 @@ var kind = "usage-watermark"
 // within an invoice period. This prevents double-invoicing of usage events
 // and supports late-arriving event handling.
 type UsageWatermark struct {
-	mixin.Model
+	mixin.BaseModel
 
 	SubscriptionItemId string `json:"subscriptionItemId"`
 	MeterId            string `json:"meterId"`
@@ -38,7 +38,7 @@ func (w UsageWatermark) Kind() string {
 }
 
 func (w *UsageWatermark) Init(db *datastore.Datastore) {
-	w.Model.Init(db, w)
+	w.BaseModel.Init(db, w)
 }
 
 func (w *UsageWatermark) Defaults() {

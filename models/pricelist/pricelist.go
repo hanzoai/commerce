@@ -14,7 +14,7 @@ import (
 func init() { orm.Register[PriceList]("pricelist") }
 
 type PriceList struct {
-	mixin.EntityBridge[PriceList]
+	mixin.Model[PriceList]
 
 	Title       string     `json:"title"`
 	Description string     `json:"description"`

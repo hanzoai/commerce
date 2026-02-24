@@ -11,7 +11,7 @@ func (d Disclosure) Kind() string {
 }
 
 func (d *Disclosure) Init(db *datastore.Datastore) {
-	d.Model.Init(db, d)
+	d.BaseModel.Init(db, d)
 }
 
 func (d *Disclosure) Defaults() {

@@ -9,7 +9,7 @@ import (
 )
 
 type Variant struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.Salesforce
 	productcachedvalues.ProductCachedValues
 

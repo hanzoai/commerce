@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[GeoZone]("geozone") }
 
 type GeoZone struct {
-	mixin.EntityBridge[GeoZone]
+	mixin.Model[GeoZone]
 
 	Type             string `json:"type"` // "country", "province", "city", "zip"
 	CountryCode      string `json:"countryCode"`

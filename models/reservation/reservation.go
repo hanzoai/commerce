@@ -14,7 +14,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 func init() { orm.Register[ReservationItem]("reservation") }
 
 type ReservationItem struct {
-	mixin.EntityBridge[ReservationItem]
+	mixin.Model[ReservationItem]
 
 	InventoryItemId string `json:"inventoryItemId"`
 	LocationId      string `json:"locationId"`
