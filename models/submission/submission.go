@@ -11,7 +11,7 @@ import (
 )
 
 type Submission struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Email  string `json:"email"`
 	UserId string `json:"userId,omitempty"`

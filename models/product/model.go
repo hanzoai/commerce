@@ -12,7 +12,7 @@ func (p Product) Kind() string {
 }
 
 func (p *Product) Init(db *datastore.Datastore) {
-	p.Model.Init(db, p)
+	p.BaseModel.Init(db, p)
 }
 
 func (p *Product) Defaults() {

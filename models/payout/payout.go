@@ -28,7 +28,7 @@ var kind = "billing-payout"
 
 // Payout represents an outbound transfer to a bank account or card.
 type Payout struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Amount          int64         `json:"amount"` // cents
 	Currency        currency.Type `json:"currency"`
@@ -50,7 +50,7 @@ func (p Payout) Kind() string {
 }
 
 func (p *Payout) Init(db *datastore.Datastore) {
-	p.Model.Init(db, p)
+	p.BaseModel.Init(db, p)
 }
 
 func (p *Payout) Defaults() {

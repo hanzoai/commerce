@@ -12,7 +12,7 @@ func (o Organization) Kind() string {
 }
 
 func (o *Organization) Init(db *datastore.Datastore) {
-	o.Model.Init(db, o)
+	o.BaseModel.Init(db, o)
 	o.AccessTokens.Init(o)
 }
 

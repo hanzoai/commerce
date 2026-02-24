@@ -88,7 +88,7 @@ type Entity interface {
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
 // any Kind that it has been embedded in.
-type Model struct {
+type BaseModel struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
 	Entity Kind                 `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
@@ -108,7 +108,7 @@ type Model struct {
 }
 
 // Helper to prevent duplicate deserialization
-func (m *Model) Loaded() bool {
+func (m *BaseModel) Loaded() bool {
 	if m.Loaded_ {
 		return true
 	}
@@ -117,23 +117,23 @@ func (m *Model) Loaded() bool {
 }
 
 // Wire up model
-func (m *Model) Init(db *datastore.Datastore, entity Kind) {
+func (m *BaseModel) Init(db *datastore.Datastore, entity Kind) {
 	m.Db = db
 	m.Entity = entity
 }
 
 // Get context.Context
-func (m *Model) Context() context.Context {
+func (m *BaseModel) Context() context.Context {
 	return m.Db.Context
 }
 
 // Set entity on mixin so it can be referenced later
-func (m *Model) SetEntity(entity interface{}) {
+func (m *BaseModel) SetEntity(entity interface{}) {
 	m.Entity = entity.(Kind)
 }
 
 // Set context.Context
-func (m *Model) SetContext(ctx context.Context) {
+func (m *BaseModel) SetContext(ctx context.Context) {
 	if m.Db == nil {
 		m.Db = datastore.New(ctx)
 	} else {
@@ -142,22 +142,22 @@ func (m *Model) SetContext(ctx context.Context) {
 }
 
 // Set context.Context namespace
-func (m *Model) SetNamespace(namespace string) {
+func (m *BaseModel) SetNamespace(namespace string) {
 	m.Db.SetNamespace(namespace)
 }
 
 // Returns namespace for this model
-func (m *Model) Namespace() string {
+func (m *BaseModel) Namespace() string {
 	return m.Key().Namespace()
 }
 
 // Return Kind
-func (m Model) Kind() string {
+func (m BaseModel) Kind() string {
 	return m.Entity.Kind()
 }
 
 // Returns ID for model
-func (m *Model) Id() string {
+func (m *BaseModel) Id() string {
 	if m.Id_ == "" {
 		// Create a new key
 		m.Key()
@@ -166,7 +166,7 @@ func (m *Model) Id() string {
 }
 
 // Helper to set Id_ correctly
-func (m *Model) setId() {
+func (m *BaseModel) setId() {
 	if m.UseStringKey {
 		m.Id_ = m.key.StringID()
 	} else {
@@ -175,7 +175,7 @@ func (m *Model) setId() {
 }
 
 // Helper to update key and id
-func (m *Model) setKey(key datastore.Key) {
+func (m *BaseModel) setKey(key datastore.Key) {
 	// Set key
 	m.key = key
 
@@ -190,7 +190,7 @@ func (m *Model) setKey(key datastore.Key) {
 }
 
 // Set's key for entity.
-func (m *Model) SetKey(key interface{}) (err error) {
+func (m *BaseModel) SetKey(key interface{}) (err error) {
 	var k datastore.Key
 	var id string
 
@@ -245,7 +245,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 }
 
 // Returns Key for this entity
-func (m *Model) Key() (key datastore.Key) {
+func (m *BaseModel) Key() (key datastore.Key) {
 	// Return key if we've already allocated or set one
 	if m.key != nil {
 		return m.key
@@ -276,7 +276,7 @@ func (m *Model) Key() (key datastore.Key) {
 }
 
 // Create a new key for this object
-func (m *Model) NewKey() datastore.Key {
+func (m *BaseModel) NewKey() datastore.Key {
 	kind := m.Kind()
 
 	if m.key == nil {
@@ -293,7 +293,7 @@ func (m *Model) NewKey() datastore.Key {
 }
 
 // Check if we have a previously created entity
-func (m *Model) Created() bool {
+func (m *BaseModel) Created() bool {
 	if timeutil.IsZero(m.CreatedAt) {
 		return false
 	} else {
@@ -302,7 +302,7 @@ func (m *Model) Created() bool {
 }
 
 // Put entity in datastore
-func (m *Model) Put() error {
+func (m *BaseModel) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
 	if !m.Created() {
@@ -332,7 +332,7 @@ func (m *Model) Put() error {
 }
 
 // Get entity from datastore
-func (m *Model) Get(key datastore.Key) error {
+func (m *BaseModel) Get(key datastore.Key) error {
 	if key != nil {
 		m.SetKey(key)
 	}
@@ -340,7 +340,7 @@ func (m *Model) Get(key datastore.Key) error {
 }
 
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
-func (m *Model) GetById(id string) error {
+func (m *BaseModel) GetById(id string) error {
 	ok, err := m.Query().ById(id)
 	if err != nil {
 		return err
@@ -353,7 +353,7 @@ func (m *Model) GetById(id string) error {
 }
 
 // Create new entity (should not exist yet)
-func (m *Model) Create() error {
+func (m *BaseModel) Create() error {
 	// Execute BeforeCreate hook if defined on entity.
 	if hook, ok := m.Entity.(BeforeCreate); ok {
 		if err := hook.BeforeCreate(); err != nil {
@@ -376,7 +376,7 @@ func (m *Model) Create() error {
 }
 
 // Update new entity (should already exist)
-func (m *Model) Update() error {
+func (m *BaseModel) Update() error {
 	// Cache results of m.Clone() call in case it's needed in both hooks
 	prev := cache.Once(m.Clone)
 
@@ -402,7 +402,7 @@ func (m *Model) Update() error {
 }
 
 // Delete entity from Datastore
-func (m *Model) Delete() error {
+func (m *BaseModel) Delete() error {
 	if m.Mock { // Need mock Delete
 		return m.mockDelete()
 	}
@@ -432,71 +432,71 @@ func (m *Model) Delete() error {
 }
 
 // Set key or panic
-func (m *Model) MustSetKey(key interface{}) {
+func (m *BaseModel) MustSetKey(key interface{}) {
 	if err := m.SetKey(key); err != nil {
 		panic(err)
 	}
 }
 
 // Put or panic
-func (m *Model) MustPut() {
+func (m *BaseModel) MustPut() {
 	if err := m.Put(); err != nil {
 		panic(err)
 	}
 }
 
 // Get or panic
-func (m *Model) MustGet(key datastore.Key) {
+func (m *BaseModel) MustGet(key datastore.Key) {
 	if err := m.Get(key); err != nil {
 		panic(err)
 	}
 }
 
 // Get by id or panic
-func (m *Model) MustGetById(id string) {
+func (m *BaseModel) MustGetById(id string) {
 	if err := m.GetById(id); err != nil {
 		panic(err)
 	}
 }
 
 // Create or panic
-func (m *Model) MustCreate() {
+func (m *BaseModel) MustCreate() {
 	if err := m.Create(); err != nil {
 		panic(err)
 	}
 }
 
 // Update or panic
-func (m *Model) MustUpdate() {
+func (m *BaseModel) MustUpdate() {
 	if err := m.Update(); err != nil {
 		log.Panic(err)
 	}
 }
 
 // Delete or panic
-func (m *Model) MustDelete() {
+func (m *BaseModel) MustDelete() {
 	if err := m.Delete(); err != nil {
 		panic(err)
 	}
 }
 
 // Check if entity is in datastore.
-func (m *Model) Exists() (bool, error) {
+func (m *BaseModel) Exists() (bool, error) {
 	return m.Query().KeyExists(m.Key())
 }
 
 // Check if entity is in datastore.
-func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
+func (m *BaseModel) IdExists(id string) (datastore.Key, bool, error) {
 	return m.Query().IdExists(id)
 }
 
 // Check if entity is in datastore.
-func (m *Model) KeyExists(key datastore.Key) (bool, error) {
+func (m *BaseModel) KeyExists(key datastore.Key) (bool, error) {
 	return m.Query().KeyExists(key)
 }
 
 // Get entity from datastore or create new one
-func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
+func (m *BaseModel) GetOrCreate(filterStr string, value interface{}) error {
 	ok, err := m.Query().Filter(filterStr, value).Get()
 	if err != nil {
 		return err
@@ -511,7 +511,7 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 }
 
 // Get entity from datastore or create new one
-func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
+func (m *BaseModel) GetOrUpdate(filterStr string, value interface{}) error {
 	// Save reference to updated state of entity
 	update := m.Clone()
 
@@ -534,26 +534,26 @@ func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 }
 
 // Return datastore
-func (m *Model) Datastore() *datastore.Datastore {
+func (m *BaseModel) Datastore() *datastore.Datastore {
 	return m.Db
 }
 
 // Run in transaction using model's current context
-func (m *Model) RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error {
+func (m *BaseModel) RunInTransaction(fn func() error, opts *datastore.TransactionOptions) error {
 	return datastore.RunInTransaction(m.Context(), func(db *datastore.Datastore) error {
 		return fn()
 	}, opts)
 }
 
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
-func (m *Model) mockKey() datastore.Key {
+func (m *BaseModel) mockKey() datastore.Key {
 	if m.UseStringKey {
 		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Parent)
 	}
 	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Parent)
 }
 
-func (m *Model) mockPut() error {
+func (m *BaseModel) mockPut() error {
 	// set key, id
 	if m.key == nil {
 		m.setKey(m.mockKey())
@@ -561,6 +561,6 @@ func (m *Model) mockPut() error {
 	return nil
 }
 
-func (m *Model) mockDelete() error {
+func (m *BaseModel) mockDelete() error {
 	return nil
 }

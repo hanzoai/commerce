@@ -7,7 +7,7 @@ import (
 )
 
 type Token struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Email   string    `json:"email"`
 	UserId  string    `json:"userId"`

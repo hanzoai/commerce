@@ -9,7 +9,7 @@ import (
 func init() { orm.Register[ApiPermission]("apipermission") }
 
 type ApiPermission struct {
-	mixin.EntityBridge[ApiPermission]
+	mixin.Model[ApiPermission]
 
 	Name     string `json:"name"`
 	Resource string `json:"resource"`

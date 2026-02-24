@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[ApplicationMethod]("applicationmethod") }
 
 type ApplicationMethod struct {
-	mixin.EntityBridge[ApplicationMethod]
+	mixin.Model[ApplicationMethod]
 
 	PromotionId  string `json:"promotionId"`
 	Value        int    `json:"value"`

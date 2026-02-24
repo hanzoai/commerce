@@ -11,7 +11,7 @@ func (m Movie) Kind() string {
 }
 
 func (m *Movie) Init(db *datastore.Datastore) {
-	m.Model.Init(db, m)
+	m.BaseModel.Init(db, m)
 }
 
 func (m *Movie) Defaults() {

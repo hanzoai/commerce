@@ -9,7 +9,7 @@ func (t Token) Kind() string {
 }
 
 func (t *Token) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *Token) Defaults() {

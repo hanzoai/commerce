@@ -14,7 +14,7 @@ func (w Watchlist) Kind() string {
 }
 
 func (w *Watchlist) Init(db *datastore.Datastore) {
-	w.Model.Init(db, w)
+	w.BaseModel.Init(db, w)
 }
 
 func (w *Watchlist) Defaults() {

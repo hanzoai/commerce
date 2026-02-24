@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[CustomerGroup]("customergroup") }
 
 type CustomerGroup struct {
-	mixin.EntityBridge[CustomerGroup]
+	mixin.Model[CustomerGroup]
 
 	Name string `json:"name"`
 

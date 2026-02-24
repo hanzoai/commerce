@@ -12,7 +12,7 @@ import (
 func init() { orm.Register[FulfillmentSet]("fulfillmentset") }
 
 type FulfillmentSet struct {
-	mixin.EntityBridge[FulfillmentSet]
+	mixin.Model[FulfillmentSet]
 
 	Name string `json:"name"`
 	Type string `json:"type"` // "shipping", "pickup", "digital"

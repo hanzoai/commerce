@@ -5,7 +5,7 @@ import (
 )
 
 type TaxRateRule struct {
-	mixin.Model
+	mixin.BaseModel
 
 	TaxRateId   string `json:"taxRateId"`
 	Reference   string `json:"reference"`

@@ -18,7 +18,7 @@ const (
 )
 
 type PublishableApiKey struct {
-	mixin.EntityBridge[PublishableApiKey]
+	mixin.Model[PublishableApiKey]
 
 	Title      string     `json:"title"`
 	Type       KeyType    `json:"type"`

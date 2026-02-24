@@ -25,7 +25,7 @@ import (
 
 // Is a link that can refer customers to buy products
 type Referrer struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Code      string                          `json:"code"`
 	Program   referralprogram.ReferralProgram `json:"program"`

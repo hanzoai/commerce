@@ -62,7 +62,7 @@ type ShippingRateTable map[string]shipping.Rates
 func init() { orm.Register[Store]("store") }
 
 type Store struct {
-	mixin.EntityBridge[Store]
+	mixin.Model[Store]
 
 	// Full name of store
 	Name string `json:"name"`
@@ -183,7 +183,7 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 
 // Return TaxRates
 func (s Store) GetTaxRates() (*taxrates.TaxRates, error) {
-	tr := taxrates.New(s.Db)
+	tr := taxrates.New(s.Datastore())
 	if ok, err := tr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
 		return nil, err
 	}
@@ -193,10 +193,21 @@ func (s Store) GetTaxRates() (*taxrates.TaxRates, error) {
 
 // Return ShippingRates
 func (s Store) GetShippingRates() (*shippingrates.ShippingRates, error) {
-	sr := shippingrates.New(s.Db)
+	sr := shippingrates.New(s.Datastore())
 	if ok, err := sr.Query().Filter("StoreId=", s.Id()).Get(); !ok {
 		return nil, err
 	}
 
 	return sr, nil
+}
+
+func New(db *datastore.Datastore) *Store {
+	s := new(Store)
+	s.Init(db)
+	s.Defaults()
+	return s
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("store")
 }

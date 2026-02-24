@@ -28,7 +28,7 @@ const (
 // NetworkToken represents an EMVCo network token (DPAN) provisioned
 // through a Token Service Provider (TSP).
 type NetworkToken struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Reference to the vault card token (tok_...)
 	CardTokenId string `json:"cardTokenId"`

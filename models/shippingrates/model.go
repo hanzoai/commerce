@@ -9,7 +9,7 @@ func (t ShippingRates) Kind() string {
 }
 
 func (t *ShippingRates) Init(db *datastore.Datastore) {
-	t.Model.Init(db, t)
+	t.BaseModel.Init(db, t)
 }
 
 func (t *ShippingRates) Defaults() {

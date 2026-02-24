@@ -12,7 +12,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Prune down since Product Listing has a lot of this info now
 type Movie struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Unique human readable id
 	Slug string `json:"slug"`

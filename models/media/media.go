@@ -22,7 +22,7 @@ const (
 )
 
 type Media struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Type Type   `json:"type"`
 	URI  []byte `json:"uri"`

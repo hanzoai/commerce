@@ -12,7 +12,7 @@ func (a Ad) Kind() string {
 }
 
 func (a *Ad) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+	a.BaseModel.Init(db, a)
 }
 
 func (a *Ad) Defaults() {

@@ -16,7 +16,7 @@ type FacebookAdCampaign struct {
 }
 
 type AdCampaign struct {
-	mixin.Model
+	mixin.BaseModel
 	FacebookAdCampaign
 	StatsWeCareAbout
 

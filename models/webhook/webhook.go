@@ -12,7 +12,7 @@ type Events map[string]bool
 func init() { orm.Register[Webhook]("webhook") }
 
 type Webhook struct {
-	mixin.EntityBridge[Webhook]
+	mixin.Model[Webhook]
 
 	// Name
 	Name string `json:"name"`

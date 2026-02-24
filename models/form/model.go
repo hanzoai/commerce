@@ -12,7 +12,7 @@ func (m Form) Kind() string {
 }
 
 func (m *Form) Init(db *datastore.Datastore) {
-	m.Model.Init(db, m)
+	m.BaseModel.Init(db, m)
 }
 
 func (m *Form) Defaults() {

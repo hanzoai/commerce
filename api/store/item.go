@@ -46,7 +46,7 @@ func getItem(itemType string) gin.HandlerFunc {
 
 		// Create new entity instance
 		entity := reflect.New(typ).Interface().(mixin.Entity)
-		model := mixin.Model{Db: db, Entity: entity}
+		model := mixin.BaseModel{Db: db, Entity: entity}
 		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
 		field.Set(reflect.ValueOf(model))
 

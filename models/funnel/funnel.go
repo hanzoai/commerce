@@ -7,7 +7,7 @@ import (
 )
 
 type Funnel struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Name    string     `json:"name"`
 	Events  [][]string `json:"events" datastore:"-"`

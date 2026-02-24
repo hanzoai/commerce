@@ -6,7 +6,7 @@ import (
 
 // Datastructure for Bitcoin Transaction
 type Disclosure struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// The searchable module we use is called 'document' so this has to be
 	// called something else.

@@ -9,7 +9,7 @@ func (f Funnel) Kind() string {
 }
 
 func (f *Funnel) Init(db *datastore.Datastore) {
-	f.Model.Init(db, f)
+	f.BaseModel.Init(db, f)
 }
 
 func (f *Funnel) Defaults() {

@@ -14,7 +14,7 @@ import (
 func init() { orm.Register[Promotion]("promotion") }
 
 type Promotion struct {
-	mixin.EntityBridge[Promotion]
+	mixin.Model[Promotion]
 
 	Code           string     `json:"code"`
 	Type           string     `json:"type"`

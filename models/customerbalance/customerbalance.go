@@ -12,7 +12,7 @@ var kind = "customer-balance"
 // CustomerBalance tracks a customer's stored-value balance per currency.
 // Positive balance = credit available to settle invoices.
 type CustomerBalance struct {
-	mixin.Model
+	mixin.BaseModel
 
 	CustomerId string        `json:"customerId"`
 	Currency   currency.Type `json:"currency"`
@@ -24,7 +24,7 @@ func (cb CustomerBalance) Kind() string {
 }
 
 func (cb *CustomerBalance) Init(db *datastore.Datastore) {
-	cb.Model.Init(db, cb)
+	cb.BaseModel.Init(db, cb)
 }
 
 func (cb *CustomerBalance) Defaults() {

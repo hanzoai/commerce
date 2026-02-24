@@ -6,7 +6,7 @@ import (
 )
 
 type Model struct {
-	mixin.Model
+	mixin.BaseModel
 	Name string
 }
 
@@ -15,7 +15,7 @@ func (m Model) Kind() string {
 }
 
 func (m Model) Init(db *datastore.Datastore) {
-	m.Model = mixin.Model{Db: db, Entity: m}
+	m.BaseModel = mixin.BaseModel{Db: db, Entity: m}
 }
 
 func (m Model) Document() mixin.Document {

@@ -13,7 +13,7 @@ import (
 func init() { orm.Register[Price]("price") }
 
 type Price struct {
-	mixin.EntityBridge[Price]
+	mixin.Model[Price]
 
 	PriceSetId   string         `json:"priceSetId"`
 	CurrencyCode string         `json:"currencyCode"`

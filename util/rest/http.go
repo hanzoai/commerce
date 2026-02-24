@@ -19,7 +19,7 @@ import (
 
 // Wrapped model, with a few display helpers
 type endpoint struct {
-	mixin.Model
+	mixin.BaseModel
 	rest   *Rest
 	id     string
 	count  string
@@ -32,14 +32,14 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
 	endpoint.rest = r
 	endpoint.kind = r.Kind
-	endpoint.Model.Init(db, r.newKind())
+	endpoint.BaseModel.Init(db, r.newKind())
 	return endpoint
 }
 
 func (e *endpoint) FirstId() string {
 	if e.id == "" {
-		if ok, _ := e.Model.Query().Get(); ok {
-			e.id = e.Model.Id()
+		if ok, _ := e.BaseModel.Query().Get(); ok {
+			e.id = e.BaseModel.Id()
 		} else {
 			e.id = "<id>"
 		}

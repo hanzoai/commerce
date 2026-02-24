@@ -9,7 +9,7 @@ import (
 func init() { orm.Register[CustomerGroupMembership]("customergroupmembership") }
 
 type CustomerGroupMembership struct {
-	mixin.EntityBridge[CustomerGroupMembership]
+	mixin.Model[CustomerGroupMembership]
 
 	CustomerGroupId string `json:"customerGroupId"`
 	UserId          string `json:"userId"`

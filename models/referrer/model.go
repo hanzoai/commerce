@@ -12,7 +12,7 @@ func (r Referrer) Kind() string {
 }
 
 func (r *Referrer) Init(db *datastore.Datastore) {
-	r.Model.Init(db, r)
+	r.BaseModel.Init(db, r)
 }
 
 func (r *Referrer) Defaults() {

@@ -17,7 +17,7 @@ const (
 )
 
 type Token struct {
-	mixin.Model
+	mixin.BaseModel
 
 	Claims Claims `json:"claims"`
 

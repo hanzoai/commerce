@@ -44,7 +44,7 @@ type Reservation struct {
 
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
-	mixin.Model
+	mixin.BaseModel
 	productcachedvalues.ProductCachedValues
 
 	Ref refs.EcommerceRef `json:"ref,omitempty"`

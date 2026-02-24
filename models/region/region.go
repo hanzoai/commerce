@@ -23,7 +23,7 @@ type Country struct {
 }
 
 type Region struct {
-	mixin.EntityBridge[Region]
+	mixin.Model[Region]
 
 	// Name of region
 	Name string `json:"name"`

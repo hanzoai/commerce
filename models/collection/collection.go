@@ -17,7 +17,7 @@ func init() { orm.Register[Collection]("collection") }
 
 // A collection of Products/Variants to be listed on a store
 type Collection struct {
-	mixin.EntityBridge[Collection]
+	mixin.Model[Collection]
 
 	// Unique human readable identifier
 	Slug string `json:"slug"`

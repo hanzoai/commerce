@@ -9,7 +9,7 @@ import (
 func init() { orm.Register[PriceRule]("pricerule") }
 
 type PriceRule struct {
-	mixin.EntityBridge[PriceRule]
+	mixin.Model[PriceRule]
 
 	PriceId   string `json:"priceId"`
 	Attribute string `json:"attribute"`

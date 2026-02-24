@@ -10,7 +10,7 @@ import (
 func init() { orm.Register[PromotionRule]("promotionrule") }
 
 type PromotionRule struct {
-	mixin.EntityBridge[PromotionRule]
+	mixin.Model[PromotionRule]
 
 	PromotionId string `json:"promotionId"`
 	Attribute   string `json:"attribute"`

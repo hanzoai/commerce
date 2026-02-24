@@ -49,7 +49,7 @@ type KYCData struct {
 }
 
 type User struct {
-	mixin.Model
+	mixin.BaseModel
 	mixin.Salesforce
 	wallet.WalletHolder
 
@@ -129,7 +129,7 @@ type User struct {
 }
 
 // Id implements referrer.Referrent.
-// Subtle: this method shadows the method (Model).Id of User.Model.
+// Subtle: this method shadows the method (Model).Id of User.BaseModel.
 func (u *User) Id() string {
 	panic("unimplemented")
 }

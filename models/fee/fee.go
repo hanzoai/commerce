@@ -45,7 +45,7 @@ type Ethereum struct {
 }
 
 type Fee struct {
-	mixin.EntityBridge[Fee]
+	mixin.Model[Fee]
 
 	Name string `json:"name"`
 

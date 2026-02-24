@@ -35,7 +35,7 @@ const (
 )
 
 type Invoice struct {
-	mixin.Model
+	mixin.BaseModel
 
 	// Immutable buyer data from time of payment, may or may not be associated
 	// with a user.
@@ -121,6 +121,6 @@ func (p *Invoice) Validator() *val.Validator {
 func New(db *datastore.Datastore) *Invoice {
 	p := new(Invoice)
 	p.Init()
-	p.Model = mixin.Model{Db: db, Entity: p}
+	p.BaseModel = mixin.BaseModel{Db: db, Entity: p}
 	return p
 }

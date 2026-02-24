@@ -11,7 +11,7 @@ import (
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type InventoryItem struct {
-	mixin.Model
+	mixin.BaseModel
 
 	SKU              string `json:"sku"`
 	OriginCountry    string `json:"originCountry"`
