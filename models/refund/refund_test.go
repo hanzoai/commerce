@@ -1,8 +1,15 @@
 package refund
 
 import (
+	"context"
 	"testing"
+
+	"github.com/hanzoai/commerce/datastore"
 )
+
+func testDB() *datastore.Datastore {
+	return datastore.New(context.Background())
+}
 
 // --- MarkSucceeded ---
 
@@ -333,5 +340,119 @@ func TestRefundMetadata(t *testing.T) {
 	}
 	if r.Metadata["order_id"] != "ord_123" {
 		t.Errorf("expected ord_123, got %v", r.Metadata["order_id"])
+	}
+}
+
+// --- Kind ---
+
+func TestKind(t *testing.T) {
+	r := &Refund{}
+	if r.Kind() != "refund" {
+		t.Errorf("expected 'refund', got %q", r.Kind())
+	}
+}
+
+// --- ReceiptNumber ---
+
+func TestRefundReceiptNumber(t *testing.T) {
+	r := &Refund{
+		Status:        Pending,
+		ReceiptNumber: "1234-5678",
+	}
+	if r.ReceiptNumber != "1234-5678" {
+		t.Errorf("expected 1234-5678, got %s", r.ReceiptNumber)
+	}
+}
+
+// --- ProviderRef ---
+
+func TestRefundProviderRef(t *testing.T) {
+	r := &Refund{
+		Status:      Pending,
+		ProviderRef: "re_stripe_abc",
+	}
+	if r.ProviderRef != "re_stripe_abc" {
+		t.Errorf("expected re_stripe_abc, got %s", r.ProviderRef)
+	}
+}
+
+// --- InvoiceId ---
+
+func TestRefundInvoiceId(t *testing.T) {
+	r := &Refund{
+		Status:    Pending,
+		InvoiceId: "inv_789",
+	}
+	if r.InvoiceId != "inv_789" {
+		t.Errorf("expected inv_789, got %s", r.InvoiceId)
+	}
+}
+
+// --- Currency ---
+
+func TestRefundCurrency(t *testing.T) {
+	r := &Refund{Currency: "eur"}
+	if string(r.Currency) != "eur" {
+		t.Errorf("expected eur, got %s", r.Currency)
+	}
+}
+
+// --- Init ---
+
+func TestInit(t *testing.T) {
+	db := testDB()
+	r := &Refund{}
+	r.Init(db)
+	if r.Db != db {
+		t.Error("expected Db to be set")
+	}
+}
+
+// --- Defaults ---
+
+func TestDefaults(t *testing.T) {
+	db := testDB()
+	r := &Refund{}
+	r.Init(db)
+	r.Defaults()
+	if r.Status != Pending {
+		t.Errorf("expected %s, got %s", Pending, r.Status)
+	}
+	if r.Parent == nil {
+		t.Error("expected Parent to be set")
+	}
+}
+
+func TestDefaults_DoesNotOverwrite(t *testing.T) {
+	db := testDB()
+	r := &Refund{}
+	r.Init(db)
+	r.Status = Succeeded
+	r.Defaults()
+	if r.Status != Succeeded {
+		t.Errorf("expected %s, got %s", Succeeded, r.Status)
+	}
+}
+
+// --- New ---
+
+func TestNew(t *testing.T) {
+	db := testDB()
+	r := New(db)
+	if r == nil {
+		t.Fatal("expected non-nil Refund")
+	}
+	if r.Status != Pending {
+		t.Errorf("expected %s, got %s", Pending, r.Status)
+	}
+}
+
+// --- Query ---
+
+func TestQuery(t *testing.T) {
+	db := testDB()
+	q := Query(db)
+	if q == nil {
+		t.Fatal("expected non-nil query")
 	}
 }
