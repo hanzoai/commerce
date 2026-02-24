@@ -4,14 +4,17 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[ReservationItem]("reservation") }
+
 type ReservationItem struct {
-	mixin.Model
+	mixin.EntityBridge[ReservationItem]
 
 	InventoryItemId string `json:"inventoryItemId"`
 	LocationId      string `json:"locationId"`
@@ -22,19 +25,11 @@ type ReservationItem struct {
 	ExternalId      string `json:"externalId"`
 
 	// Arbitrary key/value pairs
-	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-" orm:"default:{}"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (r *ReservationItem) Load(ps []datastore.Property) (err error) {
-	// Prevent duplicate deserialization
-	if r.Loaded() {
-		return nil
-	}
-
-	// Ensure we're initialized
-	r.Defaults()
-
 	// Load supported properties
 	if err = datastore.LoadStruct(r, ps); err != nil {
 		return err
@@ -54,4 +49,14 @@ func (r *ReservationItem) Save() ([]datastore.Property, error) {
 
 	// Save properties
 	return datastore.SaveStruct(r)
+}
+
+func New(db *datastore.Datastore) *ReservationItem {
+	r := new(ReservationItem)
+	r.Init(db)
+	return r
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("reservation")
 }

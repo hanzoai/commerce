@@ -296,18 +296,22 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	// Create a new entity
 	db := datastore.New(ctx)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
-	model := mixin.Model{Db: db, Entity: entity}
 
-	// Disable Put/Delete if in test mode
-	if middleware.GetPermissions(c).Has(permission.Test) {
-		model.Mock = false // force mock off due to testing issues
+	// Wire up mixin.Model if the entity uses the legacy embedding.
+	// EntityBridge-based models are wired via Init() instead.
+	val := reflect.Indirect(reflect.ValueOf(entity))
+	if field := val.FieldByName("Model"); field.IsValid() && field.Type() == reflect.TypeOf(mixin.Model{}) {
+		model := mixin.Model{Db: db, Entity: entity}
+
+		// Disable Put/Delete if in test mode
+		if middleware.GetPermissions(c).Has(permission.Test) {
+			model.Mock = false // force mock off due to testing issues
+		}
+
+		field.Set(reflect.ValueOf(model))
 	}
 
-	// Set model on entity
-	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-	field.Set(reflect.ValueOf(model))
-
-	// Initialize entity
+	// Initialize entity (works for both legacy and EntityBridge models)
 	entity.Init(db)
 
 	return entity

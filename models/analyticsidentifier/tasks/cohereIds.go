@@ -17,8 +17,7 @@ func init() {
 var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analyticsidentifier.AnalyticsIdentifier) {
 	db := datastore.New(ctx)
 
-	id.Db = db
-	id.Entity = id
+	id.Init(db)
 
 	db.RunInTransaction(func(db *datastore.Datastore) error {
 		ids := make([]*analyticsidentifier.AnalyticsIdentifier, 0)
@@ -55,8 +54,7 @@ var CohereIds = delay.Func("cohere-ids", func(ctx context.Context, id *analytics
 					continue
 				}
 
-				id2.Db = db
-				id2.Entity = id2
+				id2.Init(db)
 
 				id2.UserId = id.UserId
 				id2.Update()

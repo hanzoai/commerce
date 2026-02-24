@@ -4,15 +4,18 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+func init() { orm.Register[Bundle]("bundle") }
+
 // A bundle of Products/Variants to be listed on a store
 type Bundle struct {
-	mixin.Model
+	mixin.EntityBridge[Bundle]
 
 	// Unique human readable identifier
 	Slug string `json:"slug"`
@@ -60,4 +63,16 @@ func (c Bundle) GetDescriptionParagraphs() []string {
 
 func (c Bundle) DisplayTitle() string {
 	return DisplayTitle(c.Name)
+}
+
+// New creates a new Bundle wired to the given datastore.
+func New(db *datastore.Datastore) *Bundle {
+	b := new(Bundle)
+	b.Init(db)
+	return b
+}
+
+// Query returns a datastore query for bundles.
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("bundle")
 }
