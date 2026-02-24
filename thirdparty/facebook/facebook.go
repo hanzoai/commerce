@@ -30,7 +30,7 @@ var _redirectUri string
 // Uses config.UrlFor in production and staging.
 func redirectUri(c *gin.Context) string {
 	// if config.IsDevelopment && _redirectUri == "" {
-	// 	client := urlfetch.Client(middleware.GetAppEngine(c))
+	// 	client := urlfetch.Client(middleware.GetContext(c))
 	// 	req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
 	// 	res, _ := client.Do(req)
 	// 	defer res.Body.Close()
@@ -75,7 +75,7 @@ func Callback(c *gin.Context) {
 
 	// if resState := req.URL.Query().Get("state"); true {
 	// 	log.Debug(resState)
-	// 	ctx := middleware.GetAppEngine(c)
+	// 	ctx := middleware.GetContext(c)
 	// 	_, err := memcache.Get(ctx, resState)
 	// 	if err != nil {
 	// 		log.Panic("CSRF attempt \n\tExpected: %s", resState)
@@ -150,7 +150,7 @@ func CSRFToken(c *gin.Context) string {
 		Expiration: 3 * time.Minute,
 	}
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	cache.Set(ctx, item)
 	return url.QueryEscape(token)
 }

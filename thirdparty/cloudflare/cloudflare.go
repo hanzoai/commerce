@@ -22,7 +22,7 @@ type Client struct {
 }
 
 func New(c *gin.Context) *Client {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 
 	// Set deadline
 	ctx, _ = context.WithTimeout(ctx, time.Second*55)

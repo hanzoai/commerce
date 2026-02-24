@@ -35,7 +35,7 @@ var (
 	usr2     *user.User
 )
 
-// Setup appengine context
+// Setup test context
 var _ = BeforeSuite(func() {
 	// Don't need this but switching to it to avoid long timeout.
 	var err error
@@ -71,7 +71,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-// Tear-down appengine context
+// Tear-down test context
 var _ = AfterSuite(func() {
 	ctx.Close()
 })

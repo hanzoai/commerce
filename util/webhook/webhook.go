@@ -9,20 +9,24 @@ import (
 )
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {
-	var aectx context.Context
+	var reqCtx context.Context
 
 	switch v := ctx.(type) {
 	case *gin.Context:
-		aectx = v.MustGet("appengine").(context.Context)
+		if c, exists := v.Get("context"); exists {
+			reqCtx = c.(context.Context)
+		} else {
+			reqCtx = v.Request.Context()
+		}
 	case context.Context:
-		aectx = v
+		reqCtx = v
 	}
 
 	// If we have a model, fire off a json-safe copy of it
 	model, ok := data.(mixin.Entity)
 	if ok {
-		tasks.Emit.Call(aectx, org, event, model.CloneFromJSON())
+		tasks.Emit.Call(reqCtx, org, event, model.CloneFromJSON())
 	} else {
-		tasks.Emit.Call(aectx, org, event, data)
+		tasks.Emit.Call(reqCtx, org, event, data)
 	}
 }

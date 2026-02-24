@@ -31,7 +31,7 @@ func putFile(c *gin.Context) {
 	// 	return
 	// }
 
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	org := middleware.GetOrganization(c)
 	accessToken := netlify.GetAccessToken(ctx, org.Name)
 

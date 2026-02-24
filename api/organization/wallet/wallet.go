@@ -101,7 +101,7 @@ func Send(c *gin.Context) {
 		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 		return
 	}
-	transactionId, err := blockchain.MakePayment(middleware.GetAppEngine(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
+	transactionId, err := blockchain.MakePayment(middleware.GetContext(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 	if err != nil {
 		http.Fail(c, 400, "Failed to make payment.", err)
 		return

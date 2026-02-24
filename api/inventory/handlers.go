@@ -43,7 +43,7 @@ type adjustRequest struct {
 // AdjustStock adjusts StockedQuantity, ReservedQuantity, and/or IncomingQuantity
 // on an InventoryLevel by the delta values provided in the request body.
 func AdjustStock(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
+	ctx := middleware.GetContext(c)
 	db := datastore.New(ctx)
 	id := c.Params.ByName("inventorylevelid")
 

@@ -6,13 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Automatically get request context (standard Go context from http.Request).
-func AppEngine() gin.HandlerFunc {
+// RequestContext extracts the standard Go context from the HTTP request
+// and stores it in the Gin context for downstream handlers.
+func RequestContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
-		c.Set("appengine", ctx)
+		c.Set("context", ctx)
 	}
 }
+
+// AppEngine is a legacy alias for RequestContext.
+// Deprecated: use RequestContext instead.
+var AppEngine = RequestContext
 
 // Automatically get the Host header so we can decide what to do with a given
 // request.
@@ -35,6 +40,14 @@ func LiveReload() gin.HandlerFunc {
 	}
 }
 
-func GetAppEngine(c *gin.Context) context.Context {
-	return c.MustGet("appengine").(context.Context)
+// GetContext retrieves the request context from the Gin context.
+func GetContext(c *gin.Context) context.Context {
+	if ctx, exists := c.Get("context"); exists {
+		return ctx.(context.Context)
+	}
+	return c.Request.Context()
 }
+
+// GetAppEngine is a legacy alias for GetContext.
+// Deprecated: use GetContext instead.
+var GetAppEngine = GetContext
