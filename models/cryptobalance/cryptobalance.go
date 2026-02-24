@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
+
+	. "github.com/hanzoai/commerce/types"
 )
+
+func init() { orm.Register[CryptoBalance]("crypto-balance") }
 
 // CryptoBalance tracks custodial crypto holdings for a customer.
 type CryptoBalance struct {
-	mixin.BaseModel
+	mixin.Model[CryptoBalance]
 
 	// Customer who owns the balance
 	CustomerId string `json:"customerId"`
@@ -21,15 +27,15 @@ type CryptoBalance struct {
 	Token string `json:"token"` // usdc, usdt, eth, sol, etc.
 
 	// Balance in smallest unit (wei, lamports, etc.) as string for precision
-	Balance string `json:"balance"`
+	Balance string `json:"balance" orm:"default:0"`
 
 	// Custody address for this customer+chain+token
 	Address string `json:"address"`
 
 	// Reserved amount (pending withdrawal or payment)
-	Reserved string `json:"reserved,omitempty"`
+	Reserved string `json:"reserved,omitempty" orm:"default:0"`
 
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata Map `json:"metadata,omitempty" orm:"default:{}"`
 }
 
 // Available returns the available balance (total - reserved).
@@ -148,4 +154,15 @@ func (cb *CryptoBalance) IsZero() bool {
 	b := new(big.Int)
 	b.SetString(cb.Balance, 10)
 	return b.Sign() == 0
+}
+
+func New(db *datastore.Datastore) *CryptoBalance {
+	cb := new(CryptoBalance)
+	cb.Init(db)
+	cb.Parent = db.NewKey("synckey", "", 1, nil)
+	return cb
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("crypto-balance")
 }

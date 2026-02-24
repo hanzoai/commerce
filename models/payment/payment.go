@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"github.com/hanzoai/orm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/mixin"
@@ -11,6 +12,8 @@ import (
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+var kind = "payment"
 
 type Status string
 
@@ -25,8 +28,11 @@ const (
 	Unpaid     Status = "unpaid"
 )
 
+
+func init() { orm.Register[Payment]("payment") }
+
 type Payment struct {
-	mixin.BaseModel
+	mixin.Model[Payment]
 
 	// Deprecated
 	Type accounts.Type `json:"type"`
@@ -77,7 +83,7 @@ type Payment struct {
 
 func (p *Payment) GetFees() ([]*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
-	if err := fee.Query(p.Db).Filter("PaymentId=", p.Id()).GetModels(&fees); err != nil {
+	if err := fee.Query(p.Datastore()).Filter("PaymentId=", p.Id()).GetModels(&fees); err != nil {
 		return nil, err
 	}
 	return fees, nil
@@ -106,4 +112,21 @@ func (p *Payment) Save() (ps []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(p)
+}
+
+func (p *Payment) Defaults() {
+	p.Status = Unpaid
+	p.FeeIds = make([]string, 0)
+	p.Metadata = make(Map)
+}
+
+func New(db *datastore.Datastore) *Payment {
+	p := new(Payment)
+	p.Init(db)
+	p.Defaults()
+	return p
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

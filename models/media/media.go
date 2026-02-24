@@ -3,9 +3,12 @@ package media
 import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/ads"
 )
+
+func init() { orm.Register[Media]("media") }
 
 type Type string
 type Usage string
@@ -22,7 +25,7 @@ const (
 )
 
 type Media struct {
-	mixin.BaseModel
+	mixin.Model[Media]
 
 	Type Type   `json:"type"`
 	URI  []byte `json:"uri"`
@@ -46,7 +49,7 @@ type Media struct {
 }
 
 func (m Media) Fork() *Media {
-	m2 := New(m.Db)
+	m2 := New(m.Datastore())
 
 	m2.AdIntegration = m.AdIntegration
 	m2.Type = m.Type
@@ -94,4 +97,21 @@ func (m Media) GetParentMediaId() string {
 
 func (m Media) GetMediaSearchFieldAndIds() (string, []string) {
 	return "ParentMediaId", []string{m.Id()}
+}
+
+func (m *Media) Defaults() {
+	m.Type = ImageType
+	m.Usage = UnknownUsage
+	m.IsParent = false
+}
+
+func New(db *datastore.Datastore) *Media {
+	a := new(Media)
+	a.Init(db)
+	a.Defaults()
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("media")
 }

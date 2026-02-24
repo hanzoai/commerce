@@ -1,10 +1,14 @@
 package adcampaign
 
 import (
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/ads"
 )
+
+func init() { orm.Register[AdCampaign]("adcampaign") }
 
 type Engine string
 
@@ -16,7 +20,7 @@ type FacebookAdCampaign struct {
 }
 
 type AdCampaign struct {
-	mixin.BaseModel
+	mixin.Model[AdCampaign]
 	FacebookAdCampaign
 	StatsWeCareAbout
 
@@ -47,4 +51,15 @@ func (a AdCampaign) GetCopySearchFieldAndIds() (string, []string) {
 
 func (a AdCampaign) GetMediaSearchFieldAndIds() (string, []string) {
 	return "AdCampaignId", []string{a.Id()}
+}
+
+func New(db *datastore.Datastore) *AdCampaign {
+	a := new(AdCampaign)
+	a.Init(db)
+	a.Status = PendingStatus
+	return a
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query("adcampaign")
 }

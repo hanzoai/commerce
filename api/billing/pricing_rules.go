@@ -109,11 +109,11 @@ func ListPricingRules(c *gin.Context) {
 			"id":        r.Id(),
 			"meterId":   r.MeterId,
 			"planId":    r.PlanId,
-			"model":     r.BaseModel,
 			"currency":  r.Currency,
 			"unitPrice": r.UnitPrice,
 			"tiers":     r.Tiers,
 			"createdAt": r.CreatedAt,
+			"updatedAt": r.UpdatedAt,
 		})
 	}
 

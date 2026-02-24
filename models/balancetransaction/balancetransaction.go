@@ -6,20 +6,21 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/val"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
-var kind = "balance-transaction"
+func init() { orm.Register[BalanceTransaction]("balance-transaction") }
 
 // BalanceTransaction records a single change to a customer's balance.
 // Positive amount = credit (adds to balance), negative = debit.
 type BalanceTransaction struct {
-	mixin.BaseModel
+	mixin.Model[BalanceTransaction]
 
 	CustomerId string        `json:"customerId"`
 	Amount     int64         `json:"amount"` // positive = credit, negative = debit
-	Currency   currency.Type `json:"currency"`
+	Currency   currency.Type `json:"currency" orm:"default:usd"`
 
 	// "adjustment" | "credit_note" | "invoice_payment" | "deposit" | "bank_transfer" | "refund"
 	Type string `json:"type"`
@@ -32,21 +33,6 @@ type BalanceTransaction struct {
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
-}
-
-func (bt BalanceTransaction) Kind() string {
-	return kind
-}
-
-func (bt *BalanceTransaction) Init(db *datastore.Datastore) {
-	bt.BaseModel.Init(db, bt)
-}
-
-func (bt *BalanceTransaction) Defaults() {
-	bt.Parent = bt.Db.NewKey("synckey", "", 1, nil)
-	if bt.Currency == "" {
-		bt.Currency = "usd"
-	}
 }
 
 func (bt *BalanceTransaction) Load(ps []datastore.Property) (err error) {
@@ -73,10 +59,10 @@ func (bt *BalanceTransaction) Validator() *val.Validator {
 func New(db *datastore.Datastore) *BalanceTransaction {
 	bt := new(BalanceTransaction)
 	bt.Init(db)
-	bt.Defaults()
+	bt.Parent = db.NewKey("synckey", "", 1, nil)
 	return bt
 }
 
 func Query(db *datastore.Datastore) datastore.Query {
-	return db.Query(kind)
+	return db.Query("balance-transaction")
 }

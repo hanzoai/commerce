@@ -1,6 +1,7 @@
 package order
 
 import (
+	"github.com/hanzoai/orm"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -36,6 +37,8 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
+var kind = "order"
+
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Status string
@@ -63,13 +66,14 @@ const (
 )
 
 func init() {
+	orm.Register[Order]("order")
 	// This type must match exactly what youre going to be using,
 	// down to whether or not its a pointer
 	gob.Register(&Order{})
 }
 
 type Order struct {
-	mixin.BaseModel
+	mixin.Model[Order]
 	mixin.Salesforce `json:"-"`
 	wallet.WalletHolder
 
@@ -261,12 +265,12 @@ func (o *Order) Load(ps []datastore.Property) (err error) {
 
 	// Initalize coupons
 	for _, coup := range o.Coupons {
-		coup.Init(o.BaseModel.Db)
+		coup.Init(o.Datastore())
 	}
 
 	// Initalize discounts
 	for _, dis := range o.Discounts {
-		dis.Init(o.BaseModel.Db)
+		dis.Init(o.Datastore())
 	}
 
 	return err
@@ -428,7 +432,7 @@ func (o Order) NumberFromId() int {
 }
 
 func (o Order) OrderDay() string {
-	return string(o.CreatedAt.Day())
+	return strconv.Itoa(o.CreatedAt.Day())
 }
 
 func (o Order) OrderMonthName() string {
@@ -436,7 +440,7 @@ func (o Order) OrderMonthName() string {
 }
 
 func (o Order) OrderYear() string {
-	return string(o.CreatedAt.Year())
+	return strconv.Itoa(o.CreatedAt.Year())
 }
 
 // Check if there is a discount
@@ -655,7 +659,7 @@ func (o Order) DescriptionLong() string {
 }
 
 func (o Order) GetPaymentMethod() (*paymentmethod.PaymentMethod, error) {
-	o.PaymentMethod = *paymentmethod.New(o.Db)
+	o.PaymentMethod = *paymentmethod.New(o.Datastore())
 	if err := o.PaymentMethod.GetById(o.PaymentMethodId); err != nil {
 		return nil, err
 	}
@@ -664,8 +668,31 @@ func (o Order) GetPaymentMethod() (*paymentmethod.PaymentMethod, error) {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
-	if err := payment.Query(o.Db).Ancestor(o.Key()).GetModels(&payments); err != nil {
+	if err := payment.Query(o.Datastore()).Ancestor(o.Key()).GetModels(&payments); err != nil {
 		return nil, err
 	}
 	return payments, nil
+}
+
+func (o *Order) Defaults() {
+	o.Status = Open
+	o.PaymentStatus = payment.Unpaid
+	o.Fulfillment.Status = fulfillment.Pending
+	o.Adjustments = make([]Adjustment, 0)
+	o.History = make([]Event, 0)
+	o.Items = make([]lineitem.LineItem, 0)
+	o.Metadata = make(Map)
+	o.Notifications.Email.Enabled = true
+	o.Coupons = make([]coupon.Coupon, 0)
+}
+
+func New(db *datastore.Datastore) *Order {
+	o := new(Order)
+	o.Init(db)
+	o.Defaults()
+	return o
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }
