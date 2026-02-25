@@ -1,0 +1,31 @@
+{
+  "name": "@hanzo/commerce-ui-preset",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hanzo Commerce UI Tailwind preset",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.3",
+    "tailwindcss-animate": "^1.0.6"
+  },
+  "peerDependencies": {
+    "tailwindcss": "^3.4.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.3",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.5"
+  }
+}

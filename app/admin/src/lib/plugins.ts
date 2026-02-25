@@ -1,0 +1,7 @@
+import { HttpTypes } from "@hanzo/commerce-types"
+
+export const LOYALTY_PLUGIN_NAME = "@hanzo/commerce-loyalty-plugin"
+
+export const getLoyaltyPlugin = (plugins: HttpTypes.AdminPlugin[]) => {
+  return plugins?.find((plugin) => plugin.name === LOYALTY_PLUGIN_NAME)
+}
