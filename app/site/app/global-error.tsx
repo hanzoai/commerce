@@ -1,19 +1,20 @@
 "use client"
 
-import { inter, robotoMono } from "./fonts"
-import clsx from "clsx"
+import { inter } from "./fonts"
 import "./globals.css"
 
-export default function Error() {
+export default function GlobalError() {
   return (
-    <html lang="en" className={clsx(inter.variable, robotoMono.variable)}>
-      <body className="w-screen h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+    <html lang="en" className={`${inter.variable} dark`}>
+      <body className="flex min-h-screen items-center justify-center bg-[#0a0a0a] font-sans">
         <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Something went wrong</h1>
-          <p className="text-gray-500 mb-8">An unexpected error occurred.</p>
+          <h1 className="mb-4 text-4xl font-bold text-white">
+            Something went wrong
+          </h1>
+          <p className="mb-8 text-gray-400">An unexpected error occurred.</p>
           <a
             href="/"
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-medium"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-500"
           >
             Go Home
           </a>
