@@ -1,7 +1,0 @@
-export { default as widgetModule } from "./widgets"
-export { default as routeModule } from "./routes"
-export { default as linkModule } from "./links"
-export { default as displayModule } from "./displays"
-export { default as formModule } from "./forms"
-export { default as menuItemModule } from "./menu-items"
-export { default as i18nModule } from "./i18n"
