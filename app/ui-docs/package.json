@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:monorepo": "yarn prep && yarn dev -p 3005",
-    "build": "yarn prep && next build",
-    "build:dev": "NODE_ENV=test yarn build",
+    "dev:monorepo": "pnpm run prep && pnpm run dev -- -p 3005",
+    "build": "pnpm run prep && next build",
+    "build:dev": "NODE_ENV=test pnpm run build",
     "start": "next start",
-    "start:monorepo": "yarn start -p 3005",
+    "start:monorepo": "pnpm run start -- -p 3005",
     "lint": "next lint --fix",
     "lint:content": "eslint --no-config-lookup -c .content.eslintrc.mjs app/**/*.mdx --fix",
     "prep": "node ./scripts/prepare.mjs"
@@ -31,7 +31,6 @@
     "rehype-slug": "^6.0.0",
     "remark-directive": "^3.0.0",
     "remark-frontmatter": "^5.0.0",
-    "remark-rehype-plugins": "*",
     "slugify": "^1.6.6"
   },
   "devDependencies": {
@@ -40,15 +39,11 @@
     "@types/react": "19.2.9",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "^10.0.1",
-    "build-scripts": "*",
     "eslint": "^9.13.0",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-react-hooks": "^5.0.0",
     "postcss": "^8",
-    "tailwind": "*",
     "tailwindcss": "^3.3.0",
-    "tsconfig": "*",
-    "types": "*",
     "typescript": "^5"
   },
   "engines": {
