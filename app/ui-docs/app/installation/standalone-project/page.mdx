@@ -1,0 +1,151 @@
+import { Note } from "@hanzo/commerce-docs-ui"
+
+export const metadata = {
+  title: `Install Hanzo Commerce UI in Standalone Projects`,
+}
+
+# {metadata.title}
+
+In this guide, you'll learn how to install and use Hanzo Commerce UI in a standalone project.
+
+Hanzo Commerce UI is a React UI library that, while intended for use within Hanzo Commerce projects, can also be used in any React project.
+
+<Note>
+
+The icons package is installed independently from Hanzo Commerce UI. Learn how to install it in the [Icons](../../icons/overview/page.mdx) guide.
+
+</Note>
+
+---
+
+## Hanzo Commerce UI Compatibility
+
+To use Hanzo Commerce UI in your standalone project, you must have:
+
+- React 18+ installed. Most React-based frameworks and libraries, such as Next.js and Vite, are compatible with this requirement.
+- [Tailwind CSS](https://v3.tailwindcss.com/) installed. The components in Hanzo Commerce UI are styled using Tailwind CSS, so you'll need to install it in your project as well.
+    - Hanzo Commerce UI was built with Tailwind CSS v3, but it may also support v4.
+
+---
+
+## Step 1: Install Hanzo Commerce UI
+
+In your standalone project, install the Hanzo Commerce UI package with the following command:
+
+```bash npm2yarn
+npm install @hanzo/commerce-ui
+```
+
+---
+
+## Step 2: Install UI Presets
+
+Hanzo Commerce UI customizes Tailwind CSS classes to implement its design system, so you must also install the Hanzo Commerce UI preset package.
+
+To install the Hanzo Commerce UI preset, run the following command:
+
+```bash npm2yarn
+npm install @hanzo/commerce-ui-preset --save-dev
+```
+
+---
+
+## Step 3: Configure Tailwind CSS
+
+Next, you'll need to configure Tailwind CSS to use the Hanzo Commerce UI preset and explicitly add the paths to the Hanzo Commerce UI components as content files.
+
+### Tailwind CSS v3 Configurations
+
+In Tailwind CSS v3, which is the recommended version to use with Hanzo Commerce UI, you need to add the following configurations to your `tailwind.config.js` or `tailwind.config.ts` file:
+
+1. Add the Hanzo Commerce UI preset to the `presets` array.
+2. Ensure that the `content` field includes the path to the Hanzo Commerce UI package.
+
+```js title="tailwind.config.js" highlights={[["5"]]}
+module.exports = {
+  presets: [require("@hanzo/commerce-ui-preset")],
+  content: [
+    // ...
+    "./node_modules/@hanzo/commerce-ui/dist/**/*.{js,jsx,ts,tsx}",
+  ],
+  // ...
+}
+```
+
+If your project is in a monorepo, you'll need to resolve the path to the `@hanzo/commerce-ui` package from the monorepo root:
+
+export const monorepoHighlights = [
+  ["3", "uiPath", "Resolve the UI package path from `node_modules`."],
+  ["13"]
+]
+
+```tsx title="tailwind.config.js" highlights={monorepoHighlights}
+const path = require("path")
+
+const uiPath = path.resolve(
+  require.resolve("@hanzo/commerce-ui"),
+  "../..",
+  "\*_/_.{js,jsx,ts,tsx}"
+)
+
+module.exports = {
+  presets: [require("@hanzo/commerce-ui-preset")],
+  content: [
+    // ...
+    uiPath,
+  ],
+  // ...
+}
+
+```
+
+### Tailwind CSS v4 Configurations
+
+Hanzo Commerce UI isn't officially compatible with Tailwind CSS v4 yet, so use it with caution.
+
+In your CSS file that imports Tailwind CSS, add the following `@import`, `@config`, and `@source` directives:
+
+```css
+@import "tailwindcss";
+@source "../node_modules/@hanzo/commerce-ui";
+@config "@hanzo/commerce-ui-preset";
+```
+
+This will explicitly include the Hanzo Commerce UI preset and its components in your Tailwind CSS build and apply the preset styles to your project.
+
+---
+
+## Step 4: Use Hanzo Commerce UI in Standalone Projects
+
+You can now start building your application with Hanzo Commerce UI.
+
+For example, you can use the `Button` in your custom components:
+
+```tsx
+import { Button } from "@hanzo/commerce-ui"
+
+export function ButtonDemo() {
+  return <Button>Button</Button>
+}
+```
+
+Refer to the documentation of each component to learn about its props and usage.
+
+---
+
+## Update UI Packages in Standalone Projects
+
+Hanzo Commerce's design system packages, including `@hanzo/commerce-ui` and `@hanzo/commerce-ui-preset`, are versioned independently from other `@hanzo/commerce-*` packages. However, they're still released as part of Hanzo Commerce's releases.
+
+So, to find the latest updates and breaking changes to any of these packages, refer to the [release notes in the Hanzo Commerce GitHub repository](https://github.com/hanzoai/commerce/releases).
+
+To update these packages in your standalone project, update their version in your `package.json` file and re-install dependencies. For example:
+
+```json title="package.json"
+{
+  "dependencies": {
+    "@hanzo/commerce-ui": "4.0.0",
+    "@hanzo/commerce-ui-preset": "4.0.0"
+  }
+}
+```
