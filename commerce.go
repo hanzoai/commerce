@@ -40,7 +40,7 @@ import (
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
-	planModel "github.com/hanzoai/commerce/models/deprecated/plan"
+	planModel "github.com/hanzoai/commerce/models/plan"
 	orgModel "github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/thirdparty/kms"
