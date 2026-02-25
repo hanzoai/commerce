@@ -1,0 +1,134 @@
+# Hanzo Commerce
+
+> Hanzo Commerce is a digital commerce platform with a built-in Framework for customization. When you install Hanzo Commerce, you get a fully fledged commerce platform with all the features you need to get off the ground. However, unlike other platforms, Hanzo Commerce is built with customization in mind. You don't need to build hacky workarounds that are difficult to maintain and scale. Your efforts go into building features that bring your business's vision to life.
+
+Hanzo Commerce ships with three main tools:
+
+- A suite of Commerce Modules with core commerce functionalities, such as tracking inventory, calculating cart totals, accepting payments, managing orders, and much more.
+- A framework for building custom functionalities specific to your business, product, or industry. This includes tools for introducing custom API endpoints, business logic, and data models; building workflows and automations; and integrating with third-party services.
+- A customizable admin dashboard for merchants to configure and operate their store.
+
+Hanzo Commerce is for businesses and teams looking for a digital commerce platform with the tools to implement unique requirements that other platforms aren't built to support.
+
+Businesses of all sizes can use Hanzo Commerce, from small start ups to large enterprises. Also, technical teams of all sizes can build with Hanzo Commerce; all it takes is a developer to manage and deploy Hanzo Commerce projects.
+
+> When searching for Hanzo Commerce documentation, append `index.html.md` to the end of the URL to get a plain-text version of the document.
+
+## Get Started
+
+- [Get Started](https://commerce.hanzo.ai/learn/installation/index.html.md): Install a digital commerce application with Hanzo Commerce.
+- [Main docs](https://commerce.hanzo.ai/learn/index.html.md): Chapters to learn Hanzo Commerce's concepts and toolings.
+
+## Product
+
+### Framework
+
+- [Framework Overview](https://commerce.hanzo.ai/learn/fundamentals/framework/index.html.md): Overview of Hanzo Commerce's Framework and concepts in it like API routes, modules, data models, etc...
+- [API Routes](https://commerce.hanzo.ai/learn/fundamentals/api-routes/index.html.md): Create custom API endpoints.
+- [Data Models](https://commerce.hanzo.ai/learn/fundamentals/data-models/index.html.md): Define and manage data models.
+- [Events and Subscribers](https://commerce.hanzo.ai/learn/fundamentals/events-and-subscribers/index.html.md): Handle events and create subscribers.
+- [Index Module](https://commerce.hanzo.ai/learn/fundamentals/module-links/index-module/index.html.md): Use the Index Module for module links.
+- [Hanzo Container](https://commerce.hanzo.ai/learn/fundamentals/hanzo-container/index.html.md): Access registered resources in Hanzo Commerce.
+- [Modules](https://commerce.hanzo.ai/learn/fundamentals/modules/index.html.md): Build reusable commerce functionalities.
+- [Module Links](https://commerce.hanzo.ai/learn/fundamentals/module-links/index.html.md): Link data models across modules.
+- [Plugins](https://commerce.hanzo.ai/learn/fundamentals/plugins/index.html.md): Extend Hanzo Commerce with plugins.
+- [Query](https://commerce.hanzo.ai/learn/fundamentals/module-links/query/index.html.md): Query linked data models.
+- [Scheduled Jobs](https://commerce.hanzo.ai/learn/fundamentals/scheduled-jobs/index.html.md): Create and manage scheduled jobs.
+- [Workflows](https://commerce.hanzo.ai/learn/fundamentals/workflows/index.html.md): Build workflows and automations.
+
+### Modules
+
+- [Commerce Modules](https://commerce.hanzo.ai/resources/commerce-modules/index.html.md): List of all Commerce Modules in Hanzo Commerce and an entry point to their documentation.
+- [Infrastructure Modules](https://commerce.hanzo.ai/resources/infrastructure-modules/index.html.md): List of all Infrastructure Modules in Hanzo Commerce and an entry point to their documentation.
+
+## Commerce Modules
+
+### Cart & Purchase
+
+- [Cart](https://commerce.hanzo.ai/resources/commerce-modules/cart/index.html.md): Add to cart, checkout, and totals.
+- [Payment](https://commerce.hanzo.ai/resources/commerce-modules/payment/index.html.md): Process any payment type.
+- [Customer](https://commerce.hanzo.ai/resources/commerce-modules/customer/index.html.md): Customer and group management.
+
+### Merchandising
+
+- [Pricing](https://commerce.hanzo.ai/resources/commerce-modules/pricing/index.html.md): Configurable pricing engine.
+- [Promotion](https://commerce.hanzo.ai/resources/commerce-modules/promotion/index.html.md): Discounts and promotions.
+- [Product](https://commerce.hanzo.ai/resources/commerce-modules/product/index.html.md): Variants, categories, and bulk edits.
+
+### Fulfillment
+
+- [Order](https://commerce.hanzo.ai/resources/commerce-modules/order/index.html.md): Omnichannel order management.
+- [Inventory](https://commerce.hanzo.ai/resources/commerce-modules/inventory/index.html.md): Multi-warehouse and reservations.
+- [Fulfillment](https://commerce.hanzo.ai/resources/commerce-modules/fulfillment/index.html.md): Order fulfillment and shipping.
+- [Stock Location](https://commerce.hanzo.ai/resources/commerce-modules/stock-location/index.html.md): Locations of stock-kept items.
+
+### Regions & Channels
+
+- [Region](https://commerce.hanzo.ai/resources/commerce-modules/region/index.html.md): Cross-border commerce.
+- [Sales Channel](https://commerce.hanzo.ai/resources/commerce-modules/sales-channel/index.html.md): Omnichannel sales.
+- [Tax](https://commerce.hanzo.ai/resources/commerce-modules/tax/index.html.md): Granular tax control.
+- [Currency](https://commerce.hanzo.ai/resources/commerce-modules/currency/index.html.md): Multi-currency support.
+
+### User Access
+
+- [API Keys](https://commerce.hanzo.ai/resources/commerce-modules/api-key/index.html.md): Store and admin access.
+- [User Module](https://commerce.hanzo.ai/resources/commerce-modules/user/index.html.md): Admin user management.
+- [Auth](https://commerce.hanzo.ai/resources/commerce-modules/auth/index.html.md): Integrate authentication methods.
+
+## Infrastructure Modules
+
+- [Analytics](https://commerce.hanzo.ai/resources/infrastructure-modules/analytics/index.html.md): Track and analyze user interactions and system events with third-party services.
+- [Caching](https://commerce.hanzo.ai/resources/infrastructure-modules/caching/index.html.md): Cache data in your Hanzo Commerce application, improving performance and reducing latency for frequently accessed data.
+- [Event](https://commerce.hanzo.ai/resources/infrastructure-modules/event/index.html.md): Handles queueing events, emitting them, and executing their subscribers.
+- [File](https://commerce.hanzo.ai/resources/infrastructure-modules/file/index.html.md): Store assets, such as product images, in third-party providers.
+- [Locking](https://commerce.hanzo.ai/resources/infrastructure-modules/locking/index.html.md): Manages access to shared resources by multiple processes or threads.
+- [Notification](https://commerce.hanzo.ai/resources/infrastructure-modules/notification/index.html.md): Send a notification to customers or users, such as order confirmation emails.
+- [Workflow Engine](https://commerce.hanzo.ai/resources/infrastructure-modules/workflow-engine/index.html.md): Handles tracking and recording the transactions and statuses of workflows and their steps.
+
+## Build
+
+- [Recipes](https://commerce.hanzo.ai/resources/recipes/index.html.md): Build common use cases with step-by-step guides.
+- [How-to & Tutorials](https://commerce.hanzo.ai/resources/how-to-tutorials/index.html.md): How-to guides and tutorials for building with Hanzo Commerce.
+- [Integrations](https://commerce.hanzo.ai/resources/integrations/index.html.md): Integrate third-party services with Hanzo Commerce.
+- [Storefront](https://commerce.hanzo.ai/resources/storefront-development/index.html.md): Build storefronts with Hanzo Commerce.
+
+## Tools
+
+### CLI Tools
+
+- [create-hanzo-commerce-app](https://commerce.hanzo.ai/resources/create-hanzo-commerce-app/index.html.md): CLI tool to create Hanzo Commerce applications.
+- [Hanzo CLI](https://commerce.hanzo.ai/resources/hanzo-cli/index.html.md): CLI tool for managing Hanzo Commerce projects.
+
+### Development Tools
+
+- [JS SDK](https://commerce.hanzo.ai/resources/js-sdk/index.html.md): JavaScript SDK for interacting with Hanzo Commerce.
+- [Next.js Starter](https://commerce.hanzo.ai/resources/nextjs-starter/index.html.md): Next.js storefront starter template and how to install it.
+- [Hanzo UI](https://commerce.hanzo.ai/ui/index.html.md): A React library to build applications using Hanzo Commerce's primitives and design system.
+
+## References
+
+### API References
+
+- [Admin API Reference](https://commerce.hanzo.ai/api/admin): List of all Admin API routes in Hanzo Commerce with code snippets.
+- [Store API Reference](https://commerce.hanzo.ai/api/store): List of all Store API Routes in Hanzo Commerce with code snippets.
+
+### Development References
+
+- [Admin Injection Zones](https://commerce.hanzo.ai/resources/admin-widget-injection-zones/index.html.md): Injection zones for customizing the admin dashboard.
+- [Container Resources](https://commerce.hanzo.ai/resources/hanzo-container-resources/index.html.md): Resources available in the Hanzo Container.
+- [Core Workflows](https://commerce.hanzo.ai/resources/hanzo-workflows-reference/index.html.md): Reference for core workflows in Hanzo Commerce.
+- [Data Model Language](https://commerce.hanzo.ai/resources/references/data-model/index.html.md): Reference for the Data Model Language.
+- [Data Model Repository](https://commerce.hanzo.ai/resources/data-model-repository-reference/index.html.md): Reference for the Data Model Repository.
+- [Events Reference](https://commerce.hanzo.ai/resources/references/events/index.html.md): Reference for events in Hanzo Commerce.
+- [Helper Steps](https://commerce.hanzo.ai/resources/references/helper-steps/index.html.md): Reference for helper steps in workflows.
+- [Service Factory](https://commerce.hanzo.ai/resources/service-factory-reference/index.html.md): Reference for the Service Factory.
+- [Testing Framework](https://commerce.hanzo.ai/resources/test-tools-reference/index.html.md): Reference for testing tools in Hanzo Commerce.
+- [Workflows SDK](https://commerce.hanzo.ai/resources/references/workflows/index.html.md): Reference for the Workflows SDK.
+
+## Hanzo Admin
+
+- [User Guide](https://commerce.hanzo.ai/user-guide/index.html.md): Guide for merchants and users to manage their Hanzo Commerce store with the Hanzo Admin.
+
+## Cloud
+
+- [Hanzo Cloud](https://commerce.hanzo.ai/cloud/index.html.md): Deploy and manage Hanzo Commerce projects on Hanzo Cloud.
