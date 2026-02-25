@@ -5,9 +5,6 @@ WORKDIR /app
 FROM base AS builder
 COPY app/ .
 RUN pnpm install --no-frozen-lockfile
-RUN pnpm --filter=@hanzo/commerce-types build 2>/dev/null || true
-RUN pnpm --filter=@hanzo/commerce-sdk build 2>/dev/null || true
-RUN pnpm --filter=@hanzo/commerce-ui build 2>/dev/null || true
 RUN cd admin && npx next build
 
 FROM nginx:alpine
