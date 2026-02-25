@@ -354,6 +354,7 @@ func (db *SQLiteDB) Put(ctx context.Context, key Key, src any) (Key, error) {
 		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			parent_id = excluded.parent_id,
 			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`, key.Encode(), key.Kind(), ns, parentID, data)
 
@@ -498,6 +499,7 @@ func (db *SQLiteDB) PutMulti(ctx context.Context, keys []Key, src any) ([]Key, e
 		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			parent_id = excluded.parent_id,
 			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
@@ -819,6 +821,7 @@ func (t *sqliteTransaction) Put(key Key, src any) (Key, error) {
 		INSERT INTO _entities (id, kind, namespace, parent_id, data, updated_at)
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id, kind, namespace) DO UPDATE SET
+			parent_id = excluded.parent_id,
 			data = excluded.data, updated_at = CURRENT_TIMESTAMP
 	`, key.Encode(), key.Kind(), ns, parentID, data)
 
