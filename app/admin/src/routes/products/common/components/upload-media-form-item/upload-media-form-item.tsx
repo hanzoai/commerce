@@ -76,7 +76,7 @@ export const UploadMediaFormItem = ({
           type: "file_too_large",
           message: t("products.media.fileTooLarge", {
             name: fileNames,
-            size: formatFileSize((process.env.__MAX_UPLOAD_FILE_SIZE__ ? Number(process.env.__MAX_UPLOAD_FILE_SIZE__) : undefined) ?? 1024 * 1024),
+            size: formatFileSize((process.env.NEXT_PUBLIC_HANZO_COMMERCE_MAX_UPLOAD_FILE_SIZE ? Number(process.env.NEXT_PUBLIC_HANZO_COMMERCE_MAX_UPLOAD_FILE_SIZE) : undefined) ?? 1024 * 1024),
           }),
         })
 

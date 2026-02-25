@@ -303,7 +303,7 @@ export const DataTable = <TData,>({
       }
 
       const href = rowHref(row)
-      const basePath = process.env.__BASE__ || "/"
+      const basePath = process.env.NEXT_PUBLIC_HANZO_COMMERCE_BASE || "/"
       const hrefWithBasePath = `${basePath === "/" ? "" : basePath}${href}`
 
       if (event.metaKey || event.ctrlKey || event.button === 1) {
