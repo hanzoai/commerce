@@ -1,7 +1,7 @@
 import { Popover as RadixPopover } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 /**
  * This component is based on the [Radix UI Popover](https://www.radix-ui.com/primitives/docs/components/popover) primitves.

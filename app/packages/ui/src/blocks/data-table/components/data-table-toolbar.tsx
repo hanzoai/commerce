@@ -1,6 +1,6 @@
-import { DataTableFilterBar } from "@/blocks/data-table/components/data-table-filter-bar"
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { clx } from "@/utils/clx"
+import { DataTableFilterBar } from "./data-table-filter-bar"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { clx } from "../../../utils/clx"
 import * as React from "react"
 
 interface DataTableToolbarTranslations {

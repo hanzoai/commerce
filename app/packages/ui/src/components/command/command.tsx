@@ -1,7 +1,7 @@
 "use client"
 
-import { Copy } from "@/components/copy"
-import { clx } from "@/utils/clx"
+import { Copy } from "../copy"
+import { clx } from "../../utils/clx"
 import React from "react"
 
 /**

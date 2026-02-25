@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { useColorMode } from "@/providers/ColorMode"
+import { useColorMode } from "../../../providers/ColorMode"
 import clsx from "clsx"
 import { BaseTabType } from "../../../hooks/use-tabs"
 import { useScrollPositionBlocker } from "../../../hooks/use-scroll-utils"

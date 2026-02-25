@@ -1,7 +1,7 @@
 "use client"
 
-import { Tooltip } from "@/components/tooltip"
-import { clx } from "@/utils/clx"
+import { Tooltip } from "../tooltip"
+import { clx } from "../../utils/clx"
 import {
   CheckCircleMiniSolid,
   CheckCircleSolid,

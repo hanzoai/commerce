@@ -4,7 +4,7 @@ import * as React from "react"
 import { useDateSegment } from "react-aria"
 import { DateFieldState, DateSegment as Segment } from "react-stately"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 interface DateSegmentProps extends React.ComponentPropsWithoutRef<"div"> {
   segment: Segment

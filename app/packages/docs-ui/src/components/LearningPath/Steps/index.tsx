@@ -1,12 +1,12 @@
-import { useLearningPath } from "@/providers/LearningPath"
+import { useLearningPath } from "../../../providers/LearningPath"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { LearningPathStepActions } from "./Actions"
 import clsx from "clsx"
-import { IconCircleDottedLine } from "@/components/Icons"
+import { IconCircleDottedLine } from "../../Icons"
 import { CheckCircleSolid, CircleMiniSolid, ListBullet } from "@hanzo/commerce-icons"
-import { Badge } from "@/components/Badge"
-import { Button } from "@/components/Button"
-import { Link } from "@/components/Link"
+import { Badge } from "../../Badge"
+import { Button } from "../../Button"
+import { Link } from "../../Link"
 // @ts-expect-error can't install the types package because it doesn't support React v19
 import { CSSTransition, SwitchTransition } from "react-transition-group"
 

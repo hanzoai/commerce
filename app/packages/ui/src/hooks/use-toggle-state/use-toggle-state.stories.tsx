@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Button } from "@/components/button"
-import { Text } from "@/components/text"
+import { Button } from "../../components/button"
+import { Text } from "../../components/text"
 import { useToggleState } from "./use-toggle-state"
 
 const Demo = () => {

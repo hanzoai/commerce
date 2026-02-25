@@ -1,6 +1,6 @@
 import React from "react"
-import { CardProps } from "@/components/Card"
-import { useIsExternalLink } from "@/hooks/use-is-external-link"
+import { CardProps } from "../.."
+import { useIsExternalLink } from "../../../../hooks/use-is-external-link"
 import clsx from "clsx"
 import { ArrowUpRightOnBox, TriangleRightMini } from "@hanzo/commerce-icons"
 import Link from "next/link"

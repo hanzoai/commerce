@@ -1,7 +1,7 @@
 import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { render } from "@testing-library/react"
-import { NotificationItemType } from "@/providers/Notification"
+import { NotificationItemType } from "../../../providers/Notification"
 
 // mock data
 const mockNotifications: NotificationItemType[] = [

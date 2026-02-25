@@ -6,9 +6,9 @@ import {
   LightBulbSolid,
   StopCircleSolid,
 } from "@hanzo/commerce-icons"
-import { useAiAssistant } from "@/providers/AiAssistant"
-import { useAnalytics } from "@/providers/Analytics"
-import { useIsBrowser } from "@/providers/BrowserProvider"
+import { useAiAssistant } from "../../../../providers/AiAssistant"
+import { useAnalytics } from "../../../../providers/Analytics"
+import { useIsBrowser } from "../../../../providers/BrowserProvider"
 import { useChat, useDeepThinking } from "@kapaai/react-sdk"
 import { useAiAssistantChatNavigation } from "../../../../hooks/use-ai-assistant-chat-navigation"
 import { Tooltip } from "../../../Tooltip"

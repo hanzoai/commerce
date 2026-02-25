@@ -1,7 +1,7 @@
 import React from "react"
-import { CodeBlock, CodeBlockMetaFields } from "@/components/CodeBlock"
-import { CodeTabs } from "@/components/CodeTabs"
-import { CodeTab } from "@/components/CodeTabs/Item"
+import { CodeBlock, CodeBlockMetaFields } from "../CodeBlock"
+import { CodeTabs } from "../CodeTabs"
+import { CodeTab } from "../CodeTabs/Item"
 import convert from "npm-to-yarn"
 
 type Npm2YarnCodeProps = {

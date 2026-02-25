@@ -1,8 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useMemo } from "react"
-import { useAiAssistant } from "@/providers/AiAssistant"
-import { findNextSibling, findPrevSibling } from "@/utils"
+import { useAiAssistant } from "../../providers/AiAssistant"
+import { findNextSibling, findPrevSibling } from "../../utils"
 import {
   useKeyboardShortcut,
   type useKeyboardShortcutOptions,

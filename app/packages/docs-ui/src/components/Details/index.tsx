@@ -1,7 +1,7 @@
 "use client"
 
 import React, { Suspense, cloneElement, useRef, useState } from "react"
-import { Loading } from "@/components/Loading"
+import { Loading } from "../Loading"
 import clsx from "clsx"
 import { DetailsSummary, DetailsSummaryProps } from "./Summary"
 import { useCollapsible } from "../../hooks/use-collapsible"

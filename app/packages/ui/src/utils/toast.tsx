@@ -1,5 +1,5 @@
-import { Toast } from "@/components/toast"
-import { ToastAction, ToastVariant, ToasterPosition } from "@/types"
+import { Toast } from "../components/toast"
+import { ToastAction, ToastVariant, ToasterPosition } from "../types"
 import * as React from "react"
 import { ExternalToast, toast as toastFn } from "sonner"
 
