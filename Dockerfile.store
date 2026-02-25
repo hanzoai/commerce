@@ -7,9 +7,6 @@ COPY app/ .
 RUN pnpm install --no-frozen-lockfile
 ENV HANZO_COMMERCE_API_URL=https://api.commerce.hanzo.ai
 ENV NEXT_PUBLIC_HANZO_COMMERCE_KEY=pk_live_hanzo_commerce
-RUN pnpm --filter=@hanzo/commerce-types build 2>/dev/null || true
-RUN pnpm --filter=@hanzo/commerce-sdk build 2>/dev/null || true
-RUN pnpm --filter=@hanzo/commerce-ui build 2>/dev/null || true
 RUN cd store && npx next build
 
 FROM base AS runner
