@@ -1,9 +1,9 @@
 "use client"
 
 import React, { Children, useCallback, useEffect, useMemo, useRef } from "react"
-import { Badge } from "@/components/Badge"
-import { CodeBlockProps, CodeBlockStyle } from "@/components/CodeBlock"
-import { useColorMode } from "@/providers/ColorMode"
+import { Badge } from "../Badge"
+import { CodeBlockProps, CodeBlockStyle } from "../CodeBlock"
+import { useColorMode } from "../../providers/ColorMode"
 import clsx from "clsx"
 import { CodeBlockActions, CodeBlockActionsProps } from "../CodeBlock/Actions"
 import { CodeBlockHeaderWrapper } from "../CodeBlock/Header/Wrapper"

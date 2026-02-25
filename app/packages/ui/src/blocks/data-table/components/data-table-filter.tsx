@@ -1,7 +1,7 @@
 import { CheckMini, EllipseMiniSolid, XMark, XMarkMini, MagnifyingGlass } from "@hanzo/commerce-icons"
 import * as React from "react"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
+import { useDataTableContext } from "../context/use-data-table-context"
 import type {
   DataTableDateComparisonOperator,
   DataTableNumberComparisonOperator,
@@ -11,15 +11,15 @@ import type {
   DataTableNumberFilterProps,
   DataTableCustomFilterProps,
   DataTableFilterOption,
-} from "@/blocks/data-table/types"
-import { isDateComparisonOperator } from "@/blocks/data-table/utils/is-date-comparison-operator"
-import { DatePicker } from "@/components/date-picker"
-import { Label } from "@/components/label"
-import { Popover } from "@/components/popover"
-import { Input } from "@/components/input"
-import { Select } from "@/components/select"
-import { Checkbox } from "@/components/checkbox"
-import { clx } from "@/utils/clx"
+} from "../types"
+import { isDateComparisonOperator } from "../utils/is-date-comparison-operator"
+import { DatePicker } from "../../../components/date-picker"
+import { Label } from "../../../components/label"
+import { Popover } from "../../../components/popover"
+import { Input } from "../../../components/input"
+import { Select } from "../../../components/select"
+import { Checkbox } from "../../../components/checkbox"
+import { clx } from "../../../utils/clx"
 
 interface DataTableFilterProps {
   id: string

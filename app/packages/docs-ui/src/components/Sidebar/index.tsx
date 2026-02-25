@@ -1,15 +1,15 @@
 "use client"
 
 import React, { Suspense, useMemo, useRef } from "react"
-import { useSidebar } from "@/providers/Sidebar"
+import { useSidebar } from "../../providers/Sidebar"
 import clsx from "clsx"
-import { Loading } from "@/components/Loading"
+import { Loading } from "../Loading"
 import { SidebarItem } from "./Item"
 // @ts-expect-error can't install the types package because it doesn't support React v19
 import { CSSTransition, SwitchTransition } from "react-transition-group"
 import { SidebarTop } from "./Top"
-import { useClickOutside } from "@/hooks/use-click-outside"
-import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut"
+import { useClickOutside } from "../../hooks/use-click-outside"
+import { useKeyboardShortcut } from "../../hooks/use-keyboard-shortcut"
 import useResizeObserver from "@react-hook/resize-observer"
 import { isSidebarItemLink } from "../../utils/sidebar-utils"
 

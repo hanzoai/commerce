@@ -15,16 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "alwaysStrict": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@hanzo/commerce-ui": ["./src/index.tsx"],
-      "@/components/*": ["./src/components/*"],
-      "@/providers/*": ["./src/providers/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/types": ["./src/types"],
-      "@/blocks/*": ["./src/blocks/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src", ".eslintrc.js"],
   "exclude": ["storybook-static", "node_modules", "dist", "build"]

@@ -3,7 +3,7 @@
 import React, { useMemo } from "react"
 import clsx from "clsx"
 import { ArrowUturnLeft } from "@hanzo/commerce-icons"
-import { useSidebar } from "@/providers/Sidebar"
+import { useSidebar } from "../../../providers/Sidebar"
 
 export const SidebarChild = () => {
   const { goBack, shownSidebar } = useSidebar()

@@ -2,12 +2,12 @@
 
 import * as React from "react"
 
-import { DataTableFilter } from "@/blocks/data-table/components/data-table-filter"
-import { DataTableFilterMenu } from "@/blocks/data-table/components/data-table-filter-menu"
-import { DataTableSortingMenu } from "@/blocks/data-table/components/data-table-sorting-menu"
-import { DataTableColumnVisibilityMenu } from "@/blocks/data-table/components/data-table-column-visibility-menu"
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { Skeleton } from "@/components/skeleton"
+import { DataTableFilter } from "./data-table-filter"
+import { DataTableFilterMenu } from "./data-table-filter-menu"
+import { DataTableSortingMenu } from "./data-table-sorting-menu"
+import { DataTableColumnVisibilityMenu } from "./data-table-column-visibility-menu"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { Skeleton } from "../../../components/skeleton"
 import isEqual from "lodash.isequal"
 
 interface DataTableFilterBarProps {

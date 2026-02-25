@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "cva"
 import { Slot } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 import { Spinner } from "@hanzo/commerce-icons"
 
 const buttonVariants = cva({

@@ -1,4 +1,4 @@
-import { type LearningPathStepType } from "@/providers/LearningPath"
+import { type LearningPathStepType } from "../../../providers/LearningPath"
 import { Rating } from "docs-ui"
 import React from "react"
 

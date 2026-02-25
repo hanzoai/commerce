@@ -1,6 +1,6 @@
 import React from "react"
-import { Badge } from "@/components/Badge"
-import { Tooltip } from "@/components/Tooltip"
+import { Badge } from "../../Badge"
+import { Tooltip } from "../../Tooltip"
 
 export type VersionNoticeProps = {
   version: string

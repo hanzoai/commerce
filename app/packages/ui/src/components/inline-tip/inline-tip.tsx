@@ -1,4 +1,4 @@
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 import * as React from "react"
 
 interface InlineTipProps extends React.ComponentPropsWithoutRef<"div"> {

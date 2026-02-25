@@ -5,7 +5,7 @@ import { Tabs as UiTabs } from "@hanzo/commerce-ui"
 import { ComponentProps } from "react"
 import clsx from "clsx"
 import { EllipseMiniSolid } from "@hanzo/commerce-icons"
-import { useMobile } from "@/providers/Mobile"
+import { useMobile } from "../../providers/Mobile"
 
 type TabsProps = ComponentProps<typeof UiTabs> & {
   layoutType?: "horizontal" | "vertical"

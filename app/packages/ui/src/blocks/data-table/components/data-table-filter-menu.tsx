@@ -1,10 +1,10 @@
 import * as React from "react"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { DropdownMenu } from "@/components/dropdown-menu"
-import { IconButton } from "@/components/icon-button"
-import { Skeleton } from "@/components/skeleton"
-import { Tooltip } from "@/components/tooltip"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { DropdownMenu } from "../../../components/dropdown-menu"
+import { IconButton } from "../../../components/icon-button"
+import { Skeleton } from "../../../components/skeleton"
+import { Tooltip } from "../../../components/tooltip"
 import { Funnel } from "@hanzo/commerce-icons"
 
 interface DataTableFilterMenuProps {

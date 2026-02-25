@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { Link } from "@/components/Link"
-import { MDXComponents } from "@/components/MDXComponents"
+import { Link } from "../../Link"
+import { MDXComponents } from "../../MDXComponents"
 
 export type SolutionsProps = {
   feedback: boolean

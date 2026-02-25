@@ -2,8 +2,8 @@ import { cva, type VariantProps } from "cva"
 import { Slot } from "radix-ui"
 import * as React from "react"
 
-import { badgeColorVariants } from "@/components/badge"
-import { clx } from "@/utils/clx"
+import { badgeColorVariants } from "../badge"
+import { clx } from "../../utils/clx"
 
 const iconBadgeVariants = cva({
   base: "flex items-center justify-center overflow-hidden rounded-md border",

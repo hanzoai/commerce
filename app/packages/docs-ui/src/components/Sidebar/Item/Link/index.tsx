@@ -4,13 +4,13 @@
 
 import React, { useCallback, useEffect, useMemo, useRef } from "react"
 import { Sidebar } from "types"
-import { Badge } from "@/components/Badge"
-import { checkSidebarItemVisibility } from "@/utils/check-sidebar-item-visibility"
-import { useSidebar } from "@/providers/Sidebar"
-import { SidebarItem } from "@/components/Sidebar/Item"
+import { Badge } from "../../../Badge"
+import { checkSidebarItemVisibility } from "../../../../utils/check-sidebar-item-visibility"
+import { useSidebar } from "../../../../providers/Sidebar"
+import { SidebarItem } from ".."
 import clsx from "clsx"
 import Link from "next/link"
-import { useMobile } from "@/providers/Mobile"
+import { useMobile } from "../../../../providers/Mobile"
 
 export type SidebarItemLinkProps = {
   item: Sidebar.SidebarItemLink

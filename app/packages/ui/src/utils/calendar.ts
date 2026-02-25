@@ -1,6 +1,6 @@
 import { CalendarDate, CalendarDateTime } from "@internationalized/date"
 
-import { Granularity } from "@/types"
+import { Granularity } from "../types"
 
 function getDefaultCalendarDateTime(
   value: Date | null | undefined,

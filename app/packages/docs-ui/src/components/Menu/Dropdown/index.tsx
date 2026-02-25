@@ -2,9 +2,9 @@
 
 import React from "react"
 import { useRef, useState } from "react"
-import { Button } from "@/components/Button"
-import { Menu } from "@/components/Menu"
-import { useClickOutside } from "@/hooks/use-click-outside"
+import { Button } from "../../Button"
+import { Menu } from ".."
+import { useClickOutside } from "../../../hooks/use-click-outside"
 import { MenuItem } from "types"
 import clsx from "clsx"
 

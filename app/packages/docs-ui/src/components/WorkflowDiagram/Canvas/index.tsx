@@ -13,7 +13,7 @@ import { DropdownMenu, Text } from "@hanzo/commerce-ui"
 import {
   createNodeClusters,
   getNextCluster,
-} from "@/utils/workflow-diagram-utils"
+} from "../../../utils/workflow-diagram-utils"
 import { WorkflowDiagramCanvasDepth } from "./Depth"
 import { WorkflowDiagramCommonProps } from "../../.."
 

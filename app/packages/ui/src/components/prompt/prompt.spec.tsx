@@ -8,7 +8,7 @@ import * as React from "react"
 
 import { Prompt } from "./prompt"
 
-import { Button } from "@/components/button"
+import { Button } from "../button"
 
 const TRIGGER_TEXT = "Open"
 const TITLE_TEXT = "Delete something"

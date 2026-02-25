@@ -4,9 +4,9 @@ import { XMark } from "@hanzo/commerce-icons"
 import { Dialog as RadixDialog } from "radix-ui"
 import * as React from "react"
 
-import { IconButton } from "@/components/icon-button"
-import { Kbd } from "@/components/kbd"
-import { clx } from "@/utils/clx"
+import { IconButton } from "../icon-button"
+import { Kbd } from "../kbd"
+import { clx } from "../../utils/clx"
 
 /**
  * @prop defaultOpen - Whether the modal is opened by default.

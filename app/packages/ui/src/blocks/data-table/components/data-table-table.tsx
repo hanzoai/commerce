@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { Table } from "@/components/table"
+import { Table } from "../../../components/table"
 import { flexRender } from "@tanstack/react-table"
 import {
   DndContext,
@@ -20,10 +20,10 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { Skeleton } from "@/components/skeleton"
-import { Text } from "@/components/text"
-import { clx } from "@/utils/clx"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { Skeleton } from "../../../components/skeleton"
+import { Text } from "../../../components/text"
+import { clx } from "../../../utils/clx"
 import {
   DataTableEmptyState,
   DataTableEmptyStateContent,
