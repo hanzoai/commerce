@@ -1,6 +1,6 @@
 import React from "react"
 import clsx from "clsx"
-import { RootProviders, Sidebar, SidebarProps } from "@/components"
+import { RootProviders, Sidebar, SidebarProps } from "../components"
 import { MainContentLayout, MainContentLayoutProps } from "./main-content"
 import { AiAssistantChatWindow } from "../components/AiAssistant/ChatWindow"
 import { TechArticleJsonLd } from "../components/TechArticleJsonLd"

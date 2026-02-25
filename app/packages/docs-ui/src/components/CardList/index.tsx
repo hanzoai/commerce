@@ -1,5 +1,5 @@
 import React from "react"
-import { Card, CardProps } from "@/components/Card"
+import { Card, CardProps } from "../Card"
 import clsx from "clsx"
 
 type CardListProps = {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Toaster as Primitive } from "sonner"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 interface ToasterProps
   extends Omit<

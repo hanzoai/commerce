@@ -1,8 +1,8 @@
 "use client"
 
 import React from "react"
-import { useSidebar } from "@/providers/Sidebar"
-import { Button } from "@/components/Button"
+import { useSidebar } from "../../../../providers/Sidebar"
+import { Button } from "../../../Button"
 import { XMarkMini } from "@hanzo/commerce-icons"
 
 export const SidebarTopMobileClose = () => {

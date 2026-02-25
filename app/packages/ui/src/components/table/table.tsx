@@ -1,8 +1,8 @@
 import { Minus } from "@hanzo/commerce-icons"
 import * as React from "react"
 
-import { Button } from "@/components/button"
-import { clx } from "@/utils/clx"
+import { Button } from "../button"
+import { clx } from "../../utils/clx"
 
 /**
  * This component is based on the table element and its various children:

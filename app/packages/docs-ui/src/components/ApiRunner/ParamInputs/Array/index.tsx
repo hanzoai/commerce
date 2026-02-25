@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react"
 import { ApiRunnerParamInput, ApiRunnerParamInputProps } from "../Default"
 import clsx from "clsx"
-import setObjValue from "@/utils/set-obj-value"
+import setObjValue from "../../../../utils/set-obj-value"
 import { Button } from "../../../../components/Button"
 import { Minus, Plus } from "@hanzo/commerce-icons"
 

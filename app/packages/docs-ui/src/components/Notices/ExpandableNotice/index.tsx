@@ -1,7 +1,7 @@
 import React from "react"
-import { Badge } from "@/components/Badge"
-import { Link } from "@/components/Link"
-import { Tooltip } from "@/components/Tooltip"
+import { Badge } from "../../Badge"
+import { Link } from "../../Link"
+import { Tooltip } from "../../Tooltip"
 
 export type ExpandableNoticeProps = {
   type?: "request" | "method" | "workflow"
