@@ -5,7 +5,7 @@ import * as React from "react"
 import { useCalendarCell } from "react-aria"
 import { CalendarState } from "react-stately"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 interface CalendarCellProps {
   date: CalendarDate

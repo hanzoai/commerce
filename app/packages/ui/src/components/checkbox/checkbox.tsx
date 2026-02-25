@@ -4,7 +4,7 @@ import { CheckMini, MinusMini } from "@hanzo/commerce-icons"
 import { Checkbox as RadixCheckbox } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 import { CheckboxCheckedState } from "./types"
 
 /**

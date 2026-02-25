@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { createNodeClusters } from "@/utils/workflow-diagram-utils"
+import { createNodeClusters } from "../../../utils/workflow-diagram-utils"
 import { WorkflowDiagramCommonProps } from "../../.."
 import { WorkflowDiagramListDepth } from "./Depth"
 import { WorkflowDiagramLegend } from "../Common/Legend"

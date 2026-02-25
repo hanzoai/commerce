@@ -9,9 +9,9 @@ import {
 import * as React from "react"
 import { toast } from "sonner"
 
-import { IconButton } from "@/components/icon-button"
-import type { ToastAction, ToastVariant } from "@/types"
-import { clx } from "@/utils/clx"
+import { IconButton } from "../icon-button"
+import type { ToastAction, ToastVariant } from "../../types"
+import { clx } from "../../utils/clx"
 
 interface ToastComponentProps {
   id: string | number

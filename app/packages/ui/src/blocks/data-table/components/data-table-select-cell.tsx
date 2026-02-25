@@ -3,8 +3,8 @@
 import type {
   DataTableCellContext,
   DataTableHeaderContext,
-} from "@/blocks/data-table/types"
-import { Checkbox, CheckboxCheckedState } from "@/components/checkbox"
+} from "../types"
+import { Checkbox, CheckboxCheckedState } from "../../../components/checkbox"
 import * as React from "react"
 
 interface DataTableSelectCellProps<TData> {

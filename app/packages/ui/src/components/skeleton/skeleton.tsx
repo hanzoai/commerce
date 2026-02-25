@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 function Skeleton({
   className,

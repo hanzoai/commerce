@@ -3,11 +3,11 @@
 import clsx from "clsx"
 import React from "react"
 import { LearningPathIcon } from "./Icon"
-import { getLearningPath } from "@/utils"
-import { useLearningPath } from "@/providers/LearningPath"
-import { Button } from "@/components/Button"
-import { Link } from "@/components/Link"
-import { useNotifications } from "@/providers/Notification"
+import { getLearningPath } from "../../utils"
+import { useLearningPath } from "../../providers/LearningPath"
+import { Button } from "../Button"
+import { Link } from "../Link"
+import { useNotifications } from "../../providers/Notification"
 import { CircleMiniSolid } from "@hanzo/commerce-icons"
 
 type LearningPathProps = {

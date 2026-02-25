@@ -1,9 +1,9 @@
 "use client"
 
 import React, { createContext, useContext, useMemo, useReducer } from "react"
-import { NotificationContainer } from "@/components/Notification"
+import { NotificationContainer } from "../../components/Notification"
 import uuid from "react-uuid"
-import { NotificationItemProps } from "@/components/Notification/Item"
+import { NotificationItemProps } from "../../components/Notification/Item"
 
 export type NotificationItemType = {
   id?: string

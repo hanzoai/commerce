@@ -5,11 +5,11 @@ import clsx from "clsx"
 import Link from "next/link"
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { WorkflowStepUi } from "types"
-import { CodeBlock } from "@/components/CodeBlock"
-import { MarkdownContent } from "@/components/MarkdownContent"
-import { Tooltip } from "@/components/Tooltip"
+import { CodeBlock } from "../../../CodeBlock"
+import { MarkdownContent } from "../../../MarkdownContent"
+import { Tooltip } from "../../../Tooltip"
 import { Bolt, InformationCircle } from "@hanzo/commerce-icons"
-import { getBrowser } from "@/utils/os-browser-utils"
+import { getBrowser } from "../../../../utils/os-browser-utils"
 
 export type WorkflowDiagramNodeProps = {
   step: WorkflowStepUi

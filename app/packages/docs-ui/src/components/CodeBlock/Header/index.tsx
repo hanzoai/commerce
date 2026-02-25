@@ -3,8 +3,8 @@
 import React, { useMemo } from "react"
 import clsx from "clsx"
 import { CodeBlockStyle } from "../../CodeBlock"
-import { useColorMode } from "@/providers/ColorMode"
-import { Badge, BadgeVariant } from "@/components/Badge"
+import { useColorMode } from "../../../providers/ColorMode"
+import { Badge, BadgeVariant } from "../../Badge"
 import { CodeBlockActions, CodeBlockActionsProps } from "../Actions"
 import { CodeBlockHeaderWrapper } from "./Wrapper"
 

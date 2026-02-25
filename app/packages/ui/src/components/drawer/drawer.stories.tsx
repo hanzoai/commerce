@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Button } from "@/components/button"
+import { Button } from "../button"
 import { Drawer } from "./drawer"
 
 const meta: Meta<typeof Drawer> = {

@@ -4,8 +4,8 @@
 
 import React, { useMemo } from "react"
 import { Sidebar } from "types"
-import { Badge } from "@/components/Badge"
-import { useSidebar } from "@/providers/Sidebar"
+import { Badge } from "../../../Badge"
+import { useSidebar } from "../../../../providers/Sidebar"
 import clsx from "clsx"
 import Link from "next/link"
 

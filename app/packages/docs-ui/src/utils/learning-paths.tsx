@@ -1,6 +1,6 @@
 import React from "react"
 import { LearningPathType } from "../providers/LearningPath"
-import { Link } from "@/components"
+import { Link } from "../components"
 
 const paths: LearningPathType[] = [
   {

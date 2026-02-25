@@ -1,7 +1,7 @@
 "use client"
 
-import { DataTableSortDirection } from "@/blocks/data-table/types"
-import { clx } from "@/utils/clx"
+import { DataTableSortDirection } from "../types"
+import { clx } from "../../../utils/clx"
 import * as React from "react"
 
 interface SortingIconProps {

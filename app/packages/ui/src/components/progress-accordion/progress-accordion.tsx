@@ -9,8 +9,8 @@ import {
 import { Accordion as RadixAccordion } from "radix-ui"
 import * as React from "react"
 
-import { ProgressStatus } from "@/types"
-import { clx } from "@/utils/clx"
+import { ProgressStatus } from "../../types"
+import { clx } from "../../utils/clx"
 import { IconButton } from "../icon-button"
 
 /**

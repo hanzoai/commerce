@@ -15,7 +15,7 @@ import {
 } from "react-aria"
 import { useCalendarState } from "react-stately"
 
-import { createCalendarDate, getDefaultCalendarDate, updateCalendarDate } from "@/utils/calendar"
+import { createCalendarDate, getDefaultCalendarDate, updateCalendarDate } from "../../utils/calendar"
 
 import { CalendarButton } from "./calendar-button"
 import { CalendarGrid } from "./calendar-grid"

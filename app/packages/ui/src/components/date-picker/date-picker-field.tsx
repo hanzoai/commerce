@@ -10,7 +10,7 @@ import {
 } from "react-aria"
 import { useDateFieldState } from "react-stately"
 
-import { DateSegment } from "@/components/date-segment"
+import { DateSegment } from "../date-segment"
 import { cva } from "cva"
 
 interface DatePickerFieldProps extends AriaDatePickerProps<DateValue> {

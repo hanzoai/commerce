@@ -2,10 +2,10 @@
 
 import clsx from "clsx"
 import React from "react"
-import { Link } from "@/components/Link"
-import { Tooltip } from "@/components/Tooltip"
+import { Link } from "../../Link"
+import { Tooltip } from "../../Tooltip"
 import { ExclamationCircle, PlaySolid } from "@hanzo/commerce-icons"
-import { GITHUB_ISSUES_LINK } from "@/constants"
+import { GITHUB_ISSUES_LINK } from "../../../constants"
 import { CodeBlockCopyAction } from "./Copy"
 import { CodeBlockAskAiAction } from "./AskAi"
 import { useSiteConfig } from "../../../providers/SiteConfig"
