@@ -1,3 +1,5 @@
+"use client"
+
 const FEATURED_PRODUCTS = [
   {
     id: "1",
