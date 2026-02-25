@@ -1,0 +1,36 @@
+{
+  "name": "@hanzo/commerce-icons",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hanzo Commerce React icon library",
+  "license": "MIT",
+  "main": "dist/cjs/commerce-icons.js",
+  "main:umd": "dist/umd/commerce-icons.js",
+  "module": "dist/esm/index.js",
+  "unpkg": "dist/umd/commerce-icons.min.js",
+  "typings": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pnpm build:bundles && pnpm build:types",
+    "build:bundles": "rollup -c ./rollup.config.mjs",
+    "build:types": "tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@atomico/rollup-plugin-sizes": "^1.1.4",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^5.0.5",
+    "esbuild": "^0.19.8",
+    "react": "^18.3.1",
+    "rollup": "^4.9.1",
+    "rollup-plugin-esbuild": "^6.1.0",
+    "rollup-plugin-visualizer": "^5.12.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

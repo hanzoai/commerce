@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@hanzo/commerce-docs-ui": ["./src/index.ts"],
+      "@/*": ["./src/*"]
+    },
+    "outDir": "dist",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["dom", "es2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ESNext",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["**/__tests__/**", "**/__mocks__/**"]
+}
