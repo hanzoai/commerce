@@ -1,14 +1,14 @@
 "use client"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
+import { useDataTableContext } from "../context/use-data-table-context"
 import {
   DataTableColumn,
   DataTableSortableColumnDefMeta,
-} from "@/blocks/data-table/types"
-import { DropdownMenu } from "@/components/dropdown-menu"
-import { IconButton } from "@/components/icon-button"
-import { Skeleton } from "@/components/skeleton"
-import { Tooltip } from "@/components/tooltip"
+} from "../types"
+import { DropdownMenu } from "../../../components/dropdown-menu"
+import { IconButton } from "../../../components/icon-button"
+import { Skeleton } from "../../../components/skeleton"
+import { Tooltip } from "../../../components/tooltip"
 import { ArrowDownMini, ArrowUpMini, DescendingSorting } from "@hanzo/commerce-icons"
 import * as React from "react"
 

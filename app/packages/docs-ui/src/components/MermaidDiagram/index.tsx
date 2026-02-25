@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react"
-import { Loading } from "@/components/Loading"
+import { Loading } from "../Loading"
 import mermaid from "mermaid"
 import type { RenderResult } from "mermaid"
 import { Controlled as ControlledZoom } from "react-medium-image-zoom"

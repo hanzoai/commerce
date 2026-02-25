@@ -2,9 +2,9 @@ import { EllipsisHorizontal, PencilSquare, Plus, Trash } from "@hanzo/commerce-i
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Button } from "@/components/button"
-import { IconButton } from "@/components/icon-button"
-import { Select } from "@/components/select"
+import { Button } from "../button"
+import { IconButton } from "../icon-button"
+import { Select } from "../select"
 
 import { DatePicker } from "../date-picker"
 import { FocusModal } from "../focus-modal"

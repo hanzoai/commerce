@@ -2,7 +2,7 @@ import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
 import { SearchSuggestionType } from "../index"
-import { SearchCommand } from "@/providers/Search"
+import { SearchCommand } from "../../../../providers/Search"
 
 // mock hooks
 const mockSetIndexUiState = vi.fn()

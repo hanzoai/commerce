@@ -2,11 +2,11 @@
 
 import clsx from "clsx"
 import React, { useCallback, useEffect, useRef } from "react"
-import { useModal } from "@/providers/Modal"
+import { useModal } from "../../providers/Modal"
 import { ModalHeader } from "./Header"
 import { ModalFooter } from "./Footer"
-import { useKeyboardShortcut } from "@/hooks/use-keyboard-shortcut"
-import { ButtonProps } from "@/components/Button"
+import { useKeyboardShortcut } from "../../hooks/use-keyboard-shortcut"
+import { ButtonProps } from "../Button"
 import { Ref } from "types"
 
 export type ModalProps = {

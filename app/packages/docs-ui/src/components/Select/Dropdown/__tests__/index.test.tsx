@@ -1,7 +1,7 @@
 import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
-import { OptionType } from "@/hooks/use-select"
+import { OptionType } from "../../../../hooks/use-select"
 import { IconProps } from "@hanzo/commerce-icons/dist/types"
 
 // mock components
