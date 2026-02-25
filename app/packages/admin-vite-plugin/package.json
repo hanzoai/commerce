@@ -1,0 +1,47 @@
+{
+  "name": "@hanzo/commerce-admin-vite-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hanzoai/commerce",
+    "directory": "app/packages/admin-vite-plugin"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  },
+  "peerDependencies": {
+    "vite": "^5.4.21"
+  },
+  "dependencies": {
+    "@babel/parser": "7.25.6",
+    "@babel/traverse": "7.25.6",
+    "@babel/types": "7.25.6",
+    "@hanzo/commerce-admin-shared": "workspace:*",
+    "chokidar": "^3.5.3",
+    "fdir": "6.1.1",
+    "magic-string": "0.30.5",
+    "outdent": "^0.8.0",
+    "picocolors": "^1.1.0"
+  }
+}
