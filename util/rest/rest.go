@@ -124,6 +124,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 
 func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	r := new(Rest)
+	r.routes = make(routeMap)
 
 	if len(args) > 0 {
 		opts := args[0].(Opts)
@@ -144,7 +145,7 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 
 var Namespaced = middleware.Namespace()
 
-func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
+func (r *Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
@@ -743,7 +744,7 @@ func (r Rest) methodOverride(c *gin.Context) {
 	}
 }
 
-func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
+func (r *Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
 	routes, ok := r.routes[url]
 	if !ok {
 		routes = make(map[string]route)
@@ -758,42 +759,42 @@ func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
 	r.routes[url] = routes
 }
 
-func (r Rest) Use(handlers ...gin.HandlerFunc) {
+func (r *Rest) Use(handlers ...gin.HandlerFunc) {
 	r.middleware = append(r.middleware, handlers...)
 }
 
-func (r Rest) GET(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) GET(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("GET", url, handlers)
 }
 
-func (r Rest) POST(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) POST(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("POST", url, handlers)
 }
 
-func (r Rest) DELETE(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) DELETE(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("DELETE", url, handlers)
 }
 
-func (r Rest) PATCH(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) PATCH(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("PATCH", url, handlers)
 }
 
-func (r Rest) PUT(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) PUT(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("PUT", url, handlers)
 }
 
-func (r Rest) HEAD(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) HEAD(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("HEAD", url, handlers)
 }
 
-func (r Rest) OPTIONS(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) OPTIONS(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("OPTIONS", url, handlers)
 }
 
-func (r Rest) LINK(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) LINK(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("LINK", url, handlers)
 }
 
-func (r Rest) UNLINK(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) UNLINK(url string, handlers ...gin.HandlerFunc) {
 	r.Handle("UNLINK", url, handlers)
 }
