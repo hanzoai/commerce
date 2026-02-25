@@ -13,7 +13,11 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
-func init() { orm.Register[Transaction]("transaction") }
+func init() {
+	orm.Register[Transaction]("transaction", orm.WithParent[Transaction](func(db orm.DB) orm.Key {
+		return db.NewKey("synckey", "", 1, nil)
+	}))
+}
 
 type Type string
 
