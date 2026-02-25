@@ -2,30 +2,37 @@
 module.exports = {
   darkMode: "class",
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./layouts/**/*.{js,ts,jsx,tsx,mdx}",
-    "./providers/**/*.{js,ts,jsx,tsx,mdx}",
-    "../packages/docs-ui/src/**/*.{js,ts,jsx,tsx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./providers/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
+      colors: {
+        brand: {
+          DEFAULT: "#fd4444",
+          foreground: "#ffffff",
+          50: "#fff1f1",
+          100: "#ffe0e0",
+          200: "#ffc7c7",
+          300: "#ffa0a0",
+          400: "#fd4444",
+          500: "#f52222",
+          600: "#e20808",
+          700: "#be0404",
+          800: "#9d0808",
+          900: "#820f0f",
+        },
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["Roboto Mono", "ui-monospace", "monospace"],
+      },
       container: {
         center: true,
         screens: {
           "2xl": "1400px",
         },
-      },
-      backgroundImage: {
-        "search-hit": "url('/images/search-hit-light.svg')",
-        "search-hit-dark": "url('/images/search-hit.svg')",
-        "search-arrow": "url('/images/search-hit-arrow-light.svg')",
-        "search-arrow-dark": "url('/images/search-hit-arrow.svg')",
-        "search-no-result": "url('/images/search-no-result-light.svg')",
-        "search-no-result-dark": "url('/images/search-no-result.svg')",
-        "magnifying-glass": "url('/images/magnifying-glass.svg')",
-        "magnifying-glass-dark": "url('/images/magnifying-glass-dark.svg')",
       },
     },
   },
