@@ -487,7 +487,7 @@ export class DashboardApp {
     })
 
     const router = createBrowserRouter(routes, {
-      basename: process.env.__BASE__ || "/",
+      basename: process.env.NEXT_PUBLIC_HANZO_COMMERCE_BASE || "/",
     })
 
     return (

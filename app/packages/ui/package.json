@@ -3,24 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "main": "./dist/cjs/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "module": "./dist/esm/index.js",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "module": "./src/index.ts",
   "exports": {
     ".": {
-      "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/index.js"
-      },
-      "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
-      }
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
     }
   },
   "sideEffects": false,
   "files": [
-    "dist/**",
+    "src/**",
     "styles.css"
   ],
   "scripts": {

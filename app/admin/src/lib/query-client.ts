@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query"
 
 export const HANZO_COMMERCE_BACKEND_URL =
-  process.env.__BACKEND_URL__ ?? "https://api.commerce.hanzo.ai"
+  process.env.NEXT_PUBLIC_HANZO_COMMERCE_BACKEND_URL ?? "https://api.commerce.hanzo.ai"
 
 export const queryClient = new QueryClient({
   defaultOptions: {

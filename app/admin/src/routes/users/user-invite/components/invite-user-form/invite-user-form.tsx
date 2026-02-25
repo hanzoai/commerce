@@ -41,7 +41,7 @@ const InviteUserSchema = zod.object({
 const PAGE_SIZE = 10
 const PREFIX = "usr_invite"
 const INVITE_URL = `${window.location.origin}${
-  (process.env.__BASE__ ?? "/") === "/" ? "" : process.env.__BASE__
+  (process.env.NEXT_PUBLIC_HANZO_COMMERCE_BASE ?? "/") === "/" ? "" : process.env.NEXT_PUBLIC_HANZO_COMMERCE_BASE
 }/invite?token=`
 
 export const InviteUserForm = () => {
