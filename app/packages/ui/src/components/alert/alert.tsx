@@ -1,6 +1,6 @@
 "use client"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 import {
   CheckCircleSolid,
   ExclamationCircleSolid,
@@ -10,7 +10,7 @@ import {
 } from "@hanzo/commerce-icons"
 import * as React from "react"
 
-import { IconButton } from "@/components/icon-button"
+import { IconButton } from "../icon-button"
 
 interface AlertProps extends React.ComponentPropsWithoutRef<"div"> {
   variant?: "error" | "success" | "warning" | "info"

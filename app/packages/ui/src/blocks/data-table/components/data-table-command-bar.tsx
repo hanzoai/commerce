@@ -2,8 +2,8 @@
 
 import * as React from "react"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { CommandBar } from "@/components/command-bar"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { CommandBar } from "../../../components/command-bar"
 
 interface DataTableCommandBarProps {
   /**

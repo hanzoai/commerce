@@ -3,9 +3,9 @@ import {
   CodeBlock,
   CodeBlockMetaFields,
   CodeBlockProps,
-} from "@/components/CodeBlock"
-import { InlineCode, InlineCodeProps } from "@/components/InlineCode"
-import { MermaidDiagram } from "@/components/MermaidDiagram"
+} from "../CodeBlock"
+import { InlineCode, InlineCodeProps } from "../InlineCode"
+import { MermaidDiagram } from "../MermaidDiagram"
 import { Npm2YarnCode } from "../Npm2YarnCode"
 import { Npx2YarnCode } from "../Npx2YarnCode"
 

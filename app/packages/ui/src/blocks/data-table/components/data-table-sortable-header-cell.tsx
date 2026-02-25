@@ -1,8 +1,8 @@
 import * as React from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { clx } from "@/utils/clx"
-import { Table } from "@/components/table"
+import { clx } from "../../../utils/clx"
+import { Table } from "../../../components/table"
 
 interface DataTableSortableHeaderCellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   id: string

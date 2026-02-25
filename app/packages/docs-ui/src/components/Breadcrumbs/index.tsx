@@ -3,12 +3,12 @@
 import React, { useMemo } from "react"
 import clsx from "clsx"
 import Link from "next/link"
-import { useSidebar } from "@/providers/Sidebar"
-import { useSiteConfig } from "@/providers/SiteConfig"
+import { useSidebar } from "../../providers/Sidebar"
+import { useSiteConfig } from "../../providers/SiteConfig"
 import { Button } from "../Button"
 import { TriangleRightMini } from "@hanzo/commerce-icons"
 import { Sidebar } from "types"
-import { getJsonLd } from "@/utils/get-json-ld"
+import { getJsonLd } from "../../utils/get-json-ld"
 import type { BreadcrumbList } from "schema-dts"
 
 type BreadcrumbItems = {

@@ -1,6 +1,6 @@
 "use client"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 import * as React from "react"
 
 const ALLOWED_KEYS = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"]

@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo } from "react"
-import { useSiteConfig } from "@/providers/SiteConfig"
+import { useSiteConfig } from "../../../providers/SiteConfig"
 import { products } from "../../../constants"
 import { Product } from "types"
 import { BorderedIcon } from "../../BorderedIcon"

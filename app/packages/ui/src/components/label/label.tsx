@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "cva"
 import { Label as RadixLabel } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 const labelVariants = cva({
   base: "font-sans",

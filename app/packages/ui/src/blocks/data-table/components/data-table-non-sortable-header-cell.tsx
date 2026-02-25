@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Table } from "@/components/table"
+import { Table } from "../../../components/table"
 
 interface DataTableNonSortableHeaderCellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   id: string

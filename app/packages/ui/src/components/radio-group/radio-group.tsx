@@ -3,9 +3,9 @@
 import { RadioGroup as RadixRadioGroup } from "radix-ui"
 import * as React from "react"
 
-import { Hint } from "@/components/hint"
-import { Label } from "@/components/label"
-import { clx } from "@/utils/clx"
+import { Hint } from "../hint"
+import { Label } from "../label"
+import { clx } from "../../utils/clx"
 
 /**
  * This component is based on the [Radix UI Radio Group](https://www.radix-ui.com/primitives/docs/components/radio-group) primitives.

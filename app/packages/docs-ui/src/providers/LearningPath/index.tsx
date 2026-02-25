@@ -1,8 +1,8 @@
 "use client"
 
-import { getLearningPath } from "@/utils/learning-paths"
+import { getLearningPath } from "../../utils/learning-paths"
 import React, { createContext, useContext, useEffect, useState } from "react"
-import { LearningPathFinishType } from "@/components/LearningPath/Finish"
+import { LearningPathFinishType } from "../../components/LearningPath/Finish"
 import { useAnalytics, useIsBrowser } from "docs-ui"
 import { usePathname, useRouter } from "next/navigation"
 

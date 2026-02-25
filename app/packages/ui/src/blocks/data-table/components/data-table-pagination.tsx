@@ -2,9 +2,9 @@
 
 import * as React from "react"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
-import { Skeleton } from "@/components/skeleton"
-import { Table } from "@/components/table"
+import { useDataTableContext } from "../context/use-data-table-context"
+import { Skeleton } from "../../../components/skeleton"
+import { Table } from "../../../components/table"
 
 interface DataTablePaginationProps {
   /**

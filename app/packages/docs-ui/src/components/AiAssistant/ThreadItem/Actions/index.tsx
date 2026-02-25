@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import clsx from "clsx"
-import { Button, type ButtonProps } from "@/components/Button"
+import { Button, type ButtonProps } from "../../../Button"
 import {
   ThumbDown,
   ThumbUp,

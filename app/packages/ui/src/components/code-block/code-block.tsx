@@ -6,8 +6,8 @@ import * as React from "react"
 // @ts-ignore
 import("prismjs/components/prism-json")
 
-import { Copy } from "@/components/copy"
-import { clx } from "@/utils/clx"
+import { Copy } from "../copy"
+import { clx } from "../../utils/clx"
 
 export type CodeSnippet = {
   /**

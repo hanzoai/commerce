@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Button } from "@/components/button"
-import { TooltipProvider } from "@/components/tooltip"
+import { Button } from "../button"
+import { TooltipProvider } from "../tooltip"
 import { Copy } from "./copy"
 
 const meta: Meta<typeof Copy> = {

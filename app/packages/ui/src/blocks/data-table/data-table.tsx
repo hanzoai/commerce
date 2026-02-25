@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 import { DataTableCommandBar } from "./components/data-table-command-bar"
 import { DataTableColumnVisibilityMenu } from "./components/data-table-column-visibility-menu"
