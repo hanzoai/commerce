@@ -3,11 +3,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import clsx from "clsx"
 import { Star, StarSolid } from "@hanzo/commerce-icons"
-import { Button } from "@/components/Button"
-import { Label } from "@/components/Label"
-import { TextArea } from "@/components/TextArea"
-import { useAnalytics } from "@/providers/Analytics"
-import { useNotifications } from "@/providers/Notification"
+import { Button } from "../Button"
+import { Label } from "../Label"
+import { TextArea } from "../TextArea"
+import { useAnalytics } from "../../providers/Analytics"
+import { useNotifications } from "../../providers/Notification"
 
 export type RatingProps = {
   event?: string

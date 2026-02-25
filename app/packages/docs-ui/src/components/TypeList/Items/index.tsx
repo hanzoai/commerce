@@ -1,14 +1,14 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { Details } from "@/components/Details"
-import { CopyButton } from "@/components/CopyButton"
-import { DetailsSummary } from "@/components/Details/Summary"
-import { ExpandableNotice } from "@/components/Notices/ExpandableNotice"
-import { FeatureFlagNotice } from "@/components/Notices/FeatureFlagNotice"
-import { InlineCode } from "@/components/InlineCode"
-import { MarkdownContent } from "@/components/MarkdownContent"
-import { MDXComponents } from "@/components/MDXComponents"
+import { Details } from "../../Details"
+import { CopyButton } from "../../CopyButton"
+import { DetailsSummary } from "../../Details/Summary"
+import { ExpandableNotice } from "../../Notices/ExpandableNotice"
+import { FeatureFlagNotice } from "../../Notices/FeatureFlagNotice"
+import { InlineCode } from "../../InlineCode"
+import { MarkdownContent } from "../../MarkdownContent"
+import { MDXComponents } from "../../MDXComponents"
 import clsx from "clsx"
 import { Type, CommonProps as ParentCommonProps } from ".."
 import {
@@ -18,8 +18,8 @@ import {
   Link,
   TriangleRightMini,
 } from "@hanzo/commerce-icons"
-import { decodeStr } from "@/utils/decode-str"
-import { isInView } from "@/utils/is-in-view"
+import { decodeStr } from "../../../utils/decode-str"
+import { isInView } from "../../../utils/is-in-view"
 import { usePathname } from "next/navigation"
 import { useSiteConfig } from "../../../providers/SiteConfig"
 import { useIsBrowser } from "../../../providers/BrowserProvider"

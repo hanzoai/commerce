@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "cva"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 const headingVariants = cva({
   base: "font-sans font-medium",

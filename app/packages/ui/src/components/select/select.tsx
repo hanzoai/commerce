@@ -5,7 +5,7 @@ import { cva } from "cva"
 import { Select as RadixSelect } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 interface SelectProps
   extends React.ComponentPropsWithoutRef<typeof RadixSelect.Root> {

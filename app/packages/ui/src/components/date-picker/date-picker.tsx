@@ -17,16 +17,16 @@ import {
 } from "react-aria"
 import { useDatePickerState } from "react-stately"
 
-import { InternalCalendar } from "@/components/calendar"
-import { Popover } from "@/components/popover"
-import { TimeInput } from "@/components/time-input"
-import { Granularity } from "@/types"
+import { InternalCalendar } from "../calendar"
+import { Popover } from "../popover"
+import { TimeInput } from "../time-input"
+import { Granularity } from "../../types"
 import {
   createCalendarDateFromDate,
   getDefaultCalendarDateFromDate,
   updateCalendarDateFromDate,
-} from "@/utils/calendar"
-import { clx } from "@/utils/clx"
+} from "../../utils/calendar"
+import { clx } from "../../utils/clx"
 
 import { DatePickerButton } from "./date-picker-button"
 import { DatePickerClearButton } from "./date-picker-clear-button"

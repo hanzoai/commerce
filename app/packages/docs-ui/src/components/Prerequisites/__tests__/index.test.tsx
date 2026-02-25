@@ -1,7 +1,7 @@
 import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
-import { CollapsibleProps } from "@/hooks/use-collapsible"
+import { CollapsibleProps } from "../../../hooks/use-collapsible"
 import { PrerequisiteItemType } from "../Item"
 
 // mock hooks

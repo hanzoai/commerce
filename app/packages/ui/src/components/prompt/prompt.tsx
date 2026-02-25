@@ -3,9 +3,9 @@
 import { AlertDialog as RadixAlertDialog } from "radix-ui"
 import * as React from "react"
 
-import { Button } from "@/components/button"
-import { Heading } from "@/components/heading"
-import { clx } from "@/utils/clx"
+import { Button } from "../button"
+import { Heading } from "../heading"
+import { clx } from "../../utils/clx"
 
 type PromptVariant = "danger" | "confirmation"
 

@@ -1,10 +1,10 @@
 "use client"
 
 import React, { MouseEvent } from "react"
-import { useSearch } from "@/providers/Search"
-import { Button } from "@/components/Button"
+import { useSearch } from "../../../providers/Search"
+import { Button } from "../../Button"
 import { MagnifyingGlass } from "@hanzo/commerce-icons"
-import { useKeyboardShortcut } from "@/hooks"
+import { useKeyboardShortcut } from "../../../hooks"
 
 export type SearchModalOpenerProps = {
   isLoading?: boolean

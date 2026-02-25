@@ -1,11 +1,11 @@
 "use client"
 
 import React from "react"
-import { CopyButton } from "@/components/CopyButton"
+import { CopyButton } from "../CopyButton"
 import {
   useGenerateSnippet,
   UseGenerateSnippet,
-} from "@/hooks/use-generate-snippet"
+} from "../../hooks/use-generate-snippet"
 import { SquareTwoStack, CheckCircle } from "@hanzo/commerce-icons"
 
 export type CopyGeneratedSnippetButtonProps = UseGenerateSnippet & {
