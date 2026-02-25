@@ -1,0 +1,53 @@
+{
+  "name": "@hanzo/commerce-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hanzo Commerce type definitions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/__tests__",
+    "!dist/**/__fixtures__",
+    "!dist/**/__mocks__"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "Hanzo",
+  "license": "MIT",
+  "scripts": {
+    "build": "rimraf dist && tsc --build",
+    "watch": "tsc --build --watch",
+    "test": "exit 0"
+  },
+  "dependencies": {
+    "bignumber.js": "^9.1.2"
+  },
+  "devDependencies": {
+    "@mikro-orm/core": "^6.4.3",
+    "awilix": "^12.0.4",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.4.5"
+  },
+  "peerDependencies": {
+    "ioredis": "^5.4.1"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  }
+}
