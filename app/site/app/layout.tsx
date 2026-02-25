@@ -1,21 +1,20 @@
 import type { Metadata } from "next"
-import "./globals.css"
-import { config } from "@/config"
 import { inter, robotoMono } from "./fonts"
-import clsx from "clsx"
+import "./globals.css"
 
 export const metadata: Metadata = {
-  title: {
-    template: `%s - ${config.titleSuffix}`,
-    default: config.titleSuffix || "",
-  },
-  description: config.description,
+  title: "Hanzo Commerce - AI-Powered Commerce Platform",
+  description:
+    "Build, launch, and scale your commerce business with AI-powered tools. Headless APIs, multi-currency support, intelligent pricing, and real-time analytics.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
+    process.env.NEXT_PUBLIC_BASE_URL || "https://commerce.hanzo.ai"
   ),
   openGraph: {
     siteName: "Hanzo Commerce",
     type: "website",
+    title: "Hanzo Commerce - AI-Powered Commerce Platform",
+    description:
+      "Build, launch, and scale your commerce business with AI-powered tools.",
   },
 }
 
@@ -27,10 +26,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={clsx(inter.variable, robotoMono.variable)}
+      className={`${inter.variable} ${robotoMono.variable} dark`}
       suppressHydrationWarning
     >
-      {children}
+      <body className="font-sans">{children}</body>
     </html>
   )
 }
