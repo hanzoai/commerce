@@ -83,6 +83,5 @@
     "@hanzo/commerce-admin-shared": "workspace:*",
     "@hanzo/commerce-types": "workspace:*",
     "@hanzo/commerce-ui-preset": "workspace:*"
-  },
-  "packageManager": "yarn@3.2.1"
+  }
 }
