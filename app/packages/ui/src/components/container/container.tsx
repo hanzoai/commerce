@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 /**
  * This component is based on the `div` element and supports all of its props

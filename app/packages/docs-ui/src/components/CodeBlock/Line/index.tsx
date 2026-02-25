@@ -2,7 +2,7 @@ import React, { useMemo } from "react"
 import { CodeBlockStyle, Highlight } from "../../CodeBlock"
 import { RenderProps, Token } from "prism-react-renderer"
 import clsx from "clsx"
-import { Tooltip } from "@/components/Tooltip"
+import { Tooltip } from "../../Tooltip"
 import dynamic from "next/dynamic"
 
 const MarkdownContent = dynamic(

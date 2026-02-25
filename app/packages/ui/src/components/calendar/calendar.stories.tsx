@@ -1,5 +1,5 @@
-import { Button } from "@/components/button"
-import { Calendar } from "@/components/calendar/calendar"
+import { Button } from "../button"
+import { Calendar } from "./calendar"
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 import { ComponentPropsWithoutRef } from "react"
