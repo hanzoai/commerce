@@ -23,7 +23,7 @@ export interface FileUploadProps {
   onUploaded: (files: FileType[], rejectedFiles?: RejectedFile[]) => void
 }
 
-const DEFAULT_MAX_FILE_SIZE = (process.env.__MAX_UPLOAD_FILE_SIZE__ ? Number(process.env.__MAX_UPLOAD_FILE_SIZE__) : undefined) ?? 1024 * 1024 // 1MB fallback
+const DEFAULT_MAX_FILE_SIZE = (process.env.NEXT_PUBLIC_HANZO_COMMERCE_MAX_UPLOAD_FILE_SIZE ? Number(process.env.NEXT_PUBLIC_HANZO_COMMERCE_MAX_UPLOAD_FILE_SIZE) : undefined) ?? 1024 * 1024 // 1MB fallback
 
 export const FileUpload = ({
   label,
