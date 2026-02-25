@@ -20,7 +20,7 @@ require (
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.17.2-hanzo.1
-	github.com/hanzoai/orm v0.3.0
+	github.com/hanzoai/orm v0.3.1
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
