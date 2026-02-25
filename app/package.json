@@ -1,0 +1,17 @@
+{
+  "name": "@hanzo/commerce-app",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@10.8.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
