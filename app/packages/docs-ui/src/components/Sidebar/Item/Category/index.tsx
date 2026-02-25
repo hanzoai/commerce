@@ -4,10 +4,10 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import { Sidebar } from "types"
-import { Badge } from "@/components/Badge"
-import { Loading } from "@/components/Loading"
-import { SidebarItem } from "@/components/Sidebar/Item"
-import { useSidebar } from "@/providers/Sidebar"
+import { Badge } from "../../../Badge"
+import { Loading } from "../../../Loading"
+import { SidebarItem } from ".."
+import { useSidebar } from "../../../../providers/Sidebar"
 import clsx from "clsx"
 import { TriangleDownMini, TriangleUpMini } from "@hanzo/commerce-icons"
 

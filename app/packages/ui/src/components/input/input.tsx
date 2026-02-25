@@ -4,7 +4,7 @@ import { Eye, EyeSlash, MagnifyingGlassMini } from "@hanzo/commerce-icons"
 import { VariantProps, cva } from "cva"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 const inputBaseStyles = clx(
   "caret-ui-fg-base bg-ui-bg-field hover:bg-ui-bg-field-hover shadow-borders-base placeholder-ui-fg-muted text-ui-fg-base transition-fg relative w-full appearance-none rounded-md outline-none",

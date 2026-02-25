@@ -1,5 +1,5 @@
 import React from "react"
-import { BadgeProps } from "@/components/Badge"
+import { BadgeProps } from "../Badge"
 import { CardDefaultLayout } from "./Layout/Default"
 import { IconProps } from "@hanzo/commerce-icons/dist/types"
 import { CardLargeLayout } from "./Layout/Large"

@@ -1,4 +1,4 @@
-import type { OptionType, SelectOptions } from "@/hooks"
+import type { OptionType, SelectOptions } from "../../hooks"
 
 export type SelectProps = {
   options: OptionType[]

@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react"
 import clsx from "clsx"
-import { useSelect } from "@/hooks"
+import { useSelect } from "../../../hooks"
 import { SelectDropdown, SelectProps } from ".."
 import { Badge } from "docs-ui"
 import { ChevronUpDown, XMarkMini } from "@hanzo/commerce-icons"

@@ -4,10 +4,10 @@ import { XMark } from "@hanzo/commerce-icons"
 import { Dialog as RadixDialog } from "radix-ui"
 import * as React from "react"
 
-import { IconButton } from "@/components/icon-button"
-import { Kbd } from "@/components/kbd"
-import { Text } from "@/components/text"
-import { clx } from "@/utils/clx"
+import { IconButton } from "../icon-button"
+import { Kbd } from "../kbd"
+import { Text } from "../text"
+import { clx } from "../../utils/clx"
 
 interface DrawerRootProps extends React.ComponentPropsWithoutRef<typeof RadixDialog.Root> {}
 

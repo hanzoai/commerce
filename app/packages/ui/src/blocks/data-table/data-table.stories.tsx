@@ -2,7 +2,7 @@ import { faker } from "@faker-js/faker"
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Container } from "@/components/container"
+import { Container } from "../../components/container"
 import { PencilSquare, Trash } from "@hanzo/commerce-icons"
 import { Button } from "../../components/button"
 import { Heading } from "../../components/heading"

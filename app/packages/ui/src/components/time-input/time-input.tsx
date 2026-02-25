@@ -9,8 +9,8 @@ import {
 } from "react-aria"
 import { useTimeFieldState } from "react-stately"
 
-import { DateSegment } from "@/components/date-segment"
-import { clx } from "@/utils/clx"
+import { DateSegment } from "../date-segment"
+import { clx } from "../../utils/clx"
 
 const TimeInput = (props: AriaTimeFieldProps<TimeValue>) => {
   const ref = React.useRef<HTMLDivElement>(null)

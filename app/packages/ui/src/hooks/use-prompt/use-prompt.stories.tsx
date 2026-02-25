@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Button } from "@/components/button"
+import { Button } from "../../components/button"
 import { Badge } from "../../components/badge"
 import { Text } from "../../components/text"
 import { usePrompt } from "./use-prompt"

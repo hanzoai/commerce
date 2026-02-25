@@ -2,8 +2,8 @@
 
 import clsx from "clsx"
 import React from "react"
-import { CopyButton } from "@/components/CopyButton"
-import { Link } from "@/components/Link"
+import { CopyButton } from "../../CopyButton"
+import { Link } from "../../Link"
 import { useHeadingUrl } from "../../../hooks/use-heading-url"
 import { useLayout } from "../../../providers/Layout"
 

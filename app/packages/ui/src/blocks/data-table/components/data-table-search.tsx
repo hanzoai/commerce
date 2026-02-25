@@ -1,11 +1,11 @@
 "use client"
 
-import { Input } from "@/components/input"
-import { Skeleton } from "@/components/skeleton"
-import { clx } from "@/utils/clx"
+import { Input } from "../../../components/input"
+import { Skeleton } from "../../../components/skeleton"
+import { clx } from "../../../utils/clx"
 import * as React from "react"
 
-import { useDataTableContext } from "@/blocks/data-table/context/use-data-table-context"
+import { useDataTableContext } from "../context/use-data-table-context"
 
 interface DataTableSearchProps {
   /**

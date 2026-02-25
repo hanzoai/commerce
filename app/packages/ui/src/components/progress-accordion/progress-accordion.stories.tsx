@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Container } from "@/components/container"
+import { Container } from "../container"
 import { ProgressAccordion } from "./progress-accordion"
 
 const meta: Meta<typeof ProgressAccordion> = {

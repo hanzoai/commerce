@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useRef } from "react"
-import { Button } from "@/components/Button"
-import { useCollapsible } from "@/hooks/use-collapsible"
+import { Button } from "../Button"
+import { useCollapsible } from "../../hooks/use-collapsible"
 import clsx from "clsx"
 import { TriangleRightMini } from "@hanzo/commerce-icons"
 import {

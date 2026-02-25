@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "cva"
 import { Avatar as RadixAvatar } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 const avatarVariants = cva({
   base: "flex shrink-0 items-center justify-center overflow-hidden shadow-borders-base bg-ui-bg-base",

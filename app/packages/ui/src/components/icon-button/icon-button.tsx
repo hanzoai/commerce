@@ -3,7 +3,7 @@ import { VariantProps, cva } from "cva"
 import { Slot } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 const iconButtonVariants = cva({
   base: clx(

@@ -3,8 +3,8 @@
 import * as React from "react"
 import Primitive from "react-currency-input-field"
 
-import { Text } from "@/components/text"
-import { clx } from "@/utils/clx"
+import { Text } from "../text"
+import { clx } from "../../utils/clx"
 import { VariantProps, cva } from "cva"
 
 const currencyInputVariants = cva({

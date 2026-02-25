@@ -3,7 +3,7 @@
 import { Tooltip as RadixTooltip } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 interface TooltipProps
   extends Omit<RadixTooltip.TooltipContentProps, "content" | "onClick">,

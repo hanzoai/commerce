@@ -4,7 +4,7 @@ import { CheckMini, ChevronRightMini, EllipseMiniSolid } from "@hanzo/commerce-i
 import { DropdownMenu as RadixDropdownMenu } from "radix-ui"
 import * as React from "react"
 
-import { clx } from "@/utils/clx"
+import { clx } from "../../utils/clx"
 
 /**
  * This component is based on the [Radix UI Dropdown Menu](https://www.radix-ui.com/primitives/docs/components/dropdown-menu) primitive.
