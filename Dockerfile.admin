@@ -1,0 +1,43 @@
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
+WORKDIR /app
+
+FROM base AS deps
+COPY app/pnpm-workspace.yaml app/package.json app/pnpm-lock.yaml* ./
+COPY app/packages/commerce/package.json packages/commerce/package.json
+COPY app/packages/sdk/package.json packages/sdk/package.json
+COPY app/packages/types/package.json packages/types/package.json
+COPY app/packages/ui/package.json packages/ui/package.json
+COPY app/packages/ui-preset/package.json packages/ui-preset/package.json
+COPY app/packages/icons/package.json packages/icons/package.json
+COPY app/packages/admin-shared/package.json packages/admin-shared/package.json
+COPY app/admin/package.json admin/package.json
+RUN pnpm install --frozen-lockfile || pnpm install
+
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY app/ .
+RUN pnpm --filter=@hanzo/commerce-types build 2>/dev/null || true
+RUN pnpm --filter=@hanzo/commerce-sdk build 2>/dev/null || true
+RUN pnpm --filter=@hanzo/commerce-ui build 2>/dev/null || true
+RUN cd admin && npx next build
+
+FROM nginx:alpine
+COPY --from=builder /app/admin/out /usr/share/nginx/html
+COPY <<'EOF' /etc/nginx/conf.d/default.conf
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location / {
+        try_files $uri $uri.html $uri/index.html /index.html;
+    }
+
+    location /_next {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+EOF
+EXPOSE 80
