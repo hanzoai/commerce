@@ -135,9 +135,31 @@ type IAMUserInfo struct {
 	Permissions   []string `json:"permissions,omitempty"`
 }
 
+// FlexAudience handles JWT "aud" which can be either a string or array of strings.
+type FlexAudience string
+
+func (a *FlexAudience) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*a = FlexAudience(s)
+		return nil
+	}
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return err
+	}
+	if len(arr) > 0 {
+		*a = FlexAudience(arr[0])
+	}
+	return nil
+}
+
 // IAMClaims represents the JWT claims from Hanzo IAM tokens.
 type IAMClaims struct {
 	jwt.StandardClaims
+
+	// Override Audience to handle both string and array formats from IAM.
+	Audience FlexAudience `json:"aud,omitempty"`
 
 	// User identification
 	Owner       string `json:"owner,omitempty"`
@@ -371,16 +393,16 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 	}
 
 	// Validate audience (client ID)
-	// jwt.StandardClaims.Audience is a string, not a slice
+	aud := string(claims.Audience)
 	validAudience := false
-	if claims.Audience == c.config.ClientID || strings.HasPrefix(claims.Audience, c.config.ClientID) {
+	if aud == c.config.ClientID || strings.HasPrefix(aud, c.config.ClientID) {
 		validAudience = true
 	}
 	// Also check Azp (authorized party)
 	if !validAudience && claims.Azp == c.config.ClientID {
 		validAudience = true
 	}
-	if !validAudience && claims.Audience != "" {
+	if !validAudience && aud != "" {
 		return nil, fmt.Errorf("%w: token not issued for this client", ErrInvalidAudience)
 	}
 
