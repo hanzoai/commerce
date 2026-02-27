@@ -17,7 +17,6 @@ import (
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/models/subscriber"
-	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/mailchimp"
@@ -271,28 +270,9 @@ func create(c *gin.Context) {
 		}
 	}
 
-	// Grant $5 USD starter credit (expires in 30 days).
-	// This runs async so account creation isn't blocked by billing.
-	go func() {
-		creditDb := datastore.New(org.Namespaced(c))
-		credit := transaction.New(creditDb)
-		credit.Type = transaction.Deposit
-		credit.DestinationId = usr.Id()
-		credit.DestinationKind = "iam-user"
-		credit.Currency = "usd"
-		credit.Amount = 500 // $5.00
-		credit.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
-		credit.Tags = "starter-credit"
-		credit.ExpiresAt = time.Now().AddDate(0, 0, 30)
-		if !org.Live {
-			credit.Test = true
-		}
-		if err := credit.Create(); err != nil {
-			log.Warn("Failed to grant starter credit for %v: %v", usr.Id(), err, c)
-		} else {
-			log.Info("Granted $5 starter credit to %v (expires %v)", usr.Id(), credit.ExpiresAt, c)
-		}
-	}()
+	// Starter credit is granted by Commerce when a payment method is added
+	// (see api/billing/payment_methods.go:grantStarterCreditIfEligible),
+	// not at signup. This prevents abuse from mass-created accounts.
 
 	tokStr := ""
 
