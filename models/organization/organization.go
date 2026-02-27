@@ -138,6 +138,9 @@ type Organization struct {
 	// Mandrill settings
 	Mandrill integration.Mandrill `json:"-"`
 
+	// Mercury bank connection
+	Mercury integration.Mercury `json:"-"`
+
 	// Netlify settings
 	Netlify integration.Netlify `json:"-"`
 
