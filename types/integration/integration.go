@@ -27,6 +27,7 @@ const (
 	EthereumType      Type = "ethereum"
 	MailchimpType     Type = "mailchimp"
 	MandrillType      Type = "mandrill"
+	MercuryType       Type = "mercury"
 	NetlifyType       Type = "netlify"
 	PaypalType        Type = "paypal"
 	PlaidType         Type = "plaid"
@@ -108,6 +109,13 @@ type Mailchimp struct {
 // Mandrill settings
 type Mandrill struct {
 	APIKey string `json:"apiKey,omitempty"`
+}
+
+// Mercury bank connection
+type Mercury struct {
+	APIToken      string `json:"apiToken,omitempty"`
+	WebhookSecret string `json:"webhookSecret,omitempty"`
+	AccountID     string `json:"accountId,omitempty"`
 }
 
 // SendGrid settings
