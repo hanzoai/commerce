@@ -20,6 +20,7 @@ func mappings(orgName string) []secretMapping {
 	authnet := "/tenants/" + orgName + "/authorizenet"
 	paypal := "/tenants/" + orgName + "/paypal"
 	wire := "/tenants/" + orgName + "/wire"
+	merc := "/tenants/" + orgName + "/mercury"
 
 	return []secretMapping{
 		// Stripe
@@ -68,6 +69,11 @@ func mappings(orgName string) []secretMapping {
 		{wire, "WIRE_BANK_ADDRESS", func(o *organization.Organization, v string) { o.Wire.BankAddress = v }},
 		{wire, "WIRE_REFERENCE", func(o *organization.Organization, v string) { o.Wire.Reference = v }},
 		{wire, "WIRE_INSTRUCTIONS", func(o *organization.Organization, v string) { o.Wire.Instructions = v }},
+
+		// Mercury
+		{merc, "MERCURY_API_TOKEN", func(o *organization.Organization, v string) { o.Mercury.APIToken = v }},
+		{merc, "MERCURY_WEBHOOK_SECRET", func(o *organization.Organization, v string) { o.Mercury.WebhookSecret = v }},
+		{merc, "MERCURY_ACCOUNT_ID", func(o *organization.Organization, v string) { o.Mercury.AccountID = v }},
 	}
 }
 
