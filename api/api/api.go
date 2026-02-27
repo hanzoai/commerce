@@ -37,6 +37,7 @@ import (
 	accountApi "github.com/hanzoai/commerce/api/account"
 	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
 	billingApi "github.com/hanzoai/commerce/api/billing"
+	contributorApi "github.com/hanzoai/commerce/api/contributor"
 	authApi "github.com/hanzoai/commerce/api/auth"
 	cartApi "github.com/hanzoai/commerce/api/cart"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
@@ -142,6 +143,7 @@ func Route(api router.Router) {
 	accountApi.Route(api, tokenRequired)
 	affiliateApi.Route(api, tokenRequired)
 	billingApi.Route(api, tokenRequired)
+	contributorApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
