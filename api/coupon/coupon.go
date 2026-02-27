@@ -126,7 +126,7 @@ func validateCoupon(c *gin.Context) {
 
 	db := datastore.New(c)
 	cpn := coupon.New(db)
-	if err := cpn.GetFirst("Code=", req.Code); err != nil {
+	if ok, err := cpn.Query().Filter("Code_=", req.Code).Get(); err != nil || !ok {
 		http.Render(c, 200, gin.H{"valid": false, "error": "Coupon not found"})
 		return
 	}
@@ -159,8 +159,8 @@ func redeemCoupon(c *gin.Context) {
 
 	db := datastore.New(c)
 	cpn := coupon.New(db)
-	if err := cpn.GetFirst("Code=", req.Code); err != nil {
-		http.Fail(c, 404, "Coupon not found", err)
+	if ok, err := cpn.Query().Filter("Code_=", req.Code).Get(); err != nil || !ok {
+		http.Fail(c, 404, "Coupon not found", nil)
 		return
 	}
 
@@ -178,9 +178,8 @@ func redeemCoupon(c *gin.Context) {
 	}
 
 	// Check if user already redeemed this coupon (via credit grant tag)
-	q := creditgrant.Query(db).Filter("UserId=", uid).Filter("Tags=", "coupon:"+cpn.Code_)
 	existing := make([]creditgrant.CreditGrant, 0)
-	if _, err := db.GetAll(q, &existing); err == nil && len(existing) > 0 {
+	if _, err := creditgrant.Query(db).Filter("UserId=", uid).Filter("Tags=", "coupon:"+cpn.Code_).GetAll(&existing); err == nil && len(existing) > 0 {
 		http.Fail(c, 400, "Coupon already redeemed", nil)
 		return
 	}
