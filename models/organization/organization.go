@@ -164,6 +164,9 @@ type Organization struct {
 	// Stripe connection
 	Stripe integration.Stripe `json:"-"`
 
+	// Wire transfer settings
+	Wire integration.WireTransfer `json:"-"`
+
 	// AuthorizeNet connection
 	AuthorizeNet integration.AuthorizeNet `json:"-"`
 

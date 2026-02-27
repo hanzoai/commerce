@@ -151,6 +151,7 @@ func squareCheckoutClient() (*sqpaymentlinks.Client, string, error) {
 // Sessions creates a provider-agnostic, Stripe-like hosted checkout session.
 //
 // Currently implemented using Square Payment Links (hosted checkout URL).
+// When providerHint is "wire", returns wire transfer instructions instead.
 func Sessions(c *gin.Context) {
 	var req checkoutSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -174,6 +175,22 @@ func Sessions(c *gin.Context) {
 	}
 	if currency != "USD" {
 		http.Fail(c, 400, "Unsupported currency", errors.New("only USD is supported"))
+		return
+	}
+
+	// Wire transfer: return instructions URL instead of creating a payment link
+	if strings.ToLower(strings.TrimSpace(req.ProviderHint)) == "wire" {
+		sessionID := uuid.New().String()
+		baseURL := strings.TrimSpace(os.Getenv("BASE_URL"))
+		if baseURL == "" {
+			baseURL = "https://api.hanzo.ai"
+		}
+		wireURL := baseURL + "/api/v1/checkout/wire/instructions"
+
+		http.Render(c, 200, checkoutSessionResponse{
+			CheckoutURL: wireURL,
+			SessionID:   sessionID,
+		})
 		return
 	}
 
