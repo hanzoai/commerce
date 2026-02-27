@@ -1,11 +1,14 @@
 package coupon
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/creditgrant"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/log"
@@ -84,8 +87,173 @@ func codeFromList(c *gin.Context) {
 	http.Render(c, 200, codes)
 }
 
+// couponReward describes a reward granted by coupon redemption.
+type couponReward struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Value       int    `json:"value"`
+	Duration    string `json:"duration,omitempty"`
+	RedeemURL   string `json:"redeemUrl"`
+}
+
+// tryfreeRewards returns the static reward set for the TRYFREE coupon.
+func tryfreeRewards() []couponReward {
+	return []couponReward{
+		{
+			Type:        "bot-trial",
+			Description: "$5/mo Hanzo Bot trial",
+			Value:       500,
+			Duration:    "1 month",
+			RedeemURL:   "https://hanzo.bot",
+		},
+		{
+			Type:        "compute-credits",
+			Description: "$5 compute credits on Hanzo Console",
+			Value:       500,
+			RedeemURL:   "https://console.hanzo.ai",
+		},
+	}
+}
+
+func validateCoupon(c *gin.Context) {
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := json.Decode(c.Request.Body, &req); err != nil {
+		http.Fail(c, 400, "Invalid request body", err)
+		return
+	}
+
+	db := datastore.New(c)
+	cpn := coupon.New(db)
+	if err := cpn.GetFirst("Code=", req.Code); err != nil {
+		http.Render(c, 200, gin.H{"valid": false, "error": "Coupon not found"})
+		return
+	}
+
+	if !cpn.Redeemable() {
+		http.Render(c, 200, gin.H{"valid": false, "error": "Coupon expired or fully redeemed"})
+		return
+	}
+
+	result := gin.H{
+		"valid":  true,
+		"coupon": cpn,
+	}
+
+	if cpn.Code_ == "TRYFREE" {
+		result["rewards"] = tryfreeRewards()
+	}
+
+	http.Render(c, 200, result)
+}
+
+func redeemCoupon(c *gin.Context) {
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := json.Decode(c.Request.Body, &req); err != nil {
+		http.Fail(c, 400, "Invalid request body", err)
+		return
+	}
+
+	db := datastore.New(c)
+	cpn := coupon.New(db)
+	if err := cpn.GetFirst("Code=", req.Code); err != nil {
+		http.Fail(c, 404, "Coupon not found", err)
+		return
+	}
+
+	if !cpn.Redeemable() {
+		http.Fail(c, 400, "Coupon expired or fully redeemed", nil)
+		return
+	}
+
+	// Get authenticated user ID
+	userId, _ := c.Get("userId")
+	uid, _ := userId.(string)
+	if uid == "" {
+		http.Fail(c, 401, "Authentication required", nil)
+		return
+	}
+
+	// Check if user already redeemed this coupon (via credit grant tag)
+	q := creditgrant.Query(db).Filter("UserId=", uid).Filter("Tags=", "coupon:"+cpn.Code_)
+	existing := make([]creditgrant.CreditGrant, 0)
+	if _, err := db.GetAll(q, &existing); err == nil && len(existing) > 0 {
+		http.Fail(c, 400, "Coupon already redeemed", nil)
+		return
+	}
+
+	rewards := make([]couponReward, 0)
+	now := time.Now()
+
+	if cpn.Code_ == "TRYFREE" {
+		// Grant 1: $5 bot trial credit (eligible for bot-execution meter)
+		botGrant := creditgrant.New(db)
+		botGrant.UserId = uid
+		botGrant.Name = "TRYFREE - Hanzo Bot Trial"
+		botGrant.AmountCents = 500
+		botGrant.RemainingCents = 500
+		botGrant.Currency = "usd"
+		botGrant.EffectiveAt = now
+		botGrant.ExpiresAt = now.AddDate(0, 1, 0) // 1 month
+		botGrant.Priority = 0
+		botGrant.Eligibility = []string{"bot-execution"}
+		botGrant.Tags = "promo,coupon:" + cpn.Code_
+		botGrant.MustPut()
+
+		// Grant 2: $5 compute credits (eligible for all compute meters)
+		computeGrant := creditgrant.New(db)
+		computeGrant.UserId = uid
+		computeGrant.Name = "TRYFREE - Compute Credits"
+		computeGrant.AmountCents = 500
+		computeGrant.RemainingCents = 500
+		computeGrant.Currency = "usd"
+		computeGrant.EffectiveAt = now
+		computeGrant.ExpiresAt = now.AddDate(0, 3, 0) // 3 months
+		computeGrant.Priority = 0
+		computeGrant.Eligibility = []string{"api-usage", "inference"}
+		computeGrant.Tags = "promo,coupon:" + cpn.Code_
+		computeGrant.MustPut()
+
+		rewards = tryfreeRewards()
+	} else {
+		// Generic coupon: grant flat credit
+		grant := creditgrant.New(db)
+		grant.UserId = uid
+		grant.Name = cpn.Name
+		grant.AmountCents = int64(cpn.Amount)
+		grant.RemainingCents = int64(cpn.Amount)
+		grant.Currency = "usd"
+		grant.EffectiveAt = now
+		grant.ExpiresAt = now.AddDate(0, 1, 0)
+		grant.Priority = 1
+		grant.Tags = "promo,coupon:" + cpn.Code_
+		grant.MustPut()
+
+		rewards = append(rewards, couponReward{
+			Type:        "credit",
+			Description: cpn.Name,
+			Value:       cpn.Amount,
+		})
+	}
+
+	// Increment coupon usage
+	cpn.Used++
+	cpn.MustPut()
+
+	log.Info("Coupon %s redeemed by user %s", cpn.Code_, uid)
+
+	http.Render(c, 200, gin.H{
+		"success": true,
+		"rewards": rewards,
+	})
+}
+
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
+	tokenRequired := middleware.TokenRequired(permission.User)
 	namespaced := middleware.Namespace()
 
 	api := rest.New(coupon.Coupon{})
@@ -93,6 +261,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Get = getCoupon
 	api.GET("/:couponid/code/:uniqueid", adminRequired, namespaced, codeFromId)
 	api.POST("/:couponid/code", adminRequired, namespaced, codeFromList)
+	api.POST("/validate", tokenRequired, validateCoupon)
+	api.POST("/redeem", tokenRequired, redeemCoupon)
 
 	api.Route(router, args...)
 }
