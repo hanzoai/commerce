@@ -76,5 +76,19 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	cpn.MustPut()
 
+	// TRYFREE - $5 bot trial + $5 compute credits
+	cpn = coupon.New(db)
+	cpn.Code_ = "TRYFREE"
+	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Name = "Try Hanzo Free"
+	cpn.Type = "flat"
+	cpn.Amount = 500
+	cpn.Enabled = true
+	cpn.Once = true
+	cpn.Filter = "order"
+	cpn.CampaignId = "tryfree-growth"
+
+	cpn.MustPut()
+
 	return cpn
 })
