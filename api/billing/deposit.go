@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -111,6 +112,9 @@ func Deposit(c *gin.Context) {
 // The credit expires after 30 days if unused. Tagged "starter-credit"
 // so it can be identified in transaction history.
 //
+// Requires the user to have at least one payment method on file.
+// This prevents abuse from mass-created accounts with no payment verification.
+//
 //	POST /api/v1/billing/credit
 func GrantStarterCredit(c *gin.Context) {
 	org := middleware.GetOrganization(c)
@@ -126,6 +130,30 @@ func GrantStarterCredit(c *gin.Context) {
 
 	if req.User == "" {
 		http.Fail(c, 400, "user is required", nil)
+		return
+	}
+
+	// Verify user has a payment method on file before granting credit.
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	methods := make([]*paymentmethod.PaymentMethod, 0)
+	q := paymentmethod.Query(db).Ancestor(rootKey).Filter("UserId=", req.User)
+	if _, err := q.Limit(1).GetAll(&methods); err != nil {
+		log.Error("Failed to check payment methods for user %s: %v", req.User, err, c)
+		http.Fail(c, 500, "failed to verify payment method", err)
+		return
+	}
+	if len(methods) == 0 {
+		http.Fail(c, 403, "payment method required before starter credit can be granted", nil)
+		return
+	}
+
+	// Check if starter credit was already granted (prevent double-dipping).
+	existingTrans := make([]*transaction.Transaction, 0)
+	tq := transaction.Query(db).Ancestor(rootKey).
+		Filter("DestinationId=", req.User).
+		Filter("Tags=", StarterCreditTag)
+	if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
+		http.Fail(c, 409, "starter credit already granted", nil)
 		return
 	}
 
