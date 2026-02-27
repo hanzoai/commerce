@@ -18,6 +18,7 @@ const (
 	Bitcoin      ProcessorType = "bitcoin"
 	Ethereum     ProcessorType = "ethereum"
 	MPC          ProcessorType = "mpc"
+	Wire         ProcessorType = "wire"
 )
 
 // PaymentRequest represents a payment to be processed

@@ -19,6 +19,7 @@ func mappings(orgName string) []secretMapping {
 	square := "/tenants/" + orgName + "/square"
 	authnet := "/tenants/" + orgName + "/authorizenet"
 	paypal := "/tenants/" + orgName + "/paypal"
+	wire := "/tenants/" + orgName + "/wire"
 
 	return []secretMapping{
 		// Stripe
@@ -56,6 +57,17 @@ func mappings(orgName string) []secretMapping {
 		{paypal, "PAYPAL_TEST_SECURITY_PASSWORD", func(o *organization.Organization, v string) { o.Paypal.Test.SecurityPassword = v }},
 		{paypal, "PAYPAL_TEST_SECURITY_SIGNATURE", func(o *organization.Organization, v string) { o.Paypal.Test.SecuritySignature = v }},
 		{paypal, "PAYPAL_TEST_APPLICATION_ID", func(o *organization.Organization, v string) { o.Paypal.Test.ApplicationId = v }},
+
+		// Wire Transfer
+		{wire, "WIRE_BANK_NAME", func(o *organization.Organization, v string) { o.Wire.BankName = v }},
+		{wire, "WIRE_ACCOUNT_HOLDER", func(o *organization.Organization, v string) { o.Wire.AccountHolder = v }},
+		{wire, "WIRE_ROUTING_NUMBER", func(o *organization.Organization, v string) { o.Wire.RoutingNumber = v }},
+		{wire, "WIRE_ACCOUNT_NUMBER", func(o *organization.Organization, v string) { o.Wire.AccountNumber = v }},
+		{wire, "WIRE_SWIFT", func(o *organization.Organization, v string) { o.Wire.SWIFT = v }},
+		{wire, "WIRE_IBAN", func(o *organization.Organization, v string) { o.Wire.IBAN = v }},
+		{wire, "WIRE_BANK_ADDRESS", func(o *organization.Organization, v string) { o.Wire.BankAddress = v }},
+		{wire, "WIRE_REFERENCE", func(o *organization.Organization, v string) { o.Wire.Reference = v }},
+		{wire, "WIRE_INSTRUCTIONS", func(o *organization.Organization, v string) { o.Wire.Instructions = v }},
 	}
 }
 
