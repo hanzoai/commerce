@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/ethereum"
+	"github.com/hanzoai/commerce/api/checkout/wire"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -184,6 +185,10 @@ func route(router router.Router, prefix string) {
 	api.POST("/paypal/pay", publishedRequired, Authorize)
 
 	api.GET("/ethereum/lookup/:proxyaddress", adminRequired, ethereum.Lookup)
+
+	// Wire transfer endpoints
+	api.GET("/wire/instructions", wire.Instructions)
+	api.POST("/wire/credit", adminRequired, wire.Credit)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

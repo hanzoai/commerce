@@ -46,6 +46,7 @@ func DefaultConfig() *RegistryConfig {
 			MPC,
 			Ethereum,
 			Bitcoin,
+			Wire,
 		},
 		DisabledProcessors: make(map[ProcessorType]bool),
 	}

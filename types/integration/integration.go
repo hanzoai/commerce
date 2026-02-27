@@ -34,6 +34,7 @@ const (
 	RecaptchaType     Type = "recaptcha"
 	SalesforceType    Type = "salesforce"
 	SecurityTokenType Type = "securityToken"
+	WireTransferType  Type = "wireTransfer"
 	SendGridType      Type = "sendgrid"
 	ShipwireType      Type = "shipwire"
 	SMTPRelayType     Type = "smtprelay"
@@ -218,6 +219,19 @@ type Square struct {
 	WebhookSignatureKey string           `json:"webhookSignatureKey,omitempty"`
 	Sandbox             SquareConnection `json:"sandbox"`
 	Production          SquareConnection `json:"production"`
+}
+
+// WireTransfer holds bank wire transfer details for an organization
+type WireTransfer struct {
+	BankName      string `json:"bankName,omitempty"`
+	AccountHolder string `json:"accountHolder,omitempty"`
+	RoutingNumber string `json:"routingNumber,omitempty"`
+	AccountNumber string `json:"accountNumber,omitempty"`
+	SWIFT         string `json:"swift,omitempty"`
+	IBAN          string `json:"iban,omitempty"`
+	BankAddress   string `json:"bankAddress,omitempty"`
+	Reference     string `json:"reference,omitempty"`
+	Instructions  string `json:"instructions,omitempty"`
 }
 
 // Authorize.net connection
