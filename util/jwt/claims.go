@@ -9,15 +9,34 @@ type Claimable interface {
 	Clone() Claimable
 }
 
+// Audience handles JWT "aud" which can be either a string or array of strings.
+type Audience string
+
+func (a *Audience) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		*a = Audience(s)
+		return nil
+	}
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return err
+	}
+	if len(arr) > 0 {
+		*a = Audience(arr[0])
+	}
+	return nil
+}
+
 type Claims struct {
 	IssuedAt       int64 `json:"iat,omitempty"`
 	ExpirationTime int64 `json:"exp,omitempty"`
 	NotBefore      int64 `json:"nbf,omitempty"`
 
-	Issuer   string `json:"iss,omitempty"`
-	Subject  string `json:"sub,omitempty"`
-	Audience string `json:"aud,omitempty"`
-	JTI      string `json:"jti,omitempty"`
+	Issuer   string   `json:"iss,omitempty"`
+	Subject  string   `json:"sub,omitempty"`
+	Audience Audience `json:"aud,omitempty"`
+	JTI      string   `json:"jti,omitempty"`
 
 	ValidateFn func() error `json:"-" datastore:"-"`
 }
