@@ -78,6 +78,10 @@ type Config struct {
 		WebhookPassword string
 	}
 
+	Mercury struct {
+		WebhookSecret string
+	}
+
 	Secret      string
 	SessionName string
 
@@ -310,6 +314,7 @@ var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
 var IsTest = config.IsTest
 var Mandrill = config.Mandrill
+var Mercury = config.Mercury
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes

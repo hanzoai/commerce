@@ -66,6 +66,8 @@ func Defaults() *Config {
 	config.Bitcoin.TestNetPasswords = []string{""}
 	config.Bitcoin.WebhookPassword = ""
 
+	config.Mercury.WebhookSecret = ""
+
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
 	config.Paypal.IpnUrl = "https://api.staging.hanzo.ai/paypal/ipn/"
