@@ -92,11 +92,15 @@ func IAMTokenRequired() gin.HandlerFunc {
 				// Do not abort -- let downstream legacy auth attempt if present.
 				// But the request will lack org scoping.
 			} else {
+				// Set live mode based on IAM permissions (same as service token path)
+				perms := iamPermissions(claims)
+				if perms.Has(permission.Live) {
+					org.Live = true
+				}
+
 				c.Set("organization", org)
 				c.Set("active-organization", org.Id())
-
-				// Map IAM roles to legacy permission bits
-				c.Set("permissions", iamPermissions(claims))
+				c.Set("permissions", perms)
 			}
 		}
 
