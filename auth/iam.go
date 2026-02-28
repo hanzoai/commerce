@@ -638,19 +638,20 @@ func (c *IAMClient) getJWKS(ctx context.Context) (*JWKS, error) {
 	}
 	c.mu.RUnlock()
 
+	// Fetch discovery BEFORE acquiring write lock to avoid deadlock:
+	// getDiscovery also uses c.mu, so calling it while holding the
+	// write lock would deadlock on RLock().
+	jwksURI := c.config.Issuer + "/.well-known/jwks"
+	if discovery, err := c.getDiscovery(ctx); err == nil && discovery.JwksURI != "" {
+		jwksURI = discovery.JwksURI
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	// Double-check after acquiring write lock
 	if c.jwks != nil && time.Since(c.jwks.FetchedAt) < time.Hour {
 		return c.jwks, nil
-	}
-
-	// Get JWKS URI from discovery or construct default
-	jwksURI := c.config.Issuer + "/.well-known/jwks"
-
-	if discovery, err := c.getDiscovery(ctx); err == nil && discovery.JwksURI != "" {
-		jwksURI = discovery.JwksURI
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", jwksURI, nil)
