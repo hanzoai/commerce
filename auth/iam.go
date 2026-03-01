@@ -44,6 +44,11 @@ type IAMConfig struct {
 	// ClientSecret is the OAuth2 client secret
 	ClientSecret string
 
+	// AcceptedAudiences is a list of additional client IDs to accept when
+	// acting as a resource server. Tokens issued for any of these audiences
+	// (or for ClientID) will be accepted.
+	AcceptedAudiences []string
+
 	// RedirectURL is the callback URL for authorization code flow
 	RedirectURL string
 
@@ -392,15 +397,25 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 		}
 	}
 
-	// Validate audience (client ID)
+	// Validate audience (client ID).
+	// Accept tokens issued for ClientID or any of the AcceptedAudiences.
+	// This allows Commerce to act as a resource server accepting tokens
+	// from multiple IAM client apps (e.g., billing portal, playground).
 	aud := string(claims.Audience)
 	validAudience := false
 	if aud == c.config.ClientID || strings.HasPrefix(aud, c.config.ClientID) {
 		validAudience = true
 	}
-	// Also check Azp (authorized party)
 	if !validAudience && claims.Azp == c.config.ClientID {
 		validAudience = true
+	}
+	if !validAudience {
+		for _, accepted := range c.config.AcceptedAudiences {
+			if aud == accepted || claims.Azp == accepted {
+				validAudience = true
+				break
+			}
+		}
 	}
 	if !validAudience && aud != "" {
 		return nil, fmt.Errorf("%w: token not issued for this client", ErrInvalidAudience)
