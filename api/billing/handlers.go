@@ -176,6 +176,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user := r.Group("billing")
 	user.Use(userRequired)
 
+	// Card tokenization — S2S (no provider SDK on frontend)
+	user.POST("/card/tokenize", TokenizeCard)
+
 	// Plans (public catalog — no writes)
 	user.GET("/plans", ListPlans)
 	user.GET("/plans/:id", GetPlan)
