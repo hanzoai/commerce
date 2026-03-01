@@ -5,6 +5,7 @@ package iammiddleware
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -15,12 +16,14 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/bit"
+	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
 var (
-	iamClient *auth.IAMClient
-	mu        sync.RWMutex
+	iamClient   *auth.IAMClient
+	initAttempt bool // true once Init has been called, regardless of success
+	mu          sync.RWMutex
 )
 
 // Init initializes the IAM middleware with the given configuration.
@@ -30,6 +33,7 @@ func Init(cfg *auth.IAMConfig) error {
 	mu.Lock()
 	defer mu.Unlock()
 
+	initAttempt = true
 	client, err := auth.NewIAMClient(cfg)
 	if err != nil {
 		return err
@@ -42,21 +46,35 @@ func Init(cfg *auth.IAMConfig) error {
 // If a valid IAM token is found, it resolves the org from the token's "owner"
 // claim and sets both IAM context keys and the standard "organization" +
 // "permissions" keys that downstream handlers expect.
-// If no Bearer token is present or validation fails, it falls through to the
-// next middleware (legacy org-token auth) without aborting.
+//
+// Auth guard behavior:
+//   - IAM enabled but client initialization failed: 503 Service Unavailable
+//   - Bearer token present but invalid: 401 Unauthorized (no fallthrough)
+//   - No Bearer token present: fall through to legacy org-token auth
 func IAMTokenRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		mu.RLock()
 		client := iamClient
+		wasInitAttempted := initAttempt
 		mu.RUnlock()
 
+		// If Init was called but client is nil, initialization failed.
+		// The IAM subsystem is expected to be available but is not -- return 503.
 		if client == nil {
+			if wasInitAttempted {
+				jsonhttp.Fail(c, http.StatusServiceUnavailable,
+					"IAM authentication service is unavailable", nil)
+				return
+			}
+			// Init was never called -- IAM is not configured. Fall through
+			// to legacy auth.
 			c.Next()
 			return
 		}
 
 		header := c.GetHeader("Authorization")
 		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+			// No Bearer token present -- fall through to legacy auth.
 			c.Next()
 			return
 		}
@@ -65,8 +83,12 @@ func IAMTokenRequired() gin.HandlerFunc {
 
 		claims, err := client.ValidateToken(context.Background(), token)
 		if err != nil {
-			// Not a valid IAM token -- fall through to legacy middleware
-			c.Next()
+			// A Bearer token was presented but failed IAM validation.
+			// Return 401 immediately -- do not fall through to legacy auth,
+			// because a Bearer JWT should only be validated by IAM.
+			log.Warn("IAM token validation failed: %v", err)
+			jsonhttp.Fail(c, http.StatusUnauthorized,
+				"Invalid or expired authentication token", err)
 			return
 		}
 
@@ -89,8 +111,9 @@ func IAMTokenRequired() gin.HandlerFunc {
 			ok, lookupErr := org.Query().Filter("Name=", claims.Owner).Get()
 			if lookupErr != nil || !ok {
 				log.Warn("IAM token owner '%s' does not match any organization: %v", claims.Owner, lookupErr)
-				// Do not abort -- let downstream legacy auth attempt if present.
-				// But the request will lack org scoping.
+				// Do not abort -- the user is authenticated but the org
+				// lookup failed. Downstream handlers will see IAM claims
+				// but will lack org scoping.
 			} else {
 				// Set live mode based on IAM permissions (same as service token path)
 				perms := iamPermissions(claims)
