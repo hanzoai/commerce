@@ -483,18 +483,21 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 	// per webhook request for standard integrations.
 	item := notif.NotificationItems[0].NotificationRequestItem
 
-	// Verify HMAC if HMACKey is configured.
-	if p.config.HMACKey != "" {
-		hmacSig, _ := item.AdditionalData["hmacSignature"].(string)
-		if hmacSig == "" && signature != "" {
-			hmacSig = signature
-		}
-		if hmacSig == "" {
-			return nil, fmt.Errorf("%w: missing hmacSignature", processor.ErrWebhookValidationFailed)
-		}
-		if !p.verifyHMAC(item, hmacSig) {
-			return nil, fmt.Errorf("%w: HMAC mismatch", processor.ErrWebhookValidationFailed)
-		}
+	// HMAC verification is mandatory. Reject webhooks if the key is not configured.
+	if p.config.HMACKey == "" {
+		return nil, processor.NewPaymentError(processor.Adyen, "HMAC_NOT_CONFIGURED",
+			"webhook HMAC key is not configured; refusing to process unverified webhook", nil)
+	}
+
+	hmacSig, _ := item.AdditionalData["hmacSignature"].(string)
+	if hmacSig == "" && signature != "" {
+		hmacSig = signature
+	}
+	if hmacSig == "" {
+		return nil, fmt.Errorf("%w: missing hmacSignature", processor.ErrWebhookValidationFailed)
+	}
+	if !p.verifyHMAC(item, hmacSig) {
+		return nil, fmt.Errorf("%w: HMAC mismatch", processor.ErrWebhookValidationFailed)
 	}
 
 	// Verify merchant account matches.
