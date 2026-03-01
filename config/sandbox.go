@@ -1,5 +1,7 @@
 package config
 
+import "os"
+
 // Sandbox Settings
 func Sandbox() *Config {
 	config := Production()
@@ -14,25 +16,21 @@ func Sandbox() *Config {
 	config.Hosts["api"] = "api.sandbox.hanzo.ai"
 	config.Hosts["dash"] = "dash.sandbox.hanzo.ai"
 
-	config.Ethereum.TestPassword = ""
-	config.Ethereum.DepositPassword = ""
-	// Parity
-	// config.Ethereum.MainNetNodes = []string{"http://35.192.92.62:13264"}
-	// Geth
-	config.Ethereum.MainNetNodes = []string{"http://35.193.184.247:13264"}
-	config.Ethereum.TestNetNodes = []string{"https://api.infura.io/v1/jsonrpc/ropsten"}
-	// config.Ethereum.TestNetNodes = []string{"http://35.192.74.139:13264"}
-	config.Ethereum.WebhookPassword = ""
+	config.Ethereum.TestPassword = os.Getenv("ETHEREUM_TEST_PASSWORD")
+	config.Ethereum.DepositPassword = os.Getenv("ETHEREUM_DEPOSIT_PASSWORD")
+	config.Ethereum.MainNetNodes = []string{envOrDefault("ETHEREUM_MAINNET_NODE", "http://35.193.184.247:13264")}
+	config.Ethereum.TestNetNodes = []string{envOrDefault("ETHEREUM_TESTNET_NODE", "https://api.infura.io/v1/jsonrpc/ropsten")}
+	config.Ethereum.WebhookPassword = os.Getenv("ETHEREUM_WEBHOOK_PASSWORD")
 
-	config.Bitcoin.TestPassword = ""
-	config.Bitcoin.DepositPassword = ""
-	config.Bitcoin.MainNetNodes = []string{"http://35.192.49.112:19283"}
-	config.Bitcoin.MainNetUsernames = []string{""}
-	config.Bitcoin.MainNetPasswords = []string{""}
-	config.Bitcoin.TestNetNodes = []string{"http://104.154.51.133:19283"}
-	config.Bitcoin.TestNetUsernames = []string{""}
-	config.Bitcoin.TestNetPasswords = []string{""}
-	config.Bitcoin.WebhookPassword = ""
+	config.Bitcoin.TestPassword = os.Getenv("BITCOIN_TEST_PASSWORD")
+	config.Bitcoin.DepositPassword = os.Getenv("BITCOIN_DEPOSIT_PASSWORD")
+	config.Bitcoin.MainNetNodes = []string{envOrDefault("BITCOIN_MAINNET_NODE", "http://35.192.49.112:19283")}
+	config.Bitcoin.MainNetUsernames = []string{os.Getenv("BITCOIN_MAINNET_USERNAME")}
+	config.Bitcoin.MainNetPasswords = []string{os.Getenv("BITCOIN_MAINNET_PASSWORD")}
+	config.Bitcoin.TestNetNodes = []string{envOrDefault("BITCOIN_TESTNET_NODE", "http://104.154.51.133:19283")}
+	config.Bitcoin.TestNetUsernames = []string{os.Getenv("BITCOIN_TESTNET_USERNAME")}
+	config.Bitcoin.TestNetPasswords = []string{os.Getenv("BITCOIN_TESTNET_PASSWORD")}
+	config.Bitcoin.WebhookPassword = os.Getenv("BITCOIN_WEBHOOK_PASSWORD")
 
 	config.StaticUrl = "//static.sandbox.hanzo.ai"
 
@@ -42,13 +40,13 @@ func Sandbox() *Config {
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
 
-	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
+	config.Google.APIKey = os.Getenv("GOOGLE_API_KEY")
 	config.Google.Bucket.ImageUploads = "hanzo-sandbox-image-uploads"
 
-	config.Email.Provider.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+	config.Email.Provider.Mandrill.APIKey = os.Getenv("MANDRILL_API_KEY")
 
-	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
-	config.Salesforce.ConsumerSecret = "2354282251954184740"
+	config.Salesforce.ConsumerKey = os.Getenv("SALESFORCE_CONSUMER_KEY")
+	config.Salesforce.ConsumerSecret = os.Getenv("SALESFORCE_CONSUMER_SECRET")
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("dash", "/salesforce/callback")
 
 	return config
