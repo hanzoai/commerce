@@ -94,10 +94,11 @@ type Config struct {
 
 	// IAM configuration for hanzo.id JWT validation
 	IAM struct {
-		Enabled      bool   `json:"enabled"`
-		Issuer       string `json:"issuer"`
-		ClientID     string `json:"clientId"`
-		ClientSecret string `json:"clientSecret"`
+		Enabled           bool     `json:"enabled"`
+		Issuer            string   `json:"issuer"`
+		ClientID          string   `json:"clientId"`
+		ClientSecret      string   `json:"clientSecret"`
+		AcceptedAudiences []string `json:"acceptedAudiences"`
 	} `json:"iam"`
 }
 
@@ -126,6 +127,9 @@ func DefaultConfig() *Config {
 	cfg.IAM.Issuer = getEnv("IAM_ISSUER", "https://hanzo.id")
 	cfg.IAM.ClientID = getEnv("IAM_CLIENT_ID", "")
 	cfg.IAM.ClientSecret = getEnv("IAM_CLIENT_SECRET", "")
+	if accepted := getEnv("IAM_ACCEPTED_AUDIENCES", ""); accepted != "" {
+		cfg.IAM.AcceptedAudiences = strings.Split(accepted, ",")
+	}
 
 	return cfg
 }
@@ -588,9 +592,10 @@ func (app *App) Bootstrap() error {
 	// Initialize IAM middleware for hanzo.id JWT validation
 	if app.config.IAM.Enabled && app.config.IAM.Issuer != "" && app.config.IAM.ClientID != "" {
 		iamCfg := &auth.IAMConfig{
-			Issuer:       app.config.IAM.Issuer,
-			ClientID:     app.config.IAM.ClientID,
-			ClientSecret: app.config.IAM.ClientSecret,
+			Issuer:            app.config.IAM.Issuer,
+			ClientID:          app.config.IAM.ClientID,
+			ClientSecret:      app.config.IAM.ClientSecret,
+			AcceptedAudiences: app.config.IAM.AcceptedAudiences,
 		}
 		if err := iammiddleware.Init(iamCfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: IAM middleware initialization failed: %v\n", err)
