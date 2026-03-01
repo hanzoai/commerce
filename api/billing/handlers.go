@@ -165,4 +165,32 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 
 	// ZAP protocol endpoint
 	api.POST("/zap", ZapDispatch)
+
+	// ── User-facing billing endpoints ─────────────────────────────────────
+	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
+	// IAM tokens bypass the adminRequired guard above via IsIAMAuthenticated,
+	// but we register them here explicitly under a separate group with a
+	// broader TokenRequired() so that non-IAM service tokens also work.
+	userRequired := middleware.TokenRequired()
+
+	user := r.Group("billing")
+	user.Use(userRequired)
+
+	// Plans (public catalog — no writes)
+	user.GET("/plans", ListPlans)
+	user.GET("/plans/:id", GetPlan)
+
+	// Spend alerts (user-scoped CRUD)
+	user.GET("/spend-alerts", ListSpendAlerts)
+	user.POST("/spend-alerts", CreateSpendAlert)
+	user.PATCH("/spend-alerts/:id", UpdateSpendAlert)
+	user.DELETE("/spend-alerts/:id", DeleteSpendAlert)
+
+	// Billing accounts (org-wrapper)
+	user.GET("/accounts", ListBillingAccounts)
+	user.POST("/accounts", CreateBillingAccount)
+	user.GET("/accounts/:id/members", ListAccountMembers)
+	user.POST("/accounts/:id/members", AddAccountMember)
+	user.PATCH("/accounts/:id/members/:memberId", UpdateMemberRole)
+	user.DELETE("/accounts/:id/members/:memberId", RemoveAccountMember)
 }
