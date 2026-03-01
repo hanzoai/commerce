@@ -16,5 +16,6 @@ import (
 	_ "github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
 	_ "github.com/hanzoai/commerce/payment/providers/paypal"
 	_ "github.com/hanzoai/commerce/payment/providers/recurly"
+	_ "github.com/hanzoai/commerce/thirdparty/square"
 	_ "github.com/hanzoai/commerce/thirdparty/wire"
 )
