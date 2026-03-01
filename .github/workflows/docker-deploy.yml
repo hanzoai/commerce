@@ -12,7 +12,39 @@ env:
   IMAGE_NAME: hanzoai/commerce
 
 jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install detect-secrets
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install detect-secrets==1.5.0
+
+      - name: Scan for secrets
+        run: |
+          detect-secrets scan \
+            --exclude-files '(^|/)go\.sum$' \
+            --exclude-files '(^|/)vendor/' \
+            --exclude-files '(^|/)\.detect-secrets\.cfg$' \
+            --exclude-lines '(Main|Test)Net(Nodes|Usernames|Passwords)' \
+            > /tmp/secrets-report.json
+          if jq -e '.results | length > 0' /tmp/secrets-report.json > /dev/null 2>&1; then
+            echo "::error::Secrets detected in the codebase. Review /tmp/secrets-report.json"
+            jq '.results' /tmp/secrets-report.json
+            exit 1
+          fi
+          echo "No secrets detected."
+
   build:
+    needs: secrets
     strategy:
       matrix:
         include:
