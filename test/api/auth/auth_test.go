@@ -59,10 +59,10 @@ var _ = BeforeSuite(func() {
 	usr.Email = "auth-test@hanzo.ai"
 	usr.SetPassword("Z0rd0N")
 	usr.Enabled = true
-	usr.MustCreate()
+	usr.MustPut()
 
 	usr2 = user.New(db)
-	usr2.Email = "dev-disabled@hanzo.ai"
+	usr2.Email = "auth-test-disabled@hanzo.ai"
 	usr2.SetPassword("ilikedragons")
 	usr2.Enabled = false
 	usr2.MustCreate()
@@ -169,7 +169,7 @@ var _ = Describe("auth", func() {
 
 		It("Should disallow login with disabled account", func() {
 			data := url.Values{
-				"username":   {"dev-disabled@hanzo.ai"},
+				"username":   {"auth-test-disabled@hanzo.ai"},
 				"password":   {"ilikedragon"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
