@@ -40,12 +40,11 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	log.Debug("Requesting new access token for %s (%s)", userId, email, c.ctx)
 	client := &http.Client{Timeout: 55 * time.Second}
 	res, err := client.Do(req)
-	defer res.Body.Close()
-
 	if err != nil {
-		log.Error("Request failed with status %v: %v", res.StatusCode, err, c.ctx)
+		log.Error("Request failed: %v", err, c.ctx)
 		return User{}, err
 	}
+	defer res.Body.Close()
 
 	// Read response body
 	b, _ := ioutil.ReadAll(res.Body)

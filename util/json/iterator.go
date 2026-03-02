@@ -19,7 +19,7 @@ func Iterator(filename string) <-chan Record {
 		file, err := os.Open(filename)
 		defer file.Close()
 		if err != nil {
-			log.Fatal("Failed to open JSON File: %v", err)
+			log.Fatalf("Failed to open JSON File: %v", err)
 		}
 
 		r := bufio.NewReader(file)
@@ -32,7 +32,7 @@ func Iterator(filename string) <-chan Record {
 				ch <- Record{data, line}
 				break
 			} else if err != nil {
-				log.Fatal("Failed to open JSON File: %v", err)
+				log.Fatalf("Failed to open JSON File: %v", err)
 			}
 
 			line = line + 1

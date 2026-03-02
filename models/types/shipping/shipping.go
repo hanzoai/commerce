@@ -77,8 +77,6 @@ func (r Rates) GetPrice(p *product.Product) (currency.Cents, currency.Type) {
 		f := r.Formulas[i]
 		return calculateShippingPrice(w, f.RateType, f.Price), r.Currency
 	}
-
-	return currency.Cents(0), currency.USD
 }
 
 // helpers
@@ -91,5 +89,4 @@ func calculateShippingPrice(w weight.Mass, rateType RateType, price currency.Cen
 	default:
 		return price
 	}
-	return currency.Cents(0)
 }
