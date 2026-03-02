@@ -133,10 +133,14 @@ func IAMTokenRequired() gin.HandlerFunc {
 
 		// Resolve organization from IAM "owner" claim so downstream handlers
 		// get proper tenant scoping via middleware.GetOrganization(c).
+		// IAM is the source of truth for org/identity — auto-create the
+		// Commerce org record on first encounter.
 		if claims.Owner != "" {
 			ctx := c.Request.Context()
 			db := datastore.New(ctx)
 			org := organization.New(db)
+			org.Name = claims.Owner
+			org.Enabled = true
 
 			var found bool
 
@@ -153,14 +157,10 @@ func IAMTokenRequired() gin.HandlerFunc {
 				}
 			}
 
-			// Slow path: query by Name, then populate cache.
+			// Slow path: GetOrCreate by name (auto-provisions org on first encounter).
 			if !found {
-				ok, lookupErr := org.Query().Filter("Name=", claims.Owner).Get()
-				if lookupErr != nil || !ok {
-					log.Warn("IAM token owner '%s' does not match any organization: %v", claims.Owner, lookupErr)
-					// Do not abort -- the user is authenticated but the org
-					// lookup failed. Downstream handlers will see IAM claims
-					// but will lack org scoping.
+				if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
+					log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
 				} else {
 					found = true
 					// Populate KV cache for next request.
