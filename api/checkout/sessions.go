@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,6 +16,8 @@ import (
 	"github.com/square/square-go-sdk/v3/core"
 	"github.com/square/square-go-sdk/v3/option"
 
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -55,11 +58,69 @@ type checkoutSessionRequest struct {
 	Items        []checkoutSessionItem   `json:"items"`
 	SuccessURL   string                  `json:"successUrl"`
 	CancelURL    string                  `json:"cancelUrl"`
+	CouponCode   string                  `json:"couponCode,omitempty"`
+	ReferrerId   string                  `json:"referrerId,omitempty"`
+	AffiliateId  string                  `json:"affiliateId,omitempty"`
+}
+
+// couponDiscount holds the resolved discount for a checkout session.
+type couponDiscount struct {
+	Code           string  `json:"code"`
+	Type           string  `json:"type"`
+	Amount         int     `json:"amount"`
+	DiscountCents  int64   `json:"discountCents"`
 }
 
 type checkoutSessionResponse struct {
-	CheckoutURL string `json:"checkoutUrl"`
-	SessionID   string `json:"sessionId"`
+	CheckoutURL   string          `json:"checkoutUrl"`
+	SessionID     string          `json:"sessionId"`
+	Discount      *couponDiscount `json:"discount,omitempty"`
+	OriginalTotal int64           `json:"originalTotal,omitempty"`
+	FinalTotal    int64           `json:"finalTotal,omitempty"`
+}
+
+// resolveCoupon looks up a coupon by code in the datastore and returns it
+// if valid. Returns nil (no error) when couponCode is empty.
+func resolveCoupon(c *gin.Context, couponCode string) (*coupon.Coupon, error) {
+	if couponCode == "" {
+		return nil, nil
+	}
+	db := datastore.New(c)
+	cpn := coupon.New(db)
+	ok, err := cpn.Query().Filter("Code_=", strings.ToUpper(strings.TrimSpace(couponCode))).Get()
+	if err != nil || !ok {
+		return nil, errors.New("coupon not found")
+	}
+	if !cpn.ValidFor(time.Now()) || !cpn.Redeemable() {
+		return nil, errors.New("coupon expired or fully redeemed")
+	}
+	return cpn, nil
+}
+
+// applyDiscount computes the discount amount in cents given a subtotal and coupon.
+// Returns the discount in cents (always >= 0).
+func applyDiscount(subtotalCents int64, cpn *coupon.Coupon) int64 {
+	if cpn == nil {
+		return 0
+	}
+	switch cpn.Type {
+	case coupon.Percent:
+		// Amount field holds the percentage (e.g. 10 = 10%)
+		discount := subtotalCents * int64(cpn.Amount) / 100
+		if discount > subtotalCents {
+			discount = subtotalCents
+		}
+		return discount
+	case coupon.Flat:
+		// Amount field holds cents (e.g. 500 = $5.00)
+		discount := int64(cpn.Amount)
+		if discount > subtotalCents {
+			discount = subtotalCents
+		}
+		return discount
+	default:
+		return 0
+	}
 }
 
 func normalizeColor(color string) string {
@@ -194,6 +255,13 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
+	// Resolve coupon before any external calls so we can fail fast.
+	cpn, err := resolveCoupon(c, req.CouponCode)
+	if err != nil {
+		http.Fail(c, 400, "Invalid coupon", err)
+		return
+	}
+
 	client, locationID, err := squareCheckoutClient()
 	if err != nil {
 		http.Fail(c, 500, "Payments are not configured", err)
@@ -201,6 +269,7 @@ func Sessions(c *gin.Context) {
 	}
 
 	lineItems := make([]*square.OrderLineItem, 0, len(req.Items))
+	var subtotalCents int64
 	for _, it := range req.Items {
 		if it.Quantity <= 0 {
 			http.Fail(c, 400, "Invalid quantity", fmt.Errorf("quantity must be > 0 for item '%s'", it.ID))
@@ -212,6 +281,8 @@ func Sessions(c *gin.Context) {
 		amount := hatPriceCents(it.Hat)
 		cur := square.CurrencyUsd
 
+		subtotalCents += amount * int64(it.Quantity)
+
 		lineItems = append(lineItems, &square.OrderLineItem{
 			Name:     &name,
 			Quantity: qty,
@@ -222,6 +293,10 @@ func Sessions(c *gin.Context) {
 		})
 	}
 
+	// Apply coupon discount.
+	discountCents := applyDiscount(subtotalCents, cpn)
+	finalCents := subtotalCents - discountCents
+
 	referenceID := uuid.New().String()
 	order := &square.Order{
 		LocationID:   locationID,
@@ -230,6 +305,26 @@ func Sessions(c *gin.Context) {
 		TicketName:   nil,
 		CustomerID:   nil,
 		Fulfillments: nil,
+	}
+
+	if discountCents > 0 {
+		discountUID := "coupon-discount"
+		discountName := strings.ToUpper(cpn.Code())
+		discountType := square.OrderLineItemDiscountTypeFixedAmount
+		discountScope := square.OrderLineItemDiscountScopeOrder
+		cur := square.CurrencyUsd
+		order.Discounts = []*square.OrderLineItemDiscount{
+			{
+				UID:   &discountUID,
+				Name:  &discountName,
+				Type:  &discountType,
+				Scope: &discountScope,
+				AmountMoney: &square.Money{
+					Amount:   &discountCents,
+					Currency: &cur,
+				},
+			},
+		}
 	}
 
 	redirectURL := req.SuccessURL
@@ -288,8 +383,19 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
-	http.Render(c, 200, checkoutSessionResponse{
+	sessionResp := checkoutSessionResponse{
 		CheckoutURL: *resp.PaymentLink.URL,
 		SessionID:   *resp.PaymentLink.ID,
-	})
+	}
+	if cpn != nil {
+		sessionResp.OriginalTotal = subtotalCents
+		sessionResp.FinalTotal = finalCents
+		sessionResp.Discount = &couponDiscount{
+			Code:          cpn.Code(),
+			Type:          string(cpn.Type),
+			Amount:        cpn.Amount,
+			DiscountCents: discountCents,
+		}
+	}
+	http.Render(c, 200, sessionResp)
 }
