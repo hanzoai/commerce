@@ -1,2 +1,2 @@
-export * from "./posthog"
+export * from "./insights"
 export * from "./local"

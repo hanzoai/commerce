@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react"
 import { useSegmentAnalytics } from "./providers/segment"
-import { usePostHogAnalytics } from "./providers/posthog"
+import { useInsightsAnalytics } from "./providers/insights"
 import { useReoDevAnalytics } from "./providers/reo-dev"
 import { usePathname } from "next/navigation"
 
@@ -27,7 +27,7 @@ export type AnalyticsContextType = {
   }) => void
 }
 
-type Trackers = "segment" | "posthog"
+type Trackers = "segment" | "insights"
 
 export type TrackedEvent = {
   event: string
@@ -44,7 +44,7 @@ export type AnalyticsProviderProps = {
   children?: React.ReactNode
 }
 
-const DEFAULT_TRACKER: Trackers = "posthog"
+const DEFAULT_TRACKER: Trackers = "insights"
 
 export const AnalyticsProvider = ({
   segmentWriteKey,
@@ -56,7 +56,7 @@ export const AnalyticsProvider = ({
     segmentWriteKey,
     setEventsQueue,
   })
-  const { track: trackWithPostHog } = usePostHogAnalytics()
+  const { track: trackWithInsights } = useInsightsAnalytics()
   useReoDevAnalytics({ reoDevKey })
   const pathname = usePathname()
 
@@ -78,8 +78,8 @@ export const AnalyticsProvider = ({
       await Promise.all(
         trackers.map(async (tracker) => {
           switch (tracker) {
-            case "posthog":
-              return trackWithPostHog(event)
+            case "insights":
+              return trackWithInsights(event)
             case "segment":
             default:
               return trackWithSegment(event)
@@ -87,7 +87,7 @@ export const AnalyticsProvider = ({
         })
       )
     },
-    [trackWithSegment, trackWithPostHog, pathname]
+    [trackWithSegment, trackWithInsights, pathname]
   )
 
   const track = ({ event }: { event: TrackedEvent }) => {
