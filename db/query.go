@@ -48,6 +48,35 @@ func getNamespace(ctx context.Context) string {
 	return nscontext.GetNamespace(ctx)
 }
 
+// callPostLoad calls Load(nil) on the entity if it implements a Load method.
+// This is needed because unmarshalForDB populates raw storage fields (e.g. State_,
+// Metadata_) but does not call the model's Load() deserialization hook which
+// deserializes those raw fields into their typed counterparts (State, Metadata maps).
+func callPostLoad(v reflect.Value) {
+	if !v.IsValid() {
+		return
+	}
+	if v.Kind() != reflect.Ptr {
+		if v.CanAddr() {
+			v = v.Addr()
+		} else {
+			return
+		}
+	}
+	m := v.MethodByName("Load")
+	if !m.IsValid() {
+		return
+	}
+	mt := m.Type()
+	if mt.NumIn() != 1 || mt.NumOut() != 1 {
+		return
+	}
+	// Call Load with a nil/zero value for the parameter type.
+	// Commerce's PropertyLoadSaver.Load([]Property) handles nil gracefully.
+	nilArg := reflect.Zero(mt.In(0))
+	m.Call([]reflect.Value{nilArg})
+}
+
 // Filter adds a filter condition (format: "field=", "field>", etc.)
 func (q *sqliteQuery) Filter(filterStr string, value any) Query {
 	// Parse filter string like "Field=" or "Field>="
@@ -196,6 +225,7 @@ func (q *sqliteQuery) GetAll(ctx context.Context, dst any) ([]Key, error) {
 		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return nil, err
 		}
+		callPostLoad(elem)
 
 		if isPointer {
 			sliceVal = reflect.Append(sliceVal, elem)
@@ -241,6 +271,7 @@ func (q *sqliteQuery) First(ctx context.Context, dst any) (Key, error) {
 	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
+	callPostLoad(reflect.ValueOf(dst))
 
 	return &sqliteKey{
 		kind:      q.kind,
@@ -544,6 +575,7 @@ func (it *sqliteIterator) Next(dst any) (Key, error) {
 	if err := unmarshalForDB(data, dst); err != nil {
 		return nil, err
 	}
+	callPostLoad(reflect.ValueOf(dst))
 
 	it.offset++
 
