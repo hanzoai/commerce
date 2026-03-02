@@ -87,6 +87,7 @@ func Defaults() *Config {
 	config.Stripe.TestPublishableKey = os.Getenv("STRIPE_TEST_PUBLISHABLE_KEY")
 	config.Stripe.LiveSecretKey = os.Getenv("STRIPE_LIVE_SECRET_KEY")
 	config.Stripe.LivePublishablKey = os.Getenv("STRIPE_LIVE_PUBLISHABLE_KEY")
+	config.Stripe.WebhookSecret = os.Getenv("STRIPE_WEBHOOK_SECRET")
 
 	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.ai"
