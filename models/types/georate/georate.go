@@ -84,12 +84,13 @@ func (g GeoRate) Match(ctr, st, ct, pc string, c currency.Cents) (bool, int) {
 	ct = clean(ct)
 	pc = clean(pc)
 
-	if g.Above > 0 {
+	if c > 0 && g.Above > 0 {
 		if c < g.Above {
 			log.Debug("amount is lower than Above")
 			return false, -1
 		}
-	} else if g.Below > 0 {
+	}
+	if c > 0 && g.Below > 0 {
 		if c >= g.Below {
 			log.Debug("amount is higher than Below")
 			return false, -1
