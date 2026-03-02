@@ -116,9 +116,9 @@ func (c *Client) GetSecretRaw(secretPath, secretName string) (string, error) {
 	token := c.accessToken
 	c.mu.RUnlock()
 
-	// Build request URL
+	// Build request URL — v4 API uses projectId (not workspaceId)
 	reqURL := fmt.Sprintf(
-		"%s/api/v4/secrets/%s?workspaceId=%s&environment=%s&secretPath=%s",
+		"%s/api/v4/secrets/%s?projectId=%s&environment=%s&secretPath=%s",
 		c.baseURL,
 		url.PathEscape(secretName),
 		url.QueryEscape(c.projectID),
@@ -161,12 +161,13 @@ func (c *Client) SetSecret(secretPath, secretName, secretValue string) error {
 	token := c.accessToken
 	c.mu.RUnlock()
 
+	// v4 API: secretName in URL path, projectId (not workspaceId) in body
 	payload := fmt.Sprintf(
-		`{"secretName":%q,"secretValue":%q,"secretPath":%q,"workspaceId":%q,"environment":%q,"type":"shared"}`,
-		secretName, secretValue, secretPath, c.projectID, c.environment,
+		`{"secretValue":%q,"secretPath":%q,"projectId":%q,"environment":%q,"type":"shared"}`,
+		secretValue, secretPath, c.projectID, c.environment,
 	)
 
-	req, err := http.NewRequest("POST", c.baseURL+"/api/v4/secrets", strings.NewReader(payload))
+	req, err := http.NewRequest("POST", c.baseURL+"/api/v4/secrets/"+secretName, strings.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("kms set secret request build error: %w", err)
 	}
