@@ -9,7 +9,7 @@ import (
 
 type Redemption struct {
 	// Time coupon was used
-	CreatedAt time.Time `json:"code"`
+	CreatedAt time.Time `json:"createdAt"`
 
 	// Coupon code or dynamic code
 	Code string `json:"code"`

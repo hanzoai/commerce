@@ -48,7 +48,8 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	log.Debug("IPN response: %s", string(dump), ctx)
 
 	// Set timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*30)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
 
 	// Create client
 	client := &http.Client{Timeout: 55 * time.Second}
