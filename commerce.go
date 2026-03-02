@@ -48,7 +48,7 @@ import (
 )
 
 // Version is the current version of Commerce
-const Version = "1.36.3"
+const Version = "1.36.4"
 
 // Config holds application configuration
 type Config struct {
@@ -551,11 +551,34 @@ func (app *App) Bootstrap() error {
 		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 
-	// Set up system-level SQLite DB as the default for all datastore operations.
-	// This bridges the legacy GAE datastore API to the new SQLite backend.
-	systemDB, err := app.DB.Org("system")
-	if err != nil {
-		return fmt.Errorf("failed to initialize system database: %w", err)
+	// Wire the primary data store. Prefer PostgreSQL (SQL_URL) in production;
+	// fall back to per-org SQLite for local/dev environments.
+	var systemDB db.DB
+	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" {
+		pdb, pgErr := db.NewPostgresDB(&db.PostgresDBConfig{
+			DSN:                sqlURL,
+			MaxOpenConns:       25,
+			MaxIdleConns:       5,
+			ConnMaxLifetime:    time.Hour,
+			QueryTimeout:       30 * time.Second,
+			TenantID:           "system",
+			TenantType:         "org",
+			EnableVectorSearch: true,
+			VectorDimensions:   1536,
+		})
+		if pgErr != nil {
+			return fmt.Errorf("failed to connect to PostgreSQL (SQL_URL): %w", pgErr)
+		}
+		systemDB = pdb
+		fmt.Println("Commerce: using PostgreSQL as primary data store")
+	} else {
+		// Dev/local fallback: per-org SQLite in DataDir.
+		fmt.Fprintln(os.Stderr, "Commerce: SQL_URL not set, falling back to SQLite (not for production)")
+		var dbErr error
+		systemDB, dbErr = app.DB.Org("system")
+		if dbErr != nil {
+			return fmt.Errorf("failed to initialize system database: %w", dbErr)
+		}
 	}
 	commerceDatastore.SetDefaultDB(systemDB)
 	commerceQuery.SetDefaultDB(systemDB)
