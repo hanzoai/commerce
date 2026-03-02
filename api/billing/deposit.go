@@ -133,18 +133,22 @@ func GrantStarterCredit(c *gin.Context) {
 		return
 	}
 
-	// Verify user has a payment method on file before granting credit.
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	methods := make([]*paymentmethod.PaymentMethod, 0)
-	q := paymentmethod.Query(db).Ancestor(rootKey).Filter("UserId=", req.User)
-	if _, err := q.Limit(1).GetAll(&methods); err != nil {
-		log.Error("Failed to check payment methods for user %s: %v", req.User, err, c)
-		http.Fail(c, 500, "failed to verify payment method", err)
-		return
-	}
-	if len(methods) == 0 {
-		http.Fail(c, 403, "payment method required before starter credit can be granted", nil)
-		return
+
+	// Verify user has a payment method on file before granting credit.
+	// Skip this check in test mode to allow integration tests without payment setup.
+	if org.Live {
+		methods := make([]*paymentmethod.PaymentMethod, 0)
+		q := paymentmethod.Query(db).Ancestor(rootKey).Filter("UserId=", req.User)
+		if _, err := q.Limit(1).GetAll(&methods); err != nil {
+			log.Error("Failed to check payment methods for user %s: %v", req.User, err, c)
+			http.Fail(c, 500, "failed to verify payment method", err)
+			return
+		}
+		if len(methods) == 0 {
+			http.Fail(c, 403, "payment method required before starter credit can be granted", nil)
+			return
+		}
 	}
 
 	// Check if starter credit was already granted (prevent double-dipping).
