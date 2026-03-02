@@ -196,6 +196,9 @@ func exchangeCode(c *gin.Context, code string) (token string, err error) {
 		log.Panic(err)
 	}
 	res, err := client.Do(req)
+	if err != nil {
+		return token, err
+	}
 	defer res.Body.Close()
 	b, err := ioutil.ReadAll(res.Body)
 	if err != nil {

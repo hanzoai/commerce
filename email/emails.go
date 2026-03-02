@@ -44,7 +44,7 @@ func message(settings email.Setting, org *organization.Organization) *email.Mess
 // Transactional email for user
 func userMessage(settings email.Setting, usr *user.User, org *organization.Organization) *email.Message {
 	m := message(settings, org)
-	m.AddTos(email.Email{usr.Name(), usr.Email})
+	m.AddTos(email.Email{Name: usr.Name(), Address: usr.Email})
 
 	user := map[string]interface{}{
 		"id":        usr.Id(),
@@ -61,7 +61,7 @@ func userMessage(settings email.Setting, usr *user.User, org *organization.Organ
 // Transactional email for subscriber
 func subscriberMessage(settings email.Setting, sub *subscriber.Subscriber, org *organization.Organization) *email.Message {
 	m := message(settings, org)
-	m.AddTos(email.Email{sub.Name(), sub.Email})
+	m.AddTos(email.Email{Name: sub.Name(), Address: sub.Email})
 
 	subscriber := map[string]interface{}{
 		"id":   sub.Id(),

@@ -34,10 +34,10 @@ func GetToken(ctx context.Context, code string) (*Token, error) {
 
 	// try to post to OAuth API
 	res, err := client.Do(tokenReq)
-	defer res.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	// try and extract the json struct
 	token := new(Token)
@@ -68,10 +68,10 @@ func GetTestToken(ctx context.Context, refreshToken string) (*Token, error) {
 
 	// try to post to OAuth API
 	res, err := client.Do(tokenReq)
-	defer res.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	// try and extract the json struct
 	token := new(Token)

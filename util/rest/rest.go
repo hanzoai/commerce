@@ -292,7 +292,8 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	ctx := middleware.GetContext(c)
 
 	// Set timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*20)
+	defer cancel()
 
 	// Create a new entity
 	db := datastore.New(ctx)
@@ -487,7 +488,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 	// open index
 	index, err := search.Open(mixin.DefaultIndex)
 	if err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to open index for '"+r.Kind+"'"), err)
+		http.Fail(c, 500, fmt.Sprintf("Failed to open index for '%s'", r.Kind), err)
 		return
 	}
 
@@ -530,7 +531,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 			break
 		}
 		if err != nil {
-			http.Fail(c, 500, fmt.Sprintf("Failed to search index for '"+r.Kind+"'"), err)
+			http.Fail(c, 500, fmt.Sprintf("Failed to search index for '%s'", r.Kind), err)
 			return
 		}
 
@@ -539,7 +540,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 
 	facets, err := t.Facets()
 	if err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"' options"), err)
+		http.Fail(c, 500, fmt.Sprintf("Failed to get '%s' options", r.Kind), err)
 		return
 	}
 
@@ -561,7 +562,7 @@ func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageSt
 	entities := r.newEntitySlice(len(keys), len(keys))
 	db := entity.Datastore()
 	if err := db.GetMulti(keys, entities); err != nil {
-		log.Error(c, 500, fmt.Sprintf("Failed to get '"+r.Kind+"'"), err)
+		log.Error(c, 500, fmt.Sprintf("Failed to get '%s'", r.Kind), err)
 	}
 
 	if limitStr != "" {
