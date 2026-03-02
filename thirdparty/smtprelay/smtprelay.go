@@ -32,7 +32,8 @@ type Client struct {
 }
 
 func New(ctx context.Context, settings integration.SMTPRelay) *Client {
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	// Create standard HTTP client with timeout
 	client := &http.Client{
