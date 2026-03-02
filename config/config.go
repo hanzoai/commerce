@@ -119,8 +119,9 @@ type Config struct {
 		LiveSecretKey      string
 		LivePublishablKey  string
 
-		RedirectURL string
-		WebhookURL  string
+		RedirectURL   string
+		WebhookURL    string
+		WebhookSecret string
 	}
 
 	Square struct {
