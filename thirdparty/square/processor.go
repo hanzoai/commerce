@@ -12,6 +12,7 @@ import (
 	square "github.com/square/square-go-sdk/v3"
 	"github.com/square/square-go-sdk/v3/core"
 	"github.com/square/square-go-sdk/v3/option"
+	"github.com/square/square-go-sdk/v3/customers/client"
 	"github.com/square/square-go-sdk/v3/payments"
 	"github.com/square/square-go-sdk/v3/refunds"
 
@@ -26,8 +27,9 @@ type SquareProcessor struct {
 	locationID     string
 	webhookSecret  string
 	environment    string // "sandbox" or "production"
-	paymentsClient *payments.Client
-	refundsClient  *refunds.Client
+	paymentsClient  *payments.Client
+	refundsClient   *refunds.Client
+	customersClient *client.Client
 }
 
 // Config holds Square processor configuration
@@ -69,6 +71,7 @@ func (sp *SquareProcessor) initClient() {
 	reqOpts := core.NewRequestOptions(opts...)
 	sp.paymentsClient = payments.NewClient(reqOpts)
 	sp.refundsClient = refunds.NewClient(reqOpts)
+	sp.customersClient = client.NewClient(reqOpts)
 }
 
 // SquareSupportedCurrencies returns currencies Square supports

@@ -134,8 +134,22 @@ func Webhook(c *gin.Context) {
 		if tr := unmarshal(ctx, event, &stripe.Transfer{}); tr != nil {
 			addTask(tasks.TransferSync, ctx, event, org, token, tr)
 		}
+	case "payment_intent.succeeded", "payment_intent.payment_failed",
+		"payment_intent.created", "payment_intent.canceled",
+		"payment_intent.amount_capturable_updated":
+		log.Info("Stripe payment_intent event received: type=%s id=%s", event.Type, event.ID, c)
+
+	case "customer.subscription.created", "customer.subscription.updated",
+		"customer.subscription.deleted", "customer.subscription.trial_will_end":
+		log.Info("Stripe subscription event received: type=%s id=%s", event.Type, event.ID, c)
+
+	case "invoice.created", "invoice.finalized", "invoice.paid",
+		"invoice.payment_failed", "invoice.payment_action_required",
+		"invoice.updated", "invoice.voided":
+		log.Info("Stripe invoice event received: type=%s id=%s", event.Type, event.ID, c)
+
 	case "source.chargeable":
-		// bitcoin payment just became chargable
+		// bitcoin payment just became chargeable
 	case "source.canceled":
 		// bitcoin payment just expired
 	case "ping":
