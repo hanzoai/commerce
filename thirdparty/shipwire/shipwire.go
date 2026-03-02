@@ -29,7 +29,8 @@ type Client struct {
 func New(c *gin.Context, username, password string) *Client {
 	ctx := middleware.GetContext(c)
 
-	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 	client := &http.Client{Timeout: 30 * time.Second}
 

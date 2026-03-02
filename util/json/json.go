@@ -36,7 +36,7 @@ func EncodeBytes(value interface{}) []byte {
 	}
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("%v\n", err)
 	}
 	return b
 }
@@ -48,7 +48,7 @@ func EncodeIndentBytes(value interface{}, prefix, indent string) []byte {
 	b, err = json.MarshalIndent(value, prefix, indent)
 
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("%v\n", err)
 	}
 	return b
 }
