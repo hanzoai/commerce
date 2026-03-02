@@ -8,7 +8,7 @@ import (
 	. "github.com/hanzoai/commerce/models/types/shipping"
 	. "github.com/hanzoai/commerce/models/types/weight"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
