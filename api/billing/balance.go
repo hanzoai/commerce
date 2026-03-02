@@ -20,7 +20,7 @@ func GetBalance(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
 
-	user := strings.TrimSpace(c.Query("user"))
+	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
 		http.Fail(c, 400, "user query parameter is required", nil)
 		return
@@ -61,7 +61,7 @@ func GetBalanceAll(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
 
-	user := strings.TrimSpace(c.Query("user"))
+	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
 		http.Fail(c, 400, "user query parameter is required", nil)
 		return
