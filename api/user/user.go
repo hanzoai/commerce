@@ -37,7 +37,7 @@ func resetPassword(c *gin.Context) {
 	}
 
 	newPassword := rand.ShortPassword()
-	if hash, err := password.Hash(newPassword); err != nil {
+	if hash, err := password.Hash(newPassword); err != nil { // pragma: allowlist secret
 		http.Fail(c, 400, "Password generation failed", err)
 		return
 	} else {
