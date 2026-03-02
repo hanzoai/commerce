@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Key is a type alias for iface.Key
@@ -44,10 +45,7 @@ func NewKey(ctx context.Context, kind, stringID string, intID int64, parent Key)
 		parentKey = ToDatastoreKey(parent)
 	}
 
-	namespace := ""
-	if nsCtx, ok := ctx.(interface{ Namespace() string }); ok {
-		namespace = nsCtx.Namespace()
-	}
+	namespace := nscontext.GetNamespace(ctx)
 
 	return &DatastoreKey{
 		kind:      kind,
@@ -66,10 +64,7 @@ func NewIncompleteKey(ctx context.Context, kind string, parent Key) *DatastoreKe
 		parentKey = ToDatastoreKey(parent)
 	}
 
-	namespace := ""
-	if nsCtx, ok := ctx.(interface{ Namespace() string }); ok {
-		namespace = nsCtx.Namespace()
-	}
+	namespace := nscontext.GetNamespace(ctx)
 
 	return &DatastoreKey{
 		kind:       kind,

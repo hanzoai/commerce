@@ -18,6 +18,9 @@ func WithNamespace(ctx context.Context, namespace string) context.Context {
 
 // GetNamespace returns the namespace from the context, or empty string if not set.
 func GetNamespace(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
 	if ns, ok := ctx.Value(namespaceKey{}).(string); ok {
 		return ns
 	}
@@ -26,6 +29,9 @@ func GetNamespace(ctx context.Context) string {
 
 // HasNamespace returns true if the context has a namespace set.
 func HasNamespace(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
 	_, ok := ctx.Value(namespaceKey{}).(string)
 	return ok
 }

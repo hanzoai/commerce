@@ -27,7 +27,16 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	db := o.Datastore()
 	ctx := db.Context
 
-	channels := 2 + len(o.Items)
+	// Count actual goroutines: org + store + only items that have ProductId or VariantId.
+	// Items with neither don't spawn a goroutine, so we must not over-count channels
+	// or the receive loops will deadlock.
+	itemChannels := 0
+	for _, item := range o.Items {
+		if item.ProductId != "" || item.VariantId != "" {
+			itemChannels++
+		}
+	}
+	channels := 2 + itemChannels
 	errc := make(chan error, channels)
 	keyc := make(chan []iface.Key, channels)
 
