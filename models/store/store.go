@@ -75,7 +75,7 @@ type Store struct {
 	Prefix string `json:"prefix"`
 
 	// Currency for store
-	Currency currency.Type `json:"currency"`
+	Currency currency.Type `json:"currency" orm:"default:usd"`
 
 	// Taxation information
 
