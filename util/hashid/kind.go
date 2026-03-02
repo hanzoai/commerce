@@ -66,8 +66,12 @@ var kinds = map[string]int{
 	"disclosure":       101,
 	"movie":            200,
 	"watchlist":        201,
-	"meter":            202,
-	"credit-grant":     203,
+	"meter":                 202,
+	"credit-grant":          203,
+	"meter-event":           204,
+	"billing-pricing-rule":  205,
+	"billing-event":         206,
+	"billing-invoice":       207,
 }
 
 var kindsReversed = make(map[int]string)

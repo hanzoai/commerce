@@ -236,8 +236,19 @@ func getActiveGrants(db *datastore.Datastore, userId string) ([]*creditgrant.Cre
 		Filter("UserId=", userId).
 		Filter("Voided=", false)
 
-	if _, err := q.GetAll(&grants); err != nil {
+	keys, err := q.GetAll(&grants)
+	if err != nil {
 		return nil, err
+	}
+
+	// Reinitialize each loaded grant so it can be updated later.
+	// Raw GetAll doesn't set b.ds / b.Model.db — without Init+SetKey,
+	// calling Update() will panic (m.db == nil when rebuilding the key).
+	for i, g := range grants {
+		g.Init(db)
+		if i < len(keys) {
+			g.SetKey(keys[i])
+		}
 	}
 
 	// Filter to active grants only
