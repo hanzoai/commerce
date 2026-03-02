@@ -355,6 +355,16 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		return q.couponFromId(id, dst)
 	case "order":
 		return q.orderFromId(id, dst)
+	case "affiliate", "cart", "discount", "subscription", "referral", "submission",
+		"subscriber", "webhook", "meter", "credit-grant", "token", "payment",
+		"transaction", "oauthtoken", "app", "wallet", "blockaddress", "blocktransaction",
+		"tokentransaction", "paymentmethod", "fee", "transfer", "reversal", "partner",
+		"referralprogram", "review", "return", "note", "bundle", "campaign",
+		"funnel", "deploy", "adcampaign", "adconfig", "adset", "ad",
+		"copy", "media", "block", "taxrates", "shippingrates", "aggregate":
+		// These kinds are always identified by hashid-encoded keys only.
+		// If the key decode already failed, return not-found rather than error.
+		return nil, false, nil
 	default:
 		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'\nDecode error: '%s'", q.kind, err))
 	}

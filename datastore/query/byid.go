@@ -16,7 +16,8 @@ var newKeyFromInt = key.NewFromInt
 func (q *Query) couponFromId(id string, dst interface{}) (iface.Key, bool, error) {
 	code := strings.ToUpper(id)
 
-	k, ok, err := q.Filter("Code=", code).First(dst)
+	// The Coupon model stores Code in field Code_ (serialized as "code_" by marshalForDB).
+	k, ok, err := q.Filter("Code_=", code).First(dst)
 	if ok {
 		return k, true, nil
 	}
