@@ -275,7 +275,7 @@ var _ = Describe("middleware/iammiddleware", func() {
 			Expect(activeOrg).NotTo(BeEmpty())
 		})
 
-		It("should not abort when Owner does not match any organization", func() {
+		It("should auto-create organization when Owner does not match any existing org", func() {
 			claims := makeAdminClaims()
 			claims.Owner = "nonexistent-org"
 			token := signToken(claims)
@@ -287,11 +287,15 @@ var _ = Describe("middleware/iammiddleware", func() {
 			// IAM auth still succeeded
 			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
 
-			// But no org-specific permissions were set by IAM middleware
+			// IAM is the source of truth — org is auto-created from the IAM claim
+			orgVal, orgExists := cl.Context.Get("organization")
+			Expect(orgExists).To(BeTrue())
+			org := orgVal.(*organization.Organization)
+			Expect(org.Name).To(Equal("nonexistent-org"))
+
+			// Permissions are set based on IAM roles
 			_, permExists := cl.Context.Get("permissions")
-			// Permissions should NOT be set by IAM middleware when org lookup fails
-			// (the default from gincontext.SetDefaults does not set permissions)
-			Expect(permExists).To(BeFalse())
+			Expect(permExists).To(BeTrue())
 		})
 
 		It("should not abort when Owner claim is empty", func() {
