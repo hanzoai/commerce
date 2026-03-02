@@ -50,6 +50,7 @@ func Deposit(c *gin.Context) {
 		return
 	}
 
+	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
 		http.Fail(c, 400, "user is required", nil)
 		return
@@ -128,6 +129,7 @@ func GrantStarterCredit(c *gin.Context) {
 		return
 	}
 
+	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
 		http.Fail(c, 400, "user is required", nil)
 		return
