@@ -539,11 +539,11 @@ var _ = Describe("billing", func() {
 
 			Expect(createRes.Id).NotTo(BeEmpty())
 
-			// Delete it
+			// Delete it (handler returns 200)
 			deleteRes := &map[string]interface{}{}
-			cl.Delete("/billing/pricing-rules/" + createRes.Id)
+			cl.Delete("/billing/pricing-rules/"+createRes.Id, deleteRes, 200)
 
-			_ = deleteRes
+			Expect((*deleteRes)["deleted"]).To(Equal(true))
 		})
 
 		It("Should fail to delete non-existent rule", func() {

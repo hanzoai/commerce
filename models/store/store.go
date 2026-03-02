@@ -110,8 +110,13 @@ func (s *Store) Defaults() {
 }
 
 func (s *Store) Load(ps []datastore.Property) (err error) {
-	// Ensure we're initialized
-	s.Defaults()
+	// Apply defaults only when loading actual properties (appengine path).
+	// When ps is nil (SQLite callPostLoad hook), the struct was already
+	// populated by unmarshalForDB — calling Defaults() here would overwrite
+	// a stored empty Currency with "usd", masking the org-level currency.
+	if ps != nil {
+		s.Defaults()
+	}
 
 	// Load supported properties
 	if err = datastore.LoadStruct(s, ps); err != nil {
