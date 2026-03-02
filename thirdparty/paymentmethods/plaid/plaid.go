@@ -10,7 +10,8 @@ import (
 
 func New(ctx context.Context, client_id, secret, pub_key string, env Environment) *Client {
 	// Set deadline
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	// Set HTTP Client
 	httpClient := &http.Client{Timeout: 55 * time.Second}

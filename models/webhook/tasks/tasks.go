@@ -48,7 +48,8 @@ func (c *Client) Post(url string, data interface{}) error {
 
 func createClient(ctx context.Context) *Client {
 	// Set timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*20)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*20)
+	defer cancel()
 
 	client := &http.Client{
 		Timeout: 20 * time.Second,

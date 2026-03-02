@@ -99,7 +99,8 @@ func (c *Client) Send(message *email.Message) error {
 
 func New(c context.Context, in integration.Mandrill) *Client {
 	// Set deadline
-	c, _ = context.WithTimeout(c, time.Second*55)
+	c, cancel := context.WithTimeout(c, time.Second*55)
+	defer cancel()
 
 	// Create standard HTTP client with timeout
 	httpClient := &http.Client{

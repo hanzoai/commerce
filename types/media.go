@@ -27,7 +27,7 @@ type Media struct {
 }
 
 func (i Media) Dimensions() string {
-	return fmt.Sprintf("%sx%s", i.X, i.Y)
+	return fmt.Sprintf("%dx%d", i.X, i.Y)
 }
 
 func (i Media) Validate(req *http.Request, errs binding.Errors) binding.Errors {
