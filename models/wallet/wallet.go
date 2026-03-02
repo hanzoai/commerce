@@ -11,7 +11,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
-	"github.com/hanzoai/commerce/util/hashid"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/orm"
 )
 
@@ -100,14 +100,8 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 	ba.Type = typ
 	ba.WalletId = w.Id()
 
-	ns, err := hashid.GetNamespace(w.Datastore().Context, w.Id())
-	if err != nil {
-		log.Warn("Could not determine namespace, probably '': %v", err, w.Context())
-	}
-
-	ba.WalletNamespace = ns
-	err = ba.Create()
-	if err != nil {
+	ba.WalletNamespace = nscontext.GetNamespace(w.Datastore().Context)
+	if err := ba.Create(); err != nil {
 		log.Error("Could not create BlockAddress: %v", err, w.Context())
 	}
 
@@ -119,7 +113,7 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		}
 	}
 
-	return &w.Accounts[len(w.Accounts)-1], err
+	return &w.Accounts[len(w.Accounts)-1], nil
 }
 
 func (w *Wallet) GetAccountByName(name string) (*Account, bool) {

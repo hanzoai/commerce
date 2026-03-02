@@ -46,6 +46,16 @@ func (b *Model[T]) self() *T {
 	).UnsafePointer())
 }
 
+// Id returns the hashid-encoded entity ID.
+// Overrides orm.Model[T].Id() to ensure hashid encoding even before Put().
+func (b *Model[T]) Id() string {
+	b.ensureKey()
+	if b.Model.Id_ == "" {
+		b.Model.Id() // orm fallback for uninitialized entities (no datastore)
+	}
+	return b.Model.Id_
+}
+
 // --- Initialization ---
 
 // Init wires the bridge to a commerce datastore.
@@ -136,6 +146,9 @@ func (b *Model[T]) updateId() {
 	dsKey := OrmKeyToDS(k)
 	if dsKey == nil {
 		return
+	}
+	if dsKey.Kind() == "" {
+		return // guard: empty-kind key can't be hashid-encoded
 	}
 	encoded := hashid.EncodeKey(b.Context(), dsKey)
 	if encoded != "" {
