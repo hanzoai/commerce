@@ -104,7 +104,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 			return
 		}
 
-		// Service token: shared secret for service-to-service calls (e.g., bot-gateway → commerce).
+		// Service token: shared secret for service-to-service calls (e.g., cloud-api → commerce).
 		// Set COMMERCE_SERVICE_TOKEN env var on both the caller and Commerce.
 		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
 			header := c.GetHeader("Authorization")
@@ -112,7 +112,22 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				ctx := GetContext(c)
 				db := datastore.New(ctx)
 				org := organization.New(db)
-				if ok, _ := org.Query().Get(); ok {
+
+				// Resolve org from X-Hanzo-Org header, COMMERCE_SERVICE_ORG env, or default "hanzo".
+				orgName := c.GetHeader("X-Hanzo-Org")
+				if orgName == "" {
+					orgName = os.Getenv("COMMERCE_SERVICE_ORG")
+				}
+				if orgName == "" {
+					orgName = "hanzo"
+				}
+				org.Name = orgName
+				org.Enabled = true
+
+				// GetOrCreate: find existing org by name or create from IAM-derived context.
+				if err := org.GetOrCreate("Name=", orgName); err != nil {
+					log.Warn("Service token org resolve/create for '%s' failed: %v", orgName, err)
+				} else {
 					org.Live = true
 					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
 					c.Set("organization", org)
