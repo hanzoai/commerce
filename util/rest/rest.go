@@ -295,8 +295,10 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 
 	// Wire up mixin.BaseModel if the entity uses the legacy embedding.
 	// Model[T]-based models are wired via Init() instead.
+	// Note: embedded mixin.BaseModel fields are named "BaseModel" in Go reflection.
 	val := reflect.Indirect(reflect.ValueOf(entity))
-	if field := val.FieldByName("Model"); field.IsValid() && field.Type() == reflect.TypeOf(mixin.BaseModel{}) {
+	baseModelType := reflect.TypeOf(mixin.BaseModel{})
+	if field := val.FieldByName("BaseModel"); field.IsValid() && field.Type() == baseModelType {
 		model := mixin.BaseModel{Db: db, Entity: entity}
 
 		// Disable Put/Delete if in test mode
