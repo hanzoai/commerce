@@ -179,9 +179,10 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Card tokenization — S2S (no provider SDK on frontend)
 	user.POST("/card/tokenize", TokenizeCard)
 
-	// Plans (public catalog — no writes)
-	user.GET("/plans", ListPlans)
-	user.GET("/plans/:id", GetPlan)
+	// Plans (public catalog — cacheable, no writes).
+	// CF caches for 1 hour; plans rarely change.
+	user.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
+	user.GET("/plans/:id", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), GetPlan)
 
 	// Spend alerts (user-scoped CRUD)
 	user.GET("/spend-alerts", ListSpendAlerts)
