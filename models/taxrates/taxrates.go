@@ -41,7 +41,7 @@ func (t TaxRates) Match(ctr, st, ct, pc string, c currency.Cents) (*GeoRate, int
 		return &t.GeoRates[i], level, i
 	}
 
-	return nil, level, i
+	return nil, -1, i
 }
 
 func New(db *datastore.Datastore) *TaxRates {

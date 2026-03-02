@@ -530,24 +530,24 @@ func (o *Order) GetItemEntities() error {
 
 	log.Debug("Getting underlying entities for: %v", json.Encode(o.Items))
 
-	nItems := len(o.Items)
-
-	keys := make([]datastore.Key, nItems, nItems)
-	vals := make([]interface{}, nItems, nItems)
-
-	for i := 0; i < nItems; i++ {
+	for i := 0; i < len(o.Items); i++ {
 		key, dst, err := o.Items[i].Entity(db)
 		if err != nil {
 			log.Error("Failed to get entity for %#v: %v", o.Items[i], err, ctx)
 			return err
 		}
-		keys[i] = key
+		if key == nil || dst == nil {
+			continue
+		}
 		log.Warn("key %v", key)
-		vals[i] = dst
 		log.Warn("dst %v", json.Encode(dst))
+		if err := dst.Get(key); err != nil {
+			log.Error("Failed to get entity for key %v: %v", key, err, ctx)
+			return err
+		}
 	}
 
-	return db.GetMulti(keys, vals)
+	return nil
 }
 
 // Update underlying line item entities using store listings
