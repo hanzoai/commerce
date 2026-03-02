@@ -19,8 +19,6 @@ package db
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"reflect"
 	"unicode"
 )
@@ -150,14 +148,6 @@ func dbMapToStruct(m map[string]json.RawMessage, v reflect.Value) error {
 	}
 
 	t := v.Type()
-
-	if os.Getenv("DB_DEBUG_SERIALIZE") != "" {
-		fmt.Fprintf(os.Stderr, "[dbMapToStruct] type=%s keys=", t.Name())
-		for k := range m {
-			fmt.Fprintf(os.Stderr, "%s ", k)
-		}
-		fmt.Fprintln(os.Stderr)
-	}
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
