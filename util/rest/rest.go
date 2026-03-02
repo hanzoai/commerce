@@ -1,13 +1,11 @@
 package rest
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -290,11 +288,6 @@ func (r Rest) newKind() mixin.Kind {
 // Returns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	ctx := middleware.GetContext(c)
-
-	// Set timeout
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, time.Second*20)
-	defer cancel()
 
 	// Create a new entity
 	db := datastore.New(ctx)
