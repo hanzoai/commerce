@@ -174,6 +174,13 @@ func (b *Model[T]) ensureKey() {
 	if b.ds == nil {
 		return
 	}
+	// Propagate the bridge's Parent to the orm.Model before key allocation.
+	// Without this, orm.Model[T].Key() allocates keys with a nil parent,
+	// causing parent_id to be NULL in the database. Ancestor-based queries
+	// then fail to find these entities.
+	if b.Parent != nil && b.Model.Parent() == nil {
+		b.Model.SetParent(DSKeyToOrm(b.Parent))
+	}
 	if b.Model.Key() == nil {
 		newKey := b.NewKey()
 		b.SetKey(newKey)
