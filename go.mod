@@ -179,4 +179,4 @@ replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
 
-go 1.26.0
+go 1.26
