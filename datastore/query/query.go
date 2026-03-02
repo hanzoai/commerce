@@ -361,7 +361,12 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		"tokentransaction", "paymentmethod", "fee", "transfer", "reversal", "partner",
 		"referralprogram", "review", "return", "note", "bundle", "campaign",
 		"funnel", "deploy", "adcampaign", "adconfig", "adset", "ad",
-		"copy", "media", "block", "taxrates", "shippingrates":
+		"copy", "media", "block", "taxrates", "shippingrates",
+		"billing-pricing-rule", "billing-payout", "billing-event", "billing-invoice",
+		"spend-alert", "bank-transfer-instruction", "payment-intent", "meter-event",
+		"credit-note", "balance-transaction", "customer-balance", "webhook-endpoint",
+		"network-token", "crypto-payment-intent", "usage-watermark", "setup-intent",
+		"refund", "dispute", "crypto-balance":
 		// These kinds are always identified by hashid-encoded keys only.
 		// If the key decode already failed, return not-found rather than error.
 		return nil, false, nil
