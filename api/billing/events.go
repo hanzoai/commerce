@@ -94,7 +94,7 @@ func CreateWebhookEndpoint(c *gin.Context) {
 		http.Fail(c, 500, "failed to generate secret", err)
 		return
 	}
-	secret := "whsec_" + hex.EncodeToString(secretBytes)
+	secret := "whsec_" + hex.EncodeToString(secretBytes) // pragma: allowlist secret
 
 	ep := webhookendpoint.New(db)
 	ep.Url = req.Url
@@ -255,7 +255,7 @@ func webhookEndpointResponse(ep *webhookendpoint.WebhookEndpoint, includeSecret 
 		"created":     ep.Created,
 	}
 	if includeSecret {
-		resp["secret"] = ep.Secret
+		resp["secret"] = ep.Secret // pragma: allowlist secret
 	}
 	if ep.Metadata != nil {
 		resp["metadata"] = ep.Metadata

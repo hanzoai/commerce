@@ -204,13 +204,13 @@ func create(c *gin.Context) {
 		}
 
 		// Password confirm must match
-		if req.Password != req.PasswordConfirm {
+		if req.Password != req.PasswordConfirm { // pragma: allowlist secret
 			http.Fail(c, 400, "Passwords need to match", errors.New("passwords need to match"))
 			return
 		}
 
 		// Hash password
-		if hash, err := password.Hash(req.Password); err != nil {
+		if hash, err := password.Hash(req.Password); err != nil { // pragma: allowlist secret
 			http.Fail(c, 400, "Failed to hash user password", err)
 		} else {
 			usr.PasswordHash = hash
