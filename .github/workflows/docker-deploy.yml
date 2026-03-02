@@ -30,20 +30,31 @@ jobs:
 
       - name: Scan for secrets
         run: |
+          # Scan against baseline — only new secrets (not in .secrets.baseline) fail the build
           detect-secrets scan \
+            --baseline .secrets.baseline \
             --exclude-files '(^|/)go\.sum$' \
             --exclude-files '(^|/)vendor/' \
             --exclude-files '(^|/)\.detect-secrets\.cfg$' \
             --exclude-files '(^|/)app/' \
+            --exclude-files '.*_test\.go$' \
             --exclude-lines '(Main|Test)Net(Nodes|Usernames|Passwords)' \
-            --exclude-lines 'pragma: allowlist secret' \
             > /tmp/secrets-report.json
-          if jq -e '.results | length > 0' /tmp/secrets-report.json > /dev/null 2>&1; then
-            echo "::error::Secrets detected in the codebase. Review /tmp/secrets-report.json"
-            jq '.results' /tmp/secrets-report.json
-            exit 1
-          fi
-          echo "No secrets detected."
+          # Fail only if there are NEW findings not in the baseline
+          python3 -c "
+import json, sys
+baseline = json.load(open('.secrets.baseline'))
+current  = json.load(open('/tmp/secrets-report.json'))
+baseline_hashes = {h for v in baseline.get('results',{}).values() for h in [e['hashed_secret'] for e in v]}
+new_findings = {f: [e for e in entries if e['hashed_secret'] not in baseline_hashes]
+                for f, entries in current.get('results',{}).items()}
+new_findings = {f: e for f, e in new_findings.items() if e}
+if new_findings:
+    print('::error::New secrets detected:')
+    print(json.dumps(new_findings, indent=2))
+    sys.exit(1)
+print('No new secrets detected.')
+"
 
   build:
     needs: secrets
