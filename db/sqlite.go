@@ -325,7 +325,11 @@ func (db *SQLiteDB) Get(ctx context.Context, key Key, dst any) error {
 		return err
 	}
 
-	return unmarshalForDB(data, dst)
+	if err := unmarshalForDB(data, dst); err != nil {
+		return err
+	}
+	callPostLoad(reflect.ValueOf(dst))
+	return nil
 }
 
 // Put stores an entity
@@ -457,6 +461,7 @@ func (db *SQLiteDB) GetMulti(ctx context.Context, keys []Key, dst any) error {
 		if err := unmarshalForDB(data, elem.Interface()); err != nil {
 			return err
 		}
+		callPostLoad(elem)
 
 		if inPlace {
 			if elemIsPtr {
@@ -800,7 +805,11 @@ func (t *sqliteTransaction) Get(key Key, dst any) error {
 		return err
 	}
 
-	return unmarshalForDB(data, dst)
+	if err := unmarshalForDB(data, dst); err != nil {
+		return err
+	}
+	callPostLoad(reflect.ValueOf(dst))
+	return nil
 }
 
 func (t *sqliteTransaction) Put(key Key, src any) (Key, error) {
