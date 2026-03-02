@@ -37,7 +37,8 @@ type Client struct {
 func New(ctx context.Context, loginId string, transactionKey string, key string, test bool) *Client {
 
 	// Set deadline
-	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, time.Second*55)
 	defer cancel()
 
 	// Set HTTP Client
