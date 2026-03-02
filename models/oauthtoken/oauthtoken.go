@@ -36,11 +36,15 @@ type Token struct {
 }
 
 func (t *Token) Defaults() {
-	t.Claims = Claims{
-		Type: Refresh,
-		Claims: jwt.Claims{
-			IssuedAt: time.Now().Unix(),
-		},
+	// Only set defaults if Claims.Type is not already set (e.g. after DB load).
+	// Calling Defaults() unconditionally would overwrite the loaded token type.
+	if t.Claims.Type == "" {
+		t.Claims = Claims{
+			Type: Refresh,
+			Claims: jwt.Claims{
+				IssuedAt: time.Now().Unix(),
+			},
+		}
 	}
 }
 
