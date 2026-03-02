@@ -25,7 +25,8 @@ func New(c *gin.Context) *Client {
 	ctx := middleware.GetContext(c)
 
 	// Set deadline
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	client := &http.Client{Timeout: 55 * time.Second}
 
