@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	mathRand "math/rand"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/ripemd160"
@@ -263,7 +264,7 @@ func CreateRawTransaction(inputs []Input, outputs []Output) ([]byte, error) {
 	}
 	inCount, err := hex.DecodeString(in)
 	if err != nil {
-		log.Error("CreateRawTransaction: String representation of length: %v", string(len(inputs)))
+		log.Error("CreateRawTransaction: String representation of length: %v", strconv.Itoa(len(inputs)))
 		log.Error("CreateRawTransaction: Could not decode hash %s, %v", in, err)
 		return nil, err
 	}

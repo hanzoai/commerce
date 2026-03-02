@@ -14,7 +14,7 @@ type Error struct {
 type ContactResponse struct {
 	NewCount            int      `json:"new_count"`
 	UpdatedCounti       int      `json:"unmodified_count"`
-	ErrorCount          int      `json:"error_count'`
+	ErrorCount          int      `json:"error_count"`
 	ErrorIndices        []int    `json:"error_indices"`
 	Errors              []Error  `json:"errors"`
 	PersistedRecipients []string `json:"persisted_recipients"`

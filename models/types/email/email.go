@@ -59,14 +59,14 @@ type Settings struct {
 	} `json:"order"`
 
 	User struct {
-		Welcome           Email `json:"welcome`
+		Welcome           Email `json:"welcome"`
 		EmailConfirmation Email `json:"emailConfirmation"`
 		EmailConfirmed    Email `json:"emailConfirmed"`
 		PasswordReset     Email `json:"passwordReset"`
 	} `json:"user"`
 
 	Subscriber struct {
-		Welcome Email `json:"welcome`
+		Welcome Email `json:"welcome"`
 	} `json:"subscriber"`
 }
 
