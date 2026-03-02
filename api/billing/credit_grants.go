@@ -240,6 +240,14 @@ func getActiveGrants(db *datastore.Datastore, userId string) ([]*creditgrant.Cre
 		return nil, err
 	}
 
+	// Wire up loaded grants for write operations.
+	// GetAll populates struct fields but does not initialize the ORM bridge,
+	// so Update/Put/Delete would panic without this.
+	for _, g := range grants {
+		g.Init(db)
+		g.Parent = rootKey
+	}
+
 	// Filter to active grants only
 	active := make([]*creditgrant.CreditGrant, 0, len(grants))
 	for _, g := range grants {
