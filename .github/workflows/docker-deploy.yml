@@ -17,36 +17,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          fetch-depth: 0
 
-      - name: Install detect-secrets
+      - name: Install gitleaks
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install detect-secrets==1.5.0
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar -xz -C /usr/local/bin gitleaks
 
       - name: Scan for secrets
-        run: |
-          detect-secrets scan \
-            --exclude-files '(^|/)go\.sum$' \
-            --exclude-files '(^|/)vendor/' \
-            --exclude-files '(^|/)\.detect-secrets\.cfg$' \
-            --exclude-files '(^|/)app/' \
-            --exclude-files '.*_test\.go$' \
-            --exclude-lines '(Main|Test)Net(Nodes|Usernames|Passwords)' \
-            > /tmp/scan.json
-          BASELINE_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' .secrets.baseline | sort -u)
-          NEW_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' /tmp/scan.json | sort -u)
-          NEW_SECRETS=$(comm -13 <(echo "$BASELINE_HASHES") <(echo "$NEW_HASHES"))
-          if [ -n "$NEW_SECRETS" ]; then
-            echo "::error::New secrets detected (not in baseline):"
-            echo "$NEW_SECRETS"
-            exit 1
-          fi
-          echo "No new secrets detected."
+        run: gitleaks detect --source . --no-git --config .gitleaks.toml --redact
 
   build:
     needs: secrets
