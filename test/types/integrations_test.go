@@ -6,7 +6,7 @@ import (
 	"github.com/hanzoai/commerce/types/integration"
 	// "github.com/hanzoai/commerce/log"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
