@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -21,10 +22,20 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
+// KVCache is the minimal interface required for org-lookup caching.
+// *infra.KVClient satisfies this interface.
+type KVCache interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value string, ttl time.Duration) error
+	Delete(ctx context.Context, keys ...string) error
+}
+
 var (
 	iamClient   *auth.IAMClient
 	initAttempt bool // true once Init has been called, regardless of success
 	mu          sync.RWMutex
+
+	kvCache KVCache // optional KV client for org-lookup caching
 )
 
 // Init initializes the IAM middleware with the given configuration.
@@ -41,6 +52,20 @@ func Init(cfg *auth.IAMConfig) error {
 	}
 	iamClient = client
 	return nil
+}
+
+// InitKV wires a KV client for caching IAM org lookups.
+// Call from app.Bootstrap() after infra is connected.
+// Passing nil is safe and disables KV caching.
+func InitKV(kv KVCache) {
+	mu.Lock()
+	defer mu.Unlock()
+	kvCache = kv
+}
+
+// orgCacheKey returns the KV key for an IAM owner → org ID mapping.
+func orgCacheKey(owner string) string {
+	return "iam:org_by_name:" + owner
 }
 
 // IAMTokenRequired validates hanzo.id JWT tokens via JWKS.
@@ -113,14 +138,39 @@ func IAMTokenRequired() gin.HandlerFunc {
 			db := datastore.New(ctx)
 			org := organization.New(db)
 
-			// Look up org by name (the IAM "owner" field is the org name)
-			ok, lookupErr := org.Query().Filter("Name=", claims.Owner).Get()
-			if lookupErr != nil || !ok {
-				log.Warn("IAM token owner '%s' does not match any organization: %v", claims.Owner, lookupErr)
-				// Do not abort -- the user is authenticated but the org
-				// lookup failed. Downstream handlers will see IAM claims
-				// but will lack org scoping.
-			} else {
+			var found bool
+
+			// Fast path: KV cache maps owner name → org ID (5-minute TTL).
+			mu.RLock()
+			kv := kvCache
+			mu.RUnlock()
+
+			if kv != nil {
+				if cachedID, err := kv.Get(ctx, orgCacheKey(claims.Owner)); err == nil && cachedID != "" {
+					if lookupErr := org.GetById(cachedID); lookupErr == nil {
+						found = true
+					}
+				}
+			}
+
+			// Slow path: query by Name, then populate cache.
+			if !found {
+				ok, lookupErr := org.Query().Filter("Name=", claims.Owner).Get()
+				if lookupErr != nil || !ok {
+					log.Warn("IAM token owner '%s' does not match any organization: %v", claims.Owner, lookupErr)
+					// Do not abort -- the user is authenticated but the org
+					// lookup failed. Downstream handlers will see IAM claims
+					// but will lack org scoping.
+				} else {
+					found = true
+					// Populate KV cache for next request.
+					if kv != nil {
+						_ = kv.Set(ctx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
+					}
+				}
+			}
+
+			if found {
 				// Set live mode based on IAM permissions (same as service token path)
 				perms := iamPermissions(claims)
 				if perms.Has(permission.Live) {
