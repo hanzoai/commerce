@@ -54,7 +54,7 @@ jobs:
 
       - name: Run Ginkgo test suites
         run: |
-          go install github.com/onsi/ginkgo/ginkgo@v1.16.5
-          ginkgo -r --randomize-all-specs --fail-fast --trace \
+          go install github.com/onsi/ginkgo/v2/ginkgo@latest
+          ginkgo -r --randomize-all --fail-fast --trace \
             --skip-package=test-integration \
             test/
