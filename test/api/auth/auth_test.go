@@ -56,13 +56,13 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(ctx)
 
 	usr = user.New(db)
-	usr.Email = "dev@hanzo.ai"
+	usr.Email = "auth-test@hanzo.ai"
 	usr.SetPassword("Z0rd0N")
 	usr.Enabled = true
 	usr.MustCreate()
 
 	usr2 = user.New(db)
-	usr2.Email = "dev@hanzo.ai"
+	usr2.Email = "dev-disabled@hanzo.ai"
 	usr2.SetPassword("ilikedragons")
 	usr2.Enabled = false
 	usr2.MustCreate()
@@ -80,7 +80,7 @@ var _ = Describe("auth", func() {
 	Context("Password Grant JSON", func() {
 		It("Should allow login with password grant", func() {
 			req := authApi.OAuthRequest{
-				Username:  "dev@hanzo.ai",
+				Username:  "auth-test@hanzo.ai",
 				Password:  "Z0rd0N",
 				ClientId:  org.Name,
 				GrantType: "password",
@@ -127,7 +127,7 @@ var _ = Describe("auth", func() {
 	Context("Password Grant Form", func() {
 		It("Should allow login with password grant", func() {
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"Z0rd0N"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
@@ -169,7 +169,7 @@ var _ = Describe("auth", func() {
 
 		It("Should disallow login with disabled account", func() {
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"dev-disabled@hanzo.ai"},
 				"password":   {"ilikedragon"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
@@ -187,7 +187,7 @@ var _ = Describe("auth", func() {
 
 		It("Should disallow login with wrong password", func() {
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"z3d"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
@@ -223,7 +223,7 @@ var _ = Describe("auth", func() {
 
 		It("Should disallow login with invalid grant", func() {
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"Z0rd0N"},
 				"client_id":  {org.Name},
 				"grant_type": {"not grant"},
@@ -243,7 +243,7 @@ var _ = Describe("auth", func() {
 	Context("Refresh Grant JSON", func() {
 		It("Should allow login with refresh grant", func() {
 			req := authApi.OAuthRequest{
-				Username:  "dev@hanzo.ai",
+				Username:  "auth-test@hanzo.ai",
 				Password:  "Z0rd0N",
 				ClientId:  org.Name,
 				GrantType: "password",
@@ -309,7 +309,7 @@ var _ = Describe("auth", func() {
 	Context("Refresh Grant Form", func() {
 		It("Should allow login with refresh grant", func() {
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"Z0rd0N"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
@@ -386,7 +386,7 @@ var _ = Describe("auth", func() {
 		It("Should deny grants if revoked", func() {
 			var err error
 			data := url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"Z0rd0N"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
@@ -419,7 +419,7 @@ var _ = Describe("auth", func() {
 			Expect(w.Code).To(Equal(403))
 
 			data = url.Values{
-				"username":   {"dev@hanzo.ai"},
+				"username":   {"auth-test@hanzo.ai"},
 				"password":   {"Z0rd0N"},
 				"client_id":  {org.Name},
 				"grant_type": {"password"},
