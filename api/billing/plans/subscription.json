@@ -1,0 +1,132 @@
+[
+  {
+    "id": "developer",
+    "name": "Developer",
+    "description": "Get started for free. Explore the API with generous included credits.",
+    "priceMonthly": 0,
+    "priceAnnual": 0,
+    "category": "personal",
+    "features": [
+      "$5 free credit",
+      "60 requests/min",
+      "100K tokens/min",
+      "Community support",
+      "API access",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 100000,
+      "freeCredit": 5
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "pro",
+    "name": "Pro",
+    "description": "For developers shipping real products. Higher limits and priority support.",
+    "priceMonthly": 49,
+    "priceAnnual": 39,
+    "category": "personal",
+    "popular": true,
+    "features": [
+      "500 requests/min",
+      "1M tokens/min",
+      "Email support",
+      "Analytics dashboard",
+      "Priority inference",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 500,
+      "tokensPerMinute": 1000000
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "team",
+    "name": "Team",
+    "description": "For teams building together. SSO, shared billing, and custom training.",
+    "priceMonthly": 199,
+    "priceAnnual": 159,
+    "category": "team",
+    "features": [
+      "Up to 10 members",
+      "SSO / SAML",
+      "Priority support",
+      "Custom model training",
+      "Shared billing",
+      "Usage analytics",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 2000,
+      "tokensPerMinute": 5000000,
+      "maxMembers": 10
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "enterprise",
+    "name": "Enterprise",
+    "description": "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
+    "priceMonthly": 9999,
+    "priceAnnual": 7999,
+    "category": "enterprise",
+    "features": [
+      "Unlimited members",
+      "99.99% SLA",
+      "Dedicated account manager",
+      "Custom rate limits",
+      "On-premise deployment",
+      "SOC 2 compliance",
+      "Custom model fine-tuning",
+      "Priority inference across all models",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 50000,
+      "tokensPerMinute": 100000000
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "custom",
+    "name": "Custom",
+    "description": "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
+    "priceMonthly": null,
+    "priceAnnual": null,
+    "category": "enterprise",
+    "contactSales": true,
+    "features": [
+      "Everything in Enterprise",
+      "Custom SLA (up to 99.999%)",
+      "Dedicated compute cluster",
+      "Air-gapped / on-prem deployment",
+      "Custom model training & hosting",
+      "White-glove onboarding",
+      "24/7 engineering support",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": null,
+      "tokensPerMinute": null
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  }
+]
