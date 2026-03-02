@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Hanzo Commerce - E-commerce Platform
 # Multi-stage build for minimal production image
 
@@ -7,20 +8,24 @@ FROM golang:1.26-alpine AS builder
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
 
+ARG TARGETARCH
+
 WORKDIR /build
 
 # Copy go mod files first for layer caching
 COPY go.mod go.sum ./
 
 # Download dependencies
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source code
 COPY . .
 
 # Build the binary with CGO for SQLite support
-ARG TARGETARCH
-RUN CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
     -ldflags="-s -w" \
     -o /build/commerce \
     ./cmd/commerce/main.go
