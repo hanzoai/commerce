@@ -55,14 +55,17 @@ var _ = BeforeSuite(func() {
 	// Create organization for tests, apiKey
 	db = datastore.New(ctx)
 
-	usr = user.New(db)
-	usr.Email = "dev@hanzo.ai"
+	// fixtures.Organization(c) already created dev@hanzo.ai via fixtures.User(c).
+	// Retrieve that same memoized entity (same key) and update its password to "Z0rd0N"
+	// so auth tests can log in with it. Using the memoized user ensures MustPut
+	// updates the existing record (not create a new one).
+	usr = fixtures.User(c).(*user.User)
 	usr.SetPassword("Z0rd0N")
 	usr.Enabled = true
-	usr.MustCreate()
+	usr.MustPut()
 
 	usr2 = user.New(db)
-	usr2.Email = "dev@hanzo.ai"
+	usr2.Email = "auth-test-disabled@hanzo.ai"
 	usr2.SetPassword("ilikedragons")
 	usr2.Enabled = false
 	usr2.MustCreate()

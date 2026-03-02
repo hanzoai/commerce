@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
-	// "github.com/hanzoai/commerce/models/namespace"
 	"github.com/hanzoai/commerce/models/blockchains"
+	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/shippingrates"
 	"github.com/hanzoai/commerce/models/store"
@@ -108,6 +108,10 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	// Save org into default namespace
 	org.MustPut()
 
+	// Register namespace mapping so hashid can encode/decode keys for this org.
+	// Must happen before creating any models in the org's namespace (taxrates, etc.)
+	hashid.RegisterNamespace(org.Name, org.Key().IntID())
+
 	// Retrofit existing thing
 	if org.DefaultStore == "" {
 		nsdb := datastore.New(org.Namespaced(org.Context()))
@@ -193,15 +197,6 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	}
 
 	srs.MustUpdate()
-
-	// Save namespace so we can decode keys for this organization later
-	// ns := namespace.New(db)
-	// ns.Name = org.Name
-	// ns.IntId = org.Key().IntID()
-	// err := ns.Put()
-	// if err != nil {
-	// 	log.Warn("Failed to put namespace: %v", err)
-	// }
 
 	// Add org to user and also save
 	usr.Organizations = []string{org.Id()}
