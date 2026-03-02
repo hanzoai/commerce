@@ -3,12 +3,15 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/bundle"
 	"github.com/hanzoai/commerce/models/collection"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/form"
+	"github.com/hanzoai/commerce/models/namespace"
 	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/store"
@@ -23,7 +26,42 @@ import (
 var newNamespace = ""
 
 func setupNamespaceRename(c *gin.Context) []interface{} {
-	panic("Unable to pass configuration info back to migration funcs yet")
+	// TODO: we SHOULD be able to do this
+	q := c.Request.URL.Query()
+	oldns := q.Get("old-namespace")
+	newns := q.Get("new-namespace")
+
+	// Should not need global
+	newNamespace = newns
+
+	db := datastore.New(c)
+
+	// Try to find organization
+	org := new(organization.Organization)
+	ok, err := org.Query().Filter("Name=", oldns).Get()
+	if !ok || err != nil {
+		panic("Unable to find organization")
+	}
+
+	// Update namespace name
+	org.Name = newns
+
+	if err = org.Put(); err != nil {
+		panic(err)
+	}
+
+	// Save new namespace
+	ns := namespace.New(db)
+	ns.Name = newns
+	ns.IntId = org.Key().IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put new namespace: %v", err)
+	}
+
+	// Set namespace to ensure we iterate over old entities
+	c.Set("namespace", oldns)
+	return NoArgs
 }
 
 // Setup migration
