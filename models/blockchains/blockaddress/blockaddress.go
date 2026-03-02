@@ -3,6 +3,7 @@ package blockaddress
 import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/models/blockchains"
@@ -35,7 +36,9 @@ type BlockAddress struct {
 
 func New(db *datastore.Datastore) *BlockAddress {
 	b := new(BlockAddress)
-	nsDb := datastore.New(db.Context)
+	// Embed BlockchainNamespace in the context so SQLite uses it for reads and writes.
+	nsCtx := nscontext.WithNamespace(db.Context, BlockchainNamespace)
+	nsDb := datastore.New(nsCtx)
 	nsDb.SetNamespace(BlockchainNamespace)
 	b.Init(nsDb)
 	return b

@@ -425,8 +425,8 @@ func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner)
 
 func (o Order) NumberFromId() int {
 	ids, err := hashid.Decode(o.Id())
-	if err != nil {
-		panic(err)
+	if err != nil || len(ids) < 2 {
+		return 0
 	}
 	return ids[1]
 }
