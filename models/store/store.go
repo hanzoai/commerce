@@ -107,9 +107,6 @@ type Store struct {
 
 // Defaults sets runtime defaults that cannot be expressed as orm tags.
 func (s *Store) Defaults() {
-	if s.Currency == "" {
-		s.Currency = currency.USD
-	}
 }
 
 func (s *Store) Load(ps []datastore.Property) (err error) {
