@@ -1,12 +1,9 @@
 package ginkgo
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 
 	"github.com/hanzoai/commerce/log"
@@ -14,33 +11,19 @@ import (
 )
 
 func Setup(suiteName string, t *testing.T) {
-	// log.Error("testing.Verbose", testing.Verbose())
 	log.SetVerbose(testing.Verbose())
 	gomega.RegisterFailHandler(ginkgo.Fail)
-
-	// Write XML if on CI
-	xmldir := os.Getenv("CIRCLE_TEST_REPORTS")
-	if xmldir == "" {
-		ginkgo.RunSpecs(t, suiteName)
-	} else {
-		junitReporter := reporters.NewJUnitReporter(filepath.Join(xmldir, "junit.xml"))
-		ginkgo.RunSpecsWithDefaultAndCustomReporters(t, suiteName, []ginkgo.Reporter{junitReporter})
-	}
+	ginkgo.RunSpecs(t, suiteName)
 }
 
 var Retry = retry.Retry
 
 // Declarations for Ginkgo DSL
-type Done ginkgo.Done
-type Benchmarker ginkgo.Benchmarker
-
 var GinkgoWriter = ginkgo.GinkgoWriter
-var GinkgoParallelNode = ginkgo.GinkgoParallelNode
+var GinkgoParallelProcess = ginkgo.GinkgoParallelProcess
 var GinkgoT = ginkgo.GinkgoT
-var CurrentGinkgoTestDescription = ginkgo.CurrentGinkgoTestDescription
+var CurrentSpecReport = ginkgo.CurrentSpecReport
 var RunSpecs = ginkgo.RunSpecs
-var RunSpecsWithDefaultAndCustomReporters = ginkgo.RunSpecsWithDefaultAndCustomReporters
-var RunSpecsWithCustomReporters = ginkgo.RunSpecsWithCustomReporters
 var Fail = ginkgo.Fail
 var GinkgoRecover = ginkgo.GinkgoRecover
 var Describe = ginkgo.Describe
@@ -56,10 +39,6 @@ var FIt = ginkgo.FIt
 var PIt = ginkgo.PIt
 var XIt = ginkgo.XIt
 var By = ginkgo.By
-var Measure = ginkgo.Measure
-var FMeasure = ginkgo.FMeasure
-var PMeasure = ginkgo.PMeasure
-var XMeasure = ginkgo.XMeasure
 
 var BeforeSuite = ginkgo.BeforeSuite
 var AfterSuite = ginkgo.AfterSuite
@@ -122,15 +101,15 @@ var BeAssignableToTypeOf = gomega.BeAssignableToTypeOf
 var Panic = gomega.Panic
 
 // Helpers for nested Expect calls
-func Expect1(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+func Expect1(actual interface{}, extra ...interface{}) gomega.Assertion {
 	return ExpectWithOffset(1, actual, extra...)
 }
 
-func Expect2(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+func Expect2(actual interface{}, extra ...interface{}) gomega.Assertion {
 	return ExpectWithOffset(2, actual, extra...)
 }
 
-func Expect3(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+func Expect3(actual interface{}, extra ...interface{}) gomega.Assertion {
 	return ExpectWithOffset(3, actual, extra...)
 }
 
