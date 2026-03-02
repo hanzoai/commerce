@@ -1,6 +1,7 @@
 package test
 
 import (
+	"github.com/hanzoai/commerce/models/paymentmethod"
 	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -655,6 +656,14 @@ var _ = Describe("billing", func() {
 		})
 
 		It("Should grant starter credit", func() {
+			// Create payment method directly (required for starter credit eligibility).
+			// Bypasses API to avoid auto-grant goroutine race condition.
+			pm := paymentmethod.New(db)
+			pm.CustomerId = "hanzo/charlie"
+			pm.UserId = "hanzo/charlie"
+			pm.Type = "card"
+			pm.MustCreate()
+
 			req := map[string]interface{}{
 				"user": "hanzo/charlie",
 			}
