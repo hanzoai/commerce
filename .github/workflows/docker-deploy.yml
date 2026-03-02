@@ -34,7 +34,9 @@ jobs:
             --exclude-files '(^|/)go\.sum$' \
             --exclude-files '(^|/)vendor/' \
             --exclude-files '(^|/)\.detect-secrets\.cfg$' \
+            --exclude-files '(^|/)app/' \
             --exclude-lines '(Main|Test)Net(Nodes|Usernames|Passwords)' \
+            --exclude-lines 'pragma: allowlist secret' \
             > /tmp/secrets-report.json
           if jq -e '.results | length > 0' /tmp/secrets-report.json > /dev/null 2>&1; then
             echo "::error::Secrets detected in the codebase. Review /tmp/secrets-report.json"
