@@ -1,8 +1,8 @@
 /**
  * IAM auth module for Hanzo Commerce.
  *
- * Handles OIDC/PKCE login via Casdoor (hanzo.id) and token storage.
- * Uses Casdoor-specific endpoints (proven compatible with hanzo.id).
+ * Handles OIDC/PKCE login via Hanzo IAM (hanzo.id) and token storage.
+ * Uses IAM-specific endpoints.
  * Self-contained -- no external auth package dependency.
  *
  * This module uses browser APIs (sessionStorage, window, crypto.subtle).
@@ -91,7 +91,7 @@ export function getCurrentUser(): IamUser | null {
 
 // ── Login flow ──────────────────────────────────────────────────────────────
 
-/** Start OIDC/PKCE login flow -- redirects to Casdoor login page. */
+/** Start OIDC/PKCE login flow -- redirects to IAM login page. */
 export async function startLogin(config: IamAuthConfig): Promise<void> {
   const state = generateRandom(32)
   const codeVerifier = generateRandom(64)
@@ -112,7 +112,7 @@ export async function startLogin(config: IamAuthConfig): Promise<void> {
     code_challenge_method: 'S256',
   })
 
-  // Use Casdoor's login authorize endpoint (shows the login form)
+  // Use IAM's login authorize endpoint (shows the login form)
   window.location.href = `${base}/login/oauth/authorize?${params}`
 }
 
@@ -155,7 +155,7 @@ export async function handleCallback(config: IamAuthConfig): Promise<IamUser | n
   sessionStorage.removeItem(KEY_STATE)
   sessionStorage.removeItem(KEY_CODE_VERIFIER)
 
-  // Exchange code for tokens via Casdoor token endpoint
+  // Exchange code for tokens via IAM token endpoint
   const base = config.iamServerUrl.replace(/\/+$/, '')
   const tokenRes = await fetch(`${base}/api/login/oauth/access_token`, {
     method: 'POST',
