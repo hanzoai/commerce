@@ -75,7 +75,7 @@ type Store struct {
 	Prefix string `json:"prefix"`
 
 	// Currency for store
-	Currency currency.Type `json:"currency" orm:"default:usd"`
+	Currency currency.Type `json:"currency"`
 
 	// Taxation information
 
@@ -107,6 +107,9 @@ type Store struct {
 
 // Defaults sets runtime defaults that cannot be expressed as orm tags.
 func (s *Store) Defaults() {
+	if s.Currency == "" {
+		s.Currency = currency.USD
+	}
 }
 
 func (s *Store) Load(ps []datastore.Property) (err error) {
