@@ -589,6 +589,11 @@ func (app *App) Bootstrap() error {
 		app.Router.Use(gin.Logger())
 	}
 
+	// Wire KV client into IAM middleware for org-lookup caching (if KV is enabled).
+	if kv, err := app.Infra.KV(); err == nil {
+		iammiddleware.InitKV(kv)
+	}
+
 	// Initialize IAM middleware for hanzo.id JWT validation
 	if app.config.IAM.Enabled && app.config.IAM.Issuer != "" && app.config.IAM.ClientID != "" {
 		iamCfg := &auth.IAMConfig{
@@ -637,13 +642,20 @@ func (app *App) setupRoutes() {
 			api.Use(iammiddleware.IAMTokenRequired())
 		}
 
-		// Inject KMS and Events into gin context for handlers
+		// Default cache policy: private, no-store for all API routes.
+		// Individual route groups or handlers may override with CachePublic().
+		api.Use(middleware.CachePrivate())
+
+		// Inject KMS, Events, and KV into gin context for handlers.
 		api.Use(func(c *gin.Context) {
 			if app.KMS != nil {
 				c.Set("kms", app.KMS)
 			}
 			if app.Events != nil {
 				c.Set("events", app.Events)
+			}
+			if kv, err := app.Infra.KV(); err == nil {
+				c.Set("kv", kv)
 			}
 			c.Next()
 		})
