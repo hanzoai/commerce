@@ -131,9 +131,9 @@ type User struct {
 	Test bool `json:"test"`
 }
 
-// Total implements referrer.Referrent.
+// Total implements referrer.Referrent. Users have no monetary total by themselves.
 func (u *User) Total() currency.Cents {
-	panic("unimplemented")
+	return currency.Cents(0)
 }
 
 func (u *User) Load(ps []datastore.Property) (err error) {
