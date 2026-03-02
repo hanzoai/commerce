@@ -12,7 +12,7 @@ import (
 var _ = Describe("models/types/country", func() {
 	Context("Countries", func() {
 		It("should be populated", func() {
-			Expect(len(Countries)).To(Equal(247))
+			Expect(len(Countries)).To(Equal(249))
 		})
 
 		It("should be sorted", func() {
