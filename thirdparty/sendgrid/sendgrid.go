@@ -19,7 +19,8 @@ type API struct {
 
 func New(c context.Context, settings integration.SendGrid) *API {
 	// Set deadline
-	c, _ = context.WithTimeout(c, time.Second*55)
+	c, cancel := context.WithTimeout(c, time.Second*55)
+	defer cancel()
 
 	// Create standard HTTP client with timeout
 	httpClient := &http.Client{

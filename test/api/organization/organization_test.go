@@ -184,10 +184,10 @@ var _ = Describe("organization", func() {
 			cl.Get("/organization/publicwithdrawableaccounts", &resRetrieve)
 			Expect(len(resRetrieve.Accounts)).To(Equal(6))
 			// It starts with 2 accounts
-			Expect(resRetrieve.Accounts[2]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-4", blockchains.EthereumType, currency.ETH}))
-			Expect(resRetrieve.Accounts[3]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-5", blockchains.EthereumRopstenType, currency.ETH}))
-			Expect(resRetrieve.Accounts[4]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-6", blockchains.BitcoinType, currency.BTC}))
-			Expect(resRetrieve.Accounts[5]).To(Equal(newroutes.AccountNameRes{"test-wallet-account-7", blockchains.BitcoinTestnetType, currency.BTC}))
+			Expect(resRetrieve.Accounts[2]).To(Equal(newroutes.AccountNameRes{Name: "test-wallet-account-4", Type: blockchains.EthereumType, Currency: currency.ETH}))
+			Expect(resRetrieve.Accounts[3]).To(Equal(newroutes.AccountNameRes{Name: "test-wallet-account-5", Type: blockchains.EthereumRopstenType, Currency: currency.ETH}))
+			Expect(resRetrieve.Accounts[4]).To(Equal(newroutes.AccountNameRes{Name: "test-wallet-account-6", Type: blockchains.BitcoinType, Currency: currency.BTC}))
+			Expect(resRetrieve.Accounts[5]).To(Equal(newroutes.AccountNameRes{Name: "test-wallet-account-7", Type: blockchains.BitcoinTestnetType, Currency: currency.BTC}))
 		})
 		/*It("Should make ordered payment", func() {
 			req := `{

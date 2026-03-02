@@ -58,7 +58,8 @@ var IdMismatch = errors.New("Ids do not match!")
 // configuration is set to run in HTTP POST mode.
 func New(ctx context.Context, host, username, password string) BitcoinClient {
 	// Update timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	httpClient := &http.Client{Timeout: 55 * time.Second}
 
