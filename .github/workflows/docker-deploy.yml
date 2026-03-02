@@ -38,8 +38,8 @@ jobs:
             --exclude-files '.*_test\.go$' \
             --exclude-lines '(Main|Test)Net(Nodes|Usernames|Passwords)' \
             > /tmp/scan.json
-          BASELINE_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' .secrets.baseline | sort)
-          NEW_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' /tmp/scan.json | sort)
+          BASELINE_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' .secrets.baseline | sort -u)
+          NEW_HASHES=$(jq -r '[.results | to_entries[] | .value[].hashed_secret] | .[]' /tmp/scan.json | sort -u)
           NEW_SECRETS=$(comm -13 <(echo "$BASELINE_HASHES") <(echo "$NEW_HASHES"))
           if [ -n "$NEW_SECRETS" ]; then
             echo "::error::New secrets detected (not in baseline):"
