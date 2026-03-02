@@ -18,7 +18,8 @@ func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err e
 
 func newOauthClient(ctx context.Context, accessToken string) *http.Client {
 	// Update timeout
-	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
 	client := &http.Client{Timeout: 55 * time.Second}

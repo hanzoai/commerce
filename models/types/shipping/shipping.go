@@ -72,11 +72,10 @@ func (r Rates) GetPrice(p *product.Product) (currency.Cents, currency.Type) {
 	if i == -1 {
 		// Use the base rate if weight is less than the first MinWeight
 		return calculateShippingPrice(w, r.BaseRateType, r.BasePrice), r.Currency
-	} else {
-		// Otherwise look up the corresponding formula and use the rates on it
-		f := r.Formulas[i]
-		return calculateShippingPrice(w, f.RateType, f.Price), r.Currency
 	}
+	// Otherwise look up the corresponding formula and use the rates on it
+	f := r.Formulas[i]
+	return calculateShippingPrice(w, f.RateType, f.Price), r.Currency
 }
 
 // helpers
@@ -85,8 +84,8 @@ func calculateShippingPrice(w weight.Mass, rateType RateType, price currency.Cen
 	case Variable:
 		// Do the math and round up for variable rates
 		return currency.Cents(math.Ceil(float64(w) * float64(price)))
-		// Flat/other cases
 	default:
+		// Flat/other cases
 		return price
 	}
 }
