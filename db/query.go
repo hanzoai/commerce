@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -233,11 +234,11 @@ func (q *sqliteQuery) GetAll(ctx context.Context, dst any) ([]Key, error) {
 			sliceVal = reflect.Append(sliceVal, elem.Elem())
 		}
 
-		keys = append(keys, &sqliteKey{
-			kind:      q.kind,
-			stringID:  id,
-			namespace: q.ns,
-		})
+		if intID, err2 := strconv.ParseInt(id, 10, 64); err2 == nil && intID > 0 {
+			keys = append(keys, &sqliteKey{kind: q.kind, intID: intID, namespace: q.ns})
+		} else {
+			keys = append(keys, &sqliteKey{kind: q.kind, stringID: id, namespace: q.ns})
+		}
 	}
 
 	dstVal.Elem().Set(sliceVal)
@@ -273,11 +274,10 @@ func (q *sqliteQuery) First(ctx context.Context, dst any) (Key, error) {
 	}
 	callPostLoad(reflect.ValueOf(dst))
 
-	return &sqliteKey{
-		kind:      q.kind,
-		stringID:  id,
-		namespace: q.ns,
-	}, nil
+	if intID, err2 := strconv.ParseInt(id, 10, 64); err2 == nil && intID > 0 {
+		return &sqliteKey{kind: q.kind, intID: intID, namespace: q.ns}, nil
+	}
+	return &sqliteKey{kind: q.kind, stringID: id, namespace: q.ns}, nil
 }
 
 // Count returns the number of matching entities
@@ -333,11 +333,11 @@ func (q *sqliteQuery) Keys(ctx context.Context) ([]Key, error) {
 		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		keys = append(keys, &sqliteKey{
-			kind:      q.kind,
-			stringID:  id,
-			namespace: q.ns,
-		})
+		if intID, err2 := strconv.ParseInt(id, 10, 64); err2 == nil && intID > 0 {
+			keys = append(keys, &sqliteKey{kind: q.kind, intID: intID, namespace: q.ns})
+		} else {
+			keys = append(keys, &sqliteKey{kind: q.kind, stringID: id, namespace: q.ns})
+		}
 	}
 
 	return keys, rows.Err()
@@ -579,11 +579,10 @@ func (it *sqliteIterator) Next(dst any) (Key, error) {
 
 	it.offset++
 
-	return &sqliteKey{
-		kind:      it.kind,
-		stringID:  id,
-		namespace: it.namespace,
-	}, nil
+	if intID, err2 := strconv.ParseInt(id, 10, 64); err2 == nil && intID > 0 {
+		return &sqliteKey{kind: it.kind, intID: intID, namespace: it.namespace}, nil
+	}
+	return &sqliteKey{kind: it.kind, stringID: id, namespace: it.namespace}, nil
 }
 
 func (it *sqliteIterator) Cursor() (Cursor, error) {
