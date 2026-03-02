@@ -200,10 +200,16 @@ func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int)
 func (li *LineItem) Update() {
 	if li.Product != nil {
 		li.ProductCachedValues = li.Product.ProductCachedValues
+		if li.ProductId == "" {
+			li.ProductId = li.Product.Id()
+		}
 	}
 
 	if li.Variant != nil {
 		li.ProductCachedValues = li.Variant.ProductCachedValues
+		if li.VariantId == "" {
+			li.VariantId = li.Variant.Id()
+		}
 	}
 }
 
