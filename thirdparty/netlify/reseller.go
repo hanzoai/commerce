@@ -41,7 +41,6 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	client := &http.Client{Timeout: 55 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Error("Request failed: %v", err, c.ctx)
 		return User{}, err
 	}
 	defer res.Body.Close()
