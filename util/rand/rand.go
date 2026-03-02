@@ -3,7 +3,7 @@ package rand
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"log"
+	"fmt"
 	mathrand "math/rand"
 	"strings"
 	"time"
@@ -15,7 +15,7 @@ func ShortPassword() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Printf("Failed to generate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -27,7 +27,7 @@ func ShortId() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Printf("Failed to generate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
@@ -39,7 +39,7 @@ func SecretKey() string {
 
 	rb := make([]byte, size)
 	if _, err := rand.Read(rb); err != nil {
-		log.Printf("Failed to generate random characters: %v", err)
+		fmt.Printf("Failed to genrate random characters: %v", err)
 	}
 
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
