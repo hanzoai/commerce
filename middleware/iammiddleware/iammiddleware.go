@@ -6,6 +6,7 @@ package iammiddleware
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -80,6 +81,13 @@ func IAMTokenRequired() gin.HandlerFunc {
 		}
 
 		token := strings.TrimPrefix(header, "Bearer ")
+
+		// If token matches COMMERCE_SERVICE_TOKEN, skip IAM validation and
+		// fall through to legacy auth so service-to-service calls work.
+		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" && token == svcToken {
+			c.Next()
+			return
+		}
 
 		claims, err := client.ValidateToken(context.Background(), token)
 		if err != nil {
