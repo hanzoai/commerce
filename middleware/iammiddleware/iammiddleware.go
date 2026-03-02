@@ -92,11 +92,9 @@ func IAMTokenRequired() gin.HandlerFunc {
 		claims, err := client.ValidateToken(context.Background(), token)
 		if err != nil {
 			// A Bearer token was presented but failed IAM validation.
-			// Return 401 immediately -- do not fall through to legacy auth,
-			// because a Bearer JWT should only be validated by IAM.
+			// Fall through to legacy auth so other middleware can handle it.
 			log.Warn("IAM token validation failed: %v", err)
-			jsonhttp.Fail(c, http.StatusUnauthorized,
-				"Invalid or expired authentication token", err)
+			c.Next()
 			return
 		}
 
