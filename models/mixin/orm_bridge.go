@@ -174,7 +174,10 @@ func (b *Model[T]) ensureKey() {
 	if b.ds == nil {
 		return
 	}
-	if b.Model.Key() == nil {
+	// b.Model.Id_ == "" means no key has been set yet.
+	// We CANNOT use b.Model.Key() == nil here because Key() always allocates
+	// a new key (with nil parent) as a side effect, making the check always false.
+	if b.Model.Id_ == "" {
 		newKey := b.NewKey()
 		b.SetKey(newKey)
 	} else {
