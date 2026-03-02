@@ -11,6 +11,8 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
+	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -54,11 +56,31 @@ func CreateBillingSubscription(c *gin.Context) {
 		return
 	}
 
-	// Fetch plan
+	// Fetch plan — first try DB, then fall back to static catalog.
 	p := plan.New(db)
 	if err := p.GetById(req.PlanId); err != nil {
-		http.Fail(c, 404, "plan not found", err)
-		return
+		// Look up in static hanzoPlans by slug.
+		var staticP *staticPlan
+		for i := range hanzoPlans {
+			if hanzoPlans[i].Slug == req.PlanId {
+				staticP = &hanzoPlans[i]
+				break
+			}
+		}
+		if staticP == nil {
+			http.Fail(c, 404, "plan not found", err)
+			return
+		}
+		// Populate plan from static catalog and seed into DB.
+		p.Slug = staticP.Slug
+		p.Name = staticP.Name
+		p.Description = staticP.Description
+		p.Price = currency.Cents(staticP.Price)
+		p.Currency = currency.Type(staticP.Currency)
+		p.Interval = types.Interval(staticP.Interval)
+		p.IntervalCount = staticP.IntervalCount
+		p.TrialPeriodDays = staticP.TrialPeriodDays
+		_ = p.Create() // best-effort; ignore dup-key errors
 	}
 
 	// Create subscription
