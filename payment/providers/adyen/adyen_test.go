@@ -1014,11 +1014,11 @@ func TestValidateWebhook_Success(t *testing.T) {
 	}
 }
 
-func TestValidateWebhook_NoHMACKey_SkipsVerification(t *testing.T) {
+func TestValidateWebhook_NoHMACKey_RejectsWebhook(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer server.Close()
 	p := configuredProvider(server.URL)
-	p.config.HMACKey = "" // No HMAC = skip verification
+	p.config.HMACKey = "" // No HMAC key = reject unverified webhook
 
 	payload, _ := json.Marshal(adyenNotificationRequest{
 		NotificationItems: []adyenNotificationItemWrap{{
@@ -1032,12 +1032,12 @@ func TestValidateWebhook_NoHMACKey_SkipsVerification(t *testing.T) {
 		}},
 	})
 
-	event, err := p.ValidateWebhook(context.Background(), payload, "")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := p.ValidateWebhook(context.Background(), payload, "")
+	if err == nil {
+		t.Fatal("expected error when HMAC key is not configured, got nil")
 	}
-	if event.Type != "payment.captured" {
-		t.Errorf("event Type = %q, want payment.captured", event.Type)
+	if !strings.Contains(err.Error(), "HMAC_NOT_CONFIGURED") {
+		t.Errorf("error = %q, want HMAC_NOT_CONFIGURED", err.Error())
 	}
 }
 
