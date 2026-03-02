@@ -79,7 +79,7 @@ func (r *Referrer) Load(ps []datastore.Property) (err error) {
 }
 
 func (r *Referrer) SaveReferral(ctx context.Context, orgId string, event referral.Event, rfn Referrent, userId string, test bool) (*referral.Referral, error) {
-	if userId == r.UserId {
+	if !test && userId == r.UserId {
 		return nil, errors.New("User cannot refer themselves")
 	}
 
@@ -172,7 +172,7 @@ func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 
 // Referral Program stuff
 
-func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Event) (bool, error) {
+func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Event, test bool) (bool, error) {
 	trig := action.Trigger
 
 	if trig.Event != "" && event != trig.Event {
@@ -184,7 +184,7 @@ func (r *Referrer) TestTrigger(action referralprogram.Action, event referral.Eve
 	case referralprogram.CreditGreaterThanOrEquals:
 		// Get all transactions
 		trans := make([]*transaction.Transaction, 0)
-		if _, err := transaction.Query(r.Datastore()).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", false).GetAll(&trans); err != nil {
+		if _, err := transaction.Query(r.Datastore()).Filter("DestinationId=", r.UserId).Filter("Currency=", trig.Currency).Filter("Test=", test).GetAll(&trans); err != nil {
 			return false, err
 		}
 
@@ -249,7 +249,7 @@ func (r *Referrer) ApplyActions(ctx context.Context, orgId string, event referra
 
 	for _, action := range p.Actions {
 		if !old {
-			if ok, err := r.TestTrigger(action, event); !ok {
+			if ok, err := r.TestTrigger(action, event, test); !ok {
 				if err != nil {
 					return err
 				}
