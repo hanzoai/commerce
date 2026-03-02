@@ -2,6 +2,7 @@ package test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/hanzoai/commerce/util/bit"
 
@@ -44,25 +45,17 @@ var _ = Describe("Field", func() {
 		Expect(field.Has(C)).To(Equal(true))
 	})
 
-	Measure("it should perform operations efficiently", func(b Benchmarker) {
-		runtime := b.Time("runtime", func() {
-			field := new(bit.Field)
+	It("should perform operations efficiently", func() {
+		start := time.Now()
+		field := new(bit.Field)
 
-			n := 0
+		for n := 0; n < 100000; n++ {
+			field.Set(A)
+			field.Set(B)
+			field.Set(C)
+		}
 
-			for {
-				field.Set(A)
-				field.Set(B)
-				field.Set(C)
-
-				n += 1
-
-				if n == 100000 {
-					break
-				}
-			}
-		})
-
-		Expect(runtime.Seconds()).Should(BeNumerically("<", 0.1))
-	}, 10)
+		elapsed := time.Since(start)
+		Expect(elapsed.Seconds()).To(BeNumerically("<", 0.1))
+	})
 })
