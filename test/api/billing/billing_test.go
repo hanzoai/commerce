@@ -546,10 +546,8 @@ var _ = Describe("billing", func() {
 		})
 
 		It("Should fail to delete non-existent rule", func() {
-			res := &ApiError{}
-			cl.Delete("/billing/pricing-rules/nonexistent-id", res)
-
-			Expect(res.Error.Message).To(ContainSubstring("not found"))
+			w := cl.Delete("/billing/pricing-rules/nonexistent-id")
+			Expect(w.Code).To(Equal(404))
 		})
 	})
 
