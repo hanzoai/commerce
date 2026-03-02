@@ -163,6 +163,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Capabilities
 	api.GET("/capabilities", GetCapabilities)
 
+	// Top-up: charge a saved payment method and credit user balance
+	api.POST("/topup", Topup)
+
 	// ZAP protocol endpoint
 	api.POST("/zap", ZapDispatch)
 
