@@ -26,7 +26,7 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-var emailRegex = regexp.MustCompile(`(\w[-._\w]*@\w[-._\w]*\w\.\w{2,20})`)
+var emailRegex = regexp.MustCompile(`(\w[-._\w]*@\w[-._\w]*\w\.\w{2,4})`)
 var usernameRegex = regexp.MustCompile(`^[a-z0-9_\-\.]+$`)
 
 type createReq struct {
