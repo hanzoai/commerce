@@ -270,7 +270,21 @@ func (cl *Client) Put(uri string, body interface{}, res interface{}, args ...int
 }
 
 // Make DELETE request
+// Accepts optional args: int (expected status code, default 204), url.Values (query params),
+// or any other type (decoded as JSON response destination).
 func (cl *Client) Delete(uri string, args ...interface{}) *httptest.ResponseRecorder {
-	args = defaultStatus(204)(args)
-	return cl.request("DELETE", uri, nil, nil, args...)
+	var res interface{}
+	var statusCode int = 204
+	var filteredArgs []interface{}
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case int:
+			statusCode = v
+		case url.Values:
+			filteredArgs = append(filteredArgs, v)
+		default:
+			res = arg
+		}
+	}
+	return cl.request("DELETE", uri, nil, res, append(filteredArgs, statusCode)...)
 }
