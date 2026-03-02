@@ -52,7 +52,18 @@ var _ = Describe("Order.Subscription", func() {
 		})
 
 		It("Should Create Multiple Subscriptions From Item Quantities", func() {
-			ord.Items[2].Quantity = 2
+			// Find subProd index dynamically - tally tests may remove coupon items
+			// shifting subProd from index 2 to index 1
+			subProdIdx := -1
+			for i, item := range ord.Items {
+				if item.ProductId == subProd.Id() {
+					subProdIdx = i
+					break
+				}
+			}
+			Expect(subProdIdx).To(BeNumerically(">=", 0))
+
+			ord.Items[subProdIdx].Quantity = 2
 			err := ord.CreateSubscriptionsFromItems(stor)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(ord.Subscriptions)).To(Equal(2))
@@ -63,7 +74,7 @@ var _ = Describe("Order.Subscription", func() {
 			sub = ord.Subscriptions[1]
 			Expect(sub.Status).To(Equal(order.UnpaidSubscriptionStatus))
 			Expect(sub.ProductCachedValues).To(Equal(subProd.ProductCachedValues))
-			ord.Items[2].Quantity = 1
+			ord.Items[subProdIdx].Quantity = 1
 		})
 	})
 })

@@ -186,9 +186,17 @@ func (o *Order) CreateSubscriptionsFromItems(stor *store.Store) error {
 			continue
 		}
 
-		sub := o.CreateAndTallySubscriptionFromItem(stor, item)
-
-		o.Subscriptions = append(o.Subscriptions, sub)
+		// Create one subscription per quantity unit
+		qty := item.Quantity
+		if qty < 1 {
+			qty = 1
+		}
+		for q := 0; q < qty; q++ {
+			single := item
+			single.Quantity = 1
+			sub := o.CreateAndTallySubscriptionFromItem(stor, single)
+			o.Subscriptions = append(o.Subscriptions, sub)
+		}
 	}
 
 	return nil

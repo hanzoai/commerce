@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	dskey "github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/orm"
@@ -118,7 +119,17 @@ func (b *Model[T]) SetKey(key interface{}) error {
 	case orm.Key:
 		b.Model.SetKey(v)
 	case string:
-		b.Model.SetId(v)
+		// Try to decode as a hashid-encoded key (which carries parent info).
+		// Fall back to storing the raw string if decoding fails.
+		ctx := b.Context()
+		if decoded, err := dskey.Decode(ctx, v); err == nil && decoded.IntID() != 0 {
+			b.Model.SetKey(DSKeyToOrm(decoded))
+			if parent := decoded.Parent(); parent != nil {
+				b.Parent = parent
+			}
+		} else {
+			b.Model.SetId(v)
+		}
 	case int64:
 		kind := b.Model.Kind()
 		ormKey := b.Model.DB().NewKey(kind, "", v, nil)
