@@ -1,79 +1,120 @@
 package billing
 
 import (
+	"embed"
+	"encoding/json"
+	"fmt"
+	"math"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+//go:embed plans/subscription.json
+var subscriptionJSON embed.FS
+
+// canonicalPlan is the JSON shape from @hanzo/plans/subscription.json.
+type canonicalPlan struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	PriceMonthly *float64 `json:"priceMonthly"` // dollars per month (null for custom)
+	PriceAnnual  *float64 `json:"priceAnnual"`  // dollars per month billed annually (null for custom)
+	Category     string   `json:"category"`
+	Popular      bool     `json:"popular,omitempty"`
+	ContactSales bool     `json:"contactSales,omitempty"`
+	Features     []string `json:"features"`
+	Limits       *struct {
+		RequestsPerMinute *int `json:"requestsPerMinute"`
+		TokensPerMinute   *int `json:"tokensPerMinute"`
+		FreeCredit        *int `json:"freeCredit,omitempty"`
+		MaxMembers        *int `json:"maxMembers,omitempty"`
+	} `json:"limits,omitempty"`
+	Payouts *struct {
+		IdleResalePercent int    `json:"idleResalePercent"`
+		Description       string `json:"description"`
+	} `json:"payouts,omitempty"`
+}
+
 // staticPlan is the wire type returned by GET /billing/plans.
 // Fields match the Plan type in the billing frontend's commerce-client.ts.
 type staticPlan struct {
-	Slug            string `json:"slug"`
-	Name            string `json:"name"`
-	Description     string `json:"description"`
-	Price           int64  `json:"price"`    // monthly price in cents (0 = free)
-	PriceAnnual     int64  `json:"priceAnnual"` // annual price in cents
-	Currency        string `json:"currency"`
-	Interval        string `json:"interval"`
-	IntervalCount   int    `json:"intervalCount"`
-	TrialPeriodDays int    `json:"trialPeriodDays"`
-	ContactSales    bool   `json:"contactSales,omitempty"`
+	Slug            string   `json:"slug"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	Price           int64    `json:"price"`         // monthly price in cents (0 = free)
+	PriceAnnual     int64    `json:"priceAnnual"`   // annual price in cents per month
+	Currency        string   `json:"currency"`
+	Interval        string   `json:"interval"`
+	IntervalCount   int      `json:"intervalCount"`
+	TrialPeriodDays int      `json:"trialPeriodDays"`
+	ContactSales    bool     `json:"contactSales,omitempty"`
+	Popular         bool     `json:"popular,omitempty"`
+	Features        []string `json:"features,omitempty"`
+	Limits          *struct {
+		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
+		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
+		FreeCredit        *int `json:"freeCredit,omitempty"`
+		MaxMembers        *int `json:"maxMembers,omitempty"`
+	} `json:"limits,omitempty"`
 }
 
-// hanzoPlans is the canonical list of Hanzo subscription plans.
-// Prices are in USD cents per month. Source: /pricing/plans/subscription.json.
-var hanzoPlans = []staticPlan{
-	{
-		Slug:          "developer",
-		Name:          "Developer",
-		Description:   "Get started for free. Explore the API with generous included credits.",
-		Price:         0,
-		PriceAnnual:   0,
-		Currency:      "usd",
-		Interval:      "monthly",
-		IntervalCount: 1,
-	},
-	{
-		Slug:          "pro",
-		Name:          "Pro",
-		Description:   "For developers shipping real products. Higher limits and priority support.",
-		Price:         4900,  // $49/mo
-		PriceAnnual:   3900,  // $39/mo billed annually
-		Currency:      "usd",
-		Interval:      "monthly",
-		IntervalCount: 1,
-	},
-	{
-		Slug:          "team",
-		Name:          "Team",
-		Description:   "For teams building together. SSO, shared billing, and custom training.",
-		Price:         19900, // $199/mo
-		PriceAnnual:   15900, // $159/mo billed annually
-		Currency:      "usd",
-		Interval:      "monthly",
-		IntervalCount: 1,
-	},
-	{
-		Slug:          "enterprise",
-		Name:          "Enterprise",
-		Description:   "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
-		Price:         999900, // $9999/mo
-		PriceAnnual:   799900, // $7999/mo billed annually
-		Currency:      "usd",
-		Interval:      "monthly",
-		IntervalCount: 1,
-	},
-	{
-		Slug:         "custom",
-		Name:         "Custom",
-		Description:  "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
-		Currency:     "usd",
-		ContactSales: true,
-	},
+// hanzoPlans is loaded at init from the embedded @hanzo/plans/subscription.json.
+var hanzoPlans []staticPlan
+
+func init() {
+	data, err := subscriptionJSON.ReadFile("plans/subscription.json")
+	if err != nil {
+		panic(fmt.Sprintf("billing: failed to read embedded subscription.json: %v", err))
+	}
+
+	var canonical []canonicalPlan
+	if err := json.Unmarshal(data, &canonical); err != nil {
+		panic(fmt.Sprintf("billing: failed to parse subscription.json: %v", err))
+	}
+
+	hanzoPlans = make([]staticPlan, len(canonical))
+	for i, cp := range canonical {
+		sp := staticPlan{
+			Slug:          cp.ID,
+			Name:          cp.Name,
+			Description:   cp.Description,
+			Currency:      "usd",
+			Interval:      "monthly",
+			IntervalCount: 1,
+			ContactSales:  cp.ContactSales,
+			Popular:       cp.Popular,
+			Features:      cp.Features,
+			Limits:        nil,
+		}
+		// Convert dollar prices to cents.
+		if cp.PriceMonthly != nil {
+			sp.Price = int64(math.Round(*cp.PriceMonthly * 100))
+		}
+		if cp.PriceAnnual != nil {
+			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+		}
+		// Copy limits.
+		if cp.Limits != nil {
+			sp.Limits = &struct {
+				RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
+				TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
+				FreeCredit        *int `json:"freeCredit,omitempty"`
+				MaxMembers        *int `json:"maxMembers,omitempty"`
+			}{
+				RequestsPerMinute: cp.Limits.RequestsPerMinute,
+				TokensPerMinute:   cp.Limits.TokensPerMinute,
+				FreeCredit:        cp.Limits.FreeCredit,
+				MaxMembers:        cp.Limits.MaxMembers,
+			}
+		}
+		hanzoPlans[i] = sp
+	}
 }
 
 // ListPlans returns the list of available subscription plans.
+// Data is loaded at startup from @hanzo/plans/subscription.json (embedded).
 //
 //	GET /api/v1/billing/plans
 func ListPlans(c *gin.Context) {
