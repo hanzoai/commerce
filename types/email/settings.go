@@ -49,7 +49,7 @@ type Settings struct {
 		CC         []Email `json:"cc,omitempty"`
 		BCC        []Email `json:"bcc,omitempty"`
 		ProviderId string  `json:"providerId"`
-	} `json:"defaults`
+	} `json:"defaults"`
 
 	// Per-email configuration
 	Affiliate struct {
@@ -65,7 +65,7 @@ type Settings struct {
 	} `json:"order"`
 
 	User struct {
-		Welcome         Setting `json:"welcome`
+		Welcome         Setting `json:"welcome"`
 		ConfirmEmail    Setting `json:"confirmEmail"`
 		Activated       Setting `json:"activated"`
 		ResetPassword   Setting `json:"resetPassword"`
@@ -73,7 +73,7 @@ type Settings struct {
 	} `json:"user"`
 
 	Subscriber struct {
-		Welcome Setting `json:"welcome`
+		Welcome Setting `json:"welcome"`
 	} `json:"subscriber"`
 }
 

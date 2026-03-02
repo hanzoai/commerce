@@ -83,7 +83,8 @@ func Test(b bool) bool {
 // Create a new Ethereum JSON-RPC client
 func New(ctx context.Context, address string) Client {
 	// Set timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	httpClient := &http.Client{Timeout: 55 * time.Second}
 

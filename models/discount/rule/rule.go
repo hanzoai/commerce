@@ -37,8 +37,8 @@ func (t Trigger) Type() trigger.Type {
 
 // Discount action
 type Discount struct {
-	Flat    currency.Cents `flat,omitempty`
-	Percent float64        `percent,omitempty`
+	Flat    currency.Cents `json:"flat,omitempty"`
+	Percent float64        `json:"percent,omitempty"`
 }
 
 // Union of possible actions

@@ -18,7 +18,8 @@ type API struct {
 
 func New(ctx context.Context, settings integration.Mailchimp) *API {
 	// Update timeout
-	ctx, _ = context.WithTimeout(ctx, time.Second*55)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*55)
+	defer cancel()
 
 	apiKey := settings.APIKey
 	client := gochimp3.New(apiKey)
