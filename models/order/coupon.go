@@ -120,6 +120,41 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 	return discount
 }
 
+// CalcItemCouponTaxableDiscount returns the taxable discount from item-specific coupons only.
+// Order-wide coupons (no ProductId/VariantId) do not reduce the taxable base.
+func (o *Order) CalcItemCouponTaxableDiscount() currency.Cents {
+	var taxableDiscount currency.Cents
+
+	for i := range o.Coupons {
+		c := &o.Coupons[i]
+		if c.ItemId() == "" {
+			continue // order-level coupons don't reduce taxable base
+		}
+		if !c.ValidFor(o.CreatedAt) {
+			continue
+		}
+		for _, item := range o.Items {
+			if item.Id() != c.ItemId() || !item.Taxable {
+				continue
+			}
+			switch c.Type {
+			case coupon.Flat:
+				qty := item.Quantity
+				if c.Once {
+					qty = 1
+				}
+				taxableDiscount += currency.Cents(qty * c.Amount)
+			case coupon.Percent:
+				taxableDiscount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+			}
+			if c.Once {
+				break
+			}
+		}
+	}
+	return taxableDiscount
+}
+
 // Update discount using coupon codes/order info.
 // Refactor later when we have more time to think about it
 func (o *Order) UpdateCouponItems() error {

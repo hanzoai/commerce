@@ -41,7 +41,7 @@ func (t ShippingRates) Match(ctr, st, ct, pc string, c currency.Cents) (*GeoRate
 		return &t.GeoRates[i], level, i
 	}
 
-	return nil, level, i
+	return nil, -1, i
 }
 
 // New creates a new ShippingRates wired to the given datastore.

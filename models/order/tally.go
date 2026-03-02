@@ -132,6 +132,16 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	// Tally up order again
 	o.TallySubtotalWithoutSubscriptions()
 
+	// Reduce TaxableLineTotal for item-specific coupon discounts.
+	// Order-wide coupons do not reduce the taxable base.
+	if taxableReduce := o.CalcItemCouponTaxableDiscount(); taxableReduce > 0 {
+		if o.TaxableLineTotal > taxableReduce {
+			o.TaxableLineTotal -= taxableReduce
+		} else {
+			o.TaxableLineTotal = 0
+		}
+	}
+
 	// If not using fallback mode, skip taxes
 	if !useFallback {
 		if stor.Currency != "" {
