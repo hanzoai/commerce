@@ -31,7 +31,7 @@ var (
 	IgnoreFieldMismatch = utils.IgnoreFieldMismatch
 
 	// Global ID counter for allocations
-	globalIDCounter int64 = time.Now().UnixNano()
+	globalIDCounter int64 = time.Now().Unix()
 
 	// defaultDB is the fallback database used when New() is called without an explicit db.DB.
 	// Set via SetDefaultDB during application bootstrap.
