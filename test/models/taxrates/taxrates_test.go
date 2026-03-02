@@ -118,7 +118,7 @@ var _ = Describe("models/taxrates", func() {
 				},
 			}
 			gr, level, idx := grs.Match("US", "ky", "", "12345", currency.Cents(0))
-			Expect(gr).To(Equal(&grs.GeoRates[2]))
+			Expect(gr).To(Equal(&grs.GeoRates[5]))
 			Expect(level).To(Equal(1))
 			Expect(idx).To(Equal(5))
 		})
