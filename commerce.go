@@ -268,6 +268,9 @@ type App struct {
 	// Events client (sends to analytics-collector via HTTP)
 	Events *events.Client
 
+	// Publisher sends commerce events to NATS/JetStream
+	Publisher *events.Publisher
+
 	// KMS client for secret management
 	KMS *kms.CachedClient
 
@@ -606,6 +609,15 @@ func (app *App) Bootstrap() error {
 		app.Events = events.NewClient(app.config.AnalyticsEndpoint)
 	}
 
+	// Initialize NATS/JetStream publisher for commerce events
+	if pubsub, err := app.Infra.PubSub(); err == nil {
+		if err := events.Bootstrap(ctx, pubsub); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to bootstrap commerce stream: %v\n", err)
+		}
+		app.Publisher = events.NewPublisher(pubsub)
+		fmt.Println("Commerce event publisher initialized (NATS/JetStream)")
+	}
+
 	// Initialize router
 	app.Router = gin.New()
 	app.Router.Use(gin.Recovery())
@@ -670,13 +682,16 @@ func (app *App) setupRoutes() {
 		// Individual route groups or handlers may override with CachePublic().
 		api.Use(middleware.CachePrivate())
 
-		// Inject KMS, Events, and KV into gin context for handlers.
+		// Inject KMS, Events, Publisher, and KV into gin context for handlers.
 		api.Use(func(c *gin.Context) {
 			if app.KMS != nil {
 				c.Set("kms", app.KMS)
 			}
 			if app.Events != nil {
 				c.Set("events", app.Events)
+			}
+			if app.Publisher != nil {
+				c.Set("publisher", app.Publisher)
 			}
 			if kv, err := app.Infra.KV(); err == nil {
 				c.Set("kv", kv)

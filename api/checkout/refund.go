@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"context"
 	"strconv"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 
 	"github.com/hanzoai/commerce/api/checkout/square"
 	"github.com/hanzoai/commerce/api/checkout/stripe"
-	"github.com/hanzoai/commerce/models/types/accounts"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
@@ -16,6 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/types/integration"
@@ -318,6 +320,17 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		// it's possible to send only visitor's data to Woopra, without sending
 		// any custom event and/or data
 		ident.Push()
+	}
+
+	// Publish order.refunded to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
+	if pub, ok := c.Get("publisher"); ok {
+		if p, ok := pub.(*events.Publisher); ok {
+			go func() {
+				bgCtx := context.Background()
+				p.PublishOrderRefunded(bgCtx, ord.Id(), org.Name, ord.UserId,
+					int64(req.Amount), string(ord.Currency))
+			}()
+		}
 	}
 
 	return nil
