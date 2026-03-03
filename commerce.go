@@ -48,7 +48,13 @@ import (
 )
 
 // Version is the current version of Commerce
-const Version = "1.36.4"
+const Version = "1.36.5"
+
+// GitCommit and BuildTime are set via -ldflags at build time
+var (
+	GitCommit = "dev"
+	BuildTime = "unknown"
+)
 
 // Config holds application configuration
 type Config struct {
@@ -659,7 +665,10 @@ func (app *App) setupRoutes() {
 	app.Router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
+			"service": "commerce",
 			"version": Version,
+			"commit":  GitCommit,
+			"built":   BuildTime,
 		})
 	})
 
