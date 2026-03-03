@@ -351,5 +351,16 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		}
 	}
 
+	// Publish order.created to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
+	if pub, ok := c.Get("publisher"); ok {
+		if p, ok := pub.(*events.Publisher); ok {
+			go func() {
+				ctx := context.Background()
+				p.PublishOrderCreated(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
+					int64(ord.Total), string(ord.Currency), nil)
+			}()
+		}
+	}
+
 	return pay, nil
 }

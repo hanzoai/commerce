@@ -1,6 +1,6 @@
 module github.com/hanzoai/commerce
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/Machiel/slugify v1.0.1
