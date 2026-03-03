@@ -1,5 +1,7 @@
 module github.com/hanzoai/commerce
 
+go 1.26
+
 require (
 	github.com/Machiel/slugify v1.0.1
 	github.com/aymerick/raymond v2.0.2+incompatible
@@ -178,5 +180,3 @@ require (
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
-
-go 1.26
