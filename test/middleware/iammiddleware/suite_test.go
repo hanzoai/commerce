@@ -119,8 +119,8 @@ var _ = BeforeSuite(func() {
 	mux.HandleFunc("/.well-known/openid-configuration", func(w http.ResponseWriter, r *http.Request) {
 		discovery := map[string]interface{}{
 			"issuer":                 testIssuer,
-			"authorization_endpoint": testIssuer + "/login/oauth/authorize",
-			"token_endpoint":         testIssuer + "/api/login/oauth/access_token",
+			"authorization_endpoint": testIssuer + "/oauth/authorize",
+			"token_endpoint":         testIssuer + "/oauth/token",
 			"userinfo_endpoint":      testIssuer + "/api/userinfo",
 			"jwks_uri":               testIssuer + "/.well-known/jwks",
 		}
