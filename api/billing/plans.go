@@ -14,7 +14,10 @@ import (
 //go:embed plans/subscription.json
 var subscriptionJSON embed.FS
 
-// canonicalPlan is the JSON shape from @hanzo/plans/subscription.json.
+//go:embed plans/dns.json
+var dnsJSON embed.FS
+
+// canonicalPlan is the JSON shape from @hanzo/plans/*.json.
 type canonicalPlan struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
@@ -26,10 +29,16 @@ type canonicalPlan struct {
 	ContactSales bool     `json:"contactSales,omitempty"`
 	Features     []string `json:"features"`
 	Limits       *struct {
-		RequestsPerMinute *int `json:"requestsPerMinute"`
-		TokensPerMinute   *int `json:"tokensPerMinute"`
+		// Subscription (API) limits
+		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
+		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
 		FreeCredit        *int `json:"freeCredit,omitempty"`
 		MaxMembers        *int `json:"maxMembers,omitempty"`
+
+		// DNS limits
+		Zones          *int `json:"zones,omitempty"`
+		RecordsPerZone *int `json:"recordsPerZone,omitempty"`
+		QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
 	} `json:"limits,omitempty"`
 	Payouts *struct {
 		IdleResalePercent int    `json:"idleResalePercent"`
@@ -43,6 +52,7 @@ type staticPlan struct {
 	Slug            string   `json:"slug"`
 	Name            string   `json:"name"`
 	Description     string   `json:"description"`
+	Category        string   `json:"category"`
 	Price           int64    `json:"price"`         // monthly price in cents (0 = free)
 	PriceAnnual     int64    `json:"priceAnnual"`   // annual price in cents per month
 	Currency        string   `json:"currency"`
@@ -53,75 +63,119 @@ type staticPlan struct {
 	Popular         bool     `json:"popular,omitempty"`
 	Features        []string `json:"features,omitempty"`
 	Limits          *struct {
+		// Subscription (API) limits
 		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
 		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
 		FreeCredit        *int `json:"freeCredit,omitempty"`
 		MaxMembers        *int `json:"maxMembers,omitempty"`
+
+		// DNS limits
+		Zones          *int `json:"zones,omitempty"`
+		RecordsPerZone *int `json:"recordsPerZone,omitempty"`
+		QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
 	} `json:"limits,omitempty"`
 }
 
-// hanzoPlans is loaded at init from the embedded @hanzo/plans/subscription.json.
+// hanzoPlans contains all plans loaded at init from embedded JSON files.
+// Subscription plans have category "personal", "team", or "enterprise".
+// DNS plans have category "dns".
 var hanzoPlans []staticPlan
 
+// dnsPlans is a filtered view containing only DNS plans for the /dns/plans endpoint.
+var dnsPlans []staticPlan
+
 func init() {
-	data, err := subscriptionJSON.ReadFile("plans/subscription.json")
+	hanzoPlans = loadPlansFromEmbed(subscriptionJSON, "plans/subscription.json")
+
+	dns := loadPlansFromEmbed(dnsJSON, "plans/dns.json")
+	dnsPlans = dns
+	hanzoPlans = append(hanzoPlans, dns...)
+}
+
+// loadPlansFromEmbed reads an embedded JSON file and converts canonical plans
+// to the staticPlan wire format. Panics on failure because plan data is required
+// for the service to operate.
+func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
+	data, err := fs.ReadFile(path)
 	if err != nil {
-		panic(fmt.Sprintf("billing: failed to read embedded subscription.json: %v", err))
+		panic(fmt.Sprintf("billing: failed to read embedded %s: %v", path, err))
 	}
 
 	var canonical []canonicalPlan
 	if err := json.Unmarshal(data, &canonical); err != nil {
-		panic(fmt.Sprintf("billing: failed to parse subscription.json: %v", err))
+		panic(fmt.Sprintf("billing: failed to parse %s: %v", path, err))
 	}
 
-	hanzoPlans = make([]staticPlan, len(canonical))
+	plans := make([]staticPlan, len(canonical))
 	for i, cp := range canonical {
 		sp := staticPlan{
 			Slug:          cp.ID,
 			Name:          cp.Name,
 			Description:   cp.Description,
+			Category:      cp.Category,
 			Currency:      "usd",
 			Interval:      "monthly",
 			IntervalCount: 1,
 			ContactSales:  cp.ContactSales,
 			Popular:       cp.Popular,
 			Features:      cp.Features,
-			Limits:        nil,
 		}
-		// Convert dollar prices to cents.
+
 		if cp.PriceMonthly != nil {
 			sp.Price = int64(math.Round(*cp.PriceMonthly * 100))
 		}
 		if cp.PriceAnnual != nil {
 			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
 		}
-		// Copy limits.
+
 		if cp.Limits != nil {
 			sp.Limits = &struct {
 				RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
 				TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
 				FreeCredit        *int `json:"freeCredit,omitempty"`
 				MaxMembers        *int `json:"maxMembers,omitempty"`
+				Zones             *int `json:"zones,omitempty"`
+				RecordsPerZone    *int `json:"recordsPerZone,omitempty"`
+				QueriesPerDay     *int `json:"queriesPerDay,omitempty"`
 			}{
 				RequestsPerMinute: cp.Limits.RequestsPerMinute,
 				TokensPerMinute:   cp.Limits.TokensPerMinute,
 				FreeCredit:        cp.Limits.FreeCredit,
 				MaxMembers:        cp.Limits.MaxMembers,
+				Zones:             cp.Limits.Zones,
+				RecordsPerZone:    cp.Limits.RecordsPerZone,
+				QueriesPerDay:     cp.Limits.QueriesPerDay,
 			}
 		}
-		hanzoPlans[i] = sp
+
+		plans[i] = sp
 	}
+
+	return plans
 }
 
-// ListPlans returns the list of available subscription plans.
-// Data is loaded at startup from @hanzo/plans/subscription.json (embedded).
+// ListPlans returns the list of available plans, optionally filtered by category.
+// Data is loaded at startup from embedded JSON plan definitions.
 //
 //	GET /api/v1/billing/plans
+//	GET /api/v1/billing/plans?category=dns
 func ListPlans(c *gin.Context) {
-	c.JSON(200, hanzoPlans)
+	category := c.Query("category")
+	if category == "" {
+		c.JSON(200, hanzoPlans)
+		return
+	}
+
+	filtered := make([]staticPlan, 0)
+	for _, p := range hanzoPlans {
+		if p.Category == category {
+			filtered = append(filtered, p)
+		}
+	}
+	c.JSON(200, filtered)
 }
 
-// GetPlan returns a single plan by slug or index.
+// GetPlan returns a single plan by slug.
 //
 //	GET /api/v1/billing/plans/:id
 func GetPlan(c *gin.Context) {
@@ -133,4 +187,15 @@ func GetPlan(c *gin.Context) {
 		}
 	}
 	http.Fail(c, 404, "plan not found", nil)
+}
+
+// lookupPlan finds a plan by slug across all loaded plans.
+// Returns nil if not found.
+func lookupPlan(slug string) *staticPlan {
+	for i := range hanzoPlans {
+		if hanzoPlans[i].Slug == slug {
+			return &hanzoPlans[i]
+		}
+	}
+	return nil
 }
