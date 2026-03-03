@@ -169,6 +169,18 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// ZAP protocol endpoint
 	api.POST("/zap", ZapDispatch)
 
+	// DNS billing endpoints
+	dns := r.Group("dns")
+	dns.Use(adminRequired)
+	dns.POST("/usage", RecordDNSUsage)
+	dns.GET("/usage/summary", GetDNSUsageSummary)
+
+
+	// Billing cycle automation (called by platform scheduler or manually)
+	api.POST("/cycle/run", RunBillingCycle)
+	api.POST("/cycle/run-user", RunBillingCycleUser)
+	api.POST("/cycle/run-all", RunBillingCycleAllOrgs)
+
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
 	// IAM tokens bypass the adminRequired guard above via IsIAMAuthenticated,
@@ -186,6 +198,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// CF caches for 1 hour; plans rarely change.
 	user.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
 	user.GET("/plans/:id", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), GetPlan)
+
+	// DNS plans (public catalog, cacheable)
+	dnsUser := r.Group("dns")
+	dnsUser.Use(userRequired)
+	dnsUser.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
 
 	// Spend alerts (user-scoped CRUD)
 	user.GET("/spend-alerts", ListSpendAlerts)
