@@ -24,6 +24,7 @@ type PostgresDBConfig struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
 
 	// QueryTimeout for queries
 	QueryTimeout time.Duration
@@ -51,6 +52,13 @@ type PostgresDB struct {
 	db     *sql.DB
 	mu     sync.RWMutex
 	closed bool
+
+	// Prepared statements for hot-path operations
+	stmtGet         *sql.Stmt // Get without tenant filter
+	stmtGetTenant   *sql.Stmt // Get with tenant filter
+	stmtPut         *sql.Stmt // Upsert entity
+	stmtDel         *sql.Stmt // Soft-delete without tenant filter
+	stmtDelTenant   *sql.Stmt // Soft-delete with tenant filter
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection
@@ -68,19 +76,25 @@ func NewPostgresDB(cfg *PostgresDBConfig) (*PostgresDB, error) {
 	if cfg.MaxOpenConns > 0 {
 		db.SetMaxOpenConns(cfg.MaxOpenConns)
 	} else {
-		db.SetMaxOpenConns(25)
+		db.SetMaxOpenConns(4)
 	}
 
 	if cfg.MaxIdleConns > 0 {
 		db.SetMaxIdleConns(cfg.MaxIdleConns)
 	} else {
-		db.SetMaxIdleConns(5)
+		db.SetMaxIdleConns(2)
 	}
 
 	if cfg.ConnMaxLifetime > 0 {
 		db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 	} else {
-		db.SetConnMaxLifetime(time.Hour)
+		db.SetConnMaxLifetime(30 * time.Minute)
+	}
+
+	if cfg.ConnMaxIdleTime > 0 {
+		db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+	} else {
+		db.SetConnMaxIdleTime(5 * time.Minute)
 	}
 
 	// Test connection
@@ -108,7 +122,55 @@ func NewPostgresDB(cfg *PostgresDBConfig) (*PostgresDB, error) {
 		}
 	}
 
+	// Prepare hot-path statements
+	if err := pdb.prepareStatements(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db: failed to prepare statements: %w", err)
+	}
+
 	return pdb, nil
+}
+
+// prepareStatements creates prepared statements for frequently-executed queries.
+func (db *PostgresDB) prepareStatements() error {
+	var err error
+
+	db.stmtGet, err = db.db.Prepare(
+		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE`)
+	if err != nil {
+		return fmt.Errorf("prepare stmtGet: %w", err)
+	}
+
+	db.stmtGetTenant, err = db.db.Prepare(
+		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE AND tenant_id = $3`)
+	if err != nil {
+		return fmt.Errorf("prepare stmtGetTenant: %w", err)
+	}
+
+	db.stmtPut, err = db.db.Prepare(`
+		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (id) DO UPDATE SET
+			data = EXCLUDED.data,
+			updated_at = NOW()
+	`)
+	if err != nil {
+		return fmt.Errorf("prepare stmtPut: %w", err)
+	}
+
+	db.stmtDel, err = db.db.Prepare(
+		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2`)
+	if err != nil {
+		return fmt.Errorf("prepare stmtDel: %w", err)
+	}
+
+	db.stmtDelTenant, err = db.db.Prepare(
+		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`)
+	if err != nil {
+		return fmt.Errorf("prepare stmtDelTenant: %w", err)
+	}
+
+	return nil
 }
 
 // initSchema creates the base tables
@@ -227,7 +289,7 @@ func (db *PostgresDB) TenantType() string {
 	return db.config.TenantType
 }
 
-// Close closes the database connection
+// Close closes the database connection and prepared statements
 func (db *PostgresDB) Close() error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -236,6 +298,17 @@ func (db *PostgresDB) Close() error {
 		return nil
 	}
 	db.closed = true
+
+	// Close prepared statements
+	for _, s := range []*sql.Stmt{
+		db.stmtGet, db.stmtGetTenant,
+		db.stmtPut,
+		db.stmtDel, db.stmtDelTenant,
+	} {
+		if s != nil {
+			s.Close()
+		}
+	}
 
 	return db.db.Close()
 }
@@ -246,16 +319,12 @@ func (db *PostgresDB) Get(ctx context.Context, key Key, dst interface{}) error {
 		return ErrInvalidKey
 	}
 
-	query := `SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE`
-	args := []interface{}{key.Encode(), key.Kind()}
-
-	// Add tenant filter if set
+	var row *sql.Row
 	if db.config.TenantID != "" {
-		query += ` AND tenant_id = $3`
-		args = append(args, db.config.TenantID)
+		row = db.stmtGetTenant.QueryRowContext(ctx, key.Encode(), key.Kind(), db.config.TenantID)
+	} else {
+		row = db.stmtGet.QueryRowContext(ctx, key.Encode(), key.Kind())
 	}
-
-	row := db.db.QueryRowContext(ctx, query, args...)
 
 	var data []byte
 	if err := row.Scan(&data); err != nil {
@@ -290,14 +359,7 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 		tenantID = &db.config.TenantID
 	}
 
-	_, err = db.db.ExecContext(ctx, `
-		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
-		ON CONFLICT (id) DO UPDATE SET
-			data = EXCLUDED.data,
-			updated_at = NOW()
-	`, key.Encode(), key.Kind(), tenantID, parentID, data)
-
+	_, err = db.stmtPut.ExecContext(ctx, key.Encode(), key.Kind(), tenantID, parentID, data)
 	if err != nil {
 		return nil, err
 	}
@@ -311,15 +373,12 @@ func (db *PostgresDB) Delete(ctx context.Context, key Key) error {
 		return ErrInvalidKey
 	}
 
-	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2`
-	args := []interface{}{key.Encode(), key.Kind()}
-
 	if db.config.TenantID != "" {
-		query += ` AND tenant_id = $3`
-		args = append(args, db.config.TenantID)
+		_, err := db.stmtDelTenant.ExecContext(ctx, key.Encode(), key.Kind(), db.config.TenantID)
+		return err
 	}
 
-	_, err := db.db.ExecContext(ctx, query, args...)
+	_, err := db.stmtDel.ExecContext(ctx, key.Encode(), key.Kind())
 	return err
 }
 
