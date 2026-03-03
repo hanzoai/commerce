@@ -65,6 +65,7 @@ type FacebookCAPIEvent struct {
 }
 
 // FacebookUserData for CAPI user matching.
+// Email and Phone are SHA256-hashed per Facebook CAPI spec.
 type FacebookUserData struct {
 	Email           string `json:"em,omitempty"`
 	Phone           string `json:"ph,omitempty"`
@@ -73,6 +74,34 @@ type FacebookUserData struct {
 	ClientUserAgent string `json:"client_user_agent,omitempty"`
 	FBC             string `json:"fbc,omitempty"`
 	FBP             string `json:"fbp,omitempty"`
+}
+
+// LineItemInfo holds minimal line item data for event publishing.
+// Avoids importing the lineitem package into the events package.
+type LineItemInfo struct {
+	ProductID   string
+	ProductName string
+	SKU         string
+	Quantity    int
+	PriceCents  int64
+}
+
+// ToOrderItems converts LineItemInfo slices to OrderItems for event publishing.
+func ToOrderItems(items []LineItemInfo) []OrderItem {
+	if len(items) == 0 {
+		return nil
+	}
+	out := make([]OrderItem, len(items))
+	for i, item := range items {
+		out[i] = OrderItem{
+			ProductID:   item.ProductID,
+			ProductName: item.ProductName,
+			SKU:         item.SKU,
+			Quantity:    item.Quantity,
+			Price:       float64(item.PriceCents) / 100.0,
+		}
+	}
+	return out
 }
 
 // Publish sends an event to the appropriate NATS subject via JetStream.
@@ -144,7 +173,7 @@ func (p *Publisher) PublishOrderCreated(ctx context.Context, orderID, orgName, u
 			EventTime:    now.Unix(),
 			ActionSource: "website",
 			UserData: &FacebookUserData{
-				Email:      email,
+				Email:      SHA256Hex(email),
 				ExternalID: userID,
 			},
 			CustomData: map[string]interface{}{
@@ -208,7 +237,7 @@ func (p *Publisher) PublishOrderCompleted(ctx context.Context, orderID, orgName,
 			EventTime:    now.Unix(),
 			ActionSource: "website",
 			UserData: &FacebookUserData{
-				Email:      email,
+				Email:      SHA256Hex(email),
 				ExternalID: userID,
 			},
 			CustomData: map[string]interface{}{
