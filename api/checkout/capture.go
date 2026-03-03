@@ -1,6 +1,8 @@
 package checkout
 
 import (
+	"context"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/authorizenet"
@@ -11,14 +13,14 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/tasks"
 	"github.com/hanzoai/commerce/api/checkout/util"
 	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/events"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/webhook"
-
-	"github.com/hanzoai/commerce/log"
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
@@ -81,5 +83,17 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	email.SendOrderConfirmation(org.Context(), org, ord, usr)
 
 	webhook.Emit(ctx, org.Name, "order.paid", ord)
+
+	// Publish order.completed to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
+	if pub, ok := c.Get("publisher"); ok {
+		if p, ok := pub.(*events.Publisher); ok {
+			go func() {
+				bgCtx := context.Background()
+				p.PublishOrderCompleted(bgCtx, ord.Id(), org.Name, usr.Id(), usr.Email,
+					int64(ord.Total), string(ord.Currency), nil)
+			}()
+		}
+	}
+
 	return nil
 }
