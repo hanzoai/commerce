@@ -32,7 +32,7 @@ function CallbackHandler() {
   async function exchangeToken(code: string, state: string | null) {
     try {
       const response = await fetch(
-        "https://hanzo.id/api/login/oauth/access_token",
+        "https://hanzo.id/oauth/token",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
