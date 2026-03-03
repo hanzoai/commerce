@@ -25,16 +25,7 @@ func Encode(value interface{}) string {
 }
 
 func EncodeBytes(value interface{}) []byte {
-	var b []byte
-	var err error
-
-	// Use indented JSON in development mode for readability
-	if isDevelopment {
-		b, err = json.MarshalIndent(value, "", "  ")
-	} else {
-		b, err = json.Marshal(value)
-	}
-
+	b, err := json.Marshal(value)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
