@@ -87,10 +87,12 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	// Publish order.completed to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
+			orderItems := orderLineItemInfos(ord)
 			go func() {
-				bgCtx := context.Background()
-				p.PublishOrderCompleted(bgCtx, ord.Id(), org.Name, usr.Id(), usr.Email,
-					int64(ord.Total), string(ord.Currency), nil)
+				if pubErr := p.PublishOrderCompleted(context.Background(), ord.Id(), org.Name, usr.Id(), usr.Email,
+					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
+					log.Error("PublishOrderCompleted: %v", pubErr, c)
+				}
 			}()
 		}
 	}
