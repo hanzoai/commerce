@@ -326,9 +326,10 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
 			go func() {
-				bgCtx := context.Background()
-				p.PublishOrderRefunded(bgCtx, ord.Id(), org.Name, ord.UserId,
-					int64(req.Amount), string(ord.Currency))
+				if pubErr := p.PublishOrderRefunded(context.Background(), ord.Id(), org.Name, ord.UserId,
+					int64(req.Amount), string(ord.Currency)); pubErr != nil {
+					log.Error("PublishOrderRefunded: %v", pubErr, c)
+				}
 			}()
 		}
 	}
