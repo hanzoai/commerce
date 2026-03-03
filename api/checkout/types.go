@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
@@ -13,6 +14,24 @@ import (
 
 	stringutil "github.com/hanzoai/commerce/util/strings"
 )
+
+// orderLineItemInfos extracts line item metadata from an order for event publishing.
+func orderLineItemInfos(ord *order.Order) []events.LineItemInfo {
+	if ord == nil || len(ord.Items) == 0 {
+		return nil
+	}
+	items := make([]events.LineItemInfo, len(ord.Items))
+	for i, li := range ord.Items {
+		items[i] = events.LineItemInfo{
+			ProductID:   li.ProductId,
+			ProductName: li.ProductName,
+			SKU:         li.ProductSKU,
+			Quantity:    li.Quantity,
+			PriceCents:  int64(li.Price),
+		}
+	}
+	return items
+}
 
 type TokenSale struct {
 	Passphrase string `json:"passphrase"`
