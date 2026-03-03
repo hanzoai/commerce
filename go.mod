@@ -32,8 +32,8 @@ require (
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.11.2
-	github.com/luxfi/crypto v1.17.42
-	github.com/luxfi/geth v1.16.76
+	github.com/luxfi/crypto v1.17.43
+	github.com/luxfi/geth v1.16.77
 	github.com/mattn/go-sqlite3 v1.14.34
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
