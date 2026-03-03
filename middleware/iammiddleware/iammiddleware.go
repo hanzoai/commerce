@@ -129,6 +129,7 @@ func IAMTokenRequired() gin.HandlerFunc {
 		c.Set("iam_email", claims.Email)
 		c.Set("iam_org", claims.Owner)
 		c.Set("iam_roles", claims.Roles)
+		c.Set("iam_tier", claims.Tier())
 		c.Set("iam_authenticated", true)
 
 		// Resolve organization from IAM "owner" claim so downstream handlers
@@ -231,4 +232,18 @@ func GetIAMClaims(c *gin.Context) *auth.IAMClaims {
 		return nil
 	}
 	return claims
+}
+
+// GetIAMTier returns the user's billing tier from context.
+// Returns an empty string if the request is not IAM-authenticated or no tier is set.
+func GetIAMTier(c *gin.Context) string {
+	val, exists := c.Get("iam_tier")
+	if !exists {
+		return ""
+	}
+	s, ok := val.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }

@@ -16,6 +16,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api := r.Group("billing")
 	api.Use(adminRequired)
 
+	// Tier (tier-aware billing)
+	api.GET("/tier", GetTier)
+
 	// Balance & usage (existing)
 	api.GET("/balance", GetBalance)
 	api.GET("/balance/all", GetBalanceAll)
