@@ -185,6 +185,19 @@ type IAMClaims struct {
 	Groups      []string `json:"groups,omitempty"`
 	Roles       []string `json:"roles,omitempty"`
 	Permissions []string `json:"permissions,omitempty"`
+
+	// User properties (arbitrary key-value pairs from IAM).
+	// The "tier" property is used for tiered billing (free/starter/pro/enterprise).
+	Properties map[string]string `json:"properties,omitempty"`
+}
+
+// Tier returns the user's billing tier from the "tier" property.
+// Returns an empty string if not set; callers should default to "free".
+func (c *IAMClaims) Tier() string {
+	if c.Properties == nil {
+		return ""
+	}
+	return c.Properties["tier"]
 }
 
 // Valid implements jwt.Claims interface.
