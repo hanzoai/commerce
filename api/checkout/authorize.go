@@ -354,10 +354,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Publish order.created to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
+			orderItems := orderLineItemInfos(ord)
 			go func() {
-				ctx := context.Background()
-				p.PublishOrderCreated(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
-					int64(ord.Total), string(ord.Currency), nil)
+				if pubErr := p.PublishOrderCreated(context.Background(), ord.Id(), org.Name, usr.Id(), usr.Email,
+					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
+					log.Error("PublishOrderCreated: %v", pubErr, c)
+				}
 			}()
 		}
 	}

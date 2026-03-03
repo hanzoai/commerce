@@ -19,6 +19,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/events"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -407,8 +408,9 @@ func Sessions(c *gin.Context) {
 				orgName = strings.TrimSpace(req.Tenant)
 			}
 			go func() {
-				bgCtx := context.Background()
-				p.PublishCheckoutStarted(bgCtx, sessionResp.SessionID, orgName, finalCents, currency)
+				if pubErr := p.PublishCheckoutStarted(context.Background(), sessionResp.SessionID, orgName, finalCents, currency); pubErr != nil {
+					log.Error("PublishCheckoutStarted: %v", pubErr, c)
+				}
 			}()
 		}
 	}
