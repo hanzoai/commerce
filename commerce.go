@@ -557,9 +557,10 @@ func (app *App) Bootstrap() error {
 	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" {
 		pdb, pgErr := db.NewPostgresDB(&db.PostgresDBConfig{
 			DSN:                sqlURL,
-			MaxOpenConns:       25,
-			MaxIdleConns:       5,
-			ConnMaxLifetime:    time.Hour,
+			MaxOpenConns:       4,
+			MaxIdleConns:       2,
+			ConnMaxLifetime:    30 * time.Minute,
+			ConnMaxIdleTime:    5 * time.Minute,
 			QueryTimeout:       30 * time.Second,
 			TenantID:           "system",
 			TenantType:         "org",
@@ -696,11 +697,12 @@ func (app *App) Serve() error {
 	}
 
 	app.server = &http.Server{
-		Addr:         app.config.HTTPAddr,
-		Handler:      app.Router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		Addr:              app.config.HTTPAddr,
+		Handler:           app.Router,
+		ReadTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	fmt.Printf("Commerce %s starting on %s\n", Version, app.config.HTTPAddr)
@@ -712,11 +714,12 @@ func (app *App) Serve() error {
 	if app.config.HTTPSAddr != "" && app.config.TLSCert != "" && app.config.TLSKey != "" {
 		go func() {
 			httpsServer := &http.Server{
-				Addr:         app.config.HTTPSAddr,
-				Handler:      app.Router,
-				ReadTimeout:  30 * time.Second,
-				WriteTimeout: 30 * time.Second,
-				IdleTimeout:  120 * time.Second,
+				Addr:              app.config.HTTPSAddr,
+				Handler:           app.Router,
+				ReadTimeout:       30 * time.Second,
+				ReadHeaderTimeout: 10 * time.Second,
+				WriteTimeout:      60 * time.Second,
+				IdleTimeout:       120 * time.Second,
 			}
 			if err := httpsServer.ListenAndServeTLS(app.config.TLSCert, app.config.TLSKey); err != nil && err != http.ErrServerClosed {
 				fmt.Fprintf(os.Stderr, "HTTPS error: %v\n", err)
