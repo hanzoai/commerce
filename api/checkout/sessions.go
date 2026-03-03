@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/square/square-go-sdk/v3/option"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -397,5 +399,19 @@ func Sessions(c *gin.Context) {
 			DiscountCents: discountCents,
 		}
 	}
+	// Publish checkout.started to NATS/JetStream (fire and forget)
+	if pub, ok := c.Get("publisher"); ok {
+		if p, ok := pub.(*events.Publisher); ok {
+			orgName := strings.TrimSpace(req.Org)
+			if orgName == "" {
+				orgName = strings.TrimSpace(req.Tenant)
+			}
+			go func() {
+				bgCtx := context.Background()
+				p.PublishCheckoutStarted(bgCtx, sessionResp.SessionID, orgName, finalCents, currency)
+			}()
+		}
+	}
+
 	http.Render(c, 200, sessionResp)
 }
