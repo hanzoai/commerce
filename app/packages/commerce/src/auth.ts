@@ -113,7 +113,7 @@ export async function startLogin(config: IamAuthConfig): Promise<void> {
   })
 
   // Use IAM's login authorize endpoint (shows the login form)
-  window.location.href = `${base}/login/oauth/authorize?${params}`
+  window.location.href = `${base}/oauth/authorize?${params}`
 }
 
 /** Handle the OAuth callback -- exchange code for tokens or accept implicit grant. */
@@ -157,7 +157,7 @@ export async function handleCallback(config: IamAuthConfig): Promise<IamUser | n
 
   // Exchange code for tokens via IAM token endpoint
   const base = config.iamServerUrl.replace(/\/+$/, '')
-  const tokenRes = await fetch(`${base}/api/login/oauth/access_token`, {
+  const tokenRes = await fetch(`${base}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
