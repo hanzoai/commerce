@@ -3,7 +3,6 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/api/subscription/stripe"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -54,7 +53,7 @@ func Subscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	hydrateOrg(c, org)
 
-	sub, usr, err := subscribe(c, org)
+	sub, _, err := subscribe(c, org)
 	if err != nil {
 		http.Fail(c, 500, "Error during subscribe", err)
 		return
@@ -67,12 +66,6 @@ func Subscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
-
-	err = stripe.Subscribe(org, usr, sub)
-	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
-	}
 
 	http.Render(c, 200, sub)
 }
@@ -115,11 +108,6 @@ func UpdateSubscribe(c *gin.Context) {
 	}
 	sub.Number = num
 
-	err = stripe.UpdateSubscription(org, sub)
-	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
-	}
 	http.Render(c, 200, sub)
 }
 
@@ -144,11 +132,7 @@ func Unsubscribe(c *gin.Context) {
 		return
 	}
 	sub.Number = num
-	err = stripe.Unsubscribe(org, sub)
-	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
-	}
+
 	http.Render(c, 200, sub)
 }
 

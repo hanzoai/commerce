@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/square"
-	"github.com/hanzoai/commerce/api/checkout/stripe"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -45,10 +44,6 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	switch ord.Type {
 	case accounts.SquareType:
 		if err := square.Refund(org, ord, req.Amount); err != nil {
-			return err
-		}
-	case accounts.StripeType:
-		if err := stripe.Refund(org, ord, req.Amount); err != nil {
 			return err
 		}
 	default:

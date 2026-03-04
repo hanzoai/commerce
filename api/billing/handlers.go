@@ -37,10 +37,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/meter-events", RecordMeterEvents)
 	api.GET("/meter-events/summary", GetMeterEventsSummary)
 
+	// Tier check (lightweight model-access gate for Chat / white-label)
+	api.GET("/tier-check", TierCheck)
+
 	// Credit grants
 	api.POST("/credit-grants", CreateCreditGrant)
 	api.GET("/credit-grants", ListCreditGrants)
 	api.GET("/credit-balance", GetCreditBalance)
+	api.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	api.POST("/credit-grants/:id/void", VoidCreditGrant)
 
 	// Pricing rules

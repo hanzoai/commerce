@@ -36,12 +36,6 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Websites = []website.Website{website.Website{Type: website.Production, Url: "http://suchtees.com"}}
 	org.AddDefaultTokens()
 
-	// Saved stripe tokens
-	org.Stripe.Test.UserId = "acct_16fNBDH4ZOGOmFfW"
-	org.Stripe.Test.AccessToken = ""
-	org.Stripe.Test.PublishableKey = "pk_test_HHiaCsBYlyfI45xtAvIAsjRe"
-	org.Stripe.Test.RefreshToken = ""
-
 	org.AuthorizeNet.Sandbox.LoginId = ""
 	org.AuthorizeNet.Sandbox.TransactionKey = ""
 	org.AuthorizeNet.Sandbox.Key = "Simon"
@@ -50,17 +44,6 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Ethereum.Address = "0xf2fccc0198fc6b39246bd91272769d46d2f9d43b"
 	org.Bitcoin.Address = ""
 	org.Bitcoin.TestAddress = "mrPFGX5ViUZk2s8i5soBCkrFVzRwngK8DQ"
-
-	// You can only have one set of test credentials, so live/test are the same.
-	org.Stripe.Live.UserId = org.Stripe.Test.UserId
-	org.Stripe.Live.AccessToken = org.Stripe.Test.AccessToken
-	org.Stripe.Live.PublishableKey = org.Stripe.Test.PublishableKey
-	org.Stripe.Live.RefreshToken = org.Stripe.Test.RefreshToken
-
-	org.Stripe.UserId = org.Stripe.Test.UserId
-	org.Stripe.AccessToken = org.Stripe.Test.AccessToken
-	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
-	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
 	org.Paypal.ConfirmUrl = "http://hanzo.ai"
 	org.Paypal.CancelUrl = "http://hanzo.ai"

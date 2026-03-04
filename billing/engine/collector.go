@@ -63,7 +63,7 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 		}
 	}
 
-	// Step 3: External provider (Stripe, etc.)
+	// Step 3: External provider (Square, etc.)
 	// For now, balance-only. External provider integration can be added
 	// by passing a ProviderCharger callback similar to CreditBurner.
 	if remaining > 0 {

@@ -14,7 +14,7 @@
 // failures and probes with limited requests before fully closing again.
 //
 // Transaction IDs returned by the router are prefixed with the processor type
-// (e.g. "stripe:ch_xxx") so that Capture and Refund operations can be routed
+// (e.g. "square:ch_xxx") so that Capture and Refund operations can be routed
 // back to the exact processor that handled the original authorization or charge.
 package router
 

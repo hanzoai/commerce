@@ -3,7 +3,6 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/api/subscription/stripe"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -83,12 +82,6 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	sub.PlanId = pln.Id()
 	sub.Plan = *pln
 
-	// Subscribe user to plan in Stripe
-	err = stripe.Subscribe(org, usr, sub)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// Save user and subscription
 	usr.MustPut()
 	sub.MustPut()
@@ -129,11 +122,6 @@ func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscr
 
 	sub.Plan = *pln
 
-	err = stripe.UpdateSubscription(org, sub)
-	if err != nil {
-		return nil, err
-	}
-
 	sub.MustPut()
 
 	return sub, nil
@@ -141,10 +129,7 @@ func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscr
 
 func unsubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
 	_ = c
-	err := stripe.Unsubscribe(org, sub)
-	if err != nil {
-		return nil, err
-	}
+	_ = org
 
 	sub.MustPut()
 

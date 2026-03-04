@@ -103,27 +103,6 @@ type Config struct {
 		PaypalIpnUrl string
 	}
 
-	Stripe struct {
-		BankAccount string
-
-		// Current id/keys based on development mode
-		ClientId       string
-		SecretKey      string
-		PublishableKey string
-
-		DevelopmentClientId string
-		ProductionClientId  string
-
-		TestSecretKey      string
-		TestPublishableKey string
-		LiveSecretKey      string
-		LivePublishablKey  string
-
-		RedirectURL   string
-		WebhookURL    string
-		WebhookSecret string
-	}
-
 	Square struct {
 		// Application ID from Square Developer Dashboard
 		ApplicationId string
@@ -331,7 +310,6 @@ var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var DashboardUrl = config.DashboardUrl
 var Square = config.Square
-var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 
 func UrlFor(moduleName string, args ...string) string {
