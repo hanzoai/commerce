@@ -1,16 +1,10 @@
 package billing
 
 import (
-	"context"
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	stripe "github.com/stripe/stripe-go/v84"
-	"github.com/stripe/stripe-go/v84/token"
 
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -36,6 +30,10 @@ type cardTokenizeResponse struct {
 // Raw PAN is never stored; it is forwarded directly to the configured payment
 // provider and discarded.
 //
+// Card tokenization should be done client-side using the Square Web Payments
+// SDK. This endpoint returns 503 as server-side tokenization requires PCI DSS
+// Level 1 compliance. Use the Square Web Payments SDK (SqPaymentForm) instead.
+//
 // POST /api/v1/billing/card/tokenize
 func TokenizeCard(c *gin.Context) {
 	var req cardTokenizeRequest
@@ -58,57 +56,7 @@ func TokenizeCard(c *gin.Context) {
 		return
 	}
 
-	if key := os.Getenv("STRIPE_SECRET_KEY"); key != "" {
-		resp, err := tokenizeWithStripe(c.Request.Context(), key, req, num)
-		if err != nil {
-			log.Error("stripe tokenization failed: %v", err)
-			http.Fail(c, 502, "card tokenization failed", err)
-			return
-		}
-		c.JSON(200, resp)
-		return
-	}
-
-	http.Fail(c, 503, "no payment provider configured for card tokenization", nil)
-}
-
-func tokenizeWithStripe(ctx context.Context, key string, req cardTokenizeRequest, rawNumber string) (*cardTokenizeResponse, error) {
-	stripe.Key = key
-
-	params := &stripe.TokenParams{
-		Card: &stripe.CardParams{
-			Number:   stripe.String(rawNumber),
-			ExpMonth: stripe.String(req.ExpiryMonth),
-			ExpYear:  stripe.String(req.ExpiryYear),
-			CVC:      stripe.String(req.CVC),
-		},
-	}
-	if req.Name != "" {
-		params.Card.Name = stripe.String(req.Name)
-	}
-	if req.Zip != "" {
-		params.Card.AddressZip = stripe.String(req.Zip)
-	}
-
-	tok, err := token.New(params)
-	if err != nil {
-		return nil, fmt.Errorf("stripe token creation: %w", err)
-	}
-
-	last4, brand, expMonth, expYear := "", "", "", ""
-	if card := tok.Card; card != nil {
-		last4 = card.Last4
-		brand = string(card.Brand)
-		expMonth = fmt.Sprintf("%02d", card.ExpMonth)
-		expYear = fmt.Sprintf("%d", card.ExpYear)
-	}
-
-	return &cardTokenizeResponse{
-		Token:       tok.ID,
-		Brand:       brand,
-		Last4:       last4,
-		ExpiryMonth: expMonth,
-		ExpiryYear:  expYear,
-		Provider:    "stripe",
-	}, nil
+	// Server-side card tokenization is not supported. Use the Square Web
+	// Payments SDK on the client to obtain a payment token (nonce).
+	http.Fail(c, 503, "server-side card tokenization not available; use Square Web Payments SDK", nil)
 }

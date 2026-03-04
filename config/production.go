@@ -44,12 +44,6 @@ func Production() *Config {
 	config.Paypal.IpnUrl = "https://api.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.paypal.com/cgi-bin/webscr"
 
-	config.Stripe.ClientId = config.Stripe.ProductionClientId
-	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
-	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
-
 	config.Facebook.AppId = os.Getenv("FACEBOOK_APP_ID")
 	config.Facebook.AppSecret = os.Getenv("FACEBOOK_APP_SECRET")
 	config.Facebook.GraphVersion = "v2.2"

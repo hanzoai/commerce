@@ -71,8 +71,6 @@ import (
 	reamazeApi "github.com/hanzoai/commerce/thirdparty/reamaze"
 	shipstationApi "github.com/hanzoai/commerce/thirdparty/shipstation"
 	shipwireApi "github.com/hanzoai/commerce/thirdparty/shipwire/api"
-	stripeApi "github.com/hanzoai/commerce/thirdparty/stripe/api"
-
 	dashv2Api "github.com/hanzoai/commerce/api/dashv2"
 
 	// Side effect import because of cyclical dependency
@@ -191,9 +189,6 @@ func Route(api router.Router) {
 
 	// Shipwire custom store API endpoints
 	shipwireApi.Route(api)
-
-	// Stripe callback, webhook
-	stripeApi.Route(api)
 
 	// Paypal IPN
 	paypalApi.Route(api)

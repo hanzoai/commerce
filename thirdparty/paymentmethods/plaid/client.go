@@ -38,15 +38,8 @@ func (c Client) GetPayToken(p PaymentMethodParams) (*PaymentMethodOutput, error)
 		return nil, err
 	}
 
-	// Stripe Round Trip
-	// res2, err := client.CreateStripeToken(
-	//   res.AccessToken,
-	//   p.ExternalUserId,
-	// )
-
 	return &PaymentMethodOutput{
-		Inputs: p,
-		//PayToken:            res2..StripeBankAccountToken,
+		Inputs:         p,
 		PayToken:       accessToken,
 		PayTokenId:     accountID,
 		ExternalUserId: p.ExternalUserId,

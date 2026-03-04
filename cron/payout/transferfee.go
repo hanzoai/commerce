@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
@@ -13,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/models/multi"
 	"github.com/hanzoai/commerce/models/partner"
 	"github.com/hanzoai/commerce/models/transfer"
-	"github.com/hanzoai/commerce/thirdparty/stripe"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
@@ -37,7 +35,7 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 		tr.Destination = par.Stripe.UserId
 	case fee.Platform:
 		tr.Description = fmt.Sprintf("Platform fee transfer '%s', fee '%s'", tr.Id(), fe.Id())
-		tr.Destination = config.Stripe.BankAccount
+		tr.Destination = "" // External payout destination to be configured
 	default:
 		panic(fmt.Errorf("invalid fee type: '%s'", fe.Type))
 	}
@@ -45,7 +43,7 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 }
 
 // Create transfer for single fee
-var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeToken, namespace, id string) {
+var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, paymentToken, namespace, id string) {
 	var fe *fee.Fee
 	var tr *transfer.Transfer
 
@@ -71,7 +69,7 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 		}
 
 		// Create associated transfer
-		tr := transferFromFee(db, fe)
+		tr = transferFromFee(db, fe)
 
 		// Allocate transfer ID and Update fee
 		fe.Status = fee.Transferred
@@ -88,30 +86,12 @@ var TransferFee = delay.Func("transfer-fee", func(ctx context.Context, stripeTok
 		return
 	}
 
-	// Initiate transfer on Stripe's side
-	sc := stripe.New(ctx, stripeToken)
-	res, err := sc.Payout(tr)
+	// External payout (Square or manual) should be handled here.
+	// Legacy Stripe payout removed.
+	log.Warn("Transfer '%s' created for fee '%s' but external payout not yet implemented (legacy Stripe removed)", tr.Id(), fe.Id(), ctx)
 
-	// Save transfer ID
-	tr.Account.TransferId = res.ID
-
-	if err != nil {
-		log.Warn("Failed to create Stripe transfer for fee '%s', transfer '%s': %v", fe.Id(), tr.Id(), err, ctx)
-
-		// Update transfer to reflect failure status
-		tr.Status = transfer.Error
-		if res.FailureMessage == "" {
-			tr.FailureCode = string(res.FailureCode)
-			tr.FailureMessage = res.FailureMessage
-		} else {
-			tr.FailureCode = "stripe-error"
-			tr.FailureMessage = err.Error()
-		}
-
-	}
-
-	// Save transfer
+	tr.Status = transfer.Pending
 	if err := tr.Update(); err != nil {
-		log.Error("Failed to update status of failed transfer '%s': %v\n%v", tr.Id(), err, tr, ctx)
+		log.Error("Failed to update status of transfer '%s': %v\n%v", tr.Id(), err, tr, ctx)
 	}
 })

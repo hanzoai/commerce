@@ -79,16 +79,6 @@ func Defaults() *Config {
 	config.Paypal.IpnUrl = "https://api.staging.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
-	config.Stripe.BankAccount = os.Getenv("STRIPE_BANK_ACCOUNT")
-	config.Stripe.DevelopmentClientId = os.Getenv("STRIPE_DEV_CLIENT_ID")
-	config.Stripe.ProductionClientId = os.Getenv("STRIPE_PROD_CLIENT_ID")
-
-	config.Stripe.TestSecretKey = os.Getenv("STRIPE_TEST_SECRET_KEY")
-	config.Stripe.TestPublishableKey = os.Getenv("STRIPE_TEST_PUBLISHABLE_KEY")
-	config.Stripe.LiveSecretKey = os.Getenv("STRIPE_LIVE_SECRET_KEY")
-	config.Stripe.LivePublishablKey = os.Getenv("STRIPE_LIVE_PUBLISHABLE_KEY")
-	config.Stripe.WebhookSecret = os.Getenv("STRIPE_WEBHOOK_SECRET")
-
 	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.ai"
 

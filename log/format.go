@@ -406,7 +406,7 @@ func (bf *backendFormatter) Log(level logging.Level, calldepth int, r *logging.R
 	return bf.b.Log(level, calldepth+1, r)
 }
 
-// Stripe SDK and project paths from filename
+// Strip SDK and project paths from filename
 func relativePath(file string) string {
 	file = strings.Replace(file, sdkPath, "", 1)
 	file = strings.Replace(file, projectPath, "", 1)

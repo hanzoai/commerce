@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -16,13 +17,6 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
-)
-
-// Starter credit constants.
-const (
-	StarterCreditCents = 500        // $5.00 USD
-	StarterCreditDays  = 30         // expires in 30 days
-	StarterCreditTag   = "starter-credit"
 )
 
 type depositRequest struct {
@@ -157,7 +151,7 @@ func GrantStarterCredit(c *gin.Context) {
 	existingTrans := make([]*transaction.Transaction, 0)
 	tq := transaction.Query(db).Ancestor(rootKey).
 		Filter("DestinationId=", req.User).
-		Filter("Tags=", StarterCreditTag)
+		Filter("Tags=", credit.StarterCreditTag)
 	if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
 		http.Fail(c, 409, "starter credit already granted", nil)
 		return
@@ -168,13 +162,13 @@ func GrantStarterCredit(c *gin.Context) {
 	trans.DestinationId = req.User
 	trans.DestinationKind = "iam-user"
 	trans.Currency = "usd"
-	trans.Amount = currency.Cents(StarterCreditCents)
+	trans.Amount = currency.Cents(credit.StarterCreditCents)
 	trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
-	trans.Tags = StarterCreditTag
-	trans.ExpiresAt = time.Now().AddDate(0, 0, StarterCreditDays)
+	trans.Tags = credit.StarterCreditTag
+	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
 	trans.Metadata = Map{
 		"creditType": "starter",
-		"expiryDays": StarterCreditDays,
+		"expiryDays": credit.StarterCreditDays,
 	}
 
 	if !org.Live {
@@ -190,10 +184,10 @@ func GrantStarterCredit(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"transactionId": trans.Id(),
 		"user":          req.User,
-		"amount":        StarterCreditCents,
+		"amount":        credit.StarterCreditCents,
 		"currency":      "usd",
 		"type":          "deposit",
-		"tags":          StarterCreditTag,
+		"tags":          credit.StarterCreditTag,
 		"expiresAt":     trans.ExpiresAt,
 	})
 }
