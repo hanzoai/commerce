@@ -212,7 +212,7 @@ func squareCheckoutClient() (*sqpaymentlinks.Client, string, error) {
 	return client, locationID, nil
 }
 
-// Sessions creates a provider-agnostic, Stripe-like hosted checkout session.
+// Sessions creates a provider-agnostic hosted checkout session.
 //
 // Currently implemented using Square Payment Links (hosted checkout URL).
 // When providerHint is "wire", returns wire transfer instructions instead.

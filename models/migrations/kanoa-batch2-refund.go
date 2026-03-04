@@ -3,70 +3,20 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/api/checkout/stripe"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
-	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/models/types/currency"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )
 
-var oldPrice = currency.Cents(17900)
-var discount = currency.Cents(2000)
-
+// Legacy migration: Stripe refund calls removed.
+// This migration is historical and will no-op.
 var _ = New("kanoa-batch2-refund",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
-
-		db := ds.New(c)
-		org := organization.New(db)
-		if err := org.GetById("kanoa"); err != nil {
-			panic(err)
-		}
-
-		return []interface{}{org.Stripe.Live.AccessToken, org.Stripe.Test.AccessToken}
+		return NoArgs
 	},
-	func(db *ds.Datastore, ord *order.Order, stripeToken, testStripeToken string) {
-		org := organization.New(db)
-
-		org.Live = true
-		org.Stripe.AccessToken = stripeToken
-		org.Stripe.Live.AccessToken = stripeToken
-		org.Stripe.Test.AccessToken = testStripeToken
-
-		if v, ok := ord.Metadata["batch"]; !ok || v.(string) != "2" {
-			return
-		}
-
-		if v, ok := ord.Metadata["refunded"]; ok && v.(bool) {
-			return
-		}
-
-		if ord.LineTotal%oldPrice != 0 {
-			return
-		}
-
-		lineTotal := ord.LineTotal
-		multiplier := lineTotal / oldPrice
-		if multiplier <= 0 {
-			log.Error("Multiplier was less than 1", db.Context)
-			return
-		}
-
-		refund := multiplier*discount - ord.Discount - ord.Refunded
-		if refund <= 0 {
-			log.Warn("Refund was less than 1", db.Context)
-			return
-		}
-
-		log.Warn("Trying to refund %v cents, %v cents paid, %v cents discount using code %#v", refund, ord.Paid, ord.Refunded, ord.CouponCodes, db.Context)
-		if err := stripe.Refund(org, ord, currency.Cents(refund)); err != nil {
-			log.Error("Could not refund %v cents: %v", refund, err, db.Context)
-			return
-		}
-
-		ord.Metadata["refunded"] = true
-		ord.MustPut()
+	func(db *ds.Datastore, ord *order.Order) {
+		log.Debug("kanoa-batch2-refund: skipped (legacy Stripe migration) for order %s", ord.Id(), db.Context)
 	},
 )
