@@ -163,7 +163,7 @@ func route(router router.Router, prefix string) {
 	api := router.Group(prefix)
 	api.Use(middleware.AccessControl("*"))
 
-	// Hosted checkout sessions (Stripe-like)
+	// Hosted checkout sessions
 	if prefix == "/checkout" {
 		api.POST("/sessions", Sessions)
 	}

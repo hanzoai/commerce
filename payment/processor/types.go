@@ -8,7 +8,6 @@ import (
 type ProcessorType string
 
 const (
-	Stripe       ProcessorType = "stripe"
 	Square       ProcessorType = "square"
 	PayPal       ProcessorType = "paypal"
 	Adyen        ProcessorType = "adyen"
