@@ -5,7 +5,7 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/schedule"
-	"github.com/hanzoai/commerce/thirdparty/stripe/connect"
+	"github.com/hanzoai/commerce/types/integration"
 	"github.com/hanzoai/orm"
 )
 
@@ -34,9 +34,9 @@ type Affiliate struct {
 		RefreshToken   string
 		UserId         string
 
-		// Save entire live and test tokens
-		Live connect.Token
-		Test connect.Token
+		// Save entire live and test tokens (legacy)
+		Live integration.StripeConnectToken
+		Test integration.StripeConnectToken
 	} `json:"-"`
 }
 

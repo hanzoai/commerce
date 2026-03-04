@@ -4,10 +4,20 @@ import (
 	"encoding/json"
 	"time"
 
-	stripe "github.com/hanzoai/commerce/thirdparty/stripe/connect/types"
-
 	"github.com/hanzoai/commerce/models/types/analytics"
 )
+
+// StripeConnectToken holds legacy Stripe Connect OAuth credentials.
+// Retained for backward compatibility with stored data.
+type StripeConnectToken struct {
+	AccessToken    string `json:"accessToken,omitempty"`
+	PublishableKey string `json:"publishableKey,omitempty"`
+	RefreshToken   string `json:"refreshToken,omitempty"`
+	UserId         string `json:"userId,omitempty"`
+	Livemode       bool   `json:"livemode,omitempty"`
+	Scope          string `json:"scope,omitempty"`
+	TokenType      string `json:"tokenType,omitempty"`
+}
 
 type Type string
 
@@ -203,7 +213,8 @@ type SMTPRelay struct {
 	Msg      string   `json:"msg"`
 }
 
-// Stripe connection
+// Stripe holds legacy Stripe integration credentials.
+// Retained for backward compatibility with stored organization data.
 type Stripe struct {
 	// For convenience duplicated
 	AccessToken    string `json:"accessToken,omitempty"`
@@ -212,8 +223,8 @@ type Stripe struct {
 	UserId         string `json:"userId,omitempty"`
 
 	// Save entire live and test tokens
-	Live stripe.Token `json:"live,omitempty" datastore:",noindex"`
-	Test stripe.Token `json:"test,omitempty" datastore:",noindex"`
+	Live StripeConnectToken `json:"live,omitempty" datastore:",noindex"`
+	Test StripeConnectToken `json:"test,omitempty" datastore:",noindex"`
 }
 
 // Square connection

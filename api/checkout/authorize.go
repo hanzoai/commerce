@@ -15,7 +15,6 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/null"
 	"github.com/hanzoai/commerce/api/checkout/paypal"
 	"github.com/hanzoai/commerce/api/checkout/square"
-	"github.com/hanzoai/commerce/api/checkout/stripe"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/fee"
@@ -235,7 +234,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case accounts.AuthorizeNetType:
 		log.Info("Using AuthroizeNet", c)
 		if ord.Currency.IsCrypto() {
-			return nil, UnsupportedStripeCurrency
+			return nil, UnsupportedFiatCurrency
 		}
 		err = authorizenet.Authorize(org, ord, usr, pay)
 		if err != nil {
@@ -244,7 +243,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case accounts.SquareType:
 		log.Info("Using Square", c)
 		if ord.Currency.IsCrypto() {
-			return nil, UnsupportedStripeCurrency
+			return nil, UnsupportedFiatCurrency
 		}
 		if ord.Total > 5000000 {
 			return nil, TransactionLimitReached
@@ -255,24 +254,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			log.Error("Square Error: %v", err, c)
 			err = AuthorizationFailed
 		}
-	case accounts.StripeType:
-		log.Info("Using Stripe", c)
-		if ord.Currency.IsCrypto() {
-			return nil, UnsupportedStripeCurrency
-		}
-		if ord.Total > 5000000 {
-			return nil, TransactionLimitReached
-		}
-		log.Info("Authorizing Stripe", c)
-		err = stripe.Authorize(org, ord, usr, pay)
-		if err != nil {
-			log.Error("Stripe Error: %v", err, c)
-			err = AuthorizationFailed
-		}
 	default:
 		log.Info("Using Default (Square)", c)
 		if ord.Currency.IsCrypto() {
-			return nil, UnsupportedStripeCurrency
+			return nil, UnsupportedFiatCurrency
 		}
 		if ord.Total > 5000000 {
 			return nil, TransactionLimitReached

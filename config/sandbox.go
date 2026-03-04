@@ -34,12 +34,6 @@ func Sandbox() *Config {
 
 	config.StaticUrl = "//static.sandbox.hanzo.ai"
 
-	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
-	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
-	config.Stripe.SecretKey = config.Stripe.TestSecretKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
-
 	config.Google.APIKey = os.Getenv("GOOGLE_API_KEY")
 	config.Google.Bucket.ImageUploads = "hanzo-sandbox-image-uploads"
 

@@ -18,7 +18,7 @@ var (
 	UnsupportedBitcoinCurrency   = errors.New("BTC/XBT is supported for 'bitcoin' payment method")
 	UnsupportedEthereumCurrency  = errors.New("Only ETH is supported for 'ethereum' payment method")
 	UnsupportedPaymentType       = errors.New("Unsupported payment type")
-	UnsupportedStripeCurrency    = errors.New("XBT(BTC), ETH not supported by 'stripe' payment method")
+	UnsupportedFiatCurrency      = errors.New("XBT(BTC), ETH not supported by fiat payment method")
 	UserDoesNotExist             = errors.New("User does not exist")
 	UserNotProvided              = errors.New("None of user, user.id, order.userId is set")
 	WalletCreationError          = errors.New("Failed to create wallet for user")
