@@ -1,12 +1,9 @@
 package http
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/thirdparty/stripe/errors"
 	"github.com/hanzoai/commerce/util/json"
 )
 
@@ -42,23 +39,6 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 		if param, ok := v["param"]; ok {
 			res.Param = param
 		}
-	}
-
-	// Support various custom errors
-	switch v := err.(type) {
-	case *errors.StripeError:
-		if v.Type == "card_error" {
-			res.Type = "authorization-error"
-		} else {
-			res.Type = "stripe-error"
-		}
-
-		// Use stripe message, param in call cases
-		res.Message = v.Message
-		res.Param = v.Param
-
-		// Replace underscores in code to make consistent with our API.
-		res.Code = strings.Replace(v.Code, "_", "-", -1)
 	}
 
 	// Force 402 on auth errors

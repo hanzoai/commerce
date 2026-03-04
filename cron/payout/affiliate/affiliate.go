@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/cron/payout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
@@ -50,7 +49,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx context.Contex
 		}
 
 		// Create transfer for associated fee
-		transferFee.Call(ctx, config.Stripe.SecretKey, namespace, key.Encode())
+		transferFee.Call(ctx, "", namespace, key.Encode())
 	}
 })
 
@@ -74,7 +73,7 @@ func Payout(ctx context.Context) error {
 		affs := make([]*affiliate.Affiliate, 0)
 		db = datastore.New(nsctx)
 
-		// Find all affiliates which have connected to Stripe
+		// Find all affiliates with a payout access token
 		if _, err := affiliate.Query(db).Filter("Stripe.AcessToken >", "").GetAll(&affs); err != nil {
 			log.Error("Failed to fetch affiliates for '%s': %v", org.Name, err, ctx)
 			return err

@@ -44,7 +44,7 @@ func decodeEvent(c *gin.Context) (*Event, error) {
 	event := new(Event)
 	if err := json.Decode(c.Request.Body, event); err != nil {
 		log.Error("Could not Decode:\n%s", c.Request.Body, c)
-		return nil, fmt.Errorf("Failed to parse Stripe webhook: %v", err)
+		return nil, fmt.Errorf("Failed to parse webhook: %v", err)
 	}
 
 	log.JSON("Received '%s'", event.Type, event)
@@ -55,7 +55,7 @@ var AccessDeniedError = errors.New("Access Denied")
 var BlockTransactionNotFound = errors.New("BlockTransaction not found, it should exist for this webhook to be received")
 var CouldNotConvertToBigInt = errors.New("BlockTransaction Value could not be converted")
 
-// Handle stripe webhook POSTs
+// Handle Ethereum webhook POSTs
 func Webhook(c *gin.Context) {
 	event, err := decodeEvent(c)
 	if err != nil {

@@ -18,7 +18,7 @@ var NothingToAuthorizeError = errors.New("Nothing to Authorize (Items or Subscri
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	ctx := ord.Datastore().Context
 
-	// Create stripe client
+	// Create Authorize.Net client
 	con := org.AuthorizeNetToken(ord.Test)
 
 	log.Warn("Connection: %v", con, ctx)

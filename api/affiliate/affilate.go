@@ -2,11 +2,9 @@ package affiliate
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
@@ -21,18 +19,10 @@ import (
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-const (
-	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&stripe_landing=login&redirect_uri=%s&state=%s"
-)
-
-//<a href="api.hanzo.ai/affiliate/:id/connect"></a>
-
+// connect initiates payment processor OAuth for an affiliate.
+// Legacy Stripe Connect removed; affiliate payment integration pending.
 func connect(c *gin.Context) {
-	id := c.Params.ByName("affiliateid")
-	org := middleware.GetOrganization(c)
-	state := org.Id() + ":" + id
-	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, state)
-	c.Redirect(302, url)
+	http.Fail(c, 503, "affiliate payment connect not available", errors.New("payment processor connect not configured"))
 }
 
 func getReferrals(c *gin.Context) {

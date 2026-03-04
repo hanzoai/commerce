@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -167,6 +168,14 @@ func IAMTokenRequired() gin.HandlerFunc {
 					// Populate KV cache for next request.
 					if kv != nil {
 						_ = kv.Set(ctx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
+					}
+
+					// If org was just created (CreatedAt within the last few
+					// seconds), grant a $5 starter credit. Runs in a goroutine
+					// so it never blocks the request.
+					if time.Since(org.GetCreatedAt()) < 5*time.Second && claims.Subject != "" {
+						nsDb := datastore.New(org.Namespaced(ctx))
+						go credit.GrantIfEligible(nsDb, claims.Subject, "org-created")
 					}
 				}
 			}

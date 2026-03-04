@@ -440,14 +440,9 @@ func (app *App) seedOrganization(orgName string) error {
 	// Write payment credentials to KMS (if enabled)
 	if app.KMS != nil {
 		client := app.KMS.Client()
-		stripePath := "/tenants/" + orgName + "/stripe"
 		squarePath := "/tenants/" + orgName + "/square"
 
 		seedSecrets := []struct{ path, name, envVar string }{
-			// Stripe
-			{stripePath, "STRIPE_LIVE_ACCESS_TOKEN", "STRIPE_SECRET_KEY"},
-			{stripePath, "STRIPE_TEST_ACCESS_TOKEN", "STRIPE_TEST_SECRET_KEY"},
-			{stripePath, "STRIPE_PUBLISHABLE_KEY", "STRIPE_PUBLISHABLE_KEY"},
 			// Square — Production
 			{squarePath, "SQUARE_PRODUCTION_APPLICATION_ID", "SQUARE_APPLICATION_ID"},
 			{squarePath, "SQUARE_PRODUCTION_ACCESS_TOKEN", "SQUARE_ACCESS_TOKEN"},

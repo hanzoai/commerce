@@ -9,22 +9,14 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
-	"github.com/hanzoai/commerce/thirdparty/stripe"
 )
 
 var accessToken = ""
 
 // Update charge in case order/pay id is missing in metadata
+// (Legacy: Stripe calls removed)
 func updateChargeFromPayment(ctx context.Context, pay *payment.Payment) error {
-	// Get a stripe client
-	client := stripe.New(ctx, accessToken)
-
-	if _, err := client.UpdateCharge(pay); err != nil {
-		log.Error("Failed to update charge '%s' using payment %#v: %v", pay.Account.ChargeId, pay, err, ctx)
-		return err
-	}
-
-	log.Debug("Updated charge '%s' using payment: %#v", pay.Account.ChargeId, pay, ctx)
+	log.Warn("updateChargeFromPayment: legacy Stripe migration skipped for payment %s", pay.Id(), ctx)
 	return nil
 }
 
@@ -115,11 +107,6 @@ var _ = New("update-old-payments",
 		if err := orderNeedsPaymentId(ctx, ord, valid); err != nil {
 			return
 		}
-
-		// Update charge
-		// if err := updateChargeFromPayment(ctx, valid); err != nil {
-		// 	return
-		// }
 
 		log.Debug("Payment '%v' associated with order '%v'", valid.Id(), ord.Id(), ctx)
 	},

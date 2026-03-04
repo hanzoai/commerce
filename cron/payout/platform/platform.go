@@ -3,7 +3,6 @@ package platform
 import (
 	"context"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/cron/payout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -50,7 +49,7 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx context.Context
 
 		// Create transfer for associated fee. Note: uses datastore-encoded key
 		// to identify fee rather than our hashid.
-		transferFee.Call(ctx, config.Stripe.SecretKey, org.Name, key.Encode())
+		transferFee.Call(ctx, "", org.Name, key.Encode())
 	}
 })
 
