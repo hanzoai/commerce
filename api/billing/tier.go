@@ -97,6 +97,48 @@ func GetTier(c *gin.Context) {
 	})
 }
 
+// TierCheck is a lightweight endpoint for model-access gating.
+// It returns the tier config and whether a specific model is allowed,
+// without computing the full balance. Used by Chat and white-label services.
+//
+//	GET /api/v1/billing/tier-check?user=hanzo/alice&model=zen4-max
+func TierCheck(c *gin.Context) {
+	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
+	if user == "" {
+		http.Fail(c, 400, "user query parameter is required", nil)
+		return
+	}
+
+	model := strings.TrimSpace(c.Query("model"))
+
+	// Resolve tier: prefer IAM claim, fall back to query param, default to free.
+	tierName := tier.Free
+	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
+		tierName = tier.Parse(iamTier)
+	} else if qTier := c.Query("tier"); qTier != "" {
+		tierName = tier.Parse(qTier)
+	}
+
+	cfg := tier.Get(tierName)
+
+	resp := gin.H{
+		"user": user,
+		"tier": gin.H{
+			"name":          cfg.Name,
+			"displayName":   cfg.DisplayName,
+			"allowedModels": cfg.AllowedModels,
+			"maxAgents":     cfg.MaxAgents,
+		},
+	}
+
+	if model != "" {
+		resp["model"] = model
+		resp["allowed"] = cfg.IsModelAllowed(model)
+	}
+
+	c.JSON(200, resp)
+}
+
 // dailyUsageCents sums the api-usage withdrawals for a user since
 // midnight UTC today. This determines how much of the free-tier daily
 // credit has been consumed.

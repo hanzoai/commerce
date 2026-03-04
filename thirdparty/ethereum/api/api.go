@@ -5,7 +5,7 @@ import (
 	"github.com/hanzoai/commerce/util/router"
 )
 
-// Wire up stripe endpoint
+// Wire up Ethereum endpoint
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("ethereum")
 	api.POST("/webhook", Webhook)
