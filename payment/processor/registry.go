@@ -36,7 +36,6 @@ func DefaultConfig() *RegistryConfig {
 		DefaultFiatProcessor:   Square,
 		DefaultCryptoProcessor: MPC,
 		ProcessorPriority: []ProcessorType{
-			Stripe,
 			Square,
 			Adyen,
 			PayPal,

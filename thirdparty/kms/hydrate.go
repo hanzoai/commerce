@@ -15,7 +15,6 @@ type secretMapping struct {
 
 // mappings returns all provider credential mappings for a given org name.
 func mappings(orgName string) []secretMapping {
-	stripe := "/tenants/" + orgName + "/stripe"
 	square := "/tenants/" + orgName + "/square"
 	authnet := "/tenants/" + orgName + "/authorizenet"
 	paypal := "/tenants/" + orgName + "/paypal"
@@ -23,11 +22,6 @@ func mappings(orgName string) []secretMapping {
 	merc := "/tenants/" + orgName + "/mercury"
 
 	return []secretMapping{
-		// Stripe
-		{stripe, "STRIPE_LIVE_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Live.AccessToken = v }},
-		{stripe, "STRIPE_TEST_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Test.AccessToken = v }},
-		{stripe, "STRIPE_PUBLISHABLE_KEY", func(o *organization.Organization, v string) { o.Stripe.PublishableKey = v }},
-
 		// Square — Production
 		{square, "SQUARE_PRODUCTION_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Square.Production.AccessToken = v }},
 		{square, "SQUARE_PRODUCTION_LOCATION_ID", func(o *organization.Organization, v string) { o.Square.Production.LocationId = v }},

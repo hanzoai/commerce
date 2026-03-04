@@ -42,12 +42,6 @@ func Staging() *Config {
 	config.Paypal.IpnUrl = "https://api-staging.hanzo.ai/paypal/ipn/"
 	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
-	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
-	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
-	config.Stripe.SecretKey = config.Stripe.TestSecretKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
-
 	config.Facebook.AppId = os.Getenv("FACEBOOK_APP_ID")
 	config.Facebook.AppSecret = os.Getenv("FACEBOOK_APP_SECRET")
 	config.Facebook.GraphVersion = "v2.2"
