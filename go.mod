@@ -47,7 +47,6 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/spf13/cobra v1.10.2
 	github.com/square/square-go-sdk/v3 v3.0.0
-	github.com/stripe/stripe-go/v84 v84.3.0
 	go.mongodb.org/mongo-driver v1.17.9
 	go.temporal.io/sdk v1.40.0
 	golang.org/x/crypto v0.48.0

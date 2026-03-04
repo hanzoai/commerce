@@ -45,12 +45,6 @@ func Development() *Config {
 	config.Bitcoin.TestNetPasswords = []string{os.Getenv("BITCOIN_TESTNET_PASSWORD")}
 	config.Bitcoin.WebhookPassword = os.Getenv("BITCOIN_WEBHOOK_PASSWORD")
 
-	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
-	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
-	config.Stripe.SecretKey = config.Stripe.TestSecretKey
-	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("api", "/stripe/callback")
-	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("api", "/stripe/webhook")
-
 	config.Facebook.AppId = os.Getenv("FACEBOOK_APP_ID")
 	config.Facebook.AppSecret = os.Getenv("FACEBOOK_APP_SECRET")
 	config.Facebook.GraphVersion = "v2.2"

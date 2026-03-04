@@ -190,6 +190,65 @@ func GetCreditBalance(c *gin.Context) {
 	})
 }
 
+// GetCreditBalanceBreakdown returns the credit balance grouped by tag.
+// Used by Chat to distinguish trial vs paid credits.
+//
+//	GET /api/v1/billing/credit-balance/breakdown?userId=...
+func GetCreditBalanceBreakdown(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+
+	userId := strings.TrimSpace(c.Query("userId"))
+	if userId == "" {
+		http.Fail(c, 400, "userId query parameter is required", nil)
+		return
+	}
+
+	grants, err := getActiveGrants(db, userId)
+	if err != nil {
+		log.Error("Failed to query credit grants for breakdown: %v", err, c)
+		http.Fail(c, 500, "failed to query credit balance", err)
+		return
+	}
+
+	type tagBalance struct {
+		Cents     int64      `json:"cents"`
+		ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+	}
+
+	breakdown := make(map[string]*tagBalance)
+	var totalCents int64
+
+	for _, g := range grants {
+		tag := g.Tags
+		if tag == "" {
+			tag = "other"
+		}
+
+		tb, ok := breakdown[tag]
+		if !ok {
+			tb = &tagBalance{}
+			breakdown[tag] = tb
+		}
+		tb.Cents += g.RemainingCents
+		totalCents += g.RemainingCents
+
+		// Track the earliest expiry for this tag group
+		if !g.ExpiresAt.IsZero() {
+			if tb.ExpiresAt == nil || g.ExpiresAt.Before(*tb.ExpiresAt) {
+				exp := g.ExpiresAt
+				tb.ExpiresAt = &exp
+			}
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"userId":    userId,
+		"breakdown": breakdown,
+		"total":     gin.H{"cents": totalCents},
+	})
+}
+
 // VoidCreditGrant voids a specific credit grant, making it unusable.
 //
 //	POST /api/v1/billing/credit-grants/:id/void

@@ -24,7 +24,6 @@ import (
 	_ "github.com/hanzoai/commerce/models/webhook/tasks"
 	_ "github.com/hanzoai/commerce/util/aggregate/tasks"
 	// _ "github.com/hanzoai/commerce/thirdparty/salesforce/tasks"
-	_ "github.com/hanzoai/commerce/thirdparty/stripe/tasks"
 )
 
 func Init() {

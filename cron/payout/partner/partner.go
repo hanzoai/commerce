@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/cron/payout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
@@ -54,7 +53,7 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx context.Context,
 		}
 
 		// Create transfer for associated fee
-		transferFee.Call(ctx, config.Stripe.SecretKey, namespace, key.Encode())
+		transferFee.Call(ctx, "", namespace, key.Encode())
 	}
 })
 
@@ -84,7 +83,7 @@ func Payout(ctx context.Context) error {
 				continue
 			}
 
-			// Do not process fees for partners that have not connected to Stripe
+			// Skip partners without a payout access token
 			if par.Stripe.AccessToken == "" {
 				continue
 			}
