@@ -1104,8 +1104,14 @@ func (q *postgresQuery) buildWhere() (string, []interface{}) {
 	}
 
 	// Field filters using JSONB operators
+	// Go Filter() calls use PascalCase field names (e.g., "DestinationKind"),
+	// but JSON tags use camelCase (e.g., "destinationKind"). Convert first char to lower.
 	for _, f := range q.filters {
-		jsonPath := fmt.Sprintf("data->>'%s'", f.field)
+		jsonField := f.field
+		if len(jsonField) > 0 {
+			jsonField = strings.ToLower(jsonField[:1]) + jsonField[1:]
+		}
+		jsonPath := fmt.Sprintf("data->>'%s'", jsonField)
 		conditions = append(conditions, fmt.Sprintf("%s %s $%d", jsonPath, f.op, argNum))
 		args = append(args, f.value)
 		argNum++
@@ -1125,7 +1131,11 @@ func (q *postgresQuery) buildOrderBy() string {
 
 	var parts []string
 	for _, o := range q.orders {
-		jsonPath := fmt.Sprintf("data->>'%s'", o.field)
+		orderField := o.field
+		if len(orderField) > 0 {
+			orderField = strings.ToLower(orderField[:1]) + orderField[1:]
+		}
+		jsonPath := fmt.Sprintf("data->>'%s'", orderField)
 		if o.desc {
 			parts = append(parts, jsonPath+" DESC")
 		} else {
