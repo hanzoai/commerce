@@ -22,7 +22,7 @@ export default function CallbackPage() {
       sdk.handleCallback(window.location.href)
         .then(() => {
           // Full page load so IamProvider picks up stored tokens
-          window.location.href = '/'
+          window.location.href = '/overview'
         })
         .catch((err) => {
           setError(err.message || 'Authentication failed.')
