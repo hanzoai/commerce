@@ -42,7 +42,7 @@ export function PublicFooter() {
             <ul className="space-y-2 text-sm">
               <li><a href="https://github.com/hanzoai/commerce" className="text-gray-500 transition-colors hover:text-gray-300">GitHub</a></li>
               <li><a href="https://discord.gg/hanzo" className="text-gray-500 transition-colors hover:text-gray-300">Discord</a></li>
-              <li><a href="https://x.com/hanaboroshi" className="text-gray-500 transition-colors hover:text-gray-300">X / Twitter</a></li>
+              <li><a href="https://x.com/hanzoai" className="text-gray-500 transition-colors hover:text-gray-300">X / Twitter</a></li>
             </ul>
           </div>
         </div>
