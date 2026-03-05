@@ -13,7 +13,7 @@ export default function LoginPage() {
   useEffect(() => {
     // If already authenticated, redirect to dashboard
     const token = sessionStorage.getItem('hanzo_iam_access_token')
-    if (token) router.replace('/')
+    if (token) router.replace('/overview')
   }, [router])
 
   const handleLogin = async () => {
