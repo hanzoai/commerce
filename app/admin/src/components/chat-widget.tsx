@@ -7,10 +7,10 @@ const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'https://api.hanzo.ai
 const GATEWAY_KEY = process.env.NEXT_PUBLIC_GATEWAY_PUBLIC_KEY || 'hz_widget_public'
 
 const models = [
-  { id: 'llama-3.3-70b', name: 'Llama 70B', tag: '70B' },
-  { id: 'claude-haiku-4-5', name: 'Haiku 4.5', tag: 'Claude' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', tag: 'GPT' },
-  { id: 'deepseek-r1-distill-70b', name: 'DeepSeek R1', tag: '70B' },
+  { id: 'zen-coder-flash', name: 'Zen Flash', tag: 'Fast' },
+  { id: 'zen-coder', name: 'Zen Coder', tag: 'Code' },
+  { id: 'zen-70b-chat', name: 'Zen 70B', tag: '70B' },
+  { id: 'zen-405b-chat', name: 'Zen 405B', tag: '405B' },
 ]
 
 interface Message {
@@ -48,8 +48,10 @@ export function ChatWidget() {
   useEffect(() => { if (isOpen) inputRef.current?.focus() }, [isOpen])
 
   // Welcome message
+  const welcomeShown = useRef(false)
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && !welcomeShown.current) {
+      welcomeShown.current = true
       setMessages([{
         id: 'welcome',
         role: 'assistant',
@@ -66,6 +68,9 @@ export function ChatWidget() {
     setInput('')
     setIsLoading(true)
 
+    const assistantId = (Date.now() + 1).toString()
+    setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '' }])
+
     try {
       const resp = await fetch(`${GATEWAY_URL}/chat/completions`, {
         method: 'POST',
@@ -75,10 +80,11 @@ export function ChatWidget() {
         },
         body: JSON.stringify({
           model: selectedModel.id,
+          stream: true,
           messages: [
             {
               role: 'system',
-              content: `You are Zen AI, Hanzo's commerce assistant. You're powered by ${selectedModel.name}. Current page: ${pathname}. Be helpful, concise, and knowledgeable about Hanzo Commerce — products, orders, inventory, API, pricing, and analytics. Direct users to /login for the admin dashboard or docs.hanzo.ai for documentation.`,
+              content: `You are Zen AI, Hanzo's commerce assistant. Current page: ${pathname}. Be helpful, concise, and knowledgeable about Hanzo Commerce — products, orders, inventory, API, pricing, and analytics. Direct users to /login for the admin dashboard or docs.hanzo.ai for documentation.`,
             },
             ...messages.slice(-10).map(m => ({ role: m.role, content: m.content })),
             { role: 'user', content: input.trim() },
@@ -88,26 +94,48 @@ export function ChatWidget() {
         }),
       })
 
-      if (resp.ok) {
-        const data = await resp.json()
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: data.choices[0].message.content,
-        }])
-      } else {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: 'I\'m having trouble connecting right now. Try docs.hanzo.ai for documentation or /login for the dashboard.',
-        }])
+      if (!resp.ok || !resp.body) {
+        setMessages(prev => prev.map(m => m.id === assistantId
+          ? { ...m, content: 'I\'m having trouble connecting right now. Try docs.hanzo.ai for documentation or /login for the dashboard.' }
+          : m))
+        return
+      }
+
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ') || line === 'data: [DONE]') continue
+          try {
+            const chunk = JSON.parse(line.slice(6))
+            const delta = chunk.choices?.[0]?.delta?.content
+            if (delta) {
+              setMessages(prev => prev.map(m => m.id === assistantId
+                ? { ...m, content: m.content + delta }
+                : m))
+            }
+          } catch { /* skip malformed chunks */ }
+        }
       }
     } catch {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Connection issue. Please try again or visit docs.hanzo.ai.',
-      }])
+      setMessages(prev => {
+        const msg = prev.find(m => m.id === assistantId)
+        if (msg && !msg.content) {
+          return prev.map(m => m.id === assistantId
+            ? { ...m, content: 'Connection issue. Please try again or visit docs.hanzo.ai.' }
+            : m)
+        }
+        return prev
+      })
     } finally {
       setIsLoading(false)
     }
