@@ -339,6 +339,8 @@ export interface DiscountCode {
 export type CommerceClientConfig = {
   baseUrl: string
   token?: string
+  /** Organization namespace — sent as X-Hanzo-Org header. */
+  org?: string
 }
 
 export type Balance = {
