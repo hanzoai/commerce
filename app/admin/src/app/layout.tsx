@@ -7,6 +7,19 @@ import { ChatWidget } from '@/components/chat-widget'
 export const metadata: Metadata = {
   title: 'Hanzo Commerce',
   description: 'AI-powered commerce platform by Hanzo',
+  openGraph: {
+    title: 'Hanzo Commerce',
+    description: 'AI-powered commerce platform for modern businesses',
+    url: 'https://commerce.hanzo.ai',
+    siteName: 'Hanzo Commerce',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Hanzo Commerce',
+    description: 'AI-powered commerce platform for modern businesses',
+    creator: '@hanzoai',
+  },
 }
 
 export default function RootLayout({
