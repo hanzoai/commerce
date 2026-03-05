@@ -16,7 +16,7 @@ import { Button, Text, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
 
 const navItems = [
-  { label: 'Dashboard', href: '/', icon: SquaresPlus },
+  { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
   { label: 'Products', href: '/products', icon: ShoppingBag },
   { label: 'Orders', href: '/orders', icon: ReceiptPercent },
   { label: 'Customers', href: '/customers', icon: Users },
@@ -61,7 +61,7 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
               key={item.href}
