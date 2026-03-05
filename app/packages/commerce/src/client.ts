@@ -44,14 +44,20 @@ export class CommerceApiError extends Error {
 export class Commerce {
   private readonly baseUrl: string
   private token: string | undefined
+  private org: string | undefined
 
   constructor(config?: Partial<CommerceClientConfig>) {
     this.baseUrl = (config?.baseUrl ?? DEFAULT_COMMERCE_URL).replace(/\/+$/, '')
     this.token = config?.token
+    this.org = config?.org
   }
 
   setToken(token: string): void {
     this.token = token
+  }
+
+  setOrg(org: string | undefined): void {
+    this.org = org
   }
 
   private async request<T>(
@@ -76,6 +82,7 @@ export class Commerce {
     const headers: Record<string, string> = { Accept: 'application/json' }
     const authToken = opts?.token ?? this.token
     if (authToken) headers.Authorization = `Bearer ${authToken}`
+    if (this.org) headers['X-Hanzo-Org'] = this.org
     if (opts?.body) headers['Content-Type'] = 'application/json'
 
     try {
