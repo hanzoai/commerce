@@ -2,3 +2,4 @@ packages:
   - 'site'
   - 'store'
   - 'admin'
+  - 'packages/*'

@@ -6,6 +6,7 @@
   "license": "MIT",
   "exports": {
     ".": {
+      "require": "./src/index.ts",
       "import": "./src/index.ts",
       "types": "./src/index.ts"
     },
