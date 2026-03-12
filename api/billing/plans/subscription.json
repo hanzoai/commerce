@@ -5,6 +5,7 @@
     "description": "Get started for free. Explore the API with generous included credits.",
     "priceMonthly": 0,
     "priceAnnual": 0,
+    "pricePerUser": false,
     "category": "personal",
     "features": [
       "$5 free credit",
@@ -17,7 +18,8 @@
     "limits": {
       "requestsPerMinute": 60,
       "tokensPerMinute": 100000,
-      "freeCredit": 5
+      "freeCredit": 5,
+      "maxMembers": 1
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -28,21 +30,23 @@
     "id": "pro",
     "name": "Pro",
     "description": "For developers shipping real products. Higher limits and priority support.",
-    "priceMonthly": 49,
-    "priceAnnual": 39,
+    "priceMonthly": 20,
+    "priceAnnual": 16,
+    "pricePerUser": true,
     "category": "personal",
-    "popular": true,
     "features": [
       "500 requests/min",
       "1M tokens/min",
       "Email support",
       "Analytics dashboard",
       "Priority inference",
+      "Pay-as-you-go cloud usage",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000
+      "tokensPerMinute": 1000000,
+      "maxMembers": 1
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -52,23 +56,70 @@
   {
     "id": "team",
     "name": "Team",
-    "description": "For teams building together. SSO, shared billing, and custom training.",
-    "priceMonthly": 199,
-    "priceAnnual": 159,
+    "description": "For teams building together. SSO, shared billing, collaboration tools, and AI usage included.",
+    "priceMonthly": 25,
+    "priceAnnual": 20,
+    "pricePerUser": true,
     "category": "team",
+    "popular": true,
     "features": [
-      "Up to 10 members",
+      "Everything in Pro",
+      "Hanzo Team workspace (hanzo.team)",
       "SSO / SAML",
-      "Priority support",
-      "Custom model training",
-      "Shared billing",
-      "Usage analytics",
+      "Shared billing & usage tracking",
+      "Usage analytics per member",
+      "1000 requests/min per user",
+      "2M tokens/min per user",
+      "Pay-as-you-go or prepay cloud usage",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
-      "requestsPerMinute": 2000,
-      "tokensPerMinute": 5000000,
-      "maxMembers": 10
+      "requestsPerMinute": 1000,
+      "tokensPerMinute": 2000000,
+      "maxMembers": 50
+    },
+    "addons": {
+      "teamWorkspace": true,
+      "sso": true,
+      "sharedBilling": true
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "team-max",
+    "name": "Team Max",
+    "description": "Maximum AI power for every team member. Unlimited premium model access, priority inference, and massive usage allowances.",
+    "priceMonthly": 225,
+    "priceAnnual": 180,
+    "pricePerUser": true,
+    "category": "team",
+    "features": [
+      "Everything in Team",
+      "Unlimited premium model access (Zen, Claude, GPT-4o, etc.)",
+      "Priority inference across all models",
+      "5000 requests/min per user",
+      "10M tokens/min per user",
+      "$100/mo cloud credits per user included",
+      "Custom model fine-tuning",
+      "Dedicated support channel",
+      "Pay-as-you-go or prepay for additional cloud usage",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 5000,
+      "tokensPerMinute": 10000000,
+      "maxMembers": 200,
+      "includedCloudCreditsPerUser": 100
+    },
+    "addons": {
+      "teamWorkspace": true,
+      "sso": true,
+      "sharedBilling": true,
+      "premiumModels": true,
+      "customTraining": true
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -81,16 +132,19 @@
     "description": "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
     "priceMonthly": 9999,
     "priceAnnual": 7999,
+    "pricePerUser": false,
     "category": "enterprise",
     "features": [
+      "Everything in Team Max",
       "Unlimited members",
       "99.99% SLA",
       "Dedicated account manager",
       "Custom rate limits",
       "On-premise deployment",
       "SOC 2 compliance",
-      "Custom model fine-tuning",
+      "Custom model fine-tuning & hosting",
       "Priority inference across all models",
+      "Volume cloud usage discounts",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
@@ -108,6 +162,7 @@
     "description": "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
     "priceMonthly": null,
     "priceAnnual": null,
+    "pricePerUser": false,
     "category": "enterprise",
     "contactSales": true,
     "features": [
