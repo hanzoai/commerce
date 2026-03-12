@@ -29,6 +29,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* Hanzo Analytics */}
+        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="d5f6826c-567d-4249-9ca1-4a484028b9f6" data-do-not-track="true" data-exclude-search="true" />
+      </head>
       <body className="font-sans">
         <Providers>
           {children}
