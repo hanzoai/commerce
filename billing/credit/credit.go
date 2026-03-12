@@ -25,6 +25,10 @@ const (
 // user are safe. The trigger parameter records what initiated the grant
 // (e.g. "payment-method-added", "org-created").
 //
+// The check-and-create runs inside a transaction to prevent race conditions
+// where concurrent goroutines could both pass the existence check and
+// grant duplicate credits.
+//
 // This function is intended to be called from a goroutine; it only logs
 // on failure and never panics.
 func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
@@ -32,33 +36,37 @@ func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
 		return
 	}
 
-	rootKey := db.NewKey("synckey", "", 1, nil)
+	err := db.RunInTransaction(func(txDb *datastore.Datastore) error {
+		rootKey := txDb.NewKey("synckey", "", 1, nil)
 
-	// Check if starter credit was already granted.
-	existingTrans := make([]*transaction.Transaction, 0)
-	tq := transaction.Query(db).Ancestor(rootKey).
-		Filter("DestinationId=", userId).
-		Filter("Tags=", StarterCreditTag)
-	if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
-		return // already granted
-	}
+		// Check if starter credit was already granted (inside transaction).
+		existingTrans := make([]*transaction.Transaction, 0)
+		tq := transaction.Query(txDb).Ancestor(rootKey).
+			Filter("DestinationId=", userId).
+			Filter("Tags=", StarterCreditTag)
+		if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
+			return nil // already granted
+		}
 
-	trans := transaction.New(db)
-	trans.Type = transaction.Deposit
-	trans.DestinationId = userId
-	trans.DestinationKind = "iam-user"
-	trans.Currency = "usd"
-	trans.Amount = currency.Cents(StarterCreditCents)
-	trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
-	trans.Tags = StarterCreditTag
-	trans.ExpiresAt = time.Now().AddDate(0, 0, StarterCreditDays)
-	trans.Metadata = Map{
-		"creditType": "starter",
-		"expiryDays": StarterCreditDays,
-		"trigger":    trigger,
-	}
+		trans := transaction.New(txDb)
+		trans.Type = transaction.Deposit
+		trans.DestinationId = userId
+		trans.DestinationKind = "iam-user"
+		trans.Currency = "usd"
+		trans.Amount = currency.Cents(StarterCreditCents)
+		trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
+		trans.Tags = StarterCreditTag
+		trans.ExpiresAt = time.Now().AddDate(0, 0, StarterCreditDays)
+		trans.Metadata = Map{
+			"creditType": "starter",
+			"expiryDays": StarterCreditDays,
+			"trigger":    trigger,
+		}
 
-	if err := trans.Create(); err != nil {
+		return trans.Create()
+	}, nil)
+
+	if err != nil {
 		log.Warn("Failed to auto-grant starter credit for user %s: %v", userId, err)
 	}
 }
