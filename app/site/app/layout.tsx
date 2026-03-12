@@ -29,6 +29,10 @@ export default function RootLayout({
       className={`${inter.variable} ${robotoMono.variable} dark`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Hanzo Analytics */}
+        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="0fe5e750-941e-4b7c-bbaa-3d81fb9db38e" data-do-not-track="true" data-exclude-search="true" />
+      </head>
       <body className="font-sans">{children}</body>
     </html>
   )
