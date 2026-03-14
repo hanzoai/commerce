@@ -1,4 +1,4 @@
-import insights from "posthog-js"
+import insights from "@hanzo/insights"
 import { TrackedEvent } from ".."
 
 export const useInsightsAnalytics = () => {
