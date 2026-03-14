@@ -1,6 +1,6 @@
-import posthog from "@hanzo/insights"
+import insights from "@hanzo/insights"
 
-posthog.init(
+insights.init(
   (process.env.NEXT_PUBLIC_INSIGHTS_KEY || process.env.NEXT_PUBLIC_INSIGHTS_KEY)!,
   {
     api_host:
