@@ -9,7 +9,7 @@ import type { Plugin } from "unified"
 import * as Icons from "@hanzo/commerce-icons"
 import * as HookValues from "@/specs/hook-values"
 import { colors as allColors } from "@/config/colors"
-import { posthog as insights } from "@hanzo/insights"
+import { insights } from "@hanzo/insights"
 
 type Params = {
   params: Promise<{ slug: string[] }>
