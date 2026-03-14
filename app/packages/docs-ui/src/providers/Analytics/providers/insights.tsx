@@ -1,9 +1,9 @@
-import posthog from "posthog-js"
+import insights from "posthog-js"
 import { TrackedEvent } from ".."
 
 export const useInsightsAnalytics = () => {
   const track = async ({ event, options }: TrackedEvent) => {
-    posthog.capture(event, options)
+    insights.capture(event, options)
   }
 
   return {
