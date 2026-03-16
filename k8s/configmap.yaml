@@ -13,5 +13,5 @@ stringData:
     IAM_ISSUER=https://iam.hanzo.ai
     IAM_ACCEPTED_ISSUERS=https://hanzo.id
     IAM_CLIENT_ID=app-hanzo
-    IAM_ACCEPTED_AUDIENCES=app-hanzo,app-hanzobot,hanzobot-client-id,app-lux,app-zoo,app-pars
+    IAM_ACCEPTED_AUDIENCES=app-hanzo,app-hanzobot,hanzobot-client-id,hanzo-commerce-client-id,hanzo-app-client-id,app-lux,app-zoo,app-pars
     VALKEY_ADDR=valkey.hanzo.svc.cluster.local:6379
