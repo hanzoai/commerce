@@ -103,6 +103,8 @@ func ListPaymentMethods(c *gin.Context) {
 
 	if customerId := c.Query("customerId"); customerId != "" {
 		q = q.Filter("CustomerId=", customerId)
+	} else if user := c.Query("user"); user != "" {
+		q = q.Filter("CustomerId=", user)
 	}
 	if pmType := c.Query("type"); pmType != "" {
 		q = q.Filter("Type=", pmType)
