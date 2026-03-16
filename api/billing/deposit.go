@@ -134,7 +134,7 @@ func GrantStarterCredit(c *gin.Context) {
 	// Require at least one payment method on file before granting the
 	// starter credit. This ensures the user has verified with a card.
 	pms := make([]*paymentmethod.PaymentMethod, 0)
-	pmq := paymentmethod.Query(db).Ancestor(rootKey).
+	pmq := paymentmethod.Query(db).
 		Filter("UserId=", req.User)
 	if _, err := pmq.Limit(1).GetAll(&pms); err != nil || len(pms) == 0 {
 		http.Fail(c, 403, "a verified payment method is required before claiming starter credit", nil)
