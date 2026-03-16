@@ -1,7 +1,6 @@
 package test
 
 import (
-	"github.com/hanzoai/commerce/models/paymentmethod"
 	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
