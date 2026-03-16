@@ -211,6 +211,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dnsUser.Use(userRequired)
 	dnsUser.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
 
+	// Transaction history
+	user.GET("/transactions", ListTransactions)
+
 	// Spend alerts (user-scoped CRUD)
 	user.GET("/spend-alerts", ListSpendAlerts)
 	user.POST("/spend-alerts", CreateSpendAlert)
