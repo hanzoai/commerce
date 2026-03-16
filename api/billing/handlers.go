@@ -220,6 +220,20 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.PATCH("/spend-alerts/:id", UpdateSpendAlert)
 	user.DELETE("/spend-alerts/:id", DeleteSpendAlert)
 
+	// Credit grants & balance (read-only, user-scoped)
+	user.GET("/credit-grants", ListCreditGrants)
+	user.GET("/credit-balance", GetCreditBalance)
+	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
+	user.POST("/credit", GrantStarterCredit)
+
+	// Payment methods (user-scoped CRUD)
+	user.POST("/payment-methods", CreatePaymentMethod)
+	user.GET("/payment-methods", ListPaymentMethods)
+	user.GET("/payment-methods/:id", GetPaymentMethod)
+	user.PATCH("/payment-methods/:id", UpdatePaymentMethod)
+	user.DELETE("/payment-methods/:id", DetachPaymentMethod)
+	user.POST("/customers/:id/default-payment-method", SetDefaultPaymentMethod)
+
 	// Billing accounts (org-wrapper)
 	user.GET("/accounts", ListBillingAccounts)
 	user.POST("/accounts", CreateBillingAccount)
