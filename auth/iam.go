@@ -135,9 +135,9 @@ type IAMUserInfo struct {
 	Phone         string   `json:"phone,omitempty"`
 	RealName      string   `json:"real_name,omitempty"`
 	IsVerified    bool     `json:"is_verified,omitempty"`
-	Groups        []string `json:"groups,omitempty"`
-	Roles         []string `json:"roles,omitempty"`
-	Permissions   []string `json:"permissions,omitempty"`
+	Groups        []string  `json:"groups,omitempty"`
+	Roles         FlexRoles `json:"roles,omitempty"`
+	Permissions   []string  `json:"permissions,omitempty"`
 }
 
 // FlexAudience handles JWT "aud" which can be either a string or array of strings.
@@ -156,6 +156,37 @@ func (a *FlexAudience) UnmarshalJSON(data []byte) error {
 	if len(arr) > 0 {
 		*a = FlexAudience(arr[0])
 	}
+	return nil
+}
+
+// FlexRoles handles JWT "roles" which can be either an array of strings
+// (e.g. ["admin"]) or an array of role objects (e.g. [{"name":"admin",...}]).
+// When role objects are encountered, only the "name" field is kept.
+type FlexRoles []string
+
+func (r *FlexRoles) UnmarshalJSON(data []byte) error {
+	// Try []string first
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		*r = arr
+		return nil
+	}
+	// Try []object with "name" field
+	var objs []struct {
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(data, &objs); err != nil {
+		// If neither works, ignore roles silently
+		*r = nil
+		return nil
+	}
+	names := make([]string, 0, len(objs))
+	for _, o := range objs {
+		if o.Name != "" {
+			names = append(names, o.Name)
+		}
+	}
+	*r = names
 	return nil
 }
 
@@ -181,10 +212,10 @@ type IAMClaims struct {
 	Azp       string `json:"azp,omitempty"` // Authorized party
 
 	// Authorization
-	IsAdmin     bool     `json:"isAdmin,omitempty"`
-	Groups      []string `json:"groups,omitempty"`
-	Roles       []string `json:"roles,omitempty"`
-	Permissions []string `json:"permissions,omitempty"`
+	IsAdmin     bool      `json:"isAdmin,omitempty"`
+	Groups      []string  `json:"groups,omitempty"`
+	Roles       FlexRoles `json:"roles,omitempty"`
+	Permissions []string  `json:"permissions,omitempty"`
 
 	// User properties (arbitrary key-value pairs from IAM).
 	// The "tier" property is used for tiered billing (free/starter/pro/enterprise).
