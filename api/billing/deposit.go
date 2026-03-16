@@ -11,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -130,10 +131,15 @@ func GrantStarterCredit(c *gin.Context) {
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
-	// NOTE: Payment method check removed for starter credit. The $5 free
-	// credit is intended to let new users try the platform before adding a
-	// card. The double-dipping check below prevents abuse.
-	// Payment verification is enforced at the top-up / paid deposit flow instead.
+	// Require at least one payment method on file before granting the
+	// starter credit. This ensures the user has verified with a card.
+	pms := make([]*paymentmethod.PaymentMethod, 0)
+	pmq := paymentmethod.Query(db).Ancestor(rootKey).
+		Filter("UserId=", req.User)
+	if _, err := pmq.Limit(1).GetAll(&pms); err != nil || len(pms) == 0 {
+		http.Fail(c, 403, "a verified payment method is required before claiming starter credit", nil)
+		return
+	}
 
 	// Check if starter credit was already granted (prevent double-dipping).
 	existingTrans := make([]*transaction.Transaction, 0)
