@@ -38,7 +38,7 @@ function CallbackHandler() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             grant_type: "authorization_code",
-            client_id: "hanzo-app-client-id",
+            client_id: "app-hanzo",
             code,
             redirect_uri: "https://commerce.hanzo.ai/auth/callback",
           }),
