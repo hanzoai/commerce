@@ -54,6 +54,12 @@ type IAMConfig struct {
 	// (e.g., "https://hanzo.id" and "https://iam.hanzo.ai").
 	AcceptedIssuers []string
 
+	// JwksURI overrides the JWKS endpoint URL.
+	// When set, skips OIDC discovery and fetches JWKS directly from this URL.
+	// Useful when the IAM discovery doc returns an HTTPS URL but the internal
+	// service is only reachable via HTTP.
+	JwksURI string
+
 	// RedirectURL is the callback URL for authorization code flow
 	RedirectURL string
 
@@ -709,12 +715,17 @@ func (c *IAMClient) getJWKS(ctx context.Context) (*JWKS, error) {
 	}
 	c.mu.RUnlock()
 
-	// Fetch discovery BEFORE acquiring write lock to avoid deadlock:
-	// getDiscovery also uses c.mu, so calling it while holding the
-	// write lock would deadlock on RLock().
-	jwksURI := c.config.Issuer + "/.well-known/jwks"
-	if discovery, err := c.getDiscovery(ctx); err == nil && discovery.JwksURI != "" {
-		jwksURI = discovery.JwksURI
+	// Resolve JWKS URI. Priority:
+	// 1. Explicit JwksURI config override (avoids discovery round-trip and
+	//    HTTPS mismatch when the IAM service is behind an internal HTTP-only endpoint).
+	// 2. OIDC discovery document's jwks_uri field.
+	// 3. Fallback: Issuer + "/.well-known/jwks".
+	jwksURI := c.config.JwksURI
+	if jwksURI == "" {
+		jwksURI = c.config.Issuer + "/.well-known/jwks"
+		if discovery, err := c.getDiscovery(ctx); err == nil && discovery.JwksURI != "" {
+			jwksURI = discovery.JwksURI
+		}
 	}
 
 	c.mu.Lock()
