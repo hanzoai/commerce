@@ -654,9 +654,33 @@ var _ = Describe("billing", func() {
 			Expect((*res)["type"]).To(Equal("deposit"))
 		})
 
-		It("Should grant starter credit", func() {
-			// Payment method no longer required for starter credit.
-			// Double-dipping is prevented by the starter-credit tag check.
+		It("Should reject starter credit without payment method", func() {
+			req := map[string]interface{}{
+				"user": "hanzo/charlie",
+			}
+			res := &ApiError{}
+			cl.Post("/billing/credit", req, res)
+
+			Expect(res.Error.Message).To(ContainSubstring("payment method"))
+		})
+
+		It("Should grant starter credit after adding payment method", func() {
+			// First add a payment method for charlie
+			pmReq := map[string]interface{}{
+				"customerId": "hanzo/charlie",
+				"type":       "card",
+				"card": map[string]interface{}{
+					"brand":    "visa",
+					"last4":    "4242",
+					"expMonth": 12,
+					"expYear":  2028,
+				},
+			}
+			pmRes := &map[string]interface{}{}
+			cl.Post("/billing/payment-methods", pmReq, pmRes)
+			Expect((*pmRes)["id"]).NotTo(BeEmpty())
+
+			// Now claim starter credit
 			req := map[string]interface{}{
 				"user": "hanzo/charlie",
 			}
