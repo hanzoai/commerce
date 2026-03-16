@@ -298,15 +298,14 @@ var _ = Describe("middleware/iammiddleware", func() {
 			Expect(permExists).To(BeTrue())
 		})
 
-		It("should not abort when Owner claim is empty", func() {
+		It("should reject when Owner claim is empty", func() {
 			claims := makeAdminClaims()
 			claims.Owner = ""
 			token := signToken(claims)
 
 			cl := newClient(token)
 			w := cl.Get("/test", nil)
-			Expect(w.Code).To(Equal(200))
-			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+			Expect(w.Code).To(Equal(401))
 		})
 	})
 
