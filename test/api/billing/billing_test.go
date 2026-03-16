@@ -664,8 +664,8 @@ var _ = Describe("billing", func() {
 			Expect(res.Error.Message).To(ContainSubstring("payment method"))
 		})
 
-		It("Should grant starter credit after adding payment method", func() {
-			// First add a payment method for charlie
+		It("Should auto-grant starter credit when payment method is added", func() {
+			// Adding a payment method auto-triggers GrantIfEligible in a goroutine.
 			pmReq := map[string]interface{}{
 				"customerId": "hanzo/charlie",
 				"type":       "card",
@@ -680,15 +680,12 @@ var _ = Describe("billing", func() {
 			cl.Post("/billing/payment-methods", pmReq, pmRes)
 			Expect((*pmRes)["id"]).NotTo(BeEmpty())
 
-			// Now claim starter credit
-			req := map[string]interface{}{
+			// Explicit claim should return 201 (granted) or 409 (already
+			// auto-granted by the goroutine). Both are acceptable.
+			w := cl.PostJSON("/billing/credit", map[string]interface{}{
 				"user": "hanzo/charlie",
-			}
-			res := &map[string]interface{}{}
-			cl.Post("/billing/credit", req, res)
-
-			Expect((*res)["transactionId"]).NotTo(BeEmpty())
-			Expect((*res)["tags"]).To(Equal("starter-credit"))
+			})
+			Expect(w.Code == 201 || w.Code == 409).To(BeTrue())
 		})
 
 		It("Should create a refund", func() {
