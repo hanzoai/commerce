@@ -49,6 +49,11 @@ type IAMConfig struct {
 	// (or for ClientID) will be accepted.
 	AcceptedAudiences []string
 
+	// AcceptedIssuers is a list of additional issuer URLs to accept.
+	// Useful when the IAM server is reachable under multiple domains
+	// (e.g., "https://hanzo.id" and "https://iam.hanzo.ai").
+	AcceptedIssuers []string
+
 	// RedirectURL is the callback URL for authorization code flow
 	RedirectURL string
 
@@ -431,12 +436,19 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 		return nil, ErrInvalidToken
 	}
 
-	// Validate issuer
-	if claims.Issuer != "" && claims.Issuer != c.config.Issuer {
-		// Allow issuer to match without protocol differences
-		expectedHost := strings.TrimPrefix(strings.TrimPrefix(c.config.Issuer, "https://"), "http://")
+	// Validate issuer — accept primary Issuer and any AcceptedIssuers.
+	if claims.Issuer != "" {
+		issuerOK := false
+		allIssuers := append([]string{c.config.Issuer}, c.config.AcceptedIssuers...)
 		actualHost := strings.TrimPrefix(strings.TrimPrefix(claims.Issuer, "https://"), "http://")
-		if expectedHost != actualHost {
+		for _, iss := range allIssuers {
+			expectedHost := strings.TrimPrefix(strings.TrimPrefix(iss, "https://"), "http://")
+			if expectedHost == actualHost {
+				issuerOK = true
+				break
+			}
+		}
+		if !issuerOK {
 			return nil, fmt.Errorf("%w: expected %s, got %s", ErrInvalidIssuer, c.config.Issuer, claims.Issuer)
 		}
 	}
