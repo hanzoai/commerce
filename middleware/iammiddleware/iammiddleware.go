@@ -137,61 +137,79 @@ func IAMTokenRequired() gin.HandlerFunc {
 		// get proper tenant scoping via middleware.GetOrganization(c).
 		// IAM is the source of truth for org/identity — auto-create the
 		// Commerce org record on first encounter.
-		if claims.Owner != "" {
-			ctx := c.Request.Context()
-			db := datastore.New(ctx)
-			org := organization.New(db)
-			org.Name = claims.Owner
-			org.Enabled = true
+		if claims.Owner == "" {
+			jsonhttp.Fail(c, http.StatusUnauthorized,
+				"IAM token missing owner claim", nil)
+			return
+		}
 
-			var found bool
+		// Use a dedicated context with timeout for the DB lookup.
+		// The HTTP request context can be canceled by the browser (e.g. page
+		// navigation or AbortController), which would cause org resolution
+		// to fail with "context canceled" and leave downstream handlers
+		// without an organization — triggering a MustGet panic.
+		dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer dbCancel()
 
-			// Fast path: KV cache maps owner name → org ID (5-minute TTL).
-			mu.RLock()
-			kv := kvCache
-			mu.RUnlock()
+		db := datastore.New(dbCtx)
+		org := organization.New(db)
+		org.Name = claims.Owner
+		org.Enabled = true
 
-			if kv != nil {
-				if cachedID, err := kv.Get(ctx, orgCacheKey(claims.Owner)); err == nil && cachedID != "" {
-					if lookupErr := org.GetById(cachedID); lookupErr == nil {
-						found = true
-					}
-				}
-			}
+		var found bool
 
-			// Slow path: GetOrCreate by name (auto-provisions org on first encounter).
-			if !found {
-				if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
-					log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
-				} else {
+		// Fast path: KV cache maps owner name → org ID (5-minute TTL).
+		mu.RLock()
+		kv := kvCache
+		mu.RUnlock()
+
+		if kv != nil {
+			if cachedID, err := kv.Get(dbCtx, orgCacheKey(claims.Owner)); err == nil && cachedID != "" {
+				if lookupErr := org.GetById(cachedID); lookupErr == nil {
 					found = true
-					// Populate KV cache for next request.
-					if kv != nil {
-						_ = kv.Set(ctx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
-					}
-
-					// If org was just created (CreatedAt within the last few
-					// seconds), grant a $5 starter credit. Runs in a goroutine
-					// so it never blocks the request.
-					if time.Since(org.GetCreatedAt()) < 5*time.Second && claims.Subject != "" {
-						nsDb := datastore.New(org.Namespaced(ctx))
-						go credit.GrantIfEligible(nsDb, claims.Subject, "org-created")
-					}
 				}
-			}
-
-			if found {
-				// Set live mode based on IAM permissions (same as service token path)
-				perms := iamPermissions(claims)
-				if perms.Has(permission.Live) {
-					org.Live = true
-				}
-
-				c.Set("organization", org)
-				c.Set("active-organization", org.Id())
-				c.Set("permissions", perms)
 			}
 		}
+
+		// Slow path: GetOrCreate by name (auto-provisions org on first encounter).
+		if !found {
+			if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
+				log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
+			} else {
+				found = true
+				// Populate KV cache for next request.
+				if kv != nil {
+					_ = kv.Set(dbCtx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
+				}
+
+				// If org was just created (CreatedAt within the last few
+				// seconds), grant a $5 starter credit. Runs in a goroutine
+				// so it never blocks the request.
+				if time.Since(org.GetCreatedAt()) < 5*time.Second && claims.Subject != "" {
+					nsDb := datastore.New(org.Namespaced(context.Background()))
+					go credit.GrantIfEligible(nsDb, claims.Subject, "org-created")
+				}
+			}
+		}
+
+		if !found {
+			// Org resolution failed — return a proper error instead of
+			// falling through to handlers that will panic on MustGet.
+			log.Warn("IAM org '%s' could not be resolved; returning 503", claims.Owner)
+			jsonhttp.Fail(c, http.StatusServiceUnavailable,
+				"Unable to retrieve organization associated with access token: org resolution failed", nil)
+			return
+		}
+
+		// Set live mode based on IAM permissions (same as service token path)
+		perms := iamPermissions(claims)
+		if perms.Has(permission.Live) {
+			org.Live = true
+		}
+
+		c.Set("organization", org)
+		c.Set("active-organization", org.Id())
+		c.Set("permissions", perms)
 
 		c.Next()
 	}
