@@ -133,7 +133,7 @@ var _ = Describe("middleware/iammiddleware", func() {
 			Expect(iamOrg).To(Equal(testOrgName))
 
 			roles, _ := cl.Context.Get("iam_roles")
-			Expect(roles).To(Equal([]string{"admin"}))
+			Expect(roles).To(Equal(auth.FlexRoles{"admin"}))
 		})
 	})
 
@@ -156,7 +156,7 @@ var _ = Describe("middleware/iammiddleware", func() {
 
 		It("should grant Admin|Live for owner role", func() {
 			claims := makeMemberClaims()
-			claims.Roles = []string{"owner"}
+			claims.Roles = auth.FlexRoles{"owner"}
 			token := signToken(claims)
 
 			cl := newClient(token)
@@ -187,7 +187,7 @@ var _ = Describe("middleware/iammiddleware", func() {
 
 		It("should grant Published|Live|ReadCoupon|ReadProduct for user role", func() {
 			claims := makeMemberClaims()
-			claims.Roles = []string{"user"}
+			claims.Roles = auth.FlexRoles{"user"}
 			token := signToken(claims)
 
 			cl := newClient(token)
