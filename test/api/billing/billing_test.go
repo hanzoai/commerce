@@ -656,14 +656,8 @@ var _ = Describe("billing", func() {
 		})
 
 		It("Should grant starter credit", func() {
-			// Create payment method directly (required for starter credit eligibility).
-			// Bypasses API to avoid auto-grant goroutine race condition.
-			pm := paymentmethod.New(db)
-			pm.CustomerId = "hanzo/charlie"
-			pm.UserId = "hanzo/charlie"
-			pm.Type = "card"
-			pm.MustCreate()
-
+			// Payment method no longer required for starter credit.
+			// Double-dipping is prevented by the starter-credit tag check.
 			req := map[string]interface{}{
 				"user": "hanzo/charlie",
 			}
