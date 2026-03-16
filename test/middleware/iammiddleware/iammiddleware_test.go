@@ -304,8 +304,7 @@ var _ = Describe("middleware/iammiddleware", func() {
 			token := signToken(claims)
 
 			cl := newClient(token)
-			w := cl.Get("/test", nil)
-			Expect(w.Code).To(Equal(401))
+			cl.Get("/test", nil, 401)
 		})
 	})
 
