@@ -123,7 +123,7 @@ export default function HomePage() {
                 GitHub
               </a>
               <a
-                href="https://hanzo.id/oauth/authorize?client_id=hanzo-app-client-id&response_type=code&redirect_uri=https://commerce.hanzo.ai/auth/callback&scope=openid+profile+email&state=https://admin.commerce.hanzo.ai"
+                href="https://hanzo.id/oauth/authorize?client_id=app-hanzo&response_type=code&redirect_uri=https://commerce.hanzo.ai/auth/callback&scope=openid+profile+email&state=https://admin.commerce.hanzo.ai"
                 className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white transition-all hover:bg-white/10"
               >
                 Sign In
@@ -346,7 +346,7 @@ export default function HomePage() {
                 </svg>
               </a>
               <a
-                href="https://hanzo.id/oauth/authorize?client_id=hanzo-app-client-id&response_type=code&redirect_uri=https://commerce.hanzo.ai/auth/callback&scope=openid+profile+email&state=https://admin.commerce.hanzo.ai"
+                href="https://hanzo.id/oauth/authorize?client_id=app-hanzo&response_type=code&redirect_uri=https://commerce.hanzo.ai/auth/callback&scope=openid+profile+email&state=https://admin.commerce.hanzo.ai"
                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-8 py-3.5 text-sm font-semibold text-white transition-all hover:bg-white/10"
               >
                 Sign In
