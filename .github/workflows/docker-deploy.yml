@@ -15,6 +15,7 @@ jobs:
     uses: hanzoai/.github/.github/workflows/docker-build.yml@main
     with:
       image: ghcr.io/hanzoai/commerce
+      platforms: linux/amd64
       deploy: true
       deploy-deployment: commerce
       deploy-namespace: hanzo
