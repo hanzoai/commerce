@@ -106,6 +106,7 @@ type Config struct {
 		ClientSecret      string   `json:"clientSecret"`
 		AcceptedAudiences []string `json:"acceptedAudiences"`
 		AcceptedIssuers   []string `json:"acceptedIssuers"`
+		JwksURI           string   `json:"jwksUri"`
 	} `json:"iam"`
 }
 
@@ -140,6 +141,7 @@ func DefaultConfig() *Config {
 	if issuers := getEnv("IAM_ACCEPTED_ISSUERS", ""); issuers != "" {
 		cfg.IAM.AcceptedIssuers = strings.Split(issuers, ",")
 	}
+	cfg.IAM.JwksURI = getEnv("IAM_JWKS_URI", "")
 
 	return cfg
 }
@@ -643,6 +645,7 @@ func (app *App) Bootstrap() error {
 			ClientSecret:      app.config.IAM.ClientSecret,
 			AcceptedAudiences: app.config.IAM.AcceptedAudiences,
 			AcceptedIssuers:   app.config.IAM.AcceptedIssuers,
+			JwksURI:           app.config.IAM.JwksURI,
 		}
 		if err := iammiddleware.Init(iamCfg); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: IAM middleware initialization failed: %v\n", err)
