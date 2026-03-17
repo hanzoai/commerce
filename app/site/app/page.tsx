@@ -1,4 +1,5 @@
 import Providers from "../providers"
+import { SignInButton } from "./components/sign-in-button"
 
 const FEATURES = [
   {
@@ -122,12 +123,7 @@ export default function HomePage() {
               >
                 GitHub
               </a>
-              <a
-                href="https://hanzo.id/oauth/authorize?client_id=app-hanzo&response_type=code&redirect_uri=https://commerce.hanzo.ai/auth/callback&scope=openid+profile+email&state=https://admin.commerce.hanzo.ai"
-                className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white transition-all hover:bg-white/10"
-              >
-                Sign In
-              </a>
+              <SignInButton className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-white transition-all hover:bg-white/10" />
             </div>
           </div>
         </nav>
