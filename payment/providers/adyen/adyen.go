@@ -55,6 +55,16 @@ func init() {
 	})
 }
 
+// NewProvider creates a configured Adyen provider instance.
+func NewProvider(cfg Config) *Provider {
+	p := &Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.Adyen, supportedCurrencies()),
+		client:        &http.Client{Timeout: defaultTimeout},
+	}
+	p.Configure(cfg)
+	return p
+}
+
 // Configure sets up the provider with Adyen credentials.
 func (p *Provider) Configure(cfg Config) {
 	p.config = cfg

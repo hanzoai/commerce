@@ -253,6 +253,37 @@ type WireTransfer struct {
 	Instructions  string `json:"instructions,omitempty"`
 }
 
+// Adyen connection
+type Adyen struct {
+	APIKey          string `json:"apiKey,omitempty" datastore:",noindex"`
+	MerchantAccount string `json:"merchantAccount,omitempty"`
+	HMACKey         string `json:"hmacKey,omitempty" datastore:",noindex"`
+	Environment     string `json:"environment,omitempty"` // "test" or "live"
+	LiveURLPrefix   string `json:"liveUrlPrefix,omitempty"`
+}
+
+// Braintree connection
+type Braintree struct {
+	MerchantID  string `json:"merchantId,omitempty"`
+	PublicKey   string `json:"publicKey,omitempty"`
+	PrivateKey  string `json:"privateKey,omitempty" datastore:",noindex"`
+	Environment string `json:"environment,omitempty"` // "sandbox" or "production"
+}
+
+// Recurly connection
+type Recurly struct {
+	APIKey    string `json:"apiKey,omitempty" datastore:",noindex"`
+	Subdomain string `json:"subdomain,omitempty"`
+}
+
+// LemonSqueezy connection
+type LemonSqueezy struct {
+	APIKey           string `json:"apiKey,omitempty" datastore:",noindex"`
+	StoreID          string `json:"storeId,omitempty"`
+	WebhookSecret    string `json:"webhookSecret,omitempty" datastore:",noindex"`
+	DefaultVariantID string `json:"defaultVariantId,omitempty"`
+}
+
 // Authorize.net connection
 type AuthorizeNetConnection struct {
 	LoginId        string `json:"loginId,omitempty"`
