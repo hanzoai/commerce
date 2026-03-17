@@ -9,7 +9,7 @@ import { ClientHeaders, Config } from "../types"
  */
 const HANZO_IAM_ISSUER = "https://hanzo.id"
 const HANZO_IAM_TOKEN_ENDPOINT = "https://hanzo.id/api/login/oauth/access_token"
-const HANZO_IAM_DEFAULT_CLIENT_ID = "hanzo-app-client-id"
+const HANZO_IAM_DEFAULT_CLIENT_ID = "app-hanzo"
 
 /**
  * Generate a cryptographically random string for PKCE code_verifier.
