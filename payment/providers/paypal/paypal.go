@@ -51,6 +51,16 @@ func init() {
 	})
 }
 
+// NewProvider creates a configured PayPal provider instance.
+func NewProvider(cfg Config) *Provider {
+	p := &Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.PayPal, supportedCurrencies()),
+		httpClient:    &http.Client{Timeout: 30 * time.Second},
+	}
+	p.Configure(cfg)
+	return p
+}
+
 // Configure sets PayPal credentials and marks the processor as available.
 func (p *Provider) Configure(cfg Config) {
 	p.mu.Lock()
