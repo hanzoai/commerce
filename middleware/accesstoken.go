@@ -113,8 +113,11 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				db := datastore.New(ctx)
 				org := organization.New(db)
 
-				// Resolve org from X-Hanzo-Org header, COMMERCE_SERVICE_ORG env, or default "hanzo".
-				orgName := c.GetHeader("X-Hanzo-Org")
+				// Resolve org from X-IAM-Org header (preferred), X-Hanzo-Org (compat), or COMMERCE_SERVICE_ORG env.
+				orgName := c.GetHeader("X-IAM-Org")
+				if orgName == "" {
+					orgName = c.GetHeader("X-Hanzo-Org")
+				}
 				if orgName == "" {
 					orgName = os.Getenv("COMMERCE_SERVICE_ORG")
 				}

@@ -33,15 +33,19 @@ type RegistryConfig struct {
 // DefaultConfig returns the default registry configuration
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
-		DefaultFiatProcessor:   Square,
+		DefaultFiatProcessor:   Stripe,
 		DefaultCryptoProcessor: MPC,
 		ProcessorPriority: []ProcessorType{
+			Stripe,
 			Square,
 			Adyen,
 			PayPal,
 			Braintree,
 			Recurly,
 			LemonSqueezy,
+			Circle,
+			SolanaPay,
+			MoonPay,
 			MPC,
 			Ethereum,
 			Bitcoin,
@@ -179,7 +183,7 @@ func (r *Registry) SelectProcessor(ctx context.Context, req PaymentRequest) (Pay
 			}
 		}
 		// Fallback to any available crypto processor
-		for _, t := range []ProcessorType{MPC, Ethereum, Bitcoin} {
+		for _, t := range []ProcessorType{Circle, SolanaPay, MPC, Ethereum, Bitcoin} {
 			if p, ok := r.processors[t]; ok {
 				if !r.config.DisabledProcessors[t] && p.IsAvailable(ctx) {
 					if supportssCurrency(p, req.Currency) {

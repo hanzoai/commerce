@@ -12,10 +12,17 @@ import (
 	// For providers that require configuration, use their NewProcessor()
 	// constructors directly.
 	_ "github.com/hanzoai/commerce/payment/providers/adyen"
+	_ "github.com/hanzoai/commerce/payment/providers/bitpay"
 	_ "github.com/hanzoai/commerce/payment/providers/braintree"
+	_ "github.com/hanzoai/commerce/payment/providers/circle"
+	_ "github.com/hanzoai/commerce/payment/providers/coinbase_commerce"
 	_ "github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
+	_ "github.com/hanzoai/commerce/payment/providers/moonpay"
+	_ "github.com/hanzoai/commerce/payment/providers/opennode"
 	_ "github.com/hanzoai/commerce/payment/providers/paypal"
 	_ "github.com/hanzoai/commerce/payment/providers/recurly"
+	_ "github.com/hanzoai/commerce/payment/providers/solanapay"
+	_ "github.com/hanzoai/commerce/payment/providers/stripe"
 	_ "github.com/hanzoai/commerce/thirdparty/mpc"
 	_ "github.com/hanzoai/commerce/thirdparty/square"
 	_ "github.com/hanzoai/commerce/thirdparty/wire"
