@@ -1,73 +1,23 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
+import { handleCallback } from "../../lib/iam-auth"
 
 function CallbackHandler() {
-  const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "error">("loading")
   const [error, setError] = useState("")
 
   useEffect(() => {
-    const code = searchParams.get("code")
-    const state = searchParams.get("state")
-    const errorParam = searchParams.get("error")
-
-    if (errorParam) {
-      setStatus("error")
-      setError(searchParams.get("error_description") || errorParam)
-      return
-    }
-
-    if (!code) {
-      setStatus("error")
-      setError("No authorization code received.")
-      return
-    }
-
-    exchangeToken(code, state)
-  }, [searchParams])
-
-  async function exchangeToken(code: string, state: string | null) {
-    try {
-      const response = await fetch(
-        "https://hanzo.id/oauth/token",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            grant_type: "authorization_code",
-            client_id: "app-hanzo",
-            code,
-            redirect_uri: "https://commerce.hanzo.ai/auth/callback",
-          }),
-        }
-      )
-
-      if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text || `Token exchange failed (${response.status})`)
-      }
-
-      const data = await response.json()
-      sessionStorage.setItem("hanzo_commerce_access_token", data.access_token)
-      if (data.refresh_token) {
-        sessionStorage.setItem(
-          "hanzo_commerce_refresh_token",
-          data.refresh_token
-        )
-      }
-      if (data.id_token) {
-        sessionStorage.setItem("hanzo_commerce_id_token", data.id_token)
-      }
-
-      window.location.href = state || "https://admin.commerce.hanzo.ai"
-    } catch (err) {
-      setStatus("error")
-      setError(err instanceof Error ? err.message : "Token exchange failed")
-    }
-  }
+    handleCallback()
+      .then((redirectUrl) => {
+        window.location.href = redirectUrl
+      })
+      .catch((err) => {
+        setStatus("error")
+        setError(err instanceof Error ? err.message : "Token exchange failed")
+      })
+  }, [])
 
   if (status === "error") {
     return (
