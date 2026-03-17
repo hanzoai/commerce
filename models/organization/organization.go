@@ -173,6 +173,18 @@ type Organization struct {
 	// AuthorizeNet connection
 	AuthorizeNet integration.AuthorizeNet `json:"-"`
 
+	// Adyen connection
+	Adyen integration.Adyen `json:"-"`
+
+	// Braintree connection
+	Braintree integration.Braintree `json:"-"`
+
+	// Recurly connection
+	Recurly integration.Recurly `json:"-"`
+
+	// LemonSqueezy connection
+	LemonSqueezy integration.LemonSqueezy `json:"-"`
+
 	SecurityToken integration.SecurityToken `json:"-"`
 
 	Currency currency.Type `json:"currency"`

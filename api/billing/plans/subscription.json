@@ -13,13 +13,13 @@
       "100K tokens/min",
       "Community support",
       "API access",
+      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 60,
       "tokensPerMinute": 100000,
-      "freeCredit": 5,
-      "maxMembers": 1
+      "freeCredit": 5
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -41,12 +41,12 @@
       "Analytics dashboard",
       "Priority inference",
       "Pay-as-you-go cloud usage",
+      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 500,
-      "tokensPerMinute": 1000000,
-      "maxMembers": 1
+      "tokensPerMinute": 1000000
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -71,12 +71,12 @@
       "1000 requests/min per user",
       "2M tokens/min per user",
       "Pay-as-you-go or prepay cloud usage",
+      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 1000,
-      "tokensPerMinute": 2000000,
-      "maxMembers": 50
+      "tokensPerMinute": 2000000
     },
     "addons": {
       "teamWorkspace": true,
@@ -89,15 +89,50 @@
     }
   },
   {
+    "id": "max",
+    "name": "Max",
+    "description": "Maximum AI power for individuals. Unlimited premium model access and massive usage allowances.",
+    "priceMonthly": 200,
+    "priceAnnual": 160,
+    "pricePerUser": true,
+    "category": "personal",
+    "features": [
+      "Everything in Pro",
+      "Unlimited premium model access (Zen, Claude, GPT-4o, etc.)",
+      "Priority inference across all models",
+      "5000 requests/min",
+      "10M tokens/min",
+      "$100/mo cloud credits included",
+      "Custom model fine-tuning",
+      "Dedicated support channel",
+      "Pay-as-you-go or prepay for additional cloud usage",
+      "Unlimited users",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 5000,
+      "tokensPerMinute": 10000000,
+      "includedCloudCredits": 100
+    },
+    "addons": {
+      "premiumModels": true,
+      "customTraining": true
+    },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
     "id": "team-max",
     "name": "Team Max",
-    "description": "Maximum AI power for every team member. Unlimited premium model access, priority inference, and massive usage allowances.",
+    "description": "Maximum AI power for every team member. Unlimited premium models, priority inference, and massive usage per seat.",
     "priceMonthly": 225,
     "priceAnnual": 180,
     "pricePerUser": true,
     "category": "team",
     "features": [
-      "Everything in Team",
+      "Everything in Team + Max",
       "Unlimited premium model access (Zen, Claude, GPT-4o, etc.)",
       "Priority inference across all models",
       "5000 requests/min per user",
@@ -106,12 +141,12 @@
       "Custom model fine-tuning",
       "Dedicated support channel",
       "Pay-as-you-go or prepay for additional cloud usage",
+      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 5000,
       "tokensPerMinute": 10000000,
-      "maxMembers": 200,
       "includedCloudCreditsPerUser": 100
     },
     "addons": {
@@ -130,13 +165,13 @@
     "id": "enterprise",
     "name": "Enterprise",
     "description": "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
-    "priceMonthly": 9999,
-    "priceAnnual": 7999,
+    "priceMonthly": null,
+    "priceAnnual": null,
     "pricePerUser": false,
     "category": "enterprise",
+    "contactSales": true,
     "features": [
       "Everything in Team Max",
-      "Unlimited members",
       "99.99% SLA",
       "Dedicated account manager",
       "Custom rate limits",
@@ -145,39 +180,12 @@
       "Custom model fine-tuning & hosting",
       "Priority inference across all models",
       "Volume cloud usage discounts",
+      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 50000,
       "tokensPerMinute": 100000000
-    },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "custom",
-    "name": "Custom",
-    "description": "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
-    "priceMonthly": null,
-    "priceAnnual": null,
-    "pricePerUser": false,
-    "category": "enterprise",
-    "contactSales": true,
-    "features": [
-      "Everything in Enterprise",
-      "Custom SLA (up to 99.999%)",
-      "Dedicated compute cluster",
-      "Air-gapped / on-prem deployment",
-      "Custom model training & hosting",
-      "White-glove onboarding",
-      "24/7 engineering support",
-      "Earn up to 20% on idle compute & LLM resale"
-    ],
-    "limits": {
-      "requestsPerMinute": null,
-      "tokensPerMinute": null
     },
     "payouts": {
       "idleResalePercent": 20,
