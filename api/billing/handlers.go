@@ -25,7 +25,6 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.GET("/usage", GetUsage)
 	api.POST("/usage", RecordUsage)
 	api.POST("/deposit", Deposit)
-	api.POST("/credit", GrantStarterCredit)
 	api.POST("/refund", Refund)
 
 	// Meters
@@ -40,11 +39,8 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Tier check (lightweight model-access gate for Chat / white-label)
 	api.GET("/tier-check", TierCheck)
 
-	// Credit grants
+	// Credit grants (admin-only writes; reads moved to user group below)
 	api.POST("/credit-grants", CreateCreditGrant)
-	api.GET("/credit-grants", ListCreditGrants)
-	api.GET("/credit-balance", GetCreditBalance)
-	api.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	api.POST("/credit-grants/:id/void", VoidCreditGrant)
 
 	// Pricing rules
@@ -87,13 +83,7 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/setup-intents/:id/confirm", ConfirmSetupIntent)
 	api.POST("/setup-intents/:id/cancel", CancelSetupIntent)
 
-	// Payment methods
-	api.POST("/payment-methods", CreatePaymentMethod)
-	api.GET("/payment-methods", ListPaymentMethods)
-	api.GET("/payment-methods/:id", GetPaymentMethod)
-	api.PATCH("/payment-methods/:id", UpdatePaymentMethod)
-	api.DELETE("/payment-methods/:id", DetachPaymentMethod)
-	api.POST("/customers/:id/default-payment-method", SetDefaultPaymentMethod)
+	// Payment methods — moved to user group below (accepts both admin & user tokens)
 
 	// Subscription items
 	api.POST("/subscription-items", CreateSubscriptionItem)
