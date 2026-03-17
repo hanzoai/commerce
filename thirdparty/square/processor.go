@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -305,13 +306,13 @@ func (sp *SquareProcessor) GetTransaction(ctx context.Context, txID string) (*pr
 	}, nil
 }
 
-// ValidateWebhook validates an incoming webhook
+// ValidateWebhook validates an incoming webhook and parses the event.
 func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
-	// Square uses HMAC-SHA256 for webhook signatures
 	if sp.webhookSecret == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
+	// Square uses HMAC-SHA256 for webhook signatures
 	mac := hmac.New(sha256.New, []byte(sp.webhookSecret))
 	mac.Write(payload)
 	expectedSig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
@@ -320,14 +321,71 @@ func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, 
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
-	// Parse the webhook event (simplified - full implementation would parse JSON)
+	// Parse the webhook event JSON
+	var evt struct {
+		MerchantID string `json:"merchant_id"`
+		Type       string `json:"type"`
+		EventID    string `json:"event_id"`
+		CreatedAt  string `json:"created_at"`
+		Data       struct {
+			Type   string                 `json:"type"`
+			ID     string                 `json:"id"`
+			Object map[string]interface{} `json:"object"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(payload, &evt); err != nil {
+		return nil, fmt.Errorf("failed to parse Square webhook: %w", err)
+	}
+
+	ts := time.Now().Unix()
+	if evt.CreatedAt != "" {
+		if t, err := time.Parse(time.RFC3339, evt.CreatedAt); err == nil {
+			ts = t.Unix()
+		}
+	}
+
 	return &processor.WebhookEvent{
-		ID:        fmt.Sprintf("evt_%d", time.Now().UnixNano()),
-		Type:      "payment.completed", // Would be parsed from payload
+		ID:        evt.EventID,
+		Type:      mapSquareEventType(evt.Type),
 		Processor: processor.Square,
-		Data:      map[string]interface{}{"raw": string(payload)},
-		Timestamp: time.Now().Unix(),
+		Data:      evt.Data.Object,
+		Timestamp: ts,
 	}, nil
+}
+
+// mapSquareEventType converts Square event types to normalized types.
+func mapSquareEventType(sqType string) string {
+	switch sqType {
+	case "payment.completed":
+		return "payment.completed"
+	case "payment.created":
+		return "payment.created"
+	case "payment.updated":
+		return "payment.updated"
+	case "refund.created":
+		return "refund.created"
+	case "refund.updated":
+		return "refund.updated"
+	case "invoice.payment_made":
+		return "invoice.paid"
+	case "subscription.created":
+		return "subscription.created"
+	case "subscription.updated":
+		return "subscription.updated"
+	case "dispute.created":
+		return "dispute.created"
+	case "dispute.state.changed":
+		return "dispute.updated"
+	case "customer.created":
+		return "customer.created"
+	case "customer.updated":
+		return "customer.updated"
+	case "customer.deleted":
+		return "customer.deleted"
+	default:
+		return sqType
+	}
 }
 
 // IsAvailable checks if the processor is configured and available
