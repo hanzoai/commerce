@@ -49,6 +49,16 @@ func init() {
 	})
 }
 
+// NewProvider creates a configured Braintree provider instance.
+func NewProvider(cfg Config) *Provider {
+	p := &Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.Braintree, supportedCurrencies()),
+		client:        &http.Client{Timeout: httpTimeout},
+	}
+	p.Configure(cfg)
+	return p
+}
+
 // Configure sets credentials and marks the processor as available.
 func (p *Provider) Configure(cfg Config) {
 	p.config = cfg

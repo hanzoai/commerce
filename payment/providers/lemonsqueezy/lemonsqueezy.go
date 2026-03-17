@@ -61,6 +61,16 @@ func init() {
 	})
 }
 
+// NewProvider creates a configured LemonSqueezy provider instance.
+func NewProvider(cfg Config) *Provider {
+	p := &Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.LemonSqueezy, supportedCurrencies()),
+		client:        &http.Client{Timeout: 30 * time.Second},
+	}
+	p.Configure(cfg)
+	return p
+}
+
 // Configure sets the provider credentials and marks it as available.
 func (p *Provider) Configure(cfg Config) {
 	p.apiKey = cfg.APIKey

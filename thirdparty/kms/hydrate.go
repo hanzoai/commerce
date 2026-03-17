@@ -15,13 +15,29 @@ type secretMapping struct {
 
 // mappings returns all provider credential mappings for a given org name.
 func mappings(orgName string) []secretMapping {
+	stripe := "/tenants/" + orgName + "/stripe"
 	square := "/tenants/" + orgName + "/square"
 	authnet := "/tenants/" + orgName + "/authorizenet"
 	paypal := "/tenants/" + orgName + "/paypal"
+	adyen := "/tenants/" + orgName + "/adyen"
+	braintree := "/tenants/" + orgName + "/braintree"
+	recurly := "/tenants/" + orgName + "/recurly"
+	lemon := "/tenants/" + orgName + "/lemonsqueezy"
 	wire := "/tenants/" + orgName + "/wire"
 	merc := "/tenants/" + orgName + "/mercury"
 
 	return []secretMapping{
+		// Stripe — Live
+		{stripe, "STRIPE_LIVE_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Live.AccessToken = v }},
+		{stripe, "STRIPE_LIVE_PUBLISHABLE_KEY", func(o *organization.Organization, v string) { o.Stripe.Live.PublishableKey = v }},
+		{stripe, "STRIPE_LIVE_REFRESH_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Live.RefreshToken = v }},
+		{stripe, "STRIPE_LIVE_USER_ID", func(o *organization.Organization, v string) { o.Stripe.Live.UserId = v }},
+		// Stripe — Test
+		{stripe, "STRIPE_TEST_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Test.AccessToken = v }},
+		{stripe, "STRIPE_TEST_PUBLISHABLE_KEY", func(o *organization.Organization, v string) { o.Stripe.Test.PublishableKey = v }},
+		{stripe, "STRIPE_TEST_REFRESH_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Test.RefreshToken = v }},
+		{stripe, "STRIPE_TEST_USER_ID", func(o *organization.Organization, v string) { o.Stripe.Test.UserId = v }},
+
 		// Square — Production
 		{square, "SQUARE_PRODUCTION_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Square.Production.AccessToken = v }},
 		{square, "SQUARE_PRODUCTION_LOCATION_ID", func(o *organization.Organization, v string) { o.Square.Production.LocationId = v }},
@@ -52,6 +68,29 @@ func mappings(orgName string) []secretMapping {
 		{paypal, "PAYPAL_TEST_SECURITY_PASSWORD", func(o *organization.Organization, v string) { o.Paypal.Test.SecurityPassword = v }},
 		{paypal, "PAYPAL_TEST_SECURITY_SIGNATURE", func(o *organization.Organization, v string) { o.Paypal.Test.SecuritySignature = v }},
 		{paypal, "PAYPAL_TEST_APPLICATION_ID", func(o *organization.Organization, v string) { o.Paypal.Test.ApplicationId = v }},
+
+		// Adyen
+		{adyen, "ADYEN_API_KEY", func(o *organization.Organization, v string) { o.Adyen.APIKey = v }},
+		{adyen, "ADYEN_MERCHANT_ACCOUNT", func(o *organization.Organization, v string) { o.Adyen.MerchantAccount = v }},
+		{adyen, "ADYEN_HMAC_KEY", func(o *organization.Organization, v string) { o.Adyen.HMACKey = v }},
+		{adyen, "ADYEN_ENVIRONMENT", func(o *organization.Organization, v string) { o.Adyen.Environment = v }},
+		{adyen, "ADYEN_LIVE_URL_PREFIX", func(o *organization.Organization, v string) { o.Adyen.LiveURLPrefix = v }},
+
+		// Braintree
+		{braintree, "BRAINTREE_MERCHANT_ID", func(o *organization.Organization, v string) { o.Braintree.MerchantID = v }},
+		{braintree, "BRAINTREE_PUBLIC_KEY", func(o *organization.Organization, v string) { o.Braintree.PublicKey = v }},
+		{braintree, "BRAINTREE_PRIVATE_KEY", func(o *organization.Organization, v string) { o.Braintree.PrivateKey = v }},
+		{braintree, "BRAINTREE_ENVIRONMENT", func(o *organization.Organization, v string) { o.Braintree.Environment = v }},
+
+		// Recurly
+		{recurly, "RECURLY_API_KEY", func(o *organization.Organization, v string) { o.Recurly.APIKey = v }},
+		{recurly, "RECURLY_SUBDOMAIN", func(o *organization.Organization, v string) { o.Recurly.Subdomain = v }},
+
+		// LemonSqueezy
+		{lemon, "LEMONSQUEEZY_API_KEY", func(o *organization.Organization, v string) { o.LemonSqueezy.APIKey = v }},
+		{lemon, "LEMONSQUEEZY_STORE_ID", func(o *organization.Organization, v string) { o.LemonSqueezy.StoreID = v }},
+		{lemon, "LEMONSQUEEZY_WEBHOOK_SECRET", func(o *organization.Organization, v string) { o.LemonSqueezy.WebhookSecret = v }},
+		{lemon, "LEMONSQUEEZY_DEFAULT_VARIANT_ID", func(o *organization.Organization, v string) { o.LemonSqueezy.DefaultVariantID = v }},
 
 		// Wire Transfer
 		{wire, "WIRE_BANK_NAME", func(o *organization.Organization, v string) { o.Wire.BankName = v }},

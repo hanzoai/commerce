@@ -22,6 +22,12 @@ const (
 	userAgent  = "HanzoCommerce/1.0"
 )
 
+// Config holds Recurly API credentials.
+type Config struct {
+	APIKey    string
+	Subdomain string
+}
+
 // Provider implements processor.PaymentProcessor for Recurly.
 type Provider struct {
 	*processor.BaseProcessor
@@ -35,6 +41,16 @@ func init() {
 		BaseProcessor: processor.NewBaseProcessor(processor.Recurly, supportedCurrencies()),
 		client:        &http.Client{Timeout: 30 * time.Second},
 	})
+}
+
+// NewProvider creates a configured Recurly provider instance.
+func NewProvider(cfg Config) *Provider {
+	p := &Provider{
+		BaseProcessor: processor.NewBaseProcessor(processor.Recurly, supportedCurrencies()),
+		client:        &http.Client{Timeout: 30 * time.Second},
+	}
+	p.Configure(cfg.APIKey, cfg.Subdomain)
+	return p
 }
 
 // Configure sets the API key, optional subdomain, and marks the processor as available.
