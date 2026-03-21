@@ -1,7 +1,7 @@
 {
   "id": "hanzo-referral-v1",
   "name": "Hanzo Referral Program",
-  "version": 1,
+  "version": 2,
   "active": true,
   "tiers": [
     {
@@ -12,11 +12,11 @@
       "rewards": {
         "referrerCreditCents": 2000,
         "refereeCreditCents": 2000,
-        "revenueSharePercent": 5,
+        "revenueSharePercent": 0,
         "creditCurrency": "USD"
       },
       "limits": {
-        "maxTotalCreditsCents": 200000,
+        "maxTotalCreditsCents": 2000000,
         "creditExpiryDays": 90
       }
     },
@@ -28,11 +28,11 @@
       "rewards": {
         "referrerCreditCents": 3000,
         "refereeCreditCents": 2000,
-        "revenueSharePercent": 7.5,
+        "revenueSharePercent": 2.5,
         "creditCurrency": "USD"
       },
       "limits": {
-        "maxTotalCreditsCents": 500000,
+        "maxTotalCreditsCents": 2000000,
         "creditExpiryDays": 180
       }
     },
@@ -44,11 +44,11 @@
       "rewards": {
         "referrerCreditCents": 5000,
         "refereeCreditCents": 2000,
-        "revenueSharePercent": 10,
+        "revenueSharePercent": 5,
         "creditCurrency": "USD"
       },
       "limits": {
-        "maxTotalCreditsCents": 1000000,
+        "maxTotalCreditsCents": 2000000,
         "creditExpiryDays": 365
       }
     },
@@ -60,11 +60,11 @@
       "rewards": {
         "referrerCreditCents": 10000,
         "refereeCreditCents": 5000,
-        "revenueSharePercent": 15,
+        "revenueSharePercent": 7.5,
         "creditCurrency": "USD"
       },
       "limits": {
-        "maxTotalCreditsCents": 2000000,
+        "maxTotalCreditsCents": 15000000,
         "creditExpiryDays": -1
       }
     }
