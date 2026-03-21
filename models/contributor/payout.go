@@ -26,7 +26,7 @@ type PayoutSummary struct {
 // PayoutConfig controls the revenue sharing algorithm.
 type PayoutConfig struct {
 	// PlatformPercent is the platform's share before contributor distribution.
-	// Default: 80% platform, 20% to contributors.
+	// Default: 75% platform, 25% to contributors.
 	PlatformPercent float64
 
 	// MinPayoutCents is the minimum payout threshold per contributor.
@@ -40,10 +40,10 @@ type PayoutConfig struct {
 }
 
 // DefaultConfig returns the default payout configuration.
-// 80/20 split: 80% to platform, 20% to OSS contributors.
+// 75/25 split: 75% to platform, 25% to OSS contributors.
 func DefaultConfig() PayoutConfig {
 	return PayoutConfig{
-		PlatformPercent: 80.0,
+		PlatformPercent: 75.0,
 		MinPayoutCents:  100, // $1 minimum
 		ComponentWeights: map[string]float64{
 			// Core infrastructure weighted higher
@@ -63,7 +63,7 @@ func DefaultConfig() PayoutConfig {
 // Algorithm:
 //  1. Take total revenue for the period
 //  2. Deduct platform share (default 80%)
-//  3. Remaining 20% is the contributor pool
+//  3. Remaining 25% is the contributor pool
 //  4. For each software component used in the billing period:
 //     a. Weight the component's revenue contribution
 //     b. For each contributor to that component:
