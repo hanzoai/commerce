@@ -1,95 +1,175 @@
 package referral
 
 import (
-	_ "embed"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	mdlreferral "github.com/hanzoai/commerce/models/referral"
+	"github.com/hanzoai/commerce/models/referrer"
+	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/util/json"
-	"github.com/hanzoai/commerce/util/router"
+	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/rand"
+	"github.com/hanzoai/commerce/util/rest"
 )
 
-//go:embed referral-program.json
-var programJSON []byte
+// referrerCreate returns the custom Create handler for referrer CRUD.
+func referrerCreate(api *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
+		ref := referrer.New(db)
 
-// programConfig is the parsed referral program configuration, loaded once.
-var programConfig *programConfigData
+		// Decode request body
+		if err := json.Decode(c.Request.Body, ref); err != nil {
+			http.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
 
-type tier struct {
-	Id           string `json:"id"`
-	Name         string `json:"name"`
-	MinReferrals int    `json:"minReferrals"`
-	MaxReferrals *int   `json:"maxReferrals"` // nil means unlimited
-	Rewards      struct {
-		ReferrerCreditCents int     `json:"referrerCreditCents"`
-		RefereeCreditCents  int     `json:"refereeCreditCents"`
-		RevenueSharePercent float64 `json:"revenueSharePercent"`
-		CreditCurrency      string  `json:"creditCurrency"`
-	} `json:"rewards"`
-	Limits struct {
-		MaxTotalCreditsCents int `json:"maxTotalCreditsCents"`
-		CreditExpiryDays     int `json:"creditExpiryDays"`
-	} `json:"limits"`
-}
+		// Override userId from IAM if available
+		if claims := iammiddleware.GetIAMClaims(c); claims != nil && ref.UserId == "" {
+			ref.UserId = claims.Subject
+		}
 
-type fraudConfig struct {
-	RequireEmailVerification bool `json:"requireEmailVerification"`
-	BlockSelfReferral        bool `json:"blockSelfReferral"`
-	CooldownDays             int  `json:"cooldownDays"`
-	MaxReferralsPerDay       int  `json:"maxReferralsPerDay"`
-	BlacklistSameIP          bool `json:"blacklistSameIP"`
-}
+		// Auto-generate code if not provided
+		if ref.Code == "" {
+			ref.Code = generateCode()
+		}
 
-type programConfigData struct {
-	Id      string      `json:"id"`
-	Name    string      `json:"name"`
-	Version int         `json:"version"`
-	Active  bool        `json:"active"`
-	Tiers   []tier      `json:"tiers"`
-	Fraud   fraudConfig `json:"fraud"`
-}
+		// Ensure code is unique
+		if _, ok, _ := referrer.Query(db).Filter("Code=", ref.Code).FirstKey(); ok {
+			ref.Code = generateCode()
+		}
 
-// TierForCount returns the tier matching the given referral count.
-func (p *programConfigData) TierForCount(count int) tier {
-	for i := len(p.Tiers) - 1; i >= 0; i-- {
-		if count >= p.Tiers[i].MinReferrals {
-			return p.Tiers[i]
+		// Save client-related data about request used to create referrer
+		ref.Client = client.New(c)
+
+		// Check if this is blacklisted IP
+		ref.Blacklisted = ref.Client.Blacklisted()
+
+		// Check if any other referrers have been created with this IP address
+		if _, ok, _ := referrer.Query(db).Filter("Client.Ip=", ref.Client.Ip).FirstKey(); ok {
+			ref.Duplicate = true
+		}
+
+		if err := ref.Create(); err != nil {
+			http.Fail(c, 500, "Failed to create referrer", err)
+		} else {
+			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+ref.Id())
+			api.Render(c, 201, ref)
 		}
 	}
-	if len(p.Tiers) > 0 {
-		return p.Tiers[0]
-	}
-	return tier{Id: "starter"}
 }
 
-// loadProgramConfig returns the parsed program config, loading from the
-// embedded JSON on first call.
-func loadProgramConfig() *programConfigData {
-	if programConfig != nil {
-		return programConfig
-	}
-	cfg := &programConfigData{}
-	if err := json.DecodeBytes(programJSON, cfg); err != nil {
-		// Return safe defaults
-		return &programConfigData{
-			Fraud: fraudConfig{MaxReferralsPerDay: 50},
-			Tiers: []tier{{
-				Id:           "starter",
-				MinReferrals: 0,
-			}},
+// referrerGet returns the custom Get handler for referrer CRUD.
+func referrerGet(api *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
+		ref := referrer.New(db)
+
+		id := c.Params.ByName(api.ParamId)
+
+		if err := ref.GetById(id); err != nil {
+			http.Fail(c, 404, "No Referrer found with id: "+id, err)
+			return
 		}
+
+		if err := ref.LoadAffiliate(); err != nil {
+			http.Fail(c, 500, "Referrer affiliate data could not be queries", err)
+			return
+		}
+
+		api.Render(c, 200, ref)
 	}
-	programConfig = cfg
-	return programConfig
 }
 
-// Route registers the referral claim endpoint.
-func Route(r router.Router, args ...gin.HandlerFunc) {
-	tokenRequired := middleware.TokenRequired()
+// getMyReferrer returns the current user's referrer record with stats and tier.
+//
+//	GET /api/v1/referrer/me
+func getMyReferrer(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
 
-	api := r.Group("referral")
-	api.Use(tokenRequired)
-	api.POST("/claim", ClaimReferral)
+	userId := iamUserIdOrQuery(c)
+	if userId == "" {
+		http.Fail(c, 400, "userId is required (pass as query param or use IAM token)", nil)
+		return
+	}
+
+	ref := referrer.New(db)
+	key, ok, err := referrer.Query(db).Filter("UserId=", userId).First(ref)
+	if err != nil {
+		log.Error("Failed to query referrer: %v", err, c)
+		http.Fail(c, 500, "failed to query referrer", err)
+		return
+	}
+	if !ok {
+		http.Fail(c, 404, "no referrer found for this user", nil)
+		return
+	}
+	ref.Init(db)
+	ref.SetKey(key)
+
+	// Count referrals
+	referralCount := 0
+	allReferrals := make([]*mdlreferral.Referral, 0)
+	if _, err := mdlreferral.Query(db).Filter("Referrer.Id=", ref.Id()).GetAll(&allReferrals); err == nil {
+		referralCount = len(allReferrals)
+	}
+
+	c.JSON(200, gin.H{
+		"referrer":      ref,
+		"referralCount": referralCount,
+		"code":          ref.Code,
+		"shareUrl":      "https://hanzo.ai/signup?ref=" + ref.Code,
+	})
 }
 
+// getByCode validates that a referral code exists.
+//
+//	GET /api/v1/referrer/code/:code
+func getByCode(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+
+	code := strings.TrimSpace(c.Param("code"))
+	if code == "" {
+		http.Fail(c, 400, "code is required", nil)
+		return
+	}
+
+	if _, ok, err := referrer.Query(db).Filter("Code=", code).FirstKey(); err != nil {
+		log.Error("Failed to query referrer by code: %v", err, c)
+		http.Fail(c, 500, "failed to look up referral code", err)
+		return
+	} else if !ok {
+		c.JSON(404, gin.H{"valid": false})
+		return
+	}
+
+	c.JSON(200, gin.H{"valid": true})
+}
+
+// generateCode creates a short, uppercase, URL-friendly referral code.
+func generateCode() string {
+	id := rand.ShortId()
+	clean := strings.NewReplacer("-", "", "_", "").Replace(id)
+	if len(clean) > 8 {
+		clean = clean[:8]
+	}
+	return strings.ToUpper(clean)
+}
+
+// iamUserIdOrQuery returns the IAM user ID from JWT claims or from query param.
+func iamUserIdOrQuery(c *gin.Context) string {
+	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
+		return claims.Subject
+	}
+	return strings.TrimSpace(c.Query("userId"))
+}

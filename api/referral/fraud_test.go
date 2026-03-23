@@ -40,7 +40,7 @@ func TestLoadProgramConfig(t *testing.T) {
 		t.Fatal("loadProgramConfig() returned nil")
 	}
 
-	// Verify fraud config loaded from embedded JSON
+	// Verify fraud config loaded from shared config package
 	if cfg.Fraud.MaxReferralsPerDay != 50 {
 		t.Errorf("MaxReferralsPerDay = %d, want 50", cfg.Fraud.MaxReferralsPerDay)
 	}
