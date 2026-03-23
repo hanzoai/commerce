@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/referral"
@@ -31,14 +32,14 @@ type ClaimRequest struct {
 }
 
 // FraudChecker validates referral claims against fraud rules.
-// Config is loaded from the embedded referral-program.json via loadProgramConfig().
+// Config is loaded from the shared config package.
 type FraudChecker struct {
-	cfg       *programConfigData
+	cfg       *config.ReferralProgram
 	db        *datastore.Datastore
 	iamIssuer string
 }
 
-// NewFraudChecker creates a FraudChecker backed by the embedded program config.
+// NewFraudChecker creates a FraudChecker backed by the shared program config.
 func NewFraudChecker(db *datastore.Datastore) *FraudChecker {
 	issuer := os.Getenv("IAM_ENDPOINT")
 	if issuer == "" {
