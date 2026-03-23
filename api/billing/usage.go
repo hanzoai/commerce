@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -182,6 +183,11 @@ func RecordUsage(c *gin.Context) {
 			}
 		}
 	}()
+
+	// Track referral revenue share: if this user was referred, create an
+	// affiliate Fee for the referrer's commission. Fire-and-forget — usage
+	// recording must not fail because of referral tracking.
+	go engine.TrackRevenueShare(db, req.User, currency.Cents(req.Amount), cur, trans.Id(), !org.Live)
 
 	c.JSON(201, gin.H{
 		"transactionId": trans.Id(),
