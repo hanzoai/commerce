@@ -86,6 +86,121 @@ func (c *Client) EmitOrderCompleted(ctx context.Context, order *Order) error {
 	})
 }
 
+// EmitReferralLinkCreated sends a referral link creation event to the collector.
+func (c *Client) EmitReferralLinkCreated(ctx context.Context, orgID, userID, referralCode, referralURL string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "referral_link_created",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"properties": map[string]interface{}{
+			"referral_code": referralCode,
+			"referral_url":  referralURL,
+		},
+	})
+}
+
+// EmitReferralClaimed sends a referral claimed event to the collector.
+func (c *Client) EmitReferralClaimed(ctx context.Context, orgID, referrerID, refereeID, referralCode string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "referral_claimed",
+		"distinct_id":     refereeID,
+		"organization_id": orgID,
+		"properties": map[string]interface{}{
+			"referrer_id":   referrerID,
+			"referee_id":    refereeID,
+			"referral_code": referralCode,
+		},
+	})
+}
+
+// EmitReferralCreditGranted sends a referral credit granted event to the collector.
+func (c *Client) EmitReferralCreditGranted(ctx context.Context, orgID, userID, role string, amount float64, currency string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "referral_credit_granted",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"revenue":         amount,
+		"properties": map[string]interface{}{
+			"role":     role,
+			"amount":   amount,
+			"currency": currency,
+		},
+	})
+}
+
+// EmitReferralCommissionEarned sends a referral commission event to the collector.
+func (c *Client) EmitReferralCommissionEarned(ctx context.Context, orgID, referrerID, orderID string, commission float64, currency string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "referral_commission_earned",
+		"distinct_id":     referrerID,
+		"organization_id": orgID,
+		"order_id":        orderID,
+		"revenue":         commission,
+		"properties": map[string]interface{}{
+			"order_id":   orderID,
+			"commission": commission,
+			"currency":   currency,
+		},
+	})
+}
+
+// EmitReferralTierUpgraded sends a referral tier upgrade event to the collector.
+func (c *Client) EmitReferralTierUpgraded(ctx context.Context, orgID, userID, previousTier, newTier string, referralCount int) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "referral_tier_upgraded",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"properties": map[string]interface{}{
+			"previous_tier":  previousTier,
+			"new_tier":       newTier,
+			"referral_count": referralCount,
+		},
+	})
+}
+
+// EmitContributorRegistered sends a contributor registration event to the collector.
+func (c *Client) EmitContributorRegistered(ctx context.Context, orgID, userID, githubUsername string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "contributor_registered",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"properties": map[string]interface{}{
+			"github_username": githubUsername,
+		},
+	})
+}
+
+// EmitContributorPayoutCalculated sends a payout calculation event to the collector.
+func (c *Client) EmitContributorPayoutCalculated(ctx context.Context, orgID, userID, periodMonth string, amount float64, currency string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "contributor_payout_calculated",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"revenue":         amount,
+		"properties": map[string]interface{}{
+			"period_month": periodMonth,
+			"amount":       amount,
+			"currency":     currency,
+		},
+	})
+}
+
+// EmitContributorPayoutSent sends a payout sent event to the collector.
+func (c *Client) EmitContributorPayoutSent(ctx context.Context, orgID, userID, payoutID, periodMonth string, amount float64, currency string) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "contributor_payout_sent",
+		"distinct_id":     userID,
+		"organization_id": orgID,
+		"revenue":         amount,
+		"properties": map[string]interface{}{
+			"payout_id":    payoutID,
+			"period_month": periodMonth,
+			"amount":       amount,
+			"currency":     currency,
+		},
+	})
+}
+
 // EmitRaw sends a raw event to the collector.
 func (c *Client) EmitRaw(ctx context.Context, event map[string]interface{}) error {
 	if c.endpoint == "" {
