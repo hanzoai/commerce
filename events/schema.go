@@ -11,6 +11,19 @@ const (
 	SubjectPaymentReceived = "commerce.payment.received"
 	SubjectCartUpdated     = "commerce.cart.updated"
 	SubjectProductViewed   = "commerce.product.viewed"
+
+	// Referral events
+	SubjectReferralLinkCreated      = "commerce.referral.link_created"
+	SubjectReferralClaimed          = "commerce.referral.claimed"
+	SubjectReferralCreditGranted    = "commerce.referral.credit_granted"
+	SubjectReferralCommissionEarned = "commerce.referral.commission_earned"
+	SubjectReferralPayoutSent       = "commerce.referral.payout_sent"
+	SubjectReferralTierUpgraded     = "commerce.referral.tier_upgraded"
+
+	// Contributor events
+	SubjectContributorRegistered     = "commerce.contributor.registered"
+	SubjectContributorPayoutCalc     = "commerce.contributor.payout_calculated"
+	SubjectContributorPayoutSent     = "commerce.contributor.payout_sent"
 )
 
 // StreamName is the JetStream stream for commerce events.
