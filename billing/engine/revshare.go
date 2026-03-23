@@ -1,11 +1,9 @@
 package engine
 
 import (
-	"embed"
-	"encoding/json"
 	"math"
-	"sync"
 
+	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/fee"
@@ -14,58 +12,10 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-//go:embed referral-program.json
-var referralProgramFS embed.FS
-
-// referralProgramTier mirrors one tier from config/referral-program.json.
-type referralProgramTier struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	MinReferrals int    `json:"minReferrals"`
-	MaxReferrals *int   `json:"maxReferrals"` // nil = unlimited
-	Rewards      struct {
-		RevenueSharePercent float64 `json:"revenueSharePercent"`
-	} `json:"rewards"`
-}
-
-type referralProgramConfig struct {
-	Tiers []referralProgramTier `json:"tiers"`
-}
-
-var (
-	programOnce   sync.Once
-	programConfig referralProgramConfig
-)
-
-func loadReferralProgram() referralProgramConfig {
-	programOnce.Do(func() {
-		data, err := referralProgramFS.ReadFile("referral-program.json")
-		if err != nil {
-			log.Error("Failed to read embedded referral-program.json: %v", err)
-			return
-		}
-		if err := json.Unmarshal(data, &programConfig); err != nil {
-			log.Error("Failed to parse referral-program.json: %v", err)
-		}
-	})
-	return programConfig
-}
-
 // tierForReferralCount returns the tier matching the given referral count.
-// Tiers are ordered by minReferrals ascending; the highest matching tier wins.
-func tierForReferralCount(count int) referralProgramTier {
-	cfg := loadReferralProgram()
-	if len(cfg.Tiers) == 0 {
-		return referralProgramTier{}
-	}
-
-	best := cfg.Tiers[0]
-	for _, t := range cfg.Tiers {
-		if count >= t.MinReferrals {
-			best = t
-		}
-	}
-	return best
+// Delegates to the shared config package.
+func tierForReferralCount(count int) config.ReferralTier {
+	return config.GetReferralProgram().TierForCount(count)
 }
 
 // TrackRevenueShare checks if the paying user was referred and, if so, creates
@@ -122,7 +72,7 @@ func TrackRevenueShare(db *datastore.Datastore, userID string, chargeAmount curr
 		return // this tier has no revenue share
 	}
 
-	// 4. Calculate commission amount (round down — platform keeps remainder).
+	// 4. Calculate commission amount (round down -- platform keeps remainder).
 	commissionAmount := currency.Cents(math.Floor(
 		float64(chargeAmount) * tier.Rewards.RevenueSharePercent / 100.0,
 	))
