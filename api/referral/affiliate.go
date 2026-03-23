@@ -1,4 +1,4 @@
-package affiliate
+package referral
 
 import (
 	"errors"
@@ -7,31 +7,33 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/models/order"
-	"github.com/hanzoai/commerce/models/referral"
+	mdlreferral "github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	"github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-// connect initiates payment processor OAuth for an affiliate.
+// affiliateConnect initiates payment processor OAuth for an affiliate.
 // Legacy Stripe Connect removed; affiliate payment integration pending.
-func connect(c *gin.Context) {
+func affiliateConnect(c *gin.Context) {
 	http.Fail(c, 503, "affiliate payment connect not available", errors.New("payment processor connect not configured"))
 }
 
-func getReferrals(c *gin.Context) {
+// affiliateGetReferrals returns all referrals for an affiliate.
+//
+//	GET /api/v1/affiliate/:affiliateid/referrals
+func affiliateGetReferrals(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
 
-	referrals := make([]referral.Referral, 0)
-	if _, err := referral.Query(db).Filter("Referrer.AffiliateId=", id).GetAll(&referrals); err != nil {
+	referrals := make([]mdlreferral.Referral, 0)
+	if _, err := mdlreferral.Query(db).Filter("Referrer.AffiliateId=", id).GetAll(&referrals); err != nil {
 		http.Fail(c, 400, "Could not query referral", err)
 		return
 	}
@@ -39,7 +41,10 @@ func getReferrals(c *gin.Context) {
 	http.Render(c, 200, referrals)
 }
 
-func getReferrers(c *gin.Context) {
+// affiliateGetReferrers returns all referrers for an affiliate.
+//
+//	GET /api/v1/affiliate/:affiliateid/referrers
+func affiliateGetReferrers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -53,7 +58,10 @@ func getReferrers(c *gin.Context) {
 	http.Render(c, 200, referrers)
 }
 
-func getOrders(c *gin.Context) {
+// affiliateGetOrders returns all orders attributed to an affiliate.
+//
+//	GET /api/v1/affiliate/:affiliateid/orders
+func affiliateGetOrders(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -67,7 +75,10 @@ func getOrders(c *gin.Context) {
 	http.Render(c, 200, orders)
 }
 
-func getTransactions(c *gin.Context) {
+// affiliateGetTransactions returns all transactions for an affiliate.
+//
+//	GET /api/v1/affiliate/:affiliateid/transactions
+func affiliateGetTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("affiliateid")
@@ -81,7 +92,8 @@ func getTransactions(c *gin.Context) {
 	http.Render(c, 200, trans)
 }
 
-func create(r *rest.Rest) func(*gin.Context) {
+// affiliateCreate returns the custom Create handler for affiliate CRUD.
+func affiliateCreate(r *rest.Rest) func(*gin.Context) {
 	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "create") {
 			return
