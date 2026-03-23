@@ -14,7 +14,6 @@ import (
 	"github.com/hanzoai/commerce/models/note"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/product"
-	"github.com/hanzoai/commerce/models/referral"
 	"github.com/hanzoai/commerce/models/return"
 	"github.com/hanzoai/commerce/models/saleschannel"
 	"github.com/hanzoai/commerce/models/site"
@@ -35,9 +34,7 @@ import (
 
 	accessTokenApi "github.com/hanzoai/commerce/api/accesstoken"
 	accountApi "github.com/hanzoai/commerce/api/account"
-	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
 	billingApi "github.com/hanzoai/commerce/api/billing"
-	contributorApi "github.com/hanzoai/commerce/api/contributor"
 	authApi "github.com/hanzoai/commerce/api/auth"
 	cartApi "github.com/hanzoai/commerce/api/cart"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
@@ -52,7 +49,6 @@ import (
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
 	referralApi "github.com/hanzoai/commerce/api/referral"
-	referrerApi "github.com/hanzoai/commerce/api/referrer"
 	regionApi "github.com/hanzoai/commerce/api/region"
 	reviewApi "github.com/hanzoai/commerce/api/review"
 	searchApi "github.com/hanzoai/commerce/api/search"
@@ -117,7 +113,6 @@ func Route(api router.Router) {
 	rest.New(movie.Movie{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
-	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(return_.Return{}).Route(api, tokenRequired)
 	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
@@ -140,9 +135,7 @@ func Route(api router.Router) {
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
-	affiliateApi.Route(api, tokenRequired)
 	billingApi.Route(api, tokenRequired)
-	contributorApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
@@ -150,7 +143,6 @@ func Route(api router.Router) {
 	inventoryApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	referralApi.Route(api, tokenRequired)
-	referrerApi.Route(api, tokenRequired)
 	regionApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)

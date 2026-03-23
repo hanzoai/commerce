@@ -1,4 +1,4 @@
-package contributor
+package referral
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,42 +8,8 @@ import (
 	"github.com/hanzoai/commerce/models/contributor"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
-
-func Route(router router.Router, args ...gin.HandlerFunc) {
-	adminRequired := middleware.TokenRequired(permission.Admin)
-	tokenRequired := middleware.TokenRequired()
-
-	api := rest.New(contributor.Contributor{})
-
-	// Override create to set defaults
-	api.Create = createContributor(api)
-
-	// Public: register as contributor (token required)
-	api.POST("/register", tokenRequired, registerContributor)
-
-	// Public: look up contributor by git login
-	api.GET("/by-login/:login", tokenRequired, getByLogin)
-
-	// Admin: SBOM management
-	api.POST("/sbom", adminRequired, createSBOMEntry)
-	api.GET("/sbom", adminRequired, listSBOMEntries)
-	api.GET("/sbom/:sbomid", adminRequired, getSBOMEntry)
-	api.PUT("/sbom/:sbomid", adminRequired, updateSBOMEntry)
-
-	// Admin: payout operations
-	api.POST("/payouts/calculate", adminRequired, calculatePayouts)
-	api.GET("/payouts/preview", adminRequired, previewPayouts)
-
-	// Contributor: view own earnings
-	api.GET("/:contributorid/earnings", tokenRequired, getEarnings)
-	api.GET("/:contributorid/attributions", tokenRequired, getAttributions)
-
-	api.Route(router, args...)
-}
 
 // registerContributor allows a user to register as an OSS contributor.
 func registerContributor(c *gin.Context) {
@@ -78,8 +44,8 @@ func registerContributor(c *gin.Context) {
 	http.Render(c, 201, contrib)
 }
 
-// createContributor is the admin create override.
-func createContributor(r *rest.Rest) func(*gin.Context) {
+// contributorCreate returns the admin create override for contributor CRUD.
+func contributorCreate(r *rest.Rest) func(*gin.Context) {
 	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "create") {
 			return
@@ -109,8 +75,8 @@ func createContributor(r *rest.Rest) func(*gin.Context) {
 	}
 }
 
-// getByLogin looks up a contributor by their git login.
-func getByLogin(c *gin.Context) {
+// contributorGetByLogin looks up a contributor by their git login.
+func contributorGetByLogin(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	login := c.Params.ByName("login")
@@ -137,14 +103,14 @@ func getEarnings(c *gin.Context) {
 	}
 
 	http.Render(c, 200, gin.H{
-		"contributorId":    contrib.Id(),
-		"gitLogin":         contrib.GitLogin,
-		"totalEarned":      contrib.TotalEarned,
-		"totalPending":     contrib.TotalPending,
-		"linesAuthored":    contrib.TotalLinesAuthored,
-		"payoutMethod":     contrib.PayoutMethod,
-		"currency":         contrib.Currency,
-		"lastPaid":         contrib.LastPaid,
+		"contributorId":  contrib.Id(),
+		"gitLogin":       contrib.GitLogin,
+		"totalEarned":    contrib.TotalEarned,
+		"totalPending":   contrib.TotalPending,
+		"linesAuthored":  contrib.TotalLinesAuthored,
+		"payoutMethod":   contrib.PayoutMethod,
+		"currency":       contrib.Currency,
+		"lastPaid":       contrib.LastPaid,
 	})
 }
 
@@ -247,8 +213,8 @@ func calculatePayouts(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	var req struct {
-		TotalRevenueCents int64              `json:"totalRevenueCents"`
-		ComponentRevenue  map[string]int64   `json:"componentRevenue"`
+		TotalRevenueCents int64                    `json:"totalRevenueCents"`
+		ComponentRevenue  map[string]int64         `json:"componentRevenue"`
 		Config            *contributor.PayoutConfig `json:"config,omitempty"`
 	}
 
@@ -269,16 +235,16 @@ func calculatePayouts(c *gin.Context) {
 		return
 	}
 
-	config := contributor.DefaultConfig()
+	cfg := contributor.DefaultConfig()
 	if req.Config != nil {
-		config = *req.Config
+		cfg = *req.Config
 	}
 
 	summary := contributor.CalculatePayouts(
 		req.TotalRevenueCents,
 		contributors,
 		req.ComponentRevenue,
-		config,
+		cfg,
 	)
 
 	http.Render(c, 200, summary)
