@@ -82,7 +82,7 @@ export class Commerce {
     const headers: Record<string, string> = { Accept: 'application/json' }
     const authToken = opts?.token ?? this.token
     if (authToken) headers.Authorization = `Bearer ${authToken}`
-    if (this.org) headers['X-Hanzo-Org'] = this.org
+    if (this.org) headers['X-IAM-Org'] = this.org
     if (opts?.body) headers['Content-Type'] = 'application/json'
 
     try {

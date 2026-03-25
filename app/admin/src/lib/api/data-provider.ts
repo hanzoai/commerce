@@ -25,7 +25,7 @@ export function setAccessToken(token: string | null) {
 function headers(org?: string | null): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
   if (_accessToken) h['Authorization'] = `Bearer ${_accessToken}`
-  if (org) h['X-Hanzo-Org'] = org
+  if (org) h['X-IAM-Org'] = org
   return h
 }
 

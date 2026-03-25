@@ -15,7 +15,7 @@ info:
     ## Multi-Tenancy
 
     Requests are scoped to the authenticated organization namespace. The org is
-    resolved from the JWT `owner` claim or the `X-Hanzo-Org` header.
+    resolved from the JWT `owner` claim or the `X-IAM-Org` header.
 
     ## Processors
 

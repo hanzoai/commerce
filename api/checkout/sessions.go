@@ -193,15 +193,15 @@ func isValidRedirect(raw string) bool {
 }
 
 // resolveOrgForCheckout looks up the Organization by name (from request body,
-// X-IAM-Org / X-Hanzo-Org header, or COMMERCE_SERVICE_ORG env) and hydrates
+// X-IAM-Org / X-IAM-Org header, or COMMERCE_SERVICE_ORG env) and hydrates
 // its payment credentials from KMS. IAM manages all orgs, so the header is
-// X-IAM-Org (X-Hanzo-Org accepted for backward compat).
+// X-IAM-Org (X-IAM-Org accepted for backward compat).
 func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organization, error) {
 	if orgName == "" {
 		orgName = c.GetHeader("X-IAM-Org")
 	}
 	if orgName == "" {
-		orgName = c.GetHeader("X-Hanzo-Org")
+		orgName = c.GetHeader("X-IAM-Org")
 	}
 	if orgName == "" {
 		orgName = os.Getenv("COMMERCE_SERVICE_ORG")

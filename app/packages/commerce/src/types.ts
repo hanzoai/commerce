@@ -339,7 +339,7 @@ export interface DiscountCode {
 export type CommerceClientConfig = {
   baseUrl: string
   token?: string
-  /** Organization namespace — sent as X-Hanzo-Org header. */
+  /** Organization namespace — sent as X-IAM-Org header. */
   org?: string
 }
 
