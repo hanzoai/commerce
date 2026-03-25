@@ -317,12 +317,12 @@ services:
         hard: 262144
 
   # ===========================================================================
-  # NGINX - Reverse Proxy & Load Balancer (Optional, for Blue-Green)
+  # Ingress - Reverse Proxy & Load Balancer (Optional, for Blue-Green)
   # ===========================================================================
 
-  nginx:
-    image: nginx:alpine
-    container_name: commerce-nginx
+  ingress:
+    image: ghcr.io/hanzoai/ingress:latest
+    container_name: commerce-ingress
     restart: unless-stopped
     ports:
       - "${HTTP_PORT:-80}:80"
@@ -331,7 +331,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
-      - nginx_logs:/var/log/nginx
+      - ingress_logs:/var/log/ingress
     depends_on:
       - commerce
     healthcheck:
@@ -370,7 +370,7 @@ volumes:
     driver: local
   temporal_data:
     driver: local
-  nginx_logs:
+  ingress_logs:
     driver: local
 
 # ===========================================================================
