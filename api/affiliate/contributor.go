@@ -1,4 +1,4 @@
-package referral
+package affiliate
 
 import (
 	"github.com/gin-gonic/gin"
