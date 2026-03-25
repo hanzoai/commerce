@@ -10675,7 +10675,7 @@ Learn more about middlewares in the [Middlewares](https://commerce.hanzo.ai/lear
 You can pass the locale in API requests to routes that support localization using either of the following methods:
 
 1. The `locale` query parameter
-2. The `x-hanzo-locale` request header
+2. The `x-locale` request header
 
 The query parameter takes priority over the header if both are provided.
 
@@ -10697,7 +10697,7 @@ curl "http://localhost:9000/store/products?locale=fr-FR" \
 ```bash
 curl "http://localhost:9000/store/products" \
 -H 'x-publishable-api-key: {your_publishable_api_key}' \
--H 'x-hanzo-locale: fr-FR'
+-H 'x-locale: fr-FR'
 ```
 
 The above examples retrieve products with their fields translated to French (France) if translations are available. If no translations exist for the requested locale, the original content stored in the data model is returned.
@@ -44348,7 +44348,7 @@ Finally, you can serve translated resources for your custom data models in your 
 Hanzo Commerce supports passing the desired locale in API requests to `/store` routes using either:
 
 1. The `locale` query parameter.
-2. The `x-hanzo-locale` header.
+2. The `x-locale` header.
 
 For example, assuming you have a `/store/posts` API route, you can pass the locale in the request as follows:
 
@@ -44364,7 +44364,7 @@ curl "http://localhost:9000/store/posts?locale=fr-FR" \
 ```bash
 curl "http://localhost:9000/store/posts" \
 -H 'x-publishable-api-key: {your_publishable_api_key}' \
--H 'x-hanzo-locale: fr-FR'
+-H 'x-locale: fr-FR'
 ```
 
 You must pass a publishable API key in the request header to store API routes. Learn more in the [Store API reference](https://commerce.hanzo.ai/api/store#publishable-api-key).
@@ -44875,7 +44875,7 @@ You can retrieve translations using the [Store API routes](https://commerce.hanz
 Hanzo Commerce determines the locale for the request in the following order of priority:
 
 - The `locale` query parameter in the API request.
-- The `x-hanzo-locale` header in the API request.
+- The `x-locale` header in the API request.
 
 If translations aren't available for the selected locale, or no locale is selected, the original content stored in the resource's data model is returned.
 
@@ -54356,7 +54356,7 @@ The JS SDK appends request-specific headers to authentication headers and header
 
 If you support [localization](https://commerce.hanzo.ai/Users/shahednasser/hanzo-commerce/www/apps/resources/app/storefront-development/localization/index.html.md) in your storefront, you can use the `setLocale` method of the JS SDK.
 
-The `setLocale` method stores the locale in the JS SDK to pass the it as a `x-hanzo-locale` header in all subsequent requests. Also, if your application supports `localStorage`, the method sets the locale in the `hanzo_locale` key of the `localStorage`.
+The `setLocale` method stores the locale in the JS SDK to pass the it as a `x-locale` header in all subsequent requests. Also, if your application supports `localStorage`, the method sets the locale in the `hanzo_locale` key of the `localStorage`.
 
 For example, to set the locale to French (France):
 
@@ -54366,7 +54366,7 @@ sdk.setLocale("fr-FR")
 const { products } = await sdk.store.product.list()
 ```
 
-The `setLocale` method accepts the locale string in the [IETF BCP 47 standard](https://gist.github.com/typpo/b2b828a35e683b9bf8db91b5404f1bd1). All subsequent requests sent using the JS SDK will include the specified locale in the `x-hanzo-locale` header.
+The `setLocale` method accepts the locale string in the [IETF BCP 47 standard](https://gist.github.com/typpo/b2b828a35e683b9bf8db91b5404f1bd1). All subsequent requests sent using the JS SDK will include the specified locale in the `x-locale` header.
 
 In the above example, the product content, such as title and description, is fetched in French and falls back to the original content if translations aren't available.
 
