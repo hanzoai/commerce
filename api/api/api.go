@@ -48,6 +48,7 @@ import (
 	namespaceApi "github.com/hanzoai/commerce/api/namespace"
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
+	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
 	referralApi "github.com/hanzoai/commerce/api/referral"
 	regionApi "github.com/hanzoai/commerce/api/region"
 	reviewApi "github.com/hanzoai/commerce/api/review"
@@ -143,6 +144,7 @@ func Route(api router.Router) {
 	inventoryApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	referralApi.Route(api, tokenRequired)
+	affiliateApi.Route(api, tokenRequired)
 	regionApi.Route(api, tokenRequired)
 	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
