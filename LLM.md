@@ -144,7 +144,7 @@ WRITE paths (credentials → KMS):
 **Request**: `{ company, providerHint, currency, org, customer, items, successUrl, cancelUrl }`
 **Response**: `{ checkoutUrl, sessionId }`
 
-Org resolved from `X-Hanzo-Org` header or request body `org`/`tenant` field. Per-request Stripe client (multi-tenant safe). Emits `checkout_started` analytics event.
+Org resolved from `X-IAM-Org` header or request body `org`/`tenant` field. Per-request Stripe client (multi-tenant safe). Emits `checkout_started` analytics event.
 
 ## SQLite Query Engine (2026-02-23)
 
