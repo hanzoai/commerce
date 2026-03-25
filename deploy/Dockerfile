@@ -7,7 +7,7 @@
 # ==============================================================================
 # Stage 1: Build Environment
 # ==============================================================================
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 # Build arguments for versioning
 ARG VERSION=2.0.0
