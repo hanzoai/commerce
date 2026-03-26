@@ -675,10 +675,8 @@ func (app *App) setupRoutes() {
 		})
 	})
 
-	// API routes — register on both /api/v1 (primary) and /v1 (short alias)
-	// so that clients calling either path prefix work correctly.
-	for _, prefix := range []string{"/api/v1", "/v1"} {
-	api := app.Router.Group(prefix)
+	// API routes
+	api := app.Router.Group("/api/v1")
 	{
 		// Core middleware required by Commerce API handlers
 		api.Use(middleware.AddHost())
@@ -716,7 +714,6 @@ func (app *App) setupRoutes() {
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
 	}
-	} // end for prefix
 }
 
 // Serve starts the HTTP server
