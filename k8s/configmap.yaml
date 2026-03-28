@@ -12,7 +12,7 @@ stringData:
     IAM_ENABLED=true
     IAM_ISSUER=http://iam.hanzo.svc.cluster.local
     IAM_ACCEPTED_ISSUERS=https://hanzo.id,https://iam.hanzo.ai
-    IAM_CLIENT_ID=app-hanzo
-    IAM_ACCEPTED_AUDIENCES=app-hanzo,app-hanzobot,hanzobot-client-id,hanzo-commerce-client-id,hanzo-app-client-id,app-lux,app-zoo,app-pars
+    IAM_CLIENT_ID=hanzo-commerce
+    IAM_ACCEPTED_AUDIENCES=hanzo-commerce,app-hanzo,app-hanzobot,hanzobot-client-id,hanzo-commerce-client-id,hanzo-app-client-id,app-lux,app-zoo,app-pars
     IAM_JWKS_URI=http://iam.hanzo.svc.cluster.local/.well-known/jwks
     VALKEY_ADDR=valkey.hanzo.svc.cluster.local:6379
