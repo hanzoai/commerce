@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button, Heading, Text } from '@hanzo/commerce-ui'
 
 const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
-const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'app-hanzo'
+const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce'
 
 export default function CallbackPage() {
   const router = useRouter()

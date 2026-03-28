@@ -22,7 +22,7 @@ export interface IamAuthConfig {
 // ── Defaults ──────────────────────────────────────────────────────────
 
 const DEFAULT_IAM_SERVER = 'https://hanzo.id'
-const DEFAULT_CLIENT_ID = 'app-hanzo'
+const DEFAULT_CLIENT_ID = 'hanzo-commerce'
 
 export function getDefaultConfig(): IamAuthConfig {
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://commerce.hanzo.ai'

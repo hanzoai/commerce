@@ -19,7 +19,7 @@ const hanzo: CommerceOrgConfig = {
   id: 'hanzo',
   displayName: 'Hanzo',
   iamServerUrl: 'https://hanzo.id',
-  iamClientId: 'app-hanzo',
+  iamClientId: 'hanzo-commerce',
   commerceUrl: 'https://commerce-api.hanzo.ai/api',
   logo: '/logos/hanzo.svg',
   theme: {
@@ -57,7 +57,7 @@ export const DEFAULT_COMMERCE_URL = 'https://commerce-api.hanzo.ai/api'
 export const DEFAULT_IAM_SERVER_URL = 'https://hanzo.id'
 
 /** Default IAM client ID. */
-export const DEFAULT_IAM_CLIENT_ID = 'app-hanzo'
+export const DEFAULT_IAM_CLIENT_ID = 'hanzo-commerce'
 
 // ── Canonical subscription plans ────────────────────────────────────────────
 
