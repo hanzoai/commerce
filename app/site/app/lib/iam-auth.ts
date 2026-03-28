@@ -202,5 +202,5 @@ export function logout(): void {
 function getPostLoginRedirect(): string {
   const saved = sessionStorage.getItem(`${KEY_PREFIX}post_login_redirect`)
   sessionStorage.removeItem(`${KEY_PREFIX}post_login_redirect`)
-  return saved || 'https://admin.commerce.hanzo.ai'
+  return saved || 'https://commerce-admin.hanzo.ai'
 }
