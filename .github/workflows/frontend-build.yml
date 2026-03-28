@@ -99,8 +99,8 @@ jobs:
       - name: Build and push commerce-admin
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: Dockerfile.admin
+          context: ./app
+          file: app/admin/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/hanzoai/commerce-admin:latest
