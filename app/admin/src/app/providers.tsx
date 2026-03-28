@@ -6,7 +6,7 @@ import { QueryProvider } from '@/lib/query-provider'
 
 const IAM_CONFIG = {
   serverUrl: process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id',
-  clientId: process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'app-hanzo',
+  clientId: process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce',
   redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/callback` : '',
 }
 
