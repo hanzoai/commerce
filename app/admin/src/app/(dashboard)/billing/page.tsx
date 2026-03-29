@@ -3,7 +3,7 @@
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { Commerce } from '@hanzo/commerce-client'
 import { Heading, Text, Container } from '@hanzo/commerce-ui'
-import { useIam } from '@hanzo/iam/react'
+import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { PageHeader } from '@/components/common/page-header'
 import { StatCard } from '@/components/common/stat-card'
 
@@ -28,15 +28,6 @@ class BillingErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 }
 
-// Safe org hook — useOrganizations may not be available
-function useOrgId(): string | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('@hanzo/iam/react')
-  if (typeof mod.useOrganizations !== 'function') return undefined
-  const { currentOrgId } = mod.useOrganizations()
-  return currentOrgId ?? undefined
-}
-
 export default function BillingPage() {
   return (
     <BillingErrorBoundary>
@@ -47,7 +38,7 @@ export default function BillingPage() {
 
 function BillingContent() {
   const { accessToken: token, isAuthenticated } = useIam()
-  const currentOrgId = useOrgId()
+  const { currentOrgId } = useOrganizations()
   const [balance, setBalance] = useState<any>(null)
   const [creditBalance, setCreditBalance] = useState<any>(null)
   const [invoices, setInvoices] = useState<any[]>([])
