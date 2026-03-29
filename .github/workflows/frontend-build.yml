@@ -105,5 +105,7 @@ jobs:
           tags: |
             ghcr.io/hanzoai/commerce-admin:latest
             ghcr.io/hanzoai/commerce-admin:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_GATEWAY_KEY=${{ secrets.CLOUD_API_SERVICE_KEY }}
           cache-from: type=gha,scope=admin
           cache-to: type=gha,scope=admin,mode=max
