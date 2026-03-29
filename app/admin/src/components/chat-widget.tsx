@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
+import { useIam } from '@hanzo/iam/react'
 
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'https://api.hanzo.ai/v1'
-const GATEWAY_KEY = process.env.NEXT_PUBLIC_GATEWAY_PUBLIC_KEY || 'hz_widget_public'
 
 const models = [
-  { id: 'zen-coder-flash', name: 'Zen Flash', tag: 'Fast' },
-  { id: 'zen-coder', name: 'Zen Coder', tag: 'Code' },
-  { id: 'zen-70b-chat', name: 'Zen 70B', tag: '70B' },
-  { id: 'zen-405b-chat', name: 'Zen 405B', tag: '405B' },
+  { id: 'claude-sonnet-4', name: 'Zen Coder', tag: 'Code' },
+  { id: 'claude-haiku-4-5', name: 'Zen Flash', tag: 'Fast' },
+  { id: 'claude-opus-4', name: 'Zen Pro', tag: 'Pro' },
 ]
 
 interface Message {
@@ -21,6 +20,7 @@ interface Message {
 
 export function ChatWidget() {
   const pathname = usePathname()
+  const { accessToken } = useIam()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -76,7 +76,7 @@ export function ChatWidget() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GATEWAY_KEY}`,
+          'Authorization': `Bearer ${accessToken || ''}`,
         },
         body: JSON.stringify({
           model: selectedModel.id,
