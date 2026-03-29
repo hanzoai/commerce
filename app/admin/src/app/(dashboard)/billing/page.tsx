@@ -1,15 +1,53 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { Commerce } from '@hanzo/commerce-client'
 import { Heading, Text, Container } from '@hanzo/commerce-ui'
-import { useIam, useOrganizations } from '@hanzo/iam/react'
+import { useIam } from '@hanzo/iam/react'
 import { PageHeader } from '@/components/common/page-header'
 import { StatCard } from '@/components/common/stat-card'
 
+// Error boundary to catch useOrganizations or other render errors
+class BillingErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() {
+    if (this.state.error) {
+      return (
+        <div>
+          <PageHeader title="Billing" description="Account balance, credits, and invoices" />
+          <div className="p-8">
+            <Text size="small" className="text-ui-fg-muted">
+              Unable to load billing data. Please try refreshing the page.
+            </Text>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+// Safe org hook — useOrganizations may not be available
+function useOrgId(): string | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require('@hanzo/iam/react')
+  if (typeof mod.useOrganizations !== 'function') return undefined
+  const { currentOrgId } = mod.useOrganizations()
+  return currentOrgId ?? undefined
+}
+
 export default function BillingPage() {
+  return (
+    <BillingErrorBoundary>
+      <BillingContent />
+    </BillingErrorBoundary>
+  )
+}
+
+function BillingContent() {
   const { accessToken: token, isAuthenticated } = useIam()
-  const { currentOrgId } = useOrganizations()
+  const currentOrgId = useOrgId()
   const [balance, setBalance] = useState<any>(null)
   const [creditBalance, setCreditBalance] = useState<any>(null)
   const [invoices, setInvoices] = useState<any[]>([])
