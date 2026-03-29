@@ -17,6 +17,9 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 
+ARG NEXT_PUBLIC_GATEWAY_KEY=""
+ENV NEXT_PUBLIC_GATEWAY_KEY=$NEXT_PUBLIC_GATEWAY_KEY
+
 COPY --from=deps /app/ ./
 COPY admin/ admin/
 COPY packages/ packages/
