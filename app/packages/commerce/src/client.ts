@@ -235,7 +235,7 @@ export class Commerce {
     token?: string,
   ): Promise<CommerceInvoice[]> {
     try {
-      return await this.request<CommerceInvoice[]>('/api/v1/billing/invoices', {
+      const res = await this.request<any>('/api/v1/billing/invoices', {
         params: {
           user: userId,
           ...(params?.limit ? { limit: String(params.limit) } : {}),
@@ -243,6 +243,8 @@ export class Commerce {
         },
         token,
       })
+      // API returns { invoices: [...], count: N }
+      return Array.isArray(res) ? res : Array.isArray(res?.invoices) ? res.invoices : []
     } catch {
       return []
     }
