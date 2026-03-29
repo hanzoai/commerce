@@ -17,6 +17,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(store.Store{})
 
+	// Admin dashboard expects /store/current to return the default store.
+	api.GET("/current", getCurrent)
+
 	// API for getting a full product/variant/bundle for a specific store
 	api.POST("/:storeid/authorize", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/authorize/:orderid", publishedRequired, namespaced, authorize)
