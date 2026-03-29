@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
-import { useIam } from '@hanzo/iam/react'
-
 const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || 'https://api.hanzo.ai/v1'
+const GATEWAY_KEY = process.env.NEXT_PUBLIC_GATEWAY_KEY || ''
 
 const models = [
   { id: 'claude-sonnet-4', name: 'Zen Coder', tag: 'Code' },
@@ -20,7 +19,6 @@ interface Message {
 
 export function ChatWidget() {
   const pathname = usePathname()
-  const { accessToken } = useIam()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<Message[]>([])
@@ -76,7 +74,7 @@ export function ChatWidget() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken || ''}`,
+          'Authorization': `Bearer ${GATEWAY_KEY}`,
         },
         body: JSON.stringify({
           model: selectedModel.id,
