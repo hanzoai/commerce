@@ -1,6 +1,9 @@
 package billing
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/billing/credit"
@@ -8,9 +11,62 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
+
+// preAuthVerifier is implemented by processors that support pre-authorization
+// cancellation (e.g. Square). Allows voiding a hold immediately after verifying
+// the card is real.
+type preAuthVerifier interface {
+	processor.PaymentProcessor
+	CancelAuthorization(ctx context.Context, paymentID string) error
+}
+
+// verifyCardWithPreAuth does a $1.00 Square pre-auth against the provided nonce
+// to confirm the card is real and chargeable, then immediately voids it.
+// Returns an error (with a user-facing message) if the card is declined.
+func verifyCardWithPreAuth(ctx context.Context, nonce, customerID string) error {
+	p, err := processor.Get(processor.Square)
+	if err != nil {
+		// Square not configured — skip pre-auth (not an error, just log)
+		return nil
+	}
+
+	verifier, ok := p.(preAuthVerifier)
+	if !ok || !verifier.IsAvailable(ctx) {
+		return nil
+	}
+
+	// $1.00 pre-auth to verify the card is real and has available credit.
+	result, err := verifier.Authorize(ctx, processor.PaymentRequest{
+		Amount:      currency.Cents(100), // $1.00
+		Currency:    currency.USD,
+		Token:       nonce,
+		CustomerID:  customerID,
+		Description: "Card verification hold (will be voided immediately)",
+	})
+	if err != nil || !result.Success {
+		msg := "card verification failed"
+		if result != nil && result.ErrorMessage != "" {
+			msg = result.ErrorMessage
+		} else if err != nil {
+			msg = err.Error()
+		}
+		return fmt.Errorf("card declined: %s", msg)
+	}
+
+	// Immediately void the authorization — we only needed to verify the card.
+	if voidErr := verifier.CancelAuthorization(ctx, result.TransactionID); voidErr != nil {
+		// Non-fatal: the hold will expire on its own (Square: ~7 days).
+		// Log but don't block the user.
+		log.Warn("Failed to void pre-auth %s: %v", result.TransactionID, voidErr)
+	}
+
+	return nil
+}
 
 type createPaymentMethodRequest struct {
 	CustomerId     string                            `json:"customerId"`
@@ -41,6 +97,15 @@ func CreatePaymentMethod(c *gin.Context) {
 		return
 	}
 
+	// When a Square nonce/sourceId is provided, do a $1.00 pre-auth to verify
+	// the card is real and will accept charges before we store it.
+	if req.ProviderRef != "" {
+		if err := verifyCardWithPreAuth(c.Request.Context(), req.ProviderRef, req.CustomerId); err != nil {
+			http.Fail(c, 402, err.Error(), nil)
+			return
+		}
+	}
+
 	pm := paymentmethod.New(db)
 	pm.CustomerId = req.CustomerId
 	pm.UserId = req.CustomerId
@@ -57,9 +122,14 @@ func CreatePaymentMethod(c *gin.Context) {
 		pm.Name = req.Card.Brand + " ending in " + req.Card.Last4
 	}
 
-	if req.Metadata != nil {
-		pm.Metadata = req.Metadata
+	meta := req.Metadata
+	if meta == nil {
+		meta = make(map[string]interface{})
 	}
+	if req.ProviderRef != "" {
+		meta["squareVerified"] = true
+	}
+	pm.Metadata = meta
 
 	if err := pm.Create(); err != nil {
 		log.Error("Failed to create payment method: %v", err, c)
