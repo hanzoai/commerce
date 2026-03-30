@@ -219,6 +219,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	user.POST("/credit", GrantStarterCredit)
 
+	// Top-up with a Square Web Payments SDK nonce (no saved PM required)
+	user.POST("/topup/token", TopupWithToken)
+
 	// Payment methods (user-scoped CRUD)
 	user.POST("/payment-methods", CreatePaymentMethod)
 	user.GET("/payment-methods", ListPaymentMethods)
