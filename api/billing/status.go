@@ -33,13 +33,11 @@ func GetBillingStatus(c *gin.Context) {
 
 	user := strings.TrimSpace(c.Query("user"))
 	if user == "" {
-		// Fall back to the authenticated IAM user
-		if iamUser := middleware.GetIAMUser(c); iamUser != nil {
-			if iamUser.Email != "" {
-				user = iamUser.Email
-			} else {
-				user = iamUser.Sub
-			}
+		// Fall back to the authenticated IAM user from context
+		if email := strings.TrimSpace(c.GetString("iam_email")); email != "" {
+			user = email
+		} else if sub := strings.TrimSpace(c.GetString("iam_user_id")); sub != "" {
+			user = sub
 		}
 	}
 	if user == "" {
