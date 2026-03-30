@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -181,10 +182,14 @@ func IAMTokenRequired() gin.HandlerFunc {
 					_ = kv.Set(dbCtx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
 				}
 
-				// Note: starter credit is granted only when the user adds a
-				// payment method (see api/billing/payment_methods.go), not
-				// on org creation. This prevents abuse from accounts that
-				// never verify with a card.
+				// Grant $5 starter credit on first encounter (idempotent —
+				// safe to call on every cache miss; GrantIfEligible checks
+				// for an existing grant inside a transaction).
+				userId := claims.Subject
+				if userId == "" {
+					userId = claims.Owner
+				}
+				go credit.GrantIfEligible(db, userId, "org-created")
 			}
 		}
 
