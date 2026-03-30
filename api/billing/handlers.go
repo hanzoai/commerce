@@ -210,6 +210,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.PATCH("/spend-alerts/:id", UpdateSpendAlert)
 	user.DELETE("/spend-alerts/:id", DeleteSpendAlert)
 
+	// Billing status — hasPaymentMethod + creditBalance in one call (used by bot gateway)
+	user.GET("/status", GetBillingStatus)
+
 	// Credit grants & balance (read-only, user-scoped)
 	user.GET("/credit-grants", ListCreditGrants)
 	user.GET("/credit-balance", GetCreditBalance)
