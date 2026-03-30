@@ -388,6 +388,18 @@ func mapSquareEventType(sqType string) string {
 	}
 }
 
+// CancelAuthorization voids a previously authorized (uncaptured) payment.
+// Call this immediately after a successful pre-auth to release the hold.
+func (sp *SquareProcessor) CancelAuthorization(ctx context.Context, paymentID string) error {
+	_, err := sp.paymentsClient.Cancel(ctx, &square.CancelPaymentRequest{
+		PaymentID: paymentID,
+	})
+	if err != nil {
+		return fmt.Errorf("cancel authorization %s: %w", paymentID, err)
+	}
+	return nil
+}
+
 // IsAvailable checks if the processor is configured and available
 func (sp *SquareProcessor) IsAvailable(ctx context.Context) bool {
 	return sp.accessToken != "" && sp.locationID != "" && sp.paymentsClient != nil
