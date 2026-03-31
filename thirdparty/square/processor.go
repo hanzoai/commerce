@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -405,9 +406,10 @@ func (sp *SquareProcessor) IsAvailable(ctx context.Context) bool {
 	return sp.accessToken != "" && sp.locationID != "" && sp.paymentsClient != nil
 }
 
-// squareCurrency converts currency.Type to Square currency pointer
+// squareCurrency converts currency.Type to Square currency pointer.
+// Square requires uppercase ISO 4217 codes (e.g. "USD" not "usd").
 func squareCurrency(c currency.Type) *square.Currency {
-	curr := square.Currency(c)
+	curr := square.Currency(strings.ToUpper(string(c)))
 	return &curr
 }
 
