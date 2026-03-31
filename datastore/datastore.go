@@ -62,7 +62,19 @@ func SetDefaultDB(database db.DB) {
 
 // New creates a new Datastore with the given context.
 // Uses the default database if one was set via SetDefaultDB.
+//
+// When called with a *gin.Context, the datastore automatically detaches
+// from the HTTP request lifecycle and uses context.Background() so that
+// database queries are never canceled when the browser disconnects or an
+// upstream proxy timeout fires. This prevents "context canceled" errors
+// across all callers without requiring each handler to be updated.
 func New(ctx context.Context) *Datastore {
+	// Detach from gin request context to prevent context cancellation
+	// when the HTTP connection closes before the DB query completes.
+	if _, ok := ctx.(*gin.Context); ok {
+		ctx = context.Background()
+	}
+
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
