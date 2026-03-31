@@ -185,11 +185,16 @@ func IAMTokenRequired() gin.HandlerFunc {
 				// Grant $5 starter credit on first encounter (idempotent —
 				// safe to call on every cache miss; GrantIfEligible checks
 				// for an existing grant inside a transaction).
+				// Use a fresh background context so the goroutine is not
+				// canceled when the request context (dbCtx) is done.
 				userId := claims.Subject
 				if userId == "" {
 					userId = claims.Owner
 				}
-				go credit.GrantIfEligible(db, userId, "org-created")
+				go func(uid string) {
+					bgDb := datastore.New(context.Background())
+					credit.GrantIfEligible(bgDb, uid, "org-created")
+				}(userId)
 			}
 		}
 
