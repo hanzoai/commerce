@@ -385,13 +385,21 @@ func (o Organization) IsPlatformOrg() bool {
 }
 
 // Namespaced returns a context scoped to this organization's namespace.
+// When called with a gin.Context, we always detach from the HTTP request
+// lifecycle and use context.Background() for the database context. This
+// prevents "context canceled" errors when the browser disconnects or the
+// upstream proxy timeout fires before the ClickHouse query completes.
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
+		// Try to use a custom detached context stored in gin context.
 		if reqCtx := c.Value("context"); reqCtx != nil {
 			if ctxVal, ok := reqCtx.(context.Context); ok {
 				ctx = ctxVal
+				return nscontext.WithNamespace(ctx, o.Namespace())
 			}
 		}
+		// Detach from request context — DB ops must survive HTTP disconnect.
+		ctx = context.Background()
 	}
 
 	return nscontext.WithNamespace(ctx, o.Namespace())
