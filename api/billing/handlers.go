@@ -219,6 +219,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	user.POST("/credit", GrantStarterCredit)
 
+	// Withdraw (user-initiated: move funds out of Commerce balance).
+	// Used by bot wallet funding (source=usd) to deduct from user's account.
+	// Non-admin callers may only withdraw from their own account.
+	user.POST("/withdraw", Withdraw)
+
 	// Top-up with a Square Web Payments SDK nonce (no saved PM required)
 	user.POST("/topup/token", TopupWithToken)
 
