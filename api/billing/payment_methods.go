@@ -41,11 +41,12 @@ func verifyCardWithPreAuth(ctx context.Context, nonce, customerID string) error 
 	}
 
 	// $1.00 pre-auth to verify the card is real and has available credit.
+	// Don't pass CustomerID — Square requires a Square-generated customer ID,
+	// not our IAM user ID. The nonce alone is sufficient for verification.
 	result, err := verifier.Authorize(ctx, processor.PaymentRequest{
 		Amount:      currency.Cents(100), // $1.00
 		Currency:    currency.USD,
 		Token:       nonce,
-		CustomerID:  customerID,
 		Description: "Card verification hold (will be voided immediately)",
 	})
 	if err != nil || !result.Success {
