@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -50,13 +51,9 @@ func verifyCardWithPreAuth(ctx context.Context, nonce, customerID string) error 
 		Description: "Card verification hold (will be voided immediately)",
 	})
 	if err != nil || !result.Success {
-		msg := "card verification failed"
-		if result != nil && result.ErrorMessage != "" {
-			msg = result.ErrorMessage
-		} else if err != nil {
-			msg = err.Error()
-		}
-		return fmt.Errorf("card declined: %s", msg)
+		// Return a clean, user-friendly error instead of raw API responses.
+		reason := parseCardDeclineReason(result, err)
+		return fmt.Errorf("%s", reason)
 	}
 
 	// Immediately void the authorization — we only needed to verify the card.
@@ -67,6 +64,45 @@ func verifyCardWithPreAuth(ctx context.Context, nonce, customerID string) error 
 	}
 
 	return nil
+}
+
+// parseCardDeclineReason returns a single clean sentence explaining why the card was declined.
+func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
+	if result == nil && err != nil {
+		if strings.Contains(err.Error(), "timeout") {
+			return "Card verification timed out. Please try again."
+		}
+		return "Unable to verify card. Please try again or use a different card."
+	}
+
+	msg := ""
+	if result != nil {
+		msg = result.ErrorMessage
+	}
+	lower := strings.ToLower(msg)
+
+	switch {
+	case strings.Contains(lower, "insufficient_funds"):
+		return "Card declined — insufficient funds."
+	case strings.Contains(lower, "transaction_limit"):
+		return "Card declined — transaction limit reached. Please try a different card."
+	case strings.Contains(lower, "address_verification_failure") || strings.Contains(lower, "avs_rejected"):
+		return "Card declined — billing address does not match. Please check your address and try again."
+	case strings.Contains(lower, "cvv") || strings.Contains(lower, "cvc"):
+		return "Card declined — incorrect security code (CVV)."
+	case strings.Contains(lower, "expired"):
+		return "Card declined — card is expired."
+	case strings.Contains(lower, "invalid_card") || strings.Contains(lower, "invalid_account"):
+		return "Card declined — invalid card number."
+	case strings.Contains(lower, "stolen") || strings.Contains(lower, "lost"):
+		return "Card declined — please contact your bank."
+	case strings.Contains(lower, "do_not_honor") || strings.Contains(lower, "generic_decline"):
+		return "Card declined by your bank. Please try a different card or contact your bank."
+	case msg != "":
+		return "Card declined. Please try a different card."
+	default:
+		return "Unable to verify card. Please try again or use a different card."
+	}
 }
 
 type createPaymentMethodRequest struct {
