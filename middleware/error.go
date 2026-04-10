@@ -22,7 +22,7 @@ func ErrorJSON(c *gin.Context, stack string, err error) {
 	jsonErr := gin.H{
 		"error": gin.H{
 			"type":    "api-error",
-			"message": "Unable to process request. Please try again later. If this continues, please message support@hanzo.ai",
+			"message": "Unable to process request. Please try again later.",
 		},
 	}
 	c.Writer.Write(json.EncodeBytes(jsonErr))
@@ -68,7 +68,7 @@ func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 		</style>
 	</head>
 	<body>
-		<h4>500 Internal Server Error (hanzo/1.0)</h4>
+		<h4>500 Internal Server Error </h4>
 
 		<pre>` + stack + "</pre></body></html>"))
 	log.Error(stack)
