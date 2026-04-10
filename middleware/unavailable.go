@@ -21,7 +21,7 @@ var template503 = `
 		</style>
 	</head>
 	<body>
-		<h4>503 Service Unavailable (hanzo/1.0)</h4>
+		<h4>503 Service Unavailable </h4>
 		<p>Service termporarily unvailable.</p>
 	</body>
 </html>
