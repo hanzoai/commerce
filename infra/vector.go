@@ -1,17 +1,17 @@
 // Package infra provides infrastructure clients.
 //
-// This file implements the Qdrant vector database client for product
-// embeddings and semantic search.
+// This file implements the Qdrant vector database client using the REST API.
+// No gRPC dependency -- plain HTTP + JSON over port 6333.
 package infra
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
-
-	"github.com/hanzoai/vector-go/qdrant"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 // VectorConfig holds Qdrant configuration
@@ -22,7 +22,7 @@ type VectorConfig struct {
 	// Host is the Qdrant server host
 	Host string
 
-	// Port is the Qdrant gRPC port (default: 6334)
+	// Port is the Qdrant HTTP port (default: 6333)
 	Port int
 
 	// APIKey for authentication (optional)
@@ -38,18 +38,17 @@ type VectorConfig struct {
 	DefaultDimensions uint64
 }
 
-// VectorClient wraps the Qdrant client
+// VectorClient wraps the Qdrant REST client
 type VectorClient struct {
-	config *VectorConfig
-	conn   *grpc.ClientConn
-	points qdrant.PointsClient
-	colls  qdrant.CollectionsClient
+	config  *VectorConfig
+	baseURL string
+	client  *http.Client
 }
 
-// NewVectorClient creates a new Qdrant vector client
-func NewVectorClient(ctx context.Context, cfg *VectorConfig) (*VectorClient, error) {
+// NewVectorClient creates a new Qdrant vector client over HTTP
+func NewVectorClient(_ context.Context, cfg *VectorConfig) (*VectorClient, error) {
 	if cfg.Port == 0 {
-		cfg.Port = 6334
+		cfg.Port = 6333
 	}
 	if cfg.DefaultDimensions == 0 {
 		cfg.DefaultDimensions = 1536
@@ -58,44 +57,66 @@ func NewVectorClient(ctx context.Context, cfg *VectorConfig) (*VectorClient, err
 		cfg.DefaultCollection = "products"
 	}
 
-	addr := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
-
-	// Setup gRPC options
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	scheme := "http"
+	if cfg.UseTLS {
+		scheme = "https"
 	}
 
-	if cfg.APIKey != "" {
-		// Add API key authentication if provided
-		opts = append(opts, grpc.WithPerRPCCredentials(&apiKeyAuth{apiKey: cfg.APIKey}))
+	return &VectorClient{
+		config:  cfg,
+		baseURL: fmt.Sprintf("%s://%s:%d", scheme, cfg.Host, cfg.Port),
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}, nil
+}
+
+// do executes an HTTP request against Qdrant REST API.
+func (c *VectorClient) do(ctx context.Context, method, path string, body interface{}) (json.RawMessage, error) {
+	var reqBody io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("marshal request: %w", err)
+		}
+		reqBody = bytes.NewReader(b)
 	}
 
-	conn, err := grpc.DialContext(ctx, addr, opts...)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to qdrant: %w", err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.config.APIKey != "" {
+		req.Header.Set("api-key", c.config.APIKey)
 	}
 
-	client := &VectorClient{
-		config: cfg,
-		conn:   conn,
-		points: qdrant.NewPointsClient(conn),
-		colls:  qdrant.NewCollectionsClient(conn),
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
 	}
 
-	return client, nil
-}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("qdrant %s %s: %d: %s", method, path, resp.StatusCode, respBody)
+	}
 
-// apiKeyAuth implements gRPC PerRPCCredentials for API key auth
-type apiKeyAuth struct {
-	apiKey string
-}
-
-func (a *apiKeyAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-	return map[string]string{"api-key": a.apiKey}, nil
-}
-
-func (a *apiKeyAuth) RequireTransportSecurity() bool {
-	return false
+	// Qdrant REST responses wrap result in {"result": ..., "status": "ok", "time": ...}
+	var envelope struct {
+		Result json.RawMessage `json:"result"`
+		Status interface{}     `json:"status"`
+	}
+	if len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, &envelope); err != nil {
+			return nil, fmt.Errorf("unmarshal response: %w", err)
+		}
+	}
+	return envelope.Result, nil
 }
 
 // EnsureCollection creates a collection if it doesn't exist
@@ -104,26 +125,20 @@ func (c *VectorClient) EnsureCollection(ctx context.Context, name string, dimens
 		dimensions = c.config.DefaultDimensions
 	}
 
-	// Check if collection exists
-	_, err := c.colls.Get(ctx, &qdrant.GetCollectionInfoRequest{
-		CollectionName: name,
-	})
+	// Check if collection exists (GET returns 200 if exists, 404 if not)
+	_, err := c.do(ctx, http.MethodGet, "/collections/"+name, nil)
 	if err == nil {
 		return nil // Collection exists
 	}
 
 	// Create collection
-	_, err = c.colls.Create(ctx, &qdrant.CreateCollection{
-		CollectionName: name,
-		VectorsConfig: &qdrant.VectorsConfig{
-			Config: &qdrant.VectorsConfig_Params{
-				Params: &qdrant.VectorParams{
-					Size:     dimensions,
-					Distance: qdrant.Distance_Cosine,
-				},
-			},
+	body := map[string]interface{}{
+		"vectors": map[string]interface{}{
+			"size":     dimensions,
+			"distance": "Cosine",
 		},
-	})
+	}
+	_, err = c.do(ctx, http.MethodPut, "/collections/"+name, body)
 	if err != nil {
 		return fmt.Errorf("failed to create collection: %w", err)
 	}
@@ -137,26 +152,20 @@ func (c *VectorClient) Upsert(ctx context.Context, collection string, points []*
 		collection = c.config.DefaultCollection
 	}
 
-	qdrantPoints := make([]*qdrant.PointStruct, len(points))
+	qdrantPoints := make([]map[string]interface{}, len(points))
 	for i, p := range points {
-		qdrantPoints[i] = &qdrant.PointStruct{
-			Id: &qdrant.PointId{
-				PointIdOptions: &qdrant.PointId_Uuid{Uuid: p.ID},
-			},
-			Vectors: &qdrant.Vectors{
-				VectorsOptions: &qdrant.Vectors_Vector{
-					Vector: &qdrant.Vector{Data: p.Vector},
-				},
-			},
-			Payload: toQdrantPayload(p.Payload),
+		qdrantPoints[i] = map[string]interface{}{
+			"id":      p.ID,
+			"vector":  p.Vector,
+			"payload": p.Payload,
 		}
 	}
 
-	_, err := c.points.Upsert(ctx, &qdrant.UpsertPoints{
-		CollectionName: collection,
-		Points:         qdrantPoints,
-		Wait:           boolPtr(true),
-	})
+	body := map[string]interface{}{
+		"points": qdrantPoints,
+	}
+
+	_, err := c.do(ctx, http.MethodPut, "/collections/"+collection+"/points?wait=true", body)
 	if err != nil {
 		return fmt.Errorf("failed to upsert points: %w", err)
 	}
@@ -173,30 +182,37 @@ func (c *VectorClient) Search(ctx context.Context, opts *VectorSearchOpts) ([]Ve
 		opts.Limit = 10
 	}
 
-	req := &qdrant.SearchPoints{
-		CollectionName: opts.Collection,
-		Vector:         opts.Vector,
-		Limit:          uint64(opts.Limit),
-		WithPayload:    &qdrant.WithPayloadSelector{SelectorOptions: &qdrant.WithPayloadSelector_Enable{Enable: true}},
-		ScoreThreshold: &opts.MinScore,
+	body := map[string]interface{}{
+		"vector":          opts.Vector,
+		"limit":           opts.Limit,
+		"with_payload":    true,
+		"score_threshold": opts.MinScore,
 	}
 
-	// Add filters if provided
 	if opts.Filter != nil {
-		req.Filter = buildQdrantFilter(opts.Filter)
+		body["filter"] = buildRESTFilter(opts.Filter)
 	}
 
-	resp, err := c.points.Search(ctx, req)
+	raw, err := c.do(ctx, http.MethodPost, "/collections/"+opts.Collection+"/points/search", body)
 	if err != nil {
 		return nil, fmt.Errorf("vector search failed: %w", err)
 	}
 
-	results := make([]VectorSearchResult, len(resp.Result))
-	for i, r := range resp.Result {
+	var hits []struct {
+		ID      interface{}            `json:"id"`
+		Score   float32                `json:"score"`
+		Payload map[string]interface{} `json:"payload"`
+	}
+	if err := json.Unmarshal(raw, &hits); err != nil {
+		return nil, fmt.Errorf("unmarshal search results: %w", err)
+	}
+
+	results := make([]VectorSearchResult, len(hits))
+	for i, h := range hits {
 		results[i] = VectorSearchResult{
-			ID:      getPointID(r.Id),
-			Score:   r.Score,
-			Payload: fromQdrantPayload(r.Payload),
+			ID:      fmt.Sprintf("%v", h.ID),
+			Score:   h.Score,
+			Payload: h.Payload,
 		}
 	}
 
@@ -209,22 +225,11 @@ func (c *VectorClient) Delete(ctx context.Context, collection string, ids []stri
 		collection = c.config.DefaultCollection
 	}
 
-	pointIDs := make([]*qdrant.PointId, len(ids))
-	for i, id := range ids {
-		pointIDs[i] = &qdrant.PointId{
-			PointIdOptions: &qdrant.PointId_Uuid{Uuid: id},
-		}
+	body := map[string]interface{}{
+		"points": ids,
 	}
 
-	_, err := c.points.Delete(ctx, &qdrant.DeletePoints{
-		CollectionName: collection,
-		Points: &qdrant.PointsSelector{
-			PointsSelectorOneOf: &qdrant.PointsSelector_Points{
-				Points: &qdrant.PointsIdsList{Ids: pointIDs},
-			},
-		},
-		Wait: boolPtr(true),
-	})
+	_, err := c.do(ctx, http.MethodPost, "/collections/"+collection+"/points/delete?wait=true", body)
 	if err != nil {
 		return fmt.Errorf("failed to delete points: %w", err)
 	}
@@ -236,7 +241,7 @@ func (c *VectorClient) Delete(ctx context.Context, collection string, ids []stri
 func (c *VectorClient) Health(ctx context.Context) HealthStatus {
 	start := time.Now()
 
-	_, err := c.colls.List(ctx, &qdrant.ListCollectionsRequest{})
+	_, err := c.do(ctx, http.MethodGet, "/collections", nil)
 	if err != nil {
 		return HealthStatus{
 			Healthy: false,
@@ -251,11 +256,8 @@ func (c *VectorClient) Health(ctx context.Context) HealthStatus {
 	}
 }
 
-// Close closes the Qdrant connection
+// Close is a no-op for the HTTP client (satisfies the interface).
 func (c *VectorClient) Close() error {
-	if c.conn != nil {
-		return c.conn.Close()
-	}
 	return nil
 }
 
@@ -282,110 +284,23 @@ type VectorSearchResult struct {
 	Payload map[string]interface{}
 }
 
-// Helper functions
-
-func boolPtr(b bool) *bool {
-	return &b
-}
-
-func toQdrantPayload(payload map[string]interface{}) map[string]*qdrant.Value {
-	if payload == nil {
-		return nil
-	}
-
-	result := make(map[string]*qdrant.Value)
-	for k, v := range payload {
-		result[k] = toQdrantValue(v)
-	}
-	return result
-}
-
-func toQdrantValue(v interface{}) *qdrant.Value {
-	switch val := v.(type) {
-	case string:
-		return &qdrant.Value{Kind: &qdrant.Value_StringValue{StringValue: val}}
-	case int:
-		return &qdrant.Value{Kind: &qdrant.Value_IntegerValue{IntegerValue: int64(val)}}
-	case int64:
-		return &qdrant.Value{Kind: &qdrant.Value_IntegerValue{IntegerValue: val}}
-	case float64:
-		return &qdrant.Value{Kind: &qdrant.Value_DoubleValue{DoubleValue: val}}
-	case float32:
-		return &qdrant.Value{Kind: &qdrant.Value_DoubleValue{DoubleValue: float64(val)}}
-	case bool:
-		return &qdrant.Value{Kind: &qdrant.Value_BoolValue{BoolValue: val}}
-	default:
-		return &qdrant.Value{Kind: &qdrant.Value_NullValue{}}
-	}
-}
-
-func fromQdrantPayload(payload map[string]*qdrant.Value) map[string]interface{} {
-	if payload == nil {
-		return nil
-	}
-
-	result := make(map[string]interface{})
-	for k, v := range payload {
-		result[k] = fromQdrantValue(v)
-	}
-	return result
-}
-
-func fromQdrantValue(v *qdrant.Value) interface{} {
-	if v == nil {
-		return nil
-	}
-
-	switch val := v.Kind.(type) {
-	case *qdrant.Value_StringValue:
-		return val.StringValue
-	case *qdrant.Value_IntegerValue:
-		return val.IntegerValue
-	case *qdrant.Value_DoubleValue:
-		return val.DoubleValue
-	case *qdrant.Value_BoolValue:
-		return val.BoolValue
-	default:
-		return nil
-	}
-}
-
-func getPointID(id *qdrant.PointId) string {
-	if id == nil {
-		return ""
-	}
-	switch val := id.PointIdOptions.(type) {
-	case *qdrant.PointId_Uuid:
-		return val.Uuid
-	case *qdrant.PointId_Num:
-		return fmt.Sprintf("%d", val.Num)
-	default:
-		return ""
-	}
-}
-
-func buildQdrantFilter(filter map[string]interface{}) *qdrant.Filter {
+// buildRESTFilter converts a flat key=value map to a Qdrant REST filter.
+func buildRESTFilter(filter map[string]interface{}) map[string]interface{} {
 	if filter == nil {
 		return nil
 	}
 
-	conditions := make([]*qdrant.Condition, 0)
+	conditions := make([]map[string]interface{}, 0, len(filter))
 	for key, value := range filter {
-		conditions = append(conditions, &qdrant.Condition{
-			ConditionOneOf: &qdrant.Condition_Field{
-				Field: &qdrant.FieldCondition{
-					Key: key,
-					Match: &qdrant.Match{
-						MatchValue: &qdrant.Match_Keyword{
-							Keyword: fmt.Sprintf("%v", value),
-						},
-					},
-				},
+		conditions = append(conditions, map[string]interface{}{
+			"key": key,
+			"match": map[string]interface{}{
+				"value": fmt.Sprintf("%v", value),
 			},
 		})
 	}
 
-	return &qdrant.Filter{
-		Must: conditions,
+	return map[string]interface{}{
+		"must": conditions,
 	}
 }
