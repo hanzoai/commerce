@@ -156,7 +156,7 @@ func DefaultConfig() *Config {
 //	DATASTORE_URL = clickhouse://host:9000/db
 //	DOC_URL       = mongodb://host:27017/db
 //	SQL_URL       = postgresql://user:pass@host:5432/db
-//	VECTOR_URL    = qdrant://host:6334
+//	VECTOR_URL    = qdrant://host:6333
 //	SEARCH_URL    = http://host:7700
 //	PUBSUB_URL    = nats://host:4222
 //	TASKS_URL     = temporal://host:7233/namespace
@@ -686,7 +686,7 @@ func canonicalPathHandler(next http.Handler) http.Handler {
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
-	app.Router.GET("/health", func(c *gin.Context) {
+	healthHandler := func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "ok",
 			"service": "commerce",
@@ -694,7 +694,9 @@ func (app *App) setupRoutes() {
 			"commit":  GitCommit,
 			"built":   BuildTime,
 		})
-	})
+	}
+	app.Router.GET("/health", healthHandler)
+	app.Router.GET("/healthz", healthHandler)
 
 	// API routes
 	api := app.Router.Group("/api/v1")
