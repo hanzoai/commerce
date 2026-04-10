@@ -18,7 +18,7 @@ func NotFoundHandler() gin.HandlerFunc {
 
 			// Simple 404 response (can be enhanced with template support)
 			if os.Getenv("ENV") == "development" {
-				c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>404 Not Found (hanzo/1.0)</h1><p>No such file or directory.</p>"))
+				c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>404 Not Found </h1><p>No such file or directory.</p>"))
 			} else {
 				c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>404 Not Found</h1><p>No such file or directory.</p>"))
 			}
