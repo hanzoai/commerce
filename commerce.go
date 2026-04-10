@@ -662,6 +662,27 @@ func (app *App) Bootstrap() error {
 	return nil
 }
 
+// canonicalPathHandler wraps an http.Handler and rewrites the canonical
+// external path /v1/commerce/* to the internal /api/v1/* prefix.
+// This lets the service own its /<version>/<service>/<path> namespace
+// while keeping all existing route registrations untouched.
+func canonicalPathHandler(next http.Handler) http.Handler {
+	const prefix = "/v1/commerce"
+	const target = "/api/v1"
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, prefix) {
+			r2 := r.Clone(r.Context())
+			r2.URL.Path = target + r.URL.Path[len(prefix):]
+			if r2.URL.RawPath != "" {
+				r2.URL.RawPath = target + r.URL.RawPath[len(prefix):]
+			}
+			next.ServeHTTP(w, r2)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
@@ -723,9 +744,12 @@ func (app *App) Serve() error {
 		return fmt.Errorf("serve hook error: %w", err)
 	}
 
+	// Wrap with canonical path rewrite: /v1/commerce/* -> /api/v1/*
+	handler := canonicalPathHandler(app.Router)
+
 	app.server = &http.Server{
 		Addr:              app.config.HTTPAddr,
-		Handler:           app.Router,
+		Handler:           handler,
 		ReadTimeout:       30 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -742,7 +766,7 @@ func (app *App) Serve() error {
 		go func() {
 			httpsServer := &http.Server{
 				Addr:              app.config.HTTPSAddr,
-				Handler:           app.Router,
+				Handler:           handler,
 				ReadTimeout:       30 * time.Second,
 				ReadHeaderTimeout: 10 * time.Second,
 				WriteTimeout:      60 * time.Second,
