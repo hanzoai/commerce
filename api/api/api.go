@@ -79,10 +79,6 @@ func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	// Health check — always available regardless of mode
-	api.GET("/ping", router.Ok)
-	api.HEAD("/ping", router.Empty)
-
 	// Index
 	if config.IsDevelopment {
 		api.GET("/", middleware.ParseToken, rest.ListRoutes())
