@@ -83,6 +83,7 @@ go run cmd/commerce/main.go serve --dev     # Development
 
 **Core**: cobra, go-sqlite3, gin, hanzoai/datastore-go
 **Infra**: go-redis/v9, minio-go/v7, meilisearch-go, nats.go, temporal SDK
+**Vector**: Qdrant via REST/HTTP (port 6333). No gRPC, no vector-go SDK -- plain net/http + encoding/json.
 
 ## Security Audit (2026-02-14)
 

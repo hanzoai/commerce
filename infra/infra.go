@@ -74,7 +74,7 @@ func DefaultConfig() *Config {
 		Vector: VectorConfig{
 			Enabled: false,
 			Host:    "localhost",
-			Port:    6334,
+			Port:    6333,
 		},
 		KV: KVConfig{
 			Enabled: false,
