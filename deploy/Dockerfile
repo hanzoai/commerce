@@ -52,7 +52,7 @@ RUN CGO_ENABLED=0 go build \
     -o /build/healthcheck \
     -trimpath \
     ./scripts/healthcheck/main.go 2>/dev/null || \
-    echo '#!/bin/sh\ncurl -sf http://localhost:${PORT:-8001}/health || exit 1' > /build/healthcheck && \
+    echo '#!/bin/sh\ncurl -sf http://localhost:${PORT:-8001}/healthz || exit 1' > /build/healthcheck && \
     chmod +x /build/healthcheck
 
 # ==============================================================================
@@ -127,7 +127,7 @@ ENV DEPLOY_VERSION=""
 
 # Health check for orchestrators
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD /app/healthcheck || curl -sf http://localhost:${PORT}/health || exit 1
+    CMD /app/healthcheck || curl -sf http://localhost:${PORT}/healthz || exit 1
 
 # Expose HTTP port
 EXPOSE 8001
