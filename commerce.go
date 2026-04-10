@@ -19,6 +19,7 @@ package commerce
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -285,6 +286,9 @@ type App struct {
 
 	// KMS client for secret management
 	KMS *kms.CachedClient
+
+	// ZAP node for inter-service vector operations
+	ZAP *infra.ZAPNode
 
 	// HTTP router
 	Router *gin.Engine
@@ -604,6 +608,28 @@ func (app *App) Bootstrap() error {
 		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
 	}
 
+	// Initialize ZAP node for inter-service vector operations
+	if vector, err := app.Infra.Vector(); err == nil {
+		zapPort := 9090
+		if p := getEnv("COMMERCE_ZAP_PORT", ""); p != "" {
+			if parsed, convErr := strconv.Atoi(p); convErr == nil {
+				zapPort = parsed
+			}
+		}
+		zapCfg := &infra.ZAPConfig{
+			Enabled: true,
+			NodeID:  getEnv("COMMERCE_ZAP_NODE_ID", "commerce-0"),
+			Port:    zapPort,
+		}
+		zapNode, zapErr := infra.NewZAPNode(zapCfg, vector, slog.Default())
+		if zapErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: ZAP node failed to start: %v\n", zapErr)
+		} else {
+			app.ZAP = zapNode
+			fmt.Printf("ZAP node started on :%d (vector ops: 0x10=upsert, 0x11=search, 0x12=delete)\n", zapPort)
+		}
+	}
+
 	// Initialize KMS client for secret management
 	if app.config.KMS.Enabled && app.config.KMS.URL != "" {
 		kmsClient := kms.NewClient(&app.config.KMS)
@@ -806,6 +832,11 @@ func (app *App) Shutdown() error {
 			if shutdownErr := app.server.Shutdown(ctx); shutdownErr != nil {
 				err = shutdownErr
 			}
+		}
+
+		// Stop ZAP node
+		if app.ZAP != nil {
+			app.ZAP.Stop()
 		}
 
 		// Close events emitter (flush remaining events)
