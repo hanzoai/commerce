@@ -33,6 +33,7 @@ require (
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.17.45
 	github.com/luxfi/geth v1.16.79
+	github.com/luxfi/zap v0.2.0
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
@@ -116,7 +117,6 @@ require (
 	github.com/luxfi/mdns v0.1.0 // indirect
 	github.com/luxfi/metric v1.5.1 // indirect
 	github.com/luxfi/mock v0.1.1 // indirect
-	github.com/luxfi/zap v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
