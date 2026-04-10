@@ -721,7 +721,6 @@ func (app *App) setupRoutes() {
 			"built":   BuildTime,
 		})
 	}
-	app.Router.GET("/health", healthHandler)
 	app.Router.GET("/healthz", healthHandler)
 
 	// API routes
