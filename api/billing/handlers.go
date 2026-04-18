@@ -124,12 +124,17 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.GET("/events", ListBillingEvents)
 	api.GET("/events/:id", GetBillingEvent)
 
-	// Webhook endpoints
+	// Webhook endpoints (outbound: for creating and listing webhook subscriptions)
 	api.POST("/webhook-endpoints", CreateWebhookEndpoint)
 	api.GET("/webhook-endpoints", ListWebhookEndpoints)
 	api.GET("/webhook-endpoints/:id", GetWebhookEndpoint)
 	api.PATCH("/webhook-endpoints/:id", UpdateWebhookEndpoint)
 	api.DELETE("/webhook-endpoints/:id", DeleteWebhookEndpoint)
+
+	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
+	// Registered outside the admin-token group because providers do not carry
+	// commerce admin tokens; the provider's signature is the trust anchor.
+	r.POST("/billing/webhooks/:provider", HandleProviderWebhook)
 
 	// Customer portal
 	api.GET("/portal/overview", PortalOverview)
