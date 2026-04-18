@@ -191,5 +191,70 @@
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
     }
+  },
+  {
+    "id": "world-free",
+    "name": "World Free",
+    "description": "Real-time global intelligence dashboard — free tier.",
+    "priceMonthly": 0,
+    "priceAnnual": 0,
+    "category": "world",
+    "features": [
+      "Live OSINT dashboard",
+      "3 saved alerts",
+      "Community Discord",
+      "Daily email digest"
+    ],
+    "limits": {
+      "maxAlerts": 3,
+      "apiRateLimit": 60,
+      "mcpRateLimit": 30
+    }
+  },
+  {
+    "id": "world-pro",
+    "name": "World Pro",
+    "description": "Everything in Free plus priority feeds, unlimited alerts, ZAP + MCP API access, WhatsApp/Telegram/SMS notifications.",
+    "priceMonthly": 29,
+    "priceAnnual": 290,
+    "category": "world",
+    "popular": true,
+    "features": [
+      "Everything in Free",
+      "Unlimited alerts",
+      "ZAP + MCP real-time API",
+      "WhatsApp / Telegram / SMS alerts",
+      "Priority data feeds (AIS, FIRMS, GDELT)",
+      "Zen AI analyst chat (unlimited)",
+      "Data export (CSV, JSON, parquet)",
+      "Priority support"
+    ],
+    "limits": {
+      "maxAlerts": -1,
+      "apiRateLimit": 6000,
+      "mcpRateLimit": 3000
+    }
+  },
+  {
+    "id": "world-team",
+    "name": "World Team",
+    "description": "Everything in Pro for up to 5 seats + shared workspace.",
+    "priceMonthly": 99,
+    "priceAnnual": 990,
+    "category": "world",
+    "features": [
+      "Everything in Pro",
+      "5 team seats",
+      "Shared alert rules",
+      "SSO via Hanzo IAM",
+      "Org-level API keys",
+      "Audit log"
+    ],
+    "limits": {
+      "maxAlerts": -1,
+      "maxMembers": 5,
+      "apiRateLimit": 30000,
+      "mcpRateLimit": 15000
+    }
   }
 ]

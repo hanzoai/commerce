@@ -32,6 +32,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
+	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
@@ -44,6 +45,8 @@ import (
 	planModel "github.com/hanzoai/commerce/models/plan"
 	orgModel "github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment/providers/stripe"
+	"github.com/hanzoai/commerce/seed"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 )
@@ -681,11 +684,51 @@ func (app *App) Bootstrap() error {
 		app.config.IAM.Enabled = false
 	}
 
+	// Stripe catalog seed — ensure @hanzo/plans entries exist as Stripe
+	// Products + Prices. Idempotent, cheap, and gated on STRIPE_SECRET_KEY.
+	// Set COMMERCE_STRIPE_SEED=false to disable (useful for test environments).
+	if os.Getenv("STRIPE_SECRET_KEY") != "" && getEnv("COMMERCE_STRIPE_SEED", "true") != "false" {
+		app.runStripeSeed()
+	}
+
 	// Setup routes
 	app.setupRoutes()
 
 	app.bootstrapped = true
 	return nil
+}
+
+// runStripeSeed syncs every static plan in api/billing to Stripe. Errors are
+// logged but do not abort bootstrap — the service remains usable without
+// Stripe catalog parity in degraded environments.
+func (app *App) runStripeSeed() {
+	stripeProv := stripe.NewProvider(stripe.Config{
+		SecretKey:      os.Getenv("STRIPE_SECRET_KEY"),
+		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
+		WebhookSecret:  os.Getenv("STRIPE_WEBHOOK_SECRET"),
+	})
+
+	catalog := billingPkg.StaticPlans()
+	plans := make([]seed.Plan, 0, len(catalog))
+	for _, p := range catalog {
+		plans = append(plans, seed.Plan{
+			Slug:        p.Slug,
+			Name:        p.Name,
+			Description: p.Description,
+			Category:    p.Category,
+			PriceMonth:  p.PriceMonth,
+			PriceYear:   p.PriceYear,
+			Currency:    p.Currency,
+		})
+	}
+
+	started := time.Now()
+	category := getEnv("COMMERCE_STRIPE_SEED_CATEGORY", "")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	res, err := seed.SyncStripe(ctx, stripeProv, plans, category)
+	seed.LogResult(os.Stdout, res, err, started)
 }
 
 // canonicalPathHandler wraps an http.Handler and rewrites the canonical
