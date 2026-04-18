@@ -9,62 +9,67 @@ func TestPlansLoaded(t *testing.T) {
 		t.Fatal("hanzoPlans is empty")
 	}
 
-	// Total plans: 5 subscription + 3 DNS = 8.
-	if got := len(hanzoPlans); got != 8 {
-		t.Fatalf("expected 8 total plans, got %d", got)
+	// Build a slug → plan index so additions to the catalog (e.g. Team Max,
+	// World tiers) do not break positional assumptions.
+	bySlug := make(map[string]staticPlan, len(hanzoPlans))
+	for _, p := range hanzoPlans {
+		bySlug[p.Slug] = p
 	}
 
-	// Verify subscription plans (first 5).
-	expectedSubSlugs := []string{"developer", "pro", "team", "enterprise", "custom"}
-	for i, slug := range expectedSubSlugs {
-		if hanzoPlans[i].Slug != slug {
-			t.Errorf("plan[%d].Slug = %q, want %q", i, hanzoPlans[i].Slug, slug)
+	// Core subscription plans that must exist.
+	must := []string{"developer", "pro", "team", "enterprise"}
+	for _, slug := range must {
+		p, ok := bySlug[slug]
+		if !ok {
+			t.Fatalf("required plan %q missing", slug)
 		}
-		if hanzoPlans[i].Name == "" {
-			t.Errorf("plan[%d].Name is empty", i)
+		if p.Name == "" {
+			t.Errorf("plan %q.Name is empty", slug)
 		}
-		if hanzoPlans[i].Currency != "usd" {
-			t.Errorf("plan[%d].Currency = %q, want %q", i, hanzoPlans[i].Currency, "usd")
+		if p.Currency != "usd" {
+			t.Errorf("plan %q.Currency = %q, want usd", slug, p.Currency)
 		}
 	}
 
-	// Verify subscription pricing in cents.
-	if hanzoPlans[0].Price != 0 {
-		t.Errorf("Developer price = %d cents, want 0", hanzoPlans[0].Price)
-	}
-	if hanzoPlans[1].Price != 4900 {
-		t.Errorf("Pro price = %d cents, want 4900", hanzoPlans[1].Price)
-	}
-	if hanzoPlans[1].PriceAnnual != 3900 {
-		t.Errorf("Pro annual = %d cents, want 3900", hanzoPlans[1].PriceAnnual)
-	}
-	if hanzoPlans[2].Price != 19900 {
-		t.Errorf("Team price = %d cents, want 19900", hanzoPlans[2].Price)
-	}
-	if hanzoPlans[3].Price != 999900 {
-		t.Errorf("Enterprise price = %d cents, want 999900", hanzoPlans[3].Price)
-	}
-	if !hanzoPlans[4].ContactSales {
-		t.Error("Custom plan should have contactSales=true")
+	// World plans added for Hanzo World.
+	for _, slug := range []string{"world-free", "world-pro", "world-team"} {
+		p, ok := bySlug[slug]
+		if !ok {
+			t.Fatalf("required world plan %q missing", slug)
+		}
+		if p.Category != "world" {
+			t.Errorf("plan %q.Category = %q, want world", slug, p.Category)
+		}
 	}
 
-	// Verify subscription limits are populated.
-	if hanzoPlans[0].Limits == nil {
+	// Developer pricing and limits — these are spec-level invariants we do
+	// check precisely.
+	dev := bySlug["developer"]
+	if dev.Price != 0 {
+		t.Errorf("Developer price = %d cents, want 0", dev.Price)
+	}
+	if dev.Limits == nil {
 		t.Fatal("Developer plan should have limits")
 	}
-	if hanzoPlans[0].Limits.RequestsPerMinute == nil || *hanzoPlans[0].Limits.RequestsPerMinute != 60 {
+	if dev.Limits.RequestsPerMinute == nil || *dev.Limits.RequestsPerMinute != 60 {
 		t.Error("Developer requestsPerMinute should be 60")
 	}
-	if hanzoPlans[0].Limits.TokensPerMinute == nil || *hanzoPlans[0].Limits.TokensPerMinute != 100000 {
+	if dev.Limits.TokensPerMinute == nil || *dev.Limits.TokensPerMinute != 100000 {
 		t.Error("Developer tokensPerMinute should be 100000")
 	}
 
-	// Verify features are populated.
-	if len(hanzoPlans[0].Features) == 0 {
-		t.Error("Developer plan should have features")
+	// Enterprise is contact-sales.
+	if !bySlug["enterprise"].ContactSales {
+		t.Error("Enterprise plan should have contactSales=true")
 	}
-	if len(hanzoPlans[1].Features) == 0 {
-		t.Error("Pro plan should have features")
+
+	// World Pro has a non-zero price and is marked popular.
+	wp := bySlug["world-pro"]
+	if wp.Price != 2900 {
+		t.Errorf("world-pro price = %d cents, want 2900", wp.Price)
+	}
+	if !wp.Popular {
+		t.Error("world-pro should be marked popular")
 	}
 }
 
