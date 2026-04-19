@@ -6,7 +6,6 @@ export function generateStaticParams() {
   return []
 }
 
-export const dynamicParams = true
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return <OrderDetail params={params} />
