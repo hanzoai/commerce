@@ -2,7 +2,19 @@
 # Hanzo Commerce - E-commerce Platform
 # Multi-stage build for minimal production image
 
-# Build stage
+# ── Stage 1: Build admin SPA (Next.js static export) ─────────────────────
+FROM node:22-alpine AS admin-build
+WORKDIR /web
+RUN apk add --no-cache libc6-compat && corepack enable pnpm
+COPY app/package.json app/pnpm-lock.yaml app/pnpm-workspace.yaml ./
+COPY app/admin/package.json admin/
+COPY app/packages/ packages/
+RUN pnpm install --frozen-lockfile
+COPY app/admin/ admin/
+WORKDIR /web/admin
+RUN pnpm build
+
+# ── Stage 2: Build Go binary (with embedded admin SPA) ───────────────────
 FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
@@ -21,6 +33,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 # Copy source code
 COPY . .
+
+# Replace placeholder dist/ with the real Next.js export so go:embed picks up
+# the actual SPA bundle at compile time.
+RUN rm -rf admin/dist
+COPY --from=admin-build /web/admin/out admin/dist
 
 # Build the binary with CGO for SQLite support
 RUN --mount=type=cache,target=/go/pkg/mod \
