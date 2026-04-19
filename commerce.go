@@ -32,6 +32,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 
+	"github.com/hanzoai/commerce/admin"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
@@ -731,26 +732,10 @@ func (app *App) runStripeSeed() {
 	seed.LogResult(os.Stdout, res, err, started)
 }
 
-// canonicalPathHandler wraps an http.Handler and rewrites the canonical
-// external path /v1/commerce/* to the internal /api/v1/* prefix.
-// This lets the service own its /<version>/<service>/<path> namespace
-// while keeping all existing route registrations untouched.
-func canonicalPathHandler(next http.Handler) http.Handler {
-	const prefix = "/v1/commerce"
-	const target = "/api/v1"
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, prefix) {
-			r2 := r.Clone(r.Context())
-			r2.URL.Path = target + r.URL.Path[len(prefix):]
-			if r2.URL.RawPath != "" {
-				r2.URL.RawPath = target + r.URL.RawPath[len(prefix):]
-			}
-			next.ServeHTTP(w, r2)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
+// canonicalPathHandler used to rewrite /v1/commerce/* → /api/v1/* internally.
+// Deprecated: routes now live at /v1/commerce/* directly. Kept as identity
+// for any caller still wrapping with it.
+func canonicalPathHandler(next http.Handler) http.Handler { return next }
 
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
@@ -766,8 +751,14 @@ func (app *App) setupRoutes() {
 	}
 	app.Router.GET("/healthz", healthHandler)
 
+	// Embedded admin SPA — go:embed'd Next.js export served at /admin/*.
+	// No separate FE container needed (replaces commerce-admin Deployment).
+	adminHandler := admin.Handler("/admin")
+	app.Router.GET("/admin", gin.WrapH(adminHandler))
+	app.Router.GET("/admin/*filepath", gin.WrapH(adminHandler))
+
 	// API routes
-	api := app.Router.Group("/api/v1")
+	api := app.Router.Group("/v1/commerce")
 	{
 		// Core middleware required by Commerce API handlers
 		api.Use(middleware.AddHost())
