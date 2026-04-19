@@ -1,7 +1,12 @@
 import type { NextConfig } from 'next'
 
 const config: NextConfig = {
-  output: 'standalone',
+  // Static SPA — go:embed'd into the commerce binary, served at /admin.
+  // No Node runtime in production: hanzoai/spa pattern.
+  output: 'export',
+  trailingSlash: true,
+  basePath: '/admin',
+  assetPrefix: '/admin',
   images: { unoptimized: true },
   transpilePackages: [
     '@hanzo/commerce-ui',
