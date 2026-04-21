@@ -49,6 +49,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/seed"
+	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 )
@@ -300,8 +301,14 @@ type App struct {
 	// CheckoutResolver maps hostnames (pay.satschel.com, …) to Tenant
 	// configs for the embedded checkout SPA. Mutable at runtime so the
 	// admin can add/remove hostnames and toggle providers without a
-	// restart.
+	// restart. Legacy resolver — new code reads CommerceStore.Tenants.
 	CheckoutResolver *checkout.StaticResolver
+
+	// CommerceStore is the hanzo/base-backed persistence seam. When set it
+	// provides the authoritative tenants + hostname-claims collections;
+	// handlers that have migrated off the legacy resolver use this directly.
+	// Initialized in Bootstrap from COMMERCE_DATA_DIR / COMMERCE_BASE_URL.
+	CommerceStore *commercestore.Store
 
 	// HTTP server
 	server *http.Server
@@ -691,6 +698,23 @@ func (app *App) Bootstrap() error {
 		app.config.IAM.Enabled = false
 	}
 
+	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
+	// record + commerce_tenant_hostnames claim table — the source of truth
+	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
+	// superadmin CRUD. Bootstrap is idempotent; a failure here is fatal
+	// because the public endpoint would otherwise 404 every tenant request.
+	storeCfg := commercestore.FromEnv()
+	if storeCfg.DataDir == "" || storeCfg.DataDir == "./commerce_data" {
+		// Align with the app-level DataDir so all commerce persistence lives
+		// under one tree.
+		storeCfg.DataDir = filepath.Join(app.config.DataDir, "base")
+	}
+	cStore, storeErr := commercestore.New(storeCfg)
+	if storeErr != nil {
+		return fmt.Errorf("failed to initialize commerce store: %w", storeErr)
+	}
+	app.CommerceStore = cStore
+
 	// Stripe catalog seed — ensure @hanzo/plans entries exist as Stripe
 	// Products + Prices. Idempotent, cheap, and gated on STRIPE_SECRET_KEY.
 	// Set COMMERCE_STRIPE_SEED=false to disable (useful for test environments).
@@ -804,8 +828,8 @@ func (app *App) setupRoutes() {
 	}
 
 	// Hosted multi-tenant checkout. Mounts:
-	//   GET  /checkout/v1/tenant   — public tenant JSON (branding + enabled methods)
-	//   POST /checkout/v1/deposits — proxied to tenant Backend.URL (BD for Liquidity)
+	//   GET  /v1/commerce/tenant   — public tenant JSON (branding + enabled methods)
+	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (BD for Liquidity)
 	//   GET  /*                    — embedded Vite SPA with SPA fallback
 	//
 	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
@@ -813,7 +837,36 @@ func (app *App) setupRoutes() {
 	if app.CheckoutResolver == nil {
 		app.CheckoutResolver = checkout.NewStaticResolver(nil)
 	}
-	checkout.Mount(app.Router, app.CheckoutResolver, checkout.NewHTTPForwarder())
+
+	// Store-backed routes (P8-H1): wire /v1/commerce/tenant (public) and
+	// /_/commerce/tenants (superadmin) via the hanzo/base-backed store.
+	// MUST register BEFORE checkout.Mount so the store-backed /tenant wins
+	// over the legacy Resolver-backed one (same path, gin rejects duplicates).
+	if app.CommerceStore != nil {
+		publicStore := app.Router.Group("/v1/commerce")
+		checkout.MountPublicFromStore(publicStore, app.CommerceStore, checkout.NewHTTPForwarder())
+
+		// Admin surface. IAM middleware gates every request; the handler
+		// re-checks claim shape defense-in-depth. Group is under /_ so
+		// the ingress path-rule blocks it from the public internet unless
+		// explicitly opened.
+		adminGroup := app.Router.Group("/_/commerce")
+		if app.config.IAM.Enabled {
+			adminGroup.Use(iammiddleware.IAMTokenRequired())
+		}
+		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
+
+		// Legacy checkout for deposits + webhooks — does NOT re-register
+		// /tenant because the store-backed mount already owns it.
+		public := app.Router.Group("/v1/commerce")
+		public.POST("/deposits", gin.WrapH(checkout.Deposits(app.CheckoutResolver, checkout.NewHTTPForwarder())))
+		public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(app.CheckoutResolver, checkout.NewHTTPForwarder())))
+		public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(app.CheckoutResolver, checkout.NewHTTPForwarder())))
+		public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(app.CheckoutResolver)))
+		checkout.MountSPA(app.Router)
+	} else {
+		checkout.Mount(app.Router, app.CheckoutResolver, checkout.NewHTTPForwarder())
+	}
 }
 
 // Serve starts the HTTP server
