@@ -26,6 +26,12 @@ var ErrDuplicateTenant = errors.New("store: tenant with that name already exists
 // translate to 400.
 var ErrInvalidHostname = errors.New("store: invalid hostname")
 
+// ErrHostnameClaimed is returned when a Create or UpdateHostnames would
+// cross-assign a hostname already owned by a different tenant. Handlers
+// translate to 409 Conflict with a body that does NOT reveal the colliding
+// tenant's identity — that would be a fingerprinting oracle.
+var ErrHostnameClaimed = errors.New("store: hostname already claimed by another tenant")
+
 // TenantRepo is the typed persistence API over the commerce_tenants
 // collection. It intentionally does not do tenant scoping — that is the
 // handler layer's responsibility. Repo methods trust their caller.
@@ -39,11 +45,21 @@ func NewTenantRepo(app core.App) *TenantRepo {
 	return &TenantRepo{app: app}
 }
 
-// Create persists a new tenant row. Hostnames are normalized before save;
-// the Name field is required and must be unique (enforced by the
-// idx_commerce_tenants_name index — duplicate returns ErrDuplicateTenant).
-// The caller MUST have already checked that the current session has
-// superadmin privilege; Create does not verify identity.
+// Create persists a new tenant row atomically with its hostname claims.
+//
+// Atomicity guarantee (P8-C1 fix): tenant row save + hostname inserts run
+// inside a single transaction. A collision on hostname (unique index on
+// commerce_tenant_hostnames.hostname) rolls back the tenant row as well, so
+// a failed create leaves no dangling state and no "dormant" row.
+//
+// Uniqueness:
+//   - `name` — enforced by idx_commerce_tenants_name (unique). Duplicate
+//     returns ErrDuplicateTenant.
+//   - each hostname — enforced by idx_commerce_tenant_hostnames_unique
+//     (unique). Cross-tenant collision returns ErrHostnameClaimed.
+//
+// The caller MUST have already checked superadmin privilege; Create does
+// not verify identity.
 func (r *TenantRepo) Create(t *Tenant) error {
 	if t == nil {
 		return errors.New("store: nil tenant")
@@ -58,27 +74,121 @@ func (r *TenantRepo) Create(t *Tenant) error {
 	}
 	t.Hostnames = hosts
 
-	collection, err := r.app.FindCollectionByNameOrId("commerce_tenants")
-	if err != nil {
-		return fmt.Errorf("store: find collection: %w", err)
-	}
+	return r.app.RunInTransaction(func(txApp core.App) error {
+		collection, err := txApp.FindCollectionByNameOrId("commerce_tenants")
+		if err != nil {
+			return fmt.Errorf("store: find collection: %w", err)
+		}
 
-	rec := core.NewRecord(collection)
-	if err := applyTenantToRecord(rec, t); err != nil {
+		rec := core.NewRecord(collection)
+		if err := applyTenantToRecord(rec, t); err != nil {
+			return err
+		}
+
+		if err := txApp.Save(rec); err != nil {
+			if isUniqueViolation(err) {
+				return ErrDuplicateTenant
+			}
+			return fmt.Errorf("store: save tenant: %w", err)
+		}
+
+		if err := writeTenantHostnames(txApp, rec.Id, hosts); err != nil {
+			return err
+		}
+
+		t.ID = rec.Id
+		t.Created = rec.GetDateTime("created").Time()
+		t.Updated = rec.GetDateTime("updated").Time()
+		return nil
+	})
+}
+
+// UpdateHostnames replaces the tenant's hostname claim set atomically. All of
+// the tenant's existing commerce_tenant_hostnames rows are deleted and the
+// canonicalized new set is inserted under the same transaction; the unique
+// index on commerce_tenant_hostnames.hostname rejects any incoming hostname
+// already owned by a different tenant (ErrHostnameClaimed).
+//
+// Concurrency semantics: serializable via the SQL engine's unique-index
+// contention. Two transactions racing to claim "pay.shared.test" — at most
+// one commits; the other returns ErrHostnameClaimed. No application-layer
+// mutex is required or sufficient across replicas.
+func (r *TenantRepo) UpdateHostnames(id string, hostnames []string) error {
+	if strings.TrimSpace(id) == "" {
+		return ErrTenantNotFound
+	}
+	hosts, err := normalizeHostnames(hostnames)
+	if err != nil {
 		return err
 	}
 
-	if err := r.app.Save(rec); err != nil {
-		if isUniqueViolation(err) {
-			return ErrDuplicateTenant
+	return r.app.RunInTransaction(func(txApp core.App) error {
+		rec, err := txApp.FindRecordById("commerce_tenants", id)
+		if err != nil || rec == nil {
+			return ErrTenantNotFound
 		}
-		return fmt.Errorf("store: save tenant: %w", err)
+
+		if err := writeTenantHostnames(txApp, id, hosts); err != nil {
+			return err
+		}
+
+		// Keep the denormalized commerce_tenants.hostnames JSON column in
+		// sync with the authoritative join table so tenant admin views
+		// return a consistent projection in a single SELECT.
+		hostsJSON, err := json.Marshal(hosts)
+		if err != nil {
+			return err
+		}
+		rec.Set("hostnames", string(hostsJSON))
+		if err := txApp.Save(rec); err != nil {
+			return fmt.Errorf("store: save tenant hostnames mirror: %w", err)
+		}
+		return nil
+	})
+}
+
+// writeTenantHostnames is the tx-scoped inner routine shared by Create and
+// UpdateHostnames. Deletes all current rows for this tenant, then inserts the
+// new set; a unique-index violation returns ErrHostnameClaimed and the tx
+// aborts so no partial state survives. Callers MUST invoke this from within
+// RunInTransaction — it does not open its own tx.
+func writeTenantHostnames(txApp core.App, tenantID string, hosts []string) error {
+	existing, err := txApp.FindRecordsByFilter(
+		"commerce_tenant_hostnames",
+		"tenant = {:tid}",
+		"created",
+		-1, 0,
+		map[string]any{"tid": tenantID},
+	)
+	if err != nil {
+		return fmt.Errorf("store: list existing hostnames: %w", err)
+	}
+	for _, row := range existing {
+		if err := txApp.Delete(row); err != nil {
+			return fmt.Errorf("store: delete old hostname: %w", err)
+		}
 	}
 
-	// Reflect the server-assigned id + timestamps back to the caller.
-	t.ID = rec.Id
-	t.Created = rec.GetDateTime("created").Time()
-	t.Updated = rec.GetDateTime("updated").Time()
+	if len(hosts) == 0 {
+		return nil
+	}
+
+	hostnamesCollection, err := txApp.FindCollectionByNameOrId("commerce_tenant_hostnames")
+	if err != nil {
+		return fmt.Errorf("store: find hostnames collection: %w", err)
+	}
+
+	for _, h := range hosts {
+		rec := core.NewRecord(hostnamesCollection)
+		rec.Set("hostname", h)
+		rec.Set("tenant", tenantID)
+		if err := txApp.Save(rec); err != nil {
+			if isUniqueViolation(err) {
+				return ErrHostnameClaimed
+			}
+			return fmt.Errorf("store: save hostname: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -98,48 +208,40 @@ func (r *TenantRepo) FindByID(id string) (*Tenant, error) {
 	return recordToTenant(rec)
 }
 
-// FindByHostname resolves a hostname to its owning tenant. The input is
-// normalized (lowercase, trailing-dot stripped, port stripped) before any
-// match runs; malformed inputs return ErrInvalidHostname. Exact-match only
-// — suffix spoofing ("pay.satschel.com.evil.com") does not match.
+// FindByHostname resolves a hostname to its owning tenant via the
+// commerce_tenant_hostnames join table. The input is normalized (lowercase,
+// trailing-dot stripped, port stripped) before lookup; malformed inputs
+// return ErrInvalidHostname. Exact-match only — suffix spoofing
+// ("pay.satschel.com.evil.com") is rejected because the row-per-hostname
+// store does a point lookup on the unique index, never a prefix/LIKE scan.
 func (r *TenantRepo) FindByHostname(host string) (*Tenant, error) {
 	h, err := normalizeHostname(host)
 	if err != nil {
 		return nil, err
 	}
-	// JSON array containment: SQLite supports `json_each` / `EXISTS`, but
-	// the portable form that works on both SQLite and Postgres is to LIKE
-	// the serialized JSON with a quoted-string anchor. The quotes around
-	// the normalized value prevent substring collisions:
-	//
-	//   hostnames  = ["pay.satschel.com", "pay.dev.satschel.com"]
-	//   pattern    = %"pay.satschel.com"%
-	//
-	// Embedded quotes in a hostname are impossible (normalizeHostname
-	// rejects them), so no crafted pattern can match more than the
-	// intended exact entry. Defense-in-depth: the Go-side membership
-	// check below runs even if the LIKE is relaxed by a collation
-	// change.
-	pattern := "%" + "\"" + h + "\"" + "%"
-	rec, err := r.app.FindFirstRecordByFilter(
-		"commerce_tenants",
-		"hostnames ~ {:pattern}",
-		map[string]any{"pattern": pattern},
+
+	row, err := r.app.FindFirstRecordByFilter(
+		"commerce_tenant_hostnames",
+		"hostname = {:h}",
+		map[string]any{"h": h},
 	)
-	if err != nil || rec == nil {
+	if err != nil || row == nil {
 		return nil, ErrTenantNotFound
 	}
 
-	t, err := recordToTenant(rec)
-	if err != nil {
-		return nil, err
+	tenantID := row.GetString("tenant")
+	if tenantID == "" {
+		return nil, ErrTenantNotFound
 	}
-	for _, candidate := range t.Hostnames {
-		if candidate == h {
-			return t, nil
-		}
+
+	tenantRec, err := r.app.FindRecordById("commerce_tenants", tenantID)
+	if err != nil || tenantRec == nil {
+		// Cascade delete should have cleaned orphaned hostname rows — if we
+		// see one, treat it as not-found rather than 500, to avoid leaking
+		// store-drift state to the public endpoint.
+		return nil, ErrTenantNotFound
 	}
-	return nil, ErrTenantNotFound
+	return recordToTenant(tenantRec)
 }
 
 // UpdateProviders replaces the tenant's providers list atomically. Concurrency
