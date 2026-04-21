@@ -30,6 +30,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/hanzoai/commerce/store"
 )
 
 // MountPublic registers the /v1/commerce/* public endpoints onto an
@@ -62,12 +64,28 @@ func MountPublic(group *gin.RouterGroup, r Resolver, fwd Forwarder) {
 	group.POST("/webhooks/:provider", gin.WrapH(WebhookIntake(r)))
 }
 
+// MountPublicFromStore mirrors MountPublic but reads tenant config from
+// the hanzo/base-backed commerce/store rather than the legacy
+// StaticResolver. New callers should prefer this; the legacy variant
+// remains for tests and deployments that have not yet constructed a
+// *store.Store.
+func MountPublicFromStore(group *gin.RouterGroup, s *store.Store, fwd Forwarder) {
+	if s == nil {
+		return
+	}
+	group.GET("/tenant", gin.WrapH(TenantJSONFromStore(s)))
+	// Deposits + webhook intake continue to use the Resolver adapter while
+	// those flows migrate in follow-on slices. The explicit adapter goes in
+	// commerce.go setupRoutes when the full flow is wired — this slice
+	// covers only the tenant-facing GET and the two admin endpoints below.
+}
+
 // MountAdmin registers the /_/commerce/* admin endpoints onto a router
 // group the caller has already wrapped with IAM + admin-role guard.
 // These endpoints are tenant-scoped: every mutation derives the tenant
 // from the session, never from the request body.
-func MountAdmin(group *gin.RouterGroup, r *StaticResolver, store AdminStore) {
-	a := &AdminAPI{Resolver: r, Store: store}
+func MountAdmin(group *gin.RouterGroup, r *StaticResolver, adminStore AdminStore) {
+	a := &AdminAPI{Resolver: r, Store: adminStore}
 
 	group.GET("/providers", a.ListProviders)
 	group.POST("/providers/:name/enable", a.EnableProvider)
