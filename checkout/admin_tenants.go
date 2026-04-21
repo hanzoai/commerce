@@ -45,6 +45,21 @@ func NewTenantAdminAPI(s *store.Store) *TenantAdminAPI {
 	return &TenantAdminAPI{Store: s}
 }
 
+// MountTenantAdmin registers the base-store-backed admin endpoints onto an
+// already-authed /_/commerce/* router group. Called from commerce.go
+// setupRoutes AFTER IAM middleware so claims are populated.
+func MountTenantAdmin(group *gin.RouterGroup, s *store.Store) {
+	if s == nil {
+		// No store → no routes. The legacy MountAdmin (StaticResolver +
+		// in-memory AdminStore) continues to run for callers that haven't
+		// migrated; they will 501 on /_/commerce/tenants which is fine.
+		return
+	}
+	a := NewTenantAdminAPI(s)
+	group.POST("/tenants", a.CreateTenant)
+	group.GET("/providers", a.ListProviders)
+}
+
 // ─── request / response DTOs ────────────────────────────────────────────
 
 // createTenantRequest is the admin POST body. It is intentionally smaller
