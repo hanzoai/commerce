@@ -23,7 +23,7 @@ require (
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.18.0
-	github.com/hanzoai/orm v0.5.0
+	github.com/hanzoai/orm v0.5.1
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
@@ -103,7 +103,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
-	github.com/hanzoai/dbx v1.15.0 // indirect
+	github.com/hanzoai/dbx v1.16.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -194,10 +194,13 @@ replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
 
-// commerce/store seam — develop against the local base working tree. Base
-// brings in hanzoai/orm/query (unreleased subpackage) which requires the
-// local orm checkout to satisfy. Both replaces come out when the seam
-// lands on tagged base v0.44.
+// P8-H2 (partial): commerce/store seam depends on an unreleased base tag.
+// hanzoai/orm v0.5.1 is published (used via normal require block above), so
+// its replace has been removed. hanzoai/base v0.44 is still in flight on
+// its feat/multitenant-store branch; the local replace stays until that tag
+// publishes. Merge MUST block on this replace being removed before shipping.
+//
+// TODO: when base v0.44.0 tags, run
+//   go get github.com/hanzoai/base@v0.44.0 && go mod tidy
+// then delete the line below.
 replace github.com/hanzoai/base => ../base
-
-replace github.com/hanzoai/orm => ../orm
