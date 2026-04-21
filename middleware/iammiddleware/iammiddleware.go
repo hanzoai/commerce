@@ -64,6 +64,17 @@ func InitKV(kv KVCache) {
 	kvCache = kv
 }
 
+// Client returns the initialized IAM client, or nil if IAM is disabled or
+// Init() has not been called. Consumers outside the middleware chain (e.g.
+// SPA handlers with their own auth gate) use this to validate bearer tokens
+// against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
+// means "treat every request as unauthenticated".
+func Client() *auth.IAMClient {
+	mu.RLock()
+	defer mu.RUnlock()
+	return iamClient
+}
+
 // orgCacheKey returns the KV key for an IAM owner → org ID mapping.
 func orgCacheKey(owner string) string {
 	return "iam:org_by_name:" + owner
