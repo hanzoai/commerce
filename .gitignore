@@ -45,8 +45,16 @@ GEMINI.md
 QWEN.md
 
 # Pay UI build artifact. The canonical pay UI source of truth is
-# github.com/hanzoai/pay — cloudbuild.yaml clones it at _PAY_VERSION and
-# copies the built dist/ here before the Go build. Only .gitkeep is
-# tracked so go:embed resolves on a fresh clone.
+# github.com/hanzoai/pay — Dockerfile pay-build stage clones it at
+# PAY_VERSION and copies the built dist/ here before the Go build. Only
+# .gitkeep is tracked so go:embed resolves on a fresh clone.
 checkout/ui/dist/*
 !checkout/ui/dist/.gitkeep
+
+# Billing admin UI build artifact. The canonical source of truth is
+# github.com/hanzoai/billing — Dockerfile billing-build stage clones it
+# at BILLING_VERSION, runs `pnpm build`, and copies out/ here before
+# the Go build. Only .gitkeep is tracked so go:embed resolves on a
+# fresh clone.
+billing/ui/dist/*
+!billing/ui/dist/.gitkeep
