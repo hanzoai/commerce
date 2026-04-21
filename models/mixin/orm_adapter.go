@@ -9,6 +9,7 @@ package mixin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -37,6 +38,24 @@ func (a *DatastoreAdapter) Datastore() *datastore.Datastore {
 func (a *DatastoreAdapter) Get(ctx context.Context, k orm.Key, dst interface{}) error {
 	dsKey := ormKeyToDS(k)
 	return a.ds.Get(dsKey, dst)
+}
+
+// GetForUpdate is required by orm.DB. DatastoreAdapter is a legacy path
+// backed by hanzoai/datastore-go and does not participate in orm-managed
+// transactions — GetForUpdate outside a tx is an error per the interface
+// contract. The legacy commerce code never takes out row locks, so this
+// sentinel is the correct forward posture; new code uses commerce/store.
+func (a *DatastoreAdapter) GetForUpdate(_ context.Context, _ orm.Key, _ interface{}) error {
+	return errors.New("commerce: GetForUpdate is not supported on the legacy datastore adapter — use commerce/store for row-locked reads")
+}
+
+// RunInTransactionWith is required by orm.DB. The legacy datastore backs a
+// single-writer MongoDB-style store where transaction retry semantics are
+// degenerate — opts.MaxAttempts is ignored and the callback runs once
+// against the non-tx adapter. Callers that need real retry must use
+// commerce/store (base-backed, SQLite/Postgres-aware).
+func (a *DatastoreAdapter) RunInTransactionWith(ctx context.Context, _ *orm.TxOptions, fn func(tx orm.DB) error) error {
+	return a.RunInTransaction(ctx, fn)
 }
 
 func (a *DatastoreAdapter) Put(ctx context.Context, k orm.Key, src interface{}) (orm.Key, error) {
