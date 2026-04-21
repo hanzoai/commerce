@@ -138,6 +138,10 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 		switch err {
 		case store.ErrDuplicateTenant:
 			c.JSON(http.StatusConflict, gin.H{"error": "tenant with that name already exists"})
+		case store.ErrHostnameClaimed:
+			// Deliberately generic body — never reveal which other tenant
+			// owns the colliding hostname (fingerprinting oracle).
+			c.JSON(http.StatusConflict, gin.H{"error": "hostname already claimed"})
 		case store.ErrInvalidHostname:
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hostname"})
 		default:
