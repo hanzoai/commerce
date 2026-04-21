@@ -14,7 +14,18 @@ COPY app/admin/ admin/
 WORKDIR /web/admin
 RUN pnpm build
 
-# ── Stage 2: Build Go binary (with embedded admin SPA) ───────────────────
+# ── Stage 2: Build pay UI (Vite SPA from hanzoai/pay) ────────────────────
+# Canonical source lives at github.com/hanzoai/pay. Forks override PAY_REPO
+# and PAY_VERSION via --build-arg; default tracks the latest tagged release.
+FROM node:22-alpine AS pay-build
+ARG PAY_REPO=https://github.com/hanzoai/pay.git
+ARG PAY_VERSION=v0.1.0
+WORKDIR /pay
+RUN apk add --no-cache git && corepack enable pnpm
+RUN git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
+RUN pnpm install --frozen-lockfile && pnpm build
+
+# ── Stage 3: Build Go binary (with embedded admin + pay SPA) ─────────────
 FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
@@ -38,6 +49,11 @@ COPY . .
 # the actual SPA bundle at compile time.
 RUN rm -rf admin/dist
 COPY --from=admin-build /web/admin/out admin/dist
+
+# Overlay the pay UI build into checkout/ui/dist so go:embed in
+# checkout/embed.go picks up the real SPA bundle.
+RUN rm -rf checkout/ui/dist && mkdir -p checkout/ui/dist
+COPY --from=pay-build /pay/dist/ checkout/ui/dist/
 
 # Build the binary with CGO for SQLite support
 RUN --mount=type=cache,target=/go/pkg/mod \
