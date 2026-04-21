@@ -25,7 +25,21 @@ RUN apk add --no-cache git && corepack enable pnpm
 RUN git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
 RUN pnpm install --frozen-lockfile && pnpm build
 
-# ── Stage 3: Build Go binary (with embedded admin + pay SPA) ─────────────
+# ── Stage 3: Build billing admin UI (Next.js export from hanzoai/billing) ─
+# Canonical source lives at github.com/hanzoai/billing. Forks override
+# BILLING_REPO + BILLING_VERSION via --build-arg; default tracks the latest
+# tagged release. The Next config emits a static bundle under out/ with
+# basePath=/admin/billing, which commerce serves under the same prefix from
+# billing/ui/dist (go:embed target).
+FROM node:22-alpine AS billing-build
+ARG BILLING_REPO=https://github.com/hanzoai/billing.git
+ARG BILLING_VERSION=v0.1.0
+WORKDIR /billing
+RUN apk add --no-cache git && corepack enable pnpm
+RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
+RUN pnpm install --frozen-lockfile && pnpm build
+
+# ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
 FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
@@ -54,6 +68,11 @@ COPY --from=admin-build /web/admin/out admin/dist
 # checkout/embed.go picks up the real SPA bundle.
 RUN rm -rf checkout/ui/dist && mkdir -p checkout/ui/dist
 COPY --from=pay-build /pay/dist/ checkout/ui/dist/
+
+# Overlay the billing admin UI build into billing/ui/dist so go:embed in
+# billing/embed.go picks up the real Next.js export.
+RUN rm -rf billing/ui/dist && mkdir -p billing/ui/dist
+COPY --from=billing-build /billing/out/ billing/ui/dist/
 
 # Build the binary with CGO for SQLite support
 RUN --mount=type=cache,target=/go/pkg/mod \
