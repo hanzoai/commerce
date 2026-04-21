@@ -368,6 +368,8 @@ github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3/go.mod h1:NbCUVmiS4foBGBH
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 h1:HWRh5R2+9EifMyIHV7ZV+MIZqgz+PMpZ14Jynv3O2Zs=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0/go.mod h1:JfhWUomR1baixubs02l85lZYYOm7LV6om4ceouMv45c=
+github.com/hanzoai/base v0.44.0 h1:ta2ISY09qqcrOWmhEvIjPmSw0i9im6wpQ/dvZ+LxBPk=
+github.com/hanzoai/base v0.44.0/go.mod h1:zbuiFnPdxQttQ2jWhFVsBmAFW7M4fpGoNmpuIny9UwE=
 github.com/hanzoai/datastore-go/v2 v2.44.0 h1:3dQ4pMVy+spFLqcHpg/+HdMlyOYF2QPxda6PXtwVxhs=
 github.com/hanzoai/datastore-go/v2 v2.44.0/go.mod h1:pkjjhn01T0j8jZaO7ILnuRsXNz/sGec4smcDHPjrcp0=
 github.com/hanzoai/dbx v1.16.0 h1:C8wsb9BIiit4nYnXizpcB4SyzVaepPkQFwq5i9fxAV0=
