@@ -35,6 +35,7 @@ import (
 	"github.com/hanzoai/commerce/admin"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
+	billingUI "github.com/hanzoai/commerce/billing"
 	"github.com/hanzoai/commerce/checkout"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
@@ -781,11 +782,31 @@ func (app *App) setupRoutes() {
 	}
 	app.Router.GET("/healthz", healthHandler)
 
-	// Embedded admin SPA — go:embed'd Next.js export served at /admin/*.
-	// No separate FE container needed (replaces commerce-admin Deployment).
+	// Embedded admin surface — two go:embed'd Next.js bundles sharing the
+	// /admin/* mount:
+	//   /admin/billing/*  → hanzoai/billing (IAM-gated: admin/billing_admin/
+	//                       owner/superadmin; 404 otherwise — no existence
+	//                       leak)
+	//   /admin/*          → commerce admin SPA (auth enforced by the admin
+	//                       app itself via IAM redirect)
+	//
+	// Gin cannot register overlapping wildcards, so we dispatch in a single
+	// /admin/*filepath handler. Billing gets first shot; everything else
+	// falls through to the commerce admin bundle. The IAM client reused is
+	// the same singleton the /v1/commerce middleware chain uses — nil means
+	// fail-closed (every billing request 404s until IAM is initialized).
 	adminHandler := admin.Handler("/admin")
+	billingUIMount := "/admin/billing"
+	billingHandler := billingUI.UIHandler(billingUIMount, iammiddleware.Client())
+	adminDispatch := func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, billingUIMount) {
+			billingHandler(c)
+			return
+		}
+		adminHandler.ServeHTTP(c.Writer, c.Request)
+	}
 	app.Router.GET("/admin", gin.WrapH(adminHandler))
-	app.Router.GET("/admin/*filepath", gin.WrapH(adminHandler))
+	app.Router.GET("/admin/*filepath", adminDispatch)
 
 	// API routes
 	api := app.Router.Group("/v1/commerce")
