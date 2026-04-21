@@ -18,7 +18,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/schema v1.4.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/hanzoai/base v0.0.0-00010101000000-000000000000
+	github.com/hanzoai/base v0.44.0
 	github.com/hanzoai/datastore-go/v2 v2.44.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
@@ -193,14 +193,3 @@ require (
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
-
-// P8-H2 (partial): commerce/store seam depends on an unreleased base tag.
-// hanzoai/orm v0.5.1 is published (used via normal require block above), so
-// its replace has been removed. hanzoai/base v0.44 is still in flight on
-// its feat/multitenant-store branch; the local replace stays until that tag
-// publishes. Merge MUST block on this replace being removed before shipping.
-//
-// TODO: when base v0.44.0 tags, run
-//   go get github.com/hanzoai/base@v0.44.0 && go mod tidy
-// then delete the line below.
-replace github.com/hanzoai/base => ../base
