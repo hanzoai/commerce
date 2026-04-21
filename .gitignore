@@ -43,3 +43,10 @@ CLAUDE.md
 AGENTS.md
 GEMINI.md
 QWEN.md
+
+# Pay UI build artifact. The canonical pay UI source of truth is
+# github.com/hanzoai/pay — cloudbuild.yaml clones it at _PAY_VERSION and
+# copies the built dist/ here before the Go build. Only .gitkeep is
+# tracked so go:embed resolves on a fresh clone.
+checkout/ui/dist/*
+!checkout/ui/dist/.gitkeep
