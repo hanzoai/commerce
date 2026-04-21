@@ -35,6 +35,7 @@ import (
 	"github.com/hanzoai/commerce/admin"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/checkout"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
@@ -159,7 +160,6 @@ func DefaultConfig() *Config {
 //	S3_URL        = s3://key:secret@host:9000/bucket
 //	S3_ENDPOINT   = host:9000  (with S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET)
 //	DATASTORE_URL = clickhouse://host:9000/db
-//	DOC_URL       = mongodb://host:27017/db
 //	SQL_URL       = postgresql://user:pass@host:5432/db
 //	VECTOR_URL    = qdrant://host:6333
 //	SEARCH_URL    = http://host:7700
@@ -296,6 +296,12 @@ type App struct {
 
 	// HTTP router
 	Router *gin.Engine
+
+	// CheckoutResolver maps hostnames (pay.satschel.com, …) to Tenant
+	// configs for the embedded checkout SPA. Mutable at runtime so the
+	// admin can add/remove hostnames and toggle providers without a
+	// restart.
+	CheckoutResolver *checkout.StaticResolver
 
 	// HTTP server
 	server *http.Server
@@ -796,6 +802,18 @@ func (app *App) setupRoutes() {
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
 	}
+
+	// Hosted multi-tenant checkout. Mounts:
+	//   GET  /checkout/v1/tenant   — public tenant JSON (branding + enabled methods)
+	//   POST /checkout/v1/deposits — proxied to tenant Backend.URL (BD for Liquidity)
+	//   GET  /*                    — embedded Vite SPA with SPA fallback
+	//
+	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
+	// and everything above this line owns its own route prefix.
+	if app.CheckoutResolver == nil {
+		app.CheckoutResolver = checkout.NewStaticResolver(nil)
+	}
+	checkout.Mount(app.Router, app.CheckoutResolver, checkout.NewHTTPForwarder())
 }
 
 // Serve starts the HTTP server
