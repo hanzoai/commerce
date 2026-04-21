@@ -9,8 +9,10 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -382,5 +384,211 @@ func TestRawHostnamesStoredAsCanonicalArray(t *testing.T) {
 	}
 	if len(parsed) != 2 || parsed[0] != "pay.canon.test" || parsed[1] != "pay2.canon.test" {
 		t.Errorf("hostnames canonical array = %v, want [pay.canon.test pay2.canon.test]", parsed)
+	}
+}
+
+// ─── P8-C1 regression: hostname hijack MUST be rejected ──────────────────
+//
+// Red finding P8-C1 reproduction — two tenants claiming the same hostname
+// must fail the second Create with ErrHostnameClaimed. The claim lives in
+// commerce_tenant_hostnames (unique index on hostname) so the collision is
+// caught at the SQL engine, not by an application-level check that races
+// across replicas.
+
+func TestRed_HostnameHijack_Rejected(t *testing.T) {
+	s := newTestStore(t)
+
+	victim := newTestTenant("victim", "pay.shared.test")
+	if err := s.Tenants.Create(victim); err != nil {
+		t.Fatalf("victim Create: %v", err)
+	}
+
+	attacker := newTestTenant("attacker", "pay.shared.test")
+	err := s.Tenants.Create(attacker)
+	if !errors.Is(err, ErrHostnameClaimed) {
+		t.Fatalf("attacker Create err = %v, want ErrHostnameClaimed", err)
+	}
+
+	// The attacker tenant row MUST NOT survive the failed hostname insert —
+	// the whole create runs in a transaction. If it did, deleting the
+	// victim row later would let the dormant attacker row become the
+	// resolver target (delayed hijack).
+	owner, err := s.Tenants.FindByHostname("pay.shared.test")
+	if err != nil || owner.Name != "victim" {
+		t.Fatalf("FindByHostname post-hijack returned %+v err=%v, want victim", owner, err)
+	}
+
+	// Verify no dangling attacker tenant row exists by scanning for the
+	// attacker name: unique-by-name is separate from unique-by-hostname,
+	// so a rollback of the hostname insert MUST also roll back the tenant
+	// row. If it did not, the second Create of "attacker" would 409.
+	recs, _ := s.App.FindRecordsByFilter("commerce_tenants", "name = 'attacker'", "", 10, 0)
+	if len(recs) != 0 {
+		t.Fatalf("attacker tenant row leaked after failed hostname insert: %d rows", len(recs))
+	}
+}
+
+// TestRed_HostnameSharingAcrossTenants — an attacker cannot even claim one
+// hostname alongside a victim-owned hostname in the same POST; the
+// transaction aborts at the colliding entry and no partial hostnames from
+// the batch are committed.
+func TestRed_HostnameSharingAcrossTenants(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.Tenants.Create(newTestTenant("victim", "pay.shared.test", "a.victim.test")); err != nil {
+		t.Fatal(err)
+	}
+
+	attacker := newTestTenant("attacker",
+		"b.attacker.test",   // novel, would succeed in isolation
+		"pay.shared.test",   // colliding with victim
+		"c.attacker.test",   // novel, would succeed in isolation
+	)
+	err := s.Tenants.Create(attacker)
+	if !errors.Is(err, ErrHostnameClaimed) {
+		t.Fatalf("attacker Create err = %v, want ErrHostnameClaimed", err)
+	}
+
+	// None of the attacker's novel hostnames should have committed — the
+	// tx aborts at the colliding entry.
+	for _, h := range []string{"b.attacker.test", "c.attacker.test"} {
+		if _, err := s.Tenants.FindByHostname(h); !errors.Is(err, ErrTenantNotFound) {
+			t.Errorf("novel host %q committed under failed tx: err=%v", h, err)
+		}
+	}
+}
+
+// TestRed_HostnameHijack_RaceSafe — N goroutines race to claim the same
+// hostname via distinct tenant Creates. The SQL unique index must ensure at
+// most one commits; the others all return ErrHostnameClaimed (or
+// ErrDuplicateTenant if the name check fires first). Zero partial commits.
+//
+// This test is the `-race` bar for P8-C1. Under -race -count=3 it must be
+// green with no data races reported.
+func TestRed_HostnameHijack_RaceSafe(t *testing.T) {
+	const contenders = 8
+	s := newTestStore(t)
+
+	var wins, hostnameConflicts, nameConflicts, other int64
+
+	var wg sync.WaitGroup
+	wg.Add(contenders)
+	for i := 0; i < contenders; i++ {
+		name := "claimer" + string(rune('a'+i)) // unique names so only the hostname collides
+		go func(n string) {
+			defer wg.Done()
+			err := s.Tenants.Create(newTestTenant(n, "pay.shared.test"))
+			switch {
+			case err == nil:
+				atomic.AddInt64(&wins, 1)
+			case errors.Is(err, ErrHostnameClaimed):
+				atomic.AddInt64(&hostnameConflicts, 1)
+			case errors.Is(err, ErrDuplicateTenant):
+				atomic.AddInt64(&nameConflicts, 1)
+			default:
+				atomic.AddInt64(&other, 1)
+				t.Errorf("unexpected err from contender %q: %v", n, err)
+			}
+		}(name)
+	}
+	wg.Wait()
+
+	if wins != 1 {
+		t.Fatalf("wins = %d, want exactly 1", wins)
+	}
+	if other != 0 {
+		t.Fatalf("unexpected error kinds = %d, want 0", other)
+	}
+	if hostnameConflicts+nameConflicts != contenders-1 {
+		t.Fatalf("losers = %d (hostname=%d name=%d), want %d",
+			hostnameConflicts+nameConflicts, hostnameConflicts, nameConflicts, contenders-1)
+	}
+
+	owner, err := s.Tenants.FindByHostname("pay.shared.test")
+	if err != nil {
+		t.Fatalf("winner lookup err = %v", err)
+	}
+	if owner == nil || owner.Name == "" {
+		t.Fatalf("winner tenant is nil/empty: %+v", owner)
+	}
+}
+
+// ─── UpdateHostnames ────────────────────────────────────────────────────
+
+func TestUpdateHostnames_HijackRejected(t *testing.T) {
+	s := newTestStore(t)
+
+	if err := s.Tenants.Create(newTestTenant("victim", "pay.shared.test")); err != nil {
+		t.Fatal(err)
+	}
+	attacker := newTestTenant("attacker", "a.attacker.test")
+	if err := s.Tenants.Create(attacker); err != nil {
+		t.Fatal(err)
+	}
+
+	err := s.Tenants.UpdateHostnames(attacker.ID, []string{"pay.shared.test"})
+	if !errors.Is(err, ErrHostnameClaimed) {
+		t.Fatalf("UpdateHostnames hijack err = %v, want ErrHostnameClaimed", err)
+	}
+
+	// Attacker's original hostname MUST still be bound — the tx aborts
+	// without dropping existing rows.
+	owner, err := s.Tenants.FindByHostname("a.attacker.test")
+	if err != nil || owner.Name != "attacker" {
+		t.Fatalf("attacker lost its original hostname after failed hijack: %+v err=%v", owner, err)
+	}
+	owner, err = s.Tenants.FindByHostname("pay.shared.test")
+	if err != nil || owner.Name != "victim" {
+		t.Fatalf("victim lost ownership after failed hijack: %+v err=%v", owner, err)
+	}
+}
+
+func TestUpdateHostnames_AddsAndRemoves(t *testing.T) {
+	s := newTestStore(t)
+	tenant := newTestTenant("mut", "old.mut.test")
+	if err := s.Tenants.Create(tenant); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.Tenants.UpdateHostnames(tenant.ID, []string{"new.mut.test", "second.mut.test"}); err != nil {
+		t.Fatalf("UpdateHostnames: %v", err)
+	}
+
+	if _, err := s.Tenants.FindByHostname("old.mut.test"); !errors.Is(err, ErrTenantNotFound) {
+		t.Errorf("old hostname still bound after update: %v", err)
+	}
+	if owner, err := s.Tenants.FindByHostname("new.mut.test"); err != nil || owner.Name != "mut" {
+		t.Errorf("new hostname not bound: %+v %v", owner, err)
+	}
+	if owner, err := s.Tenants.FindByHostname("second.mut.test"); err != nil || owner.Name != "mut" {
+		t.Errorf("second hostname not bound: %+v %v", owner, err)
+	}
+}
+
+// TestFindByHostname_AfterTenantDelete — deleting a tenant must cascade-delete
+// its hostname rows so a dormant claim cannot be resurrected.
+func TestFindByHostname_AfterTenantDelete(t *testing.T) {
+	s := newTestStore(t)
+	victim := newTestTenant("victim2", "pay2.shared.test")
+	if err := s.Tenants.Create(victim); err != nil {
+		t.Fatal(err)
+	}
+
+	rec, err := s.App.FindRecordById("commerce_tenants", victim.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.App.Delete(rec); err != nil {
+		t.Fatalf("delete victim: %v", err)
+	}
+
+	if _, err := s.Tenants.FindByHostname("pay2.shared.test"); !errors.Is(err, ErrTenantNotFound) {
+		t.Errorf("FindByHostname post-delete err = %v, want ErrTenantNotFound", err)
+	}
+
+	// A subsequent Create by a different tenant with the same hostname must
+	// now succeed — the claim was freed by the cascade.
+	if err := s.Tenants.Create(newTestTenant("successor", "pay2.shared.test")); err != nil {
+		t.Fatalf("successor Create err = %v, want nil post-cascade", err)
 	}
 }
