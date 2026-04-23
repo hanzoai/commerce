@@ -2,7 +2,7 @@ package workflows
 
 import (
 	"github.com/hanzoai/commerce/billing/engine"
-	"go.temporal.io/sdk/worker"
+	"github.com/hanzoai/tasks/pkg/sdk/worker"
 )
 
 // RegisterWorkflows registers all billing workflows and activities
