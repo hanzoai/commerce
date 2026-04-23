@@ -10,11 +10,12 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
+	commercefixtures "github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
 )
 
-var SendTestEthereumTransaction = New("send-test-ethereum-transaction", func(c *gin.Context) {
+var SendTestEthereumTransaction = commercefixtures.New("send-test-ethereum-transaction", func(c *gin.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 
