@@ -13,7 +13,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/thirdparty/ethereum"
 	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 
@@ -104,7 +103,6 @@ var _ = BeforeSuite(func() {
 	usr5.Enabled = true
 	usr5.MustPut()
 
-	ethereum.Test(true)
 	bitcoin.Test(true)
 	cl.IgnoreErrors(true)
 })

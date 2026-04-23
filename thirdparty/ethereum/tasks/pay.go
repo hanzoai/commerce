@@ -17,7 +17,7 @@ import (
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
-	eutil "github.com/hanzoai/commerce/thirdparty/ethereum/util"
+	blockchainutil "github.com/hanzoai/commerce/util/blockchain"
 	"github.com/hanzoai/commerce/util/webhook"
 )
 
@@ -81,7 +81,7 @@ func EthereumProcessPaymentImpl(
 	nsDb := datastore.New(nsCtx)
 
 	// Get the basic order info
-	usr, ord, w, err := eutil.GetUserOrderByWallet(nsDb, walletId)
+	usr, ord, w, err := blockchainutil.GetUserOrderByWallet(nsDb, walletId)
 	if err != nil {
 		log.Error("GetUserOrderAndWallet error: %v", err, ctx)
 		return err

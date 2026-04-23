@@ -9,11 +9,12 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
+	commercefixtures "github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/thirdparty/ethereum"
 )
 
-var CheckEthereumBalance = New("check-ethereum-balance", func(c *gin.Context) {
+var CheckEthereumBalance = commercefixtures.New("check-ethereum-balance", func(c *gin.Context) {
 	db := datastore.New(c)
 	ctx := db.Context
 

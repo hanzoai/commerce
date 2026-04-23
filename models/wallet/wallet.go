@@ -2,15 +2,12 @@ package wallet
 
 import (
 	"github.com/hanzoai/commerce/datastore"
-	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/blockchains/blockaddress"
 	"github.com/hanzoai/commerce/models/mixin"
-	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/thirdparty/ethereum"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/orm"
 )
@@ -23,7 +20,11 @@ type Wallet struct {
 	Accounts []Account `json:"accounts,omitempty"`
 }
 
-// Create a new Account, saves if wallet is created
+// Create a new Account, saves if wallet is created. Key generation is
+// dispatched to a per-chain registry populated by importing the relevant
+// blockchain package (e.g. thirdparty/bitcoin for BTC, thirdparty/ethereum
+// for EVM). CreateAccount returns ErrNoKeyGen for chain types whose
+// generator hasn't been registered.
 func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (*Account, error) {
 	_, found := w.GetAccountByName(name)
 
@@ -31,59 +32,26 @@ func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword [
 		return nil, ErrorNameCollision
 	}
 
-	var a *Account
-
 	switch typ {
-	case blockchains.EthereumType, blockchains.EthereumRopstenType:
-		priv, pub, add, err := ethereum.GenerateKeyPair()
-
-		if err != nil {
-			return nil, err
-		}
-
-		add = strings.ToLower(add)
-
-		a = &Account{
-			Name:       name,
-			PrivateKey: priv,
-			PublicKey:  pub,
-			Address:    add,
-			Type:       typ,
-			CreatedAt:  time.Now(),
-		}
-
-	case blockchains.BitcoinType, blockchains.BitcoinTestnetType:
-		priv, pub, err := bitcoin.GenerateKeyPair()
-		if err != nil {
-			return nil, err
-		}
-
-		var add string
-
-		switch typ {
-		case blockchains.BitcoinType:
-			add, _, err = bitcoin.PubKeyToAddress(pub, false)
-			if err != nil {
-				return nil, err
-			}
-		case blockchains.BitcoinTestnetType:
-			add, _, err = bitcoin.PubKeyToAddress(pub, true)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		a = &Account{
-			Name:       name,
-			PrivateKey: priv,
-			PublicKey:  pub,
-			Address:    add,
-			Type:       typ,
-			CreatedAt:  time.Now(),
-		}
-
+	case blockchains.EthereumType, blockchains.EthereumRopstenType,
+		blockchains.BitcoinType, blockchains.BitcoinTestnetType:
+		// handled via registry
 	default:
 		return nil, ErrorInvalidTypeSpecified
+	}
+
+	priv, pub, add, err := generateKey(typ)
+	if err != nil {
+		return nil, err
+	}
+
+	a := &Account{
+		Name:       name,
+		PrivateKey: priv,
+		PublicKey:  pub,
+		Address:    add,
+		Type:       typ,
+		CreatedAt:  time.Now(),
 	}
 
 	if err := a.Encrypt(withPassword); err != nil {
