@@ -3,8 +3,8 @@ package workflows
 import (
 	"time"
 
-	"go.temporal.io/sdk/temporal"
-	"go.temporal.io/sdk/workflow"
+	"github.com/hanzoai/tasks/pkg/sdk/temporal"
+	"github.com/hanzoai/tasks/pkg/sdk/workflow"
 )
 
 // DunningParams configures the dunning retry workflow.
