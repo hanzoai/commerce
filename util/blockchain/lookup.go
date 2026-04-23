@@ -1,13 +1,16 @@
-package util
+package blockchain
 
 import (
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/wallet"
-	"github.com/hanzoai/commerce/log"
 )
 
+// GetUserOrderByWallet returns the (user, order, wallet) triple associated
+// with walletId. Chain-agnostic — used by Bitcoin pay task in-tree and by
+// the Ethereum pay task in the thirdparty/ethereum sub-module.
 func GetUserOrderByWallet(db *datastore.Datastore, walletId string) (*user.User, *order.Order, *wallet.Wallet, error) {
 	ctx := db.Context
 

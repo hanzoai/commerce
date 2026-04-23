@@ -5,7 +5,7 @@ import (
 
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/thirdparty/ethereum/util"
+	blockchainutil "github.com/hanzoai/commerce/util/blockchain"
 )
 
 var _ = Describe("client.GasPrice2", func() {
@@ -19,7 +19,7 @@ var _ = Describe("client.GasPrice2", func() {
 		usr := user.New(db)
 		usr.MustCreate()
 
-		u, o, w, err := util.GetUserOrderByWallet(db, wal.Id())
+		u, o, w, err := blockchainutil.GetUserOrderByWallet(db, wal.Id())
 
 		Expect(err).NotTo(HaveOccurred())
 
