@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/temporal"
-	"go.temporal.io/sdk/worker"
-	"go.temporal.io/sdk/workflow"
+	"github.com/hanzoai/tasks/pkg/sdk/client"
+	"github.com/hanzoai/tasks/pkg/sdk/temporal"
+	"github.com/hanzoai/tasks/pkg/sdk/worker"
+	"github.com/hanzoai/tasks/pkg/sdk/workflow"
 )
 
 // TasksConfig holds Temporal configuration

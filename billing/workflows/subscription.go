@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.temporal.io/sdk/temporal"
-	"go.temporal.io/sdk/workflow"
+	"github.com/hanzoai/tasks/pkg/sdk/temporal"
+	"github.com/hanzoai/tasks/pkg/sdk/workflow"
 )
 
 const (
