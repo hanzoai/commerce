@@ -63,7 +63,6 @@ import (
 	xdApi "github.com/hanzoai/commerce/api/xd"
 
 	bitcoinApi "github.com/hanzoai/commerce/thirdparty/bitcoin/api"
-	ethereumApi "github.com/hanzoai/commerce/thirdparty/ethereum/api"
 	mercuryApi "github.com/hanzoai/commerce/thirdparty/mercury/api"
 	paypalApi "github.com/hanzoai/commerce/thirdparty/paypal/ipn"
 	reamazeApi "github.com/hanzoai/commerce/thirdparty/reamaze"
@@ -208,9 +207,9 @@ func Route(api router.Router) {
 	// Bitcoin webhook
 	bitcoinApi.Route(api)
 
-	// Ethereum webhook
-	ethereumApi.Route(api)
-
 	// Mercury bank webhook
 	mercuryApi.Route(api)
+
+	// Extra routes registered by optional sub-modules (e.g. thirdparty/ethereum)
+	applyExtraRoutes(api)
 }
