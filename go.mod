@@ -28,7 +28,7 @@ require (
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
 	github.com/hanzoai/storage-go v1.0.0
-	github.com/hanzoai/tasks v1.36.0
+	github.com/hanzoai/tasks v1.36.1
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
