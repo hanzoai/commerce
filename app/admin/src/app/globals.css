@@ -2,7 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Hanzo dark token set (shadcn-compatible names).
+ * Kept alongside the Medusa-style --bg-base/--fg-base tokens defined in
+ * @hanzo/commerce-ui-preset so both consumers resolve correctly.
+ */
 @layer base {
+  :root,
+  .dark {
+    --background: #070b13;
+    --card: #0d121d;
+    --border: #1f2937;
+    --input: #1f2937;
+    --primary: #f2f2f2;
+    --primary-fg: #070b13;
+    --muted: #1f2937;
+    --muted-fg: #94a3b8;
+    --accent: #1f2937;
+    --accent-fg: #f2f2f2;
+    --ring: #94a3b8;
+    --destructive: #ef4444;
+
+    /* Map Hanzo palette onto the Medusa-style tokens used by @hanzo/commerce-ui */
+    --bg-base: #070b13;
+    --bg-component: #0d121d;
+    --bg-subtle: #0d121d;
+    --bg-field: rgba(255, 255, 255, 0.04);
+    --border-base: #1f2937;
+    --border-strong: #1f2937;
+    --fg-base: #f2f2f2;
+    --fg-muted: #94a3b8;
+    --fg-subtle: #94a3b8;
+    --fg-error: #ef4444;
+  }
+
   html {
     color-scheme: dark;
   }
