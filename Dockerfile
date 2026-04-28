@@ -14,32 +14,15 @@ COPY app/admin/ admin/
 WORKDIR /web/admin
 RUN pnpm build
 
-# ── Stage 2: Build pay UI (Vite SPA from hanzoai/pay) ────────────────────
-# Canonical source lives at github.com/hanzoai/pay. Forks override PAY_REPO
-# and PAY_VERSION via --build-arg; default tracks the latest tagged release.
-FROM node:22-alpine AS pay-build
-ARG PAY_REPO=https://github.com/hanzoai/pay.git
-ARG PAY_VERSION=v0.1.0
-WORKDIR /pay
-RUN apk add --no-cache git && corepack enable pnpm
-RUN git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
-RUN pnpm install --frozen-lockfile && pnpm build
+# ── Stages 2/3 (pay + billing UI) deferred ──────────────────────────────
+# Pay UI (hanzoai/pay) and billing UI (hanzoai/billing) are not yet
+# tagged/published; their go:embed targets keep .gitkeep placeholders so
+# the binary builds clean and serves an empty FS at /admin/pay and
+# /admin/billing. Re-add the build stages once those repos ship a v*
+# tag and overlay the bundles into checkout/ui/dist + billing/ui/dist
+# from --from=pay-build / --from=billing-build like before.
 
-# ── Stage 3: Build billing admin UI (Next.js export from hanzoai/billing) ─
-# Canonical source lives at github.com/hanzoai/billing. Forks override
-# BILLING_REPO + BILLING_VERSION via --build-arg; default tracks the latest
-# tagged release. The Next config emits a static bundle under out/ with
-# basePath=/admin/billing, which commerce serves under the same prefix from
-# billing/ui/dist (go:embed target).
-FROM node:22-alpine AS billing-build
-ARG BILLING_REPO=https://github.com/hanzoai/billing.git
-ARG BILLING_VERSION=v0.1.0
-WORKDIR /billing
-RUN apk add --no-cache git && corepack enable pnpm
-RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
-RUN pnpm install --frozen-lockfile && pnpm build
-
-# ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
+# ── Stage 4: Build Go binary (with embedded admin + placeholder pay/billing) ──
 FROM golang:1.26-alpine AS builder
 
 # Install build dependencies
@@ -64,15 +47,10 @@ COPY . .
 RUN rm -rf admin/dist
 COPY --from=admin-build /web/admin/out admin/dist
 
-# Overlay the pay UI build into checkout/ui/dist so go:embed in
-# checkout/embed.go picks up the real SPA bundle.
-RUN rm -rf checkout/ui/dist && mkdir -p checkout/ui/dist
-COPY --from=pay-build /pay/dist/ checkout/ui/dist/
-
-# Overlay the billing admin UI build into billing/ui/dist so go:embed in
-# billing/embed.go picks up the real Next.js export.
-RUN rm -rf billing/ui/dist && mkdir -p billing/ui/dist
-COPY --from=billing-build /billing/out/ billing/ui/dist/
+# Pay UI + billing UI overlays deferred — see stages 2/3 comment above.
+# The .gitkeep placeholders in checkout/ui/dist and billing/ui/dist keep
+# go:embed happy; pay/billing endpoints serve an empty FS until the
+# upstream repos ship a v* release.
 
 # Build the binary with CGO for SQLite support
 RUN --mount=type=cache,target=/go/pkg/mod \
