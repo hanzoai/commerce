@@ -1,11 +1,9 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 //
-// Legacy entry-point shim. cmd/commerce is the historical binary path
-// that Dockerfiles and the Makefile build. The implementation has
-// moved to cmd/commerced (mirrors cmd/tasksd), but to avoid a
-// flag-day rename across CI/CD this shim re-execs the same package
-// graph. Once the Dockerfiles flip to ./cmd/commerced/main.go this
-// file can be deleted.
+// commerced is the Hanzo Commerce daemon: one Go binary, gateway-trust
+// identity (no in-binary JWKS), embedded admin SPA at /_/commerce/.
+// Mirrors the cmd/tasksd / cmd/iamd shape — thin entrypoint, all
+// surface area in pkg/commerce.
 
 package main
 
@@ -59,6 +57,10 @@ func main() {
 		_ = srv.Stop(shutdownCtx)
 	}()
 
+	// Register the full Commerce API routes on the /v1/commerce group.
+	// hooks.OnRouteSetup fires inside Bootstrap; since Embed has already
+	// run Bootstrap by the time we get here, we register on the live
+	// router via the hook re-trigger pathway below.
 	srv.App().Hooks.OnRouteSetup().Bind(&hooks.Handler[*hooks.RouteEvent]{
 		ID:       "commerce-api",
 		Priority: 0,
@@ -107,3 +109,4 @@ func envBool(k string, def bool) bool {
 	}
 	return def
 }
+
