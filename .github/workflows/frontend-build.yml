@@ -24,7 +24,7 @@ jobs:
       image: ghcr.io/hanzoai/commerce-site
       context: .
       dockerfile: Dockerfile.site
-
+      platforms: linux/amd64
       push: ${{ github.event_name != 'pull_request' }}
     secrets: inherit
 
@@ -37,7 +37,7 @@ jobs:
       image: ghcr.io/hanzoai/commerce-store
       context: .
       dockerfile: Dockerfile.store
-
+      platforms: linux/amd64
       push: ${{ github.event_name != 'pull_request' }}
     secrets: inherit
 
@@ -50,8 +50,8 @@ jobs:
       image: ghcr.io/hanzoai/commerce-admin
       context: ./app
       dockerfile: admin/Dockerfile
+      platforms: linux/amd64
       build-args: |
         NEXT_PUBLIC_GATEWAY_KEY=${{ secrets.CLOUD_API_SERVICE_KEY }}
-
       push: ${{ github.event_name != 'pull_request' }}
     secrets: inherit
