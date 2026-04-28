@@ -39,8 +39,10 @@ func ListBillingAccounts(c *gin.Context) {
 		"createdAt": org.CreatedAt,
 	}
 
-	// Surface the caller's role if we have IAM claims.
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
+	// Surface the caller's role if the gateway authenticated them.
+	// claims is always non-nil; an empty Subject means anonymous and
+	// we leave the "role" field unset rather than implying membership.
+	if claims := iammiddleware.GetIAMClaims(c); claims.Subject != "" {
 		role := "member"
 		for _, r := range claims.Roles {
 			if r == "admin" || r == "owner" {
@@ -79,7 +81,10 @@ func ListAccountMembers(c *gin.Context) {
 
 	members := make([]gin.H, 0)
 
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
+	// claims is always non-nil; an empty Subject means anonymous and
+	// the response stays an empty members list rather than synthesizing
+	// a phantom row.
+	if claims := iammiddleware.GetIAMClaims(c); claims.Subject != "" {
 		role := "member"
 		for _, r := range claims.Roles {
 			if r == "admin" || r == "owner" {

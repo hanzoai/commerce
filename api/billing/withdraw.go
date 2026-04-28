@@ -55,8 +55,10 @@ func Withdraw(c *gin.Context) {
 		return
 	}
 
-	// Non-admin users may only withdraw from their own account.
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil && !claims.IsAdmin {
+	// Non-admin users may only withdraw from their own account. claims
+	// is always non-nil (gateway-trust): IsAdmin=false when the
+	// X-User-IsAdmin header is missing, so the check fails closed.
+	if claims := iammiddleware.GetIAMClaims(c); !claims.IsAdmin {
 		ownerUser := strings.ToLower(claims.Owner + "/" + claims.Name)
 		if ownerUser != req.User {
 			http.Fail(c, 403, "cannot withdraw from another user's account", nil)

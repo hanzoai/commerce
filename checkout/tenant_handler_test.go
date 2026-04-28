@@ -81,7 +81,9 @@ func seedTenant(t *testing.T, s *store.Store, name string, hosts ...string) *sto
 
 // newRouterWithClaims builds a gin engine with the admin + public routes
 // mounted, plus a pre-handler that injects the provided IAMClaims into the
-// gin context. Passing nil claims simulates an unauthenticated caller.
+// gin context. Passing nil claims simulates an unauthenticated caller —
+// no headers, no iam_claims key, so iammiddleware.GetIAMClaims returns
+// a zero-valued *auth.IAMClaims and the handler 401s.
 func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -90,10 +92,7 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *gin.Engine {
 	// sets additional keys (iam_org, iam_email, …) — the two helpers we
 	// actually read are GetIAMClaims(c) and the presence of "iam_authenticated".
 	router.Use(func(c *gin.Context) {
-		if claims != nil {
-			c.Set("iam_claims", claims)
-			c.Set("iam_authenticated", true)
-		}
+		injectClaims(c, claims)
 		c.Next()
 	})
 
@@ -104,6 +103,18 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *gin.Engine {
 	MountTenantAdmin(admin, s)
 
 	return router
+}
+
+// injectClaims places the test claim onto the gin context so
+// iammiddleware.GetIAMClaims will return it. nil claims is a no-op —
+// the absence of both iam_claims and gateway headers is the canonical
+// "unauthenticated" shape.
+func injectClaims(c *gin.Context, claims *auth.IAMClaims) {
+	if claims == nil {
+		return
+	}
+	c.Set("iam_claims", claims)
+	c.Set("iam_authenticated", true)
 }
 
 // ─── public: GET /v1/commerce/tenant ────────────────────────────────────

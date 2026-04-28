@@ -31,9 +31,13 @@ func referrerCreate(api *rest.Rest) func(*gin.Context) {
 			return
 		}
 
-		// Override userId from IAM if available
-		if claims := iammiddleware.GetIAMClaims(c); claims != nil && ref.UserId == "" {
-			ref.UserId = claims.Subject
+		// Override userId from IAM if the gateway authenticated the caller
+		// AND the request body didn't supply one. claims is always non-nil;
+		// an empty Subject leaves ref.UserId untouched.
+		if ref.UserId == "" {
+			if subject := iammiddleware.GetIAMClaims(c).Subject; subject != "" {
+				ref.UserId = subject
+			}
 		}
 
 		// Auto-generate code if not provided
@@ -166,10 +170,13 @@ func generateCode() string {
 	return strings.ToUpper(clean)
 }
 
-// iamUserIdOrQuery returns the IAM user ID from JWT claims or from query param.
+// iamUserIdOrQuery returns the IAM user ID from JWT claims or from query
+// param. claims is always non-nil; an empty Subject means the gateway
+// did not authenticate the caller and we fall back to the explicit
+// query parameter.
 func iamUserIdOrQuery(c *gin.Context) string {
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
-		return claims.Subject
+	if subject := iammiddleware.GetIAMClaims(c).Subject; subject != "" {
+		return subject
 	}
 	return strings.TrimSpace(c.Query("userId"))
 }
