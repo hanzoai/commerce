@@ -184,10 +184,77 @@ func IsIAMAuthenticated(c *gin.Context) bool {
 	return c.GetHeader(pkgAuth.HeaderOrgID) != ""
 }
 
-// GetIAMClaims is retained for source-compat. Returns nil because we
-// no longer parse JWTs in-binary. Call sites should migrate to reading
-// X-Org-Id / X-User-Id / X-User-Email via pkg/auth helpers.
-func GetIAMClaims(_ *gin.Context) *auth.IAMClaims { return nil }
+// GetIAMClaims returns a non-nil *auth.IAMClaims populated from the
+// gateway-minted identity headers. The gateway validated the JWT and
+// stamped X-Org-Id, X-User-Id, X-User-Email, X-User-IsAdmin, X-Roles
+// (see hanzoai/gateway/auth_middleware.go). commerced trusts those
+// bits and reflects them into a claims struct so call sites can read
+// IsAdmin / Owner / Subject / Roles uniformly.
+//
+// Fail-closed contract: missing headers map to zero-valued fields. In
+// particular, missing X-User-IsAdmin yields IsAdmin=false (not "unknown").
+// Call sites MUST NOT nil-guard the return — it is always non-nil.
+//
+// The legacy in-test path stores a *auth.IAMClaims under the
+// "iam_claims" gin key; that wins when present so tests can inject
+// arbitrary claim shapes without going through HTTP.
+func GetIAMClaims(c *gin.Context) *auth.IAMClaims {
+	if c == nil {
+		return &auth.IAMClaims{}
+	}
+	if v, ok := c.Get("iam_claims"); ok {
+		if claims, ok := v.(*auth.IAMClaims); ok && claims != nil {
+			return claims
+		}
+	}
+	owner := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderOrgID))
+	user := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderUserID))
+	email := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderUserEmail))
+	isAdmin := strings.EqualFold(strings.TrimSpace(c.GetHeader(HeaderUserIsAdmin)), "true")
+	roles := parseRolesHeader(c.GetHeader(HeaderRoles))
+
+	claims := &auth.IAMClaims{
+		Owner:   owner,
+		Name:    user,
+		Email:   email,
+		IsAdmin: isAdmin,
+		Roles:   roles,
+	}
+	// Subject is the canonical user id field IAMClaims callers read;
+	// the gateway puts the JWT sub into X-User-Id.
+	claims.Subject = user
+	return claims
+}
+
+// HeaderUserIsAdmin is the gateway-minted "true"/"" superadmin flag.
+// Only "true" (case-insensitive) is treated as admin; any other value
+// (including absent) fails closed to false.
+const HeaderUserIsAdmin = "X-User-IsAdmin"
+
+// HeaderRoles is the canonical comma-joined role-name header set by
+// the gateway from the JWT roles claim. Empty value -> no roles.
+const HeaderRoles = "X-Roles"
+
+// parseRolesHeader splits the X-Roles comma list into a FlexRoles
+// slice, trimming whitespace and dropping empties.
+func parseRolesHeader(v string) auth.FlexRoles {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return nil
+	}
+	parts := strings.Split(v, ",")
+	out := make(auth.FlexRoles, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
 
 // GetIAMTier returns "" — tier is no longer derived in-binary. The
 // gateway can attach an X-Tier header in a future iteration if needed.
