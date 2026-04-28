@@ -1,47 +1,9 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: commerce-admin
-  namespace: hanzo
-  labels:
-    app: commerce-admin
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app: commerce-admin
-  template:
-    metadata:
-      labels:
-        app: commerce-admin
-    spec:
-      containers:
-        - name: admin
-          image: ghcr.io/hanzoai/commerce-admin:latest
-          ports:
-            - containerPort: 80
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 200m
-              memory: 128Mi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: commerce-admin
-  namespace: hanzo
-spec:
-  selector:
-    app: commerce-admin
-  ports:
-    - port: 80
-      targetPort: 80
----
+# admin.commerce.hanzo.ai now serves the embedded SPA inside commerced.
+# The legacy commerce-admin Next.js sidecar is retired. The Ingress
+# routes admin.commerce.hanzo.ai → commerce service, and the hanzoai/
+# ingress rewrite plug rewrites the path so / → /_/commerce/ui/, which
+# the embedded SPA handler in pkg/commerce/server.go owns.
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -50,6 +12,10 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     traefik.ingress.kubernetes.io/router.tls: "true"
+    # Rewrite the path so admin.commerce.hanzo.ai/foo/bar lands on
+    # /_/commerce/ui/foo/bar inside commerced, where the embedded
+    # SPA handler picks it up.
+    nginx.ingress.kubernetes.io/rewrite-target: /_/commerce/ui/$2
 spec:
   ingressClassName: hanzo
   tls:
@@ -60,10 +26,10 @@ spec:
     - host: admin.commerce.hanzo.ai
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: /(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
-                name: commerce-admin
+                name: commerce
                 port:
-                  number: 80
+                  number: 8001
