@@ -21,7 +21,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: commerce
-          image: ghcr.io/hanzoai/commerce:latest
+          image: ghcr.io/hanzoai/commerce:v1.38.0
           ports:
             - containerPort: 8001
               protocol: TCP
@@ -32,6 +32,12 @@ spec:
               value: "8001"
             - name: ENV
               value: "production"
+            # Gateway-trust: refuse /v1/commerce/* without X-Org-Id /
+            # X-User-Id / X-User-Email. Only hanzoai/gateway can stamp
+            # those headers, so this turns the binary into a closed
+            # box behind the gateway.
+            - name: COMMERCED_REQUIRE_IDENTITY
+              value: "true"
             - name: KMS_ENABLED
               value: "true"
             - name: KMS_URL
