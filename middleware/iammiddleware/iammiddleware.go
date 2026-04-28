@@ -1,13 +1,24 @@
-// Package iammiddleware provides Gin middleware for validating Hanzo IAM (hanzo.id) JWT tokens.
-// It uses the existing auth.IAMClient for JWKS-based token validation and sets
-// IAM claims in the Gin context for downstream handlers.
+// Copyright © 2026 Hanzo AI. MIT License.
+
+// Package iammiddleware is the gateway-trust shim for legacy call
+// sites. It used to do JWKS fetch + JWT validation in-binary (293
+// LOC). That trust boundary is now hanzoai/gateway: gateway validates
+// the JWT, populates X-Org-Id / X-User-Id / X-User-Email, and only
+// gateway-routed traffic reaches commerced.
+//
+// This file preserves the public API the rest of commerce depends on
+// (Init, InitKV, Client, IAMTokenRequired, IsIAMAuthenticated,
+// GetIAMClaims, GetIAMTier) so the 13 call sites compile, but every
+// function reads identity from the gateway-supplied headers via
+// pkg/auth.
+//
+// Deletion target: once all call sites migrate to pkg/auth + pkg/org,
+// this file can be removed wholesale.
 package iammiddleware
 
 import (
 	"context"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,276 +29,144 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/pkg/org"
+	pkgAuth "github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/util/bit"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// KVCache is the minimal interface required for org-lookup caching.
-// *infra.KVClient satisfies this interface.
-type KVCache interface {
-	Get(ctx context.Context, key string) (string, error)
-	Set(ctx context.Context, key string, value string, ttl time.Duration) error
-	Delete(ctx context.Context, keys ...string) error
-}
+// KVCache mirrors the pkg/org KVCache interface so existing wiring
+// (commerce.go: iammiddleware.InitKV(kv)) keeps working unchanged.
+type KVCache = org.KVCache
 
 var (
-	iamClient   *auth.IAMClient
-	initAttempt bool // true once Init has been called, regardless of success
 	mu          sync.RWMutex
-
-	kvCache KVCache // optional KV client for org-lookup caching
+	initialized bool
 )
 
-// Init initializes the IAM middleware with the given configuration.
-// Must be called before IAMTokenRequired() middleware is used.
-// Safe to call multiple times; last call wins.
-func Init(cfg *auth.IAMConfig) error {
+// Init is a no-op kept for source-compat with the legacy bootstrap
+// call (commerce.go calls it with auth.IAMConfig). The trust boundary
+// is now the gateway, not this binary.
+func Init(_ *auth.IAMConfig) error {
 	mu.Lock()
 	defer mu.Unlock()
-
-	initAttempt = true
-	client, err := auth.NewIAMClient(cfg)
-	if err != nil {
-		return err
-	}
-	iamClient = client
+	initialized = true
 	return nil
 }
 
-// InitKV wires a KV client for caching IAM org lookups.
-// Call from app.Bootstrap() after infra is connected.
-// Passing nil is safe and disables KV caching.
-func InitKV(kv KVCache) {
-	mu.Lock()
-	defer mu.Unlock()
-	kvCache = kv
-}
+// InitKV wires the KV cache used by org-id resolution.
+func InitKV(kv KVCache) { org.Bind(kv) }
 
-// Client returns the initialized IAM client, or nil if IAM is disabled or
-// Init() has not been called. Consumers outside the middleware chain (e.g.
-// SPA handlers with their own auth gate) use this to validate bearer tokens
-// against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
-// means "treat every request as unauthenticated".
-func Client() *auth.IAMClient {
-	mu.RLock()
-	defer mu.RUnlock()
-	return iamClient
-}
+// Client always returns nil now: there is no in-binary JWKS client.
+// Legacy callers that pass this into UI handlers receive nil and
+// must use the gateway-supplied identity headers instead.
+func Client() *auth.IAMClient { return nil }
 
-// orgCacheKey returns the KV key for an IAM owner → org ID mapping.
-func orgCacheKey(owner string) string {
-	return "iam:org_by_name:" + owner
-}
-
-// IAMTokenRequired validates hanzo.id JWT tokens via JWKS.
-// If a valid IAM token is found, it resolves the org from the token's "owner"
-// claim and sets both IAM context keys and the standard "organization" +
-// "permissions" keys that downstream handlers expect.
+// IAMTokenRequired returns a Gin middleware that:
+//  1. Reads the gateway-supplied X-Org-Id / X-User-Id / X-User-Email
+//     headers (already JWT-validated upstream).
+//  2. Resolves the Organization via pkg/org.Resolve (KV-cached).
+//  3. Sets the legacy gin context keys downstream handlers expect:
+//     iam_authenticated, iam_org, iam_user_id, iam_email,
+//     organization, active-organization, permissions.
 //
-// Auth guard behavior:
-//   - IAM enabled but client initialization failed: 503 Service Unavailable
-//   - Bearer token present but invalid: 401 Unauthorized (no fallthrough)
-//   - No Bearer token present: fall through to legacy org-token auth
+// Missing headers: falls through (handler chain may use a legacy
+// org-token instead). The gateway is the trust boundary; commerced is
+// only reachable via the gateway in production, where COMMERCED_REQUIRE_IDENTITY
+// rejects header-less requests at the edge of the binary.
 func IAMTokenRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		mu.RLock()
-		client := iamClient
-		wasInitAttempted := initAttempt
-		mu.RUnlock()
+		// pkg/auth.Gin has already attached headers to ctx; read from there.
+		// If pkg/auth.Gin wasn't installed, fall back to direct header reads
+		// so this middleware still works in legacy mounts.
+		ctx := c.Request.Context()
+		ownerID := pkgAuth.OrgID(ctx)
+		userID := pkgAuth.UserID(ctx)
+		email := pkgAuth.UserEmail(ctx)
+		if ownerID == "" {
+			ownerID = c.GetHeader(pkgAuth.HeaderOrgID)
+		}
+		if userID == "" {
+			userID = c.GetHeader(pkgAuth.HeaderUserID)
+		}
+		if email == "" {
+			email = c.GetHeader(pkgAuth.HeaderUserEmail)
+		}
 
-		// If Init was called but client is nil, initialization failed.
-		// The IAM subsystem is expected to be available but is not -- return 503.
-		if client == nil {
-			if wasInitAttempted {
-				jsonhttp.Fail(c, http.StatusServiceUnavailable,
-					"IAM authentication service is unavailable", nil)
-				return
-			}
-			// Init was never called -- IAM is not configured. Fall through
-			// to legacy auth.
+		if ownerID == "" {
+			// No identity headers — fall through to legacy auth.
 			c.Next()
 			return
 		}
 
-		header := c.GetHeader("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
-			// No Bearer token present -- fall through to legacy auth.
-			c.Next()
-			return
-		}
+		// Bound DB context — request ctx may be canceled by a navigation.
+		dbCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-		token := strings.TrimPrefix(header, "Bearer ")
-
-		// If token matches COMMERCE_SERVICE_TOKEN, skip IAM validation and
-		// fall through to legacy auth so service-to-service calls work.
-		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" && token == svcToken {
-			c.Next()
-			return
-		}
-
-		claims, err := client.ValidateToken(context.Background(), token)
+		o, err := org.Resolve(dbCtx, ownerID)
 		if err != nil {
-			// A Bearer token was presented but failed IAM validation.
-			// Fall through to legacy auth so other middleware can handle it.
-			log.Warn("IAM token validation failed: %v", err)
-			c.Next()
-			return
-		}
-
-		// Valid IAM token -- set context values
-		c.Set("iam_claims", claims)
-		c.Set("iam_user_id", claims.Subject)
-		c.Set("iam_email", claims.Email)
-		c.Set("iam_org", claims.Owner)
-		c.Set("iam_roles", claims.Roles)
-		c.Set("iam_tier", claims.Tier())
-		c.Set("iam_authenticated", true)
-
-		// Resolve organization from IAM "owner" claim so downstream handlers
-		// get proper tenant scoping via middleware.GetOrganization(c).
-		// IAM is the source of truth for org/identity — auto-create the
-		// Commerce org record on first encounter.
-		if claims.Owner == "" {
-			jsonhttp.Fail(c, http.StatusUnauthorized,
-				"IAM token missing owner claim", nil)
-			return
-		}
-
-		// Use a dedicated context with timeout for the DB lookup.
-		// The HTTP request context can be canceled by the browser (e.g. page
-		// navigation or AbortController), which would cause org resolution
-		// to fail with "context canceled" and leave downstream handlers
-		// without an organization — triggering a MustGet panic.
-		dbCtx, dbCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer dbCancel()
-
-		db := datastore.New(dbCtx)
-		org := organization.New(db)
-		org.Name = claims.Owner
-		org.Enabled = true
-
-		var found bool
-
-		// Fast path: KV cache maps owner name → org ID (5-minute TTL).
-		mu.RLock()
-		kv := kvCache
-		mu.RUnlock()
-
-		if kv != nil {
-			if cachedID, err := kv.Get(dbCtx, orgCacheKey(claims.Owner)); err == nil && cachedID != "" {
-				if lookupErr := org.GetById(cachedID); lookupErr == nil {
-					found = true
-				}
-			}
-		}
-
-		// Slow path: GetOrCreate by name (auto-provisions org on first encounter).
-		if !found {
-			if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
-				log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
-			} else {
-				found = true
-				// Populate KV cache for next request.
-				if kv != nil {
-					_ = kv.Set(dbCtx, orgCacheKey(claims.Owner), org.Id(), 5*time.Minute)
-				}
-
-				// Grant $5 starter credit on first encounter (idempotent —
-				// safe to call on every cache miss; GrantIfEligible checks
-				// for an existing grant inside a transaction).
-				// Use a fresh background context so the goroutine is not
-				// canceled when the request context (dbCtx) is done.
-				userId := claims.Subject
-				if userId == "" {
-					userId = claims.Owner
-				}
-				go func(uid string) {
-					bgDb := datastore.New(context.Background())
-					credit.GrantIfEligible(bgDb, uid, "org-created")
-				}(userId)
-			}
-		}
-
-		if !found {
-			// Org resolution failed — return a proper error instead of
-			// falling through to handlers that will panic on MustGet.
-			log.Warn("IAM org '%s' could not be resolved; returning 503", claims.Owner)
+			log.Warn("iammiddleware: org resolve failed for %q: %v", ownerID, err)
 			jsonhttp.Fail(c, http.StatusServiceUnavailable,
-				"Unable to retrieve organization associated with access token: org resolution failed", nil)
+				"Unable to resolve organization: "+err.Error(), err)
 			return
 		}
 
-		// Set live mode based on IAM permissions (same as service token path)
-		perms := iamPermissions(claims)
-		if perms.Has(permission.Live) {
-			org.Live = true
+		// Grant the $5 starter credit on first encounter (idempotent).
+		uid := userID
+		if uid == "" {
+			uid = ownerID
 		}
+		go func(id string) {
+			bgDb := datastore.New(context.Background())
+			credit.GrantIfEligible(bgDb, id, "org-created")
+		}(uid)
 
-		c.Set("organization", org)
-		c.Set("active-organization", org.Id())
-		c.Set("permissions", perms)
+		// Gateway-trusted identity always counts as live.
+		o.Live = true
+
+		// Mirror onto Gin keys for legacy handlers.
+		c.Set("iam_authenticated", true)
+		c.Set("iam_user_id", userID)
+		c.Set("iam_email", email)
+		c.Set("iam_org", ownerID)
+		c.Set("organization", o)
+		c.Set("active-organization", o.Id())
+		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
 
 		c.Next()
 	}
 }
 
-// iamPermissions converts IAM roles/claims to legacy permission bits.
-func iamPermissions(claims *auth.IAMClaims) bit.Field {
-	perms := permission.None
-
-	if claims.IsAdmin {
-		perms |= permission.Admin | permission.Live
-	}
-
-	// Map standard roles
-	for _, role := range claims.Roles {
-		switch role {
-		case "admin", "owner":
-			perms |= permission.Admin | permission.Live
-		case "member", "user":
-			perms |= permission.Published | permission.Live |
-				permission.ReadCoupon | permission.ReadProduct
+// IsIAMAuthenticated reports whether the request was identity-attached
+// by either pkg/auth.Gin (preferred) or legacy IAMTokenRequired.
+func IsIAMAuthenticated(c *gin.Context) bool {
+	if v, ok := c.Get("iam_authenticated"); ok {
+		if b, ok := v.(bool); ok && b {
+			return true
 		}
 	}
-
-	// Default: at minimum grant Published if authenticated
-	if perms == permission.None {
-		perms = permission.Published | permission.Live
-	}
-
-	return bit.Field(perms)
+	return c.GetHeader(pkgAuth.HeaderOrgID) != ""
 }
 
-// IsIAMAuthenticated checks whether the current request was authenticated via IAM.
-func IsIAMAuthenticated(c *gin.Context) bool {
-	_, exists := c.Get("iam_authenticated")
-	return exists
+// GetIAMClaims is retained for source-compat. Returns nil because we
+// no longer parse JWTs in-binary. Call sites should migrate to reading
+// X-Org-Id / X-User-Id / X-User-Email via pkg/auth helpers.
+func GetIAMClaims(_ *gin.Context) *auth.IAMClaims { return nil }
+
+// GetIAMTier returns "" — tier is no longer derived in-binary. The
+// gateway can attach an X-Tier header in a future iteration if needed.
+func GetIAMTier(_ *gin.Context) string { return "" }
+
+// orgFromContext is exported for tests that want to assert the legacy
+// gin "organization" key was populated correctly.
+func orgFromContext(c *gin.Context) *organization.Organization {
+	if v, ok := c.Get("organization"); ok {
+		if o, ok := v.(*organization.Organization); ok {
+			return o
+		}
+	}
+	return nil
 }
 
-// GetIAMClaims returns the IAM claims from context, or nil if not IAM-authenticated.
-func GetIAMClaims(c *gin.Context) *auth.IAMClaims {
-	val, exists := c.Get("iam_claims")
-	if !exists {
-		return nil
-	}
-	claims, ok := val.(*auth.IAMClaims)
-	if !ok {
-		return nil
-	}
-	return claims
-}
-
-// GetIAMTier returns the user's billing tier from context.
-// Returns an empty string if the request is not IAM-authenticated or no tier is set.
-func GetIAMTier(c *gin.Context) string {
-	val, exists := c.Get("iam_tier")
-	if !exists {
-		return ""
-	}
-	s, ok := val.(string)
-	if !ok {
-		return ""
-	}
-	return s
-}
+var _ = orgFromContext // referenced in tests
