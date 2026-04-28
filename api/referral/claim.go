@@ -42,10 +42,14 @@ func ClaimReferral(c *gin.Context) {
 		return
 	}
 
-	// Determine referee userId: prefer IAM JWT subject, fall back to request body.
+	// Determine referee userId: prefer the gateway-authenticated user
+	// (claims.Subject) over the request body to prevent a referee from
+	// claiming on behalf of another user. claims is always non-nil;
+	// an empty Subject means the request was anonymous and we fall back
+	// to the request body.
 	refereeUserId := req.UserId
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
-		refereeUserId = claims.Subject
+	if subject := iammiddleware.GetIAMClaims(c).Subject; subject != "" {
+		refereeUserId = subject
 	}
 	if refereeUserId == "" {
 		http.Fail(c, 400, "userId is required", nil)

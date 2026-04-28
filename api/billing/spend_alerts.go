@@ -33,10 +33,10 @@ func resolveSpendAlertUserId(c *gin.Context) string {
 	if user != "" {
 		return user
 	}
-	if claims := iammiddleware.GetIAMClaims(c); claims != nil {
-		return claims.Subject
-	}
-	return ""
+	// claims is always non-nil; Subject is empty when the gateway didn't
+	// stamp X-User-Id, in which case the caller is anonymous and we
+	// return "".
+	return iammiddleware.GetIAMClaims(c).Subject
 }
 
 func spendAlertResponse(a *spendalert.SpendAlert) gin.H {
@@ -97,10 +97,11 @@ func CreateSpendAlert(c *gin.Context) {
 	}
 
 	// Allow IAM-authenticated users to omit userId (use their own subject).
+	// claims is always non-nil; an empty Subject means the gateway didn't
+	// authenticate the caller, leaving the userId empty and the next
+	// guard returns 400.
 	if req.UserId == "" {
-		if claims := iammiddleware.GetIAMClaims(c); claims != nil {
-			req.UserId = claims.Subject
-		}
+		req.UserId = iammiddleware.GetIAMClaims(c).Subject
 	}
 
 	if req.UserId == "" {
