@@ -8,12 +8,8 @@ on:
 
 jobs:
   docker:
-    permissions:
-      contents: read
-      packages: write
     uses: hanzoai/.github/.github/workflows/docker-build.yml@main
     with:
       image: ghcr.io/hanzoai/commerce
       platforms: linux/amd64
-      deploy: false
     secrets: inherit
