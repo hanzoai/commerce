@@ -60,6 +60,24 @@ spec:
     - host: commerce.hanzo.ai
       http:
         paths:
+          # Embedded admin SPA + APIs land on the commerced service.
+          # commerce.hanzo.ai/_/commerce/ui/   → admin SPA shell
+          # commerce.hanzo.ai/v1/commerce/*    → JSON API (gateway-gated)
+          - path: /_/commerce
+            pathType: Prefix
+            backend:
+              service:
+                name: commerce
+                port:
+                  number: 8001
+          - path: /v1/commerce
+            pathType: Prefix
+            backend:
+              service:
+                name: commerce
+                port:
+                  number: 8001
+          # Everything else stays on the Next.js storefront sidecar.
           - path: /
             pathType: Prefix
             backend:
