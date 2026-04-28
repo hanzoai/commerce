@@ -7,7 +7,6 @@ on:
       - 'app/**'
       - 'Dockerfile.site'
       - 'Dockerfile.store'
-      - 'Dockerfile.admin'
   pull_request:
     branches: [main]
     paths:
@@ -38,20 +37,5 @@ jobs:
       context: .
       dockerfile: Dockerfile.store
       platforms: linux/amd64
-      push: ${{ github.event_name != 'pull_request' }}
-    secrets: inherit
-
-  admin:
-    permissions:
-      contents: read
-      packages: write
-    uses: hanzoai/.github/.github/workflows/docker-build.yml@main
-    with:
-      image: ghcr.io/hanzoai/commerce-admin
-      context: ./app
-      dockerfile: admin/Dockerfile
-      platforms: linux/amd64
-      build-args: |
-        NEXT_PUBLIC_GATEWAY_KEY=${{ secrets.CLOUD_API_SERVICE_KEY }}
       push: ${{ github.event_name != 'pull_request' }}
     secrets: inherit
