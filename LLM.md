@@ -26,6 +26,33 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 - Dual auth: legacy access token (org-bound) + IAM JWT (OIDC/JWKS via hanzo.id)
 - `"platform"` org returns empty namespace (intentional admin bypass)
 
+## Gateway Trust Headers (2026-04-27)
+
+commerced does NOT validate JWTs in-binary. The trust boundary is hanzoai/gateway.
+Only the gateway-minted X-* identity headers are trusted. Headers are stripped
+unconditionally on ingress to prevent client spoofing (see gateway/auth_middleware.go
+stripIdentityHeaders).
+
+| Header                | Source                  | Use                                         |
+|-----------------------|-------------------------|---------------------------------------------|
+| X-Org-Id              | JWT `owner` claim       | Org slug; namespace + scope                 |
+| X-User-Id             | JWT `sub` claim         | User identity                               |
+| X-User-Email          | JWT `email` claim       | Email; audit + notifications                |
+| X-User-IsAdmin        | JWT `isAdmin` claim     | "true" iff platform superadmin              |
+| X-Roles               | JWT `roles` claim       | Comma-joined role names (admin/owner/etc.)  |
+| X-User-Permissions    | gateway-derived         | bit.Field as base-10 int; 0 fails closed    |
+
+Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false. Missing
+X-User-Permissions -> bit.Field(0). Identity headers absent -> handler
+chain falls through to legacy auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
+
+Call sites read identity via:
+- `pkg/auth.OrgID(ctx)` / `UserID(ctx)` / `UserEmail(ctx)` (preferred)
+- `iammiddleware.GetIAMClaims(c)` returns a real `*auth.IAMClaims` populated from
+  headers (Owner=X-Org-Id, Subject=X-User-Id, Name=X-User-Id, Email=X-User-Email,
+  IsAdmin=X-User-IsAdmin=="true", Roles split from X-Roles). Never nil; do not
+  add nil-guards downstream.
+
 ## Key Directories
 
 ```
