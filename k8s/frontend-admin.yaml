@@ -1,9 +1,26 @@
-# admin.commerce.hanzo.ai now serves the embedded SPA inside commerced.
-# The legacy commerce-admin Next.js sidecar is retired. The Ingress
-# routes admin.commerce.hanzo.ai → commerce service, and the hanzoai/
-# ingress rewrite plug rewrites the path so / → /_/commerce/ui/, which
-# the embedded SPA handler in pkg/commerce/server.go owns.
+# admin.commerce.hanzo.ai serves the embedded SPA inside commerced. The
+# legacy commerce-admin Next.js sidecar is retired. The ingress maps the
+# host onto the commerce service, and a hanzoai/ingress Middleware CR
+# (ReplacePathRegex) rewrites every path under admin.commerce.hanzo.ai/
+# onto /_/commerce/ui/<path>, where the embedded SPA handler in
+# pkg/commerce/server.go owns the response.
+#
+# nginx-ingress annotations are NOT honored here; hanzoai/ingress uses
+# Middleware CRs instead. ingressClassName must be "ingress" so the
+# canonical hanzoai/ingress controller picks this up.
 
+---
+apiVersion: hanzo.ai/v1alpha1
+kind: Middleware
+metadata:
+  name: commerce-admin-rewrite
+  namespace: hanzo
+spec:
+  replacePathRegex:
+    regex: "^/(.*)"
+    replacement: "/_/commerce/ui/${1}"
+
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -11,13 +28,14 @@ metadata:
   namespace: hanzo
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    # Rewrite the path so admin.commerce.hanzo.ai/foo/bar lands on
-    # /_/commerce/ui/foo/bar inside commerced, where the embedded
-    # SPA handler picks it up.
-    nginx.ingress.kubernetes.io/rewrite-target: /_/commerce/ui/$2
+    # Bind the canonical hanzoai/ingress Middleware that rewrites
+    # admin.commerce.hanzo.ai/<x> -> /_/commerce/ui/<x> in-flight.
+    # Annotation namespace is the standard ingress.kubernetes.io/* per
+    # hanzoai/ingress kubernetes-ingress provider docs.
+    ingress.kubernetes.io/router.middlewares: hanzo-commerce-admin-rewrite@kubernetescrd
+    ingress.kubernetes.io/router.tls: "true"
 spec:
-  ingressClassName: hanzo
+  ingressClassName: ingress
   tls:
     - hosts:
         - admin.commerce.hanzo.ai
@@ -26,8 +44,8 @@ spec:
     - host: admin.commerce.hanzo.ai
       http:
         paths:
-          - path: /(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /
+            pathType: Prefix
             backend:
               service:
                 name: commerce
