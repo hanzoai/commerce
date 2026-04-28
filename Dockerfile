@@ -122,6 +122,9 @@ ENV PORT=8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8001/healthz || exit 1
 
-# Default command
+# Default command. cmd/commerce/main.go is flag.Parse() only; positional
+# args are ignored. Pass the listen address as a --http flag so the
+# binary doesn't fall back to the 127.0.0.1:8090 default and CrashLoopBackOff
+# at rollout. ENTRYPOINT + CMD form a single argv: /app/commerce --http 0.0.0.0:8001.
 ENTRYPOINT ["/app/commerce"]
-CMD ["serve", "0.0.0.0:8001"]
+CMD ["--http", "0.0.0.0:8001"]
