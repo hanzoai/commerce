@@ -19,6 +19,8 @@ package iammiddleware
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,7 +35,6 @@ import (
 	pkgAuth "github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/util/bit"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/util/permission"
 )
 
 // KVCache mirrors the pkg/org KVCache interface so existing wiring
@@ -125,6 +126,15 @@ func IAMTokenRequired() gin.HandlerFunc {
 		// Gateway-trusted identity always counts as live.
 		o.Live = true
 
+		// Permissions are derived strictly from gateway-supplied headers,
+		// never granted by mere presence of identity. The gateway MUST
+		// mint X-User-Permissions from the validated JWT (see
+		// hanzoai/gateway/auth_middleware.go and HEADERS.md). If the
+		// header is absent we fail closed: zero permissions, no Admin,
+		// no Live. The gateway is the trust boundary; this binary
+		// trusts the bits it provides and nothing else.
+		perms := parsePermissionsHeader(c.GetHeader(HeaderUserPermissions))
+
 		// Mirror onto Gin keys for legacy handlers.
 		c.Set("iam_authenticated", true)
 		c.Set("iam_user_id", userID)
@@ -132,10 +142,35 @@ func IAMTokenRequired() gin.HandlerFunc {
 		c.Set("iam_org", ownerID)
 		c.Set("organization", o)
 		c.Set("active-organization", o.Id())
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Set("permissions", perms)
 
 		c.Next()
 	}
+}
+
+// HeaderUserPermissions is the canonical gateway-minted permission
+// header. It carries the bit.Field value as a base-10 int64 string
+// (e.g. "3" for Live|Test). The gateway MUST set it from the
+// validated JWT roles/claims; commerced reads it as-is. Missing or
+// malformed values fail closed (zero permissions). Documented in
+// HEADERS.md.
+const HeaderUserPermissions = "X-User-Permissions"
+
+// parsePermissionsHeader converts the gateway-minted X-User-Permissions
+// value into a bit.Field. Empty or invalid input fails closed (zero
+// permissions). This is the only path that turns gateway intent into
+// commerced permissions; do not introduce defaults that grant rights
+// based on identity presence alone.
+func parsePermissionsHeader(v string) bit.Field {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return bit.Field(0)
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n < 0 {
+		return bit.Field(0)
+	}
+	return bit.Field(n)
 }
 
 // IsIAMAuthenticated reports whether the request was identity-attached
