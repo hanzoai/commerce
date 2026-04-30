@@ -62,7 +62,7 @@ commerce/
   db/              SQLite, Postgres, Mongo, ClickHouse backends
   hooks/           Hook system (Base-compatible): Hook[T], TaggedHook[T], Resolver
   events/          Unified event forwarding to ClickHouse/Insights/Analytics
-  insights/        PostHog integration + Gin middleware
+  insights/        Hanzo Insights integration + Gin middleware
   api/             HTTP handlers (store, cart, analytics, namespace, etc.)
   models/          Data models
   middleware/      HTTP middleware (auth, namespace, IAM)
@@ -85,7 +85,7 @@ go run cmd/commerce/main.go serve --dev     # Development
 | `COMMERCE_HTTP` | `127.0.0.1:8090` | Listen address |
 | `REDIS_URL` | - | `redis://[:pass@]host:port[/db]` (priority over VALKEY_URL) |
 | `COMMERCE_DATASTORE` | - | ClickHouse DSN |
-| `INSIGHTS_ENABLED` | `false` | PostHog product analytics |
+| `INSIGHTS_ENABLED` | `false` | Hanzo Insights product analytics |
 | `ANALYTICS_ENABLED` | `false` | Umami-like web analytics |
 | `KMS_ENABLED` | `false` | Enable KMS secret management |
 | `KMS_URL` | - | KMS base URL |
