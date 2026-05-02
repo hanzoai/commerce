@@ -14,7 +14,6 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
   +-- User SQLite (data/users/{userID}/data.db) + sqlite-vec
   +-- Org SQLite (data/orgs/{orgID}/data.db) + sqlite-vec
   +-- PostgreSQL (alternative, pgvector)
-  +-- MongoDB/FerretDB (alternative)
   +-- ClickHouse via hanzo/datastore-go (analytics)
 ```
 
@@ -59,7 +58,7 @@ Call sites read identity via:
 commerce/
   cmd/commerce/    CLI entry point
   commerce.go      Main app framework
-  db/              SQLite, Postgres, Mongo, ClickHouse backends
+  db/              SQLite, Postgres, ClickHouse backends
   hooks/           Hook system (Base-compatible): Hook[T], TaggedHook[T], Resolver
   events/          Unified event forwarding to ClickHouse/Insights/Analytics
   insights/        Hanzo Insights integration + Gin middleware
