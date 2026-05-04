@@ -218,6 +218,15 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Billing status — hasPaymentMethod + creditBalance in one call (used by bot gateway)
 	user.GET("/status", GetBillingStatus)
 
+	// Self-service balance + welcome credit. Identity comes from the
+	// gateway-injected X-Org-Id / X-User-Id headers; the caller never
+	// needs an admin token. Welcome credit is idempotent (tag-deduped),
+	// no payment method required (unlike POST /billing/credit) — it's
+	// the on-signup grant that the playground SPA invokes from
+	// FundingGate on first login.
+	user.GET("/me/balance", GetMyBalance)
+	user.POST("/me/welcome", PostMyWelcome)
+
 	// Credit grants & balance (read-only, user-scoped)
 	user.GET("/credit-grants", ListCreditGrants)
 	user.GET("/credit-balance", GetCreditBalance)
