@@ -15,6 +15,8 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/util/json/http"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // userKey returns the canonical "<org>/<user>" key used as the
