@@ -345,8 +345,8 @@ github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 h1:HWRh5R2+9EifMyIHV7ZV+MIZqgz
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0/go.mod h1:JfhWUomR1baixubs02l85lZYYOm7LV6om4ceouMv45c=
 github.com/hanzoai/base v0.44.0 h1:ta2ISY09qqcrOWmhEvIjPmSw0i9im6wpQ/dvZ+LxBPk=
 github.com/hanzoai/base v0.44.0/go.mod h1:zbuiFnPdxQttQ2jWhFVsBmAFW7M4fpGoNmpuIny9UwE=
-github.com/hanzoai/datastore-go/v2 v2.44.0 h1:3dQ4pMVy+spFLqcHpg/+HdMlyOYF2QPxda6PXtwVxhs=
-github.com/hanzoai/datastore-go/v2 v2.44.0/go.mod h1:pkjjhn01T0j8jZaO7ILnuRsXNz/sGec4smcDHPjrcp0=
+github.com/hanzoai/datastore-go/v2 v2.45.0 h1:73RSPKFV/Bm75VUlwFwx1namCS2bnEYEVH+FMMTf50o=
+github.com/hanzoai/datastore-go/v2 v2.45.0/go.mod h1:6mGC9Y5mMVVwZ8HB/peBpfVI87dDqdkCQYhtGI57wyA=
 github.com/hanzoai/dbx v1.16.0 h1:C8wsb9BIiit4nYnXizpcB4SyzVaepPkQFwq5i9fxAV0=
 github.com/hanzoai/dbx v1.16.0/go.mod h1:ynP6HSiDDoFZ8M3DC+XvSglBPFRygfTd/gjTWabh4yA=
 github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568 h1:b9VAc4r4DtL8KmwnNS22o80ZP+YDuRkP//CtqeDX2OM=
