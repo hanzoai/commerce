@@ -286,56 +286,34 @@ var _ = Describe("account", func() {
 		})
 	})
 
-	Context("Login", func() {
-		It("Should allow login with email", func() {
-			req := `{
-				"email": "dev@hanzo.ai",
-				"password": "Z0rd0N"
-			}`
-
-			res := loginRes{}
-
-			cl.Post("/account/login", req, &res)
-			Expect(res.Token).ToNot(Equal(""))
+	// Login is now unified through Hanzo IAM. /account/login returns
+	// 410 Gone with a Location header pointing at hanzo.id OAuth.
+	// All cases below assert the deprecation contract — there is no
+	// commerce-local password store anymore.
+	Context("Login (deprecated → IAM 410)", func() {
+		It("Should 410 on email login", func() {
+			req := `{"email": "dev@hanzo.ai", "password": "Z0rd0N"}`
+			cl.Post("/account/login", req, nil, 410)
 		})
 
-		It("Should allow login with username", func() {
-			req := `{
-				"username": "redranger",
-				"password": "Z0rd0N"
-			}`
-
-			res := loginRes{}
-
-			cl.Post("/account/login", req, &res)
-			Expect(res.Token).ToNot(Equal(""))
+		It("Should 410 on username login", func() {
+			req := `{"username": "redranger", "password": "Z0rd0N"}`
+			cl.Post("/account/login", req, nil, 410)
 		})
 
-		It("Should disallow login with disabled account", func() {
-			req := `{
-				"email": "dev@hanzo.ai",
-				"password": "ilikedragon"
-			}`
-
-			cl.Post("/account/login", req, nil, 401)
+		It("Should 410 on disabled account", func() {
+			req := `{"email": "dev@hanzo.ai", "password": "ilikedragon"}`
+			cl.Post("/account/login", req, nil, 410)
 		})
 
-		It("Should disallow login with wrong password", func() {
-			req := `{
-				"email": "dev@hanzo.ai",
-				"password": "z3d"
-			}`
-
-			cl.Post("/account/login", req, nil, 401)
+		It("Should 410 on wrong password", func() {
+			req := `{"email": "dev@hanzo.ai", "password": "z3d"}`
+			cl.Post("/account/login", req, nil, 410)
 		})
 
-		It("Should disallow login with wrong email", func() {
-			req := `{
-				"email": "billy@blue.co.uk",
-				"password": "bloo"
-			}`
-
-			cl.Post("/account/login", req, nil, 401)
+		It("Should 410 on wrong email", func() {
+			req := `{"email": "billy@blue.co.uk", "password": "bloo"}`
+			cl.Post("/account/login", req, nil, 410)
 		})
 
 	})

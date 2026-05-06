@@ -19,7 +19,6 @@ require (
 	github.com/gorilla/schema v1.4.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/hanzoai/base v0.44.0
-	github.com/hanzoai/datastore-go/v2 v2.44.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.18.0
@@ -91,6 +90,7 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
+	github.com/hanzoai/datastore-go/v2 v2.45.0
 	github.com/hanzoai/dbx v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
