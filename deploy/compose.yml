@@ -321,7 +321,7 @@ services:
   # ===========================================================================
 
   ingress:
-    image: ghcr.io/hanzoai/ingress:latest
+    image: ghcr.io/hanzoai/ingress:1.7.41
     container_name: commerce-ingress
     restart: unless-stopped
     ports:
