@@ -5,7 +5,7 @@
 // with the parent via init().
 module github.com/hanzoai/commerce/thirdparty/ethereum
 
-go 1.26.1
+go 1.26.3
 
 require (
 	github.com/gin-gonic/gin v1.12.0

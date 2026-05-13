@@ -1,6 +1,6 @@
 module github.com/hanzoai/commerce
 
-go 1.26.1
+go 1.26.3
 
 require (
 	github.com/Machiel/slugify v1.0.1
@@ -33,7 +33,7 @@ require (
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.17.45
-	github.com/luxfi/zap v0.2.1
+	github.com/zap-proto/go v0.2.1
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
