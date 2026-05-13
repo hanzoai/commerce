@@ -43,7 +43,7 @@ and OSS contributor payout pipeline across IAM, Commerce, Analytics, and Console
 7. **No console referral dashboard**. No pages in console.hanzo.ai for viewing referral stats, sharing links, or viewing earnings.
 8. **No SBOM scan cron**. The contributor API accepts manual SBOM entries but nothing scans repos automatically.
 9. **No contributor payout execution**. `calculatePayouts` returns a summary but does not create transactions or Stripe transfers.
-10. **No Casdoor webhook configuration** for user signup events.
+10. **No IAM webhook configuration** for user signup events.
 
 ## Architecture
 
@@ -77,7 +77,7 @@ Commerce is the single source of truth for all monetary operations. IAM handles 
 
 ### Why Client-Side Claim (Not IAM Webhook)
 
-IAM (Casdoor) supports webhooks, but they fire for every user operation (update, login, etc.), not just signup. Filtering is unreliable. The referral code is a frontend concern (query param) that IAM's signup API does not accept or store.
+IAM supports webhooks, but they fire for every user operation (update, login, etc.), not just signup. Filtering is unreliable. The referral code is a frontend concern (query param) that IAM's signup API does not accept or store.
 
 The correct design: the frontend stores the `ref` param in `sessionStorage` before signup, then after successful signup + login, the callback page calls Commerce to claim the referral. This is:
 
