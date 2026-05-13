@@ -422,6 +422,8 @@ github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=
 github.com/leodido/go-urn v1.4.0/go.mod h1:bvxc+MVxLKB4z00jd1z+Dvzr47oO32F/QSNjSBOlFxI=
 github.com/lib/pq v1.12.1 h1:x1nbl/338GLqeDJ/FAiILallhAsqubLzEZu/pXtHUow=
 github.com/lib/pq v1.12.1/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
+github.com/luxfi/accel v1.0.7 h1:ksHieAp50umwqxqgyHk9WiOmXM54kia3IEDb5H7FsM8=
+github.com/luxfi/accel v1.0.7/go.mod h1:iZD3oxffiMEIT/KvzD8bgwC/cBn4AYlMW3QJpbRa4RE=
 github.com/luxfi/age v1.4.0 h1:tU5q65RQSQdaVq64Z/DVUhiPQMoMPQT6pr41LsvG0AQ=
 github.com/luxfi/age v1.4.0/go.mod h1:iAYAxgvrXxcy746+Ovh/eWWDuF9teJLNcCSSOX9RYW0=
 github.com/luxfi/cache v1.2.1 h1:kAzOS55/hmYeNKR+0HAKv4ma48Y6JjkI8UQeqdZ8bfI=
@@ -430,6 +432,8 @@ github.com/luxfi/container v0.0.4 h1:BXhF82WyfqVP5mjlNcr7tP0Fcnvl0Ap1rkiu+rq5XuM
 github.com/luxfi/container v0.0.4/go.mod h1:Z3SpmMF5d4t77MM0nHYXURpn+EMVaeu1fhbd/3BGaek=
 github.com/luxfi/crypto v1.17.45 h1:uGK0y4+aLipE/M0YIQ5hcsWv0ZG0E4cPv03a94K/eLE=
 github.com/luxfi/crypto v1.17.45/go.mod h1:GnAkhQ7HNs3X0Tzx5nOONS3kl0yRmWHbDcRO5ffILsg=
+github.com/luxfi/crypto v1.19.0 h1:VtH6kvZrCEjCnkHPkhExDU+GJ0ZulYX4rnA+lXJdJHw=
+github.com/luxfi/crypto v1.19.0/go.mod h1:ee525i8Recbpb0jVTDZYZBr1MmvJ27OITJHZ/nlNMBw=
 github.com/luxfi/fhe v1.7.9 h1://6Od/hbYef+sOfg0B364u4nJYv6SB01cZn4PdgXQwQ=
 github.com/luxfi/fhe v1.7.9/go.mod h1:Pmt8Wy1zPTYbtOuOCUdXa0lw4vDMuSKBV/pgGRlLWF4=
 github.com/luxfi/ids v1.2.9 h1:+yjdhXW99drnd2Zlp1u/p8k3G23W3/1btJQ4ogHawUI=
@@ -438,6 +442,7 @@ github.com/luxfi/lattice/v7 v7.0.0 h1:d1vgan6mlb2KtwYfPc1g69uxVYaoVYZmlrIm4aCO88
 github.com/luxfi/lattice/v7 v7.0.0/go.mod h1:PFDdOkuGTQ0cbJMbKojzEJMGWUQmZW+wK9/wJ9F9fOs=
 github.com/luxfi/log v1.4.1 h1:rIfFRodb9jrD/w7KayaUk0Oc+37PaQQdKEEMJCjR8gw=
 github.com/luxfi/log v1.4.1/go.mod h1:64IE3xRMJcpkQwnPUfJw3pDj7wU0kRS7BZ9wM7R72jk=
+github.com/luxfi/logger v1.4.1/go.mod h1:64IE3xRMJcpkQwnPUfJw3pDj7wU0kRS7BZ9wM7R72jk=
 github.com/luxfi/math v1.2.4 h1:iVz7s0gToCNUU/2cLT8gUa8MLzc0YRp4jBmeXBeKdXk=
 github.com/luxfi/math v1.2.4/go.mod h1:i+Am9YvFsqDE75ZW8MPE62XCXGukXNiN/7mD9SKxxZY=
 github.com/luxfi/math/big v0.1.0 h1:Vz4c0RsZVPdIKPsHPgAJChH/R3p15WHRUz7LkLf+NIQ=
