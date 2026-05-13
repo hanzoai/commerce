@@ -33,7 +33,6 @@ require (
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.17.45
-	github.com/zap-proto/go v0.2.1
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
@@ -49,6 +48,8 @@ require (
 	github.com/square/square-go-sdk/v3 v3.0.1
 	golang.org/x/crypto v0.49.0
 )
+
+require github.com/luxfi/zap v0.2.1
 
 require (
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
