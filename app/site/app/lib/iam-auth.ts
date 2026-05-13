@@ -1,7 +1,7 @@
 /**
  * Minimal IAM auth module for the commerce portal.
  *
- * Handles OIDC/PKCE login via Casdoor (hanzo.id) and token storage.
+ * Handles OIDC/PKCE login via Hanzo IAM (hanzo.id) and token storage.
  * Self-contained — no external auth package dependency.
  */
 

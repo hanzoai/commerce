@@ -1,5 +1,5 @@
 // iam_admin.go — admin-scope IAM helpers used by the commerce-grant CLI to
-// resolve an IAM user by email. These helpers call Casdoor-compatible admin
+// resolve an IAM user by email. These helpers call IAM admin
 // endpoints (hanzo.id) using client-credentials (clientId/clientSecret) query
 // auth — the same mechanism Cloud-API uses for /api/add-usage-record.
 //
@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-// IAMAdminClient is a thin HTTP client for Casdoor admin endpoints on hanzo.id.
+// IAMAdminClient is a thin HTTP client for IAM admin endpoints on hanzo.id.
 // All calls authenticate via clientId/clientSecret query params — no session.
 type IAMAdminClient struct {
 	BaseURL      string       // e.g. https://hanzo.id
@@ -40,7 +40,7 @@ func NewIAMAdminClient(baseURL, clientID, clientSecret string, httpClient *http.
 	}
 }
 
-// AdminUser is the subset of Casdoor's user record we care about.
+// AdminUser is the subset of the IAM user record we care about.
 type AdminUser struct {
 	Owner       string `json:"owner"`
 	Name        string `json:"name"`
@@ -58,7 +58,7 @@ func (u AdminUser) Subject() string {
 }
 
 // GetUserByEmail finds a user by email across all organizations. It uses
-// Casdoor's /api/get-global-users search endpoint with field=email filter.
+// The IAM /api/get-global-users search endpoint with field=email filter.
 func (c *IAMAdminClient) GetUserByEmail(ctx context.Context, email string) (*AdminUser, error) {
 	if email == "" {
 		return nil, fmt.Errorf("iam admin: email required")
@@ -96,7 +96,7 @@ func (c *IAMAdminClient) GetUserByEmail(ctx context.Context, email string) (*Adm
 		return nil, fmt.Errorf("iam admin: get-global-users: status %d: %s", resp.StatusCode, string(body))
 	}
 
-	// Casdoor wraps responses as { status, msg, data, data2 }.
+	// IAM wraps responses as { status, msg, data, data2 }.
 	var envelope struct {
 		Status string          `json:"status"`
 		Msg    string          `json:"msg"`
@@ -122,7 +122,7 @@ func (c *IAMAdminClient) GetUserByEmail(ctx context.Context, email string) (*Adm
 		}
 	}
 
-	// Exact-match the email case-insensitively (Casdoor's search is a LIKE).
+	// Exact-match the email case-insensitively (IAM search is a LIKE).
 	emailLC := strings.ToLower(email)
 	for i := range users {
 		if strings.ToLower(users[i].Email) == emailLC {
