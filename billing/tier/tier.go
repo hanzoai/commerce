@@ -1,6 +1,6 @@
 // Package tier defines the tiered credit system for Hanzo billing.
 //
-// Each IAM user has a "tier" property stored in hanzo.id (Casdoor) user
+// Each IAM user has a "tier" property stored in hanzo.id (Hanzo IAM) user
 // properties and propagated via JWT claims. The tier determines:
 //   - daily replenishing free credits (non-accumulating)
 //   - maximum concurrent agents
