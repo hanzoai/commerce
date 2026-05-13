@@ -32,7 +32,7 @@ require (
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
-	github.com/luxfi/crypto v1.17.45
+	github.com/luxfi/crypto v1.19.0
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
@@ -50,6 +50,8 @@ require (
 )
 
 require github.com/luxfi/zap v0.2.1
+
+require github.com/luxfi/accel v1.0.7 // indirect
 
 require (
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
@@ -170,3 +172,12 @@ require (
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
+
+// luxfi/log@v1.3.0 declares its module path as "luxfi/logger" — pin
+// to the canonical renamed module so transitive deps that still
+// require "luxfi/log" resolve cleanly.
+replace github.com/luxfi/log => github.com/luxfi/logger v1.4.1
+
+// Transitive dep chain pinned luxfi/genesis@v1.5.22 which was never
+// published; v1.9.7 is the current canonical.
+replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
