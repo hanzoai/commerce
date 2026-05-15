@@ -39,7 +39,7 @@ func DefaultHanzoIDConfig() *HanzoIDConfig {
 	return &HanzoIDConfig{
 		AuthURL:     "https://hanzo.id/oauth/authorize",
 		TokenURL:    "https://hanzo.id/oauth/token",
-		UserInfoURL: "https://hanzo.id/api/userinfo",
+		UserInfoURL: "https://hanzo.id/v1/iam/userinfo",
 		Scopes:      []string{"openid", "profile", "email"},
 	}
 }
@@ -60,7 +60,7 @@ func NewOAuthService(config *HanzoIDConfig, service *Service) *OAuthService {
 		config.TokenURL = "https://hanzo.id/oauth/token"
 	}
 	if config.UserInfoURL == "" {
-		config.UserInfoURL = "https://hanzo.id/api/userinfo"
+		config.UserInfoURL = "https://hanzo.id/v1/iam/userinfo"
 	}
 	if len(config.Scopes) == 0 {
 		config.Scopes = []string{"openid", "profile", "email"}

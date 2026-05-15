@@ -516,7 +516,7 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 
 // GetUserInfo fetches user information using an access token.
 func (c *IAMClient) GetUserInfo(ctx context.Context, accessToken string) (*IAMUserInfo, error) {
-	userinfoURL := c.config.Issuer + "/api/userinfo"
+	userinfoURL := c.config.Issuer + "/v1/iam/userinfo"
 
 	// Try to use discovered endpoint
 	discovery, err := c.getDiscovery(ctx)
@@ -618,7 +618,7 @@ type IntrospectionResponse struct {
 
 // RevokeToken revokes an access or refresh token.
 func (c *IAMClient) RevokeToken(ctx context.Context, token string, tokenTypeHint string) error {
-	revokeURL := c.config.Issuer + "/api/login/oauth/revoke"
+	revokeURL := c.config.Issuer + "/v1/iam/login/oauth/revoke"
 
 	// Try to use discovered endpoint
 	discovery, err := c.getDiscovery(ctx)
