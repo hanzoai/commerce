@@ -43,9 +43,6 @@ type FraudChecker struct {
 func NewFraudChecker(db *datastore.Datastore) *FraudChecker {
 	issuer := os.Getenv("IAM_ENDPOINT")
 	if issuer == "" {
-		issuer = os.Getenv("HANZO_IAM_URL")
-	}
-	if issuer == "" {
 		issuer = "https://hanzo.id"
 	}
 	return &FraudChecker{
