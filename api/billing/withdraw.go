@@ -26,7 +26,7 @@ type withdrawRequest struct {
 
 // Withdraw creates a withdrawal transaction for an IAM user.
 //
-//	POST /api/v1/billing/withdraw
+//	POST /v1/billing/withdraw
 //
 // Used when a user explicitly moves funds out of their Commerce balance
 // (e.g. funding a bot wallet, manual withdrawal). Non-admin callers may
