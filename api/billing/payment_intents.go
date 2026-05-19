@@ -28,7 +28,7 @@ type createPaymentIntentRequest struct {
 
 // CreatePaymentIntent creates a new payment intent.
 //
-//	POST /api/v1/billing/payment-intents
+//	POST /v1/billing/payment-intents
 func CreatePaymentIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -72,7 +72,7 @@ func CreatePaymentIntent(c *gin.Context) {
 
 // GetPaymentIntent retrieves a payment intent by ID.
 //
-//	GET /api/v1/billing/payment-intents/:id
+//	GET /v1/billing/payment-intents/:id
 func GetPaymentIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -88,7 +88,7 @@ func GetPaymentIntent(c *gin.Context) {
 
 // ListPaymentIntents lists payment intents, optionally filtered by customerId.
 //
-//	GET /api/v1/billing/payment-intents?customerId=...
+//	GET /v1/billing/payment-intents?customerId=...
 func ListPaymentIntents(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -123,7 +123,7 @@ type confirmPaymentIntentRequest struct {
 
 // ConfirmPaymentIntent confirms a payment intent.
 //
-//	POST /api/v1/billing/payment-intents/:id/confirm
+//	POST /v1/billing/payment-intents/:id/confirm
 func ConfirmPaymentIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -153,7 +153,7 @@ type capturePaymentIntentRequest struct {
 
 // CapturePaymentIntent captures a previously authorized payment intent.
 //
-//	POST /api/v1/billing/payment-intents/:id/capture
+//	POST /v1/billing/payment-intents/:id/capture
 func CapturePaymentIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -182,7 +182,7 @@ type cancelPaymentIntentRequest struct {
 
 // CancelPaymentIntent cancels a payment intent.
 //
-//	POST /api/v1/billing/payment-intents/:id/cancel
+//	POST /v1/billing/payment-intents/:id/cancel
 func CancelPaymentIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

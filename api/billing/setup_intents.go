@@ -19,7 +19,7 @@ type createSetupIntentRequest struct {
 
 // CreateSetupIntent creates a new setup intent for saving a payment method.
 //
-//	POST /api/v1/billing/setup-intents
+//	POST /v1/billing/setup-intents
 func CreateSetupIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -46,7 +46,7 @@ func CreateSetupIntent(c *gin.Context) {
 
 // GetSetupIntent retrieves a setup intent by ID.
 //
-//	GET /api/v1/billing/setup-intents/:id
+//	GET /v1/billing/setup-intents/:id
 func GetSetupIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -66,7 +66,7 @@ type confirmSetupIntentRequest struct {
 
 // ConfirmSetupIntent confirms a setup intent, saving the payment method.
 //
-//	POST /api/v1/billing/setup-intents/:id/confirm
+//	POST /v1/billing/setup-intents/:id/confirm
 func ConfirmSetupIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -95,7 +95,7 @@ type cancelSetupIntentRequest struct {
 
 // CancelSetupIntent cancels a setup intent.
 //
-//	POST /api/v1/billing/setup-intents/:id/cancel
+//	POST /v1/billing/setup-intents/:id/cancel
 func CancelSetupIntent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

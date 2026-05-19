@@ -16,7 +16,7 @@ import (
 
 // ListBillingEvents lists billing events, optionally filtered by type or objectId.
 //
-//	GET /api/v1/billing/events?type=...&objectId=...
+//	GET /v1/billing/events?type=...&objectId=...
 func ListBillingEvents(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -50,7 +50,7 @@ func ListBillingEvents(c *gin.Context) {
 
 // GetBillingEvent retrieves a single billing event.
 //
-//	GET /api/v1/billing/events/:id
+//	GET /v1/billing/events/:id
 func GetBillingEvent(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -72,7 +72,7 @@ type createWebhookEndpointRequest struct {
 
 // CreateWebhookEndpoint registers a new webhook endpoint.
 //
-//	POST /api/v1/billing/webhook-endpoints
+//	POST /v1/billing/webhook-endpoints
 func CreateWebhookEndpoint(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -113,7 +113,7 @@ func CreateWebhookEndpoint(c *gin.Context) {
 
 // GetWebhookEndpoint retrieves a webhook endpoint.
 //
-//	GET /api/v1/billing/webhook-endpoints/:id
+//	GET /v1/billing/webhook-endpoints/:id
 func GetWebhookEndpoint(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -129,7 +129,7 @@ func GetWebhookEndpoint(c *gin.Context) {
 
 // ListWebhookEndpoints lists all webhook endpoints.
 //
-//	GET /api/v1/billing/webhook-endpoints
+//	GET /v1/billing/webhook-endpoints
 func ListWebhookEndpoints(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -162,7 +162,7 @@ type updateWebhookEndpointRequest struct {
 
 // UpdateWebhookEndpoint updates a webhook endpoint configuration.
 //
-//	PATCH /api/v1/billing/webhook-endpoints/:id
+//	PATCH /v1/billing/webhook-endpoints/:id
 func UpdateWebhookEndpoint(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -203,7 +203,7 @@ func UpdateWebhookEndpoint(c *gin.Context) {
 
 // DeleteWebhookEndpoint removes a webhook endpoint.
 //
-//	DELETE /api/v1/billing/webhook-endpoints/:id
+//	DELETE /v1/billing/webhook-endpoints/:id
 func DeleteWebhookEndpoint(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

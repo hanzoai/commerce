@@ -27,7 +27,7 @@ type refundRequest struct {
 // Refund creates a deposit tagged "refund" to correct an overcharge.
 // The metadata links back to the original transaction for auditability.
 //
-//	POST /api/v1/billing/refund
+//	POST /v1/billing/refund
 func Refund(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

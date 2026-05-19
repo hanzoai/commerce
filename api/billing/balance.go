@@ -13,7 +13,7 @@ import (
 
 // GetBalance returns the current balance for an IAM user.
 //
-//	GET /api/v1/billing/balance?user=hanzo/alice&currency=usd
+//	GET /v1/billing/balance?user=hanzo/alice&currency=usd
 //
 // All amounts in cents. available = balance - holds.
 func GetBalance(c *gin.Context) {
@@ -56,7 +56,7 @@ func GetBalance(c *gin.Context) {
 
 // GetBalanceAll returns balances across all currencies for an IAM user.
 //
-//	GET /api/v1/billing/balance/all?user=hanzo/alice
+//	GET /v1/billing/balance/all?user=hanzo/alice
 func GetBalanceAll(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
