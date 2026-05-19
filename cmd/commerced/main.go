@@ -21,7 +21,6 @@ import (
 
 	commerceApp "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api/api"
-	"github.com/hanzoai/commerce/hooks"
 	commerce "github.com/hanzoai/commerce/pkg/commerce"
 )
 
@@ -57,18 +56,20 @@ func main() {
 		_ = srv.Stop(shutdownCtx)
 	}()
 
-	// Register the full Commerce API routes on the /v1/commerce group.
-	// hooks.OnRouteSetup fires inside Bootstrap; since Embed has already
-	// run Bootstrap by the time we get here, we register on the live
-	// router via the hook re-trigger pathway below.
-	srv.App().Hooks.OnRouteSetup().Bind(&hooks.Handler[*hooks.RouteEvent]{
-		ID:       "commerce-api",
-		Priority: 0,
-		Func: func(e *hooks.RouteEvent) error {
-			api.Route(e.Router)
-			return nil
-		},
-	})
+	// Register the full Commerce API routes (billing, checkout, store, …)
+	// directly on the live router.
+	//
+	// Previously this attempted to bind OnRouteSetup AFTER Bootstrap had
+	// already fired — which silently no-ops, so /v1/billing/* returned 404
+	// for the entire life of commerced. The fix is to mount routes
+	// imperatively on the live *gin.Engine the moment Embed returns.
+	//
+	// api.Route() expects a router.Router (gin.IRouter). The App.Router
+	// is *gin.Engine which satisfies that. Group at "/v1/" so handlers
+	// land under /v1/billing/*, /v1/checkout/*, etc. matching the global
+	// "/v1/ only" rule and the Prefixes["api"]="/v1/" config.
+	apiGroup := srv.App().Router.Group("/v1")
+	api.Route(apiGroup)
 
 	httpSrv := &http.Server{
 		Addr:              srv.HTTPAddr(),
