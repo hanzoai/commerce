@@ -23,7 +23,7 @@ type createCreditNoteRequest struct {
 
 // CreateCreditNote creates a credit note against an invoice.
 //
-//	POST /api/v1/billing/credit-notes
+//	POST /v1/billing/credit-notes
 func CreateCreditNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -59,7 +59,7 @@ func CreateCreditNote(c *gin.Context) {
 
 // GetCreditNote retrieves a credit note by ID.
 //
-//	GET /api/v1/billing/credit-notes/:id
+//	GET /v1/billing/credit-notes/:id
 func GetCreditNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -75,7 +75,7 @@ func GetCreditNote(c *gin.Context) {
 
 // ListCreditNotes lists credit notes, optionally filtered by invoiceId or customerId.
 //
-//	GET /api/v1/billing/credit-notes?invoiceId=...&customerId=...
+//	GET /v1/billing/credit-notes?invoiceId=...&customerId=...
 func ListCreditNotes(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -109,7 +109,7 @@ func ListCreditNotes(c *gin.Context) {
 
 // VoidCreditNote voids a credit note.
 //
-//	POST /api/v1/billing/credit-notes/:id/void
+//	POST /v1/billing/credit-notes/:id/void
 func VoidCreditNote(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

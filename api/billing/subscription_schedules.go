@@ -41,7 +41,7 @@ type updateSubscriptionScheduleRequest struct {
 
 // CreateSubscriptionSchedule creates a new subscription schedule.
 //
-//	POST /api/v1/billing/subscription-schedules
+//	POST /v1/billing/subscription-schedules
 func CreateSubscriptionSchedule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -100,7 +100,7 @@ func CreateSubscriptionSchedule(c *gin.Context) {
 
 // GetSubscriptionSchedule retrieves a subscription schedule by ID.
 //
-//	GET /api/v1/billing/subscription-schedules/:id
+//	GET /v1/billing/subscription-schedules/:id
 func GetSubscriptionSchedule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -116,7 +116,7 @@ func GetSubscriptionSchedule(c *gin.Context) {
 
 // ListSubscriptionSchedules lists subscription schedules.
 //
-//	GET /api/v1/billing/subscription-schedules?customerId=...&status=...
+//	GET /v1/billing/subscription-schedules?customerId=...&status=...
 func ListSubscriptionSchedules(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -150,7 +150,7 @@ func ListSubscriptionSchedules(c *gin.Context) {
 
 // UpdateSubscriptionSchedule updates phases or end behavior.
 //
-//	PATCH /api/v1/billing/subscription-schedules/:id
+//	PATCH /v1/billing/subscription-schedules/:id
 func UpdateSubscriptionSchedule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -204,7 +204,7 @@ func UpdateSubscriptionSchedule(c *gin.Context) {
 
 // CancelSubscriptionSchedule cancels a subscription schedule.
 //
-//	POST /api/v1/billing/subscription-schedules/:id/cancel
+//	POST /v1/billing/subscription-schedules/:id/cancel
 func CancelSubscriptionSchedule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -231,7 +231,7 @@ func CancelSubscriptionSchedule(c *gin.Context) {
 
 // ReleaseSubscriptionSchedule releases a subscription schedule.
 //
-//	POST /api/v1/billing/subscription-schedules/:id/release
+//	POST /v1/billing/subscription-schedules/:id/release
 func ReleaseSubscriptionSchedule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

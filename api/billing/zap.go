@@ -23,7 +23,7 @@ import (
 //
 // Single endpoint that speaks the ZAP JSON envelope protocol.
 //
-//	POST /api/v1/zap
+//	POST /v1/zap
 //
 // Request:  {"method":"billing.getBalance","id":"req-1","params":{...}}
 // Response: {"id":"req-1","result":{...}} or {"id":"req-1","error":{...}}

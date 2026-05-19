@@ -118,7 +118,7 @@ type createPaymentMethodRequest struct {
 
 // CreatePaymentMethod creates and attaches a payment method to a customer.
 //
-//	POST /api/v1/billing/payment-methods
+//	POST /v1/billing/payment-methods
 func CreatePaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -183,7 +183,7 @@ func CreatePaymentMethod(c *gin.Context) {
 
 // GetPaymentMethod retrieves a payment method by ID.
 //
-//	GET /api/v1/billing/payment-methods/:id
+//	GET /v1/billing/payment-methods/:id
 func GetPaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -199,7 +199,7 @@ func GetPaymentMethod(c *gin.Context) {
 
 // ListPaymentMethods lists payment methods for a customer.
 //
-//	GET /api/v1/billing/payment-methods?customerId=...&type=...
+//	GET /v1/billing/payment-methods?customerId=...&type=...
 func ListPaymentMethods(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -240,7 +240,7 @@ type updatePaymentMethodRequest struct {
 
 // UpdatePaymentMethod updates a payment method.
 //
-//	PATCH /api/v1/billing/payment-methods/:id
+//	PATCH /v1/billing/payment-methods/:id
 func UpdatePaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -275,7 +275,7 @@ func UpdatePaymentMethod(c *gin.Context) {
 
 // DetachPaymentMethod detaches (soft-deletes) a payment method.
 //
-//	DELETE /api/v1/billing/payment-methods/:id
+//	DELETE /v1/billing/payment-methods/:id
 func DetachPaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -301,7 +301,7 @@ type setDefaultRequest struct {
 
 // SetDefaultPaymentMethod sets the default payment method for a customer.
 //
-//	POST /api/v1/billing/customers/:id/default-payment-method
+//	POST /v1/billing/customers/:id/default-payment-method
 func SetDefaultPaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
