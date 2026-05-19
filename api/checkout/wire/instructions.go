@@ -22,7 +22,7 @@ type wireInstructionsResponse struct {
 }
 
 // Instructions returns wire transfer instructions for the org.
-// GET /api/v1/checkout/wire/instructions
+// GET /v1/checkout/wire/instructions
 // Public endpoint (no auth needed - people need to see where to send money).
 func Instructions(c *gin.Context) {
 	org := middleware.GetOrganization(c)

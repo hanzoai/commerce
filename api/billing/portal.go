@@ -14,7 +14,7 @@ import (
 
 // PortalOverview returns a billing summary for the authenticated customer.
 //
-//	GET /api/v1/billing/portal/overview?customerId=...
+//	GET /v1/billing/portal/overview?customerId=...
 func PortalOverview(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -57,7 +57,7 @@ func PortalOverview(c *gin.Context) {
 
 // PortalInvoices returns the customer's invoice list.
 //
-//	GET /api/v1/billing/portal/invoices?customerId=...
+//	GET /v1/billing/portal/invoices?customerId=...
 func PortalInvoices(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -91,7 +91,7 @@ func PortalInvoices(c *gin.Context) {
 
 // PortalSubscriptions returns the customer's subscriptions.
 //
-//	GET /api/v1/billing/portal/subscriptions?customerId=...
+//	GET /v1/billing/portal/subscriptions?customerId=...
 func PortalSubscriptions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -125,7 +125,7 @@ func PortalSubscriptions(c *gin.Context) {
 
 // PortalPaymentMethods returns the customer's payment methods.
 //
-//	GET /api/v1/billing/portal/payment-methods?customerId=...
+//	GET /v1/billing/portal/payment-methods?customerId=...
 func PortalPaymentMethods(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

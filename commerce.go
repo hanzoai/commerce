@@ -763,7 +763,7 @@ func (app *App) runStripeSeed() {
 	seed.LogResult(os.Stdout, res, err, started)
 }
 
-// canonicalPathHandler used to rewrite /v1/commerce/* → /api/v1/* internally.
+// canonicalPathHandler used to rewrite /v1/commerce/* → /v1/* internally.
 // Deprecated: routes now live at /v1/commerce/* directly. Kept as identity
 // for any caller still wrapping with it.
 func canonicalPathHandler(next http.Handler) http.Handler { return next }
@@ -897,7 +897,7 @@ func (app *App) Serve() error {
 		return fmt.Errorf("serve hook error: %w", err)
 	}
 
-	// Wrap with canonical path rewrite: /v1/commerce/* -> /api/v1/*
+	// Wrap with canonical path rewrite: /v1/commerce/* -> /v1/*
 	handler := canonicalPathHandler(app.Router)
 
 	app.server = &http.Server{

@@ -14,7 +14,7 @@ import (
 
 // GetCustomerBalance retrieves the customer balance for a customer+currency.
 //
-//	GET /api/v1/billing/customer-balance?customerId=...&currency=...
+//	GET /v1/billing/customer-balance?customerId=...&currency=...
 func GetCustomerBalance(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -50,7 +50,7 @@ type adjustBalanceRequest struct {
 
 // AdjustCustomerBalance manually adjusts a customer's balance.
 //
-//	POST /api/v1/billing/customer-balance/adjustments
+//	POST /v1/billing/customer-balance/adjustments
 func AdjustCustomerBalance(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -87,7 +87,7 @@ func AdjustCustomerBalance(c *gin.Context) {
 
 // ListBalanceTransactions lists balance transactions for a customer.
 //
-//	GET /api/v1/billing/balance-transactions?customerId=...
+//	GET /v1/billing/balance-transactions?customerId=...
 func ListBalanceTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
