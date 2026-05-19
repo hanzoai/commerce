@@ -165,8 +165,8 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 // ListPlans returns the list of available plans, optionally filtered by category.
 // Data is loaded at startup from embedded JSON plan definitions.
 //
-//	GET /api/v1/billing/plans
-//	GET /api/v1/billing/plans?category=dns
+//	GET /v1/billing/plans
+//	GET /v1/billing/plans?category=dns
 func ListPlans(c *gin.Context) {
 	category := c.Query("category")
 	if category == "" {
@@ -185,7 +185,7 @@ func ListPlans(c *gin.Context) {
 
 // GetPlan returns a single plan by slug.
 //
-//	GET /api/v1/billing/plans/:id
+//	GET /v1/billing/plans/:id
 func GetPlan(c *gin.Context) {
 	id := c.Param("id")
 	for _, p := range hanzoPlans {

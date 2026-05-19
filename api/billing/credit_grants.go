@@ -28,7 +28,7 @@ type createCreditGrantRequest struct {
 
 // CreateCreditGrant creates a new credit grant for a user.
 //
-//	POST /api/v1/billing/credit-grants
+//	POST /v1/billing/credit-grants
 func CreateCreditGrant(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -100,7 +100,7 @@ func CreateCreditGrant(c *gin.Context) {
 
 // ListCreditGrants lists credit grants for a user.
 //
-//	GET /api/v1/billing/credit-grants?userId=...
+//	GET /v1/billing/credit-grants?userId=...
 func ListCreditGrants(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -152,7 +152,7 @@ func ListCreditGrants(c *gin.Context) {
 
 // GetCreditBalance returns the total available credit balance for a user.
 //
-//	GET /api/v1/billing/credit-balance?userId=...
+//	GET /v1/billing/credit-balance?userId=...
 func GetCreditBalance(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -193,7 +193,7 @@ func GetCreditBalance(c *gin.Context) {
 // GetCreditBalanceBreakdown returns the credit balance grouped by tag.
 // Used by Chat to distinguish trial vs paid credits.
 //
-//	GET /api/v1/billing/credit-balance/breakdown?userId=...
+//	GET /v1/billing/credit-balance/breakdown?userId=...
 func GetCreditBalanceBreakdown(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -251,7 +251,7 @@ func GetCreditBalanceBreakdown(c *gin.Context) {
 
 // VoidCreditGrant voids a specific credit grant, making it unusable.
 //
-//	POST /api/v1/billing/credit-grants/:id/void
+//	POST /v1/billing/credit-grants/:id/void
 func VoidCreditGrant(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

@@ -26,7 +26,7 @@ type addLineItemRequest struct {
 // AddInvoiceLineItem appends a line item to a draft invoice and recalculates
 // the subtotal.
 //
-//	POST /api/v1/billing/invoices/:id/line-items
+//	POST /v1/billing/invoices/:id/line-items
 func AddInvoiceLineItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -100,7 +100,7 @@ func AddInvoiceLineItem(c *gin.Context) {
 // RemoveInvoiceLineItem removes a line item from a draft invoice by index
 // or line item ID.
 //
-//	DELETE /api/v1/billing/invoices/:id/line-items/:itemId
+//	DELETE /v1/billing/invoices/:id/line-items/:itemId
 func RemoveInvoiceLineItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -166,7 +166,7 @@ type applyDiscountRequest struct {
 // ApplyInvoiceDiscount applies a discount to a draft invoice and recalculates
 // the amount due.
 //
-//	POST /api/v1/billing/invoices/:id/apply-discount
+//	POST /v1/billing/invoices/:id/apply-discount
 func ApplyInvoiceDiscount(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -230,7 +230,7 @@ func ApplyInvoiceDiscount(c *gin.Context) {
 // CalculateInvoiceTax computes tax for an invoice based on a customer address
 // and updates the invoice with the resulting tax lines.
 //
-//	POST /api/v1/billing/invoices/:id/calculate-tax?country=...&state=...
+//	POST /v1/billing/invoices/:id/calculate-tax?country=...&state=...
 func CalculateInvoiceTax(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

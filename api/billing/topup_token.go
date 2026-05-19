@@ -27,7 +27,7 @@ type topupTokenRequest struct {
 // TopupWithToken charges a Square Web Payments SDK nonce and credits user balance.
 // Use this for one-time top-ups without saving a payment method first.
 //
-//	POST /api/v1/billing/topup/token
+//	POST /v1/billing/topup/token
 //
 // Body: { sourceId, amountCents, userId?, currency? }
 // Returns: { transactionId, balanceCents, status }

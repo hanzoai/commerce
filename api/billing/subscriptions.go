@@ -35,7 +35,7 @@ type cancelSubscriptionRequest struct {
 
 // CreateBillingSubscription creates a new subscription and starts the billing lifecycle.
 //
-//	POST /api/v1/billing/subscriptions
+//	POST /v1/billing/subscriptions
 func CreateBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -108,7 +108,7 @@ func CreateBillingSubscription(c *gin.Context) {
 
 // ListBillingSubscriptions lists subscriptions for a user.
 //
-//	GET /api/v1/billing/subscriptions?userId=...
+//	GET /v1/billing/subscriptions?userId=...
 func ListBillingSubscriptions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -146,7 +146,7 @@ func ListBillingSubscriptions(c *gin.Context) {
 
 // GetBillingSubscription returns a single subscription.
 //
-//	GET /api/v1/billing/subscriptions/:id
+//	GET /v1/billing/subscriptions/:id
 func GetBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -163,7 +163,7 @@ func GetBillingSubscription(c *gin.Context) {
 
 // UpdateBillingSubscription updates a subscription (plan change, quantity).
 //
-//	PATCH /api/v1/billing/subscriptions/:id
+//	PATCH /v1/billing/subscriptions/:id
 func UpdateBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -211,7 +211,7 @@ func UpdateBillingSubscription(c *gin.Context) {
 
 // CancelBillingSubscription cancels a subscription.
 //
-//	POST /api/v1/billing/subscriptions/:id/cancel
+//	POST /v1/billing/subscriptions/:id/cancel
 func CancelBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -245,7 +245,7 @@ func CancelBillingSubscription(c *gin.Context) {
 
 // ReactivateBillingSubscription reactivates a canceled subscription.
 //
-//	POST /api/v1/billing/subscriptions/:id/reactivate
+//	POST /v1/billing/subscriptions/:id/reactivate
 func ReactivateBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -275,7 +275,7 @@ func ReactivateBillingSubscription(c *gin.Context) {
 // Normally this would be automated by Temporal, but this endpoint allows
 // manual triggering for testing and for deployments without Temporal.
 //
-//	POST /api/v1/billing/subscriptions/:id/renew
+//	POST /v1/billing/subscriptions/:id/renew
 func RenewBillingSubscription(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

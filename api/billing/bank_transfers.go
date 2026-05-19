@@ -30,7 +30,7 @@ type createBankTransferInstructionRequest struct {
 
 // CreateBankTransferInstruction creates bank transfer details for a customer.
 //
-//	POST /api/v1/billing/bank-transfer-instructions
+//	POST /v1/billing/bank-transfer-instructions
 func CreateBankTransferInstruction(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -95,7 +95,7 @@ func CreateBankTransferInstruction(c *gin.Context) {
 // ListBankTransferInstructions lists bank transfer instructions, optionally
 // filtered by customerId.
 //
-//	GET /api/v1/billing/bank-transfer-instructions?customerId=...
+//	GET /v1/billing/bank-transfer-instructions?customerId=...
 func ListBankTransferInstructions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -131,7 +131,7 @@ func ListBankTransferInstructions(c *gin.Context) {
 
 // GetBankTransferInstruction returns a single bank transfer instruction by ID.
 //
-//	GET /api/v1/billing/bank-transfer-instructions/:id
+//	GET /v1/billing/bank-transfer-instructions/:id
 func GetBankTransferInstruction(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -155,7 +155,7 @@ type reconcileRequest struct {
 // ReconcileInboundTransfer matches an incoming bank transfer by reference
 // and creates a balance transaction for the customer.
 //
-//	POST /api/v1/billing/bank-transfer-instructions/reconciliation/match
+//	POST /v1/billing/bank-transfer-instructions/reconciliation/match
 func ReconcileInboundTransfer(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
