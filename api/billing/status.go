@@ -16,7 +16,7 @@ import (
 // GetBillingStatus returns a unified billing status for a user.
 // Used by the bot gateway billing-gate to decide whether to allow LLM requests.
 //
-//	GET /api/v1/billing/status?user=<userId>
+//	GET /v1/billing/status?user=<userId>
 //
 // Response:
 //

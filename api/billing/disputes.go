@@ -12,7 +12,7 @@ import (
 
 // GetDispute retrieves a dispute by ID.
 //
-//	GET /api/v1/billing/disputes/:id
+//	GET /v1/billing/disputes/:id
 func GetDispute(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -28,7 +28,7 @@ func GetDispute(c *gin.Context) {
 
 // ListDisputes lists disputes.
 //
-//	GET /api/v1/billing/disputes?paymentIntentId=...
+//	GET /v1/billing/disputes?paymentIntentId=...
 func ListDisputes(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -67,7 +67,7 @@ type submitEvidenceRequest struct {
 
 // SubmitDisputeEvidence submits evidence for a dispute.
 //
-//	PATCH /api/v1/billing/disputes/:id
+//	PATCH /v1/billing/disputes/:id
 func SubmitDisputeEvidence(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -104,7 +104,7 @@ func SubmitDisputeEvidence(c *gin.Context) {
 
 // CloseDispute closes a dispute.
 //
-//	POST /api/v1/billing/disputes/:id/close
+//	POST /v1/billing/disputes/:id/close
 func CloseDispute(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

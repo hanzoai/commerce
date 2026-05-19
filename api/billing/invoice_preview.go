@@ -30,7 +30,7 @@ type lineItem struct {
 
 // InvoicePreview calculates an invoice preview: usage x pricing - credits.
 //
-//	POST /api/v1/billing/invoice-preview
+//	POST /v1/billing/invoice-preview
 func InvoicePreview(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
