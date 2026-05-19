@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	commerceApp "github.com/hanzoai/commerce"
 	"github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/ui"
 )
@@ -22,7 +21,7 @@ import (
 // /admin/* handler stays in place for the in-progress cutover so
 // commerce.hanzo.ai keeps working while admin.commerce.hanzo.ai is
 // migrated to /_/commerce/.
-func mountIdentity(app *commerceApp.App, require bool) {
+func mountIdentity(app *App, require bool) {
 	if app == nil || app.Router == nil {
 		return
 	}
