@@ -37,7 +37,7 @@ type usageRequest struct {
 
 // GetUsage returns usage transactions for an IAM user, filtered by tag "api-usage".
 //
-//	GET /api/v1/billing/usage?user=hanzo/alice&currency=usd
+//	GET /v1/billing/usage?user=hanzo/alice&currency=usd
 func GetUsage(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
@@ -90,7 +90,7 @@ func GetUsage(c *gin.Context) {
 
 // RecordUsage records an API usage event as a Withdraw transaction.
 //
-//	POST /api/v1/billing/usage
+//	POST /v1/billing/usage
 //
 // Creates a withdraw transaction deducting the cost from the user's balance.
 func RecordUsage(c *gin.Context) {

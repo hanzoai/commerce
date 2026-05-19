@@ -22,7 +22,7 @@ type createPayoutRequest struct {
 
 // CreatePayout creates a new outbound payout.
 //
-//	POST /api/v1/billing/payouts
+//	POST /v1/billing/payouts
 func CreatePayout(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -65,7 +65,7 @@ func CreatePayout(c *gin.Context) {
 
 // GetPayout retrieves a payout by ID.
 //
-//	GET /api/v1/billing/payouts/:id
+//	GET /v1/billing/payouts/:id
 func GetPayout(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -81,7 +81,7 @@ func GetPayout(c *gin.Context) {
 
 // ListPayouts lists payouts.
 //
-//	GET /api/v1/billing/payouts
+//	GET /v1/billing/payouts
 func ListPayouts(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -107,7 +107,7 @@ func ListPayouts(c *gin.Context) {
 
 // CancelPayout cancels a pending payout.
 //
-//	POST /api/v1/billing/payouts/:id/cancel
+//	POST /v1/billing/payouts/:id/cancel
 func CancelPayout(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

@@ -30,7 +30,7 @@ type depositRequest struct {
 
 // Deposit creates a deposit (credit) transaction for an IAM user.
 //
-//	POST /api/v1/billing/deposit
+//	POST /v1/billing/deposit
 //
 // Used by internal services to add funds to a user's account (payment
 // processor settlement, manual credit, promotional grants, etc.).
@@ -110,7 +110,7 @@ func Deposit(c *gin.Context) {
 // Requires the user to have at least one payment method on file.
 // This prevents abuse from mass-created accounts with no payment verification.
 //
-//	POST /api/v1/billing/credit
+//	POST /v1/billing/credit
 func GrantStarterCredit(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

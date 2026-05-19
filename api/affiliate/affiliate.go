@@ -26,7 +26,7 @@ func affiliateConnect(c *gin.Context) {
 
 // affiliateGetReferrals returns all referrals for an affiliate.
 //
-//	GET /api/v1/affiliate/:affiliateid/referrals
+//	GET /v1/affiliate/:affiliateid/referrals
 func affiliateGetReferrals(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -43,7 +43,7 @@ func affiliateGetReferrals(c *gin.Context) {
 
 // affiliateGetReferrers returns all referrers for an affiliate.
 //
-//	GET /api/v1/affiliate/:affiliateid/referrers
+//	GET /v1/affiliate/:affiliateid/referrers
 func affiliateGetReferrers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -60,7 +60,7 @@ func affiliateGetReferrers(c *gin.Context) {
 
 // affiliateGetOrders returns all orders attributed to an affiliate.
 //
-//	GET /api/v1/affiliate/:affiliateid/orders
+//	GET /v1/affiliate/:affiliateid/orders
 func affiliateGetOrders(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -77,7 +77,7 @@ func affiliateGetOrders(c *gin.Context) {
 
 // affiliateGetTransactions returns all transactions for an affiliate.
 //
-//	GET /api/v1/affiliate/:affiliateid/transactions
+//	GET /v1/affiliate/:affiliateid/transactions
 func affiliateGetTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

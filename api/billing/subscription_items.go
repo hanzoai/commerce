@@ -22,7 +22,7 @@ type createSubscriptionItemRequest struct {
 
 // CreateSubscriptionItem adds an item to a subscription.
 //
-//	POST /api/v1/billing/subscription-items
+//	POST /v1/billing/subscription-items
 func CreateSubscriptionItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -63,7 +63,7 @@ func CreateSubscriptionItem(c *gin.Context) {
 
 // GetSubscriptionItem retrieves a subscription item by ID.
 //
-//	GET /api/v1/billing/subscription-items/:id
+//	GET /v1/billing/subscription-items/:id
 func GetSubscriptionItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -79,7 +79,7 @@ func GetSubscriptionItem(c *gin.Context) {
 
 // ListSubscriptionItems lists items for a subscription.
 //
-//	GET /api/v1/billing/subscription-items?subscriptionId=...
+//	GET /v1/billing/subscription-items?subscriptionId=...
 func ListSubscriptionItems(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -115,7 +115,7 @@ type updateSubscriptionItemRequest struct {
 
 // UpdateSubscriptionItem updates a subscription item (e.g. seat count).
 //
-//	PATCH /api/v1/billing/subscription-items/:id
+//	PATCH /v1/billing/subscription-items/:id
 func UpdateSubscriptionItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -150,7 +150,7 @@ func UpdateSubscriptionItem(c *gin.Context) {
 
 // DeleteSubscriptionItem removes an item from a subscription.
 //
-//	DELETE /api/v1/billing/subscription-items/:id
+//	DELETE /v1/billing/subscription-items/:id
 func DeleteSubscriptionItem(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
