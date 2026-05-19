@@ -309,7 +309,7 @@ func Sessions(c *gin.Context) {
 		if baseURL == "" {
 			baseURL = "https://api.hanzo.ai"
 		}
-		wireURL := baseURL + "/api/v1/checkout/wire/instructions"
+		wireURL := baseURL + "/v1/checkout/wire/instructions"
 
 		http.Render(c, 200, checkoutSessionResponse{
 			CheckoutURL: wireURL,

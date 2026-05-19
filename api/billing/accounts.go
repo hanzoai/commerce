@@ -26,7 +26,7 @@ type billingAccountMember struct {
 // In Commerce each organization is one billing account. The authenticated
 // org is returned as the single account for the current token.
 //
-//	GET /api/v1/billing/accounts
+//	GET /v1/billing/accounts
 func ListBillingAccounts(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
@@ -60,7 +60,7 @@ func ListBillingAccounts(c *gin.Context) {
 // IAM/console org creation; Commerce does not manage org lifecycle.
 // Returns 501 to signal the caller to redirect to the org provisioning flow.
 //
-//	POST /api/v1/billing/accounts
+//	POST /v1/billing/accounts
 func CreateBillingAccount(c *gin.Context) {
 	http.Fail(c, 501, "billing account creation must be done via the Hanzo console", nil)
 }
@@ -69,7 +69,7 @@ func CreateBillingAccount(c *gin.Context) {
 // Currently returns the requesting IAM user as the sole member, since
 // Commerce does not store a full membership roster (that lives in IAM).
 //
-//	GET /api/v1/billing/accounts/:id/members
+//	GET /v1/billing/accounts/:id/members
 func ListAccountMembers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
@@ -106,21 +106,21 @@ func ListAccountMembers(c *gin.Context) {
 
 // AddAccountMember is a stub. Member management is done via IAM.
 //
-//	POST /api/v1/billing/accounts/:id/members
+//	POST /v1/billing/accounts/:id/members
 func AddAccountMember(c *gin.Context) {
 	http.Fail(c, 501, "member management must be done via the Hanzo console", nil)
 }
 
 // UpdateMemberRole is a stub. Role updates are done via IAM.
 //
-//	PATCH /api/v1/billing/accounts/:id/members/:memberId
+//	PATCH /v1/billing/accounts/:id/members/:memberId
 func UpdateMemberRole(c *gin.Context) {
 	http.Fail(c, 501, "role updates must be done via the Hanzo console", nil)
 }
 
 // RemoveAccountMember is a stub. Member removal is done via IAM.
 //
-//	DELETE /api/v1/billing/accounts/:id/members/:memberId
+//	DELETE /v1/billing/accounts/:id/members/:memberId
 func RemoveAccountMember(c *gin.Context) {
 	http.Fail(c, 501, "member removal must be done via the Hanzo console", nil)
 }

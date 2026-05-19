@@ -22,7 +22,7 @@ import (
 // For IAM-authenticated requests the tier is read from the JWT claim.
 // For service-to-service calls the tier may be passed as a query parameter.
 //
-//	GET /api/v1/billing/tier?user=hanzo/alice
+//	GET /v1/billing/tier?user=hanzo/alice
 //
 // Response includes the tier config plus the effective available balance
 // (which for free-tier users includes the daily replenishing credit).
@@ -101,7 +101,7 @@ func GetTier(c *gin.Context) {
 // It returns the tier config and whether a specific model is allowed,
 // without computing the full balance. Used by Chat and white-label services.
 //
-//	GET /api/v1/billing/tier-check?user=hanzo/alice&model=zen4-max
+//	GET /v1/billing/tier-check?user=hanzo/alice&model=zen4-max
 func TierCheck(c *gin.Context) {
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {

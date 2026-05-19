@@ -24,7 +24,7 @@ type createPricingRuleRequest struct {
 
 // CreatePricingRule creates a new pricing rule for a meter.
 //
-//	POST /api/v1/billing/pricing-rules
+//	POST /v1/billing/pricing-rules
 func CreatePricingRule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -78,7 +78,7 @@ func CreatePricingRule(c *gin.Context) {
 
 // ListPricingRules lists pricing rules, optionally filtered by meter or plan.
 //
-//	GET /api/v1/billing/pricing-rules?meterId=...&planId=...
+//	GET /v1/billing/pricing-rules?meterId=...&planId=...
 func ListPricingRules(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -125,7 +125,7 @@ func ListPricingRules(c *gin.Context) {
 
 // DeletePricingRule removes a pricing rule by ID.
 //
-//	DELETE /api/v1/billing/pricing-rules/:id
+//	DELETE /v1/billing/pricing-rules/:id
 func DeletePricingRule(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
