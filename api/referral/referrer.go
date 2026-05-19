@@ -95,7 +95,7 @@ func referrerGet(api *rest.Rest) func(*gin.Context) {
 
 // getMyReferrer returns the current user's referrer record with stats and tier.
 //
-//	GET /api/v1/referrer/me
+//	GET /v1/referrer/me
 func getMyReferrer(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -137,7 +137,7 @@ func getMyReferrer(c *gin.Context) {
 
 // getByCode validates that a referral code exists.
 //
-//	GET /api/v1/referrer/code/:code
+//	GET /v1/referrer/code/:code
 func getByCode(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

@@ -26,7 +26,7 @@ type createInvoiceRequest struct {
 
 // CreateInvoice creates a new draft billing invoice.
 //
-//	POST /api/v1/billing/invoices
+//	POST /v1/billing/invoices
 func CreateInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -70,7 +70,7 @@ func CreateInvoice(c *gin.Context) {
 
 // ListInvoices lists billing invoices, optionally filtered by userId and status.
 //
-//	GET /api/v1/billing/invoices?userId=...&status=...
+//	GET /v1/billing/invoices?userId=...&status=...
 func ListInvoices(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -113,7 +113,7 @@ func ListInvoices(c *gin.Context) {
 
 // GetInvoice returns a single billing invoice by ID.
 //
-//	GET /api/v1/billing/invoices/:id
+//	GET /v1/billing/invoices/:id
 func GetInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -130,7 +130,7 @@ func GetInvoice(c *gin.Context) {
 
 // FinalizeInvoice transitions an invoice from draft to open.
 //
-//	POST /api/v1/billing/invoices/:id/finalize
+//	POST /v1/billing/invoices/:id/finalize
 func FinalizeInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -158,7 +158,7 @@ func FinalizeInvoice(c *gin.Context) {
 
 // PayInvoice attempts to collect payment on an open invoice.
 //
-//	POST /api/v1/billing/invoices/:id/pay
+//	POST /v1/billing/invoices/:id/pay
 func PayInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -191,7 +191,7 @@ func PayInvoice(c *gin.Context) {
 
 // VoidInvoice voids a draft or open invoice.
 //
-//	POST /api/v1/billing/invoices/:id/void
+//	POST /v1/billing/invoices/:id/void
 func VoidInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -219,7 +219,7 @@ func VoidInvoice(c *gin.Context) {
 
 // UpcomingInvoice generates a preview of the next invoice for a subscription.
 //
-//	GET /api/v1/billing/invoices/upcoming?userId=...&subscriptionId=...
+//	GET /v1/billing/invoices/upcoming?userId=...&subscriptionId=...
 func UpcomingInvoice(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
