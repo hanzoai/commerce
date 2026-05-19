@@ -3,6 +3,11 @@ module github.com/hanzoai/commerce
 go 1.26.3
 
 require (
+	github.com/hanzoai/cloud v0.0.0
+	github.com/hanzoai/zip v0.0.0
+)
+
+require (
 	github.com/Machiel/slugify v1.0.1
 	github.com/aymerick/raymond v2.0.2+incompatible
 	github.com/btcsuite/btcd v0.25.0
@@ -46,12 +51,19 @@ require (
 	github.com/speps/go-hashids v2.0.0+incompatible
 	github.com/spf13/cobra v1.10.2
 	github.com/square/square-go-sdk/v3 v3.0.1
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 )
 
 require github.com/luxfi/zap v0.2.1
 
-require github.com/luxfi/accel v1.0.7 // indirect
+require (
+	github.com/gofiber/fiber/v3 v3.2.0 // indirect
+	github.com/gofiber/schema v1.7.1 // indirect
+	github.com/gofiber/utils/v2 v2.0.4 // indirect
+	github.com/luxfi/accel v1.0.7 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.70.0 // indirect
+)
 
 require (
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
@@ -108,14 +120,14 @@ require (
 	github.com/luxfi/cache v1.2.1 // indirect
 	github.com/luxfi/container v0.0.4 // indirect
 	github.com/luxfi/ids v1.2.9 // indirect
-	github.com/luxfi/log v1.4.1 // indirect
+	github.com/luxfi/log v1.4.3 // indirect
 	github.com/luxfi/math v1.2.4 // indirect
 	github.com/luxfi/math/big v0.1.0 // indirect
 	github.com/luxfi/mdns v0.1.0 // indirect
 	github.com/luxfi/metric v1.5.1 // indirect
 	github.com/luxfi/mock v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-isatty v0.0.21 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
@@ -140,7 +152,7 @@ require (
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/tinylib/msgp v1.6.3 // indirect
+	github.com/tinylib/msgp v1.6.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
@@ -153,11 +165,11 @@ require (
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
 	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
@@ -181,3 +193,18 @@ replace github.com/luxfi/log => github.com/luxfi/logger v1.4.1
 // Transitive dep chain pinned luxfi/genesis@v1.5.22 which was never
 // published; v1.9.7 is the current canonical.
 replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
+
+// HIP-0106 unified-binary contract — pin to local sibling repos so the
+// commerce Mount() signature evolves in lockstep with the cloud +
+// zip APIs. Both repos sit beside commerce in ~/work/hanzo/*.
+replace github.com/hanzoai/cloud => ../cloud
+
+replace github.com/hanzoai/zip => ../zip
+
+// Transitive: luxfi/threshold@v1.6.7 pulls luxfi/lens + luxfi/pulsar at
+// unpublished rc tags. Pin to the latest published lens + pulsar so
+// go-mod resolves cleanly.
+replace (
+	github.com/luxfi/lens => github.com/luxfi/lens v0.1.4
+	github.com/luxfi/pulsar => github.com/luxfi/pulsar v1.0.9
+)
