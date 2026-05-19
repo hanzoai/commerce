@@ -14,7 +14,7 @@ import (
 
 // ListTransactions returns transactions for an IAM user, newest first.
 //
-//	GET /api/v1/billing/transactions?user=hanzo/alice&limit=100&offset=0&currency=usd
+//	GET /v1/billing/transactions?user=hanzo/alice&limit=100&offset=0&currency=usd
 //
 // Response: { "transactions": [...], "count": N, "user": "hanzo/alice" }
 func ListTransactions(c *gin.Context) {

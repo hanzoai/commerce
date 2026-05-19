@@ -7,7 +7,7 @@ import (
 // GetCapabilities returns the billing platform's supported features,
 // payment methods, and currencies.
 //
-//	GET /api/v1/billing/capabilities
+//	GET /v1/billing/capabilities
 func GetCapabilities(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"paymentMethods": []string{

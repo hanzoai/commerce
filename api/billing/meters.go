@@ -23,7 +23,7 @@ type createMeterRequest struct {
 
 // CreateMeter creates a new usage meter definition.
 //
-//	POST /api/v1/billing/meters
+//	POST /v1/billing/meters
 func CreateMeter(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -80,7 +80,7 @@ func CreateMeter(c *gin.Context) {
 
 // ListMeters returns all meters for the organization.
 //
-//	GET /api/v1/billing/meters
+//	GET /v1/billing/meters
 func ListMeters(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -117,7 +117,7 @@ func ListMeters(c *gin.Context) {
 
 // GetMeter returns a single meter by ID.
 //
-//	GET /api/v1/billing/meters/:id
+//	GET /v1/billing/meters/:id
 func GetMeter(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

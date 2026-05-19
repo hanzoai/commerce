@@ -54,7 +54,7 @@ func spendAlertResponse(a *spendalert.SpendAlert) gin.H {
 
 // ListSpendAlerts returns all spend alerts for the given user.
 //
-//	GET /api/v1/billing/spend-alerts?user=:userId
+//	GET /v1/billing/spend-alerts?user=:userId
 func ListSpendAlerts(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -85,7 +85,7 @@ func ListSpendAlerts(c *gin.Context) {
 
 // CreateSpendAlert creates a new spend alert for a user.
 //
-//	POST /api/v1/billing/spend-alerts
+//	POST /v1/billing/spend-alerts
 func CreateSpendAlert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -136,7 +136,7 @@ func CreateSpendAlert(c *gin.Context) {
 
 // UpdateSpendAlert updates title or threshold on an existing spend alert.
 //
-//	PATCH /api/v1/billing/spend-alerts/:id
+//	PATCH /v1/billing/spend-alerts/:id
 func UpdateSpendAlert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -173,7 +173,7 @@ func UpdateSpendAlert(c *gin.Context) {
 
 // DeleteSpendAlert deletes a spend alert by ID.
 //
-//	DELETE /api/v1/billing/spend-alerts/:id
+//	DELETE /v1/billing/spend-alerts/:id
 func DeleteSpendAlert(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

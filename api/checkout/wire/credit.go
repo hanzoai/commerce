@@ -27,7 +27,7 @@ type wireCreditResponse struct {
 }
 
 // Credit manually credits an account when a wire transfer is received.
-// POST /api/v1/checkout/wire/credit
+// POST /v1/checkout/wire/credit
 // Admin-only endpoint. Marks the pending wire payment as completed.
 func Credit(c *gin.Context) {
 	var req wireCreditRequest
