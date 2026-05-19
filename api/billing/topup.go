@@ -27,7 +27,7 @@ type topupRequest struct {
 
 // Topup charges a saved payment method and credits the user's balance.
 //
-//	POST /api/v1/billing/topup
+//	POST /v1/billing/topup
 //
 // Body: { userId, paymentMethodId, amountCents, currency? }
 // Returns: { transactionId, balanceCents, status }

@@ -34,7 +34,7 @@ type cardTokenizeResponse struct {
 // SDK. This endpoint returns 503 as server-side tokenization requires PCI DSS
 // Level 1 compliance. Use the Square Web Payments SDK (SqPaymentForm) instead.
 //
-// POST /api/v1/billing/card/tokenize
+// POST /v1/billing/card/tokenize
 func TokenizeCard(c *gin.Context) {
 	var req cardTokenizeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
