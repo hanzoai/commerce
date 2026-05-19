@@ -3,8 +3,8 @@ module github.com/hanzoai/commerce
 go 1.26.3
 
 require (
-	github.com/hanzoai/cloud v0.0.0
-	github.com/hanzoai/zip v0.0.0
+	github.com/hanzoai/cloud v0.0.0-20260519060517-1e48ac6d14e3
+	github.com/hanzoai/zip v0.1.0
 )
 
 require (
@@ -32,13 +32,13 @@ require (
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
 	github.com/hanzoai/storage-go v1.0.0
-	github.com/hanzoai/tasks v1.36.1
+	github.com/hanzoai/tasks v1.40.0
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.19.0
-	github.com/mattn/go-sqlite3 v1.14.38
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo/v2 v2.28.1
@@ -54,7 +54,7 @@ require (
 	golang.org/x/crypto v0.50.0
 )
 
-require github.com/luxfi/zap v0.2.1
+require github.com/luxfi/zap v0.3.1
 
 require (
 	github.com/gofiber/fiber/v3 v3.2.0 // indirect
@@ -112,7 +112,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.9.1 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
@@ -132,7 +132,7 @@ require (
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
@@ -175,10 +175,10 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.70.0 // indirect
+	modernc.org/libc v1.72.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.48.1 // indirect
+	modernc.org/sqlite v1.50.0 // indirect
 )
 
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
@@ -197,9 +197,7 @@ replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
 // HIP-0106 unified-binary contract — pin to local sibling repos so the
 // commerce Mount() signature evolves in lockstep with the cloud +
 // zip APIs. Both repos sit beside commerce in ~/work/hanzo/*.
-replace github.com/hanzoai/cloud => ../cloud
 
-replace github.com/hanzoai/zip => ../zip
 
 // Transitive: luxfi/threshold@v1.6.7 pulls luxfi/lens + luxfi/pulsar at
 // unpublished rc tags. Pin to the latest published lens + pulsar so
