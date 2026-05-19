@@ -20,7 +20,7 @@ type createRefundRequest struct {
 
 // CreateRefund creates a full or partial refund.
 //
-//	POST /api/v1/billing/refunds
+//	POST /v1/billing/refunds
 func CreateRefund(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -48,7 +48,7 @@ func CreateRefund(c *gin.Context) {
 
 // GetRefund retrieves a refund by ID.
 //
-//	GET /api/v1/billing/refunds/:id
+//	GET /v1/billing/refunds/:id
 func GetRefund(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -64,7 +64,7 @@ func GetRefund(c *gin.Context) {
 
 // ListRefunds lists refunds, optionally filtered by paymentIntentId or invoiceId.
 //
-//	GET /api/v1/billing/refunds?paymentIntentId=...&invoiceId=...
+//	GET /v1/billing/refunds?paymentIntentId=...&invoiceId=...
 func ListRefunds(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

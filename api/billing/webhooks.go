@@ -23,7 +23,7 @@ import (
 // signature, records the event in billing_events, and — for subscription
 // lifecycle events — updates the local subscription row keyed by ProviderId.
 //
-//	POST /api/v1/billing/webhooks/:provider
+//	POST /v1/billing/webhooks/:provider
 //
 // The :provider path segment is informational; signature verification picks
 // the right processor regardless. We pass the path segment as a lightweight
