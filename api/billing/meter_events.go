@@ -30,7 +30,7 @@ type recordEventsRequest struct {
 
 // RecordMeterEvents records one or more meter events (batch up to 100).
 //
-//	POST /api/v1/billing/meter-events
+//	POST /v1/billing/meter-events
 func RecordMeterEvents(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -117,7 +117,7 @@ func RecordMeterEvents(c *gin.Context) {
 
 // GetMeterEventsSummary returns aggregated usage for a meter+user+period.
 //
-//	GET /api/v1/billing/meter-events/summary?meterId=...&userId=...&periodStart=...&periodEnd=...
+//	GET /v1/billing/meter-events/summary?meterId=...&userId=...&periodStart=...&periodEnd=...
 func GetMeterEventsSummary(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

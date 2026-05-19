@@ -26,7 +26,7 @@ type claimRequest struct {
 // ClaimReferral processes a referral claim: validates the code, checks fraud
 // rules, creates credit grants for both parties, and records the referral.
 //
-//	POST /api/v1/referral/claim
+//	POST /v1/referral/claim
 func ClaimReferral(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))

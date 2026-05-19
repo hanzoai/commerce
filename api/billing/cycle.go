@@ -30,7 +30,7 @@ type cycleResult struct {
 // for the request's organization. It generates invoices and attempts collection
 // for each due subscription.
 //
-//	POST /api/v1/billing/cycle/run
+//	POST /v1/billing/cycle/run
 func RunBillingCycle(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -46,7 +46,7 @@ func RunBillingCycle(c *gin.Context) {
 // RunBillingCycleUser processes due subscriptions for a single user within the
 // request's organization.
 //
-//	POST /api/v1/billing/cycle/run-user
+//	POST /v1/billing/cycle/run-user
 func RunBillingCycleUser(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -75,7 +75,7 @@ func RunBillingCycleUser(c *gin.Context) {
 // subscriptions across all of them. This is intended for the platform
 // scheduler to invoke on a recurring basis.
 //
-//	POST /api/v1/billing/cycle/run-all
+//	POST /v1/billing/cycle/run-all
 func RunBillingCycleAllOrgs(c *gin.Context) {
 	rootDb := datastore.New(c)
 
