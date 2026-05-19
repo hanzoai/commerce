@@ -23,7 +23,6 @@ import (
 
 	commerceApp "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api/api"
-	"github.com/hanzoai/commerce/hooks"
 	commerce "github.com/hanzoai/commerce/pkg/commerce"
 )
 
@@ -59,14 +58,13 @@ func main() {
 		_ = srv.Stop(shutdownCtx)
 	}()
 
-	srv.App().Hooks.OnRouteSetup().Bind(&hooks.Handler[*hooks.RouteEvent]{
-		ID:       "commerce-api",
-		Priority: 0,
-		Func: func(e *hooks.RouteEvent) error {
-			api.Route(e.Router)
-			return nil
-		},
-	})
+	// Mount the full Commerce API routes directly on the live router.
+	//
+	// Previously this used OnRouteSetup hook binding AFTER Bootstrap had
+	// already fired — silent no-op, /v1/billing/* always 404. Fix is to
+	// register imperatively on the live *gin.Engine once Embed returns.
+	apiGroup := srv.App().Router.Group("/v1")
+	api.Route(apiGroup)
 
 	httpSrv := &http.Server{
 		Addr:              srv.HTTPAddr(),
