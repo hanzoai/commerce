@@ -19,7 +19,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	commerceApp "github.com/hanzoai/commerce"
 )
 
 // EmbedConfig configures the in-process Commerce server. Empty values
@@ -35,12 +34,12 @@ type EmbedConfig struct {
 }
 
 // Embedded is the handle to a running in-process Commerce server. The
-// underlying *commerceApp.App owns the heavy lifting (DB, infra, KMS,
+// underlying *App owns the heavy lifting (DB, infra, KMS,
 // hooks, cron) — Embedded wraps it for clean Stop/HTTPHandler/HTTPAddr
 // access from commerced.
 type Embedded struct {
 	cfg EmbedConfig
-	app *commerceApp.App
+	app *App
 }
 
 // Embed bootstraps the Commerce app and returns a handle. Call Stop
@@ -50,7 +49,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		cfg.Logger = slog.Default()
 	}
 
-	appCfg := commerceApp.DefaultConfig()
+	appCfg := DefaultConfig()
 	if cfg.DataDir != "" {
 		appCfg.DataDir = cfg.DataDir
 	}
@@ -64,7 +63,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		appCfg.AllowedOrigins = cfg.AllowedOrigins
 	}
 
-	app := commerceApp.NewWithConfig(appCfg)
+	app := NewWithConfig(appCfg)
 
 	// Run Bootstrap synchronously so the returned Embedded is fully
 	// ready: Router populated, DB connected, hooks fired. setupRoutes
@@ -84,7 +83,7 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		"data", appCfg.DataDir,
 		"dev", appCfg.Dev,
 		"require_identity", cfg.RequireIdentity,
-		"version", commerceApp.Version,
+		"version", Version,
 	)
 
 	return &Embedded{cfg: cfg, app: app}, nil
@@ -114,7 +113,7 @@ func (e *Embedded) HTTPAddr() string {
 }
 
 // App exposes the underlying App for tests and hook registration.
-func (e *Embedded) App() *commerceApp.App {
+func (e *Embedded) App() *App {
 	if e == nil {
 		return nil
 	}
