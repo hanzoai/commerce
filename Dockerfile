@@ -52,6 +52,13 @@ COPY --from=admin-build /web/admin/out admin/dist
 # go:embed happy; pay/billing endpoints serve an empty FS until the
 # upstream repos ship a v* release.
 
+# Per SCALE_STANDARD.md §2 — every Go production Dockerfile that
+# emits JSON to a client builds with GOEXPERIMENT=jsonv2. Verified
+# -12% time / -23% allocs on the edge POST roundtrip vs encoding/json
+# v1 (json_bench_test.go in hanzoai/zip).
+ARG GO_EXPERIMENT=jsonv2
+ENV GOEXPERIMENT=${GO_EXPERIMENT}
+
 # Build the binary with CGO for SQLite support
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
