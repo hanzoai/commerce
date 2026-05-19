@@ -1,3 +1,44 @@
+# commerce
+
+Checkout, billing, pricing, invoicing — the light commerce router for the Hanzo platform. **NOT in PCI-DSS scope** (PAN data lives in `hanzoai/vault`).
+
+[![Status](https://img.shields.io/badge/status-stable-green)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
+
+## Quick start
+
+```bash
+docker run -p 8001:8001 ghcr.io/hanzoai/commerce:latest
+```
+
+## What this is
+
+`commerce` handles orders, products, subscriptions, invoices, and customer records for every Hanzo deployment. It is **CDE-connected, not CDE-in-scope**: card data is tokenized at `hanzoai/vault` and `commerce` only ever sees the token. The service is production multi-tenant (37+ `X-Org-Id` call sites), IAM-integrated, and already exposes `func Mount(*zip.App, cloud.Deps) error` — it is one of the three reference implementations of the HIP-0106 Mount contract.
+
+## Specs
+
+Implements:
+- HIP-0037 AI Cloud Platform (billing surface)
+- HIP-0106 Unified Cloud Binary (commerce subsystem — already exposes `Mount()`)
+
+## Architecture
+
+```
+   client  ->  gateway  ->  commerce (zip.App)
+                              |
+                     orders / products / subscriptions / invoices
+                              |
+                  +-----------+-----------+
+                  |                       |
+              hanzoai/vault          billing provider
+              (CDE — tokenizes PAN)   (Stripe etc., webhook in)
+                              |
+                  per-tenant data via base (HIP-0302)
+```
+
+
+---
+
 # Hanzo [![Build status](https://badge.buildkite.com/d7e68217b7c11a402384e82726433b30b9ebdb54cab934d89c.svg)](https://buildkite.com/hanzo/platform)
 
 Hanzo is a scalable DX platform designed to power next-gen internet companies.
