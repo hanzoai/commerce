@@ -21,7 +21,7 @@ import (
 
 	commerceApp "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api/api"
-	commerce "github.com/hanzoai/commerce/pkg/commerce"
+	commerce "github.com/hanzoai/commerce"
 )
 
 func main() {
