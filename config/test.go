@@ -14,7 +14,7 @@ func Test() *Config {
 	config.Protocol = "/"
 
 	config.Prefixes["analytics"] = "/"
-	config.Prefixes["api"] = "/"
+	config.Prefixes["api"] = "/v1/"
 	config.Prefixes["cdn"] = "/"
 	config.Prefixes["dash"] = "/"
 	config.Prefixes["default"] = "/"
