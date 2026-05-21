@@ -56,7 +56,7 @@ import (
 )
 
 // Version is the current version of Commerce
-const Version = "1.38.0"
+const Version = "1.42.5"
 
 // GitCommit and BuildTime are set via -ldflags at build time
 var (
