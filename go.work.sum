@@ -382,13 +382,16 @@ github.com/gtank/ristretto255 v0.2.0/go.mod h1:OJ1ox/dWcp7sJ5grYDcZ+kkHYuj5nelW5
 github.com/hablullah/go-hijri v1.0.2/go.mod h1:OS5qyYLDjORXzK4O1adFw9Q5WfhOcMdAKglDkcTxgWQ=
 github.com/hablullah/go-juliandays v1.0.0/go.mod h1:0JOYq4oFOuDja+oospuc61YoX+uNEn7Z6uHYTbBzdGc=
 github.com/hanzoai/base v0.39.1/go.mod h1:gGQrufNjkkX4/4NDPpl2aizAJLTYJ3VcyV4TDE4MANc=
+github.com/hanzoai/cloud v0.0.0-20260519060517-1e48ac6d14e3/go.mod h1:d9Nw4Nr1iLc5UbDJugzOrYpylEWLBbjixE5mhOhGXnk=
 github.com/hanzoai/commerce v1.39.0/go.mod h1:4gsADoBefaHmTmZ2dLvON79inihsqCH4odqf5LnE6q4=
 github.com/hanzoai/commerce v1.40.0/go.mod h1:EXiRzaxcdn0V9DYEN634WoFDIJjfp32tMqo7Btbjpy8=
 github.com/hanzoai/dbx v1.13.0/go.mod h1:WIRkg1f2Mc+vXo2gpWk+hgPsJPFZBNUFCkSFJ4M5s4k=
 github.com/hanzoai/dbx v1.15.0/go.mod h1:ynP6HSiDDoFZ8M3DC+XvSglBPFRygfTd/gjTWabh4yA=
 github.com/hanzoai/kms/sdk/go v1.0.0/go.mod h1:kPPvEuE3K+fcOY+S6hiNO8nffxDNChvC1Uc4fR5Y+xk=
 github.com/hanzoai/replicate v0.4.0/go.mod h1:PBvHNQ7cXBJejTWDWxXWvtUwjT5O66pTC7npxLWu8H0=
+github.com/hanzoai/tasks v1.40.0 h1:1Y0uXHmdGsU3QSv5So7NH55DhWqw/UPV3kgFeBaaWls=
 github.com/hanzoai/tygoja v0.0.2/go.mod h1:o+poSPLJ5S3SMtdz7gJHaL/6P6tjGBZcfQMl0SUIBr4=
+github.com/hanzoai/zip v0.1.0/go.mod h1:3G+k2wy5bQ1wld66m0OPH8/LJ0kgIeNi1KPymMmlbf4=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
@@ -496,6 +499,7 @@ github.com/luxfi/database v1.17.39/go.mod h1:iHE5evTMxltmYGe3QkewrZv1xgGrDBbqcv0
 github.com/luxfi/database v1.17.40/go.mod h1:du1q0PemBc0gZcdtHhsARs6mIsZM3a5R/C040DVYLCM=
 github.com/luxfi/database v1.17.42/go.mod h1:0nArLBm0r42J103oHR2xkAe8+mftuz5jtFgNylU1hgg=
 github.com/luxfi/database v1.17.44/go.mod h1:6Ey5y3I0WNLHbxIlIdFqUuKfBg+b0fAgTA8FgRgQ8zg=
+github.com/luxfi/database v1.18.1/go.mod h1:PW0oGujt165mYg7j/lctVbnfsUW6QLfIAgjyQdS66SM=
 github.com/luxfi/database v1.18.3/go.mod h1:sv0pYCGKlK1aNJTICxFUDpVWCJTigoLlshHmV/1pg7c=
 github.com/luxfi/evm v0.8.30/go.mod h1:S0fChMeuWV4XqY4OB6RozqvyHcm+imJCKyqsMY713hY=
 github.com/luxfi/fhe v1.7.6-0.20260106060801-28e308e4c2f8/go.mod h1:SVO5KV3GKMW5U0XeQSV4x7fryNWHsCjyhhhAoIPCpG8=
@@ -546,6 +550,7 @@ github.com/luxfi/p2p v1.18.7/go.mod h1:X829+oxzPyY2e5S9CyyMFiOtk6nyuNnxZSaSxGxrp
 github.com/luxfi/p2p v1.18.8/go.mod h1:aaoeZW5MdrVNylN1hOP2ALWj+YPaB+sL2l6qAShQqfg=
 github.com/luxfi/p2p v1.18.9/go.mod h1:X829+oxzPyY2e5S9CyyMFiOtk6nyuNnxZSaSxGxrpKw=
 github.com/luxfi/password v0.0.1/go.mod h1:xKhi28+V3xqPc4+kIZHRp7oZ1W7nUKze6EauvMVq19s=
+github.com/luxfi/pq v1.0.3/go.mod h1:8bppZcRElfrVt0n3nYCZW3iX1TvhvzNbdjNdK1irgIE=
 github.com/luxfi/precompile v0.4.1/go.mod h1:Wqb52S3F5jA4H1In3Ygau+cAaiLq5iiS9AFLnBCozSE=
 github.com/luxfi/precompile v0.4.3/go.mod h1:42j+cmr1cN6cbpNWLFXyWOEKXjg9DOkHN5X+cd8ydIo=
 github.com/luxfi/precompile v0.4.5/go.mod h1:k/QpDHGeL1OM9T4Hawx8DMYghohHya3dH6LfkOaBy44=
@@ -605,6 +610,7 @@ github.com/luxfi/warp v1.18.4/go.mod h1:5kXaZGYBBzOFyzPoDukVynvTTPskElrA8EQ5TVgo
 github.com/luxfi/warp v1.18.5/go.mod h1:SFyC529HDvbP/TWRAdYQSyJUliMa5JKFRtBrTLEElp4=
 github.com/luxfi/zap v0.0.0-20260126200933-22a2a4c72dfb/go.mod h1:uvmQO9kVvOfBcqPhY52wx5Z1O6L/4Mv2tBrJDc3gVgM=
 github.com/luxfi/zap v0.2.0/go.mod h1:2hydPSa/XMCMtfW6/DC9M5Bt03N5h75QwCV5Vypsqr4=
+github.com/luxfi/zap v0.3.1 h1:RlOHthFTw3cikft3JmrdT/R8BFId2Ej7xeNiHDoTNs4=
 github.com/luxfi/zapdb v1.8.0/go.mod h1:Qukh3hDRD0MnxA6z+a28JTnXhN85AiLLgp6TYr4QAMc=
 github.com/luxfi/zapdb/v4 v4.9.1/go.mod h1:gYJjLcFCxmUATZ6Zg7iZHwAbgBMxGVP1g8UOWomK70Y=
 github.com/luxfi/zapdb/v4 v4.9.3/go.mod h1:BrpLaDeYy+smON4ASDPCFKWrQ58CXhy3WNEPGna7vuU=
@@ -1110,7 +1116,11 @@ gopkg.in/warnings.v0 v0.1.2/go.mod h1:jksf8JmL6Qr/oQM2OXTHunEvvTAsrWBLb6OOjuVWRN
 gopkg.in/yaml.v2 v2.2.8/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 honnef.co/go/tools v0.1.3/go.mod h1:NgwopIslSNH47DimFoV78dnkksY2EFtX0ajyb3K/las=
+modernc.org/cc/v4 v4.27.3/go.mod h1:3YjcbCqhoTTHPycJDRl2WZKKFj0nwcOIPBfEZK0Hdk8=
+modernc.org/ccgo/v4 v4.32.4/go.mod h1:lY7f+fiTDHfcv6YlRgSkxYfhs+UvOEEzj49jAn2TOx0=
+modernc.org/libc v1.72.0 h1:IEu559v9a0XWjw0DPoVKtXpO2qt5NVLAnFaBbjq+n8c=
 modernc.org/sqlite v1.48.0/go.mod h1:hWjRO6Tj/5Ik8ieqxQybiEOUXy0NJFNp2tpvVpKlvig=
+modernc.org/sqlite v1.50.0 h1:eMowQSWLK0MeiQTdmz3lqoF5dqclujdlIKeJA11+7oM=
 pgregory.net/rapid v1.2.0/go.mod h1:PY5XlDGj0+V1FCq0o192FdRhpKHGTRIWBgqjDBTrq04=
 rsc.io/pdf v0.1.1/go.mod h1:n8OzWcQ6Sp37PL01nO98y4iUCRdTGarVfzxY20ICaU4=
 rsc.io/tmplfunc v0.0.3/go.mod h1:AG3sTPzElb1Io3Yg4voV9AGZJuleGAwaVRxL9M49PhA=
