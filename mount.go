@@ -24,6 +24,7 @@ import (
 	"net/http"
 
 	"github.com/hanzoai/cloud"
+	api "github.com/hanzoai/commerce/api/api"
 	"github.com/hanzoai/zip"
 )
 
@@ -80,6 +81,17 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 	if handler == nil {
 		return fmt.Errorf("commerce.Mount: nil HTTPHandler")
 	}
+
+	// Wire the full Commerce API surface (/v1/billing, /v1/checkout,
+	// /v1/subscription, /v1/store, /v1/account, …) directly on the live
+	// gin engine. Embed() ran Bootstrap() which fired setupRoutes(), but
+	// setupRoutes() registers only the per-tenant checkout group + admin
+	// SPA — not the legacy api.Route() bundle. The same imperative call
+	// the legacy commerce/commerced binaries make is mirrored here so the
+	// cloud-mounted surface and the standalone surface expose identical
+	// routes. See cmd/commerce/main.go for the standalone-binary call.
+	apiGroup := embedded.App().Router.Group("/v1")
+	api.Route(apiGroup)
 
 	// Native zip health endpoint — independent of the gin handler so
 	// liveness/readiness probes survive a router-wide outage. Use a
