@@ -4,7 +4,7 @@
 //
 // Security posture:
 //   - Tenant resolution is exact-match on the Host header after port/case
-//     normalization. Suffix-match tricks ("pay.redacted.com.evil.com") are
+//     normalization. Suffix-match tricks ("pay.example.com.evil.com") are
 //     rejected by design.
 //   - The public tenant JSON endpoint (GET /v1/commerce/tenant) exposes
 //     ONLY branding, public IAM client ID + issuer, return-URL allowlist,
@@ -62,7 +62,7 @@ type Tenant struct {
 	ReturnURLAllowlist []string `json:"returnUrlAllowlist"`
 
 	// Backend tells the checkout API how to proxy deposit intents. For
-	// the Liquidity tenant this resolves to BD; other tenants supply
+	// the example tenant this resolves to BD; other tenants supply
 	// their own URL. Kind is an opaque free-form label ("bd", "custom").
 	Backend BackendConfig `json:"-"`
 }
@@ -111,7 +111,7 @@ type Provider struct {
 }
 
 // BackendConfig describes where the checkout API forwards deposit
-// intents. For Liquidity, Kind="bd" and URL=https://bd.{env}.redacted.com.
+// intents. Backend.Kind is tenant-specific.
 // For generic tenants, Kind="custom" and URL is the tenant's own endpoint.
 type BackendConfig struct {
 	Kind string
@@ -155,7 +155,7 @@ func (r *StaticResolver) Set(host string, t Tenant) {
 }
 
 // Resolve returns the Tenant for host, or ErrUnknownTenant. Exact-match
-// only: suffix spoofing ("pay.redacted.com.evil.com") does not match.
+// only: suffix spoofing ("pay.example.com.evil.com") does not match.
 func (r *StaticResolver) Resolve(host string) (Tenant, error) {
 	h := normalizeHost(host)
 	if h == "" {

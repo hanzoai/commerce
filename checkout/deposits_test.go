@@ -13,15 +13,15 @@ import (
 
 func TestDeposits_RequiresAuthHeader(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.redacted.com": {
-			Name:    "liquidity",
-			Backend: BackendConfig{Kind: "bd", URL: "https://bd.redacted.com"},
+		"pay.example.com": {
+			Name:    "examplecorp",
+			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
 		},
 	})
 	h := Deposits(r, stubForwarder(t))
 
-	req := httptest.NewRequest(http.MethodPost, "http://pay.redacted.com/checkout/v1/deposits", strings.NewReader(`{"amount_cents":1000}`))
-	req.Host = "pay.redacted.com"
+	req := httptest.NewRequest(http.MethodPost, "http://pay.example.com/checkout/v1/deposits", strings.NewReader(`{"amount_cents":1000}`))
+	req.Host = "pay.example.com"
 	req.Header.Set("Content-Type", "application/json")
 	// No Authorization header.
 	w := httptest.NewRecorder()
@@ -36,9 +36,9 @@ func TestDeposits_RequiresAuthHeader(t *testing.T) {
 
 func TestDeposits_UnknownTenantReturns404(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.redacted.com": {
-			Name:    "liquidity",
-			Backend: BackendConfig{Kind: "bd", URL: "https://bd.redacted.com"},
+		"pay.example.com": {
+			Name:    "examplecorp",
+			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
 		},
 	})
 	h := Deposits(r, stubForwarder(t))
@@ -80,16 +80,16 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 	})
 
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.redacted.com": {
-			Name:    "liquidity",
-			Backend: BackendConfig{Kind: "bd", URL: "https://bd.redacted.com"},
+		"pay.example.com": {
+			Name:    "examplecorp",
+			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
 		},
 	})
 	h := Deposits(r, fwd)
 
-	req := httptest.NewRequest(http.MethodPost, "http://pay.redacted.com/checkout/v1/deposits",
+	req := httptest.NewRequest(http.MethodPost, "http://pay.example.com/checkout/v1/deposits",
 		strings.NewReader(`{"amount_cents":1000,"method":"card"}`))
-	req.Host = "pay.redacted.com"
+	req.Host = "pay.example.com"
 	req.Header.Set("Authorization", "Bearer user-jwt")
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -98,16 +98,16 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 	if w.Code != 201 {
 		t.Fatalf("status = %d, want 201", w.Code)
 	}
-	if captured.tenant != "liquidity" {
-		t.Errorf("tenant = %q, want liquidity", captured.tenant)
+	if captured.tenant != "examplecorp" {
+		t.Errorf("tenant = %q, want examplecorp", captured.tenant)
 	}
 	if captured.method != http.MethodPost {
 		t.Errorf("method = %q, want POST", captured.method)
 	}
 	// Must proxy to the tenant's configured backend URL — NOT the
 	// original Host. Otherwise an attacker could SSRF via Host spoofing.
-	if !strings.HasPrefix(captured.url, "https://bd.redacted.com/") {
-		t.Errorf("url = %q, want prefix https://bd.redacted.com/", captured.url)
+	if !strings.HasPrefix(captured.url, "https://bd.example.com/") {
+		t.Errorf("url = %q, want prefix https://bd.example.com/", captured.url)
 	}
 	// Bearer token must be forwarded so the backend can attribute the
 	// deposit to a real IAM user.
@@ -126,15 +126,15 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 // must fail closed rather than fall back to some default.
 func TestDeposits_FailsClosedOnMissingBackend(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.redacted.com": {
-			Name: "liquidity",
+		"pay.example.com": {
+			Name: "examplecorp",
 			// No Backend configured.
 		},
 	})
 	h := Deposits(r, stubForwarder(t))
 
-	req := httptest.NewRequest(http.MethodPost, "http://pay.redacted.com/checkout/v1/deposits", strings.NewReader(`{}`))
-	req.Host = "pay.redacted.com"
+	req := httptest.NewRequest(http.MethodPost, "http://pay.example.com/checkout/v1/deposits", strings.NewReader(`{}`))
+	req.Host = "pay.example.com"
 	req.Header.Set("Authorization", "Bearer u")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)

@@ -299,7 +299,7 @@ type App struct {
 	// HTTP router
 	Router *gin.Engine
 
-	// CheckoutResolver maps hostnames (pay.redacted.com, …) to Tenant
+	// CheckoutResolver maps hostnames (pay.example.com, …) to Tenant
 	// configs for the embedded checkout SPA. Mutable at runtime so the
 	// admin can add/remove hostnames and toggle providers without a
 	// restart. Legacy resolver — new code reads CommerceStore.Tenants.
@@ -850,7 +850,7 @@ func (app *App) setupRoutes() {
 
 	// Hosted multi-tenant checkout. Mounts:
 	//   GET  /v1/commerce/tenant   — public tenant JSON (branding + enabled methods)
-	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (BD for Liquidity)
+	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (per-tenant)
 	//   GET  /*                    — embedded Vite SPA with SPA fallback
 	//
 	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
