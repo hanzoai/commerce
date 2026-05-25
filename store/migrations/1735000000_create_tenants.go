@@ -66,7 +66,7 @@ func init() {
 		})
 
 		// BD endpoint — where checkout API proxies deposit intents. For the
-		// Liquidity tenant this is https://bd.{env}.; for others
+		// regulated tokenization tenants this is https://bd.{env}.<tenant-domain>; for others
 		// it is the tenant's own back end.
 		collection.Fields.Add(&core.URLField{
 			Name: "bd_endpoint",
