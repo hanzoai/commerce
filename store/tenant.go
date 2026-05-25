@@ -212,7 +212,7 @@ func (r *TenantRepo) FindByID(id string) (*Tenant, error) {
 // commerce_tenant_hostnames join table. The input is normalized (lowercase,
 // trailing-dot stripped, port stripped) before lookup; malformed inputs
 // return ErrInvalidHostname. Exact-match only — suffix spoofing
-// ("pay.satschel.com.evil.com") is rejected because the row-per-hostname
+// ("pay.example.com.evil.com") is rejected because the row-per-hostname
 // store does a point lookup on the unique index, never a prefix/LIKE scan.
 func (r *TenantRepo) FindByHostname(host string) (*Tenant, error) {
 	h, err := normalizeHostname(host)
@@ -418,7 +418,7 @@ func unmarshalJSONField(rec *core.Record, name string, dst any) error {
 
 // normalizeHostname applies the canonical checkout tenant-resolution rule:
 //   - lowercase
-//   - trailing "." stripped (absolute DNS form — "pay.satschel.com." == "pay.satschel.com")
+//   - trailing "." stripped (absolute DNS form — "pay.example.com." == "pay.example.com")
 //   - :port stripped
 //   - reject embedded whitespace / control bytes / quote characters
 //   - reject empty / pure-port input

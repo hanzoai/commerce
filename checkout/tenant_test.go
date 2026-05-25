@@ -14,21 +14,21 @@ import (
 
 func TestResolveTenant_KnownHostname(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.satschel.com":      {Name: "liquidity", Brand: Brand{DisplayName: "Liquidity.io"}},
-		"pay.dev.satschel.com":  {Name: "liquidity", Brand: Brand{DisplayName: "Liquidity.io"}},
-		"pay.test.satschel.com": {Name: "liquidity", Brand: Brand{DisplayName: "Liquidity.io"}},
+		"pay.example.com":      {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
+		"pay.dev.example.com":  {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
+		"pay.test.example.com": {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
 	})
 
 	cases := []struct {
 		host, want string
 	}{
-		{"pay.satschel.com", "liquidity"},
-		{"pay.dev.satschel.com", "liquidity"},
-		{"pay.test.satschel.com", "liquidity"},
+		{"pay.example.com", "examplecorp"},
+		{"pay.dev.example.com", "examplecorp"},
+		{"pay.test.example.com", "examplecorp"},
 		// Port suffix must be stripped before lookup.
-		{"pay.satschel.com:443", "liquidity"},
+		{"pay.example.com:443", "examplecorp"},
 		// Case-insensitive.
-		{"PAY.SATSCHEL.COM", "liquidity"},
+		{"PAY.EXAMPLE.COM", "examplecorp"},
 	}
 
 	for _, tc := range cases {
@@ -45,15 +45,15 @@ func TestResolveTenant_KnownHostname(t *testing.T) {
 
 func TestResolveTenant_UnknownHostname(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.satschel.com": {Name: "liquidity"},
+		"pay.example.com": {Name: "examplecorp"},
 	})
 
 	// Arbitrary unrelated hosts MUST NOT match.
 	for _, host := range []string{
 		"evil.com",
 		"pay.evil.com",
-		"satschel.com.evil.com", // suffix-match attack
-		"xyzpay.satschel.com",
+		"example.com.evil.com", // suffix-match attack
+		"xyzpay.example.com",
 		"",
 	} {
 		if _, err := r.Resolve(host); err != ErrUnknownTenant {
@@ -62,18 +62,18 @@ func TestResolveTenant_UnknownHostname(t *testing.T) {
 	}
 }
 
-// An attacker setting a Host header like `pay.satschel.com.evil.com` must
-// not be resolved as liquidity. Exact-match only (after port/case
+// An attacker setting a Host header like `pay.example.com.evil.com` must
+// not be resolved as examplecorp. Exact-match only (after port/case
 // normalization).
 func TestResolveTenant_SuffixSpoofing(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.satschel.com": {Name: "liquidity"},
+		"pay.example.com": {Name: "examplecorp"},
 	})
 	spoofs := []string{
-		"pay.satschel.com.attacker.test",
-		"attacker.pay.satschel.com",
-		" pay.satschel.com",
-		"pay.satschel.com ",
+		"pay.example.com.attacker.test",
+		"attacker.pay.example.com",
+		" pay.example.com",
+		"pay.example.com ",
 	}
 	for _, s := range spoofs {
 		if _, err := r.Resolve(s); err != ErrUnknownTenant {
@@ -89,15 +89,15 @@ func TestResolveTenant_SuffixSpoofing(t *testing.T) {
 // client secrets, no webhook keys, no KMS paths.
 func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 	tenant := Tenant{
-		Name: "liquidity",
+		Name: "examplecorp",
 		Brand: Brand{
-			DisplayName:  "Liquidity.io",
-			LogoURL:      "https://cdn.satschel.com/liquidity.png",
+			DisplayName:  "ExampleCorp",
+			LogoURL:      "https://cdn.example.com/examplecorp.png",
 			PrimaryColor: "#0ea5e9",
 		},
 		IAM: IAMConfig{
-			Issuer:   "https://id.satschel.com",
-			ClientID: "liquidity-exchange-client-id",
+			Issuer:   "https://id.example.com",
+			ClientID: "examplecorp-exchange-client-id",
 			// These MUST NOT leak:
 			ClientSecret: "secret-do-not-share",
 			AdminSecret:  "even-more-secret",
@@ -106,13 +106,13 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 			{Name: "square", Enabled: true, AccessToken: "EAAA-secret-token", WebhookSignatureKey: "whk-secret"},
 			{Name: "braintree", Enabled: false, PrivateKey: "bt-secret"},
 		},
-		ReturnURLAllowlist: []string{"https://exchange.satschel.com"},
-		Backend:            BackendConfig{URL: "https://bd.satschel.com", Kind: "bd"},
+		ReturnURLAllowlist: []string{"https://exchange.example.com"},
+		Backend:            BackendConfig{URL: "https://bd.example.com", Kind: "bd"},
 	}
-	r := NewStaticResolver(map[string]Tenant{"pay.satschel.com": tenant})
+	r := NewStaticResolver(map[string]Tenant{"pay.example.com": tenant})
 
-	req := httptest.NewRequest(http.MethodGet, "http://pay.satschel.com/checkout/v1/tenant", nil)
-	req.Host = "pay.satschel.com"
+	req := httptest.NewRequest(http.MethodGet, "http://pay.example.com/checkout/v1/tenant", nil)
+	req.Host = "pay.example.com"
 	w := httptest.NewRecorder()
 
 	TenantJSON(r).ServeHTTP(w, req)
@@ -143,11 +143,11 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 
 	// These fields MUST be present.
 	required := []string{
-		"liquidity",
-		"Liquidity.io",
+		"examplecorp",
+		"ExampleCorp",
 		"#0ea5e9",
-		"https://id.satschel.com",
-		"liquidity-exchange-client-id",
+		"https://id.example.com",
+		"examplecorp-exchange-client-id",
 		"square",
 	}
 	for _, s := range required {
@@ -173,7 +173,7 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 
 func TestTenantJSON_UnknownHostReturns404(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
-		"pay.satschel.com": {Name: "liquidity"},
+		"pay.example.com": {Name: "examplecorp"},
 	})
 	req := httptest.NewRequest(http.MethodGet, "http://evil.com/checkout/v1/tenant", nil)
 	req.Host = "evil.com"
