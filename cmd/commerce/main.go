@@ -1,29 +1,31 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 //
-// Legacy entry-point shim. cmd/commerce is the historical binary path
-// that Dockerfiles and the Makefile build. The implementation has
-// moved to cmd/commerced (mirrors cmd/tasksd), but to avoid a
-// flag-day rename across CI/CD this shim re-execs the same package
-// graph. Once the Dockerfiles flip to ./cmd/commerced/main.go this
-// file can be deleted.
+// commerce is the canonical entry-point. Two boot modes — chosen at
+// startup, same binary:
+//
+//	legacy (default):  flag --cloud absent, env COMMERCE_MODE unset/!=cloud
+//	                   → bootLegacy(): direct-Gin behind net/http listener,
+//	                     wires api.Route(/v1) imperatively. The shape the
+//	                     production deployment runs today.
+//
+//	cloud:             flag --cloud OR env COMMERCE_MODE=cloud
+//	                   → bootCloud(): zip.App with commerce mounted via
+//	                     zip.AdaptNetHTTP(ginEngine) — gin is sealed as an
+//	                     inner handler, no public route surface of its own.
+//	                     Requires a build with `-tags cloud`; without the
+//	                     tag the cloud entry returns a clear error and the
+//	                     process exits non-zero.
+//
+// Default stays legacy until cloud-mount is validated in production.
+// Phase 1 of the staged Gin → zip migration.
 
 package main
 
 import (
-	"context"
-	"errors"
 	"flag"
-	"log/slog"
-	"net/http"
+	"fmt"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
-	"time"
-
-	commerceApp "github.com/hanzoai/commerce"
-	api "github.com/hanzoai/commerce/api/api"
-	commerce "github.com/hanzoai/commerce"
 )
 
 func main() {
@@ -32,62 +34,29 @@ func main() {
 		httpAddr        = flag.String("http", envStr("COMMERCE_HTTP", "127.0.0.1:8090"), "HTTP listen address")
 		dev             = flag.Bool("dev", envBool("COMMERCE_DEV", false), "enable development mode")
 		requireIdentity = flag.Bool("require-identity", envBool("COMMERCED_REQUIRE_IDENTITY", false), "refuse requests without X-Org-Id/X-User-Id (gateway trust)")
+		cloudMode       = flag.Bool("cloud", envCloudMode(), "boot via cloud-mount (zip.App with gin sealed inside); requires -tags cloud build")
 	)
 	flag.Parse()
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(logger)
+	if *cloudMode {
+		if err := bootCloud(*dataDir, *httpAddr, *dev, *requireIdentity); err != nil {
+			fmt.Fprintf(os.Stderr, "commerce: cloud boot: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	srv, err := commerce.Embed(ctx, commerce.EmbedConfig{
-		DataDir:         *dataDir,
-		HTTPAddr:        *httpAddr,
-		Dev:             *dev,
-		RequireIdentity: *requireIdentity,
-		Logger:          logger,
-	})
-	if err != nil {
-		logger.Error("commerce.Embed", "err", err)
+	if err := bootLegacy(*dataDir, *httpAddr, *dev, *requireIdentity); err != nil {
+		fmt.Fprintf(os.Stderr, "commerce: legacy boot: %v\n", err)
 		os.Exit(1)
 	}
-	defer func() {
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		_ = srv.Stop(shutdownCtx)
-	}()
+}
 
-	// Mount the full Commerce API routes directly on the live router.
-	//
-	// Previously this used OnRouteSetup hook binding AFTER Bootstrap had
-	// already fired — silent no-op, /v1/billing/* always 404. Fix is to
-	// register imperatively on the live *gin.Engine once Embed returns.
-	apiGroup := srv.App().Router.Group("/v1")
-	api.Route(apiGroup)
-
-	httpSrv := &http.Server{
-		Addr:              srv.HTTPAddr(),
-		Handler:           srv.HTTPHandler(),
-		ReadTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
-	}
-
-	go func() {
-		logger.Info("http listener", "addr", httpSrv.Addr, "version", commerceApp.Version)
-		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Error("http", "err", err)
-			stop()
-		}
-	}()
-
-	<-ctx.Done()
-	logger.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	_ = httpSrv.Shutdown(shutdownCtx)
+// envCloudMode is true iff COMMERCE_MODE=cloud (case-insensitive trim
+// not needed — env values are exact in production). Used as the default
+// for --cloud so operators can flip modes via env without changing argv.
+func envCloudMode() bool {
+	return os.Getenv("COMMERCE_MODE") == "cloud"
 }
 
 func envStr(k, def string) string {
