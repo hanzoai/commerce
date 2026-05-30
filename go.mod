@@ -63,6 +63,8 @@ require (
 	github.com/luxfi/accel v1.0.7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.70.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
 )
 
 require (
@@ -120,7 +122,7 @@ require (
 	github.com/luxfi/cache v1.2.1 // indirect
 	github.com/luxfi/container v0.0.4 // indirect
 	github.com/luxfi/ids v1.2.9 // indirect
-	github.com/luxfi/log v1.4.3 // indirect
+	github.com/luxfi/log v1.4.3
 	github.com/luxfi/math v1.2.4 // indirect
 	github.com/luxfi/math/big v0.1.0 // indirect
 	github.com/luxfi/mdns v0.1.0 // indirect
@@ -197,7 +199,6 @@ replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
 // HIP-0106 unified-binary contract — pin to local sibling repos so the
 // commerce Mount() signature evolves in lockstep with the cloud +
 // zip APIs. Both repos sit beside commerce in ~/work/hanzo/*.
-
 
 // Transitive: luxfi/threshold@v1.6.7 pulls luxfi/lens + luxfi/pulsar at
 // unpublished rc tags. Pin to the latest published lens + pulsar so
