@@ -23,12 +23,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/schema v1.4.1
 	github.com/gorilla/sessions v1.4.0
-	github.com/hanzoai/base v0.44.0
+	github.com/hanzoai/base v0.0.0-00010101000000-000000000000
 	github.com/hanzoai/datastore-go/v2 v2.44.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.18.0
-	github.com/hanzoai/orm v0.5.1
+	github.com/hanzoai/orm v0.5.0
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
@@ -203,23 +203,10 @@ replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
 
 replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
 
-// luxfi/log@v1.3.0 declares its module path as "luxfi/logger" — pin
-// to the canonical renamed module so transitive deps that still
-// require "luxfi/log" resolve cleanly.
-replace github.com/luxfi/log => github.com/luxfi/logger v1.4.1
+// commerce/store seam — develop against the local base working tree. Base
+// brings in hanzoai/orm/query (unreleased subpackage) which requires the
+// local orm checkout to satisfy. Both replaces come out when the seam
+// lands on tagged base v0.44.
+replace github.com/hanzoai/base => ../base
 
-// Transitive dep chain pinned luxfi/genesis@v1.5.22 which was never
-// published; v1.9.7 is the current canonical.
-replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
-
-// HIP-0106 unified-binary contract — pin to local sibling repos so the
-// commerce Mount() signature evolves in lockstep with the cloud +
-// zip APIs. Both repos sit beside commerce in ~/work/hanzo/*.
-
-// Transitive: luxfi/threshold@v1.6.7 pulls luxfi/lens + luxfi/pulsar at
-// unpublished rc tags. Pin to the latest published lens + pulsar so
-// go-mod resolves cleanly.
-replace (
-	github.com/luxfi/lens => github.com/luxfi/lens v0.1.4
-	github.com/luxfi/pulsar => github.com/luxfi/pulsar v1.0.9
-)
+replace github.com/hanzoai/orm => ../orm
