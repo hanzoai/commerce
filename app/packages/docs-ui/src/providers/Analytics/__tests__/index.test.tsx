@@ -4,13 +4,13 @@ import { cleanup, fireEvent, render } from "@testing-library/react"
 
 // Mock dependencies
 const mockTrackWithSegment = vi.fn()
-const mockTrackWithInsights = vi.fn()
+const mockTrackWithPostHog = vi.fn()
 const mockUsePathname = vi.fn(() => "/test-path")
 
 const mockUseReoDevAnalytics = vi.fn()
 
-const mockUseInsightsAnalytics = vi.fn(() => ({
-  track: mockTrackWithInsights,
+const mockUsePostHogAnalytics = vi.fn(() => ({
+  track: mockTrackWithPostHog,
 }))
 
 const mockUseSegmentAnalytics = vi.fn((options: unknown) => ({
@@ -21,8 +21,8 @@ vi.mock("@/providers/Analytics/providers/segment", () => ({
   useSegmentAnalytics: (options: unknown) => mockUseSegmentAnalytics(options),
 }))
 
-vi.mock("@/providers/Analytics/providers/insights", () => ({
-  useInsightsAnalytics: () => mockUseInsightsAnalytics(),
+vi.mock("@/providers/Analytics/providers/posthog", () => ({
+  usePostHogAnalytics: () => mockUsePostHogAnalytics(),
 }))
 
 vi.mock("@/providers/Analytics/providers/reo-dev", () => ({
@@ -84,17 +84,17 @@ const TestComponent = () => {
         Track With Segment
       </button>
       <button
-        data-testid="track-with-insights"
+        data-testid="track-with-posthog"
         onClick={() =>
           track({
             event: {
-              event: "insights-event",
-              tracker: "insights",
+              event: "posthog-event",
+              tracker: "posthog",
             },
           })
         }
       >
-        Track With Insights
+        Track With PostHog
       </button>
       <button
         data-testid="track-with-both"
@@ -102,7 +102,7 @@ const TestComponent = () => {
           track({
             event: {
               event: "both-event",
-              tracker: ["segment", "insights"],
+              tracker: ["segment", "posthog"],
             },
           })
         }
@@ -118,7 +118,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockUsePathname.mockReturnValue("/test-path")
   mockTrackWithSegment.mockResolvedValue(undefined)
-  mockTrackWithInsights.mockResolvedValue(undefined)
+  mockTrackWithPostHog.mockResolvedValue(undefined)
   mockUseSegmentAnalytics.mockReturnValue({
     track: mockTrackWithSegment,
   })
@@ -169,10 +169,10 @@ describe("useAnalytics hook", () => {
 
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalled()
+    expect(mockTrackWithPostHog).toHaveBeenCalled()
   })
 
-  test("uses insights as default tracker", async () => {
+  test("uses posthog as default tracker", async () => {
     const { getByTestId } = render(
       <AnalyticsProvider>
         <TestComponent />
@@ -183,7 +183,7 @@ describe("useAnalytics hook", () => {
 
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "test-event",
       })
@@ -201,7 +201,7 @@ describe("useAnalytics hook", () => {
     fireEvent.click(getByTestId("track-event"))
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "test-event",
         options: expect.objectContaining({
@@ -242,22 +242,22 @@ describe("useAnalytics hook", () => {
         event: "segment-event",
       })
     )
-    expect(mockTrackWithInsights).not.toHaveBeenCalled()
+    expect(mockTrackWithPostHog).not.toHaveBeenCalled()
   })
 
-  test("tracks with insights when tracker is insights", async () => {
+  test("tracks with posthog when tracker is posthog", async () => {
     const { getByTestId } = render(
       <AnalyticsProvider>
         <TestComponent />
       </AnalyticsProvider>
     )
 
-    fireEvent.click(getByTestId("track-with-insights"))
+    fireEvent.click(getByTestId("track-with-posthog"))
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: "insights-event",
+        event: "posthog-event",
       })
     )
     expect(mockTrackWithSegment).not.toHaveBeenCalled()
@@ -278,7 +278,7 @@ describe("useAnalytics hook", () => {
         event: "both-event",
       })
     )
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "both-event",
       })
@@ -319,7 +319,7 @@ describe("useAnalytics hook", () => {
 
     expect(vi.getTimerCount()).toBe(3)
     vi.runAllTimers()
-    expect(mockTrackWithInsights).toHaveBeenCalledTimes(12)
+    expect(mockTrackWithPostHog).toHaveBeenCalledTimes(12)
   })
 
   test("preserves custom options when enriching event", async () => {
@@ -356,7 +356,7 @@ describe("useAnalytics hook", () => {
     fireEvent.click(getByTestId("track-custom"))
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "custom-event",
       })
@@ -374,7 +374,7 @@ describe("useAnalytics hook", () => {
     fireEvent.click(getByTestId("track-event"))
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         options: expect.objectContaining({
           url: "/test-path",
@@ -384,7 +384,7 @@ describe("useAnalytics hook", () => {
 
     // Update pathname
     mockUsePathname.mockReturnValue("/new-path")
-    mockTrackWithInsights.mockClear()
+    mockTrackWithPostHog.mockClear()
 
     // Re-render to trigger pathname change
     rerender(
@@ -397,7 +397,7 @@ describe("useAnalytics hook", () => {
     fireEvent.click(getByTestId("track-event"))
     vi.runAllTimers()
 
-    expect(mockTrackWithInsights).toHaveBeenCalledWith(
+    expect(mockTrackWithPostHog).toHaveBeenCalledWith(
       expect.objectContaining({
         options: expect.objectContaining({
           url: "/new-path",
