@@ -151,7 +151,7 @@ var _ = Describe("account", func() {
 			req := `{
 				"firstName": "Zack",
 				"lastName": "Taylor",
-				"email": "zack.createwithoutusername@test.com",
+				"email": "newuser@hanzo.ai",
 				"password": "Z0rd0N",
 				"passwordConfirm": "Z0rd0N"
 			}`
@@ -161,7 +161,7 @@ var _ = Describe("account", func() {
 			log.Debug("Response %s", cl.Post("/account/create", req, &res))
 			Expect(res.User.FirstName).To(Equal("Zack"))
 			Expect(res.User.LastName).To(Equal("Taylor"))
-			Expect(res.User.Email).To(Equal("zack.createwithoutusername@test.com"))
+			Expect(res.User.Email).To(Equal("newuser@hanzo.ai"))
 		})
 
 		It("Should create an account if it already exists but has no password", func() {
@@ -222,7 +222,7 @@ var _ = Describe("account", func() {
 				"username": "ZackShouldCreateAccount",
 				"firstName": "Zack",
 				"lastName": "Taylor",
-				"email": "zack.createwithusername@test.com",
+				"email": "newuser-with-username@hanzo.ai",
 				"password": "Z0rd0N",
 				"passwordConfirm": "Z0rd0N"
 			}`
@@ -232,7 +232,7 @@ var _ = Describe("account", func() {
 			log.Debug("Response %s", cl.Post("/account/create", req, &res))
 			Expect(res.User.FirstName).To(Equal("Zack"))
 			Expect(res.User.LastName).To(Equal("Taylor"))
-			Expect(res.User.Email).To(Equal("zack.createwithusername@test.com"))
+			Expect(res.User.Email).To(Equal("newuser-with-username@hanzo.ai"))
 			Expect(res.User.Username).To(Equal("zackshouldcreateaccount"))
 		})
 
