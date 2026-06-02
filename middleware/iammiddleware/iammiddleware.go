@@ -135,10 +135,39 @@ func IAMTokenRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Grant the $5 starter credit on first encounter (idempotent).
-		uid := userID
-		if uid == "" {
-			uid = ownerID
+		// Valid IAM token -- set context values
+		c.Set("iam_claims", claims)
+		c.Set("iam_user_id", claims.Subject)
+		c.Set("iam_email", claims.Email)
+		c.Set("iam_org", claims.Owner)
+		c.Set("iam_roles", claims.Roles)
+		c.Set("iam_authenticated", true)
+
+		// Resolve organization from IAM "owner" claim so downstream handlers
+		// get proper tenant scoping via middleware.GetOrganization(c).
+		// IAM is the source of truth for org/identity — auto-create the
+		// Commerce org record on first encounter.
+		if claims.Owner != "" {
+			ctx := c.Request.Context()
+			db := datastore.New(ctx)
+			org := organization.New(db)
+			org.Name = claims.Owner
+			org.Enabled = true
+
+			// GetOrCreate: find existing org by name, or create it from IAM claim.
+			if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
+				log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
+			} else {
+				// Set live mode based on IAM permissions (same as service token path)
+				perms := iamPermissions(claims)
+				if perms.Has(permission.Live) {
+					org.Live = true
+				}
+
+				c.Set("organization", org)
+				c.Set("active-organization", org.Id())
+				c.Set("permissions", perms)
+			}
 		}
 		go func(id string) {
 			bgDb := datastore.New(context.Background())
