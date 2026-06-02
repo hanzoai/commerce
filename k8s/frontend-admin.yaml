@@ -1,25 +1,46 @@
-# admin.commerce.hanzo.ai serves the embedded SPA inside commerced. The
-# legacy commerce-admin Next.js sidecar is retired. The ingress maps the
-# host onto the commerce service, and a hanzoai/ingress Middleware CR
-# (ReplacePathRegex) rewrites every path under admin.commerce.hanzo.ai/
-# onto /_/commerce/ui/<path>, where the embedded SPA handler in
-# pkg/commerce/server.go owns the response.
-#
-# nginx-ingress annotations are NOT honored here; hanzoai/ingress uses
-# Middleware CRs instead. ingressClassName must be "ingress" so the
-# canonical hanzoai/ingress controller picks this up.
-
----
-apiVersion: hanzo.ai/v1alpha1
-kind: Middleware
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: commerce-admin-rewrite
+  name: commerce-admin
+  namespace: hanzo
+  labels:
+    app: commerce-admin
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: commerce-admin
+  template:
+    metadata:
+      labels:
+        app: commerce-admin
+    spec:
+      containers:
+        - name: admin
+          image: ghcr.io/hanzoai/commerce-admin:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: commerce-admin
   namespace: hanzo
 spec:
-  replacePathRegex:
-    regex: "^/(.*)"
-    replacement: "/_/commerce/ui/${1}"
-
+  selector:
+    app: commerce-admin
+  ports:
+    - port: 80
+      targetPort: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -28,14 +49,9 @@ metadata:
   namespace: hanzo
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Bind the canonical hanzoai/ingress Middleware that rewrites
-    # admin.commerce.hanzo.ai/<x> -> /_/commerce/ui/<x> in-flight.
-    # Annotation namespace is the standard ingress.kubernetes.io/* per
-    # hanzoai/ingress kubernetes-ingress provider docs.
-    ingress.kubernetes.io/router.middlewares: hanzo-commerce-admin-rewrite@kubernetescrd
-    ingress.kubernetes.io/router.tls: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: ingress
+  ingressClassName: nginx
   tls:
     - hosts:
         - admin.commerce.hanzo.ai
@@ -48,6 +64,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: commerce
+                name: commerce-admin
                 port:
-                  number: 8001
+                  number: 80
