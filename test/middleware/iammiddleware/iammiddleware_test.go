@@ -37,111 +37,365 @@ func TestFallthroughWithoutHeaders(t *testing.T) {
 	}
 }
 
-func TestIsIAMAuthenticatedDefaultsFalse(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	c := &gin.Context{Request: httptest.NewRequest(http.MethodGet, "/x", nil)}
-	if iammiddleware.IsIAMAuthenticated(c) {
-		t.Fatalf("expected false on bare gin.Context")
-	}
-}
+var _ = Describe("middleware/iammiddleware", func() {
 
-func TestIsIAMAuthenticatedWithHeader(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set(pkgAuth.HeaderOrgID, "hanzo")
-	c := &gin.Context{Request: req}
-	if !iammiddleware.IsIAMAuthenticated(c) {
-		t.Fatalf("expected true when X-Org-Id is present")
-	}
-}
+	// ── IAMTokenRequired fallthrough cases ──────────────────────────────
 
-func TestGetIAMClaimsNilContextReturnsZeroClaims(t *testing.T) {
-	// Public-API contract: GetIAMClaims is always non-nil under
-	// gateway-trust. A nil gin.Context (test ergonomics) yields a
-	// zero-valued *auth.IAMClaims so call sites can read fields without
-	// guarding.
-	got := iammiddleware.GetIAMClaims(nil)
-	if got == nil {
-		t.Fatalf("GetIAMClaims(nil) must return non-nil claims, got nil")
-	}
-	if got.IsAdmin || got.Owner != "" || got.Subject != "" {
-		t.Fatalf("GetIAMClaims(nil) must be zero-valued, got %+v", got)
-	}
-}
+	Context("IAMTokenRequired fallthrough", func() {
+		It("should fall through when no Authorization header is present", func() {
+			cl := newClient("")
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
 
-func TestGetIAMClaimsFromHeaders(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set(pkgAuth.HeaderOrgID, "hanzo")
-	req.Header.Set(pkgAuth.HeaderUserID, "z")
-	req.Header.Set(pkgAuth.HeaderUserEmail, "z@hanzo.ai")
-	req.Header.Set(iammiddleware.HeaderUserIsAdmin, "true")
-	req.Header.Set(iammiddleware.HeaderRoles, "admin, owner")
-	c := &gin.Context{Request: req}
+		It("should fall through when Authorization is not Bearer", func() {
+			cl := ginclient.New(ctx)
+			cl.Router.Use(func(c *gin.Context) {
+				c.Request = c.Request.WithContext(ctx)
+				c.Next()
+			})
+			cl.Use(iammiddleware.IAMTokenRequired())
+			cl.Handle("GET", "/test", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+			cl.Defaults(func(r *http.Request) {
+				r.Header.Set("Authorization", "Basic dXNlcjpwYXNz")
+			})
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
 
-	got := iammiddleware.GetIAMClaims(c)
-	if got == nil {
-		t.Fatal("GetIAMClaims must be non-nil with headers")
-	}
-	if got.Owner != "hanzo" {
-		t.Errorf("Owner = %q, want hanzo", got.Owner)
-	}
-	if got.Subject != "z" {
-		t.Errorf("Subject = %q, want z", got.Subject)
-	}
-	if got.Email != "z@hanzo.ai" {
-		t.Errorf("Email = %q, want z@hanzo.ai", got.Email)
-	}
-	if !got.IsAdmin {
-		t.Error("IsAdmin = false, want true")
-	}
-	if len(got.Roles) != 2 || got.Roles[0] != "admin" || got.Roles[1] != "owner" {
-		t.Errorf("Roles = %v, want [admin owner]", got.Roles)
-	}
-}
+		It("should fall through for malformed JWT token", func() {
+			cl := newClient("not-a-valid-jwt")
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
 
-func TestGetIAMClaimsFailsClosedOnMissingIsAdmin(t *testing.T) {
-	// Missing X-User-IsAdmin -> IsAdmin=false. Spoofed gibberish does
-	// NOT escalate.
-	gin.SetMode(gin.TestMode)
-	for _, val := range []string{"", "yes", "1", "TRUE\nX-User-IsAdmin: true"} {
-		req := httptest.NewRequest(http.MethodGet, "/x", nil)
-		req.Header.Set(pkgAuth.HeaderUserID, "z")
-		if val != "" {
-			req.Header.Set(iammiddleware.HeaderUserIsAdmin, val)
-		}
-		c := &gin.Context{Request: req}
-		got := iammiddleware.GetIAMClaims(c)
-		if got.IsAdmin {
-			t.Errorf("IsAdmin = true for X-User-IsAdmin=%q, want false (fail-closed)", val)
-		}
-	}
-}
+		It("should fall through for expired token", func() {
+			claims := makeAdminClaims()
+			claims.ExpiresAt = time.Now().Add(-time.Hour).Unix()
+			token := signToken(claims)
 
-func TestGetIAMClaimsTestInjectionWins(t *testing.T) {
-	// Tests can pre-populate "iam_claims" on the gin context to inject
-	// arbitrary claim shapes. Headers are ignored when iam_claims is set.
-	gin.SetMode(gin.TestMode)
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	req.Header.Set(iammiddleware.HeaderUserIsAdmin, "true")
-	c := &gin.Context{Request: req}
-	c.Set("iam_claims", &auth.IAMClaims{Owner: "injected"})
+			cl := newClient(token)
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
 
-	got := iammiddleware.GetIAMClaims(c)
-	if got.Owner != "injected" {
-		t.Errorf("Owner = %q, want injected (test injection must win)", got.Owner)
-	}
-	if got.IsAdmin {
-		t.Error("IsAdmin = true; injection ignored, want false (header path bypassed)")
-	}
-}
+		It("should fall through for wrong audience", func() {
+			claims := makeAdminClaims()
+			claims.Audience = auth.FlexAudience("wrong-client-id")
+			token := signToken(claims)
 
-func TestGetIAMTierAlwaysEmpty(t *testing.T) {
-	if got := iammiddleware.GetIAMTier(nil); got != "" {
-		t.Fatalf(`GetIAMTier must return "" under gateway-trust, got %q`, got)
-	}
-}
+			cl := newClient(token)
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
+	})
 
-// Make the test types line up with the legacy organization model so
-// future contract tests can extend without import-cycle gymnastics.
-var _ = organization.Organization{}
+	// ── IAM context keys ────────────────────────────────────────────────
+
+	Context("IAM context keys", func() {
+		It("should set all IAM context keys for a valid token", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+
+			iamClaims := iammiddleware.GetIAMClaims(cl.Context)
+			Expect(iamClaims).NotTo(BeNil())
+			Expect(iamClaims.Subject).To(Equal("user-admin-123"))
+			Expect(iamClaims.Email).To(Equal("admin@test.com"))
+			Expect(iamClaims.Owner).To(Equal(testOrgName))
+
+			userId, _ := cl.Context.Get("iam_user_id")
+			Expect(userId).To(Equal("user-admin-123"))
+
+			email, _ := cl.Context.Get("iam_email")
+			Expect(email).To(Equal("admin@test.com"))
+
+			iamOrg, _ := cl.Context.Get("iam_org")
+			Expect(iamOrg).To(Equal(testOrgName))
+
+			roles, _ := cl.Context.Get("iam_roles")
+			Expect(roles).To(Equal([]string{"admin"}))
+		})
+	})
+
+	// ── Permission mapping ──────────────────────────────────────────────
+
+	Context("permission mapping", func() {
+		It("should grant Admin|Live for admin role", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, exists := cl.Context.Get("permissions")
+			Expect(exists).To(BeTrue())
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Admin)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+		})
+
+		It("should grant Admin|Live for owner role", func() {
+			claims := makeMemberClaims()
+			claims.Roles = []string{"owner"}
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, _ := cl.Context.Get("permissions")
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Admin)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+		})
+
+		It("should grant Published|Live|ReadCoupon|ReadProduct for member role", func() {
+			claims := makeMemberClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, exists := cl.Context.Get("permissions")
+			Expect(exists).To(BeTrue())
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Published)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+			Expect(perms.Has(permission.ReadCoupon)).To(BeTrue())
+			Expect(perms.Has(permission.ReadProduct)).To(BeTrue())
+			Expect(perms.Has(permission.Admin)).To(BeFalse())
+		})
+
+		It("should grant Published|Live|ReadCoupon|ReadProduct for user role", func() {
+			claims := makeMemberClaims()
+			claims.Roles = []string{"user"}
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, _ := cl.Context.Get("permissions")
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Published)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+			Expect(perms.Has(permission.ReadCoupon)).To(BeTrue())
+			Expect(perms.Has(permission.ReadProduct)).To(BeTrue())
+		})
+
+		It("should default to Published|Live for unrecognized role", func() {
+			claims := makeMinimalClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, exists := cl.Context.Get("permissions")
+			Expect(exists).To(BeTrue())
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Published)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+			Expect(perms.Has(permission.Admin)).To(BeFalse())
+			Expect(perms.Has(permission.ReadCoupon)).To(BeFalse())
+		})
+
+		It("should accumulate permissions for IsAdmin + member role", func() {
+			claims := makeMemberClaims()
+			claims.IsAdmin = true
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			permsVal, _ := cl.Context.Get("permissions")
+			perms := permsVal.(bit.Field)
+			Expect(perms.Has(permission.Admin)).To(BeTrue())
+			Expect(perms.Has(permission.Live)).To(BeTrue())
+			Expect(perms.Has(permission.Published)).To(BeTrue())
+			Expect(perms.Has(permission.ReadCoupon)).To(BeTrue())
+			Expect(perms.Has(permission.ReadProduct)).To(BeTrue())
+		})
+	})
+
+	// ── Organization resolution ─────────────────────────────────────────
+
+	Context("organization resolution", func() {
+		It("should resolve organization from Owner claim", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			orgVal, exists := cl.Context.Get("organization")
+			Expect(exists).To(BeTrue())
+			org := orgVal.(*organization.Organization)
+			Expect(org.Name).To(Equal(testOrgName))
+		})
+
+		It("should set org.Live = true for IAM-authenticated user", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			orgVal, _ := cl.Context.Get("organization")
+			org := orgVal.(*organization.Organization)
+			Expect(org.Live).To(BeTrue())
+		})
+
+		It("should set active-organization context key", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			activeOrg, exists := cl.Context.Get("active-organization")
+			Expect(exists).To(BeTrue())
+			Expect(activeOrg).NotTo(BeEmpty())
+		})
+
+		It("should auto-create organization when Owner does not match any existing org", func() {
+			claims := makeAdminClaims()
+			claims.Owner = "nonexistent-org"
+			token := signToken(claims)
+
+			cl := newClient(token)
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+
+			// IAM auth still succeeded
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+
+			// IAM is the source of truth — org is auto-created from the IAM claim
+			orgVal, orgExists := cl.Context.Get("organization")
+			Expect(orgExists).To(BeTrue())
+			org := orgVal.(*organization.Organization)
+			Expect(org.Name).To(Equal("nonexistent-org"))
+
+			// Permissions are set based on IAM roles
+			_, permExists := cl.Context.Get("permissions")
+			Expect(permExists).To(BeTrue())
+		})
+
+		It("should not abort when Owner claim is empty", func() {
+			claims := makeAdminClaims()
+			claims.Owner = ""
+			token := signToken(claims)
+
+			cl := newClient(token)
+			w := cl.Get("/test", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+		})
+	})
+
+	// ── Helper functions ────────────────────────────────────────────────
+
+	Context("IsIAMAuthenticated", func() {
+		It("should return true after IAM authentication", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+		})
+
+		It("should return false without IAM authentication", func() {
+			cl := newClient("")
+			cl.Get("/test", nil)
+
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
+	})
+
+	Context("GetIAMClaims", func() {
+		It("should return claims after IAM authentication", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := newClient(token)
+			cl.Get("/test", nil)
+
+			iamClaims := iammiddleware.GetIAMClaims(cl.Context)
+			Expect(iamClaims).NotTo(BeNil())
+			Expect(iamClaims.Subject).To(Equal(claims.Subject))
+			Expect(iamClaims.Email).To(Equal(claims.Email))
+		})
+
+		It("should return nil without IAM authentication", func() {
+			cl := newClient("")
+			cl.Get("/test", nil)
+
+			iamClaims := iammiddleware.GetIAMClaims(cl.Context)
+			Expect(iamClaims).To(BeNil())
+		})
+	})
+
+	// ── Integration with TokenRequired ──────────────────────────────────
+
+	Context("TokenRequired integration", func() {
+		It("should bypass legacy token auth when IAM authenticated", func() {
+			claims := makeAdminClaims()
+			token := signToken(claims)
+
+			cl := ginclient.New(ctx)
+			cl.Router.Use(func(c *gin.Context) {
+				c.Request = c.Request.WithContext(ctx)
+				c.Next()
+			})
+			// Chain: IAM middleware → TokenRequired → handler
+			cl.Use(iammiddleware.IAMTokenRequired())
+			cl.Use(middleware.TokenRequired())
+			cl.Handle("GET", "/protected", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+			cl.Defaults(func(r *http.Request) {
+				r.Header.Set("Authorization", "Bearer "+token)
+			})
+
+			// Without IAM auth, TokenRequired would 401 (no legacy access token).
+			// With IAM auth, TokenRequired sees IsIAMAuthenticated=true and skips.
+			w := cl.Get("/protected", nil)
+			Expect(w.Code).To(Equal(200))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeTrue())
+		})
+
+		It("should fall through to legacy auth when IAM token is invalid", func() {
+			cl := ginclient.New(ctx)
+			cl.Router.Use(func(c *gin.Context) {
+				c.Request = c.Request.WithContext(ctx)
+				c.Next()
+			})
+			cl.Use(iammiddleware.IAMTokenRequired())
+			cl.Use(middleware.TokenRequired())
+			cl.Handle("GET", "/protected", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+			cl.IgnoreErrors(true)
+			cl.Defaults(func(r *http.Request) {
+				r.Header.Set("Authorization", "Bearer invalid-jwt")
+			})
+
+			// IAM auth fails → falls through to TokenRequired → 401 (no legacy token)
+			w := cl.Get("/protected", nil, 401)
+			Expect(w.Code).To(Equal(401))
+			Expect(iammiddleware.IsIAMAuthenticated(cl.Context)).To(BeFalse())
+		})
+	})
+})
