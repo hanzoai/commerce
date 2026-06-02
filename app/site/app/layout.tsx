@@ -1,20 +1,21 @@
 import type { Metadata } from "next"
-import { inter, robotoMono } from "./fonts"
 import "./globals.css"
+import { config } from "@/config"
+import { inter, robotoMono } from "./fonts"
+import clsx from "clsx"
 
 export const metadata: Metadata = {
-  title: "Hanzo Commerce - AI-Powered Commerce Platform",
-  description:
-    "Build, launch, and scale your commerce business with AI-powered tools. Headless APIs, multi-currency support, intelligent pricing, and real-time analytics.",
+  title: {
+    template: `%s - ${config.titleSuffix}`,
+    default: config.titleSuffix || "",
+  },
+  description: config.description,
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL || "https://commerce.hanzo.ai"
+    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3002"
   ),
   openGraph: {
     siteName: "Hanzo Commerce",
     type: "website",
-    title: "Hanzo Commerce - AI-Powered Commerce Platform",
-    description:
-      "Build, launch, and scale your commerce business with AI-powered tools.",
   },
 }
 
@@ -26,14 +27,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${robotoMono.variable} dark`}
+      className={clsx(inter.variable, robotoMono.variable)}
       suppressHydrationWarning
     >
-      <head>
-        {/* Hanzo Analytics */}
-        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="0fe5e750-941e-4b7c-bbaa-3d81fb9db38e" data-do-not-track="true" data-exclude-search="true" />
-      </head>
-      <body className="font-sans">{children}</body>
+      {children}
     </html>
   )
 }
