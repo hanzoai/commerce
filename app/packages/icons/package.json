@@ -4,11 +4,14 @@
   "private": true,
   "description": "Hanzo Commerce React icon library",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
+  "main": "dist/cjs/commerce-icons.js",
+  "main:umd": "dist/umd/commerce-icons.js",
+  "module": "dist/esm/index.js",
+  "unpkg": "dist/umd/commerce-icons.min.js",
+  "typings": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
-    "src"
+    "dist"
   ],
   "scripts": {
     "build": "pnpm build:bundles && pnpm build:types",
@@ -28,13 +31,6 @@
     "typescript": "^5.9.0"
   },
   "peerDependencies": {
-    "react": "^18.3.1 || ^19.0.0"
-  },
-  "types": "./src/index.ts",
-  "exports": {
-    ".": {
-      "import": "./src/index.ts",
-      "types": "./src/index.ts"
-    }
+    "react": "^18.3.1"
   }
 }
