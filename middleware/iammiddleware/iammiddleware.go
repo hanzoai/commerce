@@ -59,10 +59,21 @@ func Init(_ *auth.IAMConfig) error {
 // InitKV wires the KV cache used by org-id resolution.
 func InitKV(kv KVCache) { org.Bind(kv) }
 
-// Client always returns nil now: there is no in-binary JWKS client.
-// Legacy callers that pass this into UI handlers receive nil and
-// must use the gateway-supplied identity headers instead.
-func Client() *auth.IAMClient { return nil }
+// Client returns the initialized IAM client, or nil if IAM is disabled or
+// Init() has not been called. Consumers outside the middleware chain (e.g.
+// SPA handlers with their own auth gate) use this to validate bearer tokens
+// against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
+// means "treat every request as unauthenticated".
+func Client() *auth.IAMClient {
+	mu.RLock()
+	defer mu.RUnlock()
+	return iamClient
+}
+
+// orgCacheKey returns the KV key for an IAM owner → org ID mapping.
+func orgCacheKey(owner string) string {
+	return "iam:org_by_name:" + owner
+}
 
 // IAMTokenRequired returns a Gin middleware that:
 //  1. Reads the gateway-supplied X-Org-Id / X-User-Id / X-User-Email
