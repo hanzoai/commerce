@@ -4,8 +4,8 @@
 
 import React, { useMemo, useRef } from "react"
 import { Sidebar } from "types"
-import { Badge } from "../../../Badge"
-import { SidebarItem } from ".."
+import { Badge } from "@/components/Badge"
+import { SidebarItem } from "@/components/Sidebar/Item"
 import clsx from "clsx"
 
 export type SidebarItemSubCategoryProps = {

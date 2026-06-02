@@ -9,7 +9,7 @@ import type { Plugin } from "unified"
 import * as Icons from "@hanzo/commerce-icons"
 import * as HookValues from "@/specs/hook-values"
 import { colors as allColors } from "@/config/colors"
-import { insights } from "@hanzo/insights"
+import { posthog } from "posthog-js"
 
 type Params = {
   params: Promise<{ slug: string[] }>
@@ -43,20 +43,15 @@ export async function GET(req: NextRequest, { params }: Params) {
     acceptHeader.includes("text/plain") ||
     acceptHeader.includes("text/markdown")
   ) {
-    if (!insights.__loaded) {
-      insights.init(
-        (process.env.NEXT_PUBLIC_INSIGHTS_KEY || process.env.NEXT_PUBLIC_INSIGHTS_KEY)!,
-        {
-          api_host:
-            process.env.NEXT_PUBLIC_INSIGHTS_HOST ||
-            process.env.NEXT_PUBLIC_INSIGHTS_HOST,
-          person_profiles: "always",
-          defaults: "2025-05-24",
-        }
-      )
+    if (!posthog.__loaded) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+        person_profiles: "always",
+        defaults: "2025-05-24",
+      })
     }
 
-    insights.capture(
+    posthog.capture(
       "md_content_requested_agents",
       {
         $current_url: req.url,
