@@ -113,7 +113,7 @@ export async function startLogin(config: IamAuthConfig): Promise<void> {
   })
 
   // Use IAM's login authorize endpoint (shows the login form)
-  window.location.href = `${base}/oauth/authorize?${params}`
+  window.location.href = `${base}/login/oauth/authorize?${params}`
 }
 
 /** Handle the OAuth callback -- exchange code for tokens or accept implicit grant. */
