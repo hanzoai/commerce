@@ -3,7 +3,7 @@ import ReactMarkdown, {
   Options as ReactMarkdownOptions,
   Components,
 } from "react-markdown"
-import { MDXComponents } from "../MDXComponents"
+import { MDXComponents } from "@/components/MDXComponents"
 import clsx from "clsx"
 
 export type MarkdownContentProps = ReactMarkdownOptions & {

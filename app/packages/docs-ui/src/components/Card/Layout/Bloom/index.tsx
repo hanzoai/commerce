@@ -1,6 +1,6 @@
 import React from "react"
 import clsx from "clsx"
-import { Link } from "../../../Link"
+import { Link } from "@/components/Link"
 import { TriangleRightMini } from "@hanzo/commerce-icons"
 import { BloomIcon, CardProps } from "../../.."
 
