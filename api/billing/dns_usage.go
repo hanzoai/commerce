@@ -50,7 +50,7 @@ const (
 // The zone's owner is looked up via the user field. Usage is checked against
 // the plan's daily query limit.
 //
-//	POST /v1/dns/usage
+//	POST /api/v1/dns/usage
 func RecordDNSUsage(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -140,7 +140,7 @@ func RecordDNSUsage(c *gin.Context) {
 
 // GetDNSUsageSummary returns a usage summary for DNS queries, zones, and records.
 //
-//	GET /v1/dns/usage/summary?user={owner/name}&period=day|month
+//	GET /api/v1/dns/usage/summary?user={owner/name}&period=day|month
 func GetDNSUsageSummary(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -183,7 +183,7 @@ func GetDNSUsageSummary(c *gin.Context) {
 
 // ListDNSPlans returns the available DNS plans.
 //
-//	GET /v1/dns/plans
+//	GET /api/v1/dns/plans
 func ListDNSPlans(c *gin.Context) {
 	c.JSON(200, dnsPlans)
 }
