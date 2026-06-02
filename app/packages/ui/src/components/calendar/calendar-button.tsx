@@ -1,7 +1,7 @@
 import * as React from "react"
 import { AriaButtonProps, useButton } from "react-aria"
 
-import { IconButton } from "../icon-button"
+import { IconButton } from "@/components/icon-button"
 
 interface CalendarButtonProps extends AriaButtonProps<"button"> {}
 

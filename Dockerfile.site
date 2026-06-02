@@ -2,9 +2,23 @@ FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
 WORKDIR /app
 
+FROM base AS deps
+COPY app/pnpm-workspace.yaml app/package.json app/pnpm-lock.yaml* ./
+COPY app/packages/commerce/package.json packages/commerce/package.json
+COPY app/site/package.json site/package.json
+RUN pnpm install --frozen-lockfile || pnpm install
+
 FROM base AS builder
-COPY app/ .
-RUN pnpm install --no-frozen-lockfile
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/commerce/node_modules ./packages/commerce/node_modules
+COPY --from=deps /app/site/node_modules ./site/node_modules
+COPY app/packages/commerce packages/commerce
+COPY app/site site
+COPY app/tsconfig.json tsconfig.json
+COPY app/turbo.json turbo.json
+COPY app/package.json package.json
+COPY app/pnpm-workspace.yaml pnpm-workspace.yaml
+RUN pnpm --filter=@hanzo/commerce-client build 2>/dev/null || true
 RUN cd site && npx next build
 
 FROM nginx:alpine

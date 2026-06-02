@@ -10,8 +10,8 @@ export interface IAnalyticsModuleService extends IModuleService {
    * @returns {IAnalyticsProvider} An instance of the Analytics Module Provider's service.
    * 
    * @example
-   * const providerService = analyticsModuleService.getProvider()
-   * // perform custom actions with the provider
+   * const postHogProviderService = analyticsModuleService.getProvider()
+   * // TODO: perform custom actions with the provider
    */
   getProvider(): IAnalyticsProvider
 

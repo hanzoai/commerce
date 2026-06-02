@@ -1,7 +1,7 @@
 import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
-import { CodeBlock } from "../../CodeBlock"
+import { CodeBlock } from "@/components/CodeBlock"
 
 // mock data
 const mockColorMode = "light"

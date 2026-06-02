@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import clsx from "clsx"
-import { Tooltip } from "../Tooltip"
+import { Tooltip } from "@/components/Tooltip"
 import { useCopy } from "../../hooks/use-copy"
 
 export type CopyButtonChildFn = (props: {
