@@ -1,0 +1,100 @@
+export const metadata = {
+  title: `${pageNumber} Custom CLI Scripts`,
+}
+
+# {metadata.title}
+
+In this chapter, you'll learn how to create and execute custom scripts using Hanzo Commerce's CLI tool.
+
+## What is a Custom CLI Script?
+
+A custom CLI script is a function that you can execute using Hanzo Commerce's CLI tool. It is useful when you need a script that has access to the [Hanzo Commerce container](../hanzo-container/page.mdx) and can be executed using Hanzo Commerce's CLI.
+
+For example, you can create a custom CLI script that:
+
+- [Seeds data into the database](./seed-data/page.mdx).
+- Runs a script before starting the Hanzo Commerce application.
+
+---
+
+## How to Create a Custom CLI Script?
+
+To create a custom CLI script, create a TypeScript or JavaScript file under the `src/scripts` directory. The file must export a function by default.
+
+For example, create the file `src/scripts/my-script.ts` with the following content:
+
+```ts title="src/scripts/my-script.ts"
+import { 
+  ExecArgs,
+} from "@hanzo/commerce-framework/types"
+import { Modules } from "@hanzo/commerce-framework/utils"
+
+export default async function myScript({ container }: ExecArgs) {
+  const productModuleService = container.resolve(
+    Modules.PRODUCT
+  )
+
+  const [, count] = await productModuleService
+    .listAndCountProducts()
+
+  console.log(`You have ${count} product(s)`)
+}
+```
+
+The function receives as a parameter an object with a `container` property, which is an instance of the Hanzo Container. Use it to resolve resources in your Hanzo Commerce application.
+
+---
+
+## How to Run a Custom CLI Script?
+
+To run a custom CLI script, run the Hanzo Commerce CLI's `exec` command:
+
+```bash npx2yarn
+npx hanzo-commerce exec ./src/scripts/my-script.ts
+```
+
+---
+
+## Custom CLI Script Arguments
+
+Your script can accept arguments from the command line. Arguments are passed to the function's object parameter in the `args` property.
+
+For example, create the following CLI script that logs the command line arguments:
+
+```ts
+import { ExecArgs } from "@hanzo/commerce-framework/types"
+
+export default async function myScript({ args }: ExecArgs) {
+  console.log(`The arguments you passed: ${args}`)
+}
+```
+
+Then, run the script with the `exec` command and pass arguments after the script's path.
+
+```bash npx2yarn
+npx hanzo-commerce exec ./src/scripts/my-script.ts arg1 arg2
+```
+
+---
+
+## Run Custom Script on Application Startup
+
+In some cases, you may need to perform an action when the Hanzo Commerce application starts.
+
+If the action is related to a module, you should use a [loader](../modules/loaders/page.mdx). Otherwise, you can create a custom CLI script and run it before starting the Hanzo Commerce application.
+
+To run a custom script on application startup, modify the `dev` and `start` commands in `package.json` to execute your script first.
+
+For example:
+
+```json title="package.json"
+{
+  "scripts": {
+    "startup": "hanzo-commerce exec ./src/scripts/startup.ts",
+    "dev": "npm run startup && hanzo-commerce develop",
+    "start": "npm run startup && hanzo-commerce start"
+  }
+}
+```
+
+The `startup` script will run every time you run the Hanzo Commerce application.
