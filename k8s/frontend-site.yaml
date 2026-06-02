@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: site
-          image: ghcr.io/hanzoai/commerce-site:0.0.1
+          image: ghcr.io/hanzoai/commerce-site:latest
           ports:
             - containerPort: 80
           resources:
@@ -49,9 +49,9 @@ metadata:
   namespace: hanzo
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.tls: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: hanzo
+  ingressClassName: nginx
   tls:
     - hosts:
         - commerce.hanzo.ai
@@ -60,24 +60,6 @@ spec:
     - host: commerce.hanzo.ai
       http:
         paths:
-          # Embedded admin SPA + APIs land on the commerced service.
-          # commerce.hanzo.ai/_/commerce/ui/   → admin SPA shell
-          # commerce.hanzo.ai/v1/commerce/*    → JSON API (gateway-gated)
-          - path: /_/commerce
-            pathType: Prefix
-            backend:
-              service:
-                name: commerce
-                port:
-                  number: 8001
-          - path: /v1/commerce
-            pathType: Prefix
-            backend:
-              service:
-                name: commerce
-                port:
-                  number: 8001
-          # Everything else stays on the Next.js storefront sidecar.
           - path: /
             pathType: Prefix
             backend:

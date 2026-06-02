@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import * as React from "react"
 
-import { Heading } from "../heading"
-import { Text } from "../text"
+import { Heading } from "@/components/heading"
+import { Text } from "@/components/text"
 import { Container } from "./container"
 
 const meta: Meta<typeof Container> = {

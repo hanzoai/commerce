@@ -1,7 +1,7 @@
 import React from "react"
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { fireEvent, render } from "@testing-library/react"
-import { ButtonProps } from "../../../Button"
+import { ButtonProps } from "@/components/Button"
 
 // mock components
 vi.mock("@/components/Button", () => ({
