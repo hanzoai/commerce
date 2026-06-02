@@ -38,10 +38,8 @@ require (
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
-	github.com/luxfi/crypto v1.17.45
-	github.com/luxfi/geth v1.16.79
-	github.com/luxfi/zap v0.2.1
-	github.com/mattn/go-sqlite3 v1.14.38
+	github.com/luxfi/crypto v1.19.0
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo/v2 v2.28.1
@@ -192,11 +190,10 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.70.0 // indirect
+	modernc.org/libc v1.72.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.48.1 // indirect
+	modernc.org/sqlite v1.50.0 // indirect
 )
 
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
@@ -209,4 +206,19 @@ replace github.com/ugorji/go/codec => github.com/ugorji/go/codec v1.2.11
 // lands on tagged base v0.44.
 replace github.com/hanzoai/base => ../base
 
-replace github.com/hanzoai/orm => ../orm
+// Transitive dep chain pinned luxfi/genesis@v1.5.22 which was never
+// published; v1.9.7 is the current canonical.
+replace github.com/luxfi/genesis => github.com/luxfi/genesis v1.9.7
+
+// HIP-0106 unified-binary contract — pin to local sibling repos so the
+// commerce Mount() signature evolves in lockstep with the cloud +
+// zip APIs. Both repos sit beside commerce in ~/work/hanzo/*.
+
+
+// Transitive: luxfi/threshold@v1.6.7 pulls luxfi/lens + luxfi/pulsar at
+// unpublished rc tags. Pin to the latest published lens + pulsar so
+// go-mod resolves cleanly.
+replace (
+	github.com/luxfi/lens => github.com/luxfi/lens v0.1.4
+	github.com/luxfi/pulsar => github.com/luxfi/pulsar v1.0.9
+)
