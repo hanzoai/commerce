@@ -74,7 +74,19 @@ COPY --from=pay-build /pay/dist/ checkout/ui/dist/
 RUN rm -rf billing/ui/dist && mkdir -p billing/ui/dist
 COPY --from=billing-build /billing/out/ billing/ui/dist/
 
-# Build the binary with CGO for SQLite support
+# Build the binary with CGO for SQLite support.
+#
+# `-tags cloud` compiles in the HIP-0106 cloud-mount path (cloud_boot.go);
+# the binary remains backwards-compatible (legacy direct-Gin is the
+# default boot mode) but operators can now flip --cloud or
+# COMMERCE_MODE=cloud to serve commerce through a zip.App with gin
+# adapted as the inner handler. Phase 1 of the staged Gin → zip
+# migration — see mount.go for the contract and cmd/commerce/main.go
+# for the dispatcher.
+#
+# Pass `./cmd/commerce` (the package) instead of `./cmd/commerce/main.go`
+# so cloud_boot.go / cloud_stub.go / legacy.go get compiled into the
+# same binary alongside main.go.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
