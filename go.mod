@@ -24,6 +24,7 @@ require (
 	github.com/gorilla/schema v1.4.1
 	github.com/gorilla/sessions v1.4.0
 	github.com/hanzoai/base v0.44.0
+	github.com/hanzoai/datastore-go/v2 v2.44.0
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
 	github.com/hanzoai/kv-go/v9 v9.18.0
@@ -37,7 +38,9 @@ require (
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
-	github.com/luxfi/crypto v1.19.0
+	github.com/luxfi/crypto v1.17.45
+	github.com/luxfi/geth v1.16.79
+	github.com/luxfi/zap v0.2.1
 	github.com/mattn/go-sqlite3 v1.14.38
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
@@ -73,6 +76,7 @@ require (
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20260311194731-d5b7577c683d // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
+	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/btcsuite/btclog v1.0.0 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
@@ -85,6 +89,9 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/domodwyer/mailyak/v3 v3.6.2 // indirect
+	github.com/ethereum/c-kzg-4844/v2 v2.1.7 // indirect
+	github.com/ethereum/go-verkle v0.2.2 // indirect
+	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/ganigeorgiev/fexpr v0.5.0 // indirect
@@ -102,13 +109,16 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260302011040-a15ffb7f9dcc // indirect
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
-	github.com/hanzoai/datastore-go/v2 v2.45.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/hanzoai/dbx v1.16.0 // indirect
+	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -139,6 +149,7 @@ require (
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/nexus-rpc/sdk-go v0.6.0 // indirect
 	github.com/paulmach/orb v0.13.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
@@ -146,6 +157,7 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
@@ -174,13 +186,17 @@ require (
 	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	modernc.org/libc v1.72.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+	modernc.org/libc v1.70.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.50.0 // indirect
+	modernc.org/sqlite v1.48.1 // indirect
 )
 
 replace github.com/ugorji/go => github.com/ugorji/go/codec v1.2.11
