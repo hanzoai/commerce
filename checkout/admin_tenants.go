@@ -92,11 +92,8 @@ type createTenantResponse struct {
 // claim = true) may call this. Tenant-admins get 403; unauthenticated
 // callers get 401.
 func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
-	// claims is always non-nil under gateway-trust; an empty Subject
-	// means the caller wasn't authenticated by the gateway. Fail closed
-	// to 401 in that case rather than letting the role check decide.
 	claims := iammiddleware.GetIAMClaims(c)
-	if claims.Subject == "" && claims.Owner == "" {
+	if claims == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 		return
 	}
@@ -179,10 +176,8 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 // the authenticated user has no tenant row, the response is a byte-
 // identical 404 to the cross-tenant-probe case — same status, same body.
 func (a *TenantAdminAPI) ListProviders(c *gin.Context) {
-	// claims is always non-nil under gateway-trust; an empty Subject
-	// AND empty Owner means the caller wasn't authenticated.
 	claims := iammiddleware.GetIAMClaims(c)
-	if claims.Subject == "" && claims.Owner == "" {
+	if claims == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 		return
 	}

@@ -63,7 +63,7 @@ func newTestTenant(name string, hosts ...string) *Tenant {
 
 func TestCreate_AssignsIDAndTimestamps(t *testing.T) {
 	s := newTestStore(t)
-	tenant := newTestTenant("examplecorp", "pay.example.test")
+	tenant := newTestTenant("liquidity", "pay.example.test")
 
 	if err := s.Tenants.Create(tenant); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -135,9 +135,9 @@ func TestCreate_DedupesAndNormalizesHostnames(t *testing.T) {
 func TestFindByHostname_ExactAndNormalized(t *testing.T) {
 	s := newTestStore(t)
 	if err := s.Tenants.Create(newTestTenant(
-		"examplecorp",
-		"pay.example.test",
-		"pay.dev.example.test",
+		"liquidity",
+		"pay..test",
+		"pay.dev..test",
 	)); err != nil {
 		t.Fatal(err)
 	}
@@ -146,11 +146,11 @@ func TestFindByHostname_ExactAndNormalized(t *testing.T) {
 		host string
 		want string
 	}{
-		{"pay.example.test", "examplecorp"},
-		{"pay.dev.example.test", "examplecorp"},
-		{"PAY.EXAMPLE.TEST", "examplecorp"},
-		{"pay.example.test:443", "examplecorp"},
-		{"pay.example.test.", "examplecorp"}, // trailing dot
+		{"pay..test", "liquidity"},
+		{"pay.dev..test", "liquidity"},
+		{"PAY.redacted.TEST", "liquidity"},
+		{"pay..test:443", "liquidity"},
+		{"pay..test.", "liquidity"}, // trailing dot
 	}
 	for _, tc := range cases {
 		got, err := s.Tenants.FindByHostname(tc.host)
@@ -166,17 +166,17 @@ func TestFindByHostname_ExactAndNormalized(t *testing.T) {
 
 func TestFindByHostname_SubdomainMismatch(t *testing.T) {
 	s := newTestStore(t)
-	if err := s.Tenants.Create(newTestTenant("examplecorp", "pay.example.test")); err != nil {
+	if err := s.Tenants.Create(newTestTenant("liquidity", "pay..test")); err != nil {
 		t.Fatal(err)
 	}
 
 	// None of these should match — exact-only.
 	spoofs := []string{
 		"evil.test",
-		"example.test",
-		"xyzpay.example.test",
-		"pay.example.test.evil.test",
-		"a.pay.example.test",
+		".test",
+		"xyzpay..test",
+		"pay..test.evil.test",
+		"a.pay..test",
 	}
 	for _, h := range spoofs {
 		_, err := s.Tenants.FindByHostname(h)
