@@ -865,6 +865,14 @@ func (app *App) setupRoutes() {
 	// over the legacy Resolver-backed one (same path, gin rejects duplicates).
 	if app.CommerceStore != nil {
 		publicStore := app.Router.Group("/v1/commerce")
+		// Honor X-Forwarded-Host when set by a trusted upstream (the
+		// Cloudflare Worker that owns the tenant's customer-facing
+		// domain). Tenant resolution downstream reads req.Host; the
+		// ingress strips/overwrites the Host on the way in, so we lift
+		// the original from X-Forwarded-Host. Exact-match resolution
+		// downstream caps abuse: a spoofed host still has to match a
+		// known tenant row to do anything.
+		publicStore.Use(forwardedHostMiddleware())
 		checkout.MountPublicFromStore(publicStore, app.CommerceStore, checkout.NewHTTPForwarder())
 
 		// Admin surface. IAM middleware gates every request; the handler
@@ -884,6 +892,7 @@ func (app *App) setupRoutes() {
 		// in-memory map still use StaticResolver directly.
 		storeResolver := checkout.NewStoreResolver(app.CommerceStore)
 		public := app.Router.Group("/v1/commerce")
+		public.Use(forwardedHostMiddleware())
 		public.POST("/deposits", gin.WrapH(checkout.Deposits(storeResolver, checkout.NewHTTPForwarder())))
 		public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(storeResolver, checkout.NewHTTPForwarder())))
 		public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(storeResolver, checkout.NewHTTPForwarder())))
@@ -1014,4 +1023,19 @@ func getEnv(key, defaultVal string) string {
 		return val
 	}
 	return defaultVal
+}
+
+// forwardedHostMiddleware lifts the X-Forwarded-Host header into
+// req.Host so downstream tenant resolution sees the original customer
+// hostname (e.g. world.hanzo.ai) instead of the ingress hostname
+// (e.g. commerce-api.hanzo.ai). Tenant resolution is exact-match, so a
+// spoofed header still must point at an existing tenant row to do
+// anything — there is no probe oracle. Empty header is a no-op.
+func forwardedHostMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if xfh := c.GetHeader("X-Forwarded-Host"); xfh != "" {
+			c.Request.Host = xfh
+		}
+		c.Next()
+	}
 }
