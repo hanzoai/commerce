@@ -877,13 +877,17 @@ func (app *App) setupRoutes() {
 		}
 		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
 
-		// Legacy checkout for deposits + webhooks — does NOT re-register
-		// /tenant because the store-backed mount already owns it.
+		// Legacy checkout for deposits + webhooks — bind to the
+		// store-backed resolver so tenants created through the admin API
+		// resolve without a process restart. The legacy StaticResolver is
+		// dropped here in favor of the store; tests that need an
+		// in-memory map still use StaticResolver directly.
+		storeResolver := checkout.NewStoreResolver(app.CommerceStore)
 		public := app.Router.Group("/v1/commerce")
-		public.POST("/deposits", gin.WrapH(checkout.Deposits(app.CheckoutResolver, checkout.NewHTTPForwarder())))
-		public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(app.CheckoutResolver, checkout.NewHTTPForwarder())))
-		public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(app.CheckoutResolver, checkout.NewHTTPForwarder())))
-		public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(app.CheckoutResolver)))
+		public.POST("/deposits", gin.WrapH(checkout.Deposits(storeResolver, checkout.NewHTTPForwarder())))
+		public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(storeResolver, checkout.NewHTTPForwarder())))
+		public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(storeResolver, checkout.NewHTTPForwarder())))
+		public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(storeResolver)))
 		checkout.MountSPA(app.Router)
 	} else {
 		checkout.Mount(app.Router, app.CheckoutResolver, checkout.NewHTTPForwarder())
