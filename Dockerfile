@@ -63,7 +63,10 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-# Copy source code
+# Copy source code (note: api/billing/plans/ is gitignored — the pre-build
+# step in the CI workflow git-clones hanzoai/plans into ./api/billing/plans/
+# before docker build runs, so this COPY picks up the canonical SOT for
+# go:embed at compile time. Local dev mirrors via scripts/fetch-plans.sh).
 COPY . .
 
 # Replace placeholder dist/ with the real Next.js export so go:embed picks up
