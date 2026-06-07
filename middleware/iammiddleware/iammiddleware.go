@@ -31,8 +31,8 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/pkg/org"
 	pkgAuth "github.com/hanzoai/commerce/pkg/auth"
+	"github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
@@ -64,21 +64,14 @@ func InitKV(kv KVCache) { org.Bind(kv) }
 // SPA handlers with their own auth gate) use this to validate bearer tokens
 // against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
 // means "treat every request as unauthenticated".
+//
+// NOTE: returns nil unconditionally on this build — the legacy IAM
+// JWKS client has been retired in favor of gateway-trusted headers.
+// SPA call sites that still call Client() get a nil and fall through
+// to their own header-based identity path. Wire a real client back in
+// here if a non-gateway entry point ever needs JWKS validation again.
 func Client() *auth.IAMClient {
-	mu.RLock()
-	defer mu.RUnlock()
-	return iamClient
-}
-
-// Client returns the initialized IAM client, or nil if IAM is disabled or
-// Init() has not been called. Consumers outside the middleware chain (e.g.
-// SPA handlers with their own auth gate) use this to validate bearer tokens
-// against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
-// means "treat every request as unauthenticated".
-func Client() *auth.IAMClient {
-	mu.RLock()
-	defer mu.RUnlock()
-	return iamClient
+	return nil
 }
 
 // orgCacheKey returns the KV key for an IAM owner → org ID mapping.
@@ -135,44 +128,14 @@ func IAMTokenRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Valid IAM token -- set context values
-		c.Set("iam_claims", claims)
-		c.Set("iam_user_id", claims.Subject)
-		c.Set("iam_email", claims.Email)
-		c.Set("iam_org", claims.Owner)
-		c.Set("iam_roles", claims.Roles)
-		c.Set("iam_authenticated", true)
-
-		// Resolve organization from IAM "owner" claim so downstream handlers
-		// get proper tenant scoping via middleware.GetOrganization(c).
-		// IAM is the source of truth for org/identity — auto-create the
-		// Commerce org record on first encounter.
-		if claims.Owner != "" {
-			ctx := c.Request.Context()
-			db := datastore.New(ctx)
-			org := organization.New(db)
-			org.Name = claims.Owner
-			org.Enabled = true
-
-			// GetOrCreate: find existing org by name, or create it from IAM claim.
-			if err := org.GetOrCreate("Name=", claims.Owner); err != nil {
-				log.Warn("IAM org resolve/create for '%s' failed: %v", claims.Owner, err)
-			} else {
-				// Set live mode based on IAM permissions (same as service token path)
-				perms := iamPermissions(claims)
-				if perms.Has(permission.Live) {
-					org.Live = true
-				}
-
-				c.Set("organization", org)
-				c.Set("active-organization", org.Id())
-				c.Set("permissions", perms)
-			}
-		}
+		// Best-effort signup credit grant on first encounter. Fires in
+		// the background so a slow credit check never blocks the request
+		// path. Grants are idempotent (deduped by the "org-created" tag
+		// inside GrantIfEligible).
 		go func(id string) {
 			bgDb := datastore.New(context.Background())
 			credit.GrantIfEligible(bgDb, id, "org-created")
-		}(uid)
+		}(userID)
 
 		// Gateway-trusted identity always counts as live.
 		o.Live = true
