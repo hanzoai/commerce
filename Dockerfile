@@ -34,7 +34,7 @@ RUN pnpm install --frozen-lockfile && pnpm build
 # billing/ui/dist (go:embed target).
 FROM node:22-alpine AS billing-build
 ARG BILLING_REPO=https://github.com/hanzoai/billing.git
-ARG BILLING_VERSION=v0.1.0
+ARG BILLING_VERSION=v0.1.2
 WORKDIR /billing
 RUN apk add --no-cache git && corepack enable pnpm
 RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
