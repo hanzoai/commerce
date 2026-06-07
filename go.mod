@@ -262,3 +262,11 @@ replace (
 	github.com/luxfi/lens => github.com/luxfi/lens v0.1.4
 	github.com/luxfi/pulsar => github.com/luxfi/pulsar v1.0.9
 )
+
+// luxfi/log v1.3.0 was published with module path `github.com/luxfi/logger`
+// (mid-rename); v1.4.0+ corrected the declaration back to
+// `github.com/luxfi/log`. luxfi/crypto@v1.17.40 still requires
+// luxfi/log@v1.3.0 transitively, which trips Go's module path check
+// at build time. Pin every consumer to v1.4.3 so the module path
+// matches its import path.
+replace github.com/luxfi/log => github.com/luxfi/log v1.4.3
