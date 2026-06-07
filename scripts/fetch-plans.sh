@@ -1,38 +1,31 @@
 #!/bin/sh
-# fetch-plans.sh — clone hanzoai/plans into ./api/billing/plans/.
+# fetch-plans.sh — pull the latest @hanzo/plans tarball from npm and
+# extract its JSON files into ./api/billing/plans/.
 #
-# Commerce does NOT vendor the plans data; hanzoai/plans is the SOT
-# for every plan catalog (subscription, dns, cloud, gpu, regions,
-# storage, blockchain, tools, pricing-policy). CI invokes this via
-# pre-build-command on the canonical docker-build.yml before
-# `docker build` runs, so the Dockerfile's COPY picks up the fresh
-# tree and go:embed bakes it into the binary at compile time.
-#
-# Local dev (e.g. `go run ./cmd/commerce`) — run this once to fetch a
-# working copy. Rerun whenever you need a fresh snapshot.
+# hanzoai/plans is published as @hanzo/plans on the public npm
+# registry (the catalog is customer-facing marketing data, no reason
+# to gate it). Commerce uses Go's go:embed at compile time, so we
+# can't `npm install` at runtime — but we CAN curl the tarball at
+# build time and unpack it. No git clone, no vendored copy.
 #
 # Env:
-#   PLANS_REPO     git host/path (default: github.com/hanzoai/plans.git)
-#   PLANS_VERSION  branch / tag / sha (default: main)
-#   GITHUB_TOKEN   PAT or workflow token with read on hanzoai/plans
-#                  (required — repo is private)
+#   PLANS_VERSION  semver (default: tracks the highest published)
+#
+# Local dev: just run this script — public npm needs no auth.
 
 set -eu
 
-PLANS_REPO=${PLANS_REPO:-github.com/hanzoai/plans.git}
-PLANS_VERSION=${PLANS_VERSION:-main}
+PLANS_VERSION=${PLANS_VERSION:-1.1.1}
 DEST=$(cd "$(dirname "$0")/.." && pwd)/api/billing/plans
+TMP=$(mktemp -d)
 
-mkdir -p "$(dirname "$DEST")"
-rm -rf "$DEST"
+mkdir -p "$DEST"
+rm -f "$DEST"/*.json
 
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-  URL="https://x-access-token:${GITHUB_TOKEN}@${PLANS_REPO}"
-else
-  URL="https://${PLANS_REPO}"
-fi
+curl -fsSL "https://registry.npmjs.org/@hanzo/plans/-/plans-${PLANS_VERSION}.tgz" \
+  -o "$TMP/plans.tgz"
+tar -xzf "$TMP/plans.tgz" -C "$TMP"
+cp "$TMP"/package/*.json "$DEST/"
+rm -rf "$TMP"
 
-git clone --depth=1 --branch="${PLANS_VERSION}" "$URL" "$DEST"
-rm -rf "$DEST/.git" "$DEST/CLAUDE.md" "$DEST/AGENTS.md" "$DEST/LLM.md"
-
-echo "fetched hanzoai/plans@${PLANS_VERSION} -> $DEST"
+echo "fetched @hanzo/plans@${PLANS_VERSION} -> $DEST ($(ls "$DEST" | wc -l | tr -d ' ') files)"
