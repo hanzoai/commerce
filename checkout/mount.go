@@ -80,6 +80,26 @@ func MountPublicFromStore(group *gin.RouterGroup, s *store.Store, fwd Forwarder)
 	// covers only the tenant-facing GET and the two admin endpoints below.
 }
 
+// MountTenantAdmin registers the store-backed admin surface onto
+// a router group the caller has already wrapped with IAM auth +
+// admin-role checks. Only the create-tenant + list-providers handlers
+// live here today; future per-tenant config endpoints (idv, iam, etc.)
+// hang off the same TenantAdminAPI struct so they share the
+// store-backed instance and the audit-mutation log.
+//
+// The legacy provider-credentials / methods / audit endpoints stay on
+// the older MountAdmin path (StaticResolver-driven) until they migrate
+// over to the store seam. Both groups can coexist on the same
+// /_/commerce prefix because their handler paths don't overlap.
+func MountTenantAdmin(group *gin.RouterGroup, s *store.Store) {
+	if s == nil {
+		return
+	}
+	a := NewTenantAdminAPI(s)
+	group.POST("/tenants", a.CreateTenant)
+	group.GET("/providers", a.ListProviders)
+}
+
 // MountAdmin registers the /_/commerce/* admin endpoints onto a router
 // group the caller has already wrapped with IAM + admin-role guard.
 // These endpoints are tenant-scoped: every mutation derives the tenant
