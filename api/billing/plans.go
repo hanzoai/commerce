@@ -212,3 +212,39 @@ func lookupPlan(slug string) *staticPlan {
 	}
 	return nil
 }
+
+// Plan is the exported snapshot used by external seeders (e.g. the
+// Stripe parity seed in commerce.go). It mirrors the subset of fields
+// the seed populates onto seed.Plan, with field names that match the
+// caller's expectations (PriceMonth / PriceYear are cent-denominated
+// monthly + annual prices). Internal callers stick with staticPlan;
+// this type exists so the public surface doesn't leak the unexported
+// shape and so we can evolve them independently.
+type Plan struct {
+	Slug        string
+	Name        string
+	Description string
+	Category    string
+	PriceMonth  int64
+	PriceYear   int64
+	Currency    string
+}
+
+// StaticPlans returns a snapshot of the embedded plan catalog as the
+// exported Plan shape. The slice is freshly allocated so callers may
+// mutate freely without bleeding into the canonical hanzoPlans var.
+func StaticPlans() []Plan {
+	out := make([]Plan, len(hanzoPlans))
+	for i, p := range hanzoPlans {
+		out[i] = Plan{
+			Slug:        p.Slug,
+			Name:        p.Name,
+			Description: p.Description,
+			Category:    p.Category,
+			PriceMonth:  p.Price,
+			PriceYear:   p.PriceAnnual,
+			Currency:    p.Currency,
+		}
+	}
+	return out
+}
