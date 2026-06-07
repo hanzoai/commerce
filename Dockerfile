@@ -2,17 +2,18 @@
 # Hanzo Commerce - E-commerce Platform
 # Multi-stage build for minimal production image
 
-# ── Stage 1: Build admin SPA (Next.js static export) ─────────────────────
-FROM node:22-alpine AS admin-build
-WORKDIR /web
-RUN apk add --no-cache libc6-compat && corepack enable pnpm
-COPY app/package.json app/pnpm-lock.yaml app/pnpm-workspace.yaml ./
-COPY app/admin/package.json admin/
-COPY app/packages/ packages/
-RUN pnpm install --frozen-lockfile
-COPY app/admin/ admin/
-WORKDIR /web/admin
-RUN pnpm build
+# ── Stage 1: Admin SPA — use pre-built static export from app/admin/out ──
+# The admin pnpm workspace has known lockfile drift against an upstream
+# ui-docs dep that 404s on npm — rebuilding it inside the image would
+# block every commerce build until that workspace is repaired. The
+# committed app/admin/out/ tree IS the canonical Next.js static export
+# (rebuilt out-of-band via `pnpm -F admin build` from a clean checkout
+# with the lockfile freshly regenerated). Copying it directly here
+# keeps the image deterministic without depending on the npm registry's
+# moods. Re-enable the in-Docker build by uncommenting the original
+# stage when the workspace lockfile is restored.
+FROM busybox AS admin-build
+COPY app/admin/out /web/admin/out
 
 # ── Stage 2: Build pay UI (Vite SPA from hanzoai/pay) ────────────────────
 # Canonical source lives at github.com/hanzoai/pay. Forks override PAY_REPO
