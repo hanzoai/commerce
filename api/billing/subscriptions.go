@@ -103,7 +103,76 @@ func CreateBillingSubscription(c *gin.Context) {
 		return
 	}
 
+	// Bundle expansion. Plans declare their bundle list in the
+	// canonical catalog (subscription.json:bundles) — e.g. "pro"
+	// includes "world-pro", "team" includes "world-team", etc. Mint a
+	// child zero-cost subscription for each bundled slug so the
+	// downstream feature gate (world.hanzo.ai, chat, etc.) sees the
+	// entitlement without the customer having to pay twice. The child
+	// subscriptions reference the parent via Metadata.bundleParent so
+	// cancellation can cascade them.
+	bundled := bundledPlansForSlug(req.PlanId)
+	for _, childSlug := range bundled {
+		childPlan := plan.New(db)
+		if err := childPlan.GetById(childSlug); err != nil {
+			var staticChild *staticPlan
+			for i := range hanzoPlans {
+				if hanzoPlans[i].Slug == childSlug {
+					staticChild = &hanzoPlans[i]
+					break
+				}
+			}
+			if staticChild == nil {
+				log.Error("bundled plan %q not found for parent %q (skipping)", childSlug, req.PlanId, nil, c)
+				continue
+			}
+			childPlan.Slug = staticChild.Slug
+			childPlan.Name = staticChild.Name
+			childPlan.Description = staticChild.Description
+			childPlan.Currency = currency.Type(staticChild.Currency)
+			childPlan.Interval = types.Interval(staticChild.Interval)
+			childPlan.IntervalCount = staticChild.IntervalCount
+			// Bundled price is forced to zero — the customer paid via
+			// the parent, the child must never trigger a second charge.
+			childPlan.Price = 0
+			_ = childPlan.Create()
+		}
+
+		childSub := subscription.New(db)
+		childSub.UserId = sub.UserId
+		childSub.DefaultPaymentMethod = sub.DefaultPaymentMethod
+		childSub.ProviderType = "bundle"
+		childSub.Quantity = 1
+		childMeta := map[string]interface{}{
+			"bundleParent":     sub.Id(),
+			"bundleParentPlan": req.PlanId,
+		}
+		for k, v := range req.Metadata {
+			childMeta[k] = v
+		}
+		childSub.Metadata = childMeta
+		engine.StartSubscription(childSub, childPlan)
+		if err := childSub.Create(); err != nil {
+			log.Error("Failed to create bundled subscription %q for parent %q: %v", childSlug, req.PlanId, err, c)
+			continue
+		}
+	}
+
 	c.JSON(201, subscriptionResponse(sub))
+}
+
+// bundledPlansForSlug returns the slugs of plans that ride along with
+// a parent plan. Reads from the static catalog so we never need to hit
+// the DB for plan metadata that is already baked into the binary.
+func bundledPlansForSlug(slug string) []string {
+	for i := range hanzoPlans {
+		if hanzoPlans[i].Slug == slug {
+			out := make([]string, len(hanzoPlans[i].Bundles))
+			copy(out, hanzoPlans[i].Bundles)
+			return out
+		}
+	}
+	return nil
 }
 
 // ListBillingSubscriptions lists subscriptions for a user.
