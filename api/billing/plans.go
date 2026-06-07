@@ -18,6 +18,13 @@ var subscriptionJSON embed.FS
 var dnsJSON embed.FS
 
 // canonicalPlan is the JSON shape from @hanzo/plans/*.json.
+//
+// Bundles: a plan can grant entitlement to other plans without
+// charging separately for them. Example: subscribing to "pro"
+// auto-grants "world-pro" because `"bundles": ["world-pro"]` is set on
+// the pro tier. The reverse view `includedIn` lets product surfaces
+// (world.hanzo.ai, chat, etc.) tell users "this plan is included in
+// these higher tiers" so the upsell story is symmetric.
 type canonicalPlan struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`
@@ -28,6 +35,8 @@ type canonicalPlan struct {
 	Popular      bool     `json:"popular,omitempty"`
 	ContactSales bool     `json:"contactSales,omitempty"`
 	Features     []string `json:"features"`
+	Bundles      []string `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
+	IncludedIn   []string `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
 	Limits       *struct {
 		// Subscription (API) limits
 		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
@@ -62,6 +71,8 @@ type staticPlan struct {
 	ContactSales    bool     `json:"contactSales,omitempty"`
 	Popular         bool     `json:"popular,omitempty"`
 	Features        []string `json:"features,omitempty"`
+	Bundles         []string `json:"bundles,omitempty"`    // see canonicalPlan.Bundles
+	IncludedIn      []string `json:"includedIn,omitempty"` // see canonicalPlan.IncludedIn
 	Limits          *struct {
 		// Subscription (API) limits
 		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
@@ -119,6 +130,8 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 			ContactSales:  cp.ContactSales,
 			Popular:       cp.Popular,
 			Features:      cp.Features,
+			Bundles:       cp.Bundles,
+			IncludedIn:    cp.IncludedIn,
 		}
 
 		if cp.PriceMonthly != nil {
