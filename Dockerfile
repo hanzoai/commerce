@@ -47,7 +47,7 @@ RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
 RUN pnpm install --frozen-lockfile && pnpm build
 
 # ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
