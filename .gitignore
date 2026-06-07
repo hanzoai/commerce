@@ -58,3 +58,7 @@ checkout/ui/dist/*
 # fresh clone.
 billing/ui/dist/*
 !billing/ui/dist/.gitkeep
+
+# hanzoai/plans is the SOT. CI fetches into api/billing/plans/ at
+# build time via scripts/fetch-plans.sh; never vendored.
+api/billing/plans/
