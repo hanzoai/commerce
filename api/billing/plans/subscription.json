@@ -5,7 +5,6 @@
     "description": "Get started for free. Explore the API with generous included credits.",
     "priceMonthly": 0,
     "priceAnnual": 0,
-    "pricePerUser": false,
     "category": "personal",
     "features": [
       "$5 free credit",
@@ -13,7 +12,6 @@
       "100K tokens/min",
       "Community support",
       "API access",
-      "Unlimited users",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
@@ -29,60 +27,25 @@
   {
     "id": "pro",
     "name": "Pro",
-    "description": "For developers shipping real products. Higher limits and priority support.",
-    "priceMonthly": 20,
-    "priceAnnual": 16,
-    "pricePerUser": true,
+    "description": "For developers shipping real products. Higher limits, priority support, and Hanzo World Pro included.",
+    "priceMonthly": 49,
+    "priceAnnual": 39,
     "category": "personal",
+    "popular": true,
     "features": [
       "500 requests/min",
       "1M tokens/min",
       "Email support",
       "Analytics dashboard",
       "Priority inference",
-      "Pay-as-you-go cloud usage",
-      "Unlimited users",
+      "Hanzo World Pro — live OSINT, ZAP + MCP API, unlimited alerts (included)",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 500,
       "tokensPerMinute": 1000000
     },
-    "payouts": {
-      "idleResalePercent": 20,
-      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
-    }
-  },
-  {
-    "id": "team",
-    "name": "Team",
-    "description": "For teams building together. SSO, shared billing, collaboration tools, and AI usage included.",
-    "priceMonthly": 25,
-    "priceAnnual": 20,
-    "pricePerUser": true,
-    "category": "team",
-    "popular": true,
-    "features": [
-      "Everything in Pro",
-      "Hanzo Team workspace (hanzo.team)",
-      "SSO / SAML",
-      "Shared billing & usage tracking",
-      "Usage analytics per member",
-      "1000 requests/min per user",
-      "2M tokens/min per user",
-      "Pay-as-you-go or prepay cloud usage",
-      "Unlimited users",
-      "Earn up to 20% on idle compute & LLM resale"
-    ],
-    "limits": {
-      "requestsPerMinute": 1000,
-      "tokensPerMinute": 2000000
-    },
-    "addons": {
-      "teamWorkspace": true,
-      "sso": true,
-      "sharedBilling": true
-    },
+    "bundles": ["world-pro"],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -106,7 +69,7 @@
       "Custom model fine-tuning",
       "Dedicated support channel",
       "Pay-as-you-go or prepay for additional cloud usage",
-      "Unlimited users",
+      "Hanzo World Pro included",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
@@ -114,10 +77,39 @@
       "tokensPerMinute": 10000000,
       "includedCloudCredits": 100
     },
+    "bundles": ["world-pro"],
     "addons": {
       "premiumModels": true,
       "customTraining": true
     },
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "team",
+    "name": "Team",
+    "description": "For teams building together. SSO, shared billing, custom training, and Hanzo World Team included.",
+    "priceMonthly": 199,
+    "priceAnnual": 159,
+    "category": "team",
+    "features": [
+      "Up to 10 members",
+      "SSO / SAML",
+      "Priority support",
+      "Custom model training",
+      "Shared billing",
+      "Usage analytics",
+      "Hanzo World Team — multi-seat OSINT dashboard, shared alerts (included)",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": 2000,
+      "tokensPerMinute": 5000000,
+      "maxMembers": 10
+    },
+    "bundles": ["world-team"],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -141,7 +133,7 @@
       "Custom model fine-tuning",
       "Dedicated support channel",
       "Pay-as-you-go or prepay for additional cloud usage",
-      "Unlimited users",
+      "Hanzo World Team included",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
@@ -149,6 +141,7 @@
       "tokensPerMinute": 10000000,
       "includedCloudCreditsPerUser": 100
     },
+    "bundles": ["world-team"],
     "addons": {
       "teamWorkspace": true,
       "sso": true,
@@ -165,27 +158,52 @@
     "id": "enterprise",
     "name": "Enterprise",
     "description": "Full-scale AI infrastructure. Dedicated support, SLA, and on-prem deployment.",
-    "priceMonthly": null,
-    "priceAnnual": null,
-    "pricePerUser": false,
+    "priceMonthly": 9999,
+    "priceAnnual": 7999,
     "category": "enterprise",
-    "contactSales": true,
     "features": [
-      "Everything in Team Max",
+      "Unlimited members",
       "99.99% SLA",
       "Dedicated account manager",
       "Custom rate limits",
       "On-premise deployment",
       "SOC 2 compliance",
-      "Custom model fine-tuning & hosting",
+      "Custom model fine-tuning",
       "Priority inference across all models",
-      "Volume cloud usage discounts",
-      "Unlimited users",
+      "Hanzo World Team included",
       "Earn up to 20% on idle compute & LLM resale"
     ],
     "limits": {
       "requestsPerMinute": 50000,
       "tokensPerMinute": 100000000
+    },
+    "bundles": ["world-team"],
+    "payouts": {
+      "idleResalePercent": 20,
+      "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    }
+  },
+  {
+    "id": "custom",
+    "name": "Custom",
+    "description": "Need more? We'll build a plan around your infrastructure, compliance, and scale requirements.",
+    "priceMonthly": null,
+    "priceAnnual": null,
+    "category": "enterprise",
+    "contactSales": true,
+    "features": [
+      "Everything in Enterprise",
+      "Custom SLA (up to 99.999%)",
+      "Dedicated compute cluster",
+      "Air-gapped / on-prem deployment",
+      "Custom model training & hosting",
+      "White-glove onboarding",
+      "24/7 engineering support",
+      "Earn up to 20% on idle compute & LLM resale"
+    ],
+    "limits": {
+      "requestsPerMinute": null,
+      "tokensPerMinute": null
     },
     "payouts": {
       "idleResalePercent": 20,
@@ -214,7 +232,7 @@
   {
     "id": "world-pro",
     "name": "World Pro",
-    "description": "Everything in Free plus priority feeds, unlimited alerts, ZAP + MCP API access, WhatsApp/Telegram/SMS notifications.",
+    "description": "Everything in Free plus priority feeds, unlimited alerts, ZAP + MCP API access, WhatsApp/Telegram/SMS notifications. Included free in Hanzo Pro / Max / Team / Enterprise.",
     "priceMonthly": 29,
     "priceAnnual": 290,
     "category": "world",
@@ -233,12 +251,13 @@
       "maxAlerts": -1,
       "apiRateLimit": 6000,
       "mcpRateLimit": 3000
-    }
+    },
+    "includedIn": ["pro", "max", "team", "team-max", "enterprise"]
   },
   {
     "id": "world-team",
     "name": "World Team",
-    "description": "Everything in Pro for up to 5 seats + shared workspace.",
+    "description": "Everything in Pro for up to 5 seats + shared workspace. Included free in Hanzo Team / Team Max / Enterprise.",
     "priceMonthly": 99,
     "priceAnnual": 990,
     "category": "world",
@@ -255,6 +274,7 @@
       "maxMembers": 5,
       "apiRateLimit": 30000,
       "mcpRateLimit": 15000
-    }
+    },
+    "includedIn": ["team", "team-max", "enterprise"]
   }
 ]
