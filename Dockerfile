@@ -32,11 +32,17 @@ RUN pnpm install --frozen-lockfile && pnpm build
 # tagged release. The Next config emits a static bundle under out/ with
 # basePath=/admin/billing, which commerce serves under the same prefix from
 # billing/ui/dist (go:embed target).
+#
+# pnpm pinned to 9.15.4 (matches billing's own Dockerfile + lockfile
+# config schema). corepack's default pnpm 11.5.2 rejects v9-shaped
+# `overrides` blocks with ERR_PNPM_LOCKFILE_CONFIG_MISMATCH; pinning
+# back to 9.x keeps the schema validator on the right side of the
+# v10 break.
 FROM node:22-alpine AS billing-build
 ARG BILLING_REPO=https://github.com/hanzoai/billing.git
 ARG BILLING_VERSION=v0.1.2
 WORKDIR /billing
-RUN apk add --no-cache git && corepack enable pnpm
+RUN apk add --no-cache git && corepack enable && corepack prepare pnpm@9.15.4 --activate
 RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
 RUN pnpm install --frozen-lockfile && pnpm build
 
