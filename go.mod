@@ -270,3 +270,10 @@ replace (
 // at build time. Pin every consumer to v1.4.3 so the module path
 // matches its import path.
 replace github.com/luxfi/log => github.com/luxfi/log v1.4.3
+
+// luxfi/consensus v1.23.5 introduced quasar/protocol imports that
+// reference pulsar subpackages (keyera, primitives, reshare, sign,
+// threshold, hash) which never landed on the public pulsar repo.
+// v1.22.85 is the latest tag that compiles against the published
+// luxfi/pulsar v1.0.9 layout.
+replace github.com/luxfi/consensus => github.com/luxfi/consensus v1.22.85
