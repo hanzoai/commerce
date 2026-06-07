@@ -19,7 +19,7 @@ RUN pnpm build
 # and PAY_VERSION via --build-arg; default tracks the latest tagged release.
 FROM node:22-alpine AS pay-build
 ARG PAY_REPO=https://github.com/hanzoai/pay.git
-ARG PAY_VERSION=v0.1.0
+ARG PAY_VERSION=v0.1.1
 WORKDIR /pay
 RUN apk add --no-cache git && corepack enable pnpm
 RUN git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
