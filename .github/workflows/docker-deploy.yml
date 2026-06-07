@@ -19,9 +19,9 @@ jobs:
       # Native multi-arch. amd64 → hanzo-build-linux-amd64 (DOKS ARC).
       # arm64 → spark (Ampere bare metal arcd). No QEMU.
       platforms: linux/amd64,linux/arm64
-      # hanzoai/plans is the data SOT. Clone it into api/billing/plans/
-      # before docker build so go:embed picks up the canonical catalog
-      # at compile time. GITHUB_TOKEN has read on the private plans
-      # repo in-org.
-      pre-build-command: "GITHUB_TOKEN=$GITHUB_TOKEN sh scripts/fetch-plans.sh"
+      # @hanzo/plans is the data SOT on npm — public package. The
+      # pre-build pulls the tarball into api/billing/plans/ so Go's
+      # go:embed bakes the canonical catalog into the binary at
+      # compile time. No auth needed.
+      pre-build-command: "sh scripts/fetch-plans.sh"
     secrets: inherit
