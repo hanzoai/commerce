@@ -42,7 +42,9 @@ FROM node:22-alpine AS billing-build
 ARG BILLING_REPO=https://github.com/hanzoai/billing.git
 ARG BILLING_VERSION=v0.1.2
 WORKDIR /billing
-RUN apk add --no-cache git && corepack enable && corepack prepare pnpm@9.15.4 --activate
+# python3/make/g++ needed for node-gyp on arm64 where bufferutil/utf-8-validate
+# have no prebuilt aarch64 binary and fall back to source compile.
+RUN apk add --no-cache git python3 make g++ && corepack enable && corepack prepare pnpm@9.15.4 --activate
 RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
 RUN pnpm install --frozen-lockfile && pnpm build
 
