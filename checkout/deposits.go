@@ -1,13 +1,13 @@
 // Deposits is the POST /v1/commerce/deposits handler. The checkout SPA
 // POSTs here to create a deposit intent; we resolve the tenant from the
-// Host header, then forward to the tenant's configured backend. For the
-// Liquidity tenant, Backend.Kind="bd" and Backend.URL points at the BD
-// service, which owns the deposit-intent lifecycle.
+// Host header, then forward to the tenant's configured backend. For
+// broker-dealer tenants, Backend.Kind="bd" and Backend.URL points at
+// the BD service, which owns the deposit-intent lifecycle.
 //
 // Why a proxy and not a local implementation: commerce does not own
-// deposit state for the Liquidity tenant — BD does, and BD is the source
-// of truth per the on-chain trading architecture. Re-implementing here
-// would split the record and invite drift.
+// deposit state for these tenants — the BD service does, and is the
+// source of truth per the on-chain trading architecture. Re-implementing
+// here would split the record and invite drift.
 
 package checkout
 
