@@ -110,11 +110,11 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *gin.Engine {
 
 func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 	s := newHandlerStore(t)
-	seedTenant(t, s, "liquidity", "pay..test")
+	seedTenant(t, s, "acme", "pay.acme.test")
 	router := newRouterWithClaims(s, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
-	req.Host = "pay..test"
+	req.Host = "pay.acme.test"
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -126,11 +126,11 @@ func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 	// MUST NOT leak: KMS paths, BD endpoint, disabled provider names,
 	// client secrets (none are stored — confirm they never appear).
 	forbidden := []string{
-		"kms/commerce/liquidity/square",   // KMS path
-		"kms/commerce/liquidity/braintree",
-		"bd.liquidity.example.test",       // BD endpoint
-		"braintree",                       // disabled provider
-		"client_secret",                   // never stored, confirm projection doesn't invent
+		"kms/commerce/acme/square",   // KMS path
+		"kms/commerce/acme/braintree",
+		"bd.acme.example.test",       // BD endpoint
+		"braintree",                  // disabled provider
+		"client_secret",              // never stored, confirm projection doesn't invent
 	}
 	for _, s := range forbidden {
 		if strings.Contains(body, s) {
@@ -141,11 +141,11 @@ func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 	// MUST be present: name, brand, public IAM config, enabled-only
 	// providers, return-url allowlist.
 	required := []string{
-		"liquidity",
-		"Liquidity", // brand display_name
+		"acme",
+		"Acme", // brand display_name
 		"#0ea5e9",
 		"https://id.example.test",
-		"liquidity-client",
+		"acme-client",
 		"square",
 	}
 	for _, s := range required {
@@ -157,7 +157,7 @@ func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 
 func TestTenantJSONFromStore_UnknownHostReturns404(t *testing.T) {
 	s := newHandlerStore(t)
-	seedTenant(t, s, "liquidity", "pay..test")
+	seedTenant(t, s, "acme", "pay.acme.test")
 	router := newRouterWithClaims(s, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
@@ -266,13 +266,13 @@ func TestCreateTenant_Superadmin_201(t *testing.T) {
 
 func TestCreateTenant_DuplicateName_409(t *testing.T) {
 	s := newHandlerStore(t)
-	seedTenant(t, s, "liquidity", "pay.liquidity.test")
+	seedTenant(t, s, "demo", "pay.demo.test")
 
 	claims := &auth.IAMClaims{IsAdmin: true, Owner: "platform"}
 	claims.Subject = "superadmin-1"
 	router := newRouterWithClaims(s, claims)
 
-	body := []byte(`{"name":"liquidity","hostnames":["pay.other.test"]}`)
+	body := []byte(`{"name":"demo","hostnames":["pay.other.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -319,7 +319,7 @@ func TestListProviders_Unauthenticated_401(t *testing.T) {
 func TestListProviders_PlainUser_403(t *testing.T) {
 	s := newHandlerStore(t)
 	// Authenticated, but no admin / tenant-admin / superadmin role.
-	claims := &auth.IAMClaims{Owner: "liquidity"}
+	claims := &auth.IAMClaims{Owner: "acme"}
 	claims.Subject = "user-1"
 	router := newRouterWithClaims(s, claims)
 
@@ -334,11 +334,11 @@ func TestListProviders_PlainUser_403(t *testing.T) {
 
 func TestListProviders_TenantAdmin_ScopedToOwner(t *testing.T) {
 	s := newHandlerStore(t)
-	seedTenant(t, s, "liquidity", "pay.liquidity.test")
 	seedTenant(t, s, "acme", "pay.acme.test")
+	seedTenant(t, s, "beta", "pay.beta.test")
 
-	// Caller's owner is liquidity — response MUST be liquidity's providers.
-	claims := &auth.IAMClaims{Owner: "liquidity", Roles: auth.FlexRoles{"admin"}}
+	// Caller's owner is acme — response MUST be acme's providers.
+	claims := &auth.IAMClaims{Owner: "acme", Roles: auth.FlexRoles{"admin"}}
 	claims.Subject = "user-1"
 	router := newRouterWithClaims(s, claims)
 
@@ -356,8 +356,8 @@ func TestListProviders_TenantAdmin_ScopedToOwner(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("JSON: %v", err)
 	}
-	if resp.Tenant != "liquidity" {
-		t.Errorf("tenant = %q, want liquidity (cross-tenant leak?)", resp.Tenant)
+	if resp.Tenant != "acme" {
+		t.Errorf("tenant = %q, want acme (cross-tenant leak?)", resp.Tenant)
 	}
 	// MUST NOT leak KMS paths via the public view.
 	if strings.Contains(w.Body.String(), "kms/") {
@@ -374,7 +374,7 @@ func TestListProviders_TenantAdmin_ScopedToOwner(t *testing.T) {
 // caller whose owner is empty — no existence oracle.
 func TestListProviders_CrossTenantProbe_ByteIdentical404(t *testing.T) {
 	s := newHandlerStore(t)
-	seedTenant(t, s, "liquidity", "pay.liquidity.test")
+	seedTenant(t, s, "acme", "pay.acme.test")
 
 	// Case A: no-such-tenant owner with tenant-admin role.
 	probeA := &auth.IAMClaims{Owner: "no-such-tenant", Roles: auth.FlexRoles{"admin"}}
@@ -402,7 +402,7 @@ func TestListProviders_CrossTenantProbe_ByteIdentical404(t *testing.T) {
 		t.Errorf("cross-tenant probe body differs:\nA: %q\nB: %q", wA.Body.String(), wB.Body.String())
 	}
 	// Also: the tenant name MUST NOT appear in either body.
-	if strings.Contains(wA.Body.String(), "liquidity") ||
+	if strings.Contains(wA.Body.String(), "acme") ||
 		strings.Contains(wA.Body.String(), "no-such-tenant") {
 		t.Errorf("probe A body leaks tenant name: %s", wA.Body.String())
 	}

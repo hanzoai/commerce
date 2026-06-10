@@ -65,9 +65,8 @@ func init() {
 			MaxSize: 64 * 1024,
 		})
 
-		// BD endpoint — where checkout API proxies deposit intents. For the
-		// Liquidity tenant this is https://bd.{env}.; for others
-		// it is the tenant's own back end.
+		// BD endpoint — where checkout API proxies deposit intents. Tenant
+		// supplies its own per-environment back-end URL.
 		collection.Fields.Add(&core.URLField{
 			Name: "bd_endpoint",
 		})
