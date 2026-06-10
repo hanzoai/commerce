@@ -101,7 +101,7 @@ func (r *TenantRepo) FindByID(id string) (*Tenant, error) {
 // FindByHostname resolves a hostname to its owning tenant. The input is
 // normalized (lowercase, trailing-dot stripped, port stripped) before any
 // match runs; malformed inputs return ErrInvalidHostname. Exact-match only
-// — suffix spoofing ("pay..evil.com") does not match.
+// — suffix spoofing ("pay.tenant.example.com.evil.com") does not match.
 func (r *TenantRepo) FindByHostname(host string) (*Tenant, error) {
 	h, err := normalizeHostname(host)
 	if err != nil {
@@ -112,8 +112,8 @@ func (r *TenantRepo) FindByHostname(host string) (*Tenant, error) {
 	// the serialized JSON with a quoted-string anchor. The quotes around
 	// the normalized value prevent substring collisions:
 	//
-	//   hostnames  = ["pay.", "pay.dev."]
-	//   pattern    = %"pay."%
+	//   hostnames  = ["pay.tenant.example.com", "pay.dev.tenant.example.com"]
+	//   pattern    = %"pay.tenant.example.com"%
 	//
 	// Embedded quotes in a hostname are impossible (normalizeHostname
 	// rejects them), so no crafted pattern can match more than the
@@ -316,7 +316,7 @@ func unmarshalJSONField(rec *core.Record, name string, dst any) error {
 
 // normalizeHostname applies the canonical checkout tenant-resolution rule:
 //   - lowercase
-//   - trailing "." stripped (absolute DNS form — "pay.." == "pay.")
+//   - trailing "." stripped (absolute DNS form — "pay.example.com." == "pay.example.com")
 //   - :port stripped
 //   - reject embedded whitespace / control bytes / quote characters
 //   - reject empty / pure-port input
