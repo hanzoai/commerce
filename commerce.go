@@ -850,7 +850,7 @@ func (app *App) setupRoutes() {
 
 	// Hosted multi-tenant checkout. Mounts:
 	//   GET  /v1/commerce/tenant   — public tenant JSON (branding + enabled methods)
-	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (BD for Liquidity)
+	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (e.g. a broker-dealer backend)
 	//   GET  /*                    — embedded Vite SPA with SPA fallback
 	//
 	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
