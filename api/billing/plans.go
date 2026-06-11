@@ -236,15 +236,36 @@ type Plan struct {
 func StaticPlans() []Plan {
 	out := make([]Plan, len(hanzoPlans))
 	for i, p := range hanzoPlans {
-		out[i] = Plan{
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-			Category:    p.Category,
-			PriceMonth:  p.Price,
-			PriceYear:   p.PriceAnnual,
-			Currency:    p.Currency,
-		}
+		out[i] = toPlan(&p)
 	}
 	return out
+}
+
+// LookupStaticPlan resolves a single plan by slug from the embedded
+// catalog and returns it in the exported Plan shape. Returns nil when
+// the slug is unknown. It is the single-plan analogue of StaticPlans
+// and shares the same staticPlan -> Plan projection, so external
+// seeders (e.g. cmd/grant) never touch the unexported wire type.
+func LookupStaticPlan(slug string) *Plan {
+	sp := lookupPlan(slug)
+	if sp == nil {
+		return nil
+	}
+	p := toPlan(sp)
+	return &p
+}
+
+// toPlan projects the internal staticPlan wire type onto the exported
+// Plan shape. Single source of truth for the field mapping used by both
+// StaticPlans and LookupStaticPlan.
+func toPlan(p *staticPlan) Plan {
+	return Plan{
+		Slug:        p.Slug,
+		Name:        p.Name,
+		Description: p.Description,
+		Category:    p.Category,
+		PriceMonth:  p.Price,
+		PriceYear:   p.PriceAnnual,
+		Currency:    p.Currency,
+	}
 }
