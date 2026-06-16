@@ -65,11 +65,11 @@ export interface ICachingModuleService extends IModuleService {
    * ```ts
    * const data = await cachingModuleService.get({
    *   key: "products", // this key would typically be a hash
-   *   providers: ["caching-redis", "caching-memcached"]
+   *   providers: ["caching-base", "caching-inmemory"]
    * }) as { id: string; title: string; }
    * ```
    *
-   * This example will try to get the data from the `caching-redis` provider first, and if not found, it will try to get it from the `caching-memcached` provider.
+   * This example will try to get the data from the `caching-base` provider first, and if not found, it will try to get it from the `caching-inmemory` provider.
    */
   get({
     key,
@@ -154,13 +154,13 @@ export interface ICachingModuleService extends IModuleService {
    *   key,
    *   data,
    *   providers: [
-   *     "caching-redis",
-   *     { id: "caching-memcached", ttl: 120 } // custom TTL for this provider
+   *     "caching-base",
+   *     { id: "caching-inmemory", ttl: 120 } // custom TTL for this provider
    *   ]
    * })
    * ```
-   * 
-   * This example will store the item in both the `caching-redis` and `caching-memcached` providers, with a custom TTL of `120` seconds for the `caching-memcached` provider.
+   *
+   * This example will store the item in both the `caching-base` and `caching-inmemory` providers, with a custom TTL of `120` seconds for the `caching-inmemory` provider.
    *
    */
   set({
@@ -265,11 +265,11 @@ export interface ICachingModuleService extends IModuleService {
    * ```ts
    * await cachingModuleService.clear({
    *  key: "products",
-   *  providers: ["caching-redis", "caching-memcached"]
+   *  providers: ["caching-base", "caching-inmemory"]
    * })
    * ```
-   * 
-   * This example will try to clear the data from both the `caching-redis` and `caching-memcached` providers.
+   *
+   * This example will try to clear the data from both the `caching-base` and `caching-inmemory` providers.
    */
   clear({
     key,
@@ -347,9 +347,9 @@ export interface ICachingModuleService extends IModuleService {
  * and store it in the Module's container. Then, you can access it in your service using the container.
  * 
  * :::note[Loader Example]
- * 
- * [Initialize MongoDB client in loader and access it in service](https://docs.hanzo.ai/commerce/learn/fundamentals/modules/loaders#example-register-custom-mongodb-connection).
- * 
+ *
+ * [Initialize a Base client in loader and access it in service](https://docs.hanzo.ai/commerce/learn/fundamentals/modules/loaders#example-register-custom-base-connection).
+ *
  * :::
  *
  * #### Example
