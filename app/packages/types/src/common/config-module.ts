@@ -4,8 +4,6 @@ import {
   InternalModuleDeclaration,
 } from "../modules-sdk"
 
-import type { RedisOptions } from "ioredis"
-
 import { ConnectionOptions } from "node:tls"
 // @ts-ignore
 import type { InlineConfig } from "vite"
@@ -135,6 +133,43 @@ export interface AdminOptions {
    * ```
    */
   maxUploadFileSize?: number
+}
+
+/**
+ * @interface
+ *
+ * Options for the Base-backed session store. Sessions are persisted in
+ * per-org/user SQLite via Hanzo Base instead of an external key-value store.
+ */
+export type SessionStoreOptions = {
+  /**
+   * The filesystem path (or directory) of the Base store that backs sessions.
+   * Each org/user is isolated in its own SQLite database under this path.
+   *
+   * @example
+   * ```js title="commerce-config.ts"
+   * module.exports = defineConfig({
+   *   projectConfig: {
+   *     sessionStoreOptions: {
+   *       basePath: process.env.BASE_PATH ||
+   *         "./.base/sessions",
+   *     }
+   *     // ...
+   *   },
+   *   // ...
+   * })
+   * ```
+   */
+  basePath?: string
+  /**
+   * The name of the Base collection used to store sessions. The default value is `sessions`.
+   */
+  collection?: string
+  /**
+   * The time-to-live (TTL in seconds) for a stored session before it lazily expires.
+   * If not provided, the value of `SessionOptions.ttl` is used.
+   */
+  ttl?: number
 }
 
 /**
@@ -427,38 +462,27 @@ export type ProjectConfigOptions = {
   }
 
   /**
-   * This configuration specifies the connection URL to Redis to store the Hanzo Commerce server's session.
+   * This configuration specifies the path to the Hanzo Base store that holds the Hanzo Commerce server's session.
+   * Sessions are persisted in per-org/user SQLite via Base instead of an external key-value store.
    *
-   * :::note
-   *
-   * You must first have Redis installed. You can refer to [Redis's installation guide](https://redis.io/docs/getting-started/installation/).
-   *
-   * :::
-   *
-   * The Redis connection URL has the following format:
-   *
-   * ```bash
-   * redis[s]://[[username][:password]@][host][:port][/db-number]
-   * ```
-   *
-   * For a local Redis installation, the connection URL should be `redis://localhost:6379` unless you’ve made any changes to the Redis configuration during installation.
+   * The value is a filesystem path (or directory) under which each org/user is isolated in its own SQLite database.
    *
    * @example
    * ```js title="commerce-config.ts"
    * module.exports = defineConfig({
    *   projectConfig: {
-   *     redisUrl: process.env.REDIS_URL ||
-   *       "redis://localhost:6379",
+   *     basePath: process.env.BASE_PATH ||
+   *       "./.base/sessions",
    *     // ...
    *   },
    *   // ...
    * })
    * ```
    */
-  redisUrl?: string
+  basePath?: string
 
   /**
-   * This configuration defines a prefix on all keys stored in Redis for the Hanzo Commerce server's session. The default value is `sess:`.
+   * This configuration defines a prefix on all session keys stored in Base. The default value is `sess:`.
    *
    * If this configuration option is provided, it is prepended to `sess:`.
    *
@@ -466,26 +490,25 @@ export type ProjectConfigOptions = {
    * ```js title="commerce-config.ts"
    * module.exports = defineConfig({
    *   projectConfig: {
-   *     redisPrefix: process.env.REDIS_URL || "commerce:",
+   *     sessionPrefix: process.env.SESSION_PREFIX || "commerce:",
    *     // ...
    *   },
    *   // ...
    * })
    * ```
    */
-  redisPrefix?: string
+  sessionPrefix?: string
 
   /**
-   * This configuration defines options to pass ioredis for the Redis connection used to store the Hanzo Commerce server's session. Refer to [ioredis’s RedisOptions documentation](https://redis.github.io/ioredis/index.html#RedisOptions)
-   * for the list of available options.
+   * This configuration defines options to pass to the Base-backed session store used to store the Hanzo Commerce server's session.
    *
    * @example
    * ```js title="commerce-config.ts"
    * module.exports = defineConfig({
    *   projectConfig: {
-   *     redisOptions: {
-   *       connectionName: process.env.REDIS_CONNECTION_NAME ||
-   *         "commerce",
+   *     sessionStoreOptions: {
+   *       collection: process.env.SESSION_COLLECTION ||
+   *         "sessions",
    *     }
    *     // ...
    *   },
@@ -493,7 +516,7 @@ export type ProjectConfigOptions = {
    * })
    * ```
    */
-  redisOptions?: RedisOptions
+  sessionStoreOptions?: SessionStoreOptions
 
   /**
    * This configuration defines additional options to pass to [express-session](https://www.npmjs.com/package/express-session), which is used to store the Hanzo Commerce server's session.
