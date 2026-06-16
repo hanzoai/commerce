@@ -1,124 +1,99 @@
 // Package infra provides infrastructure clients.
 //
-// This file implements the KV client (KV_URL, Redis-compatible) for caching
-// and session storage.
+// This file implements the KV client used for caching and org-id resolution.
+// It is no longer Redis/Valkey-backed: per Hanzo policy (no Mongo, no KV
+// stores) the cache is served by hanzo/base — a per-org/user embedded SQLite
+// store. KVClient is a thin adapter over *store.KVStore that preserves the
+// method set the rest of commerce consumes (Get/Set/Delete/Exists/Health/
+// Close) plus the SetNX-family primitives the distributed lock builds on.
+//
+// The KVCache interface (string-valued Get/Set, variadic Delete) is what
+// pkg/org binds to. KVClient satisfies it so org-id caching is unchanged.
 package infra
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	kv "github.com/hanzoai/kv-go/v9"
+	"github.com/hanzoai/commerce/store"
 )
 
-// KVConfig holds Valkey/Redis configuration
+// KVConfig holds the base-backed KV configuration. The former Redis/Valkey
+// fields (Addr, Password, DB, TLS, pool sizing) are gone — base needs only a
+// data directory and an optional key prefix.
 type KVConfig struct {
-	// Enabled enables the KV service
+	// Enabled enables the KV service.
 	Enabled bool
 
-	// Addr is the Valkey server address (host:port)
-	Addr string
+	// DataDir is the filesystem path for the base SQLite store. When empty,
+	// the manager supplies a default under the app data dir.
+	DataDir string
 
-	// Password for authentication (optional)
-	Password string
+	// DataDSN optionally routes the store at Postgres (multi-instance
+	// deployments). Empty selects the file-path SQLite default under DataDir.
+	DataDSN string
 
-	// DB is the database number to use
-	DB int
-
-	// TLS enables TLS connection
-	TLS bool
-
-	// PoolSize is the connection pool size
-	PoolSize int
-
-	// MinIdleConns minimum idle connections
-	MinIdleConns int
-
-	// ConnMaxIdleTime maximum idle time for connections
-	ConnMaxIdleTime time.Duration
-
-	// ReadTimeout for read operations
-	ReadTimeout time.Duration
-
-	// WriteTimeout for write operations
-	WriteTimeout time.Duration
-
-	// KeyPrefix is prepended to all keys
+	// KeyPrefix is prepended to all keys (namespacing within one store).
 	KeyPrefix string
 }
 
-// KVClient wraps the Redis client for Valkey
+// KVClient is the base-backed cache adapter.
 type KVClient struct {
 	config *KVConfig
-	client *kv.Client
+	store  *store.Store
+	kv     *store.KVStore
 }
 
-// NewKVClient creates a new Valkey KV client
-func NewKVClient(ctx context.Context, cfg *KVConfig) (*KVClient, error) {
-	if cfg.PoolSize == 0 {
-		cfg.PoolSize = 10
+// NewKVClient opens (or creates) the base store and returns a KV client over
+// its commerce_kv collection. The store is owned by this client and released
+// on Close.
+func NewKVClient(_ context.Context, cfg *KVConfig) (*KVClient, error) {
+	s, err := store.New(store.Config{
+		DataDir: cfg.DataDir,
+		DataDSN: cfg.DataDSN,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("kv: open base store: %w", err)
 	}
-	if cfg.MinIdleConns == 0 {
-		cfg.MinIdleConns = 2
-	}
-	if cfg.ConnMaxIdleTime == 0 {
-		cfg.ConnMaxIdleTime = 5 * time.Minute
-	}
-	if cfg.ReadTimeout == 0 {
-		cfg.ReadTimeout = 3 * time.Second
-	}
-	if cfg.WriteTimeout == 0 {
-		cfg.WriteTimeout = 3 * time.Second
-	}
-
-	opts := &kv.Options{
-		Addr:            cfg.Addr,
-		Password:        cfg.Password,
-		DB:              cfg.DB,
-		PoolSize:        cfg.PoolSize,
-		MinIdleConns:    cfg.MinIdleConns,
-		ConnMaxIdleTime: cfg.ConnMaxIdleTime,
-		ReadTimeout:     cfg.ReadTimeout,
-		WriteTimeout:    cfg.WriteTimeout,
-	}
-
-	client := kv.NewClient(opts)
-
-	// Verify connection
-	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
-		return nil, fmt.Errorf("failed to connect to valkey: %w", err)
-	}
-
 	return &KVClient{
 		config: cfg,
-		client: client,
+		store:  s,
+		kv:     s.KV,
 	}, nil
 }
 
-// key returns the full key with prefix
+// NewKVClientFromStore adapts an already-constructed store (the common case —
+// commerce builds one store for the whole process). The caller retains
+// ownership of the store; Close here does NOT release it.
+func NewKVClientFromStore(cfg *KVConfig, s *store.Store) *KVClient {
+	return &KVClient{config: cfg, kv: s.KV}
+}
+
+// key returns the full key with prefix.
 func (c *KVClient) key(k string) string {
-	if c.config.KeyPrefix == "" {
+	if c.config == nil || c.config.KeyPrefix == "" {
 		return k
 	}
 	return c.config.KeyPrefix + ":" + k
 }
 
-// Get retrieves a value by key
+// Get retrieves a value by key. A miss returns ("", nil) — matching the old
+// Redis-nil-as-empty contract pkg/org depends on.
 func (c *KVClient) Get(ctx context.Context, key string) (string, error) {
-	val, err := c.client.Get(ctx, c.key(key)).Result()
-	if err == kv.Nil {
+	val, err := c.kv.Get(c.key(key))
+	if errors.Is(err, store.ErrKVNotFound) {
 		return "", nil
 	}
 	if err != nil {
 		return "", fmt.Errorf("kv get failed: %w", err)
 	}
-	return val, nil
+	return string(val), nil
 }
 
-// GetJSON retrieves and unmarshals a JSON value
+// GetJSON retrieves and unmarshals a JSON value. A miss leaves dst untouched.
 func (c *KVClient) GetJSON(ctx context.Context, key string, dst interface{}) error {
 	val, err := c.Get(ctx, key)
 	if err != nil {
@@ -130,16 +105,15 @@ func (c *KVClient) GetJSON(ctx context.Context, key string, dst interface{}) err
 	return json.Unmarshal([]byte(val), dst)
 }
 
-// Set stores a value with optional expiration
+// Set stores a value with optional expiration (ttl==0 means no expiry).
 func (c *KVClient) Set(ctx context.Context, key string, value string, ttl time.Duration) error {
-	err := c.client.Set(ctx, c.key(key), value, ttl).Err()
-	if err != nil {
+	if err := c.kv.Set(c.key(key), []byte(value), ttl); err != nil {
 		return fmt.Errorf("kv set failed: %w", err)
 	}
 	return nil
 }
 
-// SetJSON marshals and stores a value
+// SetJSON marshals and stores a value.
 func (c *KVClient) SetJSON(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -148,262 +122,55 @@ func (c *KVClient) SetJSON(ctx context.Context, key string, value interface{}, t
 	return c.Set(ctx, key, string(data), ttl)
 }
 
-// Delete removes a key
+// Delete removes one or more keys. Deleting an absent key is not an error.
 func (c *KVClient) Delete(ctx context.Context, keys ...string) error {
-	fullKeys := make([]string, len(keys))
-	for i, k := range keys {
-		fullKeys[i] = c.key(k)
-	}
-	err := c.client.Del(ctx, fullKeys...).Err()
-	if err != nil {
-		return fmt.Errorf("kv delete failed: %w", err)
-	}
-	return nil
-}
-
-// Exists checks if keys exist
-func (c *KVClient) Exists(ctx context.Context, keys ...string) (int64, error) {
-	fullKeys := make([]string, len(keys))
-	for i, k := range keys {
-		fullKeys[i] = c.key(k)
-	}
-	count, err := c.client.Exists(ctx, fullKeys...).Result()
-	if err != nil {
-		return 0, fmt.Errorf("kv exists failed: %w", err)
-	}
-	return count, nil
-}
-
-// Expire sets expiration on a key
-func (c *KVClient) Expire(ctx context.Context, key string, ttl time.Duration) error {
-	err := c.client.Expire(ctx, c.key(key), ttl).Err()
-	if err != nil {
-		return fmt.Errorf("kv expire failed: %w", err)
-	}
-	return nil
-}
-
-// TTL returns the remaining TTL of a key
-func (c *KVClient) TTL(ctx context.Context, key string) (time.Duration, error) {
-	ttl, err := c.client.TTL(ctx, c.key(key)).Result()
-	if err != nil {
-		return 0, fmt.Errorf("kv ttl failed: %w", err)
-	}
-	return ttl, nil
-}
-
-// Incr increments a counter
-func (c *KVClient) Incr(ctx context.Context, key string) (int64, error) {
-	val, err := c.client.Incr(ctx, c.key(key)).Result()
-	if err != nil {
-		return 0, fmt.Errorf("kv incr failed: %w", err)
-	}
-	return val, nil
-}
-
-// IncrBy increments a counter by a value
-func (c *KVClient) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
-	val, err := c.client.IncrBy(ctx, c.key(key), value).Result()
-	if err != nil {
-		return 0, fmt.Errorf("kv incrby failed: %w", err)
-	}
-	return val, nil
-}
-
-// HGet retrieves a hash field
-func (c *KVClient) HGet(ctx context.Context, key, field string) (string, error) {
-	val, err := c.client.HGet(ctx, c.key(key), field).Result()
-	if err == kv.Nil {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("kv hget failed: %w", err)
-	}
-	return val, nil
-}
-
-// HSet sets hash fields
-func (c *KVClient) HSet(ctx context.Context, key string, values ...interface{}) error {
-	err := c.client.HSet(ctx, c.key(key), values...).Err()
-	if err != nil {
-		return fmt.Errorf("kv hset failed: %w", err)
-	}
-	return nil
-}
-
-// HGetAll retrieves all hash fields
-func (c *KVClient) HGetAll(ctx context.Context, key string) (map[string]string, error) {
-	val, err := c.client.HGetAll(ctx, c.key(key)).Result()
-	if err != nil {
-		return nil, fmt.Errorf("kv hgetall failed: %w", err)
-	}
-	return val, nil
-}
-
-// HDel removes hash fields
-func (c *KVClient) HDel(ctx context.Context, key string, fields ...string) error {
-	err := c.client.HDel(ctx, c.key(key), fields...).Err()
-	if err != nil {
-		return fmt.Errorf("kv hdel failed: %w", err)
-	}
-	return nil
-}
-
-// LPush prepends values to a list
-func (c *KVClient) LPush(ctx context.Context, key string, values ...interface{}) error {
-	err := c.client.LPush(ctx, c.key(key), values...).Err()
-	if err != nil {
-		return fmt.Errorf("kv lpush failed: %w", err)
-	}
-	return nil
-}
-
-// RPush appends values to a list
-func (c *KVClient) RPush(ctx context.Context, key string, values ...interface{}) error {
-	err := c.client.RPush(ctx, c.key(key), values...).Err()
-	if err != nil {
-		return fmt.Errorf("kv rpush failed: %w", err)
-	}
-	return nil
-}
-
-// LRange retrieves list elements
-func (c *KVClient) LRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
-	val, err := c.client.LRange(ctx, c.key(key), start, stop).Result()
-	if err != nil {
-		return nil, fmt.Errorf("kv lrange failed: %w", err)
-	}
-	return val, nil
-}
-
-// LLen returns the length of a list
-func (c *KVClient) LLen(ctx context.Context, key string) (int64, error) {
-	val, err := c.client.LLen(ctx, c.key(key)).Result()
-	if err != nil {
-		return 0, fmt.Errorf("kv llen failed: %w", err)
-	}
-	return val, nil
-}
-
-// SAdd adds members to a set
-func (c *KVClient) SAdd(ctx context.Context, key string, members ...interface{}) error {
-	err := c.client.SAdd(ctx, c.key(key), members...).Err()
-	if err != nil {
-		return fmt.Errorf("kv sadd failed: %w", err)
-	}
-	return nil
-}
-
-// SMembers retrieves all set members
-func (c *KVClient) SMembers(ctx context.Context, key string) ([]string, error) {
-	val, err := c.client.SMembers(ctx, c.key(key)).Result()
-	if err != nil {
-		return nil, fmt.Errorf("kv smembers failed: %w", err)
-	}
-	return val, nil
-}
-
-// SIsMember checks if a member is in a set
-func (c *KVClient) SIsMember(ctx context.Context, key string, member interface{}) (bool, error) {
-	val, err := c.client.SIsMember(ctx, c.key(key), member).Result()
-	if err != nil {
-		return false, fmt.Errorf("kv sismember failed: %w", err)
-	}
-	return val, nil
-}
-
-// SRem removes members from a set
-func (c *KVClient) SRem(ctx context.Context, key string, members ...interface{}) error {
-	err := c.client.SRem(ctx, c.key(key), members...).Err()
-	if err != nil {
-		return fmt.Errorf("kv srem failed: %w", err)
-	}
-	return nil
-}
-
-// ZAdd adds members to a sorted set
-func (c *KVClient) ZAdd(ctx context.Context, key string, members ...kv.Z) error {
-	err := c.client.ZAdd(ctx, c.key(key), members...).Err()
-	if err != nil {
-		return fmt.Errorf("kv zadd failed: %w", err)
-	}
-	return nil
-}
-
-// ZRange retrieves sorted set members by rank
-func (c *KVClient) ZRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
-	val, err := c.client.ZRange(ctx, c.key(key), start, stop).Result()
-	if err != nil {
-		return nil, fmt.Errorf("kv zrange failed: %w", err)
-	}
-	return val, nil
-}
-
-// ZRangeByScore retrieves sorted set members by score
-func (c *KVClient) ZRangeByScore(ctx context.Context, key string, opt *kv.ZRangeBy) ([]string, error) {
-	val, err := c.client.ZRangeByScore(ctx, c.key(key), opt).Result()
-	if err != nil {
-		return nil, fmt.Errorf("kv zrangebyscore failed: %w", err)
-	}
-	return val, nil
-}
-
-// Pipeline returns a pipeline for batched operations
-func (c *KVClient) Pipeline() kv.Pipeliner {
-	return c.client.Pipeline()
-}
-
-// Watch executes a transaction with WATCH
-func (c *KVClient) Watch(ctx context.Context, fn func(*kv.Tx) error, keys ...string) error {
-	fullKeys := make([]string, len(keys))
-	for i, k := range keys {
-		fullKeys[i] = c.key(k)
-	}
-	return c.client.Watch(ctx, fn, fullKeys...)
-}
-
-// Publish publishes a message to a channel
-func (c *KVClient) Publish(ctx context.Context, channel string, message interface{}) error {
-	err := c.client.Publish(ctx, channel, message).Err()
-	if err != nil {
-		return fmt.Errorf("kv publish failed: %w", err)
-	}
-	return nil
-}
-
-// Subscribe subscribes to channels
-func (c *KVClient) Subscribe(ctx context.Context, channels ...string) *kv.PubSub {
-	return c.client.Subscribe(ctx, channels...)
-}
-
-// Health checks the Valkey connection
-func (c *KVClient) Health(ctx context.Context) HealthStatus {
-	start := time.Now()
-
-	err := c.client.Ping(ctx).Err()
-	if err != nil {
-		return HealthStatus{
-			Healthy: false,
-			Latency: time.Since(start),
-			Error:   err.Error(),
+	for _, k := range keys {
+		if err := c.kv.Delete(c.key(k)); err != nil {
+			return fmt.Errorf("kv delete failed: %w", err)
 		}
 	}
-
-	return HealthStatus{
-		Healthy: true,
-		Latency: time.Since(start),
-	}
+	return nil
 }
 
-// Close closes the Valkey connection
+// Exists returns the count of keys that currently hold a live value.
+func (c *KVClient) Exists(ctx context.Context, keys ...string) (int64, error) {
+	var n int64
+	for _, k := range keys {
+		ok, err := c.kv.Exists(c.key(k))
+		if err != nil {
+			return 0, fmt.Errorf("kv exists failed: %w", err)
+		}
+		if ok {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// Health checks the backing store with a round-trip set/get/delete on a
+// reserved health key.
+func (c *KVClient) Health(ctx context.Context) HealthStatus {
+	start := time.Now()
+	const probe = "__health__"
+	if err := c.kv.Set(c.key(probe), []byte("1"), time.Second); err != nil {
+		return HealthStatus{Healthy: false, Latency: time.Since(start), Error: err.Error()}
+	}
+	if _, err := c.kv.Get(c.key(probe)); err != nil {
+		return HealthStatus{Healthy: false, Latency: time.Since(start), Error: err.Error()}
+	}
+	_ = c.kv.Delete(c.key(probe))
+	return HealthStatus{Healthy: true, Latency: time.Since(start)}
+}
+
+// Close releases the store if this client owns it (constructed via
+// NewKVClient). Clients adapted from a shared store (NewKVClientFromStore)
+// leave the store untouched.
 func (c *KVClient) Close() error {
-	if c.client != nil {
-		return c.client.Close()
+	if c.store != nil {
+		return c.store.Close(context.Background())
 	}
 	return nil
 }
 
-// Client returns the underlying Redis client for advanced operations
-func (c *KVClient) Client() *kv.Client {
-	return c.client
-}
+// Store exposes the underlying base KV store for advanced callers (locking).
+func (c *KVClient) Store() *store.KVStore { return c.kv }
