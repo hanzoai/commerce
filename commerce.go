@@ -158,7 +158,7 @@ func DefaultConfig() *Config {
 //
 // Env vars (generic, no implementation leakage):
 //
-//	KV_URL        = redis://:password@host:6379/0
+//	KV_PREFIX     = optional key namespace (cache is hanzo/base, embedded)
 //	S3_URL        = s3://key:secret@host:9000/bucket
 //	S3_ENDPOINT   = host:9000  (with S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET)
 //	DATASTORE_URL = clickhouse://host:9000/db
@@ -170,24 +170,12 @@ func DefaultConfig() *Config {
 func infraConfigFromEnv() *infra.Config {
 	cfg := infra.DefaultConfig()
 
-	// KV (Redis-compatible)
-	if kvURL := getEnv("KV_URL", ""); kvURL != "" {
-		if parsed, err := url.Parse(kvURL); err == nil {
-			cfg.KV.Enabled = true
-			cfg.KV.Addr = parsed.Host
-			if parsed.User != nil {
-				if pwd, ok := parsed.User.Password(); ok {
-					cfg.KV.Password = pwd
-				}
-			}
-			if parsed.Path != "" && parsed.Path != "/" {
-				dbNum := strings.TrimPrefix(parsed.Path, "/")
-				if db, err := strconv.Atoi(dbNum); err == nil {
-					cfg.KV.DB = db
-				}
-			}
-		}
-	}
+	// KV (hanzo/base, per-org/user SQLite). The cache is always available —
+	// base is an embedded store, not an external service. DataDir/DataDSN are
+	// resolved against the commerce store at bootstrap (commerce.go wires the
+	// shared store), so env wiring here only sets an optional key namespace.
+	cfg.KV.Enabled = true
+	cfg.KV.KeyPrefix = getEnv("KV_PREFIX", "")
 
 	// Vector (Qdrant)
 	if vectorURL := getEnv("VECTOR_URL", ""); vectorURL != "" {
@@ -616,8 +604,32 @@ func (app *App) Bootstrap() error {
 	commerceDatastore.SetDefaultDB(systemDB)
 	commerceQuery.SetDefaultDB(systemDB)
 
-	// Initialize infrastructure manager
+	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
+	// record + commerce_tenant_hostnames claim table — the source of truth
+	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
+	// superadmin CRUD — AND the commerce_kv cache collection that replaced
+	// the former Redis/Valkey KV. Built before the infra manager so its KV
+	// store can be attached to the manager (no second base app on the same
+	// SQLite files). Bootstrap is idempotent; a failure here is fatal because
+	// the public endpoint would otherwise 404 every tenant request.
+	storeCfg := commercestore.FromEnv()
+	if storeCfg.DataDir == "" || storeCfg.DataDir == "./commerce_data" {
+		// Align with the app-level DataDir so all commerce persistence lives
+		// under one tree.
+		storeCfg.DataDir = filepath.Join(app.config.DataDir, "base")
+	}
+	cStore, storeErr := commercestore.New(storeCfg)
+	if storeErr != nil {
+		return fmt.Errorf("failed to initialize commerce store: %w", storeErr)
+	}
+	app.CommerceStore = cStore
+
+	// Initialize infrastructure manager. Attach the base-backed KV client
+	// (sharing the commerce store) before Connect so Connect reuses it.
 	app.Infra = infra.New(&app.config.Infra)
+	if app.config.Infra.KV.Enabled {
+		app.Infra.SetKV(infra.NewKVClientFromStore(&app.config.Infra.KV, cStore))
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), app.config.Infra.ConnectTimeout)
 	defer cancel()
 
@@ -698,23 +710,6 @@ func (app *App) Bootstrap() error {
 	} else if app.config.IAM.ClientID == "" {
 		app.config.IAM.Enabled = false
 	}
-
-	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
-	// record + commerce_tenant_hostnames claim table — the source of truth
-	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
-	// superadmin CRUD. Bootstrap is idempotent; a failure here is fatal
-	// because the public endpoint would otherwise 404 every tenant request.
-	storeCfg := commercestore.FromEnv()
-	if storeCfg.DataDir == "" || storeCfg.DataDir == "./commerce_data" {
-		// Align with the app-level DataDir so all commerce persistence lives
-		// under one tree.
-		storeCfg.DataDir = filepath.Join(app.config.DataDir, "base")
-	}
-	cStore, storeErr := commercestore.New(storeCfg)
-	if storeErr != nil {
-		return fmt.Errorf("failed to initialize commerce store: %w", storeErr)
-	}
-	app.CommerceStore = cStore
 
 	// Stripe catalog seed — ensure @hanzo/plans entries exist as Stripe
 	// Products + Prices. Idempotent, cheap, and gated on STRIPE_SECRET_KEY.
