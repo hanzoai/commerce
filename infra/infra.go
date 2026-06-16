@@ -2,7 +2,7 @@
 //
 // This package integrates various backend services:
 //   - Vector: Embeddings and semantic search (Qdrant)
-//   - KV: Key-value cache and sessions (KV_URL, Redis-compatible)
+//   - KV: Key-value cache and sessions (hanzo/base, per-org/user SQLite)
 //   - Storage: Object storage for assets (S3_URL, S3-compatible)
 //   - Search: Full-text search (Meilisearch)
 //   - PubSub: Event streaming (NATS)
@@ -47,7 +47,7 @@ type Config struct {
 	// Vector (Qdrant) configuration
 	Vector VectorConfig
 
-	// KV (Valkey/Redis) configuration
+	// KV (hanzo/base, per-org/user SQLite) configuration
 	KV KVConfig
 
 	// Storage (MinIO) configuration
@@ -78,8 +78,6 @@ func DefaultConfig() *Config {
 		},
 		KV: KVConfig{
 			Enabled: false,
-			Addr:    "localhost:6379",
-			DB:      0,
 		},
 		Storage: StorageConfig{
 			Enabled:   false,
@@ -158,8 +156,11 @@ func (m *Manager) Connect(ctx context.Context) error {
 		}
 	}
 
-	// Connect to KV (Valkey)
-	if m.config.KV.Enabled {
+	// Connect to KV (hanzo/base). When the caller has already attached a
+	// shared-store KV client via SetKV, reuse it — opening a second base app
+	// on the same SQLite files would be a footgun. Otherwise open a dedicated
+	// store from the KV config.
+	if m.config.KV.Enabled && m.kv == nil {
 		client, err := NewKVClient(ctx, &m.config.KV)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("kv: %w", err))
@@ -232,7 +233,18 @@ func (m *Manager) Vector() (*VectorClient, error) {
 	return m.vector, nil
 }
 
-// KV returns the Valkey KV client
+// SetKV attaches a KV client backed by a caller-owned base store. It must be
+// called before Connect so Connect reuses it instead of opening a second base
+// app on the same SQLite files. The Manager does NOT take ownership: Close
+// leaves a SetKV-attached client's store alone (NewKVClientFromStore wires
+// this so Close is a no-op there).
+func (m *Manager) SetKV(client *KVClient) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.kv = client
+}
+
+// KV returns the base-backed KV client
 func (m *Manager) KV() (*KVClient, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
