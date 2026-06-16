@@ -10,6 +10,9 @@
 package payment
 
 import (
+	"os"
+	"strings"
+
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/payment/providers/adyen"
@@ -40,19 +43,52 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		}))
 	}
 
-	// Square
-	sqCfg := org.SquareConfig(!org.Live)
-	if sqCfg.AccessToken != "" {
+	// Square. Prefer the org's KMS-hydrated config; fall back to process env
+	// vars when KMS is disabled or the org has no stored Square credentials.
+	// This mirrors the checkout-session resolver (api/checkout/sessions.go),
+	// which has always honored SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID.
+	{
+		sqCfg := org.SquareConfig(!org.Live)
+		token := sqCfg.AccessToken
+		locationID := sqCfg.LocationId
+		webhookKey := org.Square.WebhookSignatureKey
 		env := "production"
 		if !org.Live {
 			env = "sandbox"
 		}
-		reg.Register(square.NewProcessor(square.Config{
-			AccessToken:   sqCfg.AccessToken,
-			LocationID:    sqCfg.LocationId,
-			WebhookSecret: org.Square.WebhookSignatureKey,
-			Environment:   env,
-		}))
+
+		if token == "" {
+			squareEnv := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
+			envSandbox := squareEnv == "sandbox" || squareEnv == "test"
+
+			token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
+			locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
+			if envSandbox {
+				if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
+					token = t
+				}
+				if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
+					locationID = l
+				}
+			}
+			if webhookKey == "" {
+				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
+			}
+			if envSandbox {
+				env = "sandbox"
+			} else {
+				env = "production"
+			}
+		}
+
+		if token != "" && locationID != "" {
+			reg.Register(square.NewProcessor(square.Config{
+				AccessToken:   token,
+				LocationID:    locationID,
+				WebhookSecret: webhookKey,
+				Environment:   env,
+			}))
+		}
 	}
 
 	// Adyen
