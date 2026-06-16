@@ -84,6 +84,7 @@ func FromEnv() Config {
 type Store struct {
 	App     core.App
 	Tenants *TenantRepo
+	KV      *KVStore
 }
 
 // New bootstraps a base app from cfg and returns a store ready to serve.
@@ -120,6 +121,7 @@ func New(cfg Config) (*Store, error) {
 	return &Store{
 		App:     app,
 		Tenants: NewTenantRepo(app),
+		KV:      NewKVStore(app),
 	}, nil
 }
 
