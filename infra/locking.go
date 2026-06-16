@@ -1,8 +1,10 @@
 // Package infra provides infrastructure clients.
 //
-// This file implements distributed locking backed by Redis/Valkey.
-// Locks use atomic SET NX with TTL for acquisition and Lua scripts
-// for safe compare-and-delete release and compare-and-extend renewal.
+// This file implements distributed locking backed by the base KV store.
+// Locks use atomic set-if-absent (SetNX) with a TTL for acquisition and
+// compare-and-delete / compare-and-extend for safe release and renewal —
+// all served by base's serializable SQLite transactions, no server-side
+// scripting required.
 package infra
 
 import (
@@ -10,8 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	kv "github.com/hanzoai/kv-go/v9"
 
 	"github.com/hanzoai/commerce/util/rand"
 )
@@ -25,7 +25,7 @@ var (
 	ErrLockNotHeld = errors.New("lock: not held")
 )
 
-// Lock represents a distributed lock backed by Redis/Valkey.
+// Lock represents a distributed lock backed by the base KV store.
 type Lock struct {
 	kv    *KVClient
 	key   string
@@ -44,7 +44,7 @@ func (m *Manager) Acquire(ctx context.Context, key string, ttl time.Duration) (*
 	lockKey := m.kv.key("lock:" + key)
 	lockValue := rand.ShortId()
 
-	ok, err := m.kv.client.SetNX(ctx, lockKey, lockValue, ttl).Result()
+	ok, err := m.kv.Store().SetNX(lockKey, []byte(lockValue), ttl)
 	if err != nil {
 		return nil, fmt.Errorf("lock: kv error: %w", err)
 	}
@@ -60,45 +60,27 @@ func (m *Manager) Acquire(ctx context.Context, key string, ttl time.Duration) (*
 	}, nil
 }
 
-// releaseScript atomically deletes the key only if it holds the expected value.
-var releaseScript = kv.NewScript(`
-	if redis.call("get", KEYS[1]) == ARGV[1] then
-		return redis.call("del", KEYS[1])
-	else
-		return 0
-	end
-`)
-
 // Release releases the distributed lock.
 // Only releases if the lock is still held by this instance (compare-and-delete).
 func (l *Lock) Release(ctx context.Context) error {
-	result, err := releaseScript.Run(ctx, l.kv.client, []string{l.key}, l.value).Int64()
+	ok, err := l.kv.Store().CompareAndDelete(l.key, []byte(l.value))
 	if err != nil {
 		return fmt.Errorf("lock: release error: %w", err)
 	}
-	if result == 0 {
+	if !ok {
 		return ErrLockNotHeld
 	}
 	return nil
 }
 
-// extendScript atomically extends the TTL only if the key holds the expected value.
-var extendScript = kv.NewScript(`
-	if redis.call("get", KEYS[1]) == ARGV[1] then
-		return redis.call("pexpire", KEYS[1], ARGV[2])
-	else
-		return 0
-	end
-`)
-
 // Extend extends the TTL of the lock.
 // Only extends if the lock is still held by this instance.
 func (l *Lock) Extend(ctx context.Context, ttl time.Duration) error {
-	result, err := extendScript.Run(ctx, l.kv.client, []string{l.key}, l.value, int64(ttl/time.Millisecond)).Int64()
+	ok, err := l.kv.Store().CompareAndExtend(l.key, []byte(l.value), ttl)
 	if err != nil {
 		return fmt.Errorf("lock: extend error: %w", err)
 	}
-	if result == 0 {
+	if !ok {
 		return ErrLockNotHeld
 	}
 	l.ttl = ttl
