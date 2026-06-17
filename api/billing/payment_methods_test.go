@@ -96,7 +96,7 @@ func TestVerifyCardWithPreAuth_Success(t *testing.T) {
 	cleanup := registerMockSquare(t, mock)
 	defer cleanup()
 
-	err := verifyCardWithPreAuth(context.Background(), "cnon:card-nonce-ok", "user-1")
+	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce-ok", "user-1")
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestVerifyCardWithPreAuth_CardDeclined(t *testing.T) {
 	cleanup := registerMockSquare(t, mock)
 	defer cleanup()
 
-	err := verifyCardWithPreAuth(context.Background(), "cnon:card-nonce-declined", "user-2")
+	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce-declined", "user-2")
 	if err == nil {
 		t.Fatal("expected an error for declined card, got nil")
 	}
@@ -130,7 +130,7 @@ func TestVerifyCardWithPreAuth_CancelFailureIsNonFatal(t *testing.T) {
 	cleanup := registerMockSquare(t, mock)
 	defer cleanup()
 
-	err := verifyCardWithPreAuth(context.Background(), "cnon:card-nonce-ok", "user-3")
+	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce-ok", "user-3")
 	if err != nil {
 		t.Fatalf("cancel failure must be non-fatal, but got: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestVerifyCardWithPreAuth_NoSquareProcessor(t *testing.T) {
 		// Re-register a dummy so other tests don't fail if they run after this one.
 	}()
 
-	err := verifyCardWithPreAuth(context.Background(), "cnon:card-nonce", "user-4")
+	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce", "user-4")
 	if err != nil {
 		t.Fatalf("should skip pre-auth gracefully when Square is not registered, got: %v", err)
 	}
