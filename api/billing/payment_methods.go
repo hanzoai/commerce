@@ -13,7 +13,9 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -29,8 +31,12 @@ type preAuthVerifier interface {
 // verifyCardWithPreAuth does a $1.00 Square pre-auth against the provided nonce
 // to confirm the card is real and chargeable, then immediately voids it.
 // Returns an error (with a user-facing message) if the card is declined.
-func verifyCardWithPreAuth(ctx context.Context, nonce, customerID string) error {
-	p, err := processor.Get(processor.Square)
+//
+// reg must be the per-org registry (payment.ProcessorsForOrg) so the Square
+// processor carries the org's real credentials; the global registry holds an
+// empty Square singleton and would silently skip verification.
+func verifyCardWithPreAuth(ctx context.Context, reg *processor.Registry, nonce, customerID string) error {
+	p, err := reg.Get(processor.Square)
 	if err != nil {
 		// Square not configured — skip pre-auth (not an error, just log)
 		return nil
@@ -121,6 +127,17 @@ type createPaymentMethodRequest struct {
 //	POST /v1/billing/payment-methods
 func CreatePaymentMethod(c *gin.Context) {
 	org := middleware.GetOrganization(c)
+
+	// Hydrate payment credentials from KMS so the per-org Square processor
+	// used for card verification carries real credentials.
+	if v, ok := c.Get("kms"); ok {
+		if kmsClient, ok := v.(*kms.CachedClient); ok {
+			if err := kms.Hydrate(kmsClient, org); err != nil {
+				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
+			}
+		}
+	}
+
 	db := datastore.New(org.Namespaced(c))
 
 	var req createPaymentMethodRequest
@@ -135,9 +152,11 @@ func CreatePaymentMethod(c *gin.Context) {
 	}
 
 	// When a Square nonce/sourceId is provided, do a $1.00 pre-auth to verify
-	// the card is real and will accept charges before we store it.
+	// the card is real and will accept charges before we store it. Use the
+	// per-org registry so the Square processor has the org's credentials.
 	if req.ProviderRef != "" {
-		if err := verifyCardWithPreAuth(c.Request.Context(), req.ProviderRef, req.CustomerId); err != nil {
+		reg := payment.ProcessorsForOrg(org)
+		if err := verifyCardWithPreAuth(c.Request.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
 			http.Fail(c, 402, err.Error(), nil)
 			return
 		}

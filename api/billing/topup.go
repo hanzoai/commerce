@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
@@ -86,7 +87,12 @@ func Topup(c *gin.Context) {
 		Description: fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID),
 	}
 
-	proc, err := processor.SelectProcessor(ctx, chargeReq)
+	// Build a per-org processor registry from the org's KMS-hydrated payment
+	// credentials. The global registry holds empty singletons (Square is
+	// registered unconfigured at init), so charges must go through the
+	// org-scoped registry to reach the provider with real credentials.
+	reg := payment.ProcessorsForOrg(org)
+	proc, err := reg.SelectProcessor(ctx, chargeReq)
 	if err != nil {
 		log.Error("No processor available for topup: %v", err, c)
 		jsonhttp.Fail(c, 422, "no payment processor available", err)
