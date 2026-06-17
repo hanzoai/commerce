@@ -35,7 +35,14 @@ func (l *Logger) detectContext(ctx interface{}) {
 		} else {
 			l.backend.context = ctx.Request.Context()
 		}
-		l.verboseRequested = ctx.MustGet("verbose").(bool)
+		// The "verbose" key is only set by middleware/overrides; routes that
+		// don't run it (e.g. the gateway/IAM-authenticated billing handlers)
+		// would otherwise panic here on MustGet. Default to false when absent.
+		if v, ok := ctx.Get("verbose"); ok {
+			if b, ok := v.(bool); ok {
+				l.verboseRequested = b
+			}
+		}
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
