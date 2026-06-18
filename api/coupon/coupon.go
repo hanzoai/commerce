@@ -260,7 +260,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Get = getCoupon
 	api.GET("/:couponid/code/:uniqueid", adminRequired, namespaced, codeFromId)
 	api.POST("/:couponid/code", adminRequired, namespaced, codeFromList)
-	api.POST("/validate", tokenRequired, validateCoupon)
+	// Public: the marketing pricing page (commerce.hanzo.ai/commerce) validates
+	// promo codes before sign-up, so there is no user token yet. Validation is
+	// read-only and never grants anything — /redeem below stays token-gated.
+	api.POST("/validate", validateCoupon)
 	api.POST("/redeem", tokenRequired, redeemCoupon)
 
 	api.Route(router, args...)
