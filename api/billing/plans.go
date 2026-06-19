@@ -44,6 +44,11 @@ type canonicalPlan struct {
 		FreeCredit        *int `json:"freeCredit,omitempty"`
 		MaxMembers        *int `json:"maxMembers,omitempty"`
 
+		// IncludedCreditUsd is the recurring monthly usage allotment in whole
+		// USD dollars granted to the prepaid balance at each billing period.
+		// Mirrors @hanzo/plans entitlements["commerce.included_credit_usd"].
+		IncludedCreditUsd *int `json:"includedCreditUsd,omitempty"`
+
 		// DNS limits
 		Zones          *int `json:"zones,omitempty"`
 		RecordsPerZone *int `json:"recordsPerZone,omitempty"`
@@ -79,6 +84,9 @@ type staticPlan struct {
 		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
 		FreeCredit        *int `json:"freeCredit,omitempty"`
 		MaxMembers        *int `json:"maxMembers,omitempty"`
+
+		// IncludedCreditUsd: monthly included usage allotment (whole USD).
+		IncludedCreditUsd *int `json:"includedCreditUsd,omitempty"`
 
 		// DNS limits
 		Zones          *int `json:"zones,omitempty"`
@@ -147,6 +155,7 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 				TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
 				FreeCredit        *int `json:"freeCredit,omitempty"`
 				MaxMembers        *int `json:"maxMembers,omitempty"`
+				IncludedCreditUsd *int `json:"includedCreditUsd,omitempty"`
 				Zones             *int `json:"zones,omitempty"`
 				RecordsPerZone    *int `json:"recordsPerZone,omitempty"`
 				QueriesPerDay     *int `json:"queriesPerDay,omitempty"`
@@ -155,6 +164,7 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 				TokensPerMinute:   cp.Limits.TokensPerMinute,
 				FreeCredit:        cp.Limits.FreeCredit,
 				MaxMembers:        cp.Limits.MaxMembers,
+				IncludedCreditUsd: cp.Limits.IncludedCreditUsd,
 				Zones:             cp.Limits.Zones,
 				RecordsPerZone:    cp.Limits.RecordsPerZone,
 				QueriesPerDay:     cp.Limits.QueriesPerDay,
@@ -211,6 +221,23 @@ func lookupPlan(slug string) *staticPlan {
 		}
 	}
 	return nil
+}
+
+// IncludedMonthlyCents returns the recurring monthly included-usage allotment
+// for a plan slug, in cents. Returns 0 when the plan is unknown or declares no
+// included allotment. This is the single catalog-derived input to the monthly
+// allotment grant — the dollar value comes from @hanzo/plans
+// limits.includedCreditUsd (== entitlements["commerce.included_credit_usd"]).
+func IncludedMonthlyCents(slug string) int64 {
+	p := lookupPlan(slug)
+	if p == nil || p.Limits == nil || p.Limits.IncludedCreditUsd == nil {
+		return 0
+	}
+	v := *p.Limits.IncludedCreditUsd
+	if v <= 0 {
+		return 0
+	}
+	return int64(v) * 100
 }
 
 // Plan is the exported snapshot used by external seeders (e.g. the
