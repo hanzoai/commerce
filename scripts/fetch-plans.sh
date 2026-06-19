@@ -15,7 +15,7 @@
 
 set -eu
 
-PLANS_VERSION=${PLANS_VERSION:-1.1.1}
+PLANS_VERSION=${PLANS_VERSION:-1.1.5}
 DEST=$(cd "$(dirname "$0")/.." && pwd)/api/billing/plans
 TMP=$(mktemp -d)
 
