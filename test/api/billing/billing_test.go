@@ -714,4 +714,70 @@ var _ = Describe("billing", func() {
 			Expect((*refundRes)["transactionId"]).NotTo(BeEmpty())
 		})
 	})
+
+	// ─── INCLUDED MONTHLY ALLOTMENT ──────────────────────────────────
+	// Proves the plan included-usage credit lands on the prepaid balance so
+	// the gateway gate (available > 0) honors it, is idempotent per month,
+	// and surfaces correctly through the usage rollup.
+	Describe("included monthly allotment", func() {
+		const user = "hanzo/allotuser"
+
+		It("Should report catalog included amount before any grant", func() {
+			res := &map[string]interface{}{}
+			cl.Get("/billing/usage-rollup?user="+user+"&plan=pro", res)
+
+			included := (*res)["included"].(map[string]interface{})
+			// Pro plan declares $20/mo included (2000 cents) in @hanzo/plans.
+			Expect(included["monthlyCents"]).To(BeEquivalentTo(2000))
+			// Nothing granted yet this period.
+			Expect(included["grantedCents"]).To(BeEquivalentTo(0))
+		})
+
+		It("Should grant the Pro plan included allotment", func() {
+			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
+				"user": user,
+				"plan": "pro",
+			})
+			Expect(w.Code).To(Equal(201))
+		})
+
+		It("Should reflect the allotment in the gate-relevant balance", func() {
+			// /billing/balance is the exact endpoint the gateway prepaid gate
+			// reads; available must now be the included $20.00.
+			res := &map[string]interface{}{}
+			cl.Get("/billing/balance?user="+user+"&currency=usd", res)
+			Expect((*res)["available"]).To(BeEquivalentTo(2000))
+		})
+
+		It("Should be idempotent within the same month", func() {
+			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
+				"user": user,
+				"plan": "pro",
+			})
+			Expect(w.Code).To(Equal(200)) // already granted -> not 201
+		})
+
+		It("Should surface included/consumed/overage in the rollup", func() {
+			res := &map[string]interface{}{}
+			cl.Get("/billing/usage-rollup?user="+user+"&plan=pro", res)
+
+			included := (*res)["included"].(map[string]interface{})
+			Expect(included["grantedCents"]).To(BeEquivalentTo(2000))
+			Expect(included["remainingCents"]).To(BeEquivalentTo(2000))
+			// No usage recorded for this user -> no overage.
+			Expect((*res)["overageCents"]).To(BeEquivalentTo(0))
+
+			balance := (*res)["balance"].(map[string]interface{})
+			Expect(balance["availableCents"]).To(BeEquivalentTo(2000))
+		})
+
+		It("Should grant nothing for a plan with no included allotment", func() {
+			// "custom" is contact-sales with no includedCreditUsd -> 0 cents.
+			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
+				"user": "hanzo/allotnone",
+				"plan": "custom",
+			})
+			Expect(w.Code).To(Equal(200)) // no_included_allotment -> not granted
+		})
+	})
 })
