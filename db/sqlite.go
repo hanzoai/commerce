@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3" // SQLite driver
+	_ "modernc.org/sqlite" // pure-Go SQLite driver (CGO-free; HIP-0106 unified binary builds static)
 
 	"github.com/hanzoai/commerce/util/nscontext"
 )
@@ -91,7 +91,7 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	pragmas := buildPragmas(cfg.Config)
 
 	// Open read connection (concurrent)
-	readDB, err := sql.Open("sqlite3", cfg.Path+pragmas)
+	readDB, err := sql.Open("sqlite", cfg.Path+pragmas)
 	if err != nil {
 		return nil, fmt.Errorf("db: failed to open read connection: %w", err)
 	}
@@ -100,7 +100,7 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	readDB.SetMaxIdleConns(cfg.Config.MaxIdleConns)
 
 	// Open write connection (single, serialized)
-	writeDB, err := sql.Open("sqlite3", cfg.Path+pragmas)
+	writeDB, err := sql.Open("sqlite", cfg.Path+pragmas)
 	if err != nil {
 		readDB.Close()
 		return nil, fmt.Errorf("db: failed to open write connection: %w", err)
@@ -134,28 +134,30 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	return db, nil
 }
 
-// buildPragmas creates the pragma query string
+// buildPragmas creates the pragma query string.
+// modernc.org/sqlite (pure-Go) takes pragmas as repeated _pragma=NAME(VALUE)
+// DSN params, unlike the mattn driver's _name=value form.
 func buildPragmas(cfg SQLiteConfig) string {
 	var pragmas []string
 
 	if cfg.BusyTimeout > 0 {
-		pragmas = append(pragmas, fmt.Sprintf("_busy_timeout=%d", cfg.BusyTimeout))
+		pragmas = append(pragmas, fmt.Sprintf("_pragma=busy_timeout(%d)", cfg.BusyTimeout))
 	}
 	if cfg.JournalMode != "" {
-		pragmas = append(pragmas, fmt.Sprintf("_journal_mode=%s", cfg.JournalMode))
+		pragmas = append(pragmas, fmt.Sprintf("_pragma=journal_mode(%s)", cfg.JournalMode))
 	}
 	if cfg.Synchronous != "" {
-		pragmas = append(pragmas, fmt.Sprintf("_synchronous=%s", cfg.Synchronous))
+		pragmas = append(pragmas, fmt.Sprintf("_pragma=synchronous(%s)", cfg.Synchronous))
 	}
 	if cfg.CacheSize != 0 {
-		pragmas = append(pragmas, fmt.Sprintf("_cache_size=%d", cfg.CacheSize))
+		pragmas = append(pragmas, fmt.Sprintf("_pragma=cache_size(%d)", cfg.CacheSize))
 	}
 
 	// Always enable foreign keys
-	pragmas = append(pragmas, "_foreign_keys=ON")
+	pragmas = append(pragmas, "_pragma=foreign_keys(ON)")
 
 	// Use memory for temp storage
-	pragmas = append(pragmas, "_temp_store=MEMORY")
+	pragmas = append(pragmas, "_pragma=temp_store(MEMORY)")
 
 	if len(pragmas) == 0 {
 		return ""
