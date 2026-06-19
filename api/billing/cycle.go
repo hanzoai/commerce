@@ -37,9 +37,17 @@ func RunBillingCycle(c *gin.Context) {
 
 	results := renewDueSubscriptions(c, db)
 
+	// Top up each active subscriber's included monthly allotment for the
+	// current period (idempotent per user+month).
+	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), org.Live)
+
 	c.JSON(200, gin.H{
 		"processed": len(results),
 		"results":   results,
+		"allotments": gin.H{
+			"granted": allotGranted,
+			"skipped": allotSkipped,
+		},
 	})
 }
 
@@ -96,10 +104,14 @@ func RunBillingCycleAllOrgs(c *gin.Context) {
 	allResults := make([]orgResult, 0, len(orgs))
 	totalProcessed := 0
 
+	now := time.Now()
 	for _, org := range orgs {
 		db := datastore.New(org.Namespaced(c))
 		results := renewDueSubscriptions(c, db)
 		totalProcessed += len(results)
+
+		// Grant included monthly allotment for active subscribers (idempotent).
+		grantOrgAllotments(c, db, now, org.Live)
 
 		if len(results) > 0 {
 			allResults = append(allResults, orgResult{
