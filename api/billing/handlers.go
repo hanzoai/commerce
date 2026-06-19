@@ -19,6 +19,12 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Tier (tier-aware billing)
 	api.GET("/tier", GetTier)
 
+	// Included monthly usage allotment (plan free-tier credit).
+	// grant/run mutate; usage-rollup is the read surface for console.
+	api.POST("/allotment/grant", GrantAllotment)
+	api.POST("/allotment/run", RunAllotments)
+	api.GET("/usage-rollup", GetUsageRollup)
+
 	// Balance & usage (existing)
 	api.GET("/balance", GetBalance)
 	api.GET("/balance/all", GetBalanceAll)
