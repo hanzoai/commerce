@@ -52,6 +52,10 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		token := sqCfg.AccessToken
 		locationID := sqCfg.LocationId
 		webhookKey := org.Square.WebhookSignatureKey
+		// Square signs HMAC over notificationURL+body. The dashboard URL is a
+		// deployment constant (not per-org), so it lives in env, not the org
+		// struct. Mirrors thirdparty/square/init.go's global config.
+		webhookURL := strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL"))
 		env := "production"
 		if !org.Live {
 			env = "sandbox"
@@ -86,6 +90,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 				AccessToken:   token,
 				LocationID:    locationID,
 				WebhookSecret: webhookKey,
+				WebhookURL:    webhookURL,
 				Environment:   env,
 			}))
 		}
@@ -106,7 +111,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	if org.Braintree.PublicKey != "" {
 		reg.Register(braintree.NewProvider(braintree.Config{
 			MerchantID:  org.Braintree.MerchantID,
-			PublicKey:    org.Braintree.PublicKey,
+			PublicKey:   org.Braintree.PublicKey,
 			PrivateKey:  org.Braintree.PrivateKey,
 			Environment: org.Braintree.Environment,
 		}))

@@ -41,6 +41,11 @@ type Config struct {
 	// payment.* webhook deliveries. Also called "Webhook Signature Key"
 	// in the Square dashboard.
 	WebhookSignatureKey string
+	// WebhookURL is the EXACT notification URL configured in the Square
+	// dashboard webhook subscription. Square signs HMAC over
+	// notificationURL+body, so this must match the dashboard value (not the
+	// inbound request Host). Required to validate live webhook signatures.
+	WebhookURL string
 	// Environment must be "sandbox" or "production".
 	Environment string
 }
@@ -91,6 +96,7 @@ func (p *Provider) Configure(cfg Config) {
 		AccessToken:   cfg.AccessToken,
 		LocationID:    cfg.LocationID,
 		WebhookSecret: cfg.WebhookSignatureKey,
+		WebhookURL:    cfg.WebhookURL,
 		Environment:   cfg.Environment,
 	})
 	p.SetConfigured(true)
