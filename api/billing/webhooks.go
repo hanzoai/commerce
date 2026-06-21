@@ -11,8 +11,8 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billingevent"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
 	// Blank-import the provider barrel so every provider's init() registers
@@ -64,18 +64,52 @@ func HandleProviderWebhook(c *gin.Context) {
 
 	// Persist the raw event so the app has an audit trail independent of
 	// processor-side retention.
+	//
 	// Webhooks arrive with no session, so the auth middleware never sets an
-	// organization. Use the non-panicking accessor (GetOrganization would
-	// MustGet-panic on this unauthenticated route) and fail gracefully when
-	// no org context is present.
-	org, ok := middleware.GetOrganizationOK(c)
+	// organization — the org must be derived from the VALIDATED event itself.
+	// We resolve it by matching the event's provider object id against the
+	// local subscription row that carries the owning org's namespace.
+	org, ok := orgForEvent(c, event)
 	if !ok || org == nil {
-		jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
+		// The signature is valid but the event maps to no known org (e.g. a
+		// subscription created outside commerce, or a non-lifecycle event with
+		// nothing to reconcile). Acknowledge so the provider stops retrying,
+		// but never persist into a blank/default namespace.
+		log.Info("webhook %s (%s) validated but maps to no org; acknowledging without persist", event.ID, event.Type)
+		c.JSON(http.StatusAccepted, gin.H{
+			"received": true,
+			"skipped":  "no matching organization",
+			"type":     event.Type,
+			"id":       event.ID,
+		})
 		return
 	}
 	db := datastore.New(org.Namespaced(c))
 
+	// Idempotency: key the billing event deterministically by the provider's
+	// event id (under the shared synckey parent so ListBillingEvents' ancestor
+	// query still finds it). Create is an upsert, so a redelivery — including
+	// anything inside the replay window — overwrites the same row instead of
+	// appending a duplicate. We probe by key first only to report duplicate=true;
+	// the keyed write is what actually guarantees idempotency.
+	parent := db.NewKey("synckey", "", 1, nil)
+	if event.ID != "" {
+		probe := billingevent.New(db)
+		if err := probe.GetById(billingEventKey(event.ID)); err == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"received":  true,
+				"duplicate": true,
+				"type":      event.Type,
+				"id":        event.ID,
+			})
+			return
+		}
+	}
+
 	evt := billingevent.New(db)
+	if event.ID != "" {
+		evt.MustSetKey(db.NewKey("billing-event", billingEventKey(event.ID), 0, parent))
+	}
 	evt.Type = event.Type
 	evt.ObjectType = providerHint
 	evt.ObjectId = event.ID
@@ -85,7 +119,7 @@ func HandleProviderWebhook(c *gin.Context) {
 	}
 	if err := evt.Create(); err != nil {
 		log.Warn("failed to persist billing event %s: %v", event.ID, err)
-		// Do not 500 — event was validated; duplicate persistence is fine.
+		// Do not 500 — event was validated; the keyed upsert is idempotent.
 	}
 
 	// Update local subscription state for lifecycle events.
@@ -98,6 +132,81 @@ func HandleProviderWebhook(c *gin.Context) {
 		"type":     event.Type,
 		"id":       event.ID,
 	})
+}
+
+// orgForEvent resolves the organization that owns a validated webhook event.
+// It is a package var so tests can substitute a deterministic resolver for the
+// handler's branch logic; production points at resolveOrgForEvent.
+var orgForEvent = resolveOrgForEvent
+
+// resolveOrgForEvent is the real org resolver.
+//
+// Webhooks are unauthenticated, so the owning org is not in request context;
+// it must come from the event. Providers identify subscriptions/customers by
+// their own ids, and commerce stores those on the local subscription row
+// (Subscription.ProviderId) inside the owning org's namespace. We therefore
+// enumerate orgs (which live in the global namespace) and, for each, look for a
+// subscription whose ProviderId matches an id carried by the event. The org
+// whose namespace holds the match is the owner.
+//
+// This is the same enumerate-then-rescope pattern the billing cycle uses
+// (RunBillingCycleAllOrgs), and it keys on the same ProviderId field that
+// applySubscriptionEvent reconciles against — one resolution path, no new
+// per-event index. Returns ok=false when no org claims the event.
+func resolveOrgForEvent(c *gin.Context, event *processor.WebhookEvent) (*organization.Organization, bool) {
+	ids := providerRefs(event)
+	if len(ids) == 0 {
+		return nil, false
+	}
+
+	rootDb := datastore.New(c)
+	orgs := make([]*organization.Organization, 0)
+	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
+		log.Error("webhook: failed to enumerate organizations for event %s: %v", event.ID, err)
+		return nil, false
+	}
+
+	for _, org := range orgs {
+		odb := datastore.New(org.Namespaced(c))
+		for _, id := range ids {
+			sub := subscription.New(odb)
+			if found, err := sub.Query().Filter("ProviderId=", id).Get(); err == nil && found {
+				return org, true
+			}
+		}
+	}
+	return nil, false
+}
+
+// billingEventKey derives the deterministic datastore id for a provider event.
+// Keying on the provider's own event id makes persistence idempotent: a
+// redelivery upserts the same row. The "evt_" prefix keeps these ids distinct
+// from any other billing-event id scheme and is stable across providers because
+// provider event ids are globally unique within a provider and the row already
+// records ObjectType (the provider).
+func billingEventKey(providerEventID string) string {
+	return "evt_" + providerEventID
+}
+
+// providerRefs returns the provider-side identifiers an event may be keyed on,
+// most specific first. The subscription object's own id (data.object.id) is the
+// primary key applySubscriptionEvent reconciles against; the customer id is a
+// fallback for events whose object is not the subscription itself (e.g. an
+// invoice that references its subscription/customer).
+func providerRefs(event *processor.WebhookEvent) []string {
+	if event == nil || event.Data == nil {
+		return nil
+	}
+	out := make([]string, 0, 3)
+	add := func(v interface{}) {
+		if s, ok := v.(string); ok && s != "" {
+			out = append(out, s)
+		}
+	}
+	add(event.Data["id"])
+	add(event.Data["subscription"])
+	add(event.Data["customer"])
+	return out
 }
 
 // applySubscriptionEvent reconciles the local subscription row with a
@@ -159,7 +268,7 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 func pickSignatureHeader(h http.Header, providerHint string) string {
 	candidates := []string{
 		"Stripe-Signature",
-		"X-Square-Hmacsha256-Signature", // Square (HMAC-SHA256 over the raw body)
+		"X-Square-Hmacsha256-Signature", // Square (HMAC-SHA256 over notificationURL+body)
 		"Paypal-Transmission-Sig",
 		"X-Adyen-Signature",
 		"X-Paypal-Auth-Algo",
