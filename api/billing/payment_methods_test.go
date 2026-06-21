@@ -19,7 +19,7 @@ type mockSquareProcessor struct {
 	authorizeID  string
 
 	// Controls whether CancelAuthorization succeeds
-	cancelErr error
+	cancelErr    error
 	cancelCalled bool
 	cancelledID  string
 }
@@ -140,10 +140,15 @@ func TestVerifyCardWithPreAuth_CancelFailureIsNonFatal(t *testing.T) {
 }
 
 func TestVerifyCardWithPreAuth_NoSquareProcessor(t *testing.T) {
-	// Unregister Square to simulate it not being configured.
+	// Unregister Square to simulate it not being configured. Capture the
+	// prior registration and restore it on cleanup so this test does not
+	// pollute the shared global registry for tests that run after it.
+	old, _ := processor.Get(processor.Square)
 	processor.Global().Unregister(processor.Square)
 	defer func() {
-		// Re-register a dummy so other tests don't fail if they run after this one.
+		if old != nil {
+			processor.Register(old)
+		}
 	}()
 
 	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce", "user-4")

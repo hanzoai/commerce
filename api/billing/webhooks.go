@@ -15,6 +15,13 @@ import (
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/payment/processor"
+	// Blank-import the provider barrel so every provider's init() registers
+	// with processor.Global() before HandleProviderWebhook runs. Without this
+	// the global registry is empty and tryValidateWebhook can never reach any
+	// provider's ValidateWebhook (the per-org payment.ProcessorsForOrg path is
+	// separate and unaffected). This is the single owning import for the
+	// generic webhook dispatcher; do not scatter barrel imports elsewhere.
+	_ "github.com/hanzoai/commerce/payment/providers"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -57,10 +64,12 @@ func HandleProviderWebhook(c *gin.Context) {
 
 	// Persist the raw event so the app has an audit trail independent of
 	// processor-side retention.
-	org := middleware.GetOrganization(c)
-	if org == nil {
-		// Webhooks arrive with no session; route them to the platform org so
-		// they at least get persisted. Downstream handlers may rescope.
+	// Webhooks arrive with no session, so the auth middleware never sets an
+	// organization. Use the non-panicking accessor (GetOrganization would
+	// MustGet-panic on this unauthenticated route) and fail gracefully when
+	// no org context is present.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
 		jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
 		return
 	}
@@ -150,6 +159,7 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 func pickSignatureHeader(h http.Header, providerHint string) string {
 	candidates := []string{
 		"Stripe-Signature",
+		"X-Square-Hmacsha256-Signature", // Square (HMAC-SHA256 over the raw body)
 		"Paypal-Transmission-Sig",
 		"X-Adyen-Signature",
 		"X-Paypal-Auth-Algo",
@@ -161,6 +171,10 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 		switch providerHint {
 		case "stripe":
 			if v := h.Get("Stripe-Signature"); v != "" {
+				return v
+			}
+		case "square":
+			if v := h.Get("X-Square-Hmacsha256-Signature"); v != "" {
 				return v
 			}
 		case "paypal":

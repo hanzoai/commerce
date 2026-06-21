@@ -70,6 +70,19 @@ func GetOrganization(c *gin.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
 }
 
+// GetOrganizationOK returns the request organization without panicking when
+// it is absent. Use this on handlers mounted outside the auth-token group
+// (e.g. signature-verified webhook ingress) where no session has set an
+// organization; GetOrganization would MustGet-panic there.
+func GetOrganizationOK(c *gin.Context) (*organization.Organization, bool) {
+	v, ok := c.Get("organization")
+	if !ok {
+		return nil, false
+	}
+	org, ok := v.(*organization.Organization)
+	return org, ok
+}
+
 func GetToken(c *gin.Context) *accesstoken.AccessToken {
 	return c.MustGet("token").(*accesstoken.AccessToken)
 }
