@@ -1,20 +1,14 @@
 package test
 
 import (
-	"testing"
-
-	"github.com/hanzoai/commerce/thirdparty/ethereum"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/ethereum"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
-func Test(t *testing.T) {
-	Setup("thirdparty/ethereum/go-ethereum", t)
-}
-
-// PubkeyToAddress is covered in this test too
-var _ = Describe("ether.GenerateKeyPair", func() {
+// PubkeyToAddress is exercised transitively here too.
+var _ = Describe("ethereum.GenerateKeyPair", func() {
 	It("should work", func() {
 		priv, pub, add, err := ethereum.GenerateKeyPair()
 		Expect(err).ToNot(HaveOccurred())
