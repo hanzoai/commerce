@@ -128,6 +128,19 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				if err := org.GetOrCreate("Name=", orgName); err != nil {
 					log.Warn("Service token org resolve/create for '%s' failed: %v", orgName, err)
 				} else {
+					// Service callers are live by default. An explicit
+					// X-Hanzo-Test: true opts the call into TEST mode so it
+					// charges sandbox processors and writes the test ledger —
+					// the same Live=false semantics a test access token carries.
+					// Existing callers omit the header and stay live; the flag
+					// is additive and never widens scope.
+					if strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true") {
+						org.Live = false
+						c.Set("permissions", bit.Field(permission.Admin|permission.Test))
+						c.Set("organization", org)
+						c.Next()
+						return
+					}
 					org.Live = true
 					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
 					c.Set("organization", org)
