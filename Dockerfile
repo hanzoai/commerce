@@ -93,6 +93,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # public package, no auth needed).
 COPY . .
 
+# Populate api/billing/plans/*.json (gitignored, so absent from the git
+# build context) from the public @hanzo/plans npm tarball. api/billing/
+# plans.go go:embed's plans/dns.json + plans/subscription.json at compile
+# time, so this MUST run before `go build`. No auth (public npm).
+RUN apk add --no-cache curl && sh scripts/fetch-plans.sh
+
 # Replace placeholder dist/ with the real Next.js export so go:embed picks up
 # the actual SPA bundle at compile time.
 RUN rm -rf admin/dist
