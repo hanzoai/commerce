@@ -74,8 +74,14 @@ COPY go.mod go.sum ./
 # golang:1.26.4 toolchain so go does NOT try to download+verify a toolchain
 # module (which fails as a sumdb "SECURITY ERROR"). The netrc is mounted only
 # for the duration of the step and never lands in a layer.
+# GOWORK=off is critical: the repo commits a go.work (use . ./metering
+# ./thirdparty/ethereum). Without disabling it, `go mod download` runs in
+# workspace mode, reads the stale committed go.work.sum, and fails sum
+# verification ("SECURITY ERROR"). The image builds the single root module,
+# so force module mode.
 ENV GOPRIVATE=github.com/hanzoai/* \
-    GOTOOLCHAIN=local
+    GOTOOLCHAIN=local \
+    GOWORK=off
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=secret,id=netrc,target=/root/.netrc \
     go mod download
