@@ -61,8 +61,16 @@ WORKDIR /build
 # Copy go mod files first for layer caching
 COPY go.mod go.sum ./
 
-# Download dependencies
+# Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
+# resolve. Mount the GIT_AUTH_TOKEN build secret and rewrite GitHub HTTPS to
+# carry the token; GOPRIVATE skips the public proxy + sumdb for hanzoai/*.
+# The token is read from /run/secrets in-step and never persisted to a layer.
+ENV GOPRIVATE=github.com/hanzoai/*
 RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=secret,id=GIT_AUTH_TOKEN \
+    if [ -f /run/secrets/GIT_AUTH_TOKEN ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/GIT_AUTH_TOKEN)@github.com/".insteadOf "https://github.com/"; \
+    fi && \
     go mod download
 
 # Copy source code (note: api/billing/plans/ is gitignored — the pre-build
