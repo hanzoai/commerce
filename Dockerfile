@@ -130,9 +130,9 @@ COPY --from=billing-build /billing/out/ billing/ui/dist/
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=secret,id=netrc,target=/root/.netrc \
-    CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} \
+    CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
-    go build -p=1 \
+    go build -p=8 \
     -tags "cloud sqlite_omit_load_extension" \
     -ldflags="-s -w \
       -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sandboxfix) \
