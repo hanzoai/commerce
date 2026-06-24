@@ -58,12 +58,22 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		}
 
 		if token == "" {
+			// org.Live is the authority for sandbox-vs-production — the same
+			// rule SquareConfig(!org.Live) already applies to KMS creds. A
+			// test org (!org.Live) charges Square sandbox; a live org charges
+			// production. SQUARE_ENVIRONMENT only breaks ties when org
+			// liveness can't decide — which, being a bool, it always can, so
+			// it's only consulted for a live org to allow an all-sandbox
+			// deployment (SQUARE_ENVIRONMENT=sandbox) without per-org test
+			// flags. This keeps one consistent rule across the KMS and
+			// env-var credential paths.
 			squareEnv := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
 			envSandbox := squareEnv == "sandbox" || squareEnv == "test"
+			useSandbox := !org.Live || envSandbox
 
 			token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 			locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-			if envSandbox {
+			if useSandbox {
 				if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
 					token = t
 				}
@@ -74,7 +84,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 			if webhookKey == "" {
 				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
 			}
-			if envSandbox {
+			if useSandbox {
 				env = "sandbox"
 			} else {
 				env = "production"
