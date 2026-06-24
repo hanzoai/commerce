@@ -69,10 +69,13 @@ COPY go.mod go.sum ./
 # Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
 # resolve. Mount the netrc build secret so git over HTTPS authenticates for
 # private fetches; GOPRIVATE skips the public proxy + sumdb for hanzoai/* so
-# those go straight to git. Public modules still flow through the proxy. The
-# netrc is mounted only for the duration of the step and never lands in a layer.
+# those go straight to git. Public modules still flow through the proxy with
+# normal sum verification. GOTOOLCHAIN=local pins the builder's own
+# golang:1.26.4 toolchain so go does NOT try to download+verify a toolchain
+# module (which fails as a sumdb "SECURITY ERROR"). The netrc is mounted only
+# for the duration of the step and never lands in a layer.
 ENV GOPRIVATE=github.com/hanzoai/* \
-    GOSUMDB=off
+    GOTOOLCHAIN=local
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=secret,id=netrc,target=/root/.netrc \
     go mod download
