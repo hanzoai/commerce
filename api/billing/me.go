@@ -13,24 +13,30 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
 )
 
-// userKey returns the canonical "<org>/<user>" key used as the
-// destination identifier for IAM-bound transactions, derived from the
-// gateway-injected trust headers. Returns "" when identity is missing —
-// callers should 401.
-func userKey(c *gin.Context) string {
-	ctx := c.Request.Context()
-	org := strings.ToLower(strings.TrimSpace(auth.OrgID(ctx)))
-	uid := strings.ToLower(strings.TrimSpace(auth.UserID(ctx)))
-	if org == "" || uid == "" {
+// orgBillingKey returns the canonical per-org billing key: the org slug.
+//
+// Billing is per-org — one balance covers the whole org (see the LLM gate
+// in hanzoai/ai routers/filter_balance.go, which reads
+// GET /v1/billing/balance?user=<orgSlug> with X-Hanzo-Org=<orgSlug>, and
+// debits usage against SourceId=<orgSlug>). The deposit, usage, and read
+// paths MUST all resolve the same key or a customer tops up one key and
+// reads another. The key is the resolved org's own slug (org.Name), which
+// equals the namespace we read/write — guaranteeing destination-key ==
+// namespace-slug, the exact invariant the proven gate relies on.
+//
+// Returns "" when no org is resolved (or the privileged "platform" org,
+// which has no namespace) — callers should 401.
+func orgBillingKey(c *gin.Context) string {
+	org := middleware.GetOrganization(c)
+	if org == nil {
 		return ""
 	}
-	return org + "/" + uid
+	return strings.ToLower(strings.TrimSpace(org.Name))
 }
 
 // GetMyBalance returns the calling user's balance for a given currency.
@@ -39,7 +45,7 @@ func userKey(c *gin.Context) string {
 //
 //	GET /api/v1/billing/me/balance?currency=usd
 func GetMyBalance(c *gin.Context) {
-	user := userKey(c)
+	user := orgBillingKey(c)
 	if user == "" {
 		http.Fail(c, 401, "missing identity headers", nil)
 		return
@@ -87,7 +93,7 @@ func GetMyBalance(c *gin.Context) {
 //
 //	POST /api/v1/billing/me/welcome
 func PostMyWelcome(c *gin.Context) {
-	user := userKey(c)
+	user := orgBillingKey(c)
 	if user == "" {
 		http.Fail(c, 401, "missing identity headers", nil)
 		return
