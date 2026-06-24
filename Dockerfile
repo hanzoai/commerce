@@ -23,7 +23,10 @@ ARG PAY_REPO=https://github.com/hanzoai/pay.git
 ARG PAY_VERSION=v0.1.1
 WORKDIR /pay
 RUN apk add --no-cache git && corepack enable pnpm
-RUN git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
+# hanzoai/pay is private. Mount the netrc build secret so git over HTTPS
+# authenticates; the secret never lands in a layer.
+RUN --mount=type=secret,id=netrc,target=/root/.netrc \
+    git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
 RUN pnpm install --frozen-lockfile && pnpm build
 
 # ── Stage 3: Build billing admin UI (Next.js export from hanzoai/billing) ─
@@ -45,7 +48,9 @@ WORKDIR /billing
 # python3/make/g++ needed for node-gyp on arm64 where bufferutil/utf-8-validate
 # have no prebuilt aarch64 binary and fall back to source compile.
 RUN apk add --no-cache git python3 make g++ && corepack enable && corepack prepare pnpm@9.15.4 --activate
-RUN git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
+# hanzoai/billing is private — mount the netrc build secret for git over HTTPS.
+RUN --mount=type=secret,id=netrc,target=/root/.netrc \
+    git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
 RUN pnpm install --frozen-lockfile && pnpm build
 
 # ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
@@ -62,15 +67,14 @@ WORKDIR /build
 COPY go.mod go.sum ./
 
 # Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
-# resolve. Mount the GIT_AUTH_TOKEN build secret and rewrite GitHub HTTPS to
-# carry the token; GOPRIVATE skips the public proxy + sumdb for hanzoai/*.
-# The token is read from /run/secrets in-step and never persisted to a layer.
-ENV GOPRIVATE=github.com/hanzoai/*
+# resolve. Mount the netrc build secret so git over HTTPS authenticates for
+# private fetches; GOPRIVATE skips the public proxy + sumdb for hanzoai/* so
+# those go straight to git. Public modules still flow through the proxy. The
+# netrc is mounted only for the duration of the step and never lands in a layer.
+ENV GOPRIVATE=github.com/hanzoai/* \
+    GOSUMDB=off
 RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=secret,id=GIT_AUTH_TOKEN \
-    if [ -f /run/secrets/GIT_AUTH_TOKEN ]; then \
-      git config --global url."https://x-access-token:$(cat /run/secrets/GIT_AUTH_TOKEN)@github.com/".insteadOf "https://github.com/"; \
-    fi && \
+    --mount=type=secret,id=netrc,target=/root/.netrc \
     go mod download
 
 # Copy source code (note: api/billing/plans/ is gitignored — the pre-build
@@ -110,12 +114,13 @@ COPY --from=billing-build /billing/out/ billing/ui/dist/
 # same binary alongside main.go.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=secret,id=netrc,target=/root/.netrc \
     CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
     go build -p=1 \
     -tags "cloud sqlite_omit_load_extension" \
     -ldflags="-s -w \
-      -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD) \
+      -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sandboxfix) \
       -X github.com/hanzoai/commerce.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o /build/commerce \
     ./cmd/commerce
