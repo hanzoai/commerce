@@ -56,16 +56,14 @@ func TopupWithToken(c *gin.Context) {
 		return
 	}
 
-	// Fall back to the authenticated IAM user if userId not provided.
-	if req.UserID == "" {
-		if email := strings.TrimSpace(c.GetString("iam_email")); email != "" {
-			req.UserID = email
-		} else if sub := strings.TrimSpace(c.GetString("iam_user_id")); sub != "" {
-			req.UserID = sub
-		}
-	}
-	if req.UserID == "" {
-		jsonhttp.Fail(c, 400, "userId is required", nil)
+	// Billing is per-org: credit the org's balance, keyed by the org slug —
+	// the SAME key the LLM gate reads (?user=<orgSlug>) and usage debits
+	// (SourceId=<orgSlug>). A request-supplied userId/email must NOT become
+	// the destination key, or the customer tops up one key and reads another
+	// (the me/balance read resolves the org slug). One identity, one key.
+	billingKey := orgBillingKey(c)
+	if billingKey == "" {
+		jsonhttp.Fail(c, 401, "missing identity headers", nil)
 		return
 	}
 	if req.AmountCents <= 0 {
@@ -83,7 +81,7 @@ func TopupWithToken(c *gin.Context) {
 		Token:       req.SourceID,
 		Amount:      currency.Cents(req.AmountCents),
 		Currency:    cur,
-		Description: fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID),
+		Description: fmt.Sprintf("Top-up %d %s for org %s", req.AmountCents, cur, billingKey),
 	}
 
 	// Build a per-org processor registry from the org's KMS-hydrated payment
@@ -100,7 +98,7 @@ func TopupWithToken(c *gin.Context) {
 
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
-		log.Error("Charge failed for token topup (user=%s): %v", req.UserID, err, c)
+		log.Error("Charge failed for token topup (org=%s): %v", billingKey, err, c)
 		jsonhttp.Fail(c, 402, "charge failed", err)
 		return
 	}
@@ -113,10 +111,10 @@ func TopupWithToken(c *gin.Context) {
 		return
 	}
 
-	// Credit the user's balance.
+	// Credit the org's balance (per-org key — see billingKey above).
 	trans := transaction.New(db)
 	trans.Type = transaction.Deposit
-	trans.DestinationId = req.UserID
+	trans.DestinationId = billingKey
 	trans.DestinationKind = "iam-user"
 	trans.Currency = cur
 	trans.Amount = currency.Cents(req.AmountCents)
@@ -129,14 +127,16 @@ func TopupWithToken(c *gin.Context) {
 
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log for manual reconciliation.
-		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
-			result.ProcessorRef, req.UserID, err, c)
+		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for org %s: %v",
+			result.ProcessorRef, billingKey, err, c)
 		jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
 		return
 	}
 
+	// Read back the SAME key just credited so the returned balance matches
+	// what me/balance will report (read == credit).
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), req.UserID, "iam-user", cur, !org.Live); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), billingKey, "iam-user", cur, !org.Live); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}
