@@ -192,6 +192,10 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// the default card for orgs whose balance dropped below their threshold.
 	api.POST("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
 
+	// Test mode toggle (admin only): move an org between Square sandbox and
+	// production for end-to-end testing with sandbox cards.
+	api.POST("/test-mode", SetOrgTestMode)
+
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
 	// IAM tokens bypass the adminRequired guard above via IsIAMAuthenticated,
@@ -204,6 +208,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 
 	// Card tokenization — S2S (no provider SDK on frontend)
 	user.POST("/card/tokenize", TokenizeCard)
+
+	// Public Square config for THIS org's Web Payments SDK (sandbox for test
+	// orgs, production for live orgs) — so the browser tokenizes against the
+	// same Square account commerce vaults/charges with.
+	user.GET("/payment-config", GetPaymentConfig)
 
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
