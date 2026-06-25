@@ -28,6 +28,7 @@ type SquareProcessor struct {
 	accessToken    string
 	locationID     string
 	webhookSecret  string
+	webhookURL     string // notification URL registered in the Square dashboard
 	environment    string // "sandbox" or "production"
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
@@ -39,7 +40,12 @@ type Config struct {
 	AccessToken   string
 	LocationID    string
 	WebhookSecret string
-	Environment   string // "sandbox" or "production"
+	// WebhookURL is the exact notification URL registered for this
+	// subscription in the Square dashboard. Square computes the webhook
+	// HMAC over (WebhookURL + rawBody), so verification fails unless this
+	// matches the registered URL byte-for-byte.
+	WebhookURL  string
+	Environment string // "sandbox" or "production"
 }
 
 // NewProcessor creates a new Square processor
@@ -49,6 +55,7 @@ func NewProcessor(cfg Config) *SquareProcessor {
 		accessToken:   cfg.AccessToken,
 		locationID:    cfg.LocationID,
 		webhookSecret: cfg.WebhookSecret,
+		webhookURL:    cfg.WebhookURL,
 		environment:   cfg.Environment,
 	}
 
@@ -313,11 +320,22 @@ func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, 
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
-	// Square uses HMAC-SHA256 for webhook signatures
+	// Square computes the webhook signature as HMAC-SHA256 over the
+	// notification URL concatenated with the raw request body, then
+	// base64-encodes the digest. Verifying over the body alone (or with
+	// the wrong URL) rejects every legitimate delivery, so the registered
+	// notification URL must be configured.
+	// See https://developer.squareup.com/docs/webhooks/step3validate
+	if sp.webhookURL == "" {
+		return nil, fmt.Errorf("%w: square webhook URL not configured", processor.ErrWebhookValidationFailed)
+	}
+
 	mac := hmac.New(sha256.New, []byte(sp.webhookSecret))
+	mac.Write([]byte(sp.webhookURL))
 	mac.Write(payload)
 	expectedSig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 
+	// Constant-time comparison defeats timing analysis on the signature.
 	if !hmac.Equal([]byte(signature), []byte(expectedSig)) {
 		return nil, processor.ErrWebhookValidationFailed
 	}
