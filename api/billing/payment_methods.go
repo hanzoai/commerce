@@ -151,12 +151,29 @@ func CreatePaymentMethod(c *gin.Context) {
 		return
 	}
 
-	// When a Square nonce/sourceId is provided, do a $1.00 pre-auth to verify
-	// the card is real and will accept charges before we store it. Use the
-	// per-org registry so the Square processor has the org's credentials.
+	// When a Square nonce/sourceId is provided, vault it as a reusable
+	// card-on-file so the saved method can be charged later (top-ups and
+	// auto-recharge). Creating the card on file also validates the card with
+	// Square, so it replaces the one-shot $1 pre-auth — the nonce is single-use,
+	// and a pre-auth would consume it and make the vaulting step fail. Use the
+	// per-org registry so the Square processor carries the org's credentials.
+	var cardOnFile squareCardOnFile
+	vaulted := false
 	if req.ProviderRef != "" {
 		reg := payment.ProcessorsForOrg(org)
-		if err := verifyCardWithPreAuth(c.Request.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
+		if cp, ok := squareCustomerProcessorFrom(reg); ok {
+			existing := existingSquareCustomerID(db, req.CustomerId)
+			email := strings.TrimSpace(c.GetString("iam_email"))
+			cof, err := attachSquareCardOnFile(c.Request.Context(), cp, existing, email, req.CustomerId, req.ProviderRef)
+			if err != nil {
+				http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
+				return
+			}
+			cardOnFile = cof
+			vaulted = true
+		} else if err := verifyCardWithPreAuth(c.Request.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
+			// Square not available as a customer processor — fall back to the
+			// legacy verify-only flow (the saved card is NOT reusable).
 			http.Fail(c, 402, err.Error(), nil)
 			return
 		}
@@ -171,7 +188,12 @@ func CreatePaymentMethod(c *gin.Context) {
 	pm.Card = req.Card
 	pm.BankAccount = req.BankAccount
 	pm.BillingAddress = req.BillingAddress
+	// Store the reusable card-on-file id (not the spent one-time nonce) when
+	// vaulting succeeded, so saved-card charges can reuse it.
 	pm.ProviderRef = req.ProviderRef
+	if vaulted {
+		pm.ProviderRef = cardOnFile.CardID
+	}
 	pm.ProviderType = req.ProviderType
 
 	if req.Card != nil {
@@ -184,6 +206,10 @@ func CreatePaymentMethod(c *gin.Context) {
 	}
 	if req.ProviderRef != "" {
 		meta["squareVerified"] = true
+	}
+	if vaulted {
+		meta["squareCustomerId"] = cardOnFile.CustomerID
+		meta["squareCardId"] = cardOnFile.CardID
 	}
 	pm.Metadata = meta
 
@@ -303,6 +329,28 @@ func DetachPaymentMethod(c *gin.Context) {
 	if err := pm.GetById(c.Param("id")); err != nil {
 		http.Fail(c, 404, "payment method not found", err)
 		return
+	}
+
+	// Best-effort: detach the card-on-file from Square so its vault stays in
+	// sync. Non-fatal — the local record is still soft-deleted on failure.
+	if pm.Metadata != nil {
+		custID, _ := pm.Metadata["squareCustomerId"].(string)
+		cardID, _ := pm.Metadata["squareCardId"].(string)
+		if custID != "" && cardID != "" {
+			if v, ok := c.Get("kms"); ok {
+				if kmsClient, ok := v.(*kms.CachedClient); ok {
+					if err := kms.Hydrate(kmsClient, org); err != nil {
+						log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
+					}
+				}
+			}
+			reg := payment.ProcessorsForOrg(org)
+			if cp, ok := squareCustomerProcessorFrom(reg); ok {
+				if err := cp.RemovePaymentMethod(c.Request.Context(), custID, cardID); err != nil {
+					log.Warn("Failed to remove Square card %s for customer %s: %v", cardID, custID, err)
+				}
+			}
+		}
 	}
 
 	if err := pm.Delete(); err != nil {

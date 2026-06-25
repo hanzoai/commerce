@@ -77,13 +77,23 @@ func Topup(c *gin.Context) {
 		return
 	}
 
-	// Select a processor for the charge.
+	// Select a processor for the charge. For a Square card-on-file the SourceID
+	// is the saved card id (pm.ProviderRef) and CustomerID must be the Square
+	// customer id — a card-on-file is only chargeable in its customer's context.
+	// Fall back to the org slug for legacy methods saved before card-on-file.
+	squareCustomerID := pm.CustomerId
+	if pm.Metadata != nil {
+		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
+			squareCustomerID = v
+		}
+	}
+
 	ctx := middleware.GetContext(c)
 	chargeReq := processor.PaymentRequest{
 		Token:       pm.ProviderRef,
 		Amount:      currency.Cents(req.AmountCents),
 		Currency:    cur,
-		CustomerID:  pm.CustomerId,
+		CustomerID:  squareCustomerID,
 		Description: fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID),
 	}
 
