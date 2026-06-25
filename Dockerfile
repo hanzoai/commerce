@@ -97,6 +97,9 @@ COPY . .
 # build context) from the public @hanzo/plans npm tarball. api/billing/
 # plans.go go:embed's plans/dns.json + plans/subscription.json at compile
 # time, so this MUST run before `go build`. No auth (public npm).
+# Pin to the highest published version (the script's internal default tracked
+# an unpublished tag and 404'd); override with --build-arg PLANS_VERSION=.
+ARG PLANS_VERSION=1.1.4
 RUN apk add --no-cache curl && sh scripts/fetch-plans.sh
 
 # Replace placeholder dist/ with the real Next.js export so go:embed picks up
