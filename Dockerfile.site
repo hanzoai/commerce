@@ -1,38 +1,28 @@
-FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
-WORKDIR /app
+# commerce-site — serve the marketing SPA via hanzoai/static, NOT nginx.
+#
+# The nginx-based commerce-site:0.0.1 image violates the platform rule
+# "no nginx — use hanzoai/ingress + hanzoai/static only". This Dockerfile
+# RE-SERVES the already-built marketing static export through the canonical
+# hanzoai/static server, with zero change to the published content.
+#
+# Why reuse 0.0.1's content instead of rebuilding from app/site: this is an
+# EDGE serve-layer migration (remove nginx), not an app change. The current
+# app/site source build is independently broken (missing built workspace
+# packages like @hanzo/commerce-icons dist, an unresolved @kapaai/react-sdk
+# import, and a @/providers/BrowserProvider alias) — fixing the Next.js app
+# is a separate task. Reusing the proven, in-production static assets keeps
+# the marketing site byte-identical while eliminating nginx now.
+#
+# TODO(commerce-site app build): once app/site + its workspace packages build
+# cleanly, restore a from-source build stage here and bump the content.
 
-FROM base AS deps
-COPY app/pnpm-workspace.yaml app/package.json app/pnpm-lock.yaml* ./
-# site's workspace deps (@hanzo/commerce-docs-ui, -docs-utils, -icons,
-# -client) pull transitive workspace deps (docs-ui -> commerce-ui, ...).
-# pnpm needs EVERY workspace manifest present to resolve the graph, else
-# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. Copy the whole packages/ tree so the
-# closure is always complete regardless of how the graph evolves.
-COPY app/packages packages
-COPY app/site/package.json site/package.json
-# --no-frozen-lockfile absorbs benign lockfile drift (caret-range tightening
-# in site/package.json) without a full workspace lockfile regen.
-RUN pnpm install --no-frozen-lockfile
+# 1) The existing, in-production built marketing assets.
+FROM ghcr.io/hanzoai/commerce-site:0.0.1 AS content
 
-FROM base AS builder
-# The deps stage already holds the full packages/ source + the installed
-# node_modules (root hoist + per-package). Carry the whole resolved
-# workspace over, then add the bits deps didn't need: site source + root
-# config files.
-COPY --from=deps /app /app
-COPY app/site site
-COPY app/tsconfig.json tsconfig.json
-COPY app/turbo.json turbo.json
-RUN pnpm --filter=@hanzo/commerce-client build 2>/dev/null || true
-RUN cd site && npx next build
-
-# Serve the static export via hanzoai/static (the canonical Hanzo static
-# plugin) — NOT nginx. --spa rewrites unknown paths to index.html (Next.js
-# export client routing); _next/* assets are served as-is with long cache.
-# Listens on :3000 (hanzoai/static default); the commerce-site Service maps
-# servicePort 80 -> targetPort 3000.
+# 2) Serve them with hanzoai/static. --spa rewrites unknown routes to
+#    index.html (Next.js export client routing); :3000 is the static default,
+#    and the commerce-site Service maps servicePort 80 -> targetPort 3000.
 FROM ghcr.io/hanzoai/static:0.4.1
-COPY --from=builder /app/site/out /srv
+COPY --from=content /usr/share/nginx/html /srv
 EXPOSE 3000
 ENTRYPOINT ["/static", "--root=/srv", "--spa", "--port=3000"]
