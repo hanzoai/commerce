@@ -124,7 +124,7 @@ Fixed 6 multi-tenancy issues (all compile clean):
 
 ## KMS Integration (2026-02-17)
 
-Secrets management via KMS (Infisical-compatible REST API). KMS is the **single source of truth** for all payment provider credentials — no fallback to org-stored fields, no raw K8s secrets for payment providers.
+Secrets management via KMS (REST API). KMS is the **single source of truth** for all payment provider credentials — no fallback to org-stored fields, no raw K8s secrets for payment providers.
 
 **Architecture**: Credential Hydration (KMS-only, no fallback).
 

@@ -1,4 +1,4 @@
-// Package kms provides a thin HTTP client for KMS (Infisical-compatible) secret management.
+// Package kms provides a thin HTTP client for Hanzo KMS secret management.
 package kms
 
 import (

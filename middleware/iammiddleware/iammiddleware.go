@@ -137,8 +137,15 @@ func IAMTokenRequired() gin.HandlerFunc {
 			credit.GrantIfEligible(bgDb, id, "org-created")
 		}(userID)
 
-		// Gateway-trusted identity always counts as live.
-		o.Live = true
+		// Gateway-trusted identity counts as live by default. An explicit
+		// gateway-propagated X-Hanzo-Test: true opts the request into TEST
+		// mode (org.Live=false) so charges hit sandbox processors and write
+		// the test ledger — the same Live=false semantics a test access
+		// token carries (see middleware/accesstoken.go). The gateway is the
+		// trust boundary: it only forwards this header for test orgs. The
+		// flag is additive and never widens scope (test is strictly less
+		// privileged than live).
+		o.Live = liveFromHeaders(c)
 
 		// Permissions are derived strictly from gateway-supplied headers,
 		// never granted by mere presence of identity. The gateway MUST
@@ -160,6 +167,24 @@ func IAMTokenRequired() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// HeaderTest is the gateway-propagated test-mode signal. When the
+// gateway forwards "true" (only for test orgs), the request runs in
+// TEST mode: org.Live=false, charges hit sandbox processors, ledger
+// rows are flagged Test. Absent/any-other value ⇒ live. Mirrors the
+// X-Hanzo-Test semantics in middleware/accesstoken.go. The gateway is
+// the trust boundary; commerced trusts the bit it forwards.
+const HeaderTest = "X-Hanzo-Test"
+
+// liveFromHeaders reports whether a gateway-trusted request is live.
+// It is live unless the gateway forwarded HeaderTest == "true". This
+// is the single place that turns the gateway test signal into the
+// org.Live authority that payment.ProcessorsForOrg keys sandbox-vs-
+// production off of (see payment/orgsetup.go SquareConfig(!org.Live)).
+// Forwards-only: never widen test → live based on identity presence.
+func liveFromHeaders(c *gin.Context) bool {
+	return !strings.EqualFold(strings.TrimSpace(c.GetHeader(HeaderTest)), "true")
 }
 
 // HeaderUserPermissions is the canonical gateway-minted permission
