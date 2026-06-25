@@ -25,7 +25,7 @@
 //
 //	Authorization: Bearer {Token}
 //
-// plus the tenant org as the X-IAM-Org-Id header. The token is a secret and
+// plus the tenant org as the X-Hanzo-Org header. The token is a secret and
 // MUST be sourced from KMS (never plaintext); this package never reads it from
 // disk — the caller supplies it (typically from an env var the operator wires
 // from a KMS-backed secret, e.g. COMMERCE_SERVICE_TOKEN).
@@ -60,9 +60,18 @@ const (
 )
 
 // Header carrying the tenant org slug for commerce namespace resolution.
-// Commerce's S2S auth reads the org from X-IAM-Org-Id (commerce/middleware
-// /accesstoken.go); without it commerce falls back to COMMERCE_SERVICE_ORG.
-const headerOrg = "X-IAM-Org-Id"
+// Commerce's service-token auth reads the org from X-Hanzo-Org
+// (commerce/middleware/accesstoken.go TokenRequired: c.GetHeader("X-Hanzo-Org"));
+// without it commerce falls back to COMMERCE_SERVICE_ORG, then "hanzo" — which
+// would silently debit the wrong tenant. This is the Bearer service-token path
+// the metering client uses (NOT the gateway/JWT path, which uses X-Org-Id).
+const headerOrg = "X-Hanzo-Org"
+
+// headerTest opts a service-token call into commerce's TEST ledger
+// (org.Live=false): balances and debits hit the sandbox books, not real money.
+// See commerce/middleware/accesstoken.go (HeaderTest = "X-Hanzo-Test"). Sent
+// only when Config.Test is true — production metering omits it and stays live.
+const headerTest = "X-Hanzo-Test"
 
 // ErrInsufficientBalance is returned by Authorize when commerce confirms the
 // user's available balance is non-positive. It is distinct from a connectivity
@@ -89,7 +98,7 @@ type Config struct {
 	// never hard-code or read from a file. Sent as "Authorization: Bearer".
 	Token string
 
-	// Org is the tenant org slug (e.g. "hanzo") sent as X-IAM-Org-Id so
+	// Org is the tenant org slug (e.g. "hanzo") sent as X-Hanzo-Org so
 	// commerce resolves the right tenant namespace. Per-request Org on the
 	// Usage/AuthInput overrides this default.
 	Org string
@@ -106,6 +115,11 @@ type Config struct {
 	// (and accept the revenue leak). Mirrors the gateway, which is fail-closed.
 	FailOpen bool
 
+	// Test routes every call to commerce's TEST ledger (X-Hanzo-Test: true) so
+	// balances and debits hit the sandbox books, not real money. Production
+	// metering leaves this false. Used for end-to-end proofs and staging.
+	Test bool
+
 	// Timeout bounds each commerce HTTP call. Default 5s (the gateway's value).
 	Timeout time.Duration
 
@@ -121,6 +135,7 @@ type Client struct {
 	org       string
 	tierAware bool
 	failOpen  bool
+	test      bool
 	http      HTTPDoer
 }
 
@@ -149,6 +164,7 @@ func New(cfg Config) (*Client, error) {
 		org:       strings.TrimSpace(cfg.Org),
 		tierAware: cfg.TierAware,
 		failOpen:  cfg.FailOpen,
+		test:      cfg.Test,
 		http:      doer,
 	}, nil
 }
@@ -157,11 +173,25 @@ func New(cfg Config) (*Client, error) {
 // Authorize always allows and Record is a no-op.
 func (c *Client) Enabled() bool { return c != nil && c.baseURL != "" }
 
-// AuthInput identifies who to authorize. User is the IAM "org/sub" identity
-// (e.g. "hanzo/alice"). Org overrides the client default org for this call;
-// Currency defaults to "usd".
+// AuthInput identifies who to authorize.
+//
+// User is the PREPAID BILLING KEY — the org slug (e.g. "hanzo"), NOT
+// "org/sub". Prepaid balance is per-org: one credit covers the whole org,
+// exactly as the proven LLM gate does (ai/routers/filter_balance.go
+// resolveBillingKey returns user.Owner — the org slug — and queries
+// GET /v1/billing/balance?user=<org>). Keying per-user instead would check an
+// empty per-user ledger and deny a funded org. IdentityFromGatewayHeaders sets
+// this correctly from the gateway's X-Org-Id.
+//
+// Actor is the full "org/sub" identity (e.g. "hanzo/alice") recorded on the
+// usage transaction for the audit trail. It never affects which balance is
+// gated or debited — that is always the org (User).
+//
+// Org overrides the client default org (the X-Hanzo-Org namespace) for this
+// call; it normally equals User. Currency defaults to "usd".
 type AuthInput struct {
 	User     string
+	Actor    string
 	Org      string
 	Currency string
 }
@@ -238,8 +268,9 @@ func (c *Client) fetchAvailable(ctx context.Context, user, org, cur string) (int
 // commerce stores on the transaction. Fields mirror commerce's usageRequest
 // (commerce/api/billing/usage.go) one-for-one.
 type Usage struct {
-	User             string `json:"user"`
-	Org              string `json:"-"` // routed via X-IAM-Org-Id, not the body.
+	User             string `json:"user"`            // per-org billing key (org slug) — the debit destination.
+	Actor            string `json:"actor,omitempty"` // org/sub identity for the audit trail (commerce ignores unknown fields today; forward-compatible).
+	Org              string `json:"-"`               // routed via X-Hanzo-Org, not the body.
 	Currency         string `json:"currency,omitempty"`
 	AmountCents      int64  `json:"amount"`
 	Model            string `json:"model,omitempty"`
@@ -332,6 +363,9 @@ func (c *Client) do(req *http.Request, org string) ([]byte, error) {
 	}
 	if org != "" {
 		req.Header.Set(headerOrg, org)
+	}
+	if c.test {
+		req.Header.Set(headerTest, "true")
 	}
 
 	resp, err := c.http.Do(req)

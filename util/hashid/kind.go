@@ -128,6 +128,8 @@ var kinds = map[string]int{
 	"variantinventorylink":     259,
 	"subscription-item":        260,
 	"subscription-schedule":    261,
+	"sbom-record":               262,
+	"oss-accrual":               263,
 }
 
 var kindsReversed = make(map[int]string)

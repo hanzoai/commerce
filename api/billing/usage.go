@@ -189,6 +189,12 @@ func RecordUsage(c *gin.Context) {
 	// recording must not fail because of referral tracking.
 	go engine.TrackRevenueShare(db, req.User, currency.Cents(req.Amount), cur, trans.Id(), !org.Live)
 
+	// Accrue the OSS-developer payout: attribute up to 25% of this charge
+	// across the upstream OSS packages this org's deployment depends on (from
+	// the SBOMs emitted on deploy) into the per-package accrual ledger.
+	// Fire-and-forget, same posture as revenue share.
+	go engine.AccrueOSSPayout(db, org.Name, req.User, currency.Cents(req.Amount), cur, trans.Id(), !org.Live)
+
 	c.JSON(201, gin.H{
 		"transactionId": trans.Id(),
 		"user":          req.User,
