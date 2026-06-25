@@ -4,20 +4,26 @@ WORKDIR /app
 
 FROM base AS deps
 COPY app/pnpm-workspace.yaml app/package.json app/pnpm-lock.yaml* ./
-COPY app/packages/commerce/package.json packages/commerce/package.json
+# site's workspace deps (@hanzo/commerce-docs-ui, -docs-utils, -icons,
+# -client) pull transitive workspace deps (docs-ui -> commerce-ui, ...).
+# pnpm needs EVERY workspace manifest present to resolve the graph, else
+# ERR_PNPM_WORKSPACE_PKG_NOT_FOUND. Copy the whole packages/ tree so the
+# closure is always complete regardless of how the graph evolves.
+COPY app/packages packages
 COPY app/site/package.json site/package.json
-RUN pnpm install --frozen-lockfile || pnpm install
+# --no-frozen-lockfile absorbs benign lockfile drift (caret-range tightening
+# in site/package.json) without a full workspace lockfile regen.
+RUN pnpm install --no-frozen-lockfile
 
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/commerce/node_modules ./packages/commerce/node_modules
-COPY --from=deps /app/site/node_modules ./site/node_modules
-COPY app/packages/commerce packages/commerce
+# The deps stage already holds the full packages/ source + the installed
+# node_modules (root hoist + per-package). Carry the whole resolved
+# workspace over, then add the bits deps didn't need: site source + root
+# config files.
+COPY --from=deps /app /app
 COPY app/site site
 COPY app/tsconfig.json tsconfig.json
 COPY app/turbo.json turbo.json
-COPY app/package.json package.json
-COPY app/pnpm-workspace.yaml pnpm-workspace.yaml
 RUN pnpm --filter=@hanzo/commerce-client build 2>/dev/null || true
 RUN cd site && npx next build
 
