@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -13,9 +14,14 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billingevent"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
+
+	. "github.com/hanzoai/commerce/types"
 )
 
 // HandleProviderWebhook is the single ingress for payment-provider webhooks.
@@ -56,15 +62,27 @@ func HandleProviderWebhook(c *gin.Context) {
 	}
 
 	// Persist the raw event so the app has an audit trail independent of
-	// processor-side retention.
-	org := middleware.GetOrganization(c)
+	// processor-side retention. Webhooks arrive with no session, so resolve
+	// the owning org the same way service-token calls do.
+	org := resolveWebhookOrg(c)
 	if org == nil {
-		// Webhooks arrive with no session; route them to the platform org so
-		// they at least get persisted. Downstream handlers may rescope.
 		jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
 		return
 	}
 	db := datastore.New(org.Namespaced(c))
+
+	// Idempotency: providers retry aggressively (Square retries for up to
+	// 72h until it gets a 2xx). If we already recorded this event ID, ack
+	// without re-applying side effects.
+	if event.ID != "" && eventAlreadyProcessed(db, providerHint, event.ID) {
+		c.JSON(http.StatusOK, gin.H{
+			"received":  true,
+			"type":      event.Type,
+			"id":        event.ID,
+			"duplicate": true,
+		})
+		return
+	}
 
 	evt := billingevent.New(db)
 	evt.Type = event.Type
@@ -84,11 +102,187 @@ func HandleProviderWebhook(c *gin.Context) {
 		applySubscriptionEvent(db, event)
 	}
 
+	// Settle funds for completed payments. This is the path Square's
+	// payment.updated(status=COMPLETED) callback exercises once a card
+	// authorization captures — the moment funds are guaranteed.
+	if isSettlementEvent(event.Type) {
+		applySettlementEvent(db, org, event)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"received": true,
 		"type":     event.Type,
 		"id":       event.ID,
 	})
+}
+
+// resolveWebhookOrg determines which org a sessionless provider webhook
+// belongs to. Order: X-Hanzo-Org header, COMMERCE_SERVICE_ORG env, then the
+// default "hanzo" org. Mirrors the service-token resolution in
+// middleware/accesstoken.go so webhooks and service calls agree on scope.
+func resolveWebhookOrg(c *gin.Context) *organization.Organization {
+	if org := middleware.GetOrganization(c); org != nil {
+		return org
+	}
+	db := datastore.New(middleware.GetContext(c))
+	orgName := strings.TrimSpace(c.GetHeader("X-Hanzo-Org"))
+	if orgName == "" {
+		orgName = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
+	}
+	if orgName == "" {
+		orgName = "hanzo"
+	}
+	org := organization.New(db)
+	org.Name = orgName
+	if err := org.GetOrCreate("Name=", orgName); err != nil {
+		log.Warn("webhook org resolve for '%s' failed: %v", orgName, err)
+		return nil
+	}
+	org.Live = true
+	return org
+}
+
+// eventAlreadyProcessed reports whether a billing event with this provider
+// object type and ID was already recorded — the idempotency guard against
+// provider retries.
+func eventAlreadyProcessed(db *datastore.Datastore, objectType, eventID string) bool {
+	existing := billingevent.New(db)
+	found, err := existing.Query().
+		Filter("ObjectType=", objectType).
+		Filter("ObjectId=", eventID).
+		Get()
+	return err == nil && found
+}
+
+// isSettlementEvent reports whether an event represents settled (captured)
+// funds that should credit a balance.
+func isSettlementEvent(eventType string) bool {
+	switch eventType {
+	case "payment.completed", "payment.updated", "invoice.paid":
+		return true
+	default:
+		return false
+	}
+}
+
+// applySettlementEvent credits the destination balance for a settled
+// payment. It is idempotent: the credit transaction is keyed by the
+// provider payment ID (SourceId), so re-delivery never double-credits.
+//
+// A "payment.updated" event only settles when the payment object reports a
+// terminal completed/captured status; pending or failed updates are ignored.
+func applySettlementEvent(db *datastore.Datastore, org *organization.Organization, event *processor.WebhookEvent) {
+	if event.Data == nil {
+		return
+	}
+
+	paymentID, _ := event.Data["id"].(string)
+	if paymentID == "" {
+		return
+	}
+
+	// Only act on terminal success. Square reports COMPLETED/CAPTURED; other
+	// processors use lowercase. Treat payment.completed as already terminal.
+	if event.Type == "payment.updated" {
+		status, _ := event.Data["status"].(string)
+		switch strings.ToUpper(strings.TrimSpace(status)) {
+		case "COMPLETED", "CAPTURED", "APPROVED":
+			// settled — continue
+		default:
+			return
+		}
+	}
+
+	// Resolve the user this payment funds. Square carries our identifier in
+	// reference_id (set to the order/user at charge time); fall back to the
+	// customer object when present.
+	user := firstNonEmpty(
+		stringField(event.Data, "reference_id"),
+		stringField(event.Data, "referenceId"),
+		stringField(event.Data, "customer_id"),
+		stringField(event.Data, "customerId"),
+	)
+	if user == "" {
+		log.Warn("settlement %s: no user reference on payment, recorded event only", paymentID)
+		return
+	}
+
+	// Idempotency: one deposit per provider payment ID.
+	dup := transaction.New(db)
+	if found, err := dup.Query().
+		Filter("SourceKind=", "square-payment").
+		Filter("SourceId=", paymentID).
+		Get(); err == nil && found {
+		return
+	}
+
+	amount, cur := settlementAmount(event.Data)
+	if amount <= 0 {
+		log.Warn("settlement %s: non-positive amount, recorded event only", paymentID)
+		return
+	}
+
+	trans := transaction.New(db)
+	trans.Type = transaction.Deposit
+	trans.DestinationId = strings.ToLower(user)
+	trans.DestinationKind = "iam-user"
+	trans.Currency = cur
+	trans.Amount = amount
+	trans.SourceId = paymentID
+	trans.SourceKind = "square-payment"
+	trans.Event = event.ID
+	trans.Notes = "Square settlement " + paymentID
+	trans.Metadata = Map{"provider": string(event.Processor), "eventType": event.Type}
+	if !org.Live {
+		trans.Test = true
+	}
+	if err := trans.Create(); err != nil {
+		log.Warn("settlement %s: failed to credit balance: %v", paymentID, err)
+	}
+}
+
+// settlementAmount extracts the captured amount (cents) and currency from a
+// provider payment object. Square nests it under amount_money{amount,currency}.
+func settlementAmount(data Map) (currency.Cents, currency.Type) {
+	cur := currency.USD
+	if m, ok := data["amount_money"].(map[string]interface{}); ok {
+		amt := numberField(m, "amount")
+		if c := stringField(m, "currency"); c != "" {
+			cur = currency.Type(strings.ToLower(c))
+		}
+		return currency.Cents(amt), cur
+	}
+	// Flat fallbacks used by other processors.
+	if c := stringField(data, "currency"); c != "" {
+		cur = currency.Type(strings.ToLower(c))
+	}
+	return currency.Cents(numberField(data, "amount")), cur
+}
+
+func stringField(m map[string]interface{}, key string) string {
+	v, _ := m[key].(string)
+	return strings.TrimSpace(v)
+}
+
+func numberField(m map[string]interface{}, key string) int64 {
+	switch n := m[key].(type) {
+	case float64:
+		return int64(n)
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	}
+	return 0
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // applySubscriptionEvent reconciles the local subscription row with a
@@ -150,6 +344,7 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 func pickSignatureHeader(h http.Header, providerHint string) string {
 	candidates := []string{
 		"Stripe-Signature",
+		"X-Square-Hmacsha256-Signature", // Square
 		"Paypal-Transmission-Sig",
 		"X-Adyen-Signature",
 		"X-Paypal-Auth-Algo",
@@ -161,6 +356,10 @@ func pickSignatureHeader(h http.Header, providerHint string) string {
 		switch providerHint {
 		case "stripe":
 			if v := h.Get("Stripe-Signature"); v != "" {
+				return v
+			}
+		case "square":
+			if v := h.Get("X-Square-Hmacsha256-Signature"); v != "" {
 				return v
 			}
 		case "paypal":
