@@ -106,7 +106,8 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 				return
 			}
 			u := Usage{
-				User:        in.User,
+				User:        in.User, // per-org debit key (matches the gate)
+				Actor:       in.Actor, // org/sub, audit only
 				Org:         in.Org,
 				Currency:    in.Currency,
 				AmountCents: cents,
@@ -131,16 +132,26 @@ func (c *Client) recordAsync(r *http.Request, u Usage, onErr func(*http.Request,
 }
 
 // IdentityFromGatewayHeaders builds an AuthInput from the gateway-minted
-// identity headers. The user is "{org}/{sub}" (commerce's iam-user form) when
-// both are present, else the bare sub.
+// identity headers. Prepaid billing is per-org, so the billing key (User) is
+// the org slug (X-Org-Id) — the same key the LLM gate uses (user.Owner). The
+// full "{org}/{sub}" identity is recorded as Actor for the audit trail only.
+//
+// When there is no org (anonymous / org-less token) User falls back to the bare
+// sub so a per-user balance can still gate; without either, User is empty and
+// the fail-closed gate denies (anonymous traffic must be bypassed via Skip).
 func IdentityFromGatewayHeaders(r *http.Request) AuthInput {
 	org := strings.TrimSpace(r.Header.Get(HeaderOrgID))
 	sub := strings.TrimSpace(r.Header.Get(HeaderUserID))
-	user := sub
-	if org != "" && sub != "" {
-		user = org + "/" + sub
+
+	user := org // per-org billing key
+	if user == "" {
+		user = sub // org-less fallback
 	}
-	return AuthInput{User: user, Org: org}
+	actor := sub
+	if org != "" && sub != "" {
+		actor = org + "/" + sub
+	}
+	return AuthInput{User: user, Actor: actor, Org: org}
 }
 
 func defaultOnDenied(w http.ResponseWriter, _ *http.Request, err error) {
