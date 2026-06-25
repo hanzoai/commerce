@@ -231,9 +231,42 @@ All App Engine dependencies removed. Context handling modernized:
 - Legacy GAE Python utils moved to `.legacy/` (bulkloader, datastore-admin, salesforce-metadata)
 - ORM: all models use `mixin.Model[T]` with generic CRUD, namespace support, and `orm.Register[T]()`
 
+## Versioning (tag == binary)
+
+`commerce.Version` is a `var` (commerce.go), default = the current release.
+CI injects the immutable image tag at build time so `/healthz` `version` always
+equals the deployed tag:
+
+- `docker-deploy.yml` passes `VERSION=<git tag>` (build-arg) on `v*` tag pushes.
+- `Dockerfile` / `Dockerfile.sqfix` strip the leading `v` and apply
+  `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`.
+- Branch builds leave `VERSION` empty → the in-source default holds.
+
+Cut releases with a `v*` git tag (`git tag -aX vX.Y.Z && git push origin vX.Y.Z`)
+so the build produces `ghcr.io/hanzoai/commerce:X.Y.Z` whose binary reports
+`X.Y.Z`. Do NOT ship named tags (`:X.Y.Z-foo`) for prod — they re-introduce the
+tag/binary drift (the live 1.42.31-testmode image reported binary 1.42.5 because
+`Version` was a hardcoded const nobody bumped).
+
+## commerce-site edge (no nginx)
+
+`commerce.hanzo.ai` serves the marketing SPA via `ghcr.io/hanzoai/static`
+(`Dockerfile.site`, `--spa`, :3000) — NEVER nginx. The host's routing lives in
+the hanzoai/ingress file provider (`universe infra/k8s/ingress/routes.yaml`):
+a high-priority `commerce-hanzo-ai-api` router sends `/v1`, `/api`, `/healthz`
+to the commerce API (`commerce.hanzo.svc:8001`); the low-priority
+`commerce-hanzo-ai` router catches the rest → the SPA. The operator
+`commerce-site` Service CR has `ingress.enabled: false` (a plain Ingress can't
+express Traefik priority). The from-source `Dockerfile.site` Next.js build is
+currently broken (unbuilt workspace dists, a phantom `@kapaai/react-sdk` import,
+a `@/providers` alias); 0.2.0 re-serves the proven 0.0.1 assets — fix the app
+build before bumping content.
+
 ## Gotchas
 
 - Healthcheck: use `curl -f` not `wget --spider` (Gin only handles GET)
+- `go-sqlite3` must be pinned to v1.14.x (`replace` in go.mod) — the transitive
+  v2.0.3+incompatible fails to compile on musl/Alpine (pread64/pwrite64)
 - Meilisearch v0.35.1 changed `AddDocuments`/`DeleteDocuments` signatures
 - Production Dockerfile uses CGO_ENABLED=1 for SQLite (not CGO_ENABLED=0)
 - Global entities (Organization, User, Token) use `DefaultNamespace = true` by design
