@@ -183,7 +183,6 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dns.POST("/usage", RecordDNSUsage)
 	dns.GET("/usage/summary", GetDNSUsageSummary)
 
-
 	// Billing cycle automation (called by platform scheduler or manually)
 	api.POST("/cycle/run", RunBillingCycle)
 	api.POST("/cycle/run-user", RunBillingCycleUser)
@@ -235,6 +234,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/credit-balance", GetCreditBalance)
 	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	user.POST("/credit", GrantStarterCredit)
+
+	// Transaction history (read-only, user-scoped). Derives identity from the
+	// IAM org/user in context like the sibling reads above. Called by
+	// billing.hanzo.ai's Transactions tab as GET /v1/billing/transactions.
+	user.GET("/transactions", ListTransactions)
 
 	// Withdraw (user-initiated: move funds out of Commerce balance).
 	// Used by bot wallet funding (source=usd) to deduct from user's account.
