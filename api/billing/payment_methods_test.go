@@ -19,9 +19,22 @@ type mockSquareProcessor struct {
 	authorizeID  string
 
 	// Controls whether CancelAuthorization succeeds
-	cancelErr error
+	cancelErr    error
 	cancelCalled bool
 	cancelledID  string
+
+	// Card-on-file (CustomerProcessor) behavior + call capture.
+	createCustomerErr   error
+	createdCustomerID   string
+	createCustomerCalls int
+	addCardErr          error
+	addedCardID         string
+	addCardCustomerID   string
+	addCardNonce        string
+	removeErr           error
+	removeCalled        bool
+	removeCustomerID    string
+	removeCardID        string
 }
 
 func newMockSquare(authorizeErr error, authorizeID string, cancelErr error) *mockSquareProcessor {
@@ -75,6 +88,32 @@ func (m *mockSquareProcessor) CancelAuthorization(ctx context.Context, paymentID
 	m.cancelCalled = true
 	m.cancelledID = paymentID
 	return m.cancelErr
+}
+
+// --- squareCustomerProcessor implementation ---------------------------------
+
+func (m *mockSquareProcessor) CreateCustomer(ctx context.Context, email, name string, metadata map[string]interface{}) (string, error) {
+	m.createCustomerCalls++
+	if m.createCustomerErr != nil {
+		return "", m.createCustomerErr
+	}
+	return m.createdCustomerID, nil
+}
+
+func (m *mockSquareProcessor) AddPaymentMethod(ctx context.Context, customerID, token string) (string, error) {
+	m.addCardCustomerID = customerID
+	m.addCardNonce = token
+	if m.addCardErr != nil {
+		return "", m.addCardErr
+	}
+	return m.addedCardID, nil
+}
+
+func (m *mockSquareProcessor) RemovePaymentMethod(ctx context.Context, customerID, paymentMethodID string) error {
+	m.removeCalled = true
+	m.removeCustomerID = customerID
+	m.removeCardID = paymentMethodID
+	return m.removeErr
 }
 
 // registerMockSquare replaces the Square processor in the global registry for the duration of a test.
@@ -149,5 +188,59 @@ func TestVerifyCardWithPreAuth_NoSquareProcessor(t *testing.T) {
 	err := verifyCardWithPreAuth(context.Background(), processor.Global(), "cnon:card-nonce", "user-4")
 	if err != nil {
 		t.Fatalf("should skip pre-auth gracefully when Square is not registered, got: %v", err)
+	}
+}
+
+// ---- Card-on-file -----------------------------------------------------------
+
+func TestAttachSquareCardOnFile_CreatesCustomerAndCard(t *testing.T) {
+	m := newMockSquare(nil, "", nil)
+	m.createdCustomerID = "cust_new"
+	m.addedCardID = "ccof_new"
+
+	cof, err := attachSquareCardOnFile(context.Background(), m, "", "owner@acme.test", "acme", "cnon:fresh-nonce")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if m.createCustomerCalls != 1 {
+		t.Errorf("expected CreateCustomer to be called once, got %d", m.createCustomerCalls)
+	}
+	if cof.CustomerID != "cust_new" || cof.CardID != "ccof_new" {
+		t.Errorf("unexpected card-on-file: %+v", cof)
+	}
+	if m.addCardCustomerID != "cust_new" {
+		t.Errorf("AddPaymentMethod got customer %q, want %q", m.addCardCustomerID, "cust_new")
+	}
+	if m.addCardNonce != "cnon:fresh-nonce" {
+		t.Errorf("AddPaymentMethod got nonce %q, want the single-use nonce", m.addCardNonce)
+	}
+}
+
+func TestAttachSquareCardOnFile_ReusesExistingCustomer(t *testing.T) {
+	m := newMockSquare(nil, "", nil)
+	m.addedCardID = "ccof_second"
+
+	cof, err := attachSquareCardOnFile(context.Background(), m, "cust_existing", "", "acme", "cnon:second-card")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if m.createCustomerCalls != 0 {
+		t.Errorf("expected CreateCustomer NOT to be called when reusing a customer, got %d calls", m.createCustomerCalls)
+	}
+	if cof.CustomerID != "cust_existing" {
+		t.Errorf("expected reused customer %q, got %q", "cust_existing", cof.CustomerID)
+	}
+	if m.addCardCustomerID != "cust_existing" {
+		t.Errorf("AddPaymentMethod got customer %q, want %q", m.addCardCustomerID, "cust_existing")
+	}
+}
+
+func TestAttachSquareCardOnFile_DeclinedCard(t *testing.T) {
+	m := newMockSquare(nil, "", nil)
+	m.createdCustomerID = "cust_decline"
+	m.addCardErr = errors.New("CARD_DECLINED")
+
+	if _, err := attachSquareCardOnFile(context.Background(), m, "", "", "acme", "cnon:bad"); err == nil {
+		t.Fatal("expected an error when the card is declined, got nil")
 	}
 }
