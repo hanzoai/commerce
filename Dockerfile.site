@@ -1,42 +1,28 @@
-FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@10.8.0 --activate
-WORKDIR /app
+# commerce-site — serve the marketing SPA via hanzoai/static, NOT nginx.
+#
+# The nginx-based commerce-site:0.0.1 image violates the platform rule
+# "no nginx — use hanzoai/ingress + hanzoai/static only". This Dockerfile
+# RE-SERVES the already-built marketing static export through the canonical
+# hanzoai/static server, with zero change to the published content.
+#
+# Why reuse 0.0.1's content instead of rebuilding from app/site: this is an
+# EDGE serve-layer migration (remove nginx), not an app change. The current
+# app/site source build is independently broken (missing built workspace
+# packages like @hanzo/commerce-icons dist, an unresolved @kapaai/react-sdk
+# import, and a @/providers/BrowserProvider alias) — fixing the Next.js app
+# is a separate task. Reusing the proven, in-production static assets keeps
+# the marketing site byte-identical while eliminating nginx now.
+#
+# TODO(commerce-site app build): once app/site + its workspace packages build
+# cleanly, restore a from-source build stage here and bump the content.
 
-FROM base AS deps
-COPY app/pnpm-workspace.yaml app/package.json app/pnpm-lock.yaml* ./
-COPY app/packages/commerce/package.json packages/commerce/package.json
-COPY app/site/package.json site/package.json
-RUN pnpm install --frozen-lockfile || pnpm install
+# 1) The existing, in-production built marketing assets.
+FROM ghcr.io/hanzoai/commerce-site:0.0.1 AS content
 
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/commerce/node_modules ./packages/commerce/node_modules
-COPY --from=deps /app/site/node_modules ./site/node_modules
-COPY app/packages/commerce packages/commerce
-COPY app/site site
-COPY app/tsconfig.json tsconfig.json
-COPY app/turbo.json turbo.json
-COPY app/package.json package.json
-COPY app/pnpm-workspace.yaml pnpm-workspace.yaml
-RUN pnpm --filter=@hanzo/commerce-client build 2>/dev/null || true
-RUN cd site && npx next build
-
-FROM nginx:alpine
-COPY --from=builder /app/site/out /usr/share/nginx/html
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri.html $uri/index.html /index.html;
-    }
-
-    location /_next {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-EOF
-EXPOSE 80
+# 2) Serve them with hanzoai/static. --spa rewrites unknown routes to
+#    index.html (Next.js export client routing); :3000 is the static default,
+#    and the commerce-site Service maps servicePort 80 -> targetPort 3000.
+FROM ghcr.io/hanzoai/static:0.4.1
+COPY --from=content /usr/share/nginx/html /srv
+EXPOSE 3000
+ENTRYPOINT ["/static", "--root=/srv", "--spa", "--port=3000"]
