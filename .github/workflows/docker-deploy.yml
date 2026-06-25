@@ -24,4 +24,10 @@ jobs:
       # go:embed bakes the canonical catalog into the binary at
       # compile time. No auth needed.
       pre-build-command: "sh scripts/fetch-plans.sh"
+      # On a v* tag push, inject the git tag as commerce.Version via
+      # -ldflags so /healthz version == image tag. The Dockerfile strips the
+      # leading "v" (GHA has no replace()). Branch builds leave it empty →
+      # in-source default holds.
+      build-args: |
+        VERSION=${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
     secrets: inherit
