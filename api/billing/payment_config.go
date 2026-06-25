@@ -8,7 +8,6 @@ import (
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -24,14 +23,10 @@ import (
 func GetPaymentConfig(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
-	// Best-effort KMS hydrate so an org with its own Square account gets its
-	// own app id; the env fallback below covers the platform Square account.
-	if v, ok := c.Get("kms"); ok {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			_ = kms.Hydrate(kmsClient, org)
-		}
-	}
-
+	// NOTE: do NOT KMS-hydrate here. payment-config is called on dialog-open and
+	// gates the card field mount, so it must be fast; a KMS round-trip can hang
+	// when KMS is slow/unavailable and freeze the UI. Cloud orgs have no per-org
+	// Square creds anyway — the env fallback below supplies the public app id.
 	sqCfg := org.SquareConfig(!org.Live)
 	appID := sqCfg.ApplicationId
 	locationID := sqCfg.LocationId
