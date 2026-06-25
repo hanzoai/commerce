@@ -27,6 +27,8 @@ func init() {
 	locationID := strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
 	appID := strings.TrimSpace(os.Getenv("SQUARE_APPLICATION_ID"))
 	webhookKey := strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
+	// Exact dashboard notification URL — Square signs HMAC over URL+body.
+	webhookURL := strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL"))
 
 	if isSandbox {
 		if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
@@ -49,6 +51,7 @@ func init() {
 		AccessToken:   token,
 		LocationID:    locationID,
 		WebhookSecret: webhookKey,
+		WebhookURL:    webhookURL,
 		Environment:   env,
 	})
 
