@@ -235,9 +235,14 @@ type SquareConnection struct {
 }
 
 type Square struct {
-	WebhookSignatureKey string           `json:"webhookSignatureKey,omitempty"`
-	Sandbox             SquareConnection `json:"sandbox"`
-	Production          SquareConnection `json:"production"`
+	WebhookSignatureKey string `json:"webhookSignatureKey,omitempty"`
+	// WebhookURL is the notification URL registered for this org's Square
+	// webhook subscription. Square signs deliveries over (WebhookURL +
+	// rawBody); when empty the deployment falls back to SQUARE_WEBHOOK_URL
+	// and then the canonical commerce ingress URL.
+	WebhookURL string           `json:"webhookUrl,omitempty"`
+	Sandbox    SquareConnection `json:"sandbox"`
+	Production SquareConnection `json:"production"`
 }
 
 // WireTransfer holds bank wire transfer details for an organization

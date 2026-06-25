@@ -40,9 +40,13 @@ jobs:
           context: .
           file: Dockerfile.site
           push: ${{ github.event_name != 'pull_request' }}
+          # 0.2.0 = the nginx → hanzoai/static migration (canonical static
+          # plugin, no nginx). sha-<gitsha> is the immutable pin the
+          # commerce-site operator CR tracks; :latest is convenience only.
           tags: |
+            ghcr.io/hanzoai/commerce-site:0.2.0
+            ghcr.io/hanzoai/commerce-site:sha-${{ github.sha }}
             ghcr.io/hanzoai/commerce-site:latest
-            ghcr.io/hanzoai/commerce-site:${{ github.sha }}
           cache-from: type=gha,scope=site
           cache-to: type=gha,scope=site,mode=max
 

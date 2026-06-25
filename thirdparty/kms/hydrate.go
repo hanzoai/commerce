@@ -48,6 +48,7 @@ func mappings(orgName string) []secretMapping {
 		{square, "SQUARE_SANDBOX_APPLICATION_ID", func(o *organization.Organization, v string) { o.Square.Sandbox.ApplicationId = v }},
 		// Square — Webhook
 		{square, "SQUARE_WEBHOOK_SIGNATURE_KEY", func(o *organization.Organization, v string) { o.Square.WebhookSignatureKey = v }},
+		{square, "SQUARE_WEBHOOK_URL", func(o *organization.Organization, v string) { o.Square.WebhookURL = v }},
 
 		// AuthorizeNet — Live
 		{authnet, "AUTHORIZENET_LIVE_LOGIN_ID", func(o *organization.Organization, v string) { o.AuthorizeNet.Live.LoginId = v }},
