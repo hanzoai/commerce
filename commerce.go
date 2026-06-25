@@ -55,11 +55,12 @@ import (
 	"github.com/hanzoai/commerce/types"
 )
 
-// Version is the current version of Commerce
-const Version = "1.42.5"
-
-// GitCommit and BuildTime are set via -ldflags at build time
+// Version, GitCommit, and BuildTime are set via -ldflags at build time.
+// Version's default is the source-of-record release; CI overrides it with
+// the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
+// the running binary's /healthz version always equals its deployed tag.
 var (
+	Version   = "1.42.32"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
