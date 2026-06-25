@@ -259,3 +259,11 @@ require (
 // were necessary while the seam was unreleased; the modules now
 // resolve cleanly without them so the Docker build doesn't depend on
 // the local working tree.
+
+// go-sqlite3 v2.0.3+incompatible is a mistagged release that predates the
+// maintained v1.14.x line (the bad v2 major tag sorts above v1.14 under MVS,
+// so a transitive require from hanzoai/cloud drags it in). That old code
+// fails to compile against musl libc on Alpine — it references pread64/
+// pwrite64, which musl does not expose — breaking every linux/amd64 image
+// build. Pin to the current v1.14 patch, which compiles cleanly on musl.
+replace github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.47
