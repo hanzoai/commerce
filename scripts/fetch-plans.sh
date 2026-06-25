@@ -15,15 +15,40 @@
 
 set -eu
 
-PLANS_VERSION=${PLANS_VERSION:-1.1.5}
 DEST=$(cd "$(dirname "$0")/.." && pwd)/api/billing/plans
 TMP=$(mktemp -d)
+
+# Fetch the registry metadata once. We read both the latest dist-tag (when no
+# explicit PLANS_VERSION is requested) and the exact tarball URL for the
+# resolved version from it — the registry is authoritative for the tarball
+# path, so we never hand-build a URL that can 404 on a missing version.
+curl -fsSL "https://registry.npmjs.org/@hanzo/plans" -o "$TMP/meta.json"
+
+# Resolve version: explicit PLANS_VERSION wins, else the published "latest".
+PLANS_VERSION=${PLANS_VERSION:-$(
+  sed -n 's/.*"dist-tags":{[^}]*"latest":"\([^"]*\)".*/\1/p' "$TMP/meta.json"
+)}
+if [ -z "$PLANS_VERSION" ]; then
+  echo "fetch-plans: could not resolve @hanzo/plans latest version" >&2
+  exit 1
+fi
+
+# Extract the tarball URL for the resolved version from the metadata.
+TARBALL=$(
+  tr ',' '\n' < "$TMP/meta.json" \
+    | grep -F "/plans-${PLANS_VERSION}.tgz" \
+    | sed -n 's/.*"\(https:[^"]*plans-'"${PLANS_VERSION}"'\.tgz\)".*/\1/p' \
+    | head -n1
+)
+if [ -z "$TARBALL" ]; then
+  echo "fetch-plans: version ${PLANS_VERSION} not found in registry" >&2
+  exit 1
+fi
 
 mkdir -p "$DEST"
 rm -f "$DEST"/*.json
 
-curl -fsSL "https://registry.npmjs.org/@hanzo/plans/-/plans-${PLANS_VERSION}.tgz" \
-  -o "$TMP/plans.tgz"
+curl -fsSL "$TARBALL" -o "$TMP/plans.tgz"
 tar -xzf "$TMP/plans.tgz" -C "$TMP"
 cp "$TMP"/package/*.json "$DEST/"
 rm -rf "$TMP"
