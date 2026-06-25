@@ -33,6 +33,16 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/deposit", Deposit)
 	api.POST("/refund", Refund)
 
+	// SBOM-driven OSS-developer payout.
+	//   POST /sbom               — arcd build pipeline ingests an image's SBOM
+	//   GET  /sbom               — list stored SBOM records
+	//   GET  /oss-accruals       — per-line accrual ledger reads
+	//   GET  /oss-payout/summary — per-package payout rollup (disbursement view)
+	api.POST("/sbom", IngestSBOM)
+	api.GET("/sbom", ListSBOMs)
+	api.GET("/oss-accruals", ListOSSAccruals)
+	api.GET("/oss-payout/summary", GetOSSPayoutSummary)
+
 	// Meters
 	api.POST("/meters", CreateMeter)
 	api.GET("/meters", ListMeters)

@@ -20,12 +20,13 @@ type fakeCommerce struct {
 	method string
 	path   string
 	query  url.Values
-	auth   string
-	org    string
-	ctype  string
-	body   []byte
-	status int
-	reply  string
+	auth    string
+	org     string
+	testHdr string
+	ctype   string
+	body    []byte
+	status  int
+	reply   string
 }
 
 func (f *fakeCommerce) handler() http.HandlerFunc {
@@ -36,7 +37,8 @@ func (f *fakeCommerce) handler() http.HandlerFunc {
 		f.path = r.URL.Path
 		f.query = r.URL.Query()
 		f.auth = r.Header.Get("Authorization")
-		f.org = r.Header.Get("X-IAM-Org-Id")
+		f.org = r.Header.Get("X-Hanzo-Org")
+		f.testHdr = r.Header.Get("X-Hanzo-Test")
 		f.ctype = r.Header.Get("Content-Type")
 		f.body, _ = io.ReadAll(r.Body)
 		if f.status == 0 {
@@ -90,7 +92,7 @@ func TestAuthorize_Allows_WhenAvailablePositive(t *testing.T) {
 		t.Errorf("auth = %q, want Bearer svc-token", fc.auth)
 	}
 	if fc.org != "hanzo" {
-		t.Errorf("X-IAM-Org-Id = %q, want hanzo", fc.org)
+		t.Errorf("X-Hanzo-Org = %q, want hanzo", fc.org)
 	}
 }
 
@@ -174,6 +176,34 @@ func TestAuthorize_TierAware_DeniesWhenEffectiveZero(t *testing.T) {
 	}
 }
 
+func TestTestMode_SendsTestHeader(t *testing.T) {
+	fc := &fakeCommerce{reply: `{"available":1}`}
+	srv := httptest.NewServer(fc.handler())
+	defer srv.Close()
+
+	c := newClient(t, srv, metering.Config{Test: true})
+	if err := c.Authorize(context.Background(), metering.AuthInput{User: "meter-sandbox"}); err != nil {
+		t.Fatalf("Authorize: %v", err)
+	}
+	if fc.testHdr != "true" {
+		t.Errorf("Test mode must send X-Hanzo-Test: true, got %q", fc.testHdr)
+	}
+}
+
+func TestLiveMode_OmitsTestHeader(t *testing.T) {
+	fc := &fakeCommerce{reply: `{"available":1}`}
+	srv := httptest.NewServer(fc.handler())
+	defer srv.Close()
+
+	c := newClient(t, srv, metering.Config{}) // Test=false (production default)
+	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
+		t.Fatalf("Authorize: %v", err)
+	}
+	if fc.testHdr != "" {
+		t.Errorf("Live mode must NOT send X-Hanzo-Test (would write the wrong ledger), got %q", fc.testHdr)
+	}
+}
+
 func TestAuthorize_PerCallOrgOverride(t *testing.T) {
 	fc := &fakeCommerce{reply: `{"available":1}`}
 	srv := httptest.NewServer(fc.handler())
@@ -182,7 +212,7 @@ func TestAuthorize_PerCallOrgOverride(t *testing.T) {
 	c := newClient(t, srv, metering.Config{}) // default org hanzo
 	_ = c.Authorize(context.Background(), metering.AuthInput{User: "zoo/bob", Org: "zoo"})
 	if fc.org != "zoo" {
-		t.Errorf("per-call org override: X-IAM-Org-Id = %q, want zoo", fc.org)
+		t.Errorf("per-call org override: X-Hanzo-Org = %q, want zoo", fc.org)
 	}
 }
 
@@ -219,7 +249,7 @@ func TestRecord_PostsCanonicalPayload(t *testing.T) {
 		t.Errorf("auth = %q", fc.auth)
 	}
 	if fc.org != "hanzo" {
-		t.Errorf("X-IAM-Org-Id = %q, want hanzo", fc.org)
+		t.Errorf("X-Hanzo-Org = %q, want hanzo", fc.org)
 	}
 
 	// Verify the JSON body matches commerce's usageRequest field names.
