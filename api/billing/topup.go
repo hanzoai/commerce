@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
@@ -19,11 +21,94 @@ import (
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
+// Sentinel errors so callers (Topup HTTP handler, auto-recharge cron) can map a
+// charge outcome to the right HTTP status / log without re-deriving it.
+var (
+	errNoProcessor            = errors.New("no payment processor available")
+	errChargedButCreditFailed = errors.New("charge succeeded but balance credit failed")
+)
+
 type topupRequest struct {
 	UserID          string `json:"userId"`
 	PaymentMethodID string `json:"paymentMethodId"`
 	AmountCents     int64  `json:"amountCents"`
 	Currency        string `json:"currency,omitempty"`
+}
+
+// chargeAndCredit charges a saved payment method via the org's KMS-hydrated
+// processor registry and, on success, credits the user's prepaid balance with a
+// Deposit transaction. The org MUST already be KMS-hydrated by the caller (so
+// payment.ProcessorsForOrg sees real Square credentials). Returns the deposit
+// transaction id and the new balance.
+//
+// This is the single charge primitive reused by both the on-session top-up
+// (Topup) and the off-session auto-recharge cron. For a Square card-on-file the
+// SourceID is the saved card id (pm.ProviderRef) and CustomerID must be the
+// Square customer id — a card-on-file is only chargeable in its customer's
+// context (fall back to the org slug for legacy methods saved before card-on-file).
+func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, description string) (string, currency.Cents, error) {
+	squareCustomerID := pm.CustomerId
+	if pm.Metadata != nil {
+		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
+			squareCustomerID = v
+		}
+	}
+
+	ctx := middleware.GetContext(c)
+	chargeReq := processor.PaymentRequest{
+		Token:       pm.ProviderRef,
+		Amount:      currency.Cents(amountCents),
+		Currency:    cur,
+		CustomerID:  squareCustomerID,
+		Description: description,
+	}
+
+	// The global registry holds empty singletons (Square is registered
+	// unconfigured at init), so charges must go through the org-scoped registry.
+	reg := payment.ProcessorsForOrg(org)
+	proc, err := reg.SelectProcessor(ctx, chargeReq)
+	if err != nil {
+		return "", 0, fmt.Errorf("%w: %v", errNoProcessor, err)
+	}
+
+	result, err := proc.Charge(ctx, chargeReq)
+	if err != nil {
+		return "", 0, fmt.Errorf("charge failed: %w", err)
+	}
+	if !result.Success {
+		msg := result.ErrorMessage
+		if msg == "" {
+			msg = "charge declined"
+		}
+		return "", 0, errors.New(msg)
+	}
+
+	trans := transaction.New(db)
+	trans.Type = transaction.Deposit
+	trans.DestinationId = userId
+	trans.DestinationKind = "iam-user"
+	trans.Currency = cur
+	trans.Amount = currency.Cents(amountCents)
+	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
+	trans.Tags = "topup"
+	if !org.Live {
+		trans.Test = true
+	}
+	if err := trans.Create(); err != nil {
+		// Charge succeeded but credit failed — log with full context for manual reconciliation.
+		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
+			result.ProcessorRef, userId, err, c)
+		return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, err)
+	}
+
+	// Read back the new balance so the caller doesn't need a separate request.
+	var balanceCents currency.Cents
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, !org.Live); err == nil {
+		if data, ok := datas.Data[cur]; ok {
+			balanceCents = data.Balance
+		}
+	}
+	return trans.Id(), balanceCents, nil
 }
 
 // Topup charges a saved payment method and credits the user's balance.
@@ -77,85 +162,24 @@ func Topup(c *gin.Context) {
 		return
 	}
 
-	// Select a processor for the charge. For a Square card-on-file the SourceID
-	// is the saved card id (pm.ProviderRef) and CustomerID must be the Square
-	// customer id — a card-on-file is only chargeable in its customer's context.
-	// Fall back to the org slug for legacy methods saved before card-on-file.
-	squareCustomerID := pm.CustomerId
-	if pm.Metadata != nil {
-		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
-			squareCustomerID = v
-		}
-	}
-
-	ctx := middleware.GetContext(c)
-	chargeReq := processor.PaymentRequest{
-		Token:       pm.ProviderRef,
-		Amount:      currency.Cents(req.AmountCents),
-		Currency:    cur,
-		CustomerID:  squareCustomerID,
-		Description: fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID),
-	}
-
-	// Build a per-org processor registry from the org's KMS-hydrated payment
-	// credentials. The global registry holds empty singletons (Square is
-	// registered unconfigured at init), so charges must go through the
-	// org-scoped registry to reach the provider with real credentials.
-	reg := payment.ProcessorsForOrg(org)
-	proc, err := reg.SelectProcessor(ctx, chargeReq)
+	desc := fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID)
+	txID, balanceCents, err := chargeAndCredit(c, org, db, pm, req.AmountCents, cur, req.UserID, desc)
 	if err != nil {
-		log.Error("No processor available for topup: %v", err, c)
-		jsonhttp.Fail(c, 422, "no payment processor available", err)
-		return
-	}
-
-	result, err := proc.Charge(ctx, chargeReq)
-	if err != nil {
-		log.Error("Charge failed for topup (user=%s pm=%s): %v", req.UserID, req.PaymentMethodID, err, c)
-		jsonhttp.Fail(c, 402, "charge failed", err)
-		return
-	}
-	if !result.Success {
-		msg := result.ErrorMessage
-		if msg == "" {
-			msg = "charge declined"
+		switch {
+		case errors.Is(err, errNoProcessor):
+			log.Error("No processor available for topup: %v", err, c)
+			jsonhttp.Fail(c, 422, "no payment processor available", err)
+		case errors.Is(err, errChargedButCreditFailed):
+			jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
+		default:
+			log.Error("Charge failed for topup (user=%s pm=%s): %v", req.UserID, req.PaymentMethodID, err, c)
+			jsonhttp.Fail(c, 402, err.Error(), nil)
 		}
-		jsonhttp.Fail(c, 402, msg, nil)
 		return
-	}
-
-	// Credit the user's balance via a deposit transaction.
-	trans := transaction.New(db)
-	trans.Type = transaction.Deposit
-	trans.DestinationId = req.UserID
-	trans.DestinationKind = "iam-user"
-	trans.Currency = cur
-	trans.Amount = currency.Cents(req.AmountCents)
-	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
-	trans.Tags = "topup"
-
-	if !org.Live {
-		trans.Test = true
-	}
-
-	if err := trans.Create(); err != nil {
-		// Charge succeeded but credit failed — log with full context for manual reconciliation.
-		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
-			result.ProcessorRef, req.UserID, err, c)
-		jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
-		return
-	}
-
-	// Read back the new balance so the caller doesn't need a separate request.
-	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), req.UserID, "iam-user", cur, !org.Live); err == nil {
-		if data, ok := datas.Data[cur]; ok {
-			balanceCents = data.Balance
-		}
 	}
 
 	c.JSON(200, gin.H{
-		"transactionId": trans.Id(),
+		"transactionId": txID,
 		"balanceCents":  balanceCents,
 		"status":        "ok",
 	})
