@@ -47,6 +47,7 @@ import (
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	planModel "github.com/hanzoai/commerce/models/plan"
 	orgModel "github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/seed"
@@ -657,7 +658,34 @@ func (app *App) Bootstrap() error {
 			fmt.Fprintf(os.Stderr, "Warning: ZAP node failed to start: %v\n", zapErr)
 		} else {
 			app.ZAP = zapNode
-			fmt.Printf("ZAP node started on :%d (vector ops: 0x10=upsert, 0x11=search, 0x12=delete)\n", zapPort)
+			// Wire the ZAP-native SBOM ingest path (0x20). Stores via the SAME
+			// sbomrecord.Ingest used by the HTTP handler, in the global "system"
+			// namespace where SBOMs + OSS accruals live.
+			zapNode.RegisterSBOMIngest(func(ctx context.Context, p infra.SBOMIngestPayload) error {
+				db := commerceDatastore.New(ctx)
+				db.SetNamespace("system")
+				comps := make([]sbomrecord.Component, 0, len(p.Components))
+				for _, comp := range p.Components {
+					scope := comp.Scope
+					if scope != "direct" {
+						scope = "transitive"
+					}
+					comps = append(comps, sbomrecord.Component{
+						PURL: comp.PURL, Name: comp.Name, Ecosystem: comp.Ecosystem,
+						Version: comp.Version, Scope: scope,
+					})
+				}
+				in := sbomrecord.New(db)
+				in.ImageRef = p.ImageRef
+				in.ImageDigest = p.ImageDigest
+				in.Service = p.Service
+				in.Format = p.Format
+				in.Tool = p.Tool
+				in.Components = comps
+				_, err := sbomrecord.Ingest(db, in)
+				return err
+			})
+			fmt.Printf("ZAP node started on :%d (vector ops: 0x10=upsert, 0x11=search, 0x12=delete; sbom: 0x20=ingest)\n", zapPort)
 		}
 	}
 
