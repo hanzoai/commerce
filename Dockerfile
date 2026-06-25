@@ -127,14 +127,20 @@ COPY --from=billing-build /billing/out/ billing/ui/dist/
 # Pass `./cmd/commerce` (the package) instead of `./cmd/commerce/main.go`
 # so cloud_boot.go / cloud_stub.go / legacy.go get compiled into the
 # same binary alongside main.go.
+# VERSION is injected by CI (docker-deploy.yml) from the immutable image
+# tag so the binary's /healthz version == its deployed tag. Empty default
+# keeps commerce.Version's in-source default for local builds.
+ARG VERSION=""
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=secret,id=netrc,target=/root/.netrc \
     CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
+    VER="${VERSION#v}" && \
     go build -p=8 \
     -tags "cloud sqlite_omit_load_extension" \
     -ldflags="-s -w \
+      ${VER:+-X github.com/hanzoai/commerce.Version=${VER}} \
       -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sandboxfix) \
       -X github.com/hanzoai/commerce.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o /build/commerce \
