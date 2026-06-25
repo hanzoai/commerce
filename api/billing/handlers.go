@@ -183,11 +183,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dns.POST("/usage", RecordDNSUsage)
 	dns.GET("/usage/summary", GetDNSUsageSummary)
 
-
 	// Billing cycle automation (called by platform scheduler or manually)
 	api.POST("/cycle/run", RunBillingCycle)
 	api.POST("/cycle/run-user", RunBillingCycleUser)
 	api.POST("/cycle/run-all", RunBillingCycleAllOrgs)
+
+	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
+	// the default card for orgs whose balance dropped below their threshold.
+	api.POST("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
@@ -211,6 +214,10 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dnsUser := r.Group("dns")
 	dnsUser.Use(userRequired)
 	dnsUser.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
+
+	// Auto-recharge config (user-scoped; one per org)
+	user.GET("/auto-recharge", GetAutoRecharge)
+	user.PUT("/auto-recharge", SetAutoRecharge)
 
 	// Spend alerts (user-scoped CRUD)
 	user.GET("/spend-alerts", ListSpendAlerts)
