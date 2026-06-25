@@ -40,6 +40,9 @@ COPY . .
 ARG GO_EXPERIMENT=jsonv2
 ENV GOEXPERIMENT=${GO_EXPERIMENT}
 
+# VERSION injected by CI from the immutable image tag (see Dockerfile).
+ARG VERSION=""
+
 # Build the binary with CGO for SQLite support. Match the main Dockerfile:
 # -tags cloud, same ldflags shape. Non-vendored so luxfi/accel resolves its
 # out-of-package C headers (include/lux/accel/c_api.h) from the module cache.
@@ -47,9 +50,11 @@ RUN --mount=type=secret,id=gh_token \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/" && \
+    VER="${VERSION#v}" && \
     CGO_ENABLED=1 GOMAXPROCS=1 GOOS=linux GOARCH=${TARGETARCH} go build -p=1 \
     -tags cloud \
     -ldflags="-s -w \
+      ${VER:+-X github.com/hanzoai/commerce.Version=${VER}} \
       -X github.com/hanzoai/commerce.GitCommit=$(git rev-parse --short HEAD 2>/dev/null || echo sqfix) \
       -X github.com/hanzoai/commerce.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     -o /build/commerce \
