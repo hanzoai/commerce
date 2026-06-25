@@ -24,6 +24,13 @@ import (
 	square "github.com/hanzoai/commerce/thirdparty/square"
 )
 
+// defaultSquareWebhookURL is the canonical commerce ingress URL that Square
+// callbacks are delivered to. Square signs each delivery over this URL plus
+// the raw body, so it must match the URL registered in the Square dashboard.
+// Overridable per-org (org.Square.WebhookURL) or per-deployment
+// (SQUARE_WEBHOOK_URL) for non-production hosts.
+const defaultSquareWebhookURL = "https://commerce.hanzo.ai/v1/billing/webhooks/square"
+
 // ProcessorsForOrg returns a processor registry configured with the given
 // organization's payment credentials. Each processor is a fresh instance —
 // no shared state with other orgs or the global singleton registry.
@@ -52,6 +59,17 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		token := sqCfg.AccessToken
 		locationID := sqCfg.LocationId
 		webhookKey := org.Square.WebhookSignatureKey
+		// Notification URL that Square signs deliveries against. Prefer the
+		// org's configured value, then the deployment env, then the canonical
+		// commerce ingress URL. Must match the URL registered in the Square
+		// dashboard byte-for-byte or HMAC verification fails.
+		webhookURL := org.Square.WebhookURL
+		if webhookURL == "" {
+			webhookURL = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_URL"))
+		}
+		if webhookURL == "" {
+			webhookURL = defaultSquareWebhookURL
+		}
 		env := "production"
 		if !org.Live {
 			env = "sandbox"
@@ -96,6 +114,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 				AccessToken:   token,
 				LocationID:    locationID,
 				WebhookSecret: webhookKey,
+				WebhookURL:    webhookURL,
 				Environment:   env,
 			}))
 		}
