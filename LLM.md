@@ -262,7 +262,86 @@ currently broken (unbuilt workspace dists, a phantom `@kapaai/react-sdk` import,
 a `@/providers` alias); 0.2.0 re-serves the proven 0.0.1 assets — fix the app
 build before bumping content.
 
+## SBOM-driven OSS-developer payout (2026-06-25)
+
+Every deploy emits an SBOM; Hanzo pays upstream OSS developers **up to 25%** of
+all Hanzo cloud spend, attributed by the dependencies actually deployed. One
+pipeline, decomplected into orthogonal pieces.
+
+### The pipeline (one way, all images)
+
+```
+arcd build  --syft-->  CycloneDX SBOM  --normalize-->  POST /v1/billing/sbom
+  (deploy)             (per image digest)               (ZAP 0x20 OR HTTP)
+                                                              |
+org usage  -->  RecordUsage  --go-->  engine.AccrueOSSPayout  v
+(charge)        (existing)            (mirrors TrackRevenueShare)
+                                          |
+                  ossattr.Attribute(spend, SBOM pkgs, policy)   <= 25% pool
+                  ossfunding.Resolve(purl) -> maintainer target
+                                          |
+                                          v
+                  OSSAccrual ledger lines (per package, idempotent)
+                                          |
+                  GET /v1/billing/oss-payout/summary  (disbursement view)
+```
+
+### Components
+
+| Concern | Where | Notes |
+|--------|-------|-------|
+| **Attribution math** (the heart) | `ossattr/` (leaf, stdlib-only) | Pure `Attribute(spendCents, []Package, Policy) -> Result`. 25% cap is `ossattr.MaxPoolFraction` (code, not config). Pro-rata by weight; largest-remainder apportionment conserves the pool to the cent. Deterministic + sorted. |
+| **Policy** | `config/oss-payout.json` + `config/oss_payout.go` | `poolFraction` (clamped <=0.25), `directWeight` (1.0), `transitiveWeight` (0.25). Embedded JSON, `sync.Once` (mirrors referral-program.json). |
+| **Maintainer resolution** | `ossfunding/` (leaf) | `FromPURL` (pure, offline): github.com/<owner> PURLs -> `github_sponsors:<owner>`; golang.org/x/* -> `golang`; npm/pypi w/o VCS -> Unresolved -> **held**. Network FUNDING.yml/registry enrichment behind `Resolver` (out of hot path). |
+| **SBOM storage** | `models/sbomrecord/` | Per image digest; `Ingest()` is the ONE upsert (idempotent on digest), shared by HTTP + ZAP. Components are a noindex JSON blob. Global "system" namespace. |
+| **Accrual ledger** | `models/ossaccrual/` | Append-only per-package line; idempotency key = `ossattr.AccrualID(org, txn, purl)`. Status: pending\|held\|queued\|settled. "system" namespace (Hanzo->OSS liability, aggregated across orgs). |
+| **Accrual engine** | `billing/engine/osspayout.go` | `AccrueOSSPayout(...)` — fire-and-forget hook in `RecordUsage`, structural twin of `TrackRevenueShare`. Unions SBOM components, runs `ossattr.Attribute`, resolves funding, writes lines. |
+| **HTTP surface** | `api/billing/osspayout.go` | `POST /sbom`, `GET /sbom`, `GET /oss-accruals`, `GET /oss-payout/summary` (admin-token). |
+| **ZAP-native path** | `infra/zap_osspayout.go` | `OpSBOMIngest = 0x20` on the existing ZAP node; `RegisterSBOMIngest(store)` wired in commerce.go to the SAME `sbomrecord.Ingest`. |
+| **SBOM emit (build side)** | `arc/cmd/arcd/sbom.go` | `dockerBuilder.emitSBOM` after `docker push`: `syft <digest> -o cyclonedx-json` -> `normalizeSBOM` (pure; direct/transitive from the dep graph) -> POST. Env: `SBOM_INGEST_URL/TOKEN/ORG`. Best-effort (never fails the build). |
+
+### The 25% math
+
+`pool = floor(spend * min(poolFraction, 0.25))`. Each package weight =
+`base(scope) * criticality` (direct base 1.0, transitive 0.25, criticality
+default 1.0). `share_i = pool * weight_i / sum(weight_j)`, apportioned to integer
+cents so `sum(shares) == pool` exactly. Same PURL across SBOMs is de-duped
+(highest weight wins) so each package is paid once. No packages / zero weight ->
+whole pool **held**, never invented or lost.
+
+### Proven (tests, all green)
+
+- `ossattr`: cap enforced (incl. over-cap clamp), cent conservation over 5000
+  spends, direct=4x transitive, criticality, dedup, held-pool, determinism, big
+  spend exactness.
+- `ossfunding`: PURL->target resolution incl. held cases.
+- `billing/engine` (real SQLite): deploy SBOM -> $100 spend -> **2500c (25%)**
+  across 4 pkgs; gin direct=1000c->`github_sponsors:gin-gonic`(pending),
+  react transitive=250c->**held**; idempotent (2 fires -> 1 line); no-SBOM no-op.
+- `api/billing` (HTTP, real router): ingest -> summary rollup; cap + held +
+  resolution proven over the wire.
+- `arc/cmd/arcd`: `normalizeSBOM` CycloneDX->ingest with direct/transitive
+  graph tagging + PURL-less drop.
+
+### Money-out (designed, creds-gated — NO fake payouts)
+
+Accrual is real + provable now. Disbursement is a **separate** job that reads
+`GET /oss-payout/summary` (status=pending, resolved targets), batches by funding
+kind, pays, and flips lines pending->queued->settled (referencing a `Payout`).
+Rails are integration/creds-gated:
+- **GitHub Sponsors** — no programmatic payout API; needs the Sponsors GraphQL +
+  an org Sponsors account funding source. Per-maintainer sponsorship.
+- **Open Collective** — API for expenses/payouts; needs an OC account + API key.
+- **Stripe Connect** — `Transfer`/`Payout` to connected accounts; needs the
+  maintainer to onboard a connected account (KYC). Best general rail.
+All require: a funded Hanzo source account, per-rail API credentials in **KMS**
+(never plaintext), maintainer onboarding/KYC, tax handling (1099/W-8). The held
+pool waits until a target is resolved + onboarded.
+
 ## Gotchas
+
+- New ORM kinds MUST be registered in `util/hashid/kind.go` (monotonic, never
+  reorder) or `Create()` panics "Unknown kind" — `sbom-record`=262, `oss-accrual`=263.
 
 - Healthcheck: use `curl -f` not `wget --spider` (Gin only handles GET)
 - `go-sqlite3` must be pinned to v1.14.x (`replace` in go.mod) — the transitive
