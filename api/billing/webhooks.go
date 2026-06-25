@@ -176,7 +176,14 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 		return
 	}
 
-	paymentID, _ := event.Data["id"].(string)
+	// Square nests the changed resource under data.object.<kind> (e.g.
+	// data.object.payment for payment.* events). The processor passes
+	// data.object through as event.Data, so unwrap the payment object here.
+	// Fall back to event.Data itself for processors that put fields at the
+	// top level.
+	pay := unwrapObject(event.Data, "payment")
+
+	paymentID := stringField(pay, "id")
 	if paymentID == "" {
 		return
 	}
@@ -184,8 +191,7 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 	// Only act on terminal success. Square reports COMPLETED/CAPTURED; other
 	// processors use lowercase. Treat payment.completed as already terminal.
 	if event.Type == "payment.updated" {
-		status, _ := event.Data["status"].(string)
-		switch strings.ToUpper(strings.TrimSpace(status)) {
+		switch strings.ToUpper(stringField(pay, "status")) {
 		case "COMPLETED", "CAPTURED", "APPROVED":
 			// settled — continue
 		default:
@@ -197,10 +203,10 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 	// reference_id (set to the order/user at charge time); fall back to the
 	// customer object when present.
 	user := firstNonEmpty(
-		stringField(event.Data, "reference_id"),
-		stringField(event.Data, "referenceId"),
-		stringField(event.Data, "customer_id"),
-		stringField(event.Data, "customerId"),
+		stringField(pay, "reference_id"),
+		stringField(pay, "referenceId"),
+		stringField(pay, "customer_id"),
+		stringField(pay, "customerId"),
 	)
 	if user == "" {
 		log.Warn("settlement %s: no user reference on payment, recorded event only", paymentID)
@@ -216,7 +222,7 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 		return
 	}
 
-	amount, cur := settlementAmount(event.Data)
+	amount, cur := settlementAmount(pay)
 	if amount <= 0 {
 		log.Warn("settlement %s: non-positive amount, recorded event only", paymentID)
 		return
@@ -257,6 +263,16 @@ func settlementAmount(data Map) (currency.Cents, currency.Type) {
 		cur = currency.Type(strings.ToLower(c))
 	}
 	return currency.Cents(numberField(data, "amount")), cur
+}
+
+// unwrapObject returns data[key] as a map when present (Square nests the
+// changed resource one level deep, e.g. data.object.payment), otherwise the
+// data map itself (processors that expose fields at the top level).
+func unwrapObject(data Map, key string) map[string]interface{} {
+	if inner, ok := data[key].(map[string]interface{}); ok {
+		return inner
+	}
+	return data
 }
 
 func stringField(m map[string]interface{}, key string) string {
