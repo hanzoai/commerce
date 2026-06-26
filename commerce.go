@@ -60,7 +60,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.42.32"
+	Version   = "1.42.36"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -814,7 +814,9 @@ func (app *App) setupRoutes() {
 		api.Use(middleware.ErrorHandlerJSON())
 		api.Use(middleware.AccessControl("*"))
 
-		// IAM JWT validation middleware (falls through to legacy auth if not IAM token)
+		// IAM JWT validation middleware (falls through to legacy auth if not IAM token).
+		// EdgeAuth (strip client identity + mint from verified JWT) runs globally in
+		// server.go mountIdentity, BEFORE pkg/auth.Gin, so it already covers this group.
 		if app.config.IAM.Enabled {
 			api.Use(iammiddleware.IAMTokenRequired())
 		}
