@@ -17,10 +17,10 @@ func login(c *gin.Context) {
 	if iam == "" {
 		iam = "https://hanzo.id"
 	}
-	c.Header("Location", iam+"/oauth/authorize")
+	c.Header("Location", iam+"/v1/iam/oauth/authorize")
 	c.JSON(http.StatusGone, gin.H{
 		"error":      "endpoint_deprecated",
 		"message":    "Dashboard auth is now via Hanzo IAM. Use the IAM OAuth flow.",
-		"redirectTo": iam + "/oauth/authorize",
+		"redirectTo": iam + "/v1/iam/oauth/authorize",
 	})
 }
