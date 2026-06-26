@@ -252,6 +252,12 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	user.POST("/credit", GrantStarterCredit)
 
+	// Transaction ledger (read-only, user-scoped). Registered here so it
+	// lives under the CORS-enabled API group; an unregistered route hits
+	// gin NoRoute (404, no Access-Control-Allow-Origin) and the browser
+	// reports it as a CORS failure rather than an honest empty list.
+	user.GET("/transactions", ListTransactions)
+
 	// Withdraw (user-initiated: move funds out of Commerce balance).
 	// Used by bot wallet funding (source=usd) to deduct from user's account.
 	// Non-admin callers may only withdraw from their own account.
