@@ -816,6 +816,11 @@ func (app *App) setupRoutes() {
 
 		// IAM JWT validation middleware (falls through to legacy auth if not IAM token)
 		if app.config.IAM.Enabled {
+			// Standalone-edge boundary first (no-op unless COMMERCE_EDGE_AUTH=true):
+			// strip client-supplied identity headers and re-mint them from a
+			// verified Bearer JWT, so a directly-exposed commerce-api can't be
+			// spoofed with a bare X-Org-Id header. MUST precede IAMTokenRequired.
+			api.Use(middleware.EdgeAuth(iammiddleware.Client()))
 			api.Use(iammiddleware.IAMTokenRequired())
 		}
 
