@@ -109,9 +109,17 @@ func EdgeAuth() gin.HandlerFunc {
 				c.Request.Header.Set("X-User-Permissions", permsHeader(claims))
 
 				// (3) Per-org isolation: the browser never chooses whose
-				// billing it reads — lock the subject to its own org slug.
+				// billing it reads — the subject is locked to the caller's
+				// own org slug. A GLOBAL ADMIN (and only a global admin) may
+				// redirect the view to another org via ?org=<slug>; for
+				// everyone else the override is consumed-and-ignored so
+				// isolation can never be weakened (fail-closed).
 				if strings.Contains(c.Request.URL.Path, "/billing/") {
-					lockBillingSubject(c.Request, strings.ToLower(strings.TrimSpace(claims.Owner)))
+					subject, override := resolveBillingSubject(c.Request, claims)
+					if override {
+						c.Request.Header.Set("X-Org-Id", subject)
+					}
+					lockBillingSubject(c.Request, subject)
 				}
 			}
 		}
@@ -168,4 +176,79 @@ func lockBillingSubject(r *http.Request, orgSlug string) {
 	if changed {
 		r.URL.RawQuery = q.Encode()
 	}
+}
+
+// resolveBillingSubject decides whose billing a verified request may read,
+// and whether the org namespace header must follow that choice.
+//
+// Default (every caller): the subject is the caller's OWN org slug
+// (claims.Owner) — strict per-org isolation. A global admin, and ONLY a
+// global admin, may redirect the view to another org with ?org=<slug>.
+//
+// The ?org override is consumed (stripped from the query) unconditionally so
+// it can never reach a handler as anything but the admin-gated signal decided
+// here. It is HONORED only when isGlobalAdmin(claims) holds; a non-admin's
+// ?org is read, discarded, and the subject stays pinned to their own org.
+// Returns (subject, override) where override means the namespace header
+// (X-Org-Id) must be re-pointed at subject.
+func resolveBillingSubject(r *http.Request, claims *auth.IAMClaims) (string, bool) {
+	own := strings.ToLower(strings.TrimSpace(claims.Owner))
+	reqOrg := consumeOrgOverride(r)
+	if reqOrg != "" && isGlobalAdmin(claims) {
+		return reqOrg, true
+	}
+	return own, false
+}
+
+// isGlobalAdmin reports whether the verified claims belong to a real
+// platform-wide administrator. Two independent signals, either suffices:
+//   - the explicit isGlobalAdmin JWT claim; or
+//   - membership in the global admin org (Owner == "admin"), the slug Hanzo
+//     IAM seeds global admins into.
+//
+// Plain IsAdmin is deliberately NOT trusted: it is an ORG-level role (an org
+// owner carries IsAdmin=true within their own org), so gating cross-org reads
+// on it would let any org owner view another org via ?org= — the exact
+// isolation break this boundary exists to stop.
+func isGlobalAdmin(claims *auth.IAMClaims) bool {
+	if claims == nil {
+		return false
+	}
+	return claims.IsGlobalAdmin || strings.EqualFold(strings.TrimSpace(claims.Owner), "admin")
+}
+
+// consumeOrgOverride removes and returns a normalized ?org=<slug> billing-view
+// override. It ALWAYS deletes the param (so it never leaks downstream) and
+// returns "" when the param is absent or not a syntactically valid org slug.
+func consumeOrgOverride(r *http.Request) string {
+	q := r.URL.Query()
+	if !q.Has("org") {
+		return ""
+	}
+	raw := strings.ToLower(strings.TrimSpace(q.Get("org")))
+	q.Del("org")
+	r.URL.RawQuery = q.Encode()
+	if !validOrgSlug(raw) {
+		return ""
+	}
+	return raw
+}
+
+// validOrgSlug accepts the lowercase [a-z0-9-] org-slug shape (1–63 chars,
+// must start alphanumeric). Rejects anything else so a crafted ?org can't
+// smuggle separators or path characters into the locked subject.
+func validOrgSlug(s string) bool {
+	if len(s) == 0 || len(s) > 63 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c >= 'a' && c <= 'z', c >= '0' && c <= '9':
+		case c == '-' && i > 0:
+		default:
+			return false
+		}
+	}
+	return true
 }
