@@ -297,7 +297,7 @@ func (c *IAMClient) GetAuthorizationURL(state string, nonce string) (string, err
 	discovery, err := c.getDiscovery(context.Background())
 	if err != nil {
 		// Fallback to constructed URL if discovery fails
-		authURL := c.config.Issuer + "/oauth/authorize"
+		authURL := c.config.Issuer + "/v1/iam/oauth/authorize"
 		return c.buildAuthURL(authURL, state, nonce), nil
 	}
 
@@ -326,7 +326,7 @@ func (c *IAMClient) buildAuthURL(authEndpoint, state, nonce string) string {
 
 // ExchangeCode exchanges an authorization code for tokens.
 func (c *IAMClient) ExchangeCode(ctx context.Context, code string) (*TokenResponse, error) {
-	tokenURL := c.config.Issuer + "/oauth/token"
+	tokenURL := c.config.Issuer + "/v1/iam/oauth/access_token"
 
 	// Try to use discovered endpoint
 	discovery, err := c.getDiscovery(ctx)
@@ -385,7 +385,7 @@ func (c *IAMClient) ExchangeCode(ctx context.Context, code string) (*TokenRespon
 
 // RefreshToken exchanges a refresh token for new tokens.
 func (c *IAMClient) RefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
-	tokenURL := c.config.Issuer + "/oauth/token"
+	tokenURL := c.config.Issuer + "/v1/iam/oauth/access_token"
 
 	data := url.Values{
 		"grant_type":    {"refresh_token"},
@@ -557,7 +557,7 @@ func (c *IAMClient) GetUserInfo(ctx context.Context, accessToken string) (*IAMUs
 
 // IntrospectToken introspects a token to check its validity.
 func (c *IAMClient) IntrospectToken(ctx context.Context, token string, tokenTypeHint string) (*IntrospectionResponse, error) {
-	introspectURL := c.config.Issuer + "/oauth/introspect"
+	introspectURL := c.config.Issuer + "/v1/iam/oauth/introspect"
 
 	// Try to use discovered endpoint
 	discovery, err := c.getDiscovery(ctx)
