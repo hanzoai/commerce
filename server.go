@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/pkg/auth"
 	"github.com/hanzoai/commerce/ui"
 )
@@ -25,6 +26,15 @@ func mountIdentity(app *App, require bool) {
 	if app == nil || app.Router == nil {
 		return
 	}
+	// EdgeAuth MUST precede auth.Gin: at a directly-exposed commerce-api
+	// (not behind hanzoai/gateway) it strips client-supplied identity
+	// headers and re-mints X-Org-Id / X-User-* from a verified IAM Bearer
+	// JWT. auth.Gin then binds those (cleaned/minted) headers to the
+	// request context. Running it after auth.Gin would leave a spoofed
+	// X-Org-Id in the context even after the header is stripped. No-op
+	// unless COMMERCE_EDGE_AUTH=true (gateway-fronted deploys keep one
+	// upstream trust boundary).
+	app.Router.Use(middleware.EdgeAuth())
 	app.Router.Use(auth.Gin(require))
 
 	// SPA mounts at /_/commerce/ui/*. The neighbouring JSON admin routes
