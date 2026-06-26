@@ -13,8 +13,8 @@ export default function CallbackPage() {
 
   useEffect(() => {
     // Dynamic import to avoid SSR issues with Web Crypto APIs
-    import('@hanzo/iam/browser').then(({ BrowserIamSdk }) => {
-      const sdk = new BrowserIamSdk({
+    import('@hanzo/iam/browser').then(({ IAM }) => {
+      const sdk = new IAM({
         serverUrl: IAM_SERVER,
         clientId: CLIENT_ID,
         redirectUri: `${window.location.origin}/callback`,
