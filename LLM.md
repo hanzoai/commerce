@@ -45,6 +45,20 @@ Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false. Missing
 X-User-Permissions -> bit.Field(0). Identity headers absent -> handler
 chain falls through to legacy auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
 
+### EdgeAuth admin billing-view override (middleware/edgeauth.go, 1.42.36+)
+
+At the standalone edge (COMMERCE_EDGE_AUTH=true) EdgeAuth normally locks every
+`/billing/` request to the caller's OWN org (X-Org-Id + user/userId/customerId
+== claims.Owner) — strict per-org isolation. A GLOBAL ADMIN may retarget the
+view to another org via `?org=<slug>`: `resolveBillingSubject()` sets both the
+namespace (X-Org-Id) and the locked subject to the requested org. The override
+is HONORED only when `isGlobalAdmin(claims)` holds — `claims.IsGlobalAdmin` OR
+`claims.Owner=="admin"` (NOT plain `IsAdmin`, which is an org-level role: an org
+owner like maxpower has it). For everyone else the `?org` param is
+consumed-and-ignored (stripped, never honored) so isolation can never be
+weakened. Tests: middleware/edgeauth_test.go (admin-switch, non-admin-isolation,
+bad-slug reject). `auth.IAMClaims` carries `IsGlobalAdmin` (json `isGlobalAdmin`).
+
 Call sites read identity via:
 - `pkg/auth.OrgID(ctx)` / `UserID(ctx)` / `UserEmail(ctx)` (preferred)
 - `iammiddleware.GetIAMClaims(c)` returns a real `*auth.IAMClaims` populated from
