@@ -44,15 +44,32 @@ type KVCache = org.KVCache
 var (
 	mu          sync.RWMutex
 	initialized bool
+	iamClient   *auth.IAMClient
 )
 
-// Init is a no-op kept for source-compat with the legacy bootstrap
-// call (commerce.go calls it with auth.IAMConfig). The trust boundary
-// is now the gateway, not this binary.
-func Init(_ *auth.IAMConfig) error {
+// Init builds the IAM client used by the directly-exposed commerce-api
+// edge — the surfaces that face a raw user Bearer JWT instead of
+// gateway-minted headers: EdgeAuth (middleware/edgeauth.go) and the
+// /admin/billing UI gate (billing/handler.go). It verifies tokens
+// against the IAM JWKS. The gateway-trust middleware chain
+// (IAMTokenRequired) is unchanged — it still reads validated headers.
+//
+// A nil config or a build error leaves the client nil, so those edge
+// surfaces fail closed (every request treated as unauthorized).
+func Init(cfg *auth.IAMConfig) error {
 	mu.Lock()
 	defer mu.Unlock()
 	initialized = true
+	if cfg == nil {
+		iamClient = nil
+		return nil
+	}
+	cl, err := auth.NewIAMClient(cfg)
+	if err != nil {
+		iamClient = nil
+		return err
+	}
+	iamClient = cl
 	return nil
 }
 
@@ -65,13 +82,14 @@ func InitKV(kv KVCache) { org.Bind(kv) }
 // against the same JWKS the /v1 middleware uses. Fail-closed: a nil return
 // means "treat every request as unauthenticated".
 //
-// NOTE: returns nil unconditionally on this build — the legacy IAM
-// JWKS client has been retired in favor of gateway-trusted headers.
-// SPA call sites that still call Client() get a nil and fall through
-// to their own header-based identity path. Wire a real client back in
-// here if a non-gateway entry point ever needs JWKS validation again.
+// Returns the client built by Init from the IAM config, or nil when IAM
+// is disabled / misconfigured (fail-closed at the call site). This is the
+// non-gateway entry point hook: commerce-api.hanzo.ai is exposed directly
+// (not behind hanzoai/gateway), so its edge surfaces verify the JWT here.
 func Client() *auth.IAMClient {
-	return nil
+	mu.RLock()
+	defer mu.RUnlock()
+	return iamClient
 }
 
 // orgCacheKey returns the KV key for an IAM owner → org ID mapping.
