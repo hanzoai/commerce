@@ -223,10 +223,15 @@ type IAMClaims struct {
 	Azp       string `json:"azp,omitempty"` // Authorized party
 
 	// Authorization
-	IsAdmin     bool      `json:"isAdmin,omitempty"`
-	Groups      []string  `json:"groups,omitempty"`
-	Roles       FlexRoles `json:"roles,omitempty"`
-	Permissions []string  `json:"permissions,omitempty"`
+	IsAdmin bool `json:"isAdmin,omitempty"`
+	// IsGlobalAdmin is the platform-wide superadmin flag from IAM. Unlike
+	// IsAdmin (an ORG-level role — an org owner has IsAdmin=true within
+	// their own org), this is true ONLY for global administrators. It is the
+	// one claim safe to gate cross-org actions on.
+	IsGlobalAdmin bool      `json:"isGlobalAdmin,omitempty"`
+	Groups        []string  `json:"groups,omitempty"`
+	Roles         FlexRoles `json:"roles,omitempty"`
+	Permissions   []string  `json:"permissions,omitempty"`
 
 	// User properties (arbitrary key-value pairs from IAM).
 	// The "tier" property is used for tiered billing (free/starter/pro/enterprise).
