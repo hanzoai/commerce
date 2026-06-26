@@ -28,17 +28,17 @@ type HanzoIDConfig struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
-	AuthURL      string // Default: https://hanzo.id/oauth/authorize
-	TokenURL     string // Default: https://hanzo.id/oauth/token
-	UserInfoURL  string // Default: https://hanzo.id/api/userinfo
+	AuthURL      string // Default: https://hanzo.id/v1/iam/oauth/authorize
+	TokenURL     string // Default: https://hanzo.id/v1/iam/oauth/access_token
+	UserInfoURL  string // Default: https://hanzo.id/v1/iam/userinfo
 	Scopes       []string
 }
 
 // DefaultHanzoIDConfig returns default hanzo.id configuration
 func DefaultHanzoIDConfig() *HanzoIDConfig {
 	return &HanzoIDConfig{
-		AuthURL:     "https://hanzo.id/oauth/authorize",
-		TokenURL:    "https://hanzo.id/oauth/token",
+		AuthURL:     "https://hanzo.id/v1/iam/oauth/authorize",
+		TokenURL:    "https://hanzo.id/v1/iam/oauth/access_token",
 		UserInfoURL: "https://hanzo.id/v1/iam/userinfo",
 		Scopes:      []string{"openid", "profile", "email"},
 	}
@@ -54,10 +54,10 @@ type OAuthService struct {
 // NewOAuthService creates a new OAuth service
 func NewOAuthService(config *HanzoIDConfig, service *Service) *OAuthService {
 	if config.AuthURL == "" {
-		config.AuthURL = "https://hanzo.id/oauth/authorize"
+		config.AuthURL = "https://hanzo.id/v1/iam/oauth/authorize"
 	}
 	if config.TokenURL == "" {
-		config.TokenURL = "https://hanzo.id/oauth/token"
+		config.TokenURL = "https://hanzo.id/v1/iam/oauth/access_token"
 	}
 	if config.UserInfoURL == "" {
 		config.UserInfoURL = "https://hanzo.id/v1/iam/userinfo"
