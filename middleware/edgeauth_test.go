@@ -16,7 +16,7 @@ func init() { gin.SetMode(gin.TestMode) }
 // removed so it can't impersonate an org via the header-trust path.
 func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth(nil)
+	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance?user=hanzo&currency=usd", nil)
 	req.Header.Set("X-Org-Id", "hanzo")
@@ -38,7 +38,7 @@ func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 // unaffected: with the flag off, identity headers pass through untouched.
 func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "")
-	h := EdgeAuth(nil)
+	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance", nil)
 	req.Header.Set("X-Org-Id", "hanzo")
@@ -57,7 +57,7 @@ func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {
 // header is stripped and nothing is trusted in its place.
 func TestEdgeAuth_NilClientNeverMints(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth(nil)
+	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance", nil)
 	req.Header.Set("Authorization", "Bearer a.b.c")
