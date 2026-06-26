@@ -18,8 +18,8 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     // Dynamic import to avoid SSR issues with Web Crypto APIs
-    const { BrowserIamSdk } = await import('@hanzo/iam/browser')
-    const sdk = new BrowserIamSdk({
+    const { IAM } = await import('@hanzo/iam/browser')
+    const sdk = new IAM({
       serverUrl: IAM_SERVER,
       clientId: CLIENT_ID,
       redirectUri: `${window.location.origin}/callback`,

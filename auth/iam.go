@@ -223,10 +223,15 @@ type IAMClaims struct {
 	Azp       string `json:"azp,omitempty"` // Authorized party
 
 	// Authorization
-	IsAdmin     bool      `json:"isAdmin,omitempty"`
-	Groups      []string  `json:"groups,omitempty"`
-	Roles       FlexRoles `json:"roles,omitempty"`
-	Permissions []string  `json:"permissions,omitempty"`
+	IsAdmin bool `json:"isAdmin,omitempty"`
+	// IsGlobalAdmin is the platform-wide superadmin flag from IAM. Unlike
+	// IsAdmin (an ORG-level role — an org owner has IsAdmin=true within
+	// their own org), this is true ONLY for global administrators. It is the
+	// one claim safe to gate cross-org actions on.
+	IsGlobalAdmin bool      `json:"isGlobalAdmin,omitempty"`
+	Groups        []string  `json:"groups,omitempty"`
+	Roles         FlexRoles `json:"roles,omitempty"`
+	Permissions   []string  `json:"permissions,omitempty"`
 
 	// User properties (arbitrary key-value pairs from IAM).
 	// The "tier" property is used for tiered billing (free/starter/pro/enterprise).
@@ -483,27 +488,35 @@ func (c *IAMClient) ValidateToken(ctx context.Context, tokenString string) (*IAM
 		return nil, fmt.Errorf("%w: token not issued for this client", ErrInvalidAudience)
 	}
 
-	// Try to validate signature with JWKS
-	// This is optional - if JWKS fetch fails, we still return claims for development/testing
-	if jwks, err := c.getJWKS(ctx); err == nil && jwks != nil {
-		kid := ""
-		if kidHeader, ok := token.Header["kid"].(string); ok {
-			kid = kidHeader
+	// Verify the token signature against the IAM JWKS. REQUIRED — fail
+	// closed. commerce-api is a directly-exposed trust boundary
+	// (commerce-api.hanzo.ai is NOT behind hanzoai/gateway), so a token
+	// whose RS256 signature we cannot verify is rejected. The prior code
+	// returned UNVERIFIED claims whenever the JWKS was unreachable or the
+	// kid was unknown — a forged token slipped through on any JWKS hiccup.
+	jwks, err := c.getJWKS(ctx)
+	if err != nil || jwks == nil {
+		return nil, fmt.Errorf("%w: JWKS unavailable: %v", ErrInvalidToken, err)
+	}
+	kid, _ := token.Header["kid"].(string)
+	key := c.findKey(jwks, kid)
+	if key == nil {
+		return nil, fmt.Errorf("%w: no signing key for kid %q", ErrInvalidToken, kid)
+	}
+	verifiedToken, err := jwt.ParseWithClaims(tokenString, &IAMClaims{}, func(t *jwt.Token) (interface{}, error) {
+		// Pin RSA — never let a token pick HS256/none and turn the public
+		// key into a shared HMAC secret (alg-confusion).
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method %q", t.Header["alg"])
 		}
-
-		if key := c.findKey(jwks, kid); key != nil {
-			// Re-parse with verification
-			verifiedToken, err := jwt.ParseWithClaims(tokenString, &IAMClaims{}, func(t *jwt.Token) (interface{}, error) {
-				return key, nil
-			})
-			if err != nil {
-				return nil, fmt.Errorf("%w: signature verification failed: %v", ErrInvalidToken, err)
-			}
-			claims, ok = verifiedToken.Claims.(*IAMClaims)
-			if !ok || !verifiedToken.Valid {
-				return nil, ErrInvalidToken
-			}
-		}
+		return key, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: signature verification failed: %v", ErrInvalidToken, err)
+	}
+	claims, ok = verifiedToken.Claims.(*IAMClaims)
+	if !ok || !verifiedToken.Valid {
+		return nil, ErrInvalidToken
 	}
 
 	// Validate time claims
