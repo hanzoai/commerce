@@ -14,6 +14,7 @@ import (
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
@@ -55,7 +56,16 @@ var identityHeaders = []string{
 // untouched: they are not JWTs, so step 2 skips them and the existing
 // TokenRequired service-token branch authorizes them as before (those
 // callers carry X-Hanzo-Org, never X-Org-Id).
-func EdgeAuth(iam *auth.IAMClient) gin.HandlerFunc {
+//
+// ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (server.go mountIdentity).
+// auth.Gin binds the X-Org-Id header into the request CONTEXT; if EdgeAuth
+// ran after it, stripping the header would leave the spoofed value in the
+// context (which IAMTokenRequired reads first). Mounting EdgeAuth first
+// means auth.Gin only ever sees the stripped/minted headers.
+//
+// The IAM client is resolved lazily (iammiddleware.Client()) so mount
+// order is independent of when iammiddleware.Init() runs at boot.
+func EdgeAuth() gin.HandlerFunc {
 	enabled := os.Getenv("COMMERCE_EDGE_AUTH") == "true"
 	return func(c *gin.Context) {
 		if !enabled {
@@ -70,6 +80,7 @@ func EdgeAuth(iam *auth.IAMClient) gin.HandlerFunc {
 
 		// (2) Mint identity from a verified IAM JWT, if one is present.
 		tok := bearerToken(c.Request.Header.Get("Authorization"))
+		iam := iammiddleware.Client()
 		if iam != nil && looksLikeJWT(tok) {
 			ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
 			claims, err := iam.ValidateToken(ctx, tok)
