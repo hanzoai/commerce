@@ -22,11 +22,11 @@ func login(c *gin.Context) {
 	if iam == "" {
 		iam = "https://hanzo.id"
 	}
-	c.Header("Location", iam+"/oauth/authorize")
+	c.Header("Location", iam+"/v1/iam/oauth/authorize")
 	c.JSON(http.StatusGone, gin.H{
 		"error":      "endpoint_deprecated",
 		"message":    "Commerce no longer issues passwords. Use Hanzo IAM (hanzo.id) and pass a Bearer token.",
-		"redirectTo": iam + "/oauth/authorize",
+		"redirectTo": iam + "/v1/iam/oauth/authorize",
 		"docs":       "https://docs.hanzo.ai/iam/oauth",
 	})
 }
