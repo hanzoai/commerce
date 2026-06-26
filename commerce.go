@@ -814,13 +814,10 @@ func (app *App) setupRoutes() {
 		api.Use(middleware.ErrorHandlerJSON())
 		api.Use(middleware.AccessControl("*"))
 
-		// IAM JWT validation middleware (falls through to legacy auth if not IAM token)
+		// IAM JWT validation middleware (falls through to legacy auth if not IAM token).
+		// EdgeAuth (strip client identity + mint from verified JWT) runs globally in
+		// server.go mountIdentity, BEFORE pkg/auth.Gin, so it already covers this group.
 		if app.config.IAM.Enabled {
-			// Standalone-edge boundary first (no-op unless COMMERCE_EDGE_AUTH=true):
-			// strip client-supplied identity headers and re-mint them from a
-			// verified Bearer JWT, so a directly-exposed commerce-api can't be
-			// spoofed with a bare X-Org-Id header. MUST precede IAMTokenRequired.
-			api.Use(middleware.EdgeAuth(iammiddleware.Client()))
 			api.Use(iammiddleware.IAMTokenRequired())
 		}
 
