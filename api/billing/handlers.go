@@ -188,6 +188,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/cycle/run-user", RunBillingCycleUser)
 	api.POST("/cycle/run-all", RunBillingCycleAllOrgs)
 
+	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
+	// the default card for orgs whose balance dropped below their threshold.
+	api.POST("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
+
+	// Test mode toggle (admin only): move an org between Square sandbox and
+	// production for end-to-end testing with sandbox cards.
+	api.POST("/test-mode", SetOrgTestMode)
+
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
 	// IAM tokens bypass the adminRequired guard above via IsIAMAuthenticated,
@@ -201,6 +209,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Card tokenization — S2S (no provider SDK on frontend)
 	user.POST("/card/tokenize", TokenizeCard)
 
+	// Public Square config for THIS org's Web Payments SDK (sandbox for test
+	// orgs, production for live orgs) — so the browser tokenizes against the
+	// same Square account commerce vaults/charges with.
+	user.GET("/payment-config", GetPaymentConfig)
+
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
 	user.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
@@ -210,6 +223,10 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dnsUser := r.Group("dns")
 	dnsUser.Use(userRequired)
 	dnsUser.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
+
+	// Auto-recharge config (user-scoped; one per org)
+	user.GET("/auto-recharge", GetAutoRecharge)
+	user.PUT("/auto-recharge", SetAutoRecharge)
 
 	// Spend alerts (user-scoped CRUD)
 	user.GET("/spend-alerts", ListSpendAlerts)
@@ -235,9 +252,12 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 	user.POST("/credit", GrantStarterCredit)
 
-	// Transaction history (read-only, user-scoped). Derives identity from the
-	// IAM org/user in context like the sibling reads above. Called by
+	// Transaction history / ledger (read-only, user-scoped). Derives identity
+	// from the IAM org/user in context like the sibling reads above. Called by
 	// billing.hanzo.ai's Transactions tab as GET /v1/billing/transactions.
+	// Registered here so it lives under the CORS-enabled API group; an
+	// unregistered route hits gin NoRoute (404, no Access-Control-Allow-Origin)
+	// and the browser reports it as a CORS failure rather than an honest empty list.
 	user.GET("/transactions", ListTransactions)
 
 	// Withdraw (user-initiated: move funds out of Commerce balance).

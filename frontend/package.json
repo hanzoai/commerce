@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hanzo/iam": "^0.9.4",
+    "@hanzo/iam": "^0.13.1",
     "@hanzogui/admin": "file:../../gui/pkgs/ui-admin",
     "@hanzogui/config": "file:../../gui/pkgs/core/config",
     "@hanzogui/lucide-icons-2": "file:../../gui/pkgs/packages/lucide-icons",
