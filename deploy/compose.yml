@@ -305,7 +305,7 @@ services:
       - clickhouse_logs:/var/log/clickhouse-server
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "datastore client", "--query", "SELECT 1"]
+      test: ["CMD", "datastore-client", "--query", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 5
