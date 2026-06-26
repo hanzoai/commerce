@@ -14,7 +14,6 @@ import (
 
 	commerce "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api/api"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 )
 
@@ -55,15 +54,10 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// for the entire life of commerce. The fix is to mount routes
 	// imperatively on the live *gin.Engine the moment Embed returns.
 	apiGroup := srv.App().Router.Group("/v1")
-	// Standalone-edge trust boundary (COMMERCE_EDGE_AUTH=true). commerce-api
-	// is exposed directly (NOT behind hanzoai/gateway), so it must strip
-	// client-supplied identity headers and re-mint X-Org-Id / X-User-* from
-	// a verified IAM Bearer JWT itself — otherwise `curl -H "X-Org-Id: <org>"`
-	// reads any org's billing, and browser SPA tokens (billing.hanzo.ai) get
-	// no identity at all. MUST run BEFORE IAMTokenRequired, which trusts the
-	// header this mints. No-op unless COMMERCE_EDGE_AUTH=true (gateway-fronted
-	// deployments keep a single upstream trust boundary).
-	apiGroup.Use(middleware.EdgeAuth(iammiddleware.Client()))
+	// EdgeAuth (the standalone-edge trust boundary that strips/mints identity)
+	// is mounted globally in server.go mountIdentity, BEFORE pkg/auth.Gin, so
+	// it covers /v1 here too. See middleware/edgeauth.go.
+	//
 	// IAM gateway-trust shim: every /v1/* handler that calls
 	// middleware.GetOrganization(c) needs the "organization" gin key
 	// populated. The store-backed setupRoutes path only wires
