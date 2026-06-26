@@ -54,6 +54,10 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// for the entire life of commerce. The fix is to mount routes
 	// imperatively on the live *gin.Engine the moment Embed returns.
 	apiGroup := srv.App().Router.Group("/v1")
+	// EdgeAuth (the standalone-edge trust boundary that strips/mints identity)
+	// is mounted globally in server.go mountIdentity, BEFORE pkg/auth.Gin, so
+	// it covers /v1 here too. See middleware/edgeauth.go.
+	//
 	// IAM gateway-trust shim: every /v1/* handler that calls
 	// middleware.GetOrganization(c) needs the "organization" gin key
 	// populated. The store-backed setupRoutes path only wires
