@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/hanzoai/commerce/auth"
 )
 
 func init() { gin.SetMode(gin.TestMode) }
@@ -102,5 +104,96 @@ func TestLooksLikeJWTAndBearer(t *testing.T) {
 	}
 	if got := bearerToken("xyz"); got != "" {
 		t.Fatalf("bearerToken non-bearer must be empty, got %q", got)
+	}
+}
+
+// TestIsGlobalAdmin proves the global-admin gate: only the explicit
+// isGlobalAdmin claim or membership in the "admin" org qualifies. A plain
+// org-level IsAdmin (e.g. an org owner) must NOT — trusting it would let any
+// org owner read another org via ?org=.
+func TestIsGlobalAdmin(t *testing.T) {
+	cases := []struct {
+		name   string
+		claims *auth.IAMClaims
+		want   bool
+	}{
+		{"nil", nil, false},
+		{"admin-org", &auth.IAMClaims{Owner: "admin"}, true},
+		{"admin-org-mixedcase", &auth.IAMClaims{Owner: "Admin"}, true},
+		{"global-flag", &auth.IAMClaims{Owner: "hanzo", IsGlobalAdmin: true}, true},
+		{"org-admin-not-global", &auth.IAMClaims{Owner: "maxpower", IsAdmin: true}, false},
+		{"plain-user", &auth.IAMClaims{Owner: "hanzo"}, false},
+	}
+	for _, tc := range cases {
+		if got := isGlobalAdmin(tc.claims); got != tc.want {
+			t.Fatalf("%s: isGlobalAdmin=%v want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestResolveBillingSubject_AdminOverride: a global admin may retarget the
+// billing view to another org via ?org=, and the namespace follows it.
+func TestResolveBillingSubject_AdminOverride(t *testing.T) {
+	req := httptest.NewRequest("GET", "/v1/billing/balance?user=admin/z&org=hanzo&currency=usd", nil)
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", IsGlobalAdmin: true})
+	if subject != "hanzo" || !override {
+		t.Fatalf("admin ?org=hanzo => subject=%q override=%v, want hanzo,true", subject, override)
+	}
+	if req.URL.Query().Has("org") {
+		t.Fatalf("?org must be stripped from the query, got %q", req.URL.RawQuery)
+	}
+	if req.URL.Query().Get("currency") != "usd" {
+		t.Fatalf("unrelated query param clobbered: %q", req.URL.RawQuery)
+	}
+}
+
+// TestResolveBillingSubject_NonAdminIgnoresOverride is the isolation proof:
+// a non-global-admin cannot use ?org= to read another org. The override is
+// stripped and the subject stays pinned to the caller's own org.
+func TestResolveBillingSubject_NonAdminIgnoresOverride(t *testing.T) {
+	// Dave: org owner with IsAdmin=true (org-level), NOT a global admin.
+	req := httptest.NewRequest("GET", "/v1/billing/balance?org=hanzo&currency=usd", nil)
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "maxpower", IsAdmin: true})
+	if subject != "maxpower" || override {
+		t.Fatalf("non-admin ?org=hanzo => subject=%q override=%v, want maxpower,false (isolation)", subject, override)
+	}
+	if req.URL.Query().Has("org") {
+		t.Fatalf("?org must be stripped even for non-admins, got %q", req.URL.RawQuery)
+	}
+}
+
+// TestResolveBillingSubject_NoOverride: without ?org, every caller (incl. a
+// global admin) defaults to their own org and the namespace is untouched.
+func TestResolveBillingSubject_NoOverride(t *testing.T) {
+	req := httptest.NewRequest("GET", "/v1/billing/balance?currency=usd", nil)
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", IsGlobalAdmin: true})
+	if subject != "admin" || override {
+		t.Fatalf("no ?org => subject=%q override=%v, want admin,false", subject, override)
+	}
+}
+
+// TestResolveBillingSubject_RejectsBadSlug: a malformed ?org is discarded
+// (treated as absent), so even an admin stays on their own org rather than a
+// smuggled value.
+func TestResolveBillingSubject_RejectsBadSlug(t *testing.T) {
+	req := httptest.NewRequest("GET", "/v1/billing/balance?org=hanzo%2Fevil", nil)
+	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin", IsGlobalAdmin: true})
+	if subject != "admin" || override {
+		t.Fatalf("bad ?org slug => subject=%q override=%v, want admin,false", subject, override)
+	}
+}
+
+func TestValidOrgSlug(t *testing.T) {
+	good := []string{"hanzo", "admin", "max-power", "a", "org123"}
+	bad := []string{"", "-lead", "Caps", "has space", "slash/x", "under_score", "dot.org"}
+	for _, s := range good {
+		if !validOrgSlug(s) {
+			t.Fatalf("validOrgSlug(%q)=false, want true", s)
+		}
+	}
+	for _, s := range bad {
+		if validOrgSlug(s) {
+			t.Fatalf("validOrgSlug(%q)=true, want false", s)
+		}
 	}
 }
