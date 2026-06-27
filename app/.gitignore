@@ -8,3 +8,8 @@ out/
 .env.local
 .env.*.local
 !admin/out/
+
+# pnpm workspace: the one lockfile lives at app/pnpm-lock.yaml.
+# Nested per-package locks are junk from `pnpm install` run inside a
+# workspace member — never tracked.
+packages/*/pnpm-lock.yaml
