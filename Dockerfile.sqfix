@@ -14,7 +14,7 @@
 
 FROM golang:1.26-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev curl
 
 ARG TARGETARCH
 WORKDIR /build
@@ -36,6 +36,13 @@ RUN --mount=type=secret,id=gh_token \
 
 # Copy the full source tree (includes committed ui/dist embed bundle).
 COPY . .
+
+# Populate api/billing/plans/*.json — gitignored (@hanzo/plans is the SOT,
+# fetched from the public npm tarball at build time), so absent from the git
+# build context. api/billing/plans.go go:embed's plans/dns.json +
+# plans/subscription.json at compile time, so this MUST run before `go build`.
+# Mirrors the main Dockerfile; public npm, no auth.
+RUN sh scripts/fetch-plans.sh
 
 ARG GO_EXPERIMENT=jsonv2
 ENV GOEXPERIMENT=${GO_EXPERIMENT}
