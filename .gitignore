@@ -36,6 +36,7 @@ _export
 .ipynb_checkpoints/
 /commerce
 /commerced
+/sbom-scan
 /commerce_data/
 nohup.out
 

@@ -263,12 +263,12 @@ func previewPayouts(c *gin.Context) {
 		return
 	}
 
-	componentRevenue := make(map[string]int64)
+	// Same real per-component attribution the payout cron uses: usage, then
+	// lines, then equal weight across shipped components.
+	componentRevenue := contributor.ComponentWeightsFromSBOM(entries)
 	var totalRevenue int64
-	for _, e := range entries {
-		// Use usage count as proxy for revenue attribution
-		componentRevenue[e.Component] = int64(e.UsageCount)
-		totalRevenue += int64(e.UsageCount)
+	for _, w := range componentRevenue {
+		totalRevenue += w
 	}
 
 	// Load contributors
