@@ -49,6 +49,11 @@ type Contributor struct {
 	JoinedAt  time.Time `json:"joinedAt"`
 	LastPaid  time.Time `json:"lastPaid,omitempty"`
 
+	// On-chain payout receipt (PayoutMethod="crypto"): the hash and chain id
+	// of the most recent HUSD transfer. Set by the contributor payout cron.
+	LastPayoutTx      string `json:"lastPayoutTx,omitempty"`
+	LastPayoutChainId int64  `json:"lastPayoutChainId,omitempty"`
+
 	// SBOM attribution: JSON array of component attributions
 	// [{"component":"@hanzo/ui","repo":"hanzoai/ui","lines":1234,"percent":5.2}]
 	Attributions  []Attribution `json:"attributions,omitempty" datastore:"-"`
