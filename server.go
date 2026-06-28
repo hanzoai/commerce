@@ -12,40 +12,49 @@ import (
 	"github.com/hanzoai/commerce/ui"
 )
 
-// installIdentityBoundary registers the directly-exposed-edge identity
-// trust boundary on the router. It is the ONE place commerce's identity
-// headers are cleaned and re-minted, and it MUST be mounted BEFORE any
-// route group is registered: gin applies engine.Use() middleware only to
-// routes registered AFTER the Use() call (verified — see
-// edgeauth_standalone_test.go), so mounting it after setupRoutes (the
-// historical embed.go behaviour) silently left /_/commerce/* and
-// /v1/commerce/* with NO boundary while only the later-registered /v1
-// group inherited it. Bootstrap is the universal chokepoint every entry
-// path (cmd/commerce, cmd/commerced, the cloud mount) flows through, so
-// the boundary lives there exactly once.
+// installEdgeAuth registers the directly-exposed-edge anti-spoofing boundary.
+// It is the ONE place commerce's identity headers are cleaned and re-minted,
+// and it MUST be mounted BEFORE any route group is registered: gin applies
+// engine.Use() middleware only to routes registered AFTER the Use() call
+// (verified — see edgeauth_standalone_test.go). Mounting it after setupRoutes
+// (the historical embed.go behaviour) silently left /_/commerce/* and
+// /v1/commerce/* with NO boundary while only the later-registered /v1 group
+// inherited it — the in-cluster header-forge hole. Bootstrap is the universal
+// chokepoint every entry path (cmd/commerce, cmd/commerced, the cloud mount)
+// flows through, so the boundary lives there exactly once, ahead of every route.
 //
-//	EdgeAuth (1) strips client-supplied identity headers (X-Org-Id,
-//	X-User-*, X-Roles, …) and (2) re-mints them ONLY from a
-//	cryptographically-verified IAM Bearer JWT. No-op unless
-//	COMMERCE_EDGE_AUTH=true (gateway-fronted deploys keep a single
-//	upstream trust boundary). It NEVER 401s — opaque service tokens and
-//	hk-/sk- API keys flow straight through (they are not JWTs), so the
-//	cloud-api -> commerce per-org billing path (Bearer service token +
-//	X-Hanzo-Org, which EdgeAuth does NOT strip) is untouched.
-//
-//	auth.Gin then binds the cleaned/minted headers into the request
-//	context. EdgeAuth MUST precede it: auth.Gin reads X-Org-Id into ctx,
-//	so running EdgeAuth after it would leave a spoofed value in ctx even
-//	after the header was stripped. require=false here because the
-//	binary-edge "reject header-less request" gate is incompatible with
-//	the service-token money path (no X-Org-Id); per-route authorization
-//	(IAMTokenRequired, the access-token middleware, handler GlobalAdmin
-//	checks) is the gate, EdgeAuth is the anti-spoofing boundary.
-func installIdentityBoundary(app *App, require bool) {
+// EdgeAuth (1) strips client-supplied identity headers (X-Org-Id, X-User-*,
+// X-Roles, …) and (2) re-mints them ONLY from a cryptographically-verified IAM
+// Bearer JWT. No-op unless COMMERCE_EDGE_AUTH=true (gateway-fronted deploys keep
+// a single upstream trust boundary). It NEVER 401s — opaque service tokens and
+// hk-/sk- API keys flow straight through (they are not JWTs) and X-Hanzo-Org is
+// NOT in the strip set, so the cloud-api -> commerce per-org billing money path
+// is untouched. Authorization is each route's own job (IAMTokenRequired, the
+// access-token middleware, handler GlobalAdmin checks); EdgeAuth only guarantees
+// no caller can SPOOF identity at the directly-exposed edge.
+func installEdgeAuth(app *App) {
 	if app == nil || app.Router == nil {
 		return
 	}
 	app.Router.Use(middleware.EdgeAuth())
+}
+
+// installRequireGate registers the binary-edge require-identity gate (auth.Gin)
+// that binds the EdgeAuth-cleaned headers into request context and, when
+// require=true, 401s a request carrying NO identity. It is mounted AFTER
+// setupRoutes — DELIBERATELY: that preserves the long-standing exemption of the
+// probe + public routes registered there (notably /healthz, which k8s
+// liveness/readiness probes hit unauthenticated, and /v1/commerce, /_/commerce
+// which carry their own IAMTokenRequired/handler auth). It covers the admin SPA
+// and the post-Bootstrap /v1 api.Route() bundle, exactly as before. require is
+// off by default and MUST stay off wherever the service-token money path runs
+// (it has no X-Org-Id) — see Config.RequireIdentity. EdgeAuth (installed before
+// setupRoutes) already ran by the time this binds ctx, so ctx never holds a
+// spoofed value.
+func installRequireGate(app *App, require bool) {
+	if app == nil || app.Router == nil {
+		return
+	}
 	app.Router.Use(auth.Gin(require))
 }
 
