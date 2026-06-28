@@ -55,7 +55,7 @@ var identityHeaders = []string{
 // Service tokens (COMMERCE_SERVICE_TOKEN) and hk-/sk- API keys are left
 // untouched: they are not JWTs, so step 2 skips them and the existing
 // TokenRequired service-token branch authorizes them as before (those
-// callers carry X-Hanzo-Org, never X-Org-Id).
+// callers carry X-Org-Id, never X-Org-Id).
 //
 // ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (both installed by Bootstrap
 // via server.go installIdentityBoundary, ahead of every route group).
@@ -75,6 +75,11 @@ func EdgeAuth() gin.HandlerFunc {
 		}
 
 		// (1) Never trust client-supplied identity at a directly-exposed edge.
+		// Capture the caller-supplied org selector before stripping; the
+		// service-token path (below) restores it once we know the bearer is an
+		// opaque token, not a spoofable JWT-edge identity.
+		clientOrg := c.Request.Header.Get("X-Org-Id")
+
 		for _, h := range identityHeaders {
 			c.Request.Header.Del(h)
 		}
@@ -129,6 +134,14 @@ func EdgeAuth() gin.HandlerFunc {
 					lockBillingSubject(c.Request, subject)
 				}
 			}
+		}
+
+		// Service-token path: an opaque (non-JWT) bearer names its own org via
+		// X-Org-Id. Restore it here structurally only — the token itself is
+		// validated downstream (accesstoken.go), which rejects forgeries before
+		// any billing, so a spoofed X-Org-Id can never reach the money path.
+		if tok != "" && !looksLikeJWT(tok) && clientOrg != "" {
+			c.Request.Header.Set("X-Org-Id", clientOrg)
 		}
 
 		c.Next()
