@@ -2,7 +2,8 @@
 //
 // Two handlers:
 //
-//	POST /_/commerce/tenants   superadmin-only create (IsAdmin claim = true)
+//	POST /_/commerce/tenants   global-admin-only create (GlobalAdmin: owner==admin
+//	                           or isGlobalAdmin — NOT org-level isAdmin)
 //	GET  /_/commerce/providers tenant-admin list current tenant's providers
 //
 // Security invariants (Red-1 H-1 precedent):
@@ -73,17 +74,21 @@ type createTenantResponse struct {
 
 // ─── handler: POST /_/commerce/tenants ──────────────────────────────────
 
-// CreateTenant creates a new tenant row. Only superadmins (IAM `isAdmin`
-// claim = true) may call this. Tenant-admins get 403; unauthenticated
-// callers get 401.
+// CreateTenant creates a new tenant row. Only PLATFORM (global) admins —
+// GlobalAdmin(): owner==admin or the explicit isGlobalAdmin claim — may call
+// this. Org owners (org-level isAdmin) and tenant-admins get 403;
+// unauthenticated callers get 401.
 func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
-	claims := iammiddleware.GetIAMClaims(c)
-	if claims == nil {
+	// GetIAMClaims is non-nil by contract, so authentication is decided by
+	// IsIAMAuthenticated (gateway identity present), not a nil check — an
+	// anonymous caller must get 401, never the 403 that leaks admin-gating.
+	if !iammiddleware.IsIAMAuthenticated(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 		return
 	}
+	claims := iammiddleware.GetIAMClaims(c)
 	if !isSuperadmin(claims) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "superadmin role required"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "global admin required"})
 		return
 	}
 
@@ -157,14 +162,16 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 // the authenticated user has no tenant row, the response is a byte-
 // identical 404 to the cross-tenant-probe case — same status, same body.
 func (a *TenantAdminAPI) ListProviders(c *gin.Context) {
-	claims := iammiddleware.GetIAMClaims(c)
-	if claims == nil {
+	// Authentication via IsIAMAuthenticated (GetIAMClaims is non-nil by
+	// contract); anonymous → 401, never the authorization 403.
+	if !iammiddleware.IsIAMAuthenticated(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
 		return
 	}
+	claims := iammiddleware.GetIAMClaims(c)
 
-	// Tenant-admin OR superadmin may list. A plain authenticated user
-	// without a tenant role gets 403.
+	// Tenant-admin (org-scoped) OR global admin may list. A plain authenticated
+	// user without an admin signal gets 403.
 	if !isSuperadmin(claims) && !isTenantAdmin(claims) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "admin role required"})
 		return
@@ -324,38 +331,26 @@ type publicStoreView struct {
 
 // ─── role predicates ────────────────────────────────────────────────────
 
-// isSuperadmin returns true when the IAM claim marks the caller as the
-// platform superadmin. Two signals are accepted: the explicit `isAdmin`
-// boolean or a role of "superadmin" / "platform-admin". Either is
-// sufficient.
+// isSuperadmin returns true ONLY for a Hanzo PLATFORM (global) administrator:
+// the explicit isGlobalAdmin claim, or membership in the admin org. It does
+// NOT trust org-level IsAdmin (an org owner carries it within their own org)
+// nor any org-mintable role NAME like "superadmin"/"platform-admin" — either
+// would let an org owner create tenants and perform cross-tenant ops (Red
+// HIGH: org-admin → superadmin escalation). One robust predicate, defined on
+// the claims type (auth.IAMClaims.GlobalAdmin) and shared with the edge
+// billing boundary. nil-safe.
 func isSuperadmin(c *auth.IAMClaims) bool {
-	if c == nil {
-		return false
-	}
-	if c.IsAdmin {
-		return true
-	}
-	for _, r := range c.Roles {
-		if r == "superadmin" || r == "platform-admin" {
-			return true
-		}
-	}
-	return false
+	return c.GlobalAdmin()
 }
 
-// isTenantAdmin returns true for callers with a tenant-scoped admin role.
-// Superadmins are NOT automatically tenant admins for this predicate — use
-// isSuperadmin||isTenantAdmin when the endpoint is open to both.
+// isTenantAdmin returns true for an ORG-level admin — the robust isAdmin claim
+// IAM sets for an org's owner/admins, NOT a fragile, org-mintable role-name
+// string (Red: role-name conflation). It is ORG-SCOPED: every handler that
+// consults it derives the tenant from the caller's own `owner` claim, so it can
+// only ever act on the caller's own org. A global admin is covered separately
+// by isSuperadmin. nil-safe.
 func isTenantAdmin(c *auth.IAMClaims) bool {
-	if c == nil {
-		return false
-	}
-	for _, r := range c.Roles {
-		if r == "admin" || r == "owner" || r == "tenant-admin" {
-			return true
-		}
-	}
-	return false
+	return c != nil && c.IsAdmin
 }
 
 // actorFromClaims formats a stable human-readable actor string for the

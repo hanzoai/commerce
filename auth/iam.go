@@ -238,6 +238,24 @@ type IAMClaims struct {
 	Properties map[string]string `json:"properties,omitempty"`
 }
 
+// GlobalAdmin reports whether these claims belong to a Hanzo PLATFORM (global)
+// administrator — the ONLY predicate safe to gate cross-org / superadmin
+// actions on. Two independent signals, either suffices:
+//   - the explicit isGlobalAdmin claim (gateway X-User-IsGlobalAdmin); or
+//   - membership in the global-admin org (owner == "admin"), the slug Hanzo
+//     IAM seeds global admins into.
+//
+// Plain IsAdmin is deliberately excluded: it is an ORG-level role (an org owner
+// carries IsAdmin=true within their own org). Gating cross-org actions on
+// IsAdmin — or on an org-mintable role name like "superadmin" — is the
+// privilege escalation this predicate exists to prevent. nil-safe.
+func (c *IAMClaims) GlobalAdmin() bool {
+	if c == nil {
+		return false
+	}
+	return c.IsGlobalAdmin || strings.EqualFold(strings.TrimSpace(c.Owner), "admin")
+}
+
 // Tier returns the user's billing tier from the "tier" property.
 // Returns an empty string if not set; callers should default to "free".
 func (c *IAMClaims) Tier() string {
