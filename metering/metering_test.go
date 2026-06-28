@@ -36,7 +36,7 @@ func (f *fakeCommerce) handler() http.HandlerFunc {
 		f.path = r.URL.Path
 		f.query = r.URL.Query()
 		f.auth = r.Header.Get("Authorization")
-		f.org = r.Header.Get("X-IAM-Org-Id")
+		f.org = r.Header.Get("X-Org-Id")
 		f.ctype = r.Header.Get("Content-Type")
 		f.body, _ = io.ReadAll(r.Body)
 		if f.status == 0 {
@@ -90,7 +90,7 @@ func TestAuthorize_Allows_WhenAvailablePositive(t *testing.T) {
 		t.Errorf("auth = %q, want Bearer svc-token", fc.auth)
 	}
 	if fc.org != "hanzo" {
-		t.Errorf("X-IAM-Org-Id = %q, want hanzo", fc.org)
+		t.Errorf("X-Org-Id = %q, want hanzo", fc.org)
 	}
 }
 
@@ -182,7 +182,7 @@ func TestAuthorize_PerCallOrgOverride(t *testing.T) {
 	c := newClient(t, srv, metering.Config{}) // default org hanzo
 	_ = c.Authorize(context.Background(), metering.AuthInput{User: "zoo/bob", Org: "zoo"})
 	if fc.org != "zoo" {
-		t.Errorf("per-call org override: X-IAM-Org-Id = %q, want zoo", fc.org)
+		t.Errorf("per-call org override: X-Org-Id = %q, want zoo", fc.org)
 	}
 }
 
@@ -219,7 +219,7 @@ func TestRecord_PostsCanonicalPayload(t *testing.T) {
 		t.Errorf("auth = %q", fc.auth)
 	}
 	if fc.org != "hanzo" {
-		t.Errorf("X-IAM-Org-Id = %q, want hanzo", fc.org)
+		t.Errorf("X-Org-Id = %q, want hanzo", fc.org)
 	}
 
 	// Verify the JSON body matches commerce's usageRequest field names.
