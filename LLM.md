@@ -32,6 +32,22 @@ Only the gateway-minted X-* identity headers are trusted. Headers are stripped
 unconditionally on ingress to prevent client spoofing (see gateway/auth_middleware.go
 stripIdentityHeaders).
 
+**Directly-exposed edge (`COMMERCE_EDGE_AUTH=true`) — boundary mount point (Red CRITICAL, 1.42.40):**
+commerce-api is reachable in-cluster at `commerce.hanzo.svc:8001` WITHOUT the
+gateway, so it strips + re-mints identity itself via `middleware.EdgeAuth`. That
+boundary MUST be installed before any route group: gin applies `engine.Use()`
+only to routes registered AFTER the call. It is now installed in `Bootstrap`
+(`server.go installIdentityBoundary`, called before `setupRoutes`), so it covers
+`/_/commerce/*`, `/v1/commerce/*` AND the post-Bootstrap `/v1` `api.Route()`
+bundle. Previously it was mounted from `embed.go` AFTER Bootstrap, so gin left
+the setupRoutes groups unguarded and an in-cluster pod could `POST
+/_/commerce/tenants` with forged `X-Org-Id: admin` + `X-User-IsGlobalAdmin: true`
+→ 201 (platform superadmin by header forgery). The boundary NEVER 401s opaque
+service tokens (not JWTs) and does NOT strip `X-Hanzo-Org`, so the cloud-api →
+commerce per-org billing money path is untouched (`require=false`;
+`COMMERCED_REQUIRE_IDENTITY` is incompatible with the no-X-Org-Id service-token
+path). Regression: `edgeauth_standalone_test.go`, `middleware/edgeauth_test.go`.
+
 | Header                | Source                  | Use                                         |
 |-----------------------|-------------------------|---------------------------------------------|
 | X-Org-Id              | JWT `owner` claim       | Org slug; namespace + scope                 |
