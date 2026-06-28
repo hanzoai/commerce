@@ -62,21 +62,27 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	if len(cfg.AllowedOrigins) > 0 {
 		appCfg.AllowedOrigins = cfg.AllowedOrigins
 	}
+	// Bool override mirrors the cfg.Dev pattern: an explicit true from the
+	// caller strengthens the env-derived default; an unset (false) cfg falls
+	// through to DefaultConfig's COMMERCED_REQUIRE_IDENTITY read.
+	if cfg.RequireIdentity {
+		appCfg.RequireIdentity = true
+	}
 
 	app := NewWithConfig(appCfg)
 
 	// Run Bootstrap synchronously so the returned Embedded is fully
 	// ready: Router populated, DB connected, hooks fired. setupRoutes
 	// is called inside Bootstrap; we expose that handler via HTTPHandler.
+	// Bootstrap installs the identity trust boundary (EdgeAuth + auth.Gin)
+	// BEFORE registering any route group and mounts the admin SPA after — so
+	// /_/commerce/*, /v1/commerce/* and the post-Bootstrap /v1 api.Route()
+	// bundle all inherit it. (Previously this binary mounted the boundary
+	// here, AFTER Bootstrap had already registered the setupRoutes groups, so
+	// gin left those groups unguarded — the in-cluster header-forge hole.)
 	if err := app.Bootstrap(); err != nil {
 		return nil, fmt.Errorf("commerce.Embed: bootstrap: %w", err)
 	}
-
-	// Identity gate: register the gateway-trust middleware up front,
-	// before any /v1/commerce or /_/commerce routes installed by the
-	// hooks fire. The middleware is idempotent: missing headers + not
-	// require → noop; missing headers + require → 401.
-	mountIdentity(app, cfg.RequireIdentity)
 
 	cfg.Logger.Info("commerce.Embed ready",
 		"http", appCfg.HTTPAddr,
