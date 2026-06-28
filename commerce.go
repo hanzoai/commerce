@@ -730,21 +730,25 @@ func (app *App) Bootstrap() error {
 		app.runStripeSeed()
 	}
 
-	// Identity trust boundary — MUST be installed before any route group so
-	// it wraps EVERY route. gin applies engine.Use() middleware only to
-	// routes registered AFTER the Use() call, so this runs ahead of
-	// setupRoutes (and ahead of the /v1 api.Route() bundle the cmd/* binaries
-	// register post-Bootstrap). EdgeAuth strips client-supplied identity and
-	// re-mints it from a verified IAM JWT; auth.Gin binds the cleaned headers
-	// into ctx. See server.go installIdentityBoundary for the full contract.
-	installIdentityBoundary(app, app.config.RequireIdentity)
+	// Anti-spoofing boundary — MUST be installed before any route group so it
+	// wraps EVERY route. gin applies engine.Use() middleware only to routes
+	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
+	// ahead of the /v1 api.Route() bundle the cmd/* binaries register
+	// post-Bootstrap). EdgeAuth strips client-supplied identity and re-mints it
+	// from a verified IAM JWT. See server.go installEdgeAuth.
+	installEdgeAuth(app)
 
-	// Setup routes
+	// Setup routes (registers /healthz + the /v1/commerce, /_/commerce groups).
 	app.setupRoutes()
 
-	// Admin SPA — registered AFTER setupRoutes (preserving the historical
-	// order vs the /_/commerce JSON admin routes); it inherits the identity
-	// boundary installed above.
+	// Require-identity gate (auth.Gin) — mounted AFTER setupRoutes so /healthz
+	// (k8s probes) and the setupRoutes groups keep their existing exemption,
+	// while the admin SPA and the post-Bootstrap /v1 bundle inherit it exactly
+	// as before. See server.go installRequireGate.
+	installRequireGate(app, app.config.RequireIdentity)
+
+	// Admin SPA — registered after the gate so it inherits both EdgeAuth and
+	// auth.Gin (preserving the historical order vs the /_/commerce JSON routes).
 	mountAdminSPA(app)
 
 	app.bootstrapped = true
