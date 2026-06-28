@@ -49,6 +49,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/credit-grants", CreateCreditGrant)
 	api.POST("/credit-grants/:id/void", VoidCreditGrant)
 
+	// Starter credit grant (service-to-service, idempotent, no payment method
+	// required). The on-signup $5 welcome deposit invoked by chat / cloud-api on
+	// a user's first use, keyed by an explicit per-user (or per-org) subject.
+	api.POST("/grant-starter", GrantStarter)
+
 	// Pricing rules
 	api.POST("/pricing-rules", CreatePricingRule)
 	api.GET("/pricing-rules", ListPricingRules)
