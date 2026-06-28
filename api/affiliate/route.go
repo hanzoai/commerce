@@ -39,6 +39,7 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	contributorRest.PUT("/sbom/:sbomid", adminRequired, updateSBOMEntry)
 	contributorRest.POST("/payouts/calculate", adminRequired, calculatePayouts)
 	contributorRest.GET("/payouts/preview", adminRequired, previewPayouts)
+	contributorRest.POST("/payouts/execute", adminRequired, executePayouts)
 	contributorRest.GET("/:contributorid/earnings", tokenRequired, getEarnings)
 	contributorRest.GET("/:contributorid/attributions", tokenRequired, getAttributions)
 	contributorRest.Route(r, args...)
