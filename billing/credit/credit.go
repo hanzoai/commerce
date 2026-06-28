@@ -25,18 +25,33 @@ const (
 // user are safe. The trigger parameter records what initiated the grant
 // (e.g. "payment-method-added", "org-created").
 //
-// The check-and-create runs inside a transaction to prevent race conditions
-// where concurrent goroutines could both pass the existence check and
-// grant duplicate credits.
-//
 // This function is intended to be called from a goroutine; it only logs
-// on failure and never panics.
+// on failure and never panics. For the synchronous form that reports
+// whether a grant was created, use GrantIfEligibleNow.
 func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
+	_, _ = GrantIfEligibleNow(db, userId, trigger)
+}
+
+// GrantIfEligibleNow is the synchronous form of GrantIfEligible. It ensures the
+// subject (userId — an IAM "owner/name" per-user key, or an org slug for pooled
+// billing) has received exactly one starter-credit Deposit, and reports whether
+// THIS call created it (false = one already existed).
+//
+// Idempotent + race-safe: the check-and-create runs inside a datastore
+// transaction so concurrent callers can never double-grant (no bleed). The
+// dedupe key is (DestinationId=userId, Tags=StarterCreditTag).
+//
+// The grant is a real Deposit transaction (tag "starter-credit", $5, 30-day
+// expiry) — so it nets into GET /v1/billing/balance, which is the account the
+// cloud gateway's balance gate reads and its usage debit withdraws from. (It is
+// deliberately NOT a credit-grant record; those live in a separate ledger the
+// balance endpoint does not read.)
+func GrantIfEligibleNow(db *datastore.Datastore, userId, trigger string) (granted bool, err error) {
 	if userId == "" {
-		return
+		return false, nil
 	}
 
-	err := db.RunInTransaction(func(txDb *datastore.Datastore) error {
+	err = db.RunInTransaction(func(txDb *datastore.Datastore) error {
 		rootKey := txDb.NewKey("synckey", "", 1, nil)
 
 		// Check if starter credit was already granted (inside transaction).
@@ -44,7 +59,8 @@ func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
 		tq := transaction.Query(txDb).Ancestor(rootKey).
 			Filter("DestinationId=", userId).
 			Filter("Tags=", StarterCreditTag)
-		if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
+		if _, e := tq.Limit(1).GetAll(&existingTrans); e == nil && len(existingTrans) > 0 {
+			granted = false
 			return nil // already granted
 		}
 
@@ -63,10 +79,16 @@ func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
 			"trigger":    trigger,
 		}
 
-		return trans.Create()
+		if e := trans.Create(); e != nil {
+			return e
+		}
+		granted = true
+		return nil
 	}, nil)
 
 	if err != nil {
 		log.Warn("Failed to auto-grant starter credit for user %s: %v", userId, err)
+		return false, err
 	}
+	return granted, nil
 }
