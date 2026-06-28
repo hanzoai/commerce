@@ -26,7 +26,7 @@ import (
 // re-mints them from a cryptographically-verified IAM JWT.
 var identityHeaders = []string{
 	"X-Org-Id", "X-User-Id", "X-User-Email", "X-User-IsAdmin",
-	"X-User-Permissions", "X-Roles", "X-Phone-Number",
+	"X-User-IsGlobalAdmin", "X-User-Permissions", "X-Roles", "X-Phone-Number",
 }
 
 // EdgeAuth is the standalone-edge trust boundary for a directly-exposed
@@ -105,6 +105,12 @@ func EdgeAuth() gin.HandlerFunc {
 				}
 				if claims.IsAdmin {
 					c.Request.Header.Set("X-User-IsAdmin", "true")
+				}
+				// Mint the PLATFORM superadmin signal ONLY for a global admin —
+				// distinct from org-level isAdmin, mirroring the gateway. This
+				// is the spoof-proof header cross-org gates read.
+				if isGlobalAdmin(claims) {
+					c.Request.Header.Set("X-User-IsGlobalAdmin", "true")
 				}
 				c.Request.Header.Set("X-User-Permissions", permsHeader(claims))
 
@@ -211,10 +217,9 @@ func resolveBillingSubject(r *http.Request, claims *auth.IAMClaims) (string, boo
 // on it would let any org owner view another org via ?org= — the exact
 // isolation break this boundary exists to stop.
 func isGlobalAdmin(claims *auth.IAMClaims) bool {
-	if claims == nil {
-		return false
-	}
-	return claims.IsGlobalAdmin || strings.EqualFold(strings.TrimSpace(claims.Owner), "admin")
+	// One canonical predicate, defined on the claims type and shared by every
+	// global-admin gate (edge billing ?org override, checkout tenant admin).
+	return claims.GlobalAdmin()
 }
 
 // consumeOrgOverride removes and returns a normalized ?org=<slug> billing-view
