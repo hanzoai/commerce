@@ -37,13 +37,29 @@ stripIdentityHeaders).
 | X-Org-Id              | JWT `owner` claim       | Org slug; namespace + scope                 |
 | X-User-Id             | JWT `sub` claim         | User identity                               |
 | X-User-Email          | JWT `email` claim       | Email; audit + notifications                |
-| X-User-IsAdmin        | JWT `isAdmin` claim     | "true" iff platform superadmin              |
+| X-User-IsAdmin        | JWT `isAdmin` claim     | "true" iff ORG-level admin (an org owner)   |
+| X-User-IsGlobalAdmin  | gateway-derived         | "true" iff PLATFORM (global) admin          |
 | X-Roles               | JWT `roles` claim       | Comma-joined role names (admin/owner/etc.)  |
 | X-User-Permissions    | gateway-derived         | bit.Field as base-10 int; 0 fails closed    |
 
-Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false. Missing
-X-User-Permissions -> bit.Field(0). Identity headers absent -> handler
-chain falls through to legacy auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
+Fail-closed contract: missing X-User-IsAdmin -> IsAdmin=false; missing
+X-User-IsGlobalAdmin -> IsGlobalAdmin=false. Missing X-User-Permissions ->
+bit.Field(0). Identity headers absent -> handler chain falls through to legacy
+auth (or 401 when COMMERCED_REQUIRE_IDENTITY).
+
+**Org-admin vs global-admin (Red — anti-conflation):** `X-User-IsAdmin` is the
+ORG-level admin role — an org owner (e.g. `maxpower`) carries `isAdmin=true`
+within their own org. It is ONLY for org-scoped RBAC. Cross-org / superadmin
+actions (e.g. POST `/_/commerce/tenants`) MUST gate on
+`auth.IAMClaims.GlobalAdmin()` — the explicit `isGlobalAdmin` claim
+(X-User-IsGlobalAdmin) OR `owner=="admin"` — NEVER on `IsAdmin` nor an
+org-mintable role NAME like "superadmin". `iammiddleware.GetIAMClaims` populates
+both `IsAdmin` (X-User-IsAdmin) and `IsGlobalAdmin` (X-User-IsGlobalAdmin); the
+gateway mints X-User-IsGlobalAdmin only for a real global admin and strips it on
+ingress, so it can't be forged. Predicates: `checkout.isSuperadmin` =
+`GlobalAdmin()`; `checkout.isTenantAdmin` = the robust org-level `IsAdmin` claim
+(not a role string). Tests: `auth/globaladmin_test.go`,
+`checkout/admin_tenants_authz_test.go`, `middleware/edgeauth_test.go`.
 
 ### EdgeAuth admin billing-view override (middleware/edgeauth.go, 1.42.36+)
 
