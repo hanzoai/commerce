@@ -30,8 +30,12 @@ import (
 // HUSD_TOKEN_ADDRESS (from KMS) once the token is deployed and crypto
 // payouts begin executing on-chain with no further code change.
 const (
-	defaultHUSDChainID  int64 = 36900
-	defaultHUSDRPCURL         = "https://rpc.hanzo.network"
+	// Hanzo EVM mainnet defaults (chainId 36963). Testnet (36962) and devnet
+	// (36964) are selected by setting HUSD_CHAIN_ID + HUSD_RPC_URL from KMS.
+	// The token address has NO default (greenfield, KMS-only) so an unset
+	// HUSD_TOKEN_ADDRESS fails closed instead of silently targeting mainnet.
+	defaultHUSDChainID  int64 = 36963
+	defaultHUSDRPCURL         = "https://api.hanzo.network/ext/bc/C/rpc"
 	defaultHUSDDecimals       = 18
 )
 
