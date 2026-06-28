@@ -23,7 +23,10 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 - `middleware.Namespace()` sets context namespace for downstream datastore
 - `rest.New()` auto-applies namespace middleware unless `DefaultNamespace = true`
 - Dual auth: legacy access token (org-bound) + IAM JWT (OIDC/JWKS via hanzo.id)
-- `"platform"` org returns empty namespace (intentional admin bypass)
+- Every org (incl. `"platform"`) is STRICTLY scoped to its own name. The legacy
+  `"platform" -> "" (cross-org) namespace` bypass was REMOVED (1.42.40, Red M1):
+  it keyed cross-org datastore on an org-NAME string, not real platform-admin
+  identity. Cross-org access gates on `auth.IAMClaims.GlobalAdmin()` ONLY.
 
 ## Gateway Trust Headers (2026-04-27)
 
