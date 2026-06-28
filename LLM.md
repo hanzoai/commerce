@@ -245,6 +245,53 @@ All App Engine dependencies removed. Context handling modernized:
 - Legacy GAE Python utils moved to `.legacy/` (bulkloader, datastore-admin, salesforce-metadata)
 - ORM: all models use `mixin.Model[T]` with generic CRUD, namespace support, and `orm.Register[T]()`
 
+## OSS Contributor HUSD Payouts (on-chain, 2026-06-27)
+
+25% of cloud revenue is payable to OSS contributors in HUSD (Hanzo USD
+stablecoin) on the Hanzo EVM. The split + SBOM attribution + payout algorithm
+live in `models/contributor/`; the executor is `cron/payout/contributor/`.
+
+- **Executor**: `contributor.Payout(ctx, Config)` computes period revenue,
+  splits 25% across components by real SBOM weight, and disburses each
+  allocation by `PayoutMethod`: `credits` (CreditGrant), `stripe` (queued
+  transfer), `crypto` (on-chain HUSD ERC-20 transfer).
+- **Crypto path**: `executeCryptoPayout` → `util/blockchain.TransferToken`
+  (geth-free seam) → `thirdparty/ethereum.transferToken` (luxfi/geth signing,
+  legacy EIP-155 tx). The impl is registered by a blank import of
+  `thirdparty/ethereum` in `cmd/commerce/main.go` — without it,
+  `TransferToken` returns `ErrNoTokenTransfer` (crypto payouts skipped, never
+  silently lost). go.work + `replace => ./thirdparty/ethereum` link it under
+  the `GOWORK=off` Docker build.
+- **Config** (KMS → env, `HUSDConfig.LoadFromEnv`): `HUSD_TOKEN_ADDRESS`,
+  `HUSD_CHAIN_ID`, `HUSD_RPC_URL`, `HUSD_TOKEN_DECIMALS`, `HUSD_TREASURY_KEY`.
+  Fails closed: no `HUSD_TOKEN_ADDRESS`/`HUSD_TREASURY_KEY` ⇒
+  `ErrHUSDNotConfigured` (mainnet has no default token addr, so an unset deploy
+  can't mis-pay). `HUSD_TREASURY_KEY` is KMS-only (org hanzo, path
+  `/commerce-secrets`, key `HUSD_TREASURY_KEY` → KMSSecret `commerce-kms-sync`
+  → `commerce-secrets` Secret). Non-secret config is plain env on the operator
+  CR (`universe .../operator/crs/commerce-v1.yaml`).
+- **Trigger**: `POST /v1/contributor/payouts/execute` (admin) runs the executor
+  for the org namespace — dry-run by default, `?execute=true` to disburse.
+  Mirrors `billing auto-recharge/run-all`; drive it from a curl CronJob:
+  `curl -XPOST -H "Authorization: Bearer $COMMERCE_SERVICE_TOKEN" \`
+  `http://commerce.hanzo.svc:8001/v1/contributor/payouts/execute?execute=true`.
+  `GET /payouts/preview` shows the allocation without paying.
+- **TESTNET-FIRST**: deployed config points at Hanzo testnet (chainId 36962,
+  HUSD = "Lux Dollar" `0xc57b7eCE…4D66`, 18 decimals,
+  `http://hanzod.hanzo-testnet.svc.cluster.local:9630/ext/bc/C/rpc`).
+  Proven on testnet 2026-06-27: tx
+  `0xe5cf03378e2d9dd121dfc5631fa112b2ea03717c9928167d54195ae785866978`
+  (treasury → contributor, 25.50 HUSD, status 0x1, block 9).
+  Live proof: `go test -tags onchain -run TestOnChainHUSDPayout_Testnet`.
+- **MAINNET SWITCH (OFF; requires sign-off + funded mainnet treasury)**:
+  `HUSD_TOKEN_ADDRESS=0xe9e32EF8aaECB68794Da3E1E9191b0a64CeC2c83`,
+  `HUSD_CHAIN_ID=36963`,
+  `HUSD_RPC_URL=http://hanzod.hanzo-mainnet.svc.cluster.local:9630/ext/bc/C/rpc`,
+  and re-point `HUSD_TREASURY_KEY` to a funded mainnet treasury.
+- **Gas note**: `thirdparty/ethereum` `GasPrice()` queries `eth_gasPrice`
+  (respects the chain's 25 gwei `minBaseFee`); the old hardcoded `1` wei caused
+  "transaction underpriced" on Hanzo EVM.
+
 ## Versioning (tag == binary)
 
 `commerce.Version` is a `var` (commerce.go), default = the current release.
