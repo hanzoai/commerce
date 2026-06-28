@@ -76,6 +76,7 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5 // indirect
 	github.com/consensys/gnark-crypto v0.20.1 // indirect
+	github.com/crate-crypto/go-eth-kzg v1.5.0 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
@@ -93,6 +94,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.21.0 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.2.0 // indirect
+	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.1.9 // indirect
 	github.com/luxfi/compress v0.0.5 // indirect
 	github.com/luxfi/concurrent v0.0.3 // indirect
@@ -105,6 +107,7 @@ require (
 	github.com/luxfi/geth v1.16.100 // indirect
 	github.com/luxfi/lattice/v7 v7.1.4 // indirect
 	github.com/luxfi/lens v0.1.3 // indirect
+	github.com/luxfi/pq v1.0.3 // indirect
 	github.com/luxfi/pulsar v1.0.12 // indirect
 	github.com/luxfi/threshold v1.6.17 // indirect
 	github.com/luxfi/utils v1.1.5 // indirect
@@ -179,6 +182,7 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
+	github.com/hanzoai/commerce/thirdparty/ethereum v0.0.0
 	github.com/hanzoai/dbx v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -267,3 +271,5 @@ require (
 // pwrite64, which musl does not expose — breaking every linux/amd64 image
 // build. Pin to the current v1.14 patch, which compiles cleanly on musl.
 replace github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.47
+
+replace github.com/hanzoai/commerce/thirdparty/ethereum => ./thirdparty/ethereum
