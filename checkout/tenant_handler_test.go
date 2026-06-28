@@ -7,8 +7,9 @@
 //  1. GET /v1/commerce/tenant never leaks provider credentials / client
 //     secrets / KMS paths / BD endpoints. Public body is a tight
 //     projection.
-//  2. POST /_/commerce/tenants requires the IAM `isAdmin` claim. Plain
-//     tenant-admin role gets 403.
+//  2. POST /_/commerce/tenants requires a PLATFORM (global) admin —
+//     GlobalAdmin(): owner==admin or the explicit isGlobalAdmin claim. An org
+//     owner (org-level isAdmin) or an org-mintable "superadmin" role gets 403.
 //  3. GET /_/commerce/providers is tenant-scoped from the IAM `owner`
 //     claim, never from the request. A caller whose owner has no tenant
 //     row gets a byte-identical 404 to a caller whose owner exists but
@@ -225,8 +226,10 @@ func TestCreateTenant_TenantAdmin_403(t *testing.T) {
 
 func TestCreateTenant_Superadmin_201(t *testing.T) {
 	s := newHandlerStore(t)
+	// A real PLATFORM (global) admin: member of the admin org. Org-level
+	// IsAdmin alone is NOT sufficient (see TestCreateTenant_OrgOwner_403).
 	claims := &auth.IAMClaims{
-		Owner:   "platform",
+		Owner:   "admin",
 		IsAdmin: true,
 	}
 	claims.Subject = "superadmin-1"
@@ -268,7 +271,7 @@ func TestCreateTenant_DuplicateName_409(t *testing.T) {
 	s := newHandlerStore(t)
 	seedTenant(t, s, "demo", "pay.demo.test")
 
-	claims := &auth.IAMClaims{IsAdmin: true, Owner: "platform"}
+	claims := &auth.IAMClaims{IsAdmin: true, Owner: "admin"}
 	claims.Subject = "superadmin-1"
 	router := newRouterWithClaims(s, claims)
 
@@ -285,7 +288,7 @@ func TestCreateTenant_DuplicateName_409(t *testing.T) {
 
 func TestCreateTenant_InvalidHostname_400(t *testing.T) {
 	s := newHandlerStore(t)
-	claims := &auth.IAMClaims{IsAdmin: true, Owner: "platform"}
+	claims := &auth.IAMClaims{IsAdmin: true, Owner: "admin"}
 	claims.Subject = "superadmin-1"
 	router := newRouterWithClaims(s, claims)
 
@@ -337,8 +340,9 @@ func TestListProviders_TenantAdmin_ScopedToOwner(t *testing.T) {
 	seedTenant(t, s, "acme", "pay.acme.test")
 	seedTenant(t, s, "beta", "pay.beta.test")
 
-	// Caller's owner is acme — response MUST be acme's providers.
-	claims := &auth.IAMClaims{Owner: "acme", Roles: auth.FlexRoles{"admin"}}
+	// Caller's owner is acme — response MUST be acme's providers. Org-level
+	// admin is the robust tenant-admin signal (isAdmin claim, not a role name).
+	claims := &auth.IAMClaims{Owner: "acme", IsAdmin: true}
 	claims.Subject = "user-1"
 	router := newRouterWithClaims(s, claims)
 
@@ -376,16 +380,16 @@ func TestListProviders_CrossTenantProbe_ByteIdentical404(t *testing.T) {
 	s := newHandlerStore(t)
 	seedTenant(t, s, "acme", "pay.acme.test")
 
-	// Case A: no-such-tenant owner with tenant-admin role.
-	probeA := &auth.IAMClaims{Owner: "no-such-tenant", Roles: auth.FlexRoles{"admin"}}
+	// Case A: no-such-tenant owner with org-level admin.
+	probeA := &auth.IAMClaims{Owner: "no-such-tenant", IsAdmin: true}
 	probeA.Subject = "user-probe"
 	routerA := newRouterWithClaims(s, probeA)
 	reqA := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
 	wA := httptest.NewRecorder()
 	routerA.ServeHTTP(wA, reqA)
 
-	// Case B: empty-owner admin.
-	probeB := &auth.IAMClaims{Owner: "", Roles: auth.FlexRoles{"admin"}}
+	// Case B: empty-owner org-level admin.
+	probeB := &auth.IAMClaims{Owner: "", IsAdmin: true}
 	probeB.Subject = "user-empty"
 	routerB := newRouterWithClaims(s, probeB)
 	reqB := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
