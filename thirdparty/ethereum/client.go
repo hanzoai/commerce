@@ -10,16 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luxfi/geth/common"
-	"github.com/luxfi/geth/common/hexutil"
-	"github.com/luxfi/geth/core/types"
-	"github.com/luxfi/crypto"
-	"github.com/luxfi/geth/rlp"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains/blocktransaction"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/rand"
+	"github.com/luxfi/crypto"
+	"github.com/luxfi/geth/common"
+	"github.com/luxfi/geth/common/hexutil"
+	"github.com/luxfi/geth/core/types"
+	"github.com/luxfi/geth/rlp"
 
 	. "github.com/hanzoai/commerce/models/blockchains"
 )
@@ -259,40 +259,31 @@ func (c Client) SendTransaction(chainId ChainId, pk, from string, to string, amo
 	return hash, nil
 }
 
-// Get the current average gasprice
+// GasPrice returns the node's currently suggested gas price via eth_gasPrice.
+//
+// This MUST query the node: on a chain with a configured minimum base fee
+// (e.g. Hanzo's 25 gwei minBaseFee) a hardcoded/placeholder price produces
+// "transaction underpriced" rejections. eth_gasPrice already reflects the
+// chain's minimum, so it is the single source of truth. The legacy
+// ethgasstation path (GasPrice2) is Ethereum-mainnet-only and is intentionally
+// not consulted here. On RPC error or a zero result we fall back to
+// DefaultGasPrice and surface the error to the caller.
 func (c Client) GasPrice() (*big.Int, error) {
-	gasPrice, _, err := c.GasPrice2()
-	if err == nil {
-		return gasPrice, nil
-	} else {
-		log.Warn("EthGasStation returned error '%s'", err, c.ctx)
-	}
-
 	id := rand.Int64()
-
-	log.Info("Getting Gas Price", c.ctx)
-	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, "eth_gasPrice", "", id)
+	jsonRpcCommand := fmt.Sprintf(JsonRpcMessage, JsonRpcVersion, "eth_gasPrice", "[]", id)
 
 	jrr, err := c.Post(jsonRpcCommand, id)
 	if err != nil {
 		return big.NewInt(DefaultGasPrice), err
 	}
 
-	priceHex := string(jrr.Result)
-	priceHex = priceHex[1 : len(priceHex)-1]
-
-	log.Info("Gas Price is %s", priceHex, c.ctx)
-
+	priceHex := strings.Trim(string(jrr.Result), `"`)
 	a, err := hexutil.DecodeBig(priceHex)
-	if err != nil {
+	if err != nil || a.Sign() == 0 {
 		return big.NewInt(DefaultGasPrice), err
 	}
 
-	// 1 is the min price
-	if a.Cmp(big.NewInt(0)) == 0 {
-		return big.NewInt(1), nil
-	}
-
+	log.Info("Gas Price is %s", a.String(), c.ctx)
 	return a, nil
 }
 
