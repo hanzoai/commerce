@@ -36,6 +36,63 @@ func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 	}
 }
 
+// TestEdgeAuth_StripsGlobalAdminSpoof proves the PLATFORM-superadmin header
+// is stripped at the edge. After the global-admin/org-admin split,
+// GetIAMClaims reads X-User-IsGlobalAdmin straight off the request and
+// GlobalAdmin() trusts it — so if EdgeAuth did NOT strip it, an in-cluster
+// caller could forge `X-User-IsGlobalAdmin: true` and pass every cross-org
+// gate (the exact /_/commerce/tenants escalation). It MUST be in the strip set.
+func TestEdgeAuth_StripsGlobalAdminSpoof(t *testing.T) {
+	t.Setenv("COMMERCE_EDGE_AUTH", "true")
+	h := EdgeAuth()
+
+	req := httptest.NewRequest("POST", "/_/commerce/tenants", nil)
+	req.Header.Set("X-Org-Id", "admin")
+	req.Header.Set("X-User-IsGlobalAdmin", "true") // forged platform superadmin
+	req.Header.Set("X-User-IsAdmin", "true")
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+	h(c)
+
+	for _, k := range []string{"X-Org-Id", "X-User-IsGlobalAdmin", "X-User-IsAdmin"} {
+		if got := c.Request.Header.Get(k); got != "" {
+			t.Fatalf("EdgeAuth must strip spoofed %s, got %q", k, got)
+		}
+	}
+}
+
+// TestEdgeAuth_PreservesServiceTokenOrg proves the money path is untouched:
+// cloud-api -> commerce per-org billing authenticates with an OPAQUE Bearer
+// service token (not a JWT) and names the org via X-Hanzo-Org. EdgeAuth must
+// (a) strip any forged X-Org-Id, (b) NOT strip X-Hanzo-Org (it is not an
+// identity header), and (c) never abort — the opaque token is not a JWT, so
+// minting is skipped and the request flows through to the service-token
+// authorizer. Breaking any of these breaks per-org billing.
+func TestEdgeAuth_PreservesServiceTokenOrg(t *testing.T) {
+	t.Setenv("COMMERCE_EDGE_AUTH", "true")
+	h := EdgeAuth()
+
+	req := httptest.NewRequest("POST", "/v1/billing/usage", nil)
+	req.Header.Set("Authorization", "Bearer st_opaque_service_token_not_a_jwt")
+	req.Header.Set("X-Hanzo-Org", "maxpower") // trusted service-token org selector
+	req.Header.Set("X-Org-Id", "admin")       // forged identity — must be stripped
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+	h(c)
+
+	if c.IsAborted() {
+		t.Fatal("EdgeAuth must NOT abort an opaque service-token request (money path)")
+	}
+	if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+		t.Fatalf("forged X-Org-Id must be stripped, got %q", got)
+	}
+	if got := c.Request.Header.Get("X-Hanzo-Org"); got != "maxpower" {
+		t.Fatalf("X-Hanzo-Org must be preserved for per-org billing, got %q", got)
+	}
+}
+
 // TestEdgeAuth_DisabledIsNoOp proves gateway-fronted deployments are
 // unaffected: with the flag off, identity headers pass through untouched.
 func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {

@@ -60,7 +60,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.42.38"
+	Version   = "1.42.40"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -72,6 +72,16 @@ type Config struct {
 
 	// Dev enables development mode
 	Dev bool
+
+	// RequireIdentity makes the identity boundary (auth.Gin) reject any
+	// request that arrives without X-Org-Id/X-User-Id. Sourced from
+	// COMMERCED_REQUIRE_IDENTITY. It is OFF by default and MUST stay off
+	// wherever the cloud-api -> commerce per-org billing path runs: that
+	// path authenticates with a Bearer service token + X-Hanzo-Org and
+	// carries NO X-Org-Id, so a require-identity gate would 401 the money
+	// path. The anti-spoofing boundary is EdgeAuth (always mounted), not
+	// this gate.
+	RequireIdentity bool
 
 	// Secret for encryption and sessions
 	Secret string
@@ -124,6 +134,7 @@ func DefaultConfig() *Config {
 	cfg := &Config{
 		DataDir:           getEnv("COMMERCE_DIR", "./commerce_data"),
 		Dev:               getEnv("COMMERCE_DEV", "false") == "true",
+		RequireIdentity:   getEnv("COMMERCED_REQUIRE_IDENTITY", "false") == "true",
 		Secret:            getEnv("COMMERCE_SECRET", "change-me-in-production"),
 		HTTPAddr:          getEnv("COMMERCE_HTTP", "127.0.0.1:8090"),
 		AllowedOrigins:    []string{"*"},
@@ -719,8 +730,22 @@ func (app *App) Bootstrap() error {
 		app.runStripeSeed()
 	}
 
+	// Identity trust boundary — MUST be installed before any route group so
+	// it wraps EVERY route. gin applies engine.Use() middleware only to
+	// routes registered AFTER the Use() call, so this runs ahead of
+	// setupRoutes (and ahead of the /v1 api.Route() bundle the cmd/* binaries
+	// register post-Bootstrap). EdgeAuth strips client-supplied identity and
+	// re-mints it from a verified IAM JWT; auth.Gin binds the cleaned headers
+	// into ctx. See server.go installIdentityBoundary for the full contract.
+	installIdentityBoundary(app, app.config.RequireIdentity)
+
 	// Setup routes
 	app.setupRoutes()
+
+	// Admin SPA — registered AFTER setupRoutes (preserving the historical
+	// order vs the /_/commerce JSON admin routes); it inherits the identity
+	// boundary installed above.
+	mountAdminSPA(app)
 
 	app.bootstrapped = true
 	return nil
@@ -815,8 +840,9 @@ func (app *App) setupRoutes() {
 		api.Use(middleware.AccessControl("*"))
 
 		// IAM JWT validation middleware (falls through to legacy auth if not IAM token).
-		// EdgeAuth (strip client identity + mint from verified JWT) runs globally in
-		// server.go mountIdentity, BEFORE pkg/auth.Gin, so it already covers this group.
+		// EdgeAuth (strip client identity + mint from verified JWT) is installed by
+		// Bootstrap (server.go installIdentityBoundary) BEFORE this group is
+		// registered, so it already covers this group.
 		if app.config.IAM.Enabled {
 			api.Use(iammiddleware.IAMTokenRequired())
 		}

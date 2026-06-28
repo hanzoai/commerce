@@ -57,7 +57,8 @@ var identityHeaders = []string{
 // TokenRequired service-token branch authorizes them as before (those
 // callers carry X-Hanzo-Org, never X-Org-Id).
 //
-// ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (server.go mountIdentity).
+// ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (both installed by Bootstrap
+// via server.go installIdentityBoundary, ahead of every route group).
 // auth.Gin binds the X-Org-Id header into the request CONTEXT; if EdgeAuth
 // ran after it, stripping the header would leave the spoofed value in the
 // context (which IAMTokenRequired reads first). Mounting EdgeAuth first
