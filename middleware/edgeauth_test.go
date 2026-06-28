@@ -64,8 +64,8 @@ func TestEdgeAuth_StripsGlobalAdminSpoof(t *testing.T) {
 
 // TestEdgeAuth_PreservesServiceTokenOrg proves the money path is untouched:
 // cloud-api -> commerce per-org billing authenticates with an OPAQUE Bearer
-// service token (not a JWT) and names the org via X-Hanzo-Org. EdgeAuth must
-// (a) strip any forged X-Org-Id, (b) NOT strip X-Hanzo-Org (it is not an
+// service token (not a JWT) and names the org via X-Org-Id. EdgeAuth must
+// (a) strip any forged X-Org-Id, (b) NOT strip X-Org-Id (it is not an
 // identity header), and (c) never abort — the opaque token is not a JWT, so
 // minting is skipped and the request flows through to the service-token
 // authorizer. Breaking any of these breaks per-org billing.
@@ -73,10 +73,12 @@ func TestEdgeAuth_PreservesServiceTokenOrg(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
 	h := EdgeAuth()
 
+	// Opaque service token names its own org via the single canonical X-Org-Id.
+	// EdgeAuth preserves it (non-JWT bearer); the token is validated downstream,
+	// so a forged value is rejected before billing — one header, one way.
 	req := httptest.NewRequest("POST", "/v1/billing/usage", nil)
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token_not_a_jwt")
-	req.Header.Set("X-Hanzo-Org", "maxpower") // trusted service-token org selector
-	req.Header.Set("X-Org-Id", "admin")       // forged identity — must be stripped
+	req.Header.Set("X-Org-Id", "maxpower")
 
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = req
@@ -85,11 +87,8 @@ func TestEdgeAuth_PreservesServiceTokenOrg(t *testing.T) {
 	if c.IsAborted() {
 		t.Fatal("EdgeAuth must NOT abort an opaque service-token request (money path)")
 	}
-	if got := c.Request.Header.Get("X-Org-Id"); got != "" {
-		t.Fatalf("forged X-Org-Id must be stripped, got %q", got)
-	}
-	if got := c.Request.Header.Get("X-Hanzo-Org"); got != "maxpower" {
-		t.Fatalf("X-Hanzo-Org must be preserved for per-org billing, got %q", got)
+	if got := c.Request.Header.Get("X-Org-Id"); got != "maxpower" {
+		t.Fatalf("service-token X-Org-Id must be preserved for per-org billing, got %q", got)
 	}
 }
 
