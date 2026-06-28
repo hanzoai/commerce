@@ -80,10 +80,10 @@ type checkoutSessionRequest struct {
 
 // couponDiscount holds the resolved discount for a checkout session.
 type couponDiscount struct {
-	Code           string  `json:"code"`
-	Type           string  `json:"type"`
-	Amount         int     `json:"amount"`
-	DiscountCents  int64   `json:"discountCents"`
+	Code          string `json:"code"`
+	Type          string `json:"type"`
+	Amount        int    `json:"amount"`
+	DiscountCents int64  `json:"discountCents"`
 }
 
 type checkoutSessionResponse struct {
@@ -193,12 +193,12 @@ func isValidRedirect(raw string) bool {
 }
 
 // resolveOrgForCheckout looks up the Organization by name (from request body,
-// X-IAM-Org-Id / X-IAM-Org header, or COMMERCE_SERVICE_ORG env) and hydrates
+// X-Org-Id / X-IAM-Org header, or COMMERCE_SERVICE_ORG env) and hydrates
 // its payment credentials from KMS. IAM manages all orgs, so the header is
-// X-IAM-Org-Id (X-IAM-Org accepted for backward compat).
+// X-Org-Id (X-IAM-Org accepted for backward compat).
 func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organization, error) {
 	if orgName == "" {
-		orgName = c.GetHeader("X-IAM-Org-Id")
+		orgName = c.GetHeader("X-Org-Id")
 	}
 	if orgName == "" {
 		orgName = c.GetHeader("X-IAM-Org")
@@ -207,7 +207,7 @@ func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organi
 		orgName = os.Getenv("COMMERCE_SERVICE_ORG")
 	}
 	if orgName == "" {
-		return nil, errors.New("organization is required: set org in request body or X-IAM-Org-Id header")
+		return nil, errors.New("organization is required: set org in request body or X-Org-Id header")
 	}
 
 	db := datastore.New(c)
