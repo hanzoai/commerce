@@ -55,8 +55,9 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// imperatively on the live *gin.Engine the moment Embed returns.
 	apiGroup := srv.App().Router.Group("/v1")
 	// EdgeAuth (the standalone-edge trust boundary that strips/mints identity)
-	// is mounted globally in server.go mountIdentity, BEFORE pkg/auth.Gin, so
-	// it covers /v1 here too. See middleware/edgeauth.go.
+	// is installed by Bootstrap (server.go installIdentityBoundary) BEFORE
+	// pkg/auth.Gin and ahead of every route group, so it covers /v1 here too
+	// (this group is registered after Bootstrap returns). See middleware/edgeauth.go.
 	//
 	// IAM gateway-trust shim: every /v1/* handler that calls
 	// middleware.GetOrganization(c) needs the "organization" gin key
