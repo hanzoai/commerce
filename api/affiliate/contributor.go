@@ -3,6 +3,7 @@ package affiliate
 import (
 	"github.com/gin-gonic/gin"
 
+	payoutcron "github.com/hanzoai/commerce/cron/payout/contributor"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/contributor"
@@ -103,14 +104,14 @@ func getEarnings(c *gin.Context) {
 	}
 
 	http.Render(c, 200, gin.H{
-		"contributorId":  contrib.Id(),
-		"gitLogin":       contrib.GitLogin,
-		"totalEarned":    contrib.TotalEarned,
-		"totalPending":   contrib.TotalPending,
-		"linesAuthored":  contrib.TotalLinesAuthored,
-		"payoutMethod":   contrib.PayoutMethod,
-		"currency":       contrib.Currency,
-		"lastPaid":       contrib.LastPaid,
+		"contributorId": contrib.Id(),
+		"gitLogin":      contrib.GitLogin,
+		"totalEarned":   contrib.TotalEarned,
+		"totalPending":  contrib.TotalPending,
+		"linesAuthored": contrib.TotalLinesAuthored,
+		"payoutMethod":  contrib.PayoutMethod,
+		"currency":      contrib.Currency,
+		"lastPaid":      contrib.LastPaid,
 	})
 }
 
@@ -213,8 +214,8 @@ func calculatePayouts(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	var req struct {
-		TotalRevenueCents int64                    `json:"totalRevenueCents"`
-		ComponentRevenue  map[string]int64         `json:"componentRevenue"`
+		TotalRevenueCents int64                     `json:"totalRevenueCents"`
+		ComponentRevenue  map[string]int64          `json:"componentRevenue"`
 		Config            *contributor.PayoutConfig `json:"config,omitempty"`
 	}
 
@@ -286,4 +287,32 @@ func previewPayouts(c *gin.Context) {
 	)
 
 	http.Render(c, 200, summary)
+}
+
+// executePayouts runs the OSS contributor payout EXECUTOR for the caller's org
+// namespace: it computes the period's revenue, calculates the 25% split via
+// SBOM attribution, and disburses each allocation — CreditGrants, queued
+// Stripe transfers, and on-chain HUSD transfers (PayoutMethod="crypto").
+//
+// Dry-run by default (logs what would happen, pays nothing). Pass
+// ?execute=true to actually disburse. Crypto payouts fail closed
+// (ErrHUSDNotConfigured) unless HUSD_TOKEN_ADDRESS + HUSD_TREASURY_KEY are set
+// from KMS, so an unconfigured deploy never silently mis-pays. Intended for
+// admin / CronJob invocation (mirrors billing auto-recharge/run-all).
+//
+//	POST /payouts/execute              (dry-run)
+//	POST /payouts/execute?execute=true (live disbursement)
+func executePayouts(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	dryRun := c.Query("execute") != "true"
+
+	if err := payoutcron.Payout(org.Namespaced(c), payoutcron.Config{
+		Namespace: org.Namespace(),
+		DryRun:    dryRun,
+	}); err != nil {
+		http.Fail(c, 500, "contributor payout failed", err)
+		return
+	}
+
+	http.Render(c, 200, gin.H{"ok": true, "namespace": org.Namespace(), "dryRun": dryRun})
 }
