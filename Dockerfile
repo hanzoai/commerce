@@ -63,8 +63,12 @@ ARG TARGETARCH
 
 WORKDIR /build
 
-# Copy go mod files first for layer caching
+# Copy go mod files first for layer caching. The root go.mod has a local
+# `replace github.com/hanzoai/commerce/thirdparty/ethereum => ./thirdparty/ethereum`
+# (on-chain HUSD payouts), so its go.mod/go.sum MUST be present for `go mod
+# download` to resolve the replaced module before the full `COPY . .`.
 COPY go.mod go.sum ./
+COPY thirdparty/ethereum/go.mod thirdparty/ethereum/go.sum ./thirdparty/ethereum/
 
 # Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
 # resolve. Mount the netrc build secret so git over HTTPS authenticates for
