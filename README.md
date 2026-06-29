@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/hero.svg" alt="commerce" width="880"></p>
+
 # commerce
 
 Checkout, billing, pricing, invoicing — the light commerce router for the Hanzo platform. **NOT in PCI-DSS scope** (PAN data lives in `hanzoai/vault`).
