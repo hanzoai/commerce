@@ -11,7 +11,6 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -103,12 +102,14 @@ func Deposit(c *gin.Context) {
 	c.JSON(201, resp)
 }
 
-// GrantStarterCredit creates a $5 USD starter credit for a new user.
-// The credit expires after 30 days if unused. Tagged "starter-credit"
+// GrantStarterCredit creates a $100 USD starter credit for a new org.
+// The credit expires after 365 days if unused. Tagged "starter-credit"
 // so it can be identified in transaction history.
 //
-// Requires the user to have at least one payment method on file.
-// This prevents abuse from mass-created accounts with no payment verification.
+// No payment method is required — the starter credit is the on-signup grant
+// that lets a new org evaluate the platform before adding a card. A verified
+// payment method is required only to top up BEYOND the starter credit.
+// Idempotent: deduped by the starter-credit tag.
 //
 //	POST /v1/billing/credit
 func GrantStarterCredit(c *gin.Context) {
@@ -131,15 +132,10 @@ func GrantStarterCredit(c *gin.Context) {
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
-	// Require at least one payment method on file before granting the
-	// starter credit. This ensures the user has verified with a card.
-	pms := make([]*paymentmethod.PaymentMethod, 0)
-	pmq := paymentmethod.Query(db).
-		Filter("UserId=", req.User)
-	if _, err := pmq.Limit(1).GetAll(&pms); err != nil || len(pms) == 0 {
-		http.Fail(c, 403, "a verified payment method is required before claiming starter credit", nil)
-		return
-	}
+	// No payment-method gate: the starter credit is grantable WITHOUT a card.
+	// A verified payment method is required only for top-up beyond the starter
+	// credit (see TopupWithToken/Topup). The tag dedupe below still prevents
+	// double-dipping.
 
 	// Check if starter credit was already granted (prevent double-dipping).
 	existingTrans := make([]*transaction.Transaction, 0)
@@ -157,7 +153,7 @@ func GrantStarterCredit(c *gin.Context) {
 	trans.DestinationKind = "iam-user"
 	trans.Currency = "usd"
 	trans.Amount = currency.Cents(credit.StarterCreditCents)
-	trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
+	trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
 	trans.Tags = credit.StarterCreditTag
 	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
 	trans.Metadata = Map{
