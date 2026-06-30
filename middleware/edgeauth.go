@@ -3,7 +3,10 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -47,10 +50,14 @@ var identityHeaders = []string{
 //     validated claims, so the existing IAMTokenRequired + handlers
 //     resolve the caller's org exactly as in the gateway path.
 //
-//  3. For /billing/ requests, locks the billing-subject query params
-//     (user / userId / customerId) to the caller's own org slug, so a
-//     browser can only ever read its OWN org's billing (per-org
-//     isolation) regardless of what it puts on the URL.
+//  3. For /billing/ requests, locks the billing-subject to the caller's
+//     own org slug — in the query params (user / userId / customerId) for
+//     reads, AND in the JSON body of writes (POST/PUT/PATCH) — so a browser
+//     can only ever read or WRITE its OWN org's billing (per-org isolation)
+//     regardless of what it puts on the URL or in the body. Without the body
+//     half, a write whose body customerId differs from the locked query
+//     subject lands under an arbitrary key that every read (forced to the
+//     slug) can never see — silently orphaning the record.
 //
 // Service tokens (COMMERCE_SERVICE_TOKEN) and hk-/sk- API keys are left
 // untouched: they are not JWTs, so step 2 skips them and the existing
@@ -132,6 +139,7 @@ func EdgeAuth() gin.HandlerFunc {
 						c.Request.Header.Set("X-Org-Id", subject)
 					}
 					lockBillingSubject(c.Request, subject)
+					lockBillingSubjectBody(c.Request, subject)
 				}
 			}
 		}
@@ -176,18 +184,27 @@ func permsHeader(claims *auth.IAMClaims) string {
 	return strconv.FormatInt(f, 10)
 }
 
-// lockBillingSubject rewrites any user/userId/customerId query param to
-// the caller's own org slug so a browser-issued read can never target
-// another subject. Per-org billing keys on the org slug (== namespace),
-// so this is the canonical key; cross-org isolation also holds because
-// the namespace itself comes from the validated X-Org-Id.
+// billingSubjectKeys name whose billing a request targets. The SAME set is
+// pinned in the URL query (lockBillingSubject, every method) and in the JSON
+// write body (lockBillingSubjectBody, POST/PUT/PATCH) so a read and its
+// matching write can never disagree about the subject — the asymmetry that
+// silently orphaned payment methods (write under the body value, reads forced
+// to the slug). Per-org billing keys on the org slug (== namespace), so the
+// caller's own slug is the canonical, only writable key.
+var billingSubjectKeys = []string{"user", "userId", "customerId"}
+
+// lockBillingSubject rewrites any billing-subject query param to the caller's
+// own org slug so a browser-issued read can never target another subject.
+// Cross-org isolation also holds because the namespace itself comes from the
+// validated X-Org-Id. This is the QUERY half; lockBillingSubjectBody is the
+// body half for writes.
 func lockBillingSubject(r *http.Request, orgSlug string) {
 	if orgSlug == "" {
 		return
 	}
 	q := r.URL.Query()
 	changed := false
-	for _, k := range []string{"user", "userId", "customerId"} {
+	for _, k := range billingSubjectKeys {
 		if q.Has(k) {
 			q.Set(k, orgSlug)
 			changed = true
@@ -196,6 +213,102 @@ func lockBillingSubject(r *http.Request, orgSlug string) {
 	if changed {
 		r.URL.RawQuery = q.Encode()
 	}
+}
+
+// maxBillingBodyBytes caps how much of a write body EdgeAuth buffers to pin the
+// billing subject. Billing writes are small JSON objects; a body larger than
+// this is passed through untouched (subject not pinned) rather than buffered —
+// the handler still receives the full, unmodified stream.
+const maxBillingBodyBytes = 1 << 20 // 1 MiB
+
+// lockBillingSubjectBody is the write-side companion to lockBillingSubject: for
+// a /billing/ POST/PUT/PATCH with a JSON object body it pins the same
+// billing-subject fields (user/userId/customerId) to subject before the
+// handler binds them, so a client can never persist a billing record under a
+// subject other than its own (global-admin ?org= override still honored,
+// because subject already reflects it). It is body-shape-agnostic: only those
+// keys are rewritten, and only when present; arrays, primitives, other shapes,
+// non-JSON content, and unparseable bodies all pass through untouched. Reads
+// (GET/DELETE/...) carry the subject in the query, locked by lockBillingSubject.
+func lockBillingSubjectBody(r *http.Request, subject string) {
+	if subject == "" || r.Body == nil {
+		return
+	}
+	switch r.Method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch:
+	default:
+		return
+	}
+	if ct := r.Header.Get("Content-Type"); !strings.Contains(strings.ToLower(ct), "json") {
+		return
+	}
+
+	// Buffer at most maxBillingBodyBytes+1 so an oversized body is detected
+	// without reading it all into memory.
+	buf, err := io.ReadAll(io.LimitReader(r.Body, maxBillingBodyBytes+1))
+	if err != nil {
+		// Read failed mid-stream: restore what we have and let the handler's
+		// own JSON binding surface the error rather than pinning a partial body.
+		r.Body = io.NopCloser(bytes.NewReader(buf))
+		return
+	}
+	if len(buf) > maxBillingBodyBytes {
+		// Oversized: stitch the unread remainder back so the handler still
+		// receives the complete, unmodified body.
+		r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(buf), r.Body))
+		return
+	}
+	_ = r.Body.Close()
+
+	pinned, ok := pinJSONSubjectFields(buf, subject)
+	if !ok {
+		// Not a JSON object, no subject keys present, or unparseable: hand the
+		// original bytes back untouched (never reject an unexpected shape).
+		r.Body = io.NopCloser(bytes.NewReader(buf))
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(pinned))
+	r.ContentLength = int64(len(pinned))
+	r.Header.Set("Content-Length", strconv.Itoa(len(pinned)))
+}
+
+// pinJSONSubjectFields rewrites any billingSubjectKeys present at the TOP LEVEL
+// of a JSON object body to subject, returning the re-encoded body and true when
+// at least one key was rewritten. It returns (nil, false) — telling the caller
+// to keep the original bytes — when the body is not a JSON object, carries none
+// of the keys, or cannot be parsed.
+//
+// Decoding uses json.Number so numeric fields (e.g. billing amounts) keep their
+// exact representation across the re-encode instead of being coerced through
+// float64; HTML escaping is disabled so the re-encoded body stays byte-faithful
+// apart from the pinned keys (and Go's canonical map-key ordering).
+func pinJSONSubjectFields(raw []byte, subject string) ([]byte, bool) {
+	if t := bytes.TrimLeft(raw, " \t\r\n"); len(t) == 0 || t[0] != '{' {
+		return nil, false
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var obj map[string]any
+	if err := dec.Decode(&obj); err != nil {
+		return nil, false
+	}
+	changed := false
+	for _, k := range billingSubjectKeys {
+		if _, ok := obj[k]; ok {
+			obj[k] = subject
+			changed = true
+		}
+	}
+	if !changed {
+		return nil, false
+	}
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(obj); err != nil {
+		return nil, false
+	}
+	return bytes.TrimRight(b.Bytes(), "\n"), true
 }
 
 // resolveBillingSubject decides whose billing a verified request may read,
