@@ -146,14 +146,16 @@ func IAMTokenRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Best-effort signup credit grant on first encounter. Fires in
-		// the background so a slow credit check never blocks the request
-		// path. Grants are idempotent (deduped by the "org-created" tag
-		// inside GrantIfEligible).
-		go func(id string) {
-			bgDb := datastore.New(context.Background())
-			credit.GrantIfEligible(bgDb, id, "org-created")
-		}(userID)
+		// Best-effort signup credit grant on first encounter. Billing is
+		// per-org, so the grant MUST be keyed to the org slug (the same key
+		// GetMyBalance reads) inside the org's namespace — granting to the
+		// user sub in the default namespace writes a row no read path ever
+		// sees. Idempotent (deduped by the starter tag inside GrantIfEligible).
+		orgSlug := strings.ToLower(strings.TrimSpace(ownerID))
+		nsCtx := o.Namespaced(context.Background())
+		go func() {
+			credit.GrantIfEligible(datastore.New(nsCtx), orgSlug, "org-created")
+		}()
 
 		// Gateway-trusted identity counts as live by default. An explicit
 		// gateway-propagated X-Hanzo-Test: true opts the request into TEST
