@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -30,29 +31,44 @@ type RegistryConfig struct {
 	DisabledProcessors map[ProcessorType]bool
 }
 
-// DefaultConfig returns the default registry configuration
+// DefaultConfig returns the default registry configuration. pay.hanzo.ai bills on
+// Square (fiat) + crypto by default; both defaults are env-overridable per
+// environment (COMMERCE_DEFAULT_FIAT_PROCESSOR / COMMERCE_DEFAULT_CRYPTO_PROCESSOR)
+// so ops can stage the cutover without a rebuild. Stripe stays registered as a
+// fallback so an org whose KMS creds are still Stripe-only is never stranded.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
-		DefaultFiatProcessor:   Stripe,
-		DefaultCryptoProcessor: MPC,
+		DefaultFiatProcessor:   envProcessor("COMMERCE_DEFAULT_FIAT_PROCESSOR", Square),
+		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
 		ProcessorPriority: []ProcessorType{
+			Square, // pay.hanzo.ai default fiat
 			Stripe,
-			Square,
 			Adyen,
 			PayPal,
 			Braintree,
 			Recurly,
 			LemonSqueezy,
-			Circle,
-			SolanaPay,
-			MoonPay,
+			// crypto
 			MPC,
+			SolanaPay,
+			Circle,
+			CoinbaseCommerce,
+			OpenNode,
+			MoonPay,
 			Ethereum,
 			Bitcoin,
 			Wire,
 		},
 		DisabledProcessors: make(map[ProcessorType]bool),
 	}
+}
+
+// envProcessor reads a processor type from an env var, falling back to def when unset.
+func envProcessor(key string, def ProcessorType) ProcessorType {
+	if v := os.Getenv(key); v != "" {
+		return ProcessorType(v)
+	}
+	return def
 }
 
 var (
