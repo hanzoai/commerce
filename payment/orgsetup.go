@@ -52,12 +52,16 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		}))
 	}
 
-	// Square. Prefer the org's KMS-hydrated config; fall back to process env
+	// Square. The deployment's SQUARE_ENVIRONMENT is the single authority for
+	// sandbox-vs-production (see SquareUseSandbox): it selects BOTH which
+	// KMS-hydrated credential set to use AND the Environment passed to the
+	// provider (which drives the Square API base URL). Falls back to process env
 	// vars when KMS is disabled or the org has no stored Square credentials.
-	// This mirrors the checkout-session resolver (api/checkout/sessions.go),
-	// which has always honored SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID.
 	{
-		sqCfg := org.SquareConfig(!org.Live)
+		useSandbox := SquareUseSandbox(org)
+		env := SquareEnvironment(org)
+
+		sqCfg := org.SquareConfig(useSandbox)
 		token := sqCfg.AccessToken
 		locationID := sqCfg.LocationId
 		webhookKey := org.Square.WebhookSignatureKey
@@ -72,25 +76,11 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		if webhookURL == "" {
 			webhookURL = defaultSquareWebhookURL
 		}
-		env := "production"
-		if !org.Live {
-			env = "sandbox"
-		}
 
+		// Env-var credential fallback (KMS disabled or no stored Square creds).
+		// The SAME useSandbox authority picks the sandbox vs production env vars,
+		// so the credential set always matches `env`.
 		if token == "" {
-			// org.Live is the authority for sandbox-vs-production — the same
-			// rule SquareConfig(!org.Live) already applies to KMS creds. A
-			// test org (!org.Live) charges Square sandbox; a live org charges
-			// production. SQUARE_ENVIRONMENT only breaks ties when org
-			// liveness can't decide — which, being a bool, it always can, so
-			// it's only consulted for a live org to allow an all-sandbox
-			// deployment (SQUARE_ENVIRONMENT=sandbox) without per-org test
-			// flags. This keeps one consistent rule across the KMS and
-			// env-var credential paths.
-			squareEnv := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
-			envSandbox := squareEnv == "sandbox" || squareEnv == "test"
-			useSandbox := !org.Live || envSandbox
-
 			token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 			locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
 			if useSandbox {
@@ -103,11 +93,6 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 			}
 			if webhookKey == "" {
 				webhookKey = strings.TrimSpace(os.Getenv("SQUARE_WEBHOOK_SIGNATURE_KEY"))
-			}
-			if useSandbox {
-				env = "sandbox"
-			} else {
-				env = "production"
 			}
 		}
 
@@ -137,7 +122,7 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	if org.Braintree.PublicKey != "" {
 		reg.Register(braintree.NewProvider(braintree.Config{
 			MerchantID:  org.Braintree.MerchantID,
-			PublicKey:    org.Braintree.PublicKey,
+			PublicKey:   org.Braintree.PublicKey,
 			PrivateKey:  org.Braintree.PrivateKey,
 			Environment: org.Braintree.Environment,
 		}))
