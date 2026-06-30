@@ -169,13 +169,23 @@ func TestDisabledByPolicy_DefaultDisablesStripeOnly(t *testing.T) {
 	}
 }
 
-// COMMERCE_DISABLED_PROCESSORS="" (explicit empty) re-enables Stripe, but Square
-// stays first in priority for a USD charge; with only Stripe registered, Stripe
-// becomes selectable.
-func TestSelectProcessor_EnvOverride_EmptyReenablesStripeBehindSquare(t *testing.T) {
-	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "")
+// M1: COMMERCE_DISABLED_PROCESSORS empty or whitespace (a k8s placeholder) must
+// NOT re-enable Stripe — it keeps the safe default {Stripe}.
+func TestDisabledByPolicy_EmptyKeepsDefault(t *testing.T) {
+	for _, v := range []string{"", "   "} {
+		t.Setenv("COMMERCE_DISABLED_PROCESSORS", v)
+		if !processor.DisabledByPolicy(processor.Stripe) {
+			t.Fatalf("COMMERCE_DISABLED_PROCESSORS=%q must keep Stripe disabled (safe default)", v)
+		}
+	}
+}
+
+// The explicit sentinel "none" re-enables Stripe, but Square stays first in
+// priority for a USD charge; with only Stripe registered, Stripe becomes selectable.
+func TestSelectProcessor_EnvOverride_NoneReenablesStripeBehindSquare(t *testing.T) {
+	t.Setenv("COMMERCE_DISABLED_PROCESSORS", "none")
 	if processor.DisabledByPolicy(processor.Stripe) {
-		t.Fatal(`COMMERCE_DISABLED_PROCESSORS="" must disable nothing`)
+		t.Fatal(`COMMERCE_DISABLED_PROCESSORS=none must disable nothing`)
 	}
 
 	reg := processor.NewRegistry(processor.DefaultConfig())
@@ -196,7 +206,7 @@ func TestSelectProcessor_EnvOverride_EmptyReenablesStripeBehindSquare(t *testing
 		t.Fatalf("SelectProcessor(USD) stripe-only: %v", err)
 	}
 	if proc2.Type() != processor.Stripe {
-		t.Fatalf(`with COMMERCE_DISABLED_PROCESSORS="" and only Stripe registered, want stripe; got %q`, proc2.Type())
+		t.Fatalf(`with COMMERCE_DISABLED_PROCESSORS=none and only Stripe registered, want stripe; got %q`, proc2.Type())
 	}
 }
 

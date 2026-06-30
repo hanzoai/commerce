@@ -9,19 +9,18 @@ import (
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
-	paymentpkg "github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	squarelib "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
-	sqCfg := org.SquareConfig(paymentpkg.SquareUseSandbox(org))
+	sqCfg := org.SquareConfig(org.TestMode())
 
 	proc := squarelib.NewProcessor(squarelib.Config{
 		AccessToken:   sqCfg.AccessToken,
 		LocationID:    sqCfg.LocationId,
 		WebhookSecret: org.Square.WebhookSignatureKey,
-		Environment:   paymentpkg.SquareEnvironment(org),
+		Environment:   org.SquareEnvironment(),
 	})
 
 	req := processor.PaymentRequest{
@@ -42,7 +41,9 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// Update payment with Square response
 	pay.Account.Square.PaymentId = result.TransactionID
 	pay.Account.Square.LocationId = sqCfg.LocationId
-	pay.Live = org.Live
+	// pay.Live must follow the SAME authority as the charge environment, so a
+	// sandbox authorization is never recorded as a live payment (and vice versa).
+	pay.Live = !org.TestMode()
 
 	// Update user's Square account
 	usr.Accounts.Square.CustomerId = req.CustomerID

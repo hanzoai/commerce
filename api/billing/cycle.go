@@ -39,7 +39,7 @@ func RunBillingCycle(c *gin.Context) {
 
 	// Top up each active subscriber's included monthly allotment for the
 	// current period (idempotent per user+month).
-	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), org.Live)
+	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), !org.TestMode())
 
 	c.JSON(200, gin.H{
 		"processed": len(results),
@@ -111,7 +111,7 @@ func RunBillingCycleAllOrgs(c *gin.Context) {
 		totalProcessed += len(results)
 
 		// Grant included monthly allotment for active subscribers (idempotent).
-		grantOrgAllotments(c, db, now, org.Live)
+		grantOrgAllotments(c, db, now, !org.TestMode())
 
 		if len(results) > 0 {
 			allResults = append(allResults, orgResult{

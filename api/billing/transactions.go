@@ -27,7 +27,7 @@ func ListTransactions(c *gin.Context) {
 		return
 	}
 
-	datas, err := util.GetTransactions(ctx, user, "iam-user", !org.Live)
+	datas, err := util.GetTransactions(ctx, user, "iam-user", org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query transactions", err)
 		return
@@ -35,15 +35,15 @@ func ListTransactions(c *gin.Context) {
 
 	// Flatten all transactions across currencies.
 	type txResponse struct {
-		Id          string                 `json:"id"`
-		Type        string                 `json:"type"`
-		Amount      int64                  `json:"amount"`
-		Currency    string                 `json:"currency"`
-		Tags        string                 `json:"tags,omitempty"`
-		Notes       string                 `json:"notes,omitempty"`
-		Metadata    map[string]interface{} `json:"metadata,omitempty"`
-		CreatedAt   string                 `json:"createdAt"`
-		ExpiresAt   string                 `json:"expiresAt,omitempty"`
+		Id        string                 `json:"id"`
+		Type      string                 `json:"type"`
+		Amount    int64                  `json:"amount"`
+		Currency  string                 `json:"currency"`
+		Tags      string                 `json:"tags,omitempty"`
+		Notes     string                 `json:"notes,omitempty"`
+		Metadata  map[string]interface{} `json:"metadata,omitempty"`
+		CreatedAt string                 `json:"createdAt"`
+		ExpiresAt string                 `json:"expiresAt,omitempty"`
 	}
 
 	all := make([]txResponse, 0)

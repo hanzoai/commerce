@@ -60,7 +60,7 @@ func GetBillingStatus(c *gin.Context) {
 
 	// 2. Get available credit balance (USD).
 	var creditBalance currency.Cents
-	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, !org.Live)
+	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, org.TestMode())
 	if err == nil {
 		if data, ok := datas.Data[currency.USD]; ok {
 			avail := data.Balance - data.Holds
