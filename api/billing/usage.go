@@ -53,7 +53,7 @@ func GetUsage(c *gin.Context) {
 
 	transs := make([]*transaction.Transaction, 0)
 	q := transaction.Query(db).Ancestor(rootKey).
-		Filter("Test=", !org.Live).
+		Filter("Test=", org.TestMode()).
 		Filter("SourceKind=", "iam-user").
 		Filter("SourceId=", user).
 		Filter("Tags=", "api-usage")
@@ -146,7 +146,7 @@ func RecordUsage(c *gin.Context) {
 		"clientIp":         req.ClientIP,
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 
@@ -187,7 +187,7 @@ func RecordUsage(c *gin.Context) {
 	// Track referral revenue share: if this user was referred, create an
 	// affiliate Fee for the referrer's commission. Fire-and-forget — usage
 	// recording must not fail because of referral tracking.
-	go engine.TrackRevenueShare(db, req.User, currency.Cents(req.Amount), cur, trans.Id(), !org.Live)
+	go engine.TrackRevenueShare(db, req.User, currency.Cents(req.Amount), cur, trans.Id(), org.TestMode())
 
 	c.JSON(201, gin.H{
 		"transactionId": trans.Id(),

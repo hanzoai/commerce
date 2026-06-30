@@ -121,7 +121,7 @@ func zapGetBalance(c *gin.Context, params json.RawMessage) (interface{}, *zapErr
 		cur = "usd"
 	}
 
-	datas, err := util.GetTransactionsByCurrency(ctx, p.User, "iam-user", cur, !org.Live)
+	datas, err := util.GetTransactionsByCurrency(ctx, p.User, "iam-user", cur, org.TestMode())
 	if err != nil {
 		return nil, &zapError{Code: -32000, Message: "balance query failed: " + err.Error()}
 	}
@@ -160,7 +160,7 @@ func zapGetBalanceAll(c *gin.Context, params json.RawMessage) (interface{}, *zap
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
 
-	datas, err := util.GetTransactions(ctx, p.User, "iam-user", !org.Live)
+	datas, err := util.GetTransactions(ctx, p.User, "iam-user", org.TestMode())
 	if err != nil {
 		return nil, &zapError{Code: -32000, Message: "balance query failed: " + err.Error()}
 	}
@@ -202,7 +202,7 @@ func zapGetUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError
 
 	transs := make([]*transaction.Transaction, 0)
 	q := transaction.Query(db).Ancestor(rootKey).
-		Filter("Test=", !org.Live).
+		Filter("Test=", org.TestMode()).
 		Filter("SourceKind=", "iam-user").
 		Filter("SourceId=", p.User).
 		Filter("Tags=", "api-usage")
@@ -280,7 +280,7 @@ func zapRecordUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapEr
 		"clientIp":         req.ClientIP,
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 
@@ -338,7 +338,7 @@ func zapDeposit(c *gin.Context, params json.RawMessage) (interface{}, *zapError)
 		trans.ExpiresAt = time.Now().AddDate(0, 0, req.ExpiresIn)
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 

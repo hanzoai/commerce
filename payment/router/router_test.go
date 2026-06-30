@@ -17,10 +17,11 @@ import (
 // These tests use Stripe/Adyen/PayPal mocks as fixtures to exercise routing
 // strategies (primary-fallback, round-robin, weighted, currency-based, circuit
 // breaker), which are orthogonal to the production deny policy (which disables
-// Stripe for new-charge selection by default). Setting the override explicitly
-// keeps every fixture selectable without weakening the production default.
+// Stripe for new-charge selection by default). The explicit "none" sentinel
+// keeps every fixture selectable without weakening the production default (an
+// empty value now keeps the safe default — see disabledProcessors).
 func TestMain(m *testing.M) {
-	os.Setenv("COMMERCE_DISABLED_PROCESSORS", "")
+	os.Setenv("COMMERCE_DISABLED_PROCESSORS", "none")
 	os.Exit(m.Run())
 }
 
