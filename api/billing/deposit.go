@@ -22,7 +22,7 @@ import (
 type depositRequest struct {
 	User      string `json:"user"`
 	Currency  string `json:"currency"`
-	Amount    int64  `json:"amount"`    // cents
+	Amount    int64  `json:"amount"` // cents
 	Notes     string `json:"notes"`
 	Tags      string `json:"tags"`
 	ExpiresIn int    `json:"expiresIn"` // days until expiry (0 = no expiry)
@@ -78,7 +78,7 @@ func Deposit(c *gin.Context) {
 		trans.ExpiresAt = time.Now().AddDate(0, 0, req.ExpiresIn)
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 
@@ -165,7 +165,7 @@ func GrantStarterCredit(c *gin.Context) {
 		"expiryDays": credit.StarterCreditDays,
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 

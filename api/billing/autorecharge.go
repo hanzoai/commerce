@@ -194,7 +194,7 @@ func RunAutoRechargeAllOrgs(c *gin.Context) {
 
 		// Available = balance - holds. Skip if still above the threshold.
 		var available int64
-		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), org.Name, "iam-user", cur, !org.Live); err == nil {
+		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), org.Name, "iam-user", cur, org.TestMode()); err == nil {
 			if data, ok := datas.Data[cur]; ok {
 				available = int64(data.Balance) - int64(data.Holds)
 			}

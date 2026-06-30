@@ -91,9 +91,11 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 	trans.Amount = currency.Cents(amountCents)
 	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
 	trans.Tags = "topup"
-	if !org.Live {
-		trans.Test = true
-	}
+	// Ledger test-ness MUST follow the charge environment (org.TestMode), not
+	// org.Live alone — otherwise a Square sandbox charge could credit the live
+	// (spendable) balance. test==credit-bucket==read-bucket==charge-env.
+	test := org.TestMode()
+	trans.Test = test
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log with full context for manual reconciliation.
 		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
@@ -103,7 +105,7 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 
 	// Read back the new balance so the caller doesn't need a separate request.
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, !org.Live); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}

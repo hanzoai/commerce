@@ -19,7 +19,7 @@ import (
 )
 
 type topupTokenRequest struct {
-	SourceID    string `json:"sourceId"`    // Square Web Payments SDK nonce
+	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
 	AmountCents int64  `json:"amountCents"`
 	UserID      string `json:"userId"`
 	Currency    string `json:"currency,omitempty"`
@@ -121,9 +121,11 @@ func TopupWithToken(c *gin.Context) {
 	trans.Notes = fmt.Sprintf("Top-up via %s (ref: %s)", proc.Type(), result.ProcessorRef)
 	trans.Tags = "topup"
 
-	if !org.Live {
-		trans.Test = true
-	}
+	// Ledger test-ness MUST follow the charge environment (org.TestMode): a
+	// Square sandbox charge credits the TEST bucket, never the live (spendable)
+	// one. test==credit-bucket==read-bucket==charge-env.
+	test := org.TestMode()
+	trans.Test = test
 
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log for manual reconciliation.
@@ -136,7 +138,7 @@ func TopupWithToken(c *gin.Context) {
 	// Read back the SAME key just credited so the returned balance matches
 	// what me/balance will report (read == credit).
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), billingKey, "iam-user", cur, !org.Live); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), billingKey, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}

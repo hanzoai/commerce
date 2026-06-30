@@ -72,7 +72,7 @@ func Withdraw(c *gin.Context) {
 	}
 
 	// Check available balance before creating the withdrawal.
-	datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), req.User, "iam-user", cur, !org.Live)
+	datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), req.User, "iam-user", cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to check balance", err)
 		return
@@ -105,7 +105,7 @@ func Withdraw(c *gin.Context) {
 	trans.Notes = notes
 	trans.Tags = req.Tags
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 
