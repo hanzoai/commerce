@@ -15,8 +15,8 @@ import (
 
 // Starter credit constants.
 const (
-	StarterCreditCents = 500 // $5.00 USD
-	StarterCreditDays  = 30  // expires in 30 days
+	StarterCreditCents = 10000 // $100.00 USD
+	StarterCreditDays  = 365   // expires in 365 days
 	StarterCreditTag   = "starter-credit"
 )
 
@@ -70,7 +70,7 @@ func GrantIfEligibleNow(db *datastore.Datastore, userId, trigger string) (grante
 		trans.DestinationKind = "iam-user"
 		trans.Currency = "usd"
 		trans.Amount = currency.Cents(StarterCreditCents)
-		trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
+		trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
 		trans.Tags = StarterCreditTag
 		trans.ExpiresAt = time.Now().AddDate(0, 0, StarterCreditDays)
 		trans.Metadata = Map{
