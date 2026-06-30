@@ -31,18 +31,20 @@ type RegistryConfig struct {
 	DisabledProcessors map[ProcessorType]bool
 }
 
-// DefaultConfig returns the default registry configuration. pay.hanzo.ai bills on
-// Square (fiat) + crypto by default; both defaults are env-overridable per
-// environment (COMMERCE_DEFAULT_FIAT_PROCESSOR / COMMERCE_DEFAULT_CRYPTO_PROCESSOR)
-// so ops can stage the cutover without a rebuild. Stripe stays registered as a
-// fallback so an org whose KMS creds are still Stripe-only is never stranded.
+// DefaultConfig returns the default registry configuration. pay.hanzo.ai's TARGET
+// fiat default is Square (+ crypto), but the DEPLOY-SAFE no-env default stays
+// Stripe so that merging/shipping this can NEVER flip a live org with Stripe-only
+// KMS creds and break charging. Square is fully registered and ONE env var away:
+// set COMMERCE_DEFAULT_FIAT_PROCESSOR=square per environment the moment that org's
+// Square creds are seeded in KMS (/tenants/<org>/square/*). Crypto processors are
+// registered and elevated in the fallback order.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
-		DefaultFiatProcessor:   envProcessor("COMMERCE_DEFAULT_FIAT_PROCESSOR", Square),
+		DefaultFiatProcessor:   envProcessor("COMMERCE_DEFAULT_FIAT_PROCESSOR", Stripe),
 		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
 		ProcessorPriority: []ProcessorType{
-			Square, // pay.hanzo.ai default fiat
 			Stripe,
+			Square, // pay.hanzo.ai target fiat — promote via env once creds are seeded
 			Adyen,
 			PayPal,
 			Braintree,
