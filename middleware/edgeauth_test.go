@@ -3,7 +3,12 @@
 package middleware
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -145,6 +150,109 @@ func TestLockBillingSubject(t *testing.T) {
 	}
 	if q.Get("limit") != "5" {
 		t.Fatalf("unrelated query param clobbered, limit=%q", q.Get("limit"))
+	}
+}
+
+// TestLockBillingSubjectBody is the write-side counterpart to
+// TestLockBillingSubject: a /billing/ write whose JSON body names a FOREIGN
+// billing subject must have it pinned to the caller's own slug before the
+// handler binds it — the exact gap that let a body customerId of "hanzo/z"
+// orphan a payment method that every (query-locked) read could never see.
+func TestLockBillingSubjectBody(t *testing.T) {
+	// amount is 2^53+1: a value float64 cannot hold exactly, so a clean
+	// round-trip proves the rewrite preserves numeric precision (json.Number).
+	const body = `{"customerId":"victim/other","amount":9007199254740993,"currency":"usd","brand":"visa"}`
+	req := httptest.NewRequest("POST", "/v1/billing/payment-methods", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	lockBillingSubjectBody(req, "hanzo")
+
+	raw, _ := io.ReadAll(req.Body)
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	var m map[string]any
+	if err := dec.Decode(&m); err != nil {
+		t.Fatalf("rewritten body must stay valid JSON: %v (%s)", err, raw)
+	}
+	if m["customerId"] != "hanzo" {
+		t.Fatalf("body customerId must be pinned to caller slug, got %v", m["customerId"])
+	}
+	if n, _ := m["amount"].(json.Number); n.String() != "9007199254740993" {
+		t.Fatalf("numeric precision lost in rewrite, amount=%v", m["amount"])
+	}
+	if m["currency"] != "usd" || m["brand"] != "visa" {
+		t.Fatalf("unrelated fields clobbered: %v", m)
+	}
+	if got := req.Header.Get("Content-Length"); got != strconv.Itoa(len(raw)) {
+		t.Fatalf("Content-Length must track rewritten body (%d), got %q", len(raw), got)
+	}
+}
+
+// TestLockBillingSubjectBody_PinsAllSubjectKeys: every billing-subject field in
+// the body (user/userId/customerId) is pinned, mirroring the query lock's set.
+func TestLockBillingSubjectBody_PinsAllSubjectKeys(t *testing.T) {
+	const body = `{"user":"a/b","userId":"c/d","customerId":"e/f","note":"keep"}`
+	req := httptest.NewRequest("PUT", "/v1/billing/payment-methods/123", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	lockBillingSubjectBody(req, "hanzo")
+
+	var m map[string]any
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+		t.Fatalf("rewritten body must stay valid JSON: %v", err)
+	}
+	for _, k := range []string{"user", "userId", "customerId"} {
+		if m[k] != "hanzo" {
+			t.Fatalf("body %s must be pinned to caller slug, got %v", k, m[k])
+		}
+	}
+	if m["note"] != "keep" {
+		t.Fatalf("unrelated field clobbered, note=%v", m["note"])
+	}
+}
+
+// TestLockBillingSubjectBody_ShapeAgnostic proves the rewrite is surgical: a
+// body that is not a JSON object, carries none of the subject keys, or is
+// unparseable passes through byte-for-byte — EdgeAuth never rejects or mangles
+// an unexpected shape, it only ever pins the three known keys when present.
+func TestLockBillingSubjectBody_ShapeAgnostic(t *testing.T) {
+	for _, body := range []string{
+		`["a","b"]`,                       // JSON array, not an object
+		`{"amount":100,"currency":"usd"}`, // object without any subject key
+		`not json at all`,                 // unparseable
+		``,                                // empty
+	} {
+		req := httptest.NewRequest("POST", "/v1/billing/topup", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		lockBillingSubjectBody(req, "hanzo")
+		if got, _ := io.ReadAll(req.Body); string(got) != body {
+			t.Fatalf("body %q must pass through untouched, got %q", body, got)
+		}
+	}
+}
+
+// TestLockBillingSubjectBody_NonWriteMethodIgnored: reads (GET/DELETE) carry the
+// subject in the query (locked by lockBillingSubject), so the body lock — which
+// would consume the stream — must leave non-write methods untouched.
+func TestLockBillingSubjectBody_NonWriteMethodIgnored(t *testing.T) {
+	const body = `{"customerId":"victim/other"}`
+	req := httptest.NewRequest("GET", "/v1/billing/balance", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	lockBillingSubjectBody(req, "hanzo")
+	if got, _ := io.ReadAll(req.Body); string(got) != body {
+		t.Fatalf("GET body must be untouched, got %q", got)
+	}
+}
+
+// TestLockBillingSubjectBody_NonJSONIgnored: a non-JSON content type carries no
+// billing-subject fields to pin, so the body is left untouched (and unread).
+func TestLockBillingSubjectBody_NonJSONIgnored(t *testing.T) {
+	const body = `customerId=victim%2Fother&amount=100`
+	req := httptest.NewRequest("POST", "/v1/billing/payment-methods", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	lockBillingSubjectBody(req, "hanzo")
+	if got, _ := io.ReadAll(req.Body); string(got) != body {
+		t.Fatalf("non-JSON body must be untouched, got %q", got)
 	}
 }
 
