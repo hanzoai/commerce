@@ -9,18 +9,19 @@ import (
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
-	squarelib "github.com/hanzoai/commerce/thirdparty/square"
+	paymentpkg "github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
+	squarelib "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
-	sqCfg := org.SquareConfig(!org.Live)
+	sqCfg := org.SquareConfig(paymentpkg.SquareUseSandbox(org))
 
 	proc := squarelib.NewProcessor(squarelib.Config{
 		AccessToken:   sqCfg.AccessToken,
 		LocationID:    sqCfg.LocationId,
 		WebhookSecret: org.Square.WebhookSignatureKey,
-		Environment:   squareEnv(org.Live),
+		Environment:   paymentpkg.SquareEnvironment(org),
 	})
 
 	req := processor.PaymentRequest{
@@ -48,11 +49,4 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	log.Info("Square authorized payment '%s' → transaction '%s'", pay.Id(), result.TransactionID)
 	return nil
-}
-
-func squareEnv(live bool) string {
-	if live {
-		return "production"
-	}
-	return "sandbox"
 }
