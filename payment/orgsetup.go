@@ -53,13 +53,13 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	}
 
 	// Square. The deployment's SQUARE_ENVIRONMENT is the single authority for
-	// sandbox-vs-production (see SquareUseSandbox): it selects BOTH which
+	// sandbox-vs-production (see org.TestMode): it selects BOTH which
 	// KMS-hydrated credential set to use AND the Environment passed to the
 	// provider (which drives the Square API base URL). Falls back to process env
 	// vars when KMS is disabled or the org has no stored Square credentials.
 	{
-		useSandbox := SquareUseSandbox(org)
-		env := SquareEnvironment(org)
+		useSandbox := org.TestMode()
+		env := org.SquareEnvironment()
 
 		sqCfg := org.SquareConfig(useSandbox)
 		token := sqCfg.AccessToken

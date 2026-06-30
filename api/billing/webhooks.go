@@ -88,7 +88,7 @@ func HandleProviderWebhook(c *gin.Context) {
 	evt.Type = event.Type
 	evt.ObjectType = providerHint
 	evt.ObjectId = event.ID
-	evt.Livemode = org.Live
+	evt.Livemode = !org.TestMode() // livemode follows the deployment Square env, not the forced org.Live
 	if event.Data != nil {
 		evt.Data = event.Data
 	}
@@ -138,6 +138,11 @@ func resolveWebhookOrg(c *gin.Context) *organization.Organization {
 		log.Warn("webhook org resolve for '%s' failed: %v", orgName, err)
 		return nil
 	}
+	// Sessionless webhooks carry no per-org test flag, so default to live. This is
+	// SAFE for the ledger because settlement test-ness is taken from org.TestMode,
+	// where SQUARE_ENVIRONMENT (the deployment authority) overrides this flag: on a
+	// SQUARE_ENVIRONMENT=sandbox deploy, TestMode()=true regardless, so a sandbox
+	// settlement still credits the TEST bucket — never live (no free-money path).
 	org.Live = true
 	return org
 }
@@ -239,9 +244,10 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 	trans.Event = event.ID
 	trans.Notes = "Square settlement " + paymentID
 	trans.Metadata = Map{"provider": string(event.Processor), "eventType": event.Type}
-	if !org.Live {
-		trans.Test = true
-	}
+	// Settlement test-ness follows the deployment Square environment (org.TestMode),
+	// NOT the resolveWebhookOrg forced-live flag: on a SQUARE_ENVIRONMENT=sandbox
+	// deploy a sandbox settlement credits the TEST bucket, never the live one.
+	trans.Test = org.TestMode()
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to credit balance: %v", paymentID, err)
 	}
