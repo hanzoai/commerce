@@ -113,9 +113,12 @@ func parseCardDeclineReason(result *processor.PaymentResult, err error) string {
 
 type createPaymentMethodRequest struct {
 	CustomerId     string                            `json:"customerId"`
-	Type           string                            `json:"type"` // "card" | "bank_account" | "balance"
+	Type           string                            `json:"type"` // "card" | "bank_account" | "crypto" | "wire" | "paypal" | "balance"
 	Card           *paymentmethod.CardDetails        `json:"card,omitempty"`
 	BankAccount    *paymentmethod.BankAccountDetails `json:"bankAccount,omitempty"`
+	Crypto         *paymentmethod.CryptoDetails      `json:"crypto,omitempty"`
+	Wire           *paymentmethod.WireDetails        `json:"wire,omitempty"`
+	PayPal         *paymentmethod.PayPalDetails      `json:"paypal,omitempty"`
 	BillingAddress *types.Address                    `json:"billingAddress,omitempty"`
 	ProviderRef    string                            `json:"providerRef,omitempty"`
 	ProviderType   string                            `json:"providerType,omitempty"`
@@ -187,6 +190,9 @@ func CreatePaymentMethod(c *gin.Context) {
 	}
 	pm.Card = req.Card
 	pm.BankAccount = req.BankAccount
+	pm.Crypto = req.Crypto
+	pm.Wire = req.Wire
+	pm.PayPal = req.PayPal
 	pm.BillingAddress = req.BillingAddress
 	// Store the reusable card-on-file id (not the spent one-time nonce) when
 	// vaulting succeeded, so saved-card charges can reuse it.
@@ -196,8 +202,25 @@ func CreatePaymentMethod(c *gin.Context) {
 	}
 	pm.ProviderType = req.ProviderType
 
-	if req.Card != nil {
+	switch {
+	case req.Card != nil:
 		pm.Name = req.Card.Brand + " ending in " + req.Card.Last4
+	case req.Crypto != nil:
+		if req.Crypto.Label != "" {
+			pm.Name = req.Crypto.Label
+		} else if req.Crypto.Network != "" {
+			pm.Name = req.Crypto.Network + " wallet"
+		} else {
+			pm.Name = "Crypto wallet"
+		}
+	case req.Wire != nil:
+		if req.Wire.BankName != "" {
+			pm.Name = req.Wire.BankName + " wire"
+		} else {
+			pm.Name = "Bank wire"
+		}
+	case req.PayPal != nil:
+		pm.Name = strings.TrimSpace("PayPal " + req.PayPal.Email)
 	}
 
 	meta := req.Metadata
@@ -429,6 +452,15 @@ func paymentMethodResponse(pm *paymentmethod.PaymentMethod) map[string]interface
 	}
 	if pm.BankAccount != nil {
 		resp["bankAccount"] = pm.BankAccount
+	}
+	if pm.Crypto != nil {
+		resp["crypto"] = pm.Crypto
+	}
+	if pm.Wire != nil {
+		resp["wire"] = pm.Wire
+	}
+	if pm.PayPal != nil {
+		resp["paypal"] = pm.PayPal
 	}
 	if pm.BillingAddress != nil {
 		resp["billingAddress"] = pm.BillingAddress
