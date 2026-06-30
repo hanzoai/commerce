@@ -25,7 +25,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -234,15 +233,15 @@ func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organi
 // org's KMS-hydrated credentials. Falls back to env vars if the org has no
 // Square credentials configured (backwards compat for single-tenant deploys).
 func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks.Client, string, error) {
-	isSandbox := payment.SquareUseSandbox(org)
+	isSandbox := org.TestMode()
 	sqCfg := org.SquareConfig(isSandbox)
 
 	token := sqCfg.AccessToken
 	locationID := sqCfg.LocationId
 
 	// Fall back to env vars for backwards compatibility. The SAME
-	// SQUARE_ENVIRONMENT authority (via payment.SquareUseSandbox) picks the
-	// sandbox vs production vars, so the Payment Links base URL always matches.
+	// SQUARE_ENVIRONMENT authority (via org.TestMode) picks the sandbox vs
+	// production vars, so the Payment Links base URL always matches.
 	if token == "" {
 		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))

@@ -76,7 +76,7 @@ func Refund(c *gin.Context) {
 		"originalTransactionId": req.OriginalTransactionID,
 	}
 
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 
