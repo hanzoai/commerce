@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	square "github.com/square/square-go-sdk/v3"
 	"github.com/square/square-go-sdk/v3/core"
-	"github.com/square/square-go-sdk/v3/option"
 	"github.com/square/square-go-sdk/v3/customers/client"
+	"github.com/square/square-go-sdk/v3/option"
 	"github.com/square/square-go-sdk/v3/payments"
 	"github.com/square/square-go-sdk/v3/refunds"
 
@@ -25,11 +25,11 @@ import (
 // SquareProcessor implements the processor.PaymentProcessor interface
 type SquareProcessor struct {
 	*processor.BaseProcessor
-	accessToken    string
-	locationID     string
-	webhookSecret  string
-	webhookURL     string // notification URL registered in the Square dashboard
-	environment    string // "sandbox" or "production"
+	accessToken     string
+	locationID      string
+	webhookSecret   string
+	webhookURL      string // notification URL registered in the Square dashboard
+	environment     string // "sandbox" or "production"
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
 	customersClient *client.Client
@@ -95,6 +95,14 @@ func SquareSupportedCurrencies() []currency.Type {
 func (sp *SquareProcessor) Type() processor.ProcessorType {
 	return processor.Square
 }
+
+// Environment returns "sandbox" or "production" — the resolved Square API
+// environment this processor talks to (it drives the API base URL). Non-secret.
+func (sp *SquareProcessor) Environment() string { return sp.environment }
+
+// LocationID returns the configured Square merchant location id. Non-secret
+// (it is also returned by the public /v1/billing/payment-config endpoint).
+func (sp *SquareProcessor) LocationID() string { return sp.locationID }
 
 // Charge processes a payment
 func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
