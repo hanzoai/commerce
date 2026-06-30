@@ -335,16 +335,24 @@ func applySubscriptionEvent(db *datastore.Datastore, event *processor.WebhookEve
 func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte, signature string) (*processor.WebhookEvent, error) {
 	registry := processor.Global()
 
+	// Inbound validation ignores the disabled-processor deny policy (which
+	// governs OUTBOUND charge selection only): a processor disabled for new
+	// charges — e.g. Stripe — must still validate its existing customers' webhook
+	// deliveries. Hence Registered / RegisteredProcessors, not Get / Available.
+
 	// Fast path: provider hint specified.
 	if providerHint != "" {
-		if p, err := registry.Get(processor.ProcessorType(providerHint)); err == nil {
+		if p, err := registry.Registered(processor.ProcessorType(providerHint)); err == nil {
 			return p.ValidateWebhook(ctx, payload, signature)
 		}
 	}
 
-	// Fallback: try every available processor until one succeeds.
+	// Fallback: try every registered, configured processor until one succeeds.
 	var lastErr error
-	for _, p := range registry.Available(ctx) {
+	for _, p := range registry.RegisteredProcessors() {
+		if !p.IsAvailable(ctx) {
+			continue
+		}
 		evt, err := p.ValidateWebhook(ctx, payload, signature)
 		if err == nil && evt != nil {
 			return evt, nil

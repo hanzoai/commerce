@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
+	paymentpkg "github.com/hanzoai/commerce/payment"
 	squarelib "github.com/hanzoai/commerce/thirdparty/square"
 )
 
@@ -21,12 +22,12 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		return nil, payments, err
 	}
 
-	sqCfg := org.SquareConfig(!org.Live)
+	sqCfg := org.SquareConfig(paymentpkg.SquareUseSandbox(org))
 	proc := squarelib.NewProcessor(squarelib.Config{
 		AccessToken:   sqCfg.AccessToken,
 		LocationID:    sqCfg.LocationId,
 		WebhookSecret: org.Square.WebhookSignatureKey,
-		Environment:   squareEnv(org.Live),
+		Environment:   paymentpkg.SquareEnvironment(org),
 	})
 
 	for _, p := range payments {

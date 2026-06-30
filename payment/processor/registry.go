@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -16,35 +17,51 @@ type Registry struct {
 	config     *RegistryConfig
 }
 
-// RegistryConfig holds configuration for processor selection
+// RegistryConfig holds configuration for processor selection.
+//
+// Fiat selection has exactly ONE mechanism: ProcessorPriority gives the
+// preference order and DisabledProcessors is the deny policy. There is no
+// separate "default fiat processor" knob — the old DefaultFiatProcessor field
+// was never consulted by SelectProcessor for fiat (only the priority list was),
+// so it was a dead, complected knob and has been removed. Crypto selection keeps
+// a single preferred processor (DefaultCryptoProcessor) plus a currency-driven
+// fallback order, because crypto routing is by currency, not preference order.
 type RegistryConfig struct {
-	// DefaultFiatProcessor is the default for fiat currencies
-	DefaultFiatProcessor ProcessorType
-
-	// DefaultCryptoProcessor is the default for crypto currencies
+	// DefaultCryptoProcessor is the preferred processor for crypto currencies.
 	DefaultCryptoProcessor ProcessorType
 
-	// ProcessorPriority defines the order to try processors
+	// ProcessorPriority is the fiat preference order (first available wins).
 	ProcessorPriority []ProcessorType
 
-	// DisabledProcessors lists processors that should not be used
+	// DisabledProcessors is the deny policy: a processor in this set is NEVER
+	// returned by SelectProcessor from ANY branch (explicit preference, crypto,
+	// or fiat). This is how Stripe is held un-selectable for new charges.
 	DisabledProcessors map[ProcessorType]bool
 }
 
-// DefaultConfig returns the default registry configuration. pay.hanzo.ai's TARGET
-// fiat default is Square (+ crypto), but the DEPLOY-SAFE no-env default stays
-// Stripe so that merging/shipping this can NEVER flip a live org with Stripe-only
-// KMS creds and break charging. Square is fully registered and ONE env var away:
-// set COMMERCE_DEFAULT_FIAT_PROCESSOR=square per environment the moment that org's
-// Square creds are seeded in KMS (/tenants/<org>/square/*). Crypto processors are
-// registered and elevated in the fallback order.
+// DefaultConfig returns the default registry configuration.
+//
+// Fiat: Square is the first (preferred) processor and Stripe is DISABLED by
+// default — "we do NOT use Stripe" for new charges. The disable is deterministic
+// and cred-independent: SelectProcessor skips DisabledProcessors in every branch,
+// so a hydrated Stripe secret key can NEVER win a charge. Stripe stays REGISTERED
+// (its migrations, webhook ingestion and existing-order handlers are untouched) —
+// it is removed only from NEW-charge selection.
+//
+// Crypto: DefaultCryptoProcessor (MPC) plus the crypto fallback order in
+// SelectProcessor; unchanged.
+//
+// Per-env override (ONE knob): COMMERCE_DISABLED_PROCESSORS, a comma-separated
+// list of processor types that REPLACES the default deny set. Unset keeps the
+// safe default (Stripe disabled). Set — even to empty — is an explicit operator
+// decision (e.g. COMMERCE_DISABLED_PROCESSORS="" re-enables Stripe, still behind
+// Square in priority). Crypto stays overridable via COMMERCE_DEFAULT_CRYPTO_PROCESSOR.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
-		DefaultFiatProcessor:   envProcessor("COMMERCE_DEFAULT_FIAT_PROCESSOR", Stripe),
 		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
 		ProcessorPriority: []ProcessorType{
-			Stripe,
-			Square, // pay.hanzo.ai target fiat — promote via env once creds are seeded
+			Square, // fiat default — pay.hanzo.ai (Square + crypto)
+			Stripe, // historical; disabled for new charges by default (see disabledProcessors)
 			Adyen,
 			PayPal,
 			Braintree,
@@ -61,8 +78,43 @@ func DefaultConfig() *RegistryConfig {
 			Bitcoin,
 			Wire,
 		},
-		DisabledProcessors: make(map[ProcessorType]bool),
+		DisabledProcessors: disabledProcessors(),
 	}
+}
+
+// disabledProcessors returns the deny set that gates processor selection.
+//
+// Default: Stripe is OFF for new-charge selection ("we do NOT use Stripe"). Only
+// SELECTION is denied — Stripe's migrations, webhook ingestion and existing-order
+// handlers stay fully intact for already-charged historical data.
+//
+// Override per-deployment with COMMERCE_DISABLED_PROCESSORS (comma-separated
+// processor types), which REPLACES the default. os.LookupEnv (not Getenv) makes
+// "set to empty" a deliberate "disable nothing" signal, distinct from "unset"
+// which keeps the default.
+func disabledProcessors() map[ProcessorType]bool {
+	raw, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS")
+	if !ok {
+		return map[ProcessorType]bool{Stripe: true}
+	}
+	disabled := make(map[ProcessorType]bool)
+	for _, name := range strings.Split(raw, ",") {
+		if name = strings.ToLower(strings.TrimSpace(name)); name != "" {
+			disabled[ProcessorType(name)] = true
+		}
+	}
+	return disabled
+}
+
+// DisabledByPolicy reports whether processor t is denied by the deployment's
+// disabled-processor policy (COMMERCE_DISABLED_PROCESSORS; default: Stripe).
+//
+// It is the SINGLE source of truth for "is this processor off for new charges,"
+// shared by the registry (via DisabledProcessors) AND by out-of-registry
+// selectors such as the checkout-session resolver, so the policy lives in ONE
+// place across every new-charge modality (direct charge and hosted checkout).
+func DisabledByPolicy(t ProcessorType) bool {
+	return disabledProcessors()[t]
 }
 
 // envProcessor reads a processor type from an env var, falling back to def when unset.
@@ -119,6 +171,24 @@ func (r *Registry) Get(t ProcessorType) (PaymentProcessor, error) {
 	if r.config.DisabledProcessors[t] {
 		return nil, fmt.Errorf("processor %s is disabled", t)
 	}
+
+	p, ok := r.processors[t]
+	if !ok {
+		return nil, fmt.Errorf("processor %s not registered", t)
+	}
+	return p, nil
+}
+
+// Registered returns a processor by type IGNORING the disabled-processor policy.
+//
+// Use this only for INBOUND paths — webhook validation, admin/historical
+// operations — that must reach a registered processor even when it is disabled
+// for new-charge SELECTION (e.g. Stripe, which stays able to validate existing
+// customers' webhooks). Outbound charge selection must use Get / SelectProcessor,
+// which honor the deny policy.
+func (r *Registry) Registered(t ProcessorType) (PaymentProcessor, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
 	p, ok := r.processors[t]
 	if !ok {
@@ -259,6 +329,22 @@ func (r *Registry) Available(ctx context.Context) []PaymentProcessor {
 		if !r.config.DisabledProcessors[t] && p.IsAvailable(ctx) {
 			result = append(result, p)
 		}
+	}
+	return result
+}
+
+// RegisteredProcessors returns ALL registered processors IGNORING the
+// disabled-processor policy. For inbound webhook validation: a processor that is
+// disabled for new-charge selection (e.g. Stripe) must still be reachable to
+// validate its existing customers' webhook deliveries. Callers filter by
+// IsAvailable themselves. Outbound selection must use Available / SelectProcessor.
+func (r *Registry) RegisteredProcessors() []PaymentProcessor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	result := make([]PaymentProcessor, 0, len(r.processors))
+	for _, p := range r.processors {
+		result = append(result, p)
 	}
 	return result
 }
