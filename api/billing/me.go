@@ -56,7 +56,7 @@ func GetMyBalance(c *gin.Context) {
 
 	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
 
-	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, !org.Live)
+	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
@@ -131,7 +131,7 @@ func PostMyWelcome(c *gin.Context) {
 		"expiryDays": credit.StarterCreditDays,
 		"trigger":    "iam_first_login",
 	}
-	if !org.Live {
+	if org.TestMode() {
 		trans.Test = true
 	}
 

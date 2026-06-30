@@ -52,10 +52,11 @@ type RegistryConfig struct {
 // SelectProcessor; unchanged.
 //
 // Per-env override (ONE knob): COMMERCE_DISABLED_PROCESSORS, a comma-separated
-// list of processor types that REPLACES the default deny set. Unset keeps the
-// safe default (Stripe disabled). Set — even to empty — is an explicit operator
-// decision (e.g. COMMERCE_DISABLED_PROCESSORS="" re-enables Stripe, still behind
-// Square in priority). Crypto stays overridable via COMMERCE_DEFAULT_CRYPTO_PROCESSOR.
+// list of processor types that REPLACES the default deny set. Unset OR empty keeps
+// the safe default (Stripe disabled) — an empty k8s placeholder must NOT silently
+// re-enable Stripe. To disable NOTHING, set the explicit sentinel
+// COMMERCE_DISABLED_PROCESSORS=none. Crypto stays overridable via
+// COMMERCE_DEFAULT_CRYPTO_PROCESSOR.
 func DefaultConfig() *RegistryConfig {
 	return &RegistryConfig{
 		DefaultCryptoProcessor: envProcessor("COMMERCE_DEFAULT_CRYPTO_PROCESSOR", MPC),
@@ -89,17 +90,20 @@ func DefaultConfig() *RegistryConfig {
 // handlers stay fully intact for already-charged historical data.
 //
 // Override per-deployment with COMMERCE_DISABLED_PROCESSORS (comma-separated
-// processor types), which REPLACES the default. os.LookupEnv (not Getenv) makes
-// "set to empty" a deliberate "disable nothing" signal, distinct from "unset"
-// which keeps the default.
+// processor types), which REPLACES the default. UNSET or EMPTY/whitespace keeps
+// the safe default {Stripe} — an empty env placeholder (common in k8s) must never
+// silently re-enable Stripe. The explicit sentinel "none" disables nothing.
 func disabledProcessors() map[ProcessorType]bool {
 	raw, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS")
-	if !ok {
+	if !ok || strings.TrimSpace(raw) == "" {
 		return map[ProcessorType]bool{Stripe: true}
+	}
+	if strings.EqualFold(strings.TrimSpace(raw), "none") {
+		return map[ProcessorType]bool{}
 	}
 	disabled := make(map[ProcessorType]bool)
 	for _, name := range strings.Split(raw, ",") {
-		if name = strings.ToLower(strings.TrimSpace(name)); name != "" {
+		if name = strings.ToLower(strings.TrimSpace(name)); name != "" && name != "none" {
 			disabled[ProcessorType(name)] = true
 		}
 	}

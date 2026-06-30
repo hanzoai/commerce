@@ -28,7 +28,7 @@ func GetBalance(c *gin.Context) {
 
 	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
 
-	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, !org.Live)
+	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
@@ -67,7 +67,7 @@ func GetBalanceAll(c *gin.Context) {
 		return
 	}
 
-	datas, err := util.GetTransactions(ctx, user, "iam-user", !org.Live)
+	datas, err := util.GetTransactions(ctx, user, "iam-user", org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
@@ -88,7 +88,7 @@ func GetBalanceAll(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"user":      user,
-		"balances":  balances,
+		"user":     user,
+		"balances": balances,
 	})
 }
