@@ -85,7 +85,7 @@ func GrantAllotment(c *gin.Context) {
 	plan := resolvePlanSlug(db, req.User, req.Plan)
 	cents := IncludedMonthlyCents(plan)
 
-	res, err := allotment.Grant(db, req.User, plan, cents, time.Now(), !org.Live)
+	res, err := allotment.Grant(db, req.User, plan, cents, time.Now(), org.TestMode())
 	if err != nil {
 		log.Error("Failed to grant monthly allotment for %s: %v", req.User, err, c)
 		http.Fail(c, 500, "failed to grant monthly allotment", err)
@@ -180,7 +180,8 @@ func RunAllotments(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 
 	now := time.Now()
-	granted, skipped, results := grantOrgAllotments(c, db, now, org.Live)
+	// live = !TestMode: allotment grants land in the SAME bucket as charges/usage.
+	granted, skipped, results := grantOrgAllotments(c, db, now, !org.TestMode())
 
 	c.JSON(200, gin.H{
 		"period":  allotment.Period(now),
@@ -217,10 +218,10 @@ func GetUsageRollup(c *gin.Context) {
 	// grant the granted amount is 0 while the catalog amount shows the plan's
 	// entitlement).
 	includedMonthlyCents := IncludedMonthlyCents(plan)
-	includedGrantedCents := allotment.GrantedCents(db, user, now, !org.Live)
+	includedGrantedCents := allotment.GrantedCents(db, user, now, org.TestMode())
 
 	// Consumption this UTC month (api-usage withdrawals).
-	consumedCents := monthlyUsageCents(ctx, user, !org.Live)
+	consumedCents := monthlyUsageCents(ctx, user, org.TestMode())
 
 	includedRemaining := includedGrantedCents - consumedCents
 	if includedRemaining < 0 {
@@ -233,7 +234,7 @@ func GetUsageRollup(c *gin.Context) {
 
 	// Balance exactly as the gateway gate computes it.
 	var balance, holds currency.Cents
-	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, !org.Live)
+	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
