@@ -48,7 +48,7 @@ func GetTier(c *gin.Context) {
 
 	// Fetch the user's prepaid balance.
 	cur := currency.Type("usd")
-	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", cur, !org.Live)
+	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
@@ -69,7 +69,7 @@ func GetTier(c *gin.Context) {
 	// The daily credit resets at midnight UTC and does not accumulate.
 	var dailyRemaining int64
 	if cfg.HasDailyCredits() {
-		dailyUsed := dailyUsageCents(ctx, user, !org.Live)
+		dailyUsed := dailyUsageCents(ctx, user, org.TestMode())
 		dailyRemaining = cfg.DailyCreditsCents - dailyUsed
 		if dailyRemaining < 0 {
 			dailyRemaining = 0

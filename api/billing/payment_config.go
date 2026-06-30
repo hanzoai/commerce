@@ -8,17 +8,16 @@ import (
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/payment"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
 // GetPaymentConfig returns the PUBLIC Square config (application id, location id,
 // environment) the browser's Web Payments SDK must use to tokenize a card for
 // THIS org. It resolves sandbox-vs-production through the SAME single authority
-// as payment.ProcessorsForOrg (payment.SquareUseSandbox / SQUARE_ENVIRONMENT) and
-// the same KMS-then-env fallback, so the app id the browser tokenizes with always
-// matches the env + access token commerce will vault/charge with. All values are
-// public (safe to expose to the client).
+// as the charge path (org.TestMode / SQUARE_ENVIRONMENT) and the same KMS-then-env
+// fallback, so the app id the browser tokenizes with always matches the env +
+// access token commerce will vault/charge with. All values are public (safe to
+// expose to the client).
 //
 //	GET /v1/billing/payment-config
 func GetPaymentConfig(c *gin.Context) {
@@ -28,16 +27,16 @@ func GetPaymentConfig(c *gin.Context) {
 	// gates the card field mount, so it must be fast; a KMS round-trip can hang
 	// when KMS is slow/unavailable and freeze the UI. Cloud orgs have no per-org
 	// Square creds anyway — the env fallback below supplies the public app id.
-	useSandbox := payment.SquareUseSandbox(org)
-	env := payment.SquareEnvironment(org)
+	useSandbox := org.TestMode()
+	env := org.SquareEnvironment()
 	sqCfg := org.SquareConfig(useSandbox)
 	appID := sqCfg.ApplicationId
 	locationID := sqCfg.LocationId
 
 	if appID == "" || locationID == "" {
-		// Same SQUARE_ENVIRONMENT authority (via payment.SquareUseSandbox) picks
-		// the sandbox vs production public env vars, so the app id the browser
-		// tokenizes with always matches the env commerce will charge against.
+		// Same SQUARE_ENVIRONMENT authority (via org.TestMode) picks the sandbox
+		// vs production public env vars, so the app id the browser tokenizes with
+		// always matches the env commerce will charge against.
 		appID = strings.TrimSpace(os.Getenv("SQUARE_APPLICATION_ID"))
 		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
 		if useSandbox {
@@ -66,7 +65,7 @@ type testModeRequest struct {
 // SetOrgTestMode toggles the org's live flag (org.Live) and its test-mode view.
 // org.Live marks transactions Test=true and is the FALLBACK Square-environment
 // signal: when the deployment does NOT set SQUARE_ENVIRONMENT, a test org uses
-// Square sandbox and a live org uses production (via payment.SquareUseSandbox).
+// Square sandbox and a live org uses production (via org.TestMode).
 // When the deployment DOES set SQUARE_ENVIRONMENT (the per-env authority:
 // mainnet=production, testnet/devnet=sandbox), that env governs which Square
 // environment is charged regardless of this flag — on mainnet there is no

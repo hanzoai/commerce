@@ -12,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
-	paymentpkg "github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	squarelib "github.com/hanzoai/commerce/thirdparty/square"
 )
@@ -54,12 +53,12 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		return errors.New("refund amount exceeds total payment amount")
 	}
 
-	sqCfg := org.SquareConfig(paymentpkg.SquareUseSandbox(org))
+	sqCfg := org.SquareConfig(org.TestMode())
 	proc := squarelib.NewProcessor(squarelib.Config{
 		AccessToken:   sqCfg.AccessToken,
 		LocationID:    sqCfg.LocationId,
 		WebhookSecret: org.Square.WebhookSignatureKey,
-		Environment:   paymentpkg.SquareEnvironment(org),
+		Environment:   org.SquareEnvironment(),
 	})
 
 	refundRemaining := refundAmount
