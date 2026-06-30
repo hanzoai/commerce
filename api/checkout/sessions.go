@@ -25,6 +25,8 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/payment"
+	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -80,10 +82,10 @@ type checkoutSessionRequest struct {
 
 // couponDiscount holds the resolved discount for a checkout session.
 type couponDiscount struct {
-	Code           string  `json:"code"`
-	Type           string  `json:"type"`
-	Amount         int     `json:"amount"`
-	DiscountCents  int64   `json:"discountCents"`
+	Code          string `json:"code"`
+	Type          string `json:"type"`
+	Amount        int    `json:"amount"`
+	DiscountCents int64  `json:"discountCents"`
 }
 
 type checkoutSessionResponse struct {
@@ -232,20 +234,19 @@ func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organi
 // org's KMS-hydrated credentials. Falls back to env vars if the org has no
 // Square credentials configured (backwards compat for single-tenant deploys).
 func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks.Client, string, error) {
-	isSandbox := !org.Live
+	isSandbox := payment.SquareUseSandbox(org)
 	sqCfg := org.SquareConfig(isSandbox)
 
 	token := sqCfg.AccessToken
 	locationID := sqCfg.LocationId
 
-	// Fall back to env vars for backwards compatibility
+	// Fall back to env vars for backwards compatibility. The SAME
+	// SQUARE_ENVIRONMENT authority (via payment.SquareUseSandbox) picks the
+	// sandbox vs production vars, so the Payment Links base URL always matches.
 	if token == "" {
-		squareEnv := strings.ToLower(strings.TrimSpace(os.Getenv("SQUARE_ENVIRONMENT")))
-		envSandbox := squareEnv == "sandbox" || squareEnv == "test"
-
 		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		if envSandbox {
+		if isSandbox {
 			if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
 				token = t
 			}
@@ -253,7 +254,6 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 				locationID = l
 			}
 		}
-		isSandbox = envSandbox
 	}
 
 	if token == "" || locationID == "" {
@@ -354,16 +354,21 @@ func Sessions(c *gin.Context) {
 	discountCents := applyDiscount(subtotalCents, cpn)
 	finalCents := subtotalCents - discountCents
 
-	// Select payment provider: providerHint > org's configured processors > env fallback.
+	// Select payment provider, honoring the SAME disabled-processor policy
+	// SelectProcessor enforces (processor.DisabledByPolicy). Stripe is disabled
+	// by default — "we do NOT use Stripe" — so neither an explicit stripe hint
+	// nor a hydrated Stripe token routes a NEW checkout to Stripe; Square is
+	// used. Stripe checkout code stays for historical / existing-customer flows.
 	hint := strings.ToLower(strings.TrimSpace(req.ProviderHint))
+	stripeAllowed := !processor.DisabledByPolicy(processor.Stripe)
 	var sessionResp checkoutSessionResponse
 
 	switch {
-	case hint == "stripe" || (hint == "" && org.StripeToken() != ""):
+	case stripeAllowed && (hint == "stripe" || (hint == "" && org.StripeToken() != "")):
 		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 
 	default:
-		// Square Payment Links (legacy default)
+		// Square Payment Links (default).
 		sessionResp, err = createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 	}
 
