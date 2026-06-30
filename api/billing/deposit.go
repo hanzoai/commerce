@@ -22,7 +22,7 @@ import (
 type depositRequest struct {
 	User      string `json:"user"`
 	Currency  string `json:"currency"`
-	Amount    int64  `json:"amount"`    // cents
+	Amount    int64  `json:"amount"` // cents
 	Notes     string `json:"notes"`
 	Tags      string `json:"tags"`
 	ExpiresIn int    `json:"expiresIn"` // days until expiry (0 = no expiry)
@@ -147,7 +147,16 @@ func GrantStarterCredit(c *gin.Context) {
 		Filter("DestinationId=", req.User).
 		Filter("Tags=", credit.StarterCreditTag)
 	if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
-		http.Fail(c, 409, "starter credit already granted", nil)
+		// Idempotent no-op: the starter credit is one-per-user, so a repeat
+		// claim is an expected outcome, not a failure. Return 200 (matching
+		// PostMyWelcome's already-granted shape) instead of 409 so the billing
+		// UI's on-load claim doesn't surface a red error in the browser console
+		// for users who already have their credit.
+		c.JSON(200, gin.H{
+			"user":    req.User,
+			"granted": false,
+			"reason":  "already_granted",
+		})
 		return
 	}
 
