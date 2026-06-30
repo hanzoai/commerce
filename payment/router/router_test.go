@@ -3,6 +3,7 @@ package router
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,17 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 )
+
+// TestMain runs the router's strategy tests with NO disabled-processor policy.
+// These tests use Stripe/Adyen/PayPal mocks as fixtures to exercise routing
+// strategies (primary-fallback, round-robin, weighted, currency-based, circuit
+// breaker), which are orthogonal to the production deny policy (which disables
+// Stripe for new-charge selection by default). Setting the override explicitly
+// keeps every fixture selectable without weakening the production default.
+func TestMain(m *testing.M) {
+	os.Setenv("COMMERCE_DISABLED_PROCESSORS", "")
+	os.Exit(m.Run())
+}
 
 // ---------------------------------------------------------------------------
 // Mock processor
