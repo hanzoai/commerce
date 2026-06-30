@@ -567,15 +567,18 @@ func (app *App) Bootstrap() error {
 		return fmt.Errorf("failed to create data directory: %w", err)
 	}
 
-	// Initialize database manager
-	dbConfig := &db.Config{
-		DataDir:            app.config.DataDir,
-		DatastoreDSN:       app.config.DatastoreDSN,
-		EnableDatastore:    app.config.DatastoreDSN != "",
-		EnableVectorSearch: true,
-		VectorDimensions:   1536,
-		IsDev:              app.config.Dev,
-	}
+	// Initialize database manager. Start from db.DefaultConfig() so the per-org
+	// SQLite stores inherit the concurrency-safe SQLite settings (WAL journal +
+	// 10s busy_timeout + bounded conn pools). The previous literal omitted
+	// .SQLite entirely, leaving BusyTimeout=0 / JournalMode="" — which made any
+	// concurrent write (deposit credit, usage debit, periodic DB tasks) fail
+	// immediately with "database is locked" on the SQLite fallback path.
+	dbConfig := db.DefaultConfig()
+	dbConfig.DataDir = app.config.DataDir
+	dbConfig.DatastoreDSN = app.config.DatastoreDSN
+	dbConfig.EnableDatastore = app.config.DatastoreDSN != ""
+	dbConfig.VectorDimensions = 1536
+	dbConfig.IsDev = app.config.Dev
 
 	var err error
 	app.DB, err = db.NewManager(dbConfig)
