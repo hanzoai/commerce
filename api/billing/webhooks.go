@@ -117,7 +117,7 @@ func HandleProviderWebhook(c *gin.Context) {
 }
 
 // resolveWebhookOrg determines which org a sessionless provider webhook
-// belongs to. Order: X-Hanzo-Org header, COMMERCE_SERVICE_ORG env, then the
+// belongs to. Order: X-Org-Id header, COMMERCE_SERVICE_ORG env, then the
 // default "hanzo" org. Mirrors the service-token resolution in
 // middleware/accesstoken.go so webhooks and service calls agree on scope.
 func resolveWebhookOrg(c *gin.Context) *organization.Organization {
@@ -125,7 +125,7 @@ func resolveWebhookOrg(c *gin.Context) *organization.Organization {
 		return org
 	}
 	db := datastore.New(middleware.GetContext(c))
-	orgName := strings.TrimSpace(c.GetHeader("X-Hanzo-Org"))
+	orgName := strings.TrimSpace(c.GetHeader("X-Org-Id"))
 	if orgName == "" {
 		orgName = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
 	}
