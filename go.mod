@@ -182,7 +182,6 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
-	github.com/hanzoai/commerce/thirdparty/ethereum v0.0.0
 	github.com/hanzoai/dbx v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
