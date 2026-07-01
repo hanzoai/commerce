@@ -182,7 +182,6 @@ require (
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
-	github.com/hanzoai/commerce/thirdparty/ethereum v0.0.0
 	github.com/hanzoai/dbx v1.16.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -271,5 +270,3 @@ require (
 // pwrite64, which musl does not expose — breaking every linux/amd64 image
 // build. Pin to the current v1.14 patch, which compiles cleanly on musl.
 replace github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.47
-
-replace github.com/hanzoai/commerce/thirdparty/ethereum => ./thirdparty/ethereum
