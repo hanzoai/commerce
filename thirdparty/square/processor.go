@@ -22,13 +22,24 @@ import (
 	"github.com/hanzoai/commerce/payment/processor"
 )
 
+// webhookMaxAge bounds how old a Square webhook may be before we reject it
+// as a replay. Square stamps each notification with created_at; anything
+// outside this window is refused even if the HMAC is valid. Mirrors the
+// Stripe processor's 5-minute tolerance so both providers behave the same.
+const webhookMaxAge = 5 * time.Minute
+
 // SquareProcessor implements the processor.PaymentProcessor interface
 type SquareProcessor struct {
 	*processor.BaseProcessor
-	accessToken     string
-	locationID      string
-	webhookSecret   string
-	webhookURL      string // notification URL registered in the Square dashboard
+	accessToken   string
+	locationID    string
+	webhookSecret string
+	// webhookURL is the EXACT notification URL configured in the Square
+	// dashboard webhook subscription. Square signs HMAC-SHA256 over
+	// notificationURL + rawBody, so we must verify against the configured
+	// URL — never one derived from the inbound request Host, which a proxy
+	// can rewrite or an attacker can spoof.
+	webhookURL string
 	environment     string // "sandbox" or "production"
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
@@ -40,10 +51,9 @@ type Config struct {
 	AccessToken   string
 	LocationID    string
 	WebhookSecret string
-	// WebhookURL is the exact notification URL registered for this
-	// subscription in the Square dashboard. Square computes the webhook
-	// HMAC over (WebhookURL + rawBody), so verification fails unless this
-	// matches the registered URL byte-for-byte.
+	// WebhookURL is the notification URL registered with Square's webhook
+	// subscription (e.g. https://api.hanzo.ai/v1/billing/webhooks/square).
+	// Required to validate live Square signatures; see SquareProcessor.webhookURL.
 	WebhookURL  string
 	Environment string // "sandbox" or "production"
 }
@@ -323,28 +333,46 @@ func (sp *SquareProcessor) GetTransaction(ctx context.Context, txID string) (*pr
 }
 
 // ValidateWebhook validates an incoming webhook and parses the event.
+//
+// Square signs each notification as
+//
+//	base64(HMAC-SHA256(signatureKey, notificationURL + rawBody))
+//
+// where notificationURL is the EXACT URL configured in the dashboard webhook
+// subscription — not the body alone, and not a URL derived from the inbound
+// request (which a proxy can rewrite). The signature arrives base64-encoded in
+// the x-square-hmacsha256-signature header. We decode both the header and our
+// computed digest to raw bytes and compare with hmac.Equal for a clean
+// constant-time check.
+//
+// In addition to the existing event_id idempotency, events older than
+// webhookMaxAge are rejected as replays.
 func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, signature string) (*processor.WebhookEvent, error) {
 	if sp.webhookSecret == "" {
 		return nil, processor.ErrWebhookValidationFailed
 	}
-
-	// Square computes the webhook signature as HMAC-SHA256 over the
-	// notification URL concatenated with the raw request body, then
-	// base64-encodes the digest. Verifying over the body alone (or with
-	// the wrong URL) rejects every legitimate delivery, so the registered
-	// notification URL must be configured.
-	// See https://developer.squareup.com/docs/webhooks/step3validate
 	if sp.webhookURL == "" {
+		// Square's documented signature is HMAC over notificationURL+body. With
+		// no configured URL we cannot reproduce it and must refuse rather than
+		// silently fall back to a body-only scheme that live Square would never
+		// match. Configure SQUARE_WEBHOOK_URL to the exact dashboard URL.
 		return nil, fmt.Errorf("%w: square webhook URL not configured", processor.ErrWebhookValidationFailed)
 	}
 
+	// Square signs notificationURL + rawBody (NOT the body alone).
+	// See https://developer.squareup.com/docs/webhooks/step3validate
 	mac := hmac.New(sha256.New, []byte(sp.webhookSecret))
 	mac.Write([]byte(sp.webhookURL))
 	mac.Write(payload)
-	expectedSig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	expected := mac.Sum(nil)
 
 	// Constant-time comparison defeats timing analysis on the signature.
-	if !hmac.Equal([]byte(signature), []byte(expectedSig)) {
+	// Square sends the signature base64-encoded; decode to compare raw bytes.
+	provided, err := base64.StdEncoding.DecodeString(strings.TrimSpace(signature))
+	if err != nil {
+		return nil, processor.ErrWebhookValidationFailed
+	}
+	if !hmac.Equal(provided, expected) {
 		return nil, processor.ErrWebhookValidationFailed
 	}
 
@@ -365,11 +393,18 @@ func (sp *SquareProcessor) ValidateWebhook(ctx context.Context, payload []byte, 
 		return nil, fmt.Errorf("failed to parse Square webhook: %w", err)
 	}
 
+	// Replay protection: reject events whose created_at is older than the
+	// tolerance. Mirrors the Stripe processor's timestamp check.
 	ts := time.Now().Unix()
 	if evt.CreatedAt != "" {
-		if t, err := time.Parse(time.RFC3339, evt.CreatedAt); err == nil {
-			ts = t.Unix()
+		t, perr := time.Parse(time.RFC3339, evt.CreatedAt)
+		if perr != nil {
+			return nil, fmt.Errorf("%w: unparseable created_at %q", processor.ErrWebhookValidationFailed, evt.CreatedAt)
 		}
+		if time.Since(t) > webhookMaxAge {
+			return nil, fmt.Errorf("%w: event %s older than %s", processor.ErrWebhookValidationFailed, evt.EventID, webhookMaxAge)
+		}
+		ts = t.Unix()
 	}
 
 	return &processor.WebhookEvent{
