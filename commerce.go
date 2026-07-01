@@ -45,8 +45,8 @@ import (
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
-	planModel "github.com/hanzoai/commerce/models/plan"
 	orgModel "github.com/hanzoai/commerce/models/organization"
+	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/providers/stripe"
 	"github.com/hanzoai/commerce/seed"
@@ -77,7 +77,7 @@ type Config struct {
 	// request that arrives without X-Org-Id/X-User-Id. Sourced from
 	// COMMERCED_REQUIRE_IDENTITY. It is OFF by default and MUST stay off
 	// wherever the cloud-api -> commerce per-org billing path runs: that
-	// path authenticates with a Bearer service token + X-Hanzo-Org and
+	// path authenticates with a Bearer service token + X-Org-Id and
 	// carries NO X-Org-Id, so a require-identity gate would 401 the money
 	// path. The anti-spoofing boundary is EdgeAuth (always mounted), not
 	// this gate.

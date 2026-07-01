@@ -22,7 +22,7 @@ import (
 //
 // Billing is per-org — one balance covers the whole org (see the LLM gate
 // in hanzoai/ai routers/filter_balance.go, which reads
-// GET /v1/billing/balance?user=<orgSlug> with X-Hanzo-Org=<orgSlug>, and
+// GET /v1/billing/balance?user=<orgSlug> with X-Org-Id=<orgSlug>, and
 // debits usage against SourceId=<orgSlug>). The deposit, usage, and read
 // paths MUST all resolve the same key or a customer tops up one key and
 // reads another. The key is the resolved org's own slug (org.Name), which
@@ -123,7 +123,7 @@ func PostMyWelcome(c *gin.Context) {
 	trans.DestinationKind = "iam-user"
 	trans.Currency = "usd"
 	trans.Amount = currency.Cents(credit.StarterCreditCents)
-	trans.Notes = "Welcome credit: $5.00 USD (expires in 30 days)"
+	trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
 	trans.Tags = credit.StarterCreditTag
 	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
 	trans.Metadata = Map{

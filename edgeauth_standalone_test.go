@@ -135,9 +135,9 @@ func TestStandaloneMoneyPath_NotBlockedByBoundary(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
 	req.Host = "pay.unknown.test"
-	// Service-token shape: opaque Bearer + X-Hanzo-Org, no X-Org-Id.
+	// Service-token shape: opaque Bearer + X-Org-Id, no X-Org-Id.
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token")
-	req.Header.Set("X-Hanzo-Org", "maxpower")
+	req.Header.Set("X-Org-Id", "maxpower")
 
 	w := httptest.NewRecorder()
 	app.Router.ServeHTTP(w, req)
