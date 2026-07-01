@@ -148,8 +148,8 @@ type Resolver interface {
 // Hostname keys are lowercased and assumed to have no port suffix; the
 // Resolver handles normalization before lookup.
 type StaticResolver struct {
-	mu       sync.RWMutex
-	hostMap  map[string]Tenant
+	mu      sync.RWMutex
+	hostMap map[string]Tenant
 }
 
 // NewStaticResolver copies the input map and lowercases keys so the caller
@@ -243,12 +243,16 @@ func toPublicView(t Tenant) publicView {
 		enabled = append(enabled, publicProvider{Name: p.Name, Enabled: true})
 	}
 	return publicView{
-		Name:               t.Name,
-		Brand:              t.Brand,
-		IAM:                publicIAM{Issuer: t.IAM.Issuer, ClientID: t.IAM.ClientID},
-		IDV:                t.IDV,
-		Providers:          enabled,
-		ReturnURLAllowlist: t.ReturnURLAllowlist,
+		Name:      t.Name,
+		Brand:     t.Brand,
+		IAM:       publicIAM{Issuer: t.IAM.Issuer, ClientID: t.IAM.ClientID},
+		IDV:       t.IDV,
+		Providers: enabled,
+		// Always a non-nil slice so the JSON is `[]` not `null`. A nil
+		// allowlist otherwise serializes as null, and the pay SPA iterates it
+		// (firstOrigin/isAllowedReturnUrl) → "e is not iterable", which breaks
+		// the entire /onboard page ("Could not load tenant configuration").
+		ReturnURLAllowlist: append([]string{}, t.ReturnURLAllowlist...),
 		Square:             t.Square,
 	}
 }
