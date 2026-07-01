@@ -20,12 +20,13 @@ type fakeCommerce struct {
 	method string
 	path   string
 	query  url.Values
-	auth   string
-	org    string
-	ctype  string
-	body   []byte
-	status int
-	reply  string
+	auth    string
+	org     string
+	testHdr string
+	ctype   string
+	body    []byte
+	status  int
+	reply   string
 }
 
 func (f *fakeCommerce) handler() http.HandlerFunc {
@@ -37,6 +38,7 @@ func (f *fakeCommerce) handler() http.HandlerFunc {
 		f.query = r.URL.Query()
 		f.auth = r.Header.Get("Authorization")
 		f.org = r.Header.Get("X-Org-Id")
+		f.testHdr = r.Header.Get("X-Hanzo-Test")
 		f.ctype = r.Header.Get("Content-Type")
 		f.body, _ = io.ReadAll(r.Body)
 		if f.status == 0 {
@@ -171,6 +173,34 @@ func TestAuthorize_TierAware_DeniesWhenEffectiveZero(t *testing.T) {
 	c := newClient(t, srv, metering.Config{TierAware: true})
 	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != metering.ErrInsufficientBalance {
 		t.Fatalf("tier-aware exhausted must deny with ErrInsufficientBalance, got %v", err)
+	}
+}
+
+func TestTestMode_SendsTestHeader(t *testing.T) {
+	fc := &fakeCommerce{reply: `{"available":1}`}
+	srv := httptest.NewServer(fc.handler())
+	defer srv.Close()
+
+	c := newClient(t, srv, metering.Config{Test: true})
+	if err := c.Authorize(context.Background(), metering.AuthInput{User: "meter-sandbox"}); err != nil {
+		t.Fatalf("Authorize: %v", err)
+	}
+	if fc.testHdr != "true" {
+		t.Errorf("Test mode must send X-Hanzo-Test: true, got %q", fc.testHdr)
+	}
+}
+
+func TestLiveMode_OmitsTestHeader(t *testing.T) {
+	fc := &fakeCommerce{reply: `{"available":1}`}
+	srv := httptest.NewServer(fc.handler())
+	defer srv.Close()
+
+	c := newClient(t, srv, metering.Config{}) // Test=false (production default)
+	if err := c.Authorize(context.Background(), metering.AuthInput{User: "hanzo/alice"}); err != nil {
+		t.Fatalf("Authorize: %v", err)
+	}
+	if fc.testHdr != "" {
+		t.Errorf("Live mode must NOT send X-Hanzo-Test (would write the wrong ledger), got %q", fc.testHdr)
 	}
 }
 
