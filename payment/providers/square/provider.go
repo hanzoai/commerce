@@ -41,9 +41,10 @@ type Config struct {
 	// payment.* webhook deliveries. Also called "Webhook Signature Key"
 	// in the Square dashboard.
 	WebhookSignatureKey string
-	// WebhookURL is the notification URL registered for this subscription
-	// in the Square dashboard. Square signs over (WebhookURL + rawBody),
-	// so it must match the registered URL byte-for-byte.
+	// WebhookURL is the EXACT notification URL configured in the Square
+	// dashboard webhook subscription. Square signs HMAC over
+	// notificationURL+body, so this must match the dashboard value (not the
+	// inbound request Host). Required to validate live webhook signatures.
 	WebhookURL string
 	// Environment must be "sandbox" or "production".
 	Environment string
