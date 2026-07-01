@@ -3,6 +3,7 @@ package checkout
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
 )
@@ -115,12 +117,33 @@ func Charge(c *gin.Context) {
 	http.Render(c, 200, ord)
 }
 
+// refundLocks serializes refunds PER order (keyed by namespace+orderId). A
+// refund is a check-then-write against ord.Refunded (square.Refund guards
+// Refunded+amt > Total), which is not atomic; two concurrent refunds with
+// DIFFERENT idempotency keys could both pass the guard against the same
+// pre-state and over-refund. Serializing per order closes that window.
+// Correct for the single-pod deployment (replicas:1 + Recreate, RWO SQLite).
+var refundLocks sync.Map // map[string]*sync.Mutex
+
+func refundLockFor(key string) *sync.Mutex {
+	m, _ := refundLocks.LoadOrStore(key, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
 func Refund(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		http.Fail(c, 400, err.Error(), err)
 		return
 	}
+
+	// Serialize all refunds for THIS order so concurrent distinct-key requests
+	// can't both pass square.Refund's over-refund guard against the same
+	// pre-state and over-refund. Scoped by namespace+order so other
+	// orders/tenants never contend.
+	mu := refundLockFor(nscontext.GetNamespace(middleware.GetContext(c)) + "\x00" + ord.Id())
+	mu.Lock()
+	defer mu.Unlock()
 
 	// Idempotency guard (money-critical). A refund is a non-idempotent money
 	// move: two identical POSTs (a client retry, a double-click, a proxy replay)
