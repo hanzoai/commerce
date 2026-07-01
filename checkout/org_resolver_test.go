@@ -106,6 +106,35 @@ func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 	}
 }
 
+// The hanzo tenant's return allowlist must carry the first-party app hosts so
+// pay can bounce ?return= back to the app that sent the user here (e.g. the
+// playground onboarding flow). An empty allowlist would reject every return and
+// strand the user on the brand default after onboarding.
+func TestOrgResolver_ReturnAllowlistCarriesAppHosts(t *testing.T) {
+	r := NewOrgResolver(nil)
+	ten, err := r.Resolve("pay.hanzo.ai")
+	if err != nil {
+		t.Fatalf("Resolve err = %v", err)
+	}
+	const want = "https://playground.hanzo.bot"
+	found := false
+	for _, h := range ten.ReturnURLAllowlist {
+		if h == want {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("hanzo return allowlist %v missing %q", ten.ReturnURLAllowlist, want)
+	}
+	// It must survive the public projection as a non-nil, populated slice — a
+	// nil slice serializes as JSON null and crashes the pay SPA (e is not
+	// iterable) on /onboard.
+	if pv := toPublicView(ten); len(pv.ReturnURLAllowlist) == 0 {
+		t.Errorf("publicView return allowlist is empty, want first-party app hosts")
+	}
+}
+
 // enabledProviders honors the deploy-wide disabled policy: Square is off only
 // when explicitly disabled; crypto + wire are always present; Stripe never is.
 func TestEnabledProviders_SquareOffWhenDisabled(t *testing.T) {
