@@ -83,13 +83,69 @@ func (r *OrgResolver) Resolve(host string) (Tenant, error) {
 			Issuer:   b.iamIssuer,
 			ClientID: b.iamClientID,
 		},
-		Providers: enabledProviders(),
+		Providers:          enabledProviders(),
+		ReturnURLAllowlist: returnHostsFor(b.slug),
 		Square: SquarePublic{
 			ApplicationID: sq.ApplicationID,
 			LocationID:    sq.LocationID,
 			Environment:   sq.Environment,
 		},
 	}, nil
+}
+
+// returnHostsFor is the per-brand allowlist of first-party app hosts the pay
+// SPA may bounce ?return= back to after checkout/onboarding. The pay matcher
+// (isAllowedReturnUrl) requires an EXACT https hostname match, so these are
+// full origins, not wildcards — every entry is a brand-controlled app host.
+// Bounding ?return= to them keeps open-redirect phishing off the table while
+// letting a user return to the app that sent them here (e.g. the playground
+// flow: playground.hanzo.bot → pay.hanzo.ai/onboard → back to playground).
+//
+// This is intentionally a static first-party list, not org-model data: the
+// resolver runs nil-loader on the PUBLIC /v1/commerce/tenant path (no
+// per-request DB read — see the OrgLoader warning above), and these hosts are
+// deploy-stable. Add a host here when a new first-party app must round-trip
+// through pay.
+func returnHostsFor(slug string) []string {
+	switch slug {
+	case "hanzo":
+		return []string{
+			"https://playground.hanzo.bot",
+			"https://hanzo.bot",
+			"https://console.hanzo.ai",
+			"https://cloud.hanzo.ai",
+			"https://chat.hanzo.ai",
+			"https://hanzo.chat",
+			"https://analytics.hanzo.ai",
+			"https://platform.hanzo.ai",
+			"https://bot.hanzo.ai",
+			"https://billing.hanzo.ai",
+			"https://s3.hanzo.ai",
+			"https://hanzo.ai",
+			"https://www.hanzo.ai",
+		}
+	case "lux":
+		return []string{
+			"https://lux.network",
+			"https://lux.id",
+			"https://lux.finance",
+			"https://console.lux.network",
+		}
+	case "zoo":
+		return []string{
+			"https://zoo.ngo",
+			"https://zoo.network",
+			"https://zoo.id",
+		}
+	case "pars":
+		return []string{
+			"https://pars.network",
+			"https://pars.id",
+			"https://pars.vote",
+		}
+	default:
+		return nil
+	}
 }
 
 // enabledProviders is the payment-method surface the pay SPA renders, honoring
