@@ -3,11 +3,32 @@ package giftcard
 import (
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/giftcardredemption"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
+
+// redeemLocks serializes the balance-check-then-debit critical section PER gift
+// card (keyed by namespace+cardId), closing the concurrent-overdraft window:
+// two redeems with DIFFERENT idempotency keys must not both pass the balance
+// check against the same pre-state and both debit past the initial balance.
+//
+// This is correct for the deployment model — commerce runs single-pod
+// (k8s replicas:1 + Recreate, ReadWriteOnce SQLite PVC), so one process owns
+// the store and an in-process lock is the serialization point. The SAME-key
+// case is additionally closed by the deterministic-id ON CONFLICT upsert, and
+// cross-card redeems never contend (distinct keys). If commerce ever runs
+// multi-writer, this must move to a real DB transaction
+// (datastore.DB().RunInTransaction, which takes the SQLite write lock).
+var redeemLocks sync.Map // map[string]*sync.Mutex
+
+func lockFor(key string) *sync.Mutex {
+	m, _ := redeemLocks.LoadOrStore(key, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
 
 // Money errors. Callers map these to 4xx; none of them move money.
 var (
@@ -77,6 +98,13 @@ func Redeem(db *datastore.Datastore, g *GiftCard, amount currency.Cents, curr cu
 
 	id := giftcardredemption.DeterministicID(g.Id(), idempotencyKey)
 
+	// Serialize the check-then-debit for THIS card so distinct-key concurrent
+	// redeems can't both pass the balance check against the same pre-state and
+	// overdraw. Keyed by namespace+card so other cards/tenants never contend.
+	mu := lockFor(nscontext.GetNamespace(db.Context) + "\x00" + g.Id())
+	mu.Lock()
+	defer mu.Unlock()
+
 	// Idempotent replay: if this exact (card, key) was already redeemed, return
 	// the stored line unchanged — do NOT debit again, and do NOT honor a
 	// different amount on the replay.
@@ -92,6 +120,8 @@ func Redeem(db *datastore.Datastore, g *GiftCard, amount currency.Cents, curr cu
 	}
 
 	// First time for this key: check the projected balance covers the draw.
+	// Safe under the per-card lock — no other redeem for this card can interleave
+	// between this read and the write below.
 	drawn, err := DrawnCents(db, g.Id())
 	if err != nil {
 		return nil, 0, err
@@ -101,7 +131,7 @@ func Redeem(db *datastore.Datastore, g *GiftCard, amount currency.Cents, curr cu
 	}
 
 	line := giftcardredemption.New(db)
-	line.SetId(id) // deterministic id ⇒ ON CONFLICT dedup at storage
+	line.SetId(id) // deterministic id ⇒ ON CONFLICT dedup at storage (same-key safety)
 	line.GiftCardId = g.Id()
 	line.AmountCents = amount
 	line.Currency = g.Currency
