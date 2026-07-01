@@ -25,7 +25,7 @@
 //
 //	Authorization: Bearer {Token}
 //
-// plus the tenant org as the X-IAM-Org-Id header. The token is a secret and
+// plus the tenant org as the X-Org-Id header. The token is a secret and
 // MUST be sourced from KMS (never plaintext); this package never reads it from
 // disk — the caller supplies it (typically from an env var the operator wires
 // from a KMS-backed secret, e.g. COMMERCE_SERVICE_TOKEN).
@@ -60,9 +60,9 @@ const (
 )
 
 // Header carrying the tenant org slug for commerce namespace resolution.
-// Commerce's S2S auth reads the org from X-IAM-Org-Id (commerce/middleware
+// Commerce's S2S auth reads the org from X-Org-Id (commerce/middleware
 // /accesstoken.go); without it commerce falls back to COMMERCE_SERVICE_ORG.
-const headerOrg = "X-IAM-Org-Id"
+const headerOrg = "X-Org-Id"
 
 // ErrInsufficientBalance is returned by Authorize when commerce confirms the
 // user's available balance is non-positive. It is distinct from a connectivity
@@ -89,7 +89,7 @@ type Config struct {
 	// never hard-code or read from a file. Sent as "Authorization: Bearer".
 	Token string
 
-	// Org is the tenant org slug (e.g. "hanzo") sent as X-IAM-Org-Id so
+	// Org is the tenant org slug (e.g. "hanzo") sent as X-Org-Id so
 	// commerce resolves the right tenant namespace. Per-request Org on the
 	// Usage/AuthInput overrides this default.
 	Org string
@@ -239,7 +239,7 @@ func (c *Client) fetchAvailable(ctx context.Context, user, org, cur string) (int
 // (commerce/api/billing/usage.go) one-for-one.
 type Usage struct {
 	User             string `json:"user"`
-	Org              string `json:"-"` // routed via X-IAM-Org-Id, not the body.
+	Org              string `json:"-"` // routed via X-Org-Id, not the body.
 	Currency         string `json:"currency,omitempty"`
 	AmountCents      int64  `json:"amount"`
 	Model            string `json:"model,omitempty"`
