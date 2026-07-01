@@ -63,12 +63,11 @@ ARG TARGETARCH
 
 WORKDIR /build
 
-# Copy go mod files first for layer caching. The root go.mod has a local
-# `replace github.com/hanzoai/commerce/thirdparty/ethereum => ./thirdparty/ethereum`
-# (on-chain HUSD payouts), so its go.mod/go.sum MUST be present for `go mod
-# download` to resolve the replaced module before the full `COPY . .`.
+# Copy go mod files first for layer caching. thirdparty/ethereum (the LGPL-
+# adjacent go-ethereum nested module) was ripped out; on-chain HUSD/ERC-20 now
+# rides luxfi/cevm (Apache-2.0), a normal go-module dep resolved via the proxy —
+# no nested-module go.mod/go.sum to COPY.
 COPY go.mod go.sum ./
-COPY thirdparty/ethereum/go.mod thirdparty/ethereum/go.sum ./thirdparty/ethereum/
 
 # Private hanzoai Go modules (cloud, zip, base, tasks, …) need git auth to
 # resolve. Mount the netrc build secret so git over HTTPS authenticates for
@@ -78,11 +77,10 @@ COPY thirdparty/ethereum/go.mod thirdparty/ethereum/go.sum ./thirdparty/ethereum
 # golang:1.26.4 toolchain so go does NOT try to download+verify a toolchain
 # module (which fails as a sumdb "SECURITY ERROR"). The netrc is mounted only
 # for the duration of the step and never lands in a layer.
-# GOWORK=off is critical: the repo commits a go.work (use . ./metering
-# ./thirdparty/ethereum). Without disabling it, `go mod download` runs in
-# workspace mode, reads the stale committed go.work.sum, and fails sum
-# verification ("SECURITY ERROR"). The image builds the single root module,
-# so force module mode.
+# GOWORK=off is critical: the repo commits a go.work (use . ./metering).
+# Without disabling it, `go mod download` runs in workspace mode, reads the
+# stale committed go.work.sum, and fails sum verification ("SECURITY ERROR").
+# The image builds the single root module, so force module mode.
 ENV GOPRIVATE=github.com/hanzoai/* \
     GOTOOLCHAIN=local \
     GOWORK=off
