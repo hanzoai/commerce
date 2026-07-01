@@ -1,6 +1,9 @@
 package checkout
 
 import (
+	"encoding/json"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/ethereum"
@@ -9,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/thirdparty/kms"
@@ -118,6 +122,55 @@ func Refund(c *gin.Context) {
 		return
 	}
 
+	// Idempotency guard (money-critical). A refund is a non-idempotent money
+	// move: two identical POSTs (a client retry, a double-click, a proxy replay)
+	// would otherwise each hit the gateway and double-refund. When the caller
+	// supplies an idempotency key, a replay returns the FIRST result instead of
+	// refunding again. The guard is scoped per order so keys never cross orders.
+	//
+	// Scope of protection: this de-dups OUR ledger + replays OUR response. For
+	// the narrow concurrent-first-submit window (two brand-new identical
+	// requests racing before either records the guard) the gateway is the final
+	// backstop — Square/Stripe both honor an idempotency key on the refund call.
+	// square.Refund already guards over-refund (Refunded+amt > Total ⇒ reject);
+	// the guard here adds retry/replay safety on top.
+	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	db := datastore.New(org.Namespaced(c))
+	if idemKey != "" {
+		scope := "refund:" + ord.Id()
+		rec, replay, gerr := idempotencykey.Begin(db, scope, idemKey)
+		if gerr != nil {
+			http.Fail(c, 500, "idempotency guard failed", gerr)
+			return
+		}
+		if replay {
+			// A prior request with this key already ran. Return its stored
+			// outcome verbatim; do NOT refund again.
+			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+				c.Data(200, "application/json", []byte(rec.Response))
+				return
+			}
+			// In-flight (started but not completed): a concurrent request owns
+			// this key. Fail closed with 409 so the caller retries, rather than
+			// risk a parallel double refund.
+			http.Fail(c, 409, "a refund with this idempotency key is already in progress", errRefundInFlight)
+			return
+		}
+
+		if err := refund(c, org, ord); err != nil {
+			http.Fail(c, 400, err.Error(), err)
+			return
+		}
+		// Record the successful outcome for future replays.
+		if resp, merr := json.Marshal(ord); merr == nil {
+			_ = idempotencykey.Complete(rec, string(resp))
+		}
+		http.Render(c, 200, ord)
+		return
+	}
+
+	// No idempotency key supplied — legacy behavior (over-refund guard still
+	// applies in square.Refund). Callers that move money SHOULD send a key.
 	if err := refund(c, org, ord); err != nil {
 		http.Fail(c, 400, err.Error(), err)
 		return

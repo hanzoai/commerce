@@ -3,6 +3,7 @@ package checkout
 import "errors"
 
 var (
+	errRefundInFlight            = errors.New("refund already in progress for this idempotency key")
 	FailedToCreateCustomer       = errors.New("Failed to create customer")
 	FailedToCreateUser           = errors.New("Failed to create user")
 	FailedToDecodeRequestBody    = errors.New("Failed to decode request body")
