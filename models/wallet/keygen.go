@@ -9,7 +9,7 @@ import (
 // KeyGen returns (privateKeyHex, publicKeyHex, address) for a given chain
 // type. Implementations register themselves via RegisterKeyGen. Bitcoin and
 // Ethereum are wired in-tree (keygen_bitcoin.go / keygen_ethereum.go) because
-// they only need luxfi/crypto primitives; the thirdparty/ethereum sub-module
+// they only need luxfi/crypto primitives; an EVM provider (luxfi/cevm)
 // layers payment (JSON-RPC) support on top via RegisterPayment.
 type KeyGen func(typ blockchains.Type) (priv, pub, address string, err error)
 
