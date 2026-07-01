@@ -10,7 +10,7 @@ import (
 
 // GetUserOrderByWallet returns the (user, order, wallet) triple associated
 // with walletId. Chain-agnostic — used by Bitcoin pay task in-tree and by
-// the Ethereum pay task in the thirdparty/ethereum sub-module.
+// the Ethereum pay task in an EVM provider (luxfi/cevm).
 func GetUserOrderByWallet(db *datastore.Datastore, walletId string) (*user.User, *order.Order, *wallet.Wallet, error) {
 	ctx := db.Context
 
