@@ -22,7 +22,7 @@ type Wallet struct {
 
 // Create a new Account, saves if wallet is created. Key generation is
 // dispatched to a per-chain registry populated by importing the relevant
-// blockchain package (e.g. thirdparty/bitcoin for BTC, thirdparty/ethereum
+// blockchain package (e.g. thirdparty/bitcoin for BTC, luxfi/cevm
 // for EVM). CreateAccount returns ErrNoKeyGen for chain types whose
 // generator hasn't been registered.
 func (w *Wallet) CreateAccount(name string, typ blockchains.Type, withPassword []byte) (*Account, error) {
