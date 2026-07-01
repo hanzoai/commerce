@@ -93,8 +93,8 @@ func TestMiddleware_GatesAndRecords(t *testing.T) {
 	if n != 1 || amt != 7 {
 		t.Fatalf("recorded (count=%d amount=%d), want (1, 7)", n, amt)
 	}
-	if usr != "hanzo/alice" {
-		t.Errorf("recorded user = %q, want hanzo/alice (org/sub)", usr)
+	if usr != "hanzo" {
+		t.Errorf("recorded user = %q, want hanzo (per-org billing key, not org/sub)", usr)
 	}
 }
 
@@ -203,16 +203,36 @@ func TestMiddleware_OnlyChargesSuccess(t *testing.T) {
 	}
 }
 
-func TestIdentityFromGatewayHeaders(t *testing.T) {
+func TestIdentityFromGatewayHeaders_PerOrgBillingKey(t *testing.T) {
+	// Prepaid billing is per-org: the billing key (User) is the ORG slug, the
+	// full org/sub is recorded as Actor for audit. Keying per-user would gate
+	// an empty per-user ledger and deny a funded org (the bug this guards).
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set(metering.HeaderOrgID, "zoo")
 	r.Header.Set(metering.HeaderUserID, "bob")
 	in := metering.IdentityFromGatewayHeaders(r)
-	if in.User != "zoo/bob" {
-		t.Errorf("User = %q, want zoo/bob", in.User)
+	if in.User != "zoo" {
+		t.Errorf("User (billing key) = %q, want zoo (org slug, per-org billing)", in.User)
+	}
+	if in.Actor != "zoo/bob" {
+		t.Errorf("Actor (audit) = %q, want zoo/bob", in.Actor)
 	}
 	if in.Org != "zoo" {
 		t.Errorf("Org = %q, want zoo", in.Org)
+	}
+}
+
+func TestIdentityFromGatewayHeaders_OrgLessFallback(t *testing.T) {
+	// No org header (org-less token): fall back to the bare sub so a per-user
+	// balance can still gate.
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set(metering.HeaderUserID, "solo")
+	in := metering.IdentityFromGatewayHeaders(r)
+	if in.User != "solo" {
+		t.Errorf("org-less User = %q, want solo", in.User)
+	}
+	if in.Actor != "solo" {
+		t.Errorf("org-less Actor = %q, want solo", in.Actor)
 	}
 }
 
