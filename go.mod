@@ -270,5 +270,3 @@ require (
 // pwrite64, which musl does not expose — breaking every linux/amd64 image
 // build. Pin to the current v1.14 patch, which compiles cleanly on musl.
 replace github.com/mattn/go-sqlite3 => github.com/mattn/go-sqlite3 v1.14.47
-
-replace github.com/hanzoai/commerce/thirdparty/ethereum => ./thirdparty/ethereum
