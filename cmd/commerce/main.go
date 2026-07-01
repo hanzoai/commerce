@@ -33,7 +33,6 @@ import (
 	// blockchain.TransferToken returns ErrNoTokenTransfer and crypto payouts
 	// are skipped. This is the single wiring point that links luxfi/geth into
 	// the production commerce binary.
-	_ "github.com/hanzoai/commerce/thirdparty/ethereum"
 )
 
 func main() {
