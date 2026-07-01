@@ -29,6 +29,31 @@ type BankAccountDetails struct {
 	AccountType   string `json:"accountType,omitempty"`
 }
 
+// CryptoDetails holds a crypto wallet for a payment method. Field shape
+// mirrors the billing client's `crypto` payload (network/walletAddress/label).
+type CryptoDetails struct {
+	Network       string `json:"network,omitempty"`
+	WalletAddress string `json:"walletAddress"`
+	Label         string `json:"label,omitempty"`
+}
+
+// WireDetails holds bank-wire information for a payment method. Field shape
+// mirrors the billing client's `wire` payload.
+type WireDetails struct {
+	BankName      string `json:"bankName,omitempty"`
+	AccountHolder string `json:"accountHolder,omitempty"`
+	RoutingNumber string `json:"routingNumber,omitempty"`
+	AccountLast4  string `json:"accountLast4,omitempty"`
+	Swift         string `json:"swift,omitempty"`
+	Iban          string `json:"iban,omitempty"`
+	Country       string `json:"country,omitempty"`
+}
+
+// PayPalDetails holds a PayPal account for a payment method.
+type PayPalDetails struct {
+	Email string `json:"email"`
+}
+
 // PaymentMethod represents a customer's payment instrument.
 
 func init() { orm.Register[PaymentMethod]("paymentmethod") }
@@ -44,6 +69,9 @@ type PaymentMethod struct {
 	ProviderType   string                 `json:"providerType"`
 	Card           *CardDetails           `json:"card,omitempty"`
 	BankAccount    *BankAccountDetails    `json:"bankAccount,omitempty"`
+	Crypto         *CryptoDetails         `json:"crypto,omitempty"`
+	Wire           *WireDetails           `json:"wire,omitempty"`
+	PayPal         *PayPalDetails         `json:"paypal,omitempty"`
 	BillingAddress *types.Address         `json:"billingAddress,omitempty"`
 	IsDefault      bool                   `json:"isDefault,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
