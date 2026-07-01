@@ -316,7 +316,7 @@ func executeStripePayout(c *contribModel.Contributor, alloc contribModel.PayoutA
 // The transfer is a standard ERC-20 transfer signed by the treasury key
 // (sourced from KMS, never logged), dispatched through the
 // util/blockchain.TransferToken seam — the EVM signing lives in the
-// thirdparty/ethereum sub-module, which must be linked into the running
+// EVM provider (luxfi/cevm), which must be linked into the running
 // binary (blank import) for on-chain execution.
 func executeCryptoPayout(ctx context.Context, c *contribModel.Contributor, alloc contribModel.PayoutAllocation, cfg Config) (string, error) {
 	if c.PayoutTarget == "" {
