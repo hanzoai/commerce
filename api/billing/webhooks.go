@@ -19,6 +19,13 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	// Blank-import the provider barrel so every provider's init() registers
+	// with processor.Global() before HandleProviderWebhook runs. Without this
+	// the global registry is empty and tryValidateWebhook can never reach any
+	// provider's ValidateWebhook (the per-org payment.ProcessorsForOrg path is
+	// separate and unaffected). This is the single owning import for the
+	// generic webhook dispatcher; do not scatter barrel imports elsewhere.
+	_ "github.com/hanzoai/commerce/payment/providers"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
@@ -374,7 +381,7 @@ func tryValidateWebhook(ctx context.Context, providerHint string, payload []byte
 func pickSignatureHeader(h http.Header, providerHint string) string {
 	candidates := []string{
 		"Stripe-Signature",
-		"X-Square-Hmacsha256-Signature", // Square
+		"X-Square-Hmacsha256-Signature", // Square (HMAC-SHA256 over notificationURL+body)
 		"Paypal-Transmission-Sig",
 		"X-Adyen-Signature",
 		"X-Paypal-Auth-Algo",
