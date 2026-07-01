@@ -824,25 +824,6 @@ func (app *App) runStripeSeed() {
 // for any caller still wrapping with it.
 func canonicalPathHandler(next http.Handler) http.Handler { return next }
 
-// loadOrgByName resolves an Organization by its IAM slug over the default
-// (system) datastore, read-only. Organizations are global entities
-// (DefaultNamespace), so a background context routes to the default DB set at
-// Bootstrap. Returns (nil,false) on miss/error so the OrgResolver degrades to
-// brand defaults + env Square config — tenant resolution never fails hard.
-func (app *App) loadOrgByName(slug string) (*orgModel.Organization, bool) {
-	slug = strings.TrimSpace(slug)
-	if slug == "" {
-		return nil, false
-	}
-	db := commerceDatastore.New(context.Background())
-	o := orgModel.New(db)
-	ok, err := o.Query().Filter("Name=", slug).Get()
-	if err != nil || !ok {
-		return nil, false
-	}
-	return o, true
-}
-
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
@@ -934,13 +915,21 @@ func (app *App) setupRoutes() {
 	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
 	// and everything above this line owns its own route prefix.
 	// Org-as-tenant resolution (ONE way): the IAM org IS the tenant. host→brand→
-	// org (checkout.OrgResolver) is the single source of truth for
+	// org slug (checkout.OrgResolver) is the single source of truth for
 	// /v1/commerce/tenant, deposits, and webhooks — no separate commerce-tenant
 	// registry to seed or drift. The public tenant JSON carries the org's public
 	// Square config (resolved by the same authority as the charge path), so the
 	// pay SPA's card iframe initializes with the exact application commerce will
 	// charge — no build-time VITE_* env, no per-host seed row, no 404.
-	orgResolver := checkout.NewOrgResolver(app.loadOrgByName)
+	//
+	// The Square public config comes from the deployment's per-brand env
+	// (SQUARE_APPLICATION_ID/LOCATION_ID, KMS-synced) via a synthetic org keyed by
+	// the resolved slug — NOT a per-request DB read. A naive per-request org query
+	// on this public, unauthenticated, SPA-boot endpoint blocks under an unbounded
+	// context and can exhaust the DB pool (regression seen at 1.42.44). Any future
+	// per-org-creds loader passed here MUST be cached + deadline-bounded — see
+	// checkout.OrgLoader. nil keeps resolution pure host→brand→env (no I/O, no hang).
+	orgResolver := checkout.NewOrgResolver(nil)
 
 	// forwardedHostMiddleware lifts the original customer-facing host from
 	// X-Forwarded-Host (set by a trusted upstream) since the ingress overwrites
