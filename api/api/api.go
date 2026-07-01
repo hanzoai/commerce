@@ -210,6 +210,6 @@ func Route(api router.Router) {
 	// Mercury bank webhook
 	mercuryApi.Route(api)
 
-	// Extra routes registered by optional sub-modules (e.g. thirdparty/ethereum)
+	// Extra routes registered by optional sub-modules (e.g. luxfi/cevm)
 	applyExtraRoutes(api)
 }

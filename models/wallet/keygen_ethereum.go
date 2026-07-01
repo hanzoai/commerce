@@ -11,9 +11,9 @@ import (
 	"github.com/hanzoai/commerce/models/blockchains"
 )
 
-// Ethereum key generation lives here (not in thirdparty/ethereum) because the
+// Ethereum key generation lives here (not in luxfi/cevm) because the
 // primitives rely only on luxfi/crypto (secp256k1 + keccak256 address
-// derivation). The thirdparty/ethereum sub-module pulls the heavier luxfi/geth
+// derivation). The luxfi/cevm sub-module pulls the heavier luxfi/geth
 // JSON-RPC client; it is not needed for generating accounts.
 func init() {
 	for _, typ := range []blockchains.Type{blockchains.EthereumType, blockchains.EthereumRopstenType} {
@@ -27,7 +27,7 @@ func ethereumKeyGen(_ blockchains.Type) (priv, pub, address string, err error) {
 		return "", "", "", err
 	}
 	// Drop the leading 0x04 uncompressed-marker byte on the public key, matching
-	// the format previously produced by thirdparty/ethereum.GenerateKeyPair.
+	// the format previously produced by luxfi/cevm.GenerateKeyPair.
 	priv = hex.EncodeToString(luxcrypto.FromECDSA(sk))
 	pub = hex.EncodeToString(luxcrypto.FromECDSAPub(&sk.PublicKey)[1:])
 	address = strings.ToLower(luxcrypto.PubkeyToAddress(sk.PublicKey).Hex())

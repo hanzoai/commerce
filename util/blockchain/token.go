@@ -26,7 +26,7 @@ type TokenTransfer struct {
 type TokenTransferFn func(ctx context.Context, t TokenTransfer) (txHash string, err error)
 
 // tokenTransferFn is the registered EVM token-transfer implementation. It is
-// wired by the github.com/hanzoai/commerce/thirdparty/ethereum sub-module on
+// wired by the github.com/hanzoai/commerce/luxfi/cevm sub-module on
 // import, mirroring RegisterPayment — consumers that never touch EVM never
 // link luxfi/geth.
 var tokenTransferFn TokenTransferFn
@@ -40,8 +40,8 @@ func RegisterTokenTransfer(fn TokenTransferFn) { tokenTransferFn = fn }
 func TokenTransferRegistered() bool { return tokenTransferFn != nil }
 
 // ErrNoTokenTransfer is returned when TransferToken is called without a
-// registered implementation (the thirdparty/ethereum sub-module not imported).
-var ErrNoTokenTransfer = errors.New("blockchain: no ERC-20 token transfer registered (import github.com/hanzoai/commerce/thirdparty/ethereum)")
+// registered implementation (the luxfi/cevm sub-module not imported).
+var ErrNoTokenTransfer = errors.New("blockchain: no ERC-20 token transfer registered (import github.com/hanzoai/commerce/luxfi/cevm)")
 
 // TransferToken validates the request and dispatches to the registered EVM
 // implementation. It is the single entry point for treasury ERC-20 transfers.
