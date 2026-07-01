@@ -796,6 +796,25 @@ func (app *App) runStripeSeed() {
 // for any caller still wrapping with it.
 func canonicalPathHandler(next http.Handler) http.Handler { return next }
 
+// loadOrgByName resolves an Organization by its IAM slug over the default
+// (system) datastore, read-only. Organizations are global entities
+// (DefaultNamespace), so a background context routes to the default DB set at
+// Bootstrap. Returns (nil,false) on miss/error so the OrgResolver degrades to
+// brand defaults + env Square config — tenant resolution never fails hard.
+func (app *App) loadOrgByName(slug string) (*orgModel.Organization, bool) {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return nil, false
+	}
+	db := commerceDatastore.New(context.Background())
+	o := orgModel.New(db)
+	ok, err := o.Query().Filter("Name=", slug).Get()
+	if err != nil || !ok {
+		return nil, false
+	}
+	return o, true
+}
+
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
@@ -886,52 +905,40 @@ func (app *App) setupRoutes() {
 	//
 	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
 	// and everything above this line owns its own route prefix.
-	if app.CheckoutResolver == nil {
-		app.CheckoutResolver = checkout.NewStaticResolver(nil)
-	}
+	// Org-as-tenant resolution (ONE way): the IAM org IS the tenant. host→brand→
+	// org (checkout.OrgResolver) is the single source of truth for
+	// /v1/commerce/tenant, deposits, and webhooks — no separate commerce-tenant
+	// registry to seed or drift. The public tenant JSON carries the org's public
+	// Square config (resolved by the same authority as the charge path), so the
+	// pay SPA's card iframe initializes with the exact application commerce will
+	// charge — no build-time VITE_* env, no per-host seed row, no 404.
+	orgResolver := checkout.NewOrgResolver(app.loadOrgByName)
 
-	// Store-backed routes (P8-H1): wire /v1/commerce/tenant (public) and
-	// /_/commerce/tenants (superadmin) via the hanzo/base-backed store.
-	// MUST register BEFORE checkout.Mount so the store-backed /tenant wins
-	// over the legacy Resolver-backed one (same path, gin rejects duplicates).
+	// forwardedHostMiddleware lifts the original customer-facing host from
+	// X-Forwarded-Host (set by a trusted upstream) since the ingress overwrites
+	// req.Host. brandForHost is exact-suffix, so a spoofed host still only maps
+	// to a real brand's org.
+	public := app.Router.Group("/v1/commerce")
+	public.Use(forwardedHostMiddleware())
+	public.GET("/tenant", gin.WrapH(checkout.TenantJSON(orgResolver)))
+	public.POST("/deposits", gin.WrapH(checkout.Deposits(orgResolver, checkout.NewHTTPForwarder())))
+	public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder())))
+	public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder())))
+	public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(orgResolver)))
+
+	// Superadmin tenant CRUD over the base-backed store stays available for
+	// per-org overrides, but it no longer DRIVES resolution. Gated by IAM +
+	// handler claim checks; under /_ so the ingress blocks it publicly.
 	if app.CommerceStore != nil {
-		publicStore := app.Router.Group("/v1/commerce")
-		// Honor X-Forwarded-Host when set by a trusted upstream (the
-		// Cloudflare Worker that owns the tenant's customer-facing
-		// domain). Tenant resolution downstream reads req.Host; the
-		// ingress strips/overwrites the Host on the way in, so we lift
-		// the original from X-Forwarded-Host. Exact-match resolution
-		// downstream caps abuse: a spoofed host still has to match a
-		// known tenant row to do anything.
-		publicStore.Use(forwardedHostMiddleware())
-		checkout.MountPublicFromStore(publicStore, app.CommerceStore, checkout.NewHTTPForwarder())
-
-		// Admin surface. IAM middleware gates every request; the handler
-		// re-checks claim shape defense-in-depth. Group is under /_ so
-		// the ingress path-rule blocks it from the public internet unless
-		// explicitly opened.
 		adminGroup := app.Router.Group("/_/commerce")
 		if app.config.IAM.Enabled {
 			adminGroup.Use(iammiddleware.IAMTokenRequired())
 		}
 		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
-
-		// Legacy checkout for deposits + webhooks — bind to the
-		// store-backed resolver so tenants created through the admin API
-		// resolve without a process restart. The legacy StaticResolver is
-		// dropped here in favor of the store; tests that need an
-		// in-memory map still use StaticResolver directly.
-		storeResolver := checkout.NewStoreResolver(app.CommerceStore)
-		public := app.Router.Group("/v1/commerce")
-		public.Use(forwardedHostMiddleware())
-		public.POST("/deposits", gin.WrapH(checkout.Deposits(storeResolver, checkout.NewHTTPForwarder())))
-		public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(storeResolver, checkout.NewHTTPForwarder())))
-		public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(storeResolver, checkout.NewHTTPForwarder())))
-		public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(storeResolver)))
-		checkout.MountSPA(app.Router)
-	} else {
-		checkout.Mount(app.Router, app.CheckoutResolver, checkout.NewHTTPForwarder())
 	}
+
+	// SPA fallback — MUST be last so every API group wins path resolution.
+	checkout.MountSPA(app.Router)
 }
 
 // Serve starts the HTTP server
