@@ -193,6 +193,12 @@ type AuthInput struct {
 	Actor    string
 	Org      string
 	Currency string
+	// AmountCents, when > 0, gates on available >= AmountCents instead of the
+	// bare available > 0. Use it to authorize a known up-front charge (e.g. the
+	// first hour of a machine) so a 1-cent balance cannot green-light an
+	// arbitrarily expensive request. Zero preserves the legacy "any positive
+	// balance" gate.
+	AmountCents int64
 }
 
 // Authorize is the pre-request balance gate.
@@ -226,6 +232,12 @@ func (c *Client) Authorize(ctx context.Context, in AuthInput) error {
 			return nil
 		}
 		return err // unknown -> deny (fail-closed).
+	}
+	if in.AmountCents > 0 {
+		if available >= in.AmountCents {
+			return nil
+		}
+		return ErrInsufficientBalance
 	}
 	if available > 0 {
 		return nil
