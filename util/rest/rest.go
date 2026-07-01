@@ -3,21 +3,18 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/datastore/iface"
-	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/mixin"
-	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/reflect"
 	"github.com/hanzoai/commerce/util/router"
@@ -67,25 +64,6 @@ type Pagination struct {
 	Count   int                    `json:"count"`
 	Models  interface{}            `json:"models"`
 	Facets  [][]search.FacetResult `json:"facets"`
-}
-
-// These 3 facet structs are used for deserialization
-type StringFacet struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-type RangeFacet struct {
-	Name  string `json:"name"`
-	Value struct {
-		Start float64 `json:"start"`
-		End   float64 `json:"end"`
-	} `json:"value"`
-}
-
-type Facets struct {
-	StringFacets []StringFacet `json:"string"`
-	RangeFacets  []RangeFacet  `json:"range"`
 }
 
 func (r *Rest) Init(prefix string) {
@@ -353,35 +331,55 @@ func (r Rest) get(c *gin.Context) {
 	}
 }
 
+// list returns a page of this kind scoped to the caller's org.
+//
+// SECURITY — per-tenant isolation. listBasic reads the datastore
+// `WHERE namespace = <ns>`, where <ns> is the namespace middleware.Namespace()
+// derives from the authenticated, gateway/EdgeAuth-minted X-Org-Id (a
+// JWT-verified `owner` claim). That is the SAME scoping get/create/update/delete
+// already apply, so a caller lists ONLY its own org's rows. No search backend is
+// wired (search.Open returns a no-op empty index — historically every list came
+// back empty), so the datastore is the one and only list path.
+//
+// The namespace IS the owner filter, so require it explicitly here: a request
+// with no resolved org namespace (DefaultNamespace/global kinds, or any route
+// that did not pass Namespace()) is NEVER served an un-scoped full-table scan —
+// that would cross tenants. Fail closed to an empty page; those kinds stay
+// reachable by id via get.
 func (r Rest) list(c *gin.Context) {
-	log.Warn("list %v", r.Kind, c)
 	if !r.CheckPermissions(c, "list") {
 		return
 	}
 
 	query := c.Request.URL.Query()
 
-	// Determine deafult sort order
+	// Default sort order.
 	sortField := query.Get("sort")
 	if sortField == "" {
 		sortField = r.DefaultSortField
 	}
 
-	// Update query with page/display params
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
 	limitStr := query.Get("limit")
 
 	entity := r.newEntity(c)
 
-	if _, ok := entity.(mixin.Searchable); ok {
-		qStr := query.Get("q")
-		fStr := query.Get("facets")
-		r.listSearch(c, entity, qStr, fStr, pageStr, displayStr, limitStr, sortField)
-	} else {
-		r.listSearch(c, entity, "", "", pageStr, displayStr, limitStr, sortField)
-		// r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+	// Fail closed unless the request carries a concrete org namespace — the
+	// exact value listBasic scopes every query by. Empty ⇒ no per-tenant scope,
+	// so serve an empty page rather than risk crossing tenants.
+	if nscontext.GetNamespace(entity.Context()) == "" {
+		r.Render(c, 200, Pagination{
+			Page:    pageStr,
+			Display: displayStr,
+			Models:  r.newEntitySlice(0, 0),
+			Count:   0,
+			Facets:  [][]search.FacetResult{},
+		})
+		return
 	}
+
+	r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
 }
 
 func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
@@ -433,175 +431,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 		Display: displayStr,
 		Models:  entities,
 		Count:   count,
-	})
-}
-
-func (r Rest) listSearch(c *gin.Context, entity mixin.Entity, qStr, fStr, pageStr, displayStr, limitStr, sortField string) {
-	var display int
-	var err error
-
-	sortExpr := sortField
-	sortReverse := sortExpr[0:1] == "-"
-	if sortReverse {
-		sortExpr = sortExpr[1:]
-	}
-
-	// should have already checked this
-	opts := search.SearchOptions{}
-	opts.Facets = []search.FacetSearchOption{
-		search.AutoFacetDiscovery(100, 20),
-	}
-	opts.Sort = &search.SortOptions{
-		Expressions: []search.SortExpression{
-			search.SortExpression{
-				Expr:    sortExpr,
-				Reverse: sortReverse,
-			},
-		},
-	}
-
-	opts.Limit = 100
-
-	// if we have pagination values, then trigger pagination calculations
-	if displayStr != "" {
-		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
-			opts.Limit = display
-		} else {
-			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
-			return
-		}
-	}
-
-	if pageStr != "" && displayStr != "" {
-		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
-			opts.Offset = display * (page - 1)
-		} else {
-			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
-			return
-		}
-	}
-
-	// open index
-	index, err := search.Open(mixin.DefaultIndex)
-	if err != nil {
-		http.Fail(c, 500, "Failed to open index for '"+r.Kind+"'", err)
-		return
-	}
-
-	keys := make([]iface.Key, 0)
-	opts.IDsOnly = true
-	opts.Refinements = []search.Facet{
-		search.Facet{
-			Name:  "Kind",
-			Value: search.Atom(r.Kind),
-		},
-	}
-
-	if fStr != "" {
-		f := Facets{}
-		if err := json.DecodeBytes([]byte(fStr), &f); err != nil {
-			log.Warn("Unable to decode: %v", err, c)
-		} else {
-			for _, facet := range f.StringFacets {
-				opts.Refinements = append(opts.Refinements, search.Facet{
-					Name:  facet.Name,
-					Value: search.Atom(facet.Value),
-				})
-			}
-			for _, facet := range f.RangeFacets {
-				opts.Refinements = append(opts.Refinements, search.Facet{
-					Name: facet.Name,
-					Value: search.Range{
-						Start: facet.Value.Start,
-						End:   facet.Value.End,
-					},
-				})
-			}
-		}
-	}
-
-	t := index.Search(entity.Context(), qStr, &opts)
-	for {
-		id, err := t.Next(nil) // We use the int id stored on the doc rather than the key
-		if err == search.Done {
-			break
-		}
-		if err != nil {
-			http.Fail(c, 500, "Failed to search index for '"+r.Kind+"'", err)
-			return
-		}
-
-		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(entity.Context(), id)))
-	}
-
-	facets, err := t.Facets()
-	if err != nil {
-		http.Fail(c, 500, "Failed to get '"+r.Kind+"' options", err)
-		return
-	}
-
-	// Ignore this for now, use more accurate Kind facet count
-	// t = index.Search(entity.Context(), qStr, &search.SearchOptions{
-	// 	IDsOnly: true,
-	// 	Refinements: []search.Facet{
-	// 		search.Facet{
-	// 			Name:  "Kind",
-	// 			Value: search.Atom(r.Kind),
-	// 		},
-	// 	},
-	// 	// CountAccuracy: 10000,
-	// })
-	// t.Next(entity.Context())
-	// count := t.Count()
-	count := 0
-
-	entities := r.newEntitySlice(len(keys), len(keys))
-	db := entity.Datastore()
-	if err := db.GetMulti(keys, entities); err != nil {
-		log.Error(c, 500, "Failed to get '"+r.Kind+"'", err)
-	}
-
-	if limitStr != "" {
-		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
-			count = limit
-		}
-	}
-
-	if facets == nil {
-		facets = [][]search.FacetResult{}
-	}
-
-	// Prevent +/-inf json 'unfortunate' serialization
-	for i, facet := range facets {
-		log.Error("Facet... %v", facet, c)
-		for j, facetResult := range facet {
-			if facetResult.Name == "Kind" {
-				count = facetResult.Count
-			}
-
-			if r, ok := facetResult.Value.(search.Range); ok {
-				s := r.Start
-				if math.IsInf(s, -1) {
-					s = -math.MaxFloat64
-				}
-				e := r.End
-				if math.IsInf(e, 1) {
-					e = math.MaxFloat64
-				}
-				facets[i][j].Value = search.Range{
-					Start: s,
-					End:   e,
-				}
-			}
-		}
-	}
-
-	r.Render(c, 200, Pagination{
-		Page:    pageStr,
-		Display: displayStr,
-		Models:  entities,
-		Count:   count,
-		Facets:  facets,
+		Facets:  [][]search.FacetResult{},
 	})
 }
 
