@@ -35,6 +35,10 @@ const (
 	// EnvDisabled ("true") forces "not configured" mode regardless of
 	// COMMERCE_URL — Authorize allows, Record is a no-op. For local dev.
 	EnvDisabled = "METERING_DISABLED"
+
+	// EnvTest ("true") routes all calls to commerce's TEST ledger
+	// (X-Hanzo-Test: true). For staging/sandbox so debits never hit real money.
+	EnvTest = "METERING_TEST"
 )
 
 // DefaultBaseURL is the in-cluster commerce address. Matches the gateway's
@@ -63,6 +67,7 @@ func ConfigFromEnv() Config {
 		Org:       org,
 		TierAware: envTrue(EnvTierAware),
 		FailOpen:  envTrue(EnvFailOpen),
+		Test:      envTrue(EnvTest),
 	}
 }
 
