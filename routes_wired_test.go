@@ -11,6 +11,7 @@ package commerce
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -117,23 +118,31 @@ func TestRoutes_WiredInProduction(t *testing.T) {
 	}
 }
 
-// TestRoutes_PublicTenantReachesStore proves `GET /v1/commerce/tenant`
-// routes to the store-backed handler. The store handler returns the
-// canonical `{"error":"unknown tenant"}` body when the tenant collection is
-// empty; the legacy Resolver handler uses a different code path. Matching
-// that exact body is a positive signal that the store-backed mount won.
-func TestRoutes_PublicTenantReachesStore(t *testing.T) {
+// TestRoutes_PublicTenantResolvesOrg proves GET /v1/commerce/tenant resolves
+// the tenant from the IAM org (host→brand→org), returning 200 with an
+// org-as-tenant JSON — NOT a 404 against a separate tenant registry. Even with
+// no org row and no Square env in the test binary, resolution degrades to the
+// deployment default brand + env, so the pay SPA always receives a usable
+// tenant carrying `name` (the org slug) and a `square` block. This is the fix
+// for the pay.hanzo.ai "unknown tenant" 404 + dead card form.
+func TestRoutes_PublicTenantResolvesOrg(t *testing.T) {
 	app := bootTestCommerce(t)
 
 	resp := probe(t, app, http.MethodGet, "/v1/commerce/tenant", "pay.p8.test", nil)
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNotFound {
+	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		t.Fatalf("status = %d, want 404 for empty store. body=%s", resp.StatusCode, string(bodyBytes))
+		t.Fatalf("status = %d, want 200 (org-as-tenant). body=%s", resp.StatusCode, string(bodyBytes))
 	}
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	if got := string(bodyBytes); got != `{"error":"unknown tenant"}` {
-		t.Fatalf("body = %q, want store-backed `{\"error\":\"unknown tenant\"}` — suggests legacy handler resolved instead", got)
+	var body map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("tenant JSON decode: %v", err)
+	}
+	if name, _ := body["name"].(string); name == "" {
+		t.Fatalf("tenant JSON missing name (org slug): %v", body)
+	}
+	if _, ok := body["square"]; !ok {
+		t.Fatalf("tenant JSON missing square block (card form needs it): %v", body)
 	}
 }
 
