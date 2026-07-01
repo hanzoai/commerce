@@ -26,7 +26,14 @@ import (
 
 // OrgLoader loads an Organization by its IAM slug (read-only). It is injected
 // by the binary so this package stays decoupled from datastore wiring; a nil
-// loader (or a miss) degrades to a brand-default synthetic org.
+// loader (or a miss) degrades to a brand-default synthetic org whose Square
+// config resolves from the deployment's per-brand env (the cloud-org path).
+//
+// WARNING: Resolve runs on /v1/commerce/tenant — a PUBLIC, unauthenticated
+// endpoint the pay SPA hits on every boot. Any real loader wired here MUST be
+// cached AND deadline-bounded. A naive per-request DB query under an unbounded
+// context blocks and can exhaust the connection pool (regression at 1.42.44).
+// nil is the correct default: pure host→brand→env, no I/O, no hang.
 type OrgLoader func(slug string) (*organization.Organization, bool)
 
 // OrgResolver implements Resolver by mapping the Host header to an IAM org and
