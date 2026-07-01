@@ -11,7 +11,7 @@ import (
 )
 
 // PaymentFn is the per-chain payment dispatcher. EVM payment support ships in
-// github.com/hanzoai/commerce/thirdparty/ethereum and registers itself on
+// github.com/hanzoai/commerce/luxfi/cevm and registers itself on
 // import; consumers who don't need EVM never link geth.
 type PaymentFn func(ctx context.Context, from wallet.Account, to string, amount, fee currency.Cents, password []byte) (string, error)
 
@@ -26,7 +26,7 @@ func RegisterPayment(typ blockchains.Type, fn PaymentFn) {
 
 // ErrNoPayment is returned when MakePayment is called for a chain type whose
 // payment function hasn't been registered (e.g. an EVM chain without the
-// thirdparty/ethereum sub-module wired in).
+// luxfi/cevm sub-module wired in).
 var ErrNoPayment = errors.New("blockchain: no payment function registered for chain type")
 
 func MakePayment(ctx context.Context, from wallet.Account, to string, amount, fee currency.Cents, password []byte) (string, error) {
