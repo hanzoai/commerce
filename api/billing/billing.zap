@@ -108,21 +108,98 @@ struct TransactionResult
   type TransactionType
 
 # =============================================================================
+# SBOM-driven OSS-developer payout
+# =============================================================================
+#
+# Every arcd deploy emits an SBOM of the built image; commerce attributes up to
+# 25% of each org's cloud spend across the OSS packages present in those SBOMs
+# (pro-rata by weight) and accrues each package's share to a per-maintainer
+# ledger. The cap (0.25) and weighting are policy (config/oss-payout.json),
+# enforced in code (ossattr.MaxPoolFraction).
+#
+# ZAP opcode (transport): OpSBOMIngest = 0x20 — same node as vector ops.
+
+struct SBOMComponent
+  purl Text          # canonical Package URL — the attribution join key
+  name Text
+  ecosystem Text     # golang | npm | pypi | apk | deb | ...
+  version Text
+  scope Text         # direct | transitive
+
+struct SBOMIngest
+  imageRef Text      # ghcr.io/<org>/<svc>:<tag>
+  imageDigest Text   # sha256:... — immutable idempotency key
+  service Text       # logical Hanzo service
+  format Text        # cyclonedx | spdx
+  tool Text          # syft
+  components List(SBOMComponent)
+
+struct SBOMIngestResult
+  id Text
+  imageDigest Text
+  service Text
+  componentCount Int32
+
+struct OSSAccrualLine
+  purl Text
+  name Text
+  scope Text
+  spendOrg Text
+  sourceTxnId Text
+  amount Int64       # cents accrued to this package
+  currency Text
+  status Text        # pending | held | queued | settled
+  fundingTarget Text # e.g. github_sponsors:gin-gonic
+  shareRatio Float64
+
+struct OSSAccrualList
+  count Int32
+  accruals List(OSSAccrualLine)
+
+struct OSSMaintainerSummary
+  purl Text
+  name Text
+  ecosystem Text
+  fundingTarget Text
+  fundingKind Text
+  currency Text
+  accruedCents Int64
+  lines Int32
+  status Text
+
+struct OSSPayoutSummary
+  totalAccruedCents Int64
+  heldCents Int64
+  packageCount Int32
+  maintainers List(OSSMaintainerSummary)
+
+# =============================================================================
 # Service Interface
 # =============================================================================
 
 interface BillingService
-  # GET /api/v1/billing/balance?user=&currency=
+  # GET /v1/billing/balance?user=&currency=
   getBalance (user Text, currency Text) -> (balance Balance)
 
-  # GET /api/v1/billing/balance/all?user=
+  # GET /v1/billing/balance/all?user=
   getBalanceAll (user Text) -> (response BalanceAllResponse)
 
-  # GET /api/v1/billing/usage?user=&currency=
+  # GET /v1/billing/usage?user=&currency=
   getUsage (query UsageQuery) -> (list UsageList)
 
-  # POST /api/v1/billing/usage
+  # POST /v1/billing/usage
   recordUsage (record UsageRecord) -> (result UsageResult)
 
-  # POST /api/v1/billing/deposit (future)
+  # POST /v1/billing/deposit (future)
   deposit (request DepositRequest) -> (result TransactionResult)
+
+  # POST /v1/billing/sbom  (ZAP: OpSBOMIngest 0x20)
+  # Ingest the SBOM of a deployed image. Idempotent on imageDigest.
+  ingestSBOM (sbom SBOMIngest) -> (result SBOMIngestResult)
+
+  # GET /v1/billing/oss-accruals?purl=&org=
+  listOSSAccruals (purl Text, org Text) -> (list OSSAccrualList)
+
+  # GET /v1/billing/oss-payout/summary?org=
+  # Per-package payout rollup — the disbursement-ready view.
+  getOSSPayoutSummary (org Text) -> (summary OSSPayoutSummary)
