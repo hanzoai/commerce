@@ -63,11 +63,10 @@ func TestMount_RegistersHealth(t *testing.T) {
 }
 
 // TestMount_GinSurfaceReachable proves the inner gin engine is actually
-// reachable through the outer zip.App. The legacy /v1/commerce/tenant
-// public route is registered on the embedded gin engine; routing a
-// request through zip → AdaptNetHTTP → gin must reach the store-backed
-// handler. We accept any non-NoRoute response — the store is empty so
-// the handler legitimately returns 404 with `{"error":"unknown tenant"}`,
+// reachable through the outer zip.App. The /v1/commerce/tenant public route
+// is registered on the embedded gin engine; routing a request through
+// zip → AdaptNetHTTP → gin must reach the org-as-tenant handler. We accept
+// any non-NoRoute response — org resolution returns 200 with the tenant JSON —
 // which proves the route resolved past zip's adapter into a real handler
 // rather than falling through to the SPA NoRoute branch.
 //

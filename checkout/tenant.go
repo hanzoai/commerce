@@ -61,10 +61,26 @@ type Tenant struct {
 	// bounce to. Prevents open-redirect phishing pivots.
 	ReturnURLAllowlist []string `json:"returnUrlAllowlist"`
 
+	// Square carries the PUBLIC Square Web Payments config (application id +
+	// location id + environment) the SPA's card iframe needs. Resolved from the
+	// IAM org via the single test-mode authority (see payment.SquarePublicConfig)
+	// so the browser tokenizes with the exact application commerce will charge.
+	// Every field is public — no secret ever crosses this boundary.
+	Square SquarePublic `json:"square"`
+
 	// Backend tells the checkout API how to proxy deposit intents. For
 	// the example tenant this resolves to BD; other tenants supply
 	// their own URL. Kind is an opaque free-form label ("bd", "custom").
 	Backend BackendConfig `json:"-"`
+}
+
+// SquarePublic is the public Square config surfaced to the checkout SPA. It
+// mirrors payment.SquarePublic minus the ledger `live` flag (the SPA drives its
+// sandbox-vs-prod script off Environment). All fields are public.
+type SquarePublic struct {
+	ApplicationID string `json:"applicationId"`
+	LocationID    string `json:"locationId"`
+	Environment   string `json:"environment"`
 }
 
 // Brand controls visible white-label surface.
@@ -196,12 +212,13 @@ func normalizeHost(host string) string {
 // publicView is the JSON shape served at GET /v1/commerce/tenant. It's a
 // deliberate projection — anything not explicitly listed here cannot leak.
 type publicView struct {
-	Name               string            `json:"name"`
-	Brand              Brand             `json:"brand"`
-	IAM                publicIAM         `json:"iam"`
-	IDV                IDVConfig         `json:"idv"`
-	Providers          []publicProvider  `json:"providers"`
-	ReturnURLAllowlist []string          `json:"returnUrlAllowlist"`
+	Name               string           `json:"name"`
+	Brand              Brand            `json:"brand"`
+	IAM                publicIAM        `json:"iam"`
+	IDV                IDVConfig        `json:"idv"`
+	Providers          []publicProvider `json:"providers"`
+	ReturnURLAllowlist []string         `json:"returnUrlAllowlist"`
+	Square             SquarePublic     `json:"square"`
 }
 
 type publicIAM struct {
@@ -232,6 +249,7 @@ func toPublicView(t Tenant) publicView {
 		IDV:                t.IDV,
 		Providers:          enabled,
 		ReturnURLAllowlist: t.ReturnURLAllowlist,
+		Square:             t.Square,
 	}
 }
 
