@@ -1,13 +1,11 @@
 package billing
 
 import (
-	"os"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/payment"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -26,35 +24,19 @@ func GetPaymentConfig(c *gin.Context) {
 	// NOTE: do NOT KMS-hydrate here. payment-config is called on dialog-open and
 	// gates the card field mount, so it must be fast; a KMS round-trip can hang
 	// when KMS is slow/unavailable and freeze the UI. Cloud orgs have no per-org
-	// Square creds anyway — the env fallback below supplies the public app id.
-	useSandbox := org.TestMode()
-	env := org.SquareEnvironment()
-	sqCfg := org.SquareConfig(useSandbox)
-	appID := sqCfg.ApplicationId
-	locationID := sqCfg.LocationId
-
-	if appID == "" || locationID == "" {
-		// Same SQUARE_ENVIRONMENT authority (via org.TestMode) picks the sandbox
-		// vs production public env vars, so the app id the browser tokenizes with
-		// always matches the env commerce will charge against.
-		appID = strings.TrimSpace(os.Getenv("SQUARE_APPLICATION_ID"))
-		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		if useSandbox {
-			if a := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_APPLICATION_ID")); a != "" {
-				appID = a
-			}
-			if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-				locationID = l
-			}
-		}
-	}
+	// Square creds anyway — the env fallback supplies the public app id.
+	//
+	// Resolution lives in ONE place (payment.SquarePublicConfig) so this
+	// authenticated handler and the public host→org tenant projection
+	// (/v1/commerce/tenant) can never hand the browser a different Square app.
+	sq := payment.SquarePublicConfig(org)
 
 	c.JSON(200, gin.H{
 		"provider":      "square",
-		"applicationId": appID,
-		"locationId":    locationID,
-		"environment":   env,
-		"live":          org.Live,
+		"applicationId": sq.ApplicationID,
+		"locationId":    sq.LocationID,
+		"environment":   sq.Environment,
+		"live":          sq.Live,
 	})
 }
 
