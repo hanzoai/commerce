@@ -20,7 +20,7 @@ COPY app/admin/out /web/admin/out
 # and PAY_VERSION via --build-arg; default tracks the latest tagged release.
 FROM node:22-alpine AS pay-build
 ARG PAY_REPO=https://github.com/hanzoai/pay.git
-ARG PAY_VERSION=v0.1.1
+ARG PAY_VERSION=v0.1.2
 WORKDIR /pay
 RUN apk add --no-cache git && corepack enable pnpm
 # hanzoai/pay is private. Mount the netrc build secret so git over HTTPS
