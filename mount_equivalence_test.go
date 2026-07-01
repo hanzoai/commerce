@@ -83,9 +83,9 @@ func TestMount_EquivalentToLegacy(t *testing.T) {
 		// /v1/commerce/health is not a registered handler. Both modes
 		// must return the canonical NoRoute API-path body.
 		{name: "health_unknown_path", path: "/v1/commerce/health", host: "pay.example.test"},
-		// /v1/commerce/tenant is store-backed. Empty store returns
-		// `{"error":"unknown tenant"}` — same in both modes.
-		{name: "tenant_empty_store", path: "/v1/commerce/tenant", host: "pay.example.test"},
+		// /v1/commerce/tenant is org-as-tenant. Both modes resolve via the
+		// same host→brand→org resolver, so the 200 tenant JSON is identical.
+		{name: "tenant_org_resolved", path: "/v1/commerce/tenant", host: "pay.example.test"},
 	}
 
 	for _, tc := range cases {
