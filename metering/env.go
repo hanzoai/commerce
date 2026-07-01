@@ -19,7 +19,7 @@ const (
 	// the repo or image.
 	EnvToken = "COMMERCE_SERVICE_TOKEN"
 
-	// EnvOrg is the default tenant org slug (X-IAM-Org-Id) for S2S calls when a
+	// EnvOrg is the default tenant org slug (X-Org-Id) for S2S calls when a
 	// request carries no org. Default: hanzo.
 	EnvOrg = "COMMERCE_SERVICE_ORG"
 

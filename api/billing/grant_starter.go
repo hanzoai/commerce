@@ -25,7 +25,7 @@ type grantStarterRequest struct {
 // The subject is explicit and caller-supplied: "owner/name" for per-user
 // (personal-org) billing, or the org slug for org-pooled billing — it MUST match
 // the subject the cloud gateway debits and reads (object.BillingSubject in
-// hanzoai/ai). The grant is scoped to the X-Hanzo-Org namespace.
+// hanzoai/ai). The grant is scoped to the X-Org-Id namespace.
 //
 // Idempotent + race-safe: credit.GrantIfEligibleNow dedupes on the starter-credit
 // tag inside a datastore transaction, so duplicate/concurrent calls (e.g. the

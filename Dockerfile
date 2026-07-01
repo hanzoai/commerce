@@ -138,13 +138,18 @@ COPY --from=billing-build /billing/out/ billing/ui/dist/
 # tag so the binary's /healthz version == its deployed tag. Empty default
 # keeps commerce.Version's in-source default for local builds.
 ARG VERSION=""
+# -mod=mod lets the Linux build complete go.sum itself (adding any go.mod
+# hashes the build graph needs but that are absent from the committed go.sum).
+# Private hanzoai modules are direct-git (GOPRIVATE) and their zip hashes differ
+# by host OS, so go.sum cannot be regenerated reliably off-Linux — letting the
+# build add the correct Linux hashes is the robust fix.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=secret,id=netrc,target=/root/.netrc \
     CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
     VER="${VERSION#v}" && \
-    go build -p=8 \
+    go build -mod=mod -p=8 \
     -tags "cloud sqlite_omit_load_extension" \
     -ldflags="-s -w \
       ${VER:+-X github.com/hanzoai/commerce.Version=${VER}} \
