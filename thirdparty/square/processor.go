@@ -39,7 +39,7 @@ type SquareProcessor struct {
 	// notificationURL + rawBody, so we must verify against the configured
 	// URL — never one derived from the inbound request Host, which a proxy
 	// can rewrite or an attacker can spoof.
-	webhookURL string
+	webhookURL      string
 	environment     string // "sandbox" or "production"
 	paymentsClient  *payments.Client
 	refundsClient   *refunds.Client
@@ -255,7 +255,19 @@ func (sp *SquareProcessor) Capture(ctx context.Context, transactionID string, am
 
 // Refund processes a refund
 func (sp *SquareProcessor) Refund(ctx context.Context, req processor.RefundRequest) (*processor.RefundResult, error) {
-	idempotencyKey := uuid.New().String()
+	// Prefer a caller-supplied DETERMINISTIC idempotency key so a retried refund
+	// (same key) is de-duplicated by Square — the money move is idempotent even
+	// across pods/mutexes. Fall back to a random key only for legacy callers that
+	// don't supply one (non-idempotent — a retry would double-refund).
+	idempotencyKey := req.IdempotencyKey
+	if idempotencyKey == "" {
+		idempotencyKey = uuid.New().String()
+	}
+	// Square caps the idempotency key at 45 chars; a sha256-hex derived key is
+	// 64, so truncate deterministically (still collision-safe for our scope).
+	if len(idempotencyKey) > 45 {
+		idempotencyKey = idempotencyKey[:45]
+	}
 
 	refundReq := &square.RefundPaymentRequest{
 		IdempotencyKey: idempotencyKey,

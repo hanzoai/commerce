@@ -8,13 +8,13 @@ import (
 type ProcessorType string
 
 const (
-	Stripe       ProcessorType = "stripe"
-	Square       ProcessorType = "square"
-	PayPal       ProcessorType = "paypal"
-	Adyen        ProcessorType = "adyen"
-	Braintree    ProcessorType = "braintree"
-	Recurly      ProcessorType = "recurly"
-	LemonSqueezy ProcessorType = "lemonsqueezy"
+	Stripe           ProcessorType = "stripe"
+	Square           ProcessorType = "square"
+	PayPal           ProcessorType = "paypal"
+	Adyen            ProcessorType = "adyen"
+	Braintree        ProcessorType = "braintree"
+	Recurly          ProcessorType = "recurly"
+	LemonSqueezy     ProcessorType = "lemonsqueezy"
 	BitPay           ProcessorType = "bitpay"
 	CoinbaseCommerce ProcessorType = "coinbase_commerce"
 	OpenNode         ProcessorType = "opennode"
@@ -61,10 +61,15 @@ type PaymentResult struct {
 
 // RefundRequest represents a refund to be processed
 type RefundRequest struct {
-	TransactionID string                 `json:"transactionId"`
-	Amount        currency.Cents         `json:"amount"`
-	Reason        string                 `json:"reason,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	TransactionID string         `json:"transactionId"`
+	Amount        currency.Cents `json:"amount"`
+	Reason        string         `json:"reason,omitempty"`
+	// IdempotencyKey, when set, is forwarded to the gateway as ITS idempotency
+	// key so a retried refund (same key) is de-duplicated at the processor — the
+	// money move is idempotent regardless of pods/mutexes/in-flight guards. When
+	// empty the processor falls back to a random key (legacy, non-idempotent).
+	IdempotencyKey string                 `json:"idempotencyKey,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // RefundResult represents the outcome of a refund
@@ -100,24 +105,24 @@ type Balance struct {
 
 // SubscriptionRequest represents a subscription creation request
 type SubscriptionRequest struct {
-	CustomerID  string                 `json:"customerId"`
-	PlanID      string                 `json:"planId"`
-	Quantity    int                    `json:"quantity"`
-	TrialDays   int                    `json:"trialDays,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	PaymentToken string                `json:"paymentToken,omitempty"`
+	CustomerID   string                 `json:"customerId"`
+	PlanID       string                 `json:"planId"`
+	Quantity     int                    `json:"quantity"`
+	TrialDays    int                    `json:"trialDays,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	PaymentToken string                 `json:"paymentToken,omitempty"`
 }
 
 // Subscription represents an active subscription
 type Subscription struct {
-	ID                string                 `json:"id"`
-	CustomerID        string                 `json:"customerId"`
-	PlanID            string                 `json:"planId"`
-	Status            string                 `json:"status"` // active, canceled, past_due, trialing
-	CurrentPeriodStart int64                 `json:"currentPeriodStart"`
-	CurrentPeriodEnd   int64                 `json:"currentPeriodEnd"`
-	CancelAtPeriodEnd  bool                  `json:"cancelAtPeriodEnd"`
-	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	ID                 string                 `json:"id"`
+	CustomerID         string                 `json:"customerId"`
+	PlanID             string                 `json:"planId"`
+	Status             string                 `json:"status"` // active, canceled, past_due, trialing
+	CurrentPeriodStart int64                  `json:"currentPeriodStart"`
+	CurrentPeriodEnd   int64                  `json:"currentPeriodEnd"`
+	CancelAtPeriodEnd  bool                   `json:"cancelAtPeriodEnd"`
+	Metadata           map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // SubscriptionUpdate represents subscription modification

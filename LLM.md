@@ -437,7 +437,117 @@ pool waits until a target is resolved + onboarded.
 ## Gotchas
 
 - New ORM kinds MUST be registered in `util/hashid/kind.go` (monotonic, never
-  reorder) or `Create()` panics "Unknown kind" — `sbom-record`=262, `oss-accrual`=263.
+  reorder) or `Create()` panics "Unknown kind" — `sbom-record`=262, `oss-accrual`=263,
+  B2B `company`=264/`employee`=265/`quote`=266/`quote-message`=267/`approval`=268,
+  `gift-card`=269/`gift-card-redemption`=270, `exchange`=271, `idempotency-key`=272.
+
+## Medusa parity (native Go /v1 — 1.42.41)
+
+The `/v1` model bundle (`api/api/api.go`, mounted at `/v1/*` by `cmd/commerced`
++ `mount.go`; the `/v1/commerce/*` prefix is the SEPARATE checkout/tenant surface)
+covers Medusa v2's admin domains natively — no Medusa/Node fork. Reference:
+`~/work/medusa/medusa/packages/medusa/src/api/admin/*` + `packages/modules/*`.
+
+### Newly wired (models existed, routes were orphaned → 404 in prod)
+`api/api/api.go` now calls these 5 previously-unwired sub-routers:
+- `fulfillment` — fulfillmentset, servicezone, geozone, shippingoption,
+  shippingoptionrule, shippingprofile, fulfillmentprovider, `POST /fulfillment/:id/ship|cancel`
+- `tax` — taxregion, taxrate, taxraterule, taxprovider, `POST /tax/calculate`
+- `customergroup` — customergroup + `/:id/members`, customergroupmembership
+- `apikey` — publishableapikey, role, apipermission
+- `notification` — notification
+
+### Net-new native domains
+- **Gift cards** (`models/giftcard`, `models/giftcardredemption`, `api/giftcard`):
+  `gift-card` code+initial balance; balance is a PROJECTION `initial − Σ redemptions`
+  (no mutable counter to race). `POST /giftcard/:id/redeem|void|` + `GET /balance|redemptions`.
+  Admin-gated. Redeem is idempotent (see money design below).
+- **B2B** (`models/company|employee|quote|approval`, `api/b2b`): company →
+  employees (spending limits, `RemainingSpendCents`/`WithinLimit` pure fns) →
+  quotes (RFQ, `POST /:id/accept|reject`, message thread) → approvals
+  (`approval.NextStatus` pure transition, `POST /:id/approve|reject`).
+- **Order exchange** (`models/exchange`, `api/exchange`): return + replacement,
+  `DifferenceDueCents`, `POST /exchange/:id/confirm|cancel`.
+- **Idempotency guard** (`models/idempotencykey`): reusable `Begin/Complete`
+  for money-moving requests; wired into `api/checkout` `Refund` via
+  `X-Idempotency-Key` (replay returns stored response; in-flight → 409).
+
+### Platform product catalog — commerce is the CMS SOT (1.42.41)
+`models/catalogentry` (`catalog-entry`, kind 273) is the source-of-truth for the
+platform product catalog (Models, Vector, KMS, …) — the list docs.<brand> + the
+console sidebar + pricing all derive from. **commerce owns the DATA (source +
+seed + edits); `@hanzo/products` (hanzoai/ui/pkgs/products) owns the SCHEMA** +
+the iconKey→component and brandColor→css code-maps. Conform to its CatalogEntry
+exactly — the shape is NOT ours to change.
+- **`GET /v1/commerce/catalog?brand=<b>`** (public, no auth, on the commerce
+  public group so it serves that exact path) → `{brand, categories[], products[]}`;
+  `products` is the `@hanzo/products` CatalogEntry[] (the client reads `.products`,
+  tolerating a bare array or `{catalog|data|items}` too).
+- CatalogEntry contract fields (`models/catalogentry/projection.go` Item): `id`
+  (== slug, unique), `name`, `category` (EXACTLY one of the 13 canonical labels),
+  `brandColor` (a swatch KEY like "violet" — NOT hex; client maps key→css),
+  `iconKey` (a lucide export NAME like "Brain" — NOT a component), `slug`,
+  `route` ("/<slug>"), `docsUrl` ("https://docs.hanzo.ai/docs/services/<slug>"),
+  `apiPath` (/v1-prefixed), `pricingId` (plans/<key>.json key OR **null** — emit
+  `*string`, nil→null). `brands` is a category-DERIVED convenience, never a
+  hand-authored filter. Extra fields (gcp/repo/admin/status/priceCents/order/
+  productId) are additive — the client ignores unknowns.
+- **Brand scope is by CATEGORY** (`categoriesForBrand`, mirroring `@hanzo/products`
+  `catalogForBrand`/`BRAND_CATEGORIES`): hanzo=all 13; lux/zoo/pars=5
+  (Web3/Network/Security/Dev/Settings). There is NO per-entry brand filter — the
+  same `system`-namespace store serves every brand; an entry shows iff its
+  category is in the requested brand's set. Slug is globally unique.
+- **Admin CRUD** `/v1/catalog/entries` (+ `/seed`) gates on
+  `auth.IAMClaims.GlobalAdmin()` — the catalog is cross-tenant PLATFORM data in
+  the `system` namespace, so an org-level admin must NOT edit it. Keyed by slug.
+- **Seed**: the embedded `seed/hanzo-catalog.json` is the `@hanzo/products`
+  snapshot (`hanzoai/ui/pkgs/products/snapshot/catalog.json`) VERBATIM — 95
+  products with correct brandColor/iconKey/route/docsUrl/apiPath/pricingId.
+  `SeedIfEmpty` auto-runs on first boot (count-gated no-op once populated;
+  `COMMERCE_CATALOG_SEED=false` to skip). Idempotent + non-destructive — never
+  clobbers CMS edits. Re-baseline by re-copying the `@hanzo/products` snapshot.
+- Namespace: platform-global (`system` ns), namespaced via CONTEXT
+  (`nscontext.WithNamespace`) — struct `SetNamespace` is a no-op for queries (they
+  read ns from `d.Context`), a latent gotcha `api/billing/osspayout systemDB`
+  also trips (works only because its reads+writes are symmetric in default ns).
+
+### Money-correctness design (idempotency WITHOUT working transactions)
+- `datastore.RunInTransaction` (`datastore/datastore.go`) is a **NO-OP** — it
+  runs `fn(New(ctx))` with no tx/lock/isolation. `db.SQLiteDB.RunInTransaction`
+  IS real (writeMu.Lock+BeginTx) but `mixin.Model[T]` routes to the no-op. So
+  model-level read-modify-write is NOT atomic. The pre-existing Square refund
+  (`api/checkout/square/refund.go`) is TOCTOU-vulnerable to concurrent
+  double-refund (guards over-refund but not races/replays).
+- The money-safe primitive used here: **deterministic-id ledger records**. A
+  redemption/guard's STORAGE id = `sha256(scope‖key)` via `orm.WithStringKey`.
+  Concurrent duplicate submits collapse onto ONE row via the storage
+  `ON CONFLICT(id,kind,namespace)` upsert — proven (giftcard 25-goroutine
+  same-key test → 1 debit). Balance is a projection so distinct concurrent
+  redemptions are additive, never lost. Refund guard replays the stored
+  response. The narrow concurrent-first-submit window is closed at the gateway
+  (Square/Stripe honor the same idempotency key on the refund call).
+- **GOTCHA — a struct field named `Key` SHADOWS `Model[T].Key()`** and silently
+  breaks `mixin.Entity` (`.Query()` returns nil entity → nil panic in `Get`).
+  Name idempotency fields `IdemKey`, not `Key`. Compiler catches it only via an
+  explicit `var _ mixin.Entity = (*T)(nil)` assertion.
+- **GOTCHA — namespace scoping keys off CONTEXT, not the datastore struct.**
+  `db.SetNamespace(ns)` sets `d.namespace` but the SQL layer reads
+  `nscontext.GetNamespace(ctx)` (`db/query.go getNamespace`). Production is
+  correct (`org.Namespaced(c)` → `nscontext.WithNamespace`); tests MUST build
+  the datastore from a namespaced CONTEXT (`datastore.New(nscontext.WithNamespace(ctx, ns))`),
+  not `SetNamespace`, or cross-tenant isolation appears broken in tests only.
+- `datastore/query/query.go` `ById` switch: all hashid-only `Model[T]` kinds
+  (no slug/name secondary lookup) MUST be in the "return not-found" case, else a
+  non-hashid id hits `default:` → HTTP 500 instead of 404. 43 such kinds were
+  missing and are now listed.
+
+### Endpoint contract note (console → /v1/commerce)
+The model bundle serves `/v1/product` etc. (bare `/v1`). console2 today reaches
+it via a same-origin `/commerce` BFF proxy (`app/commerce/[...path]/route.ts` →
+`commerce.hanzo.svc:8001/v1/*`). To honor the "console calls `/v1/commerce/*`,
+nothing before /v1/" law without breaking the live `/v1/billing/*` money path,
+add an ingress rewrite on the console host (`console.hanzo.ai/v1/commerce/* →
+commerce/v1/* strip`) rather than re-prefixing the backend bundle.
 
 - Healthcheck: use `curl -f` not `wget --spider` (Gin only handles GET)
 - `go-sqlite3` must be pinned to v1.14.x (`replace` in go.mod) — the transitive

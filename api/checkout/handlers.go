@@ -1,6 +1,10 @@
 package checkout
 
 import (
+	"encoding/json"
+	"strings"
+	"sync"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/checkout/ethereum"
@@ -9,10 +13,12 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
 )
@@ -111,6 +117,19 @@ func Charge(c *gin.Context) {
 	http.Render(c, 200, ord)
 }
 
+// refundLocks serializes refunds PER order (keyed by namespace+orderId). A
+// refund is a check-then-write against ord.Refunded (square.Refund guards
+// Refunded+amt > Total), which is not atomic; two concurrent refunds with
+// DIFFERENT idempotency keys could both pass the guard against the same
+// pre-state and over-refund. Serializing per order closes that window.
+// Correct for the single-pod deployment (replicas:1 + Recreate, RWO SQLite).
+var refundLocks sync.Map // map[string]*sync.Mutex
+
+func refundLockFor(key string) *sync.Mutex {
+	m, _ := refundLocks.LoadOrStore(key, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
+
 func Refund(c *gin.Context) {
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
@@ -118,6 +137,63 @@ func Refund(c *gin.Context) {
 		return
 	}
 
+	// Serialize all refunds for THIS order so concurrent distinct-key requests
+	// can't both pass square.Refund's over-refund guard against the same
+	// pre-state and over-refund. Scoped by namespace+order so other
+	// orders/tenants never contend.
+	mu := refundLockFor(nscontext.GetNamespace(middleware.GetContext(c)) + "\x00" + ord.Id())
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Idempotency guard (money-critical). A refund is a non-idempotent money
+	// move: two identical POSTs (a client retry, a double-click, a proxy replay)
+	// would otherwise each hit the gateway and double-refund. When the caller
+	// supplies an idempotency key, a replay returns the FIRST result instead of
+	// refunding again. The guard is scoped per order so keys never cross orders.
+	//
+	// Scope of protection: this de-dups OUR ledger + replays OUR response. For
+	// the narrow concurrent-first-submit window (two brand-new identical
+	// requests racing before either records the guard) the gateway is the final
+	// backstop — Square/Stripe both honor an idempotency key on the refund call.
+	// square.Refund already guards over-refund (Refunded+amt > Total ⇒ reject);
+	// the guard here adds retry/replay safety on top.
+	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	db := datastore.New(org.Namespaced(c))
+	if idemKey != "" {
+		scope := "refund:" + ord.Id()
+		rec, replay, gerr := idempotencykey.Begin(db, scope, idemKey)
+		if gerr != nil {
+			http.Fail(c, 500, "idempotency guard failed", gerr)
+			return
+		}
+		if replay {
+			// A prior request with this key already ran. Return its stored
+			// outcome verbatim; do NOT refund again.
+			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+				c.Data(200, "application/json", []byte(rec.Response))
+				return
+			}
+			// In-flight (started but not completed): a concurrent request owns
+			// this key. Fail closed with 409 so the caller retries, rather than
+			// risk a parallel double refund.
+			http.Fail(c, 409, "a refund with this idempotency key is already in progress", errRefundInFlight)
+			return
+		}
+
+		if err := refund(c, org, ord); err != nil {
+			http.Fail(c, 400, err.Error(), err)
+			return
+		}
+		// Record the successful outcome for future replays.
+		if resp, merr := json.Marshal(ord); merr == nil {
+			_ = idempotencykey.Complete(rec, string(resp))
+		}
+		http.Render(c, 200, ord)
+		return
+	}
+
+	// No idempotency key supplied — legacy behavior (over-refund guard still
+	// applies in square.Refund). Callers that move money SHOULD send a key.
 	if err := refund(c, org, ord); err != nil {
 		http.Fail(c, 400, err.Error(), err)
 		return
