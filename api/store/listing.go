@@ -18,7 +18,13 @@ import (
 // tenant isolation.
 func orgNamespacedDB(c *gin.Context) *datastore.Datastore {
 	org := middleware.GetOrganization(c)
-	return datastore.New(org.Namespaced(c))
+	// Red MED-1: datastore.New binds the shared systemDB regardless of the ctx
+	// namespace, so the listing sub-routes (create/update/patch/delete/get/list)
+	// read/write systemDB while the store itself is created per-org via
+	// NewNamespaced (rest.newEntity) — a mismatch that 404s every listing op on a
+	// real per-org store. NewNamespaced routes to the caller org's own SQLite,
+	// matching where the store lives.
+	return datastore.NewNamespaced(org.Namespaced(c))
 }
 
 // Return all listings
