@@ -83,9 +83,9 @@ func GetMyBalance(c *gin.Context) {
 }
 
 // PostMyWelcome grants the welcome credit (idempotent, tag-deduped) to
-// the calling user. Unlike POST /billing/credit which requires an
-// admin token AND a payment method on file, this endpoint is callable
-// with just an IAM bearer token — designed to be invoked by the
+// the calling user. Unlike POST /billing/credit — which requires an admin
+// token and an explicit user — this endpoint is callable with just an IAM
+// bearer token (user inferred from headers), designed to be invoked by the
 // playground SPA on first successful login.
 //
 // Idempotent: if the credit was already granted (or zapped), returns
