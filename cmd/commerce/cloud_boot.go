@@ -17,8 +17,8 @@ import (
 	// import path. One named binding, not two.
 	commerce "github.com/hanzoai/commerce"
 	"github.com/hanzoai/cloud"
-	"github.com/hanzoai/zip"
-	"github.com/hanzoai/zip/middleware"
+	"github.com/zap-proto/zip"
+	"github.com/zap-proto/zip/middleware"
 	luxlog "github.com/luxfi/log"
 )
 
