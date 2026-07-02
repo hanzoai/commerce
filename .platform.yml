@@ -12,3 +12,4 @@ build:
   context: .
   image: ghcr.io/hanzoai/commerce  # bare repo; the tag comes from tag-pattern
   tag-pattern: "{{git.tag}}"       # vX.Y.Z git tag → X.Y.Z image (semver, one way)
+# (touch: verify platform-native webhook auto-build loop)
