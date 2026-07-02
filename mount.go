@@ -25,7 +25,7 @@ import (
 
 	"github.com/hanzoai/cloud"
 	api "github.com/hanzoai/commerce/api/api"
-	"github.com/hanzoai/zip"
+	"github.com/zap-proto/zip"
 )
 
 // Mount registers commerce on app per the HIP-0106 contract.

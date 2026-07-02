@@ -18,7 +18,7 @@ import (
 	"github.com/hanzoai/cloud"
 	luxlog "github.com/luxfi/log"
 
-	"github.com/hanzoai/zip"
+	"github.com/zap-proto/zip"
 )
 
 // TestMount_EquivalentToLegacy proves the cloud-mount path serves the
