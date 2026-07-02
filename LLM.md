@@ -223,6 +223,30 @@ unauthenticated POST is 401 BEFORE any org resolution or Square call (v1.46.4
 closed the anon mint hole; the earlier "public, no token auth" design was the
 CRIT vulnerability).
 
+**v1.46.5 closed the opaque-bearer bypass (CRIT, two layers).** RED live-proved
+that `Authorization: Bearer <any-opaque-non-JWT-string>` + `X-Org-Id: <target>`
+minted for the attacker's chosen org: EdgeAuth *restored* the client X-Org-Id for
+any opaque bearer (before the token was validated) → `IAMTokenRequired` trusted
+the header (set `iam_authenticated`, no token check) → `TokenRequired`'s IAM
+branch was a bare `c.Next()` (no mask check). Fixed at BOTH layers, each of which
+independently kills it:
+1. **EdgeAuth (`middleware/edgeauth.go`)** — an opaque bearer's client X-Org-Id is
+   NEVER restored to the trusted header; it is stashed in a PRIVATE ctx key
+   (`ctxKeyClientOrg`) that ONLY `TokenRequired`'s service-token branch reads,
+   AFTER verifying the bearer == `COMMERCE_SERVICE_TOKEN`. X-Org-Id stays
+   stripped, so an unvalidated token can never resolve an org via
+   `IAMTokenRequired`. The service-token branch reads that key (then falls back
+   to the raw X-Org-Id header for gateway/EdgeAuth-off deployments), so per-org
+   billing is unchanged.
+2. **`middleware/accesstoken.go` `TokenRequired`** — the IAM branch now ENFORCES
+   the requested masks (`len(masks)==0 || hasScope(c, permissions)`), so a
+   forged/low-priv IAM principal (perms=0) is denied a `TokenRequired(Admin,
+   Published)` mint (403). No-mask gates (billing) still admit any authenticated
+   principal. Plus `iammiddleware.IsIAMAuthenticated` no longer falls back to raw
+   `X-Org-Id` header presence — only the validated `iam_authenticated` gin key
+   counts. Regression: `middleware/edgeauth_test.go`,
+   `middleware/accesstoken_test.go`, `middleware/iammiddleware/authz_test.go`.
+
 **Request**: `{ company, providerHint, currency, customer, items, successUrl, cancelUrl, couponCode? }`
 **Response**: `{ checkoutUrl, sessionId }`
 
