@@ -247,6 +247,16 @@ independently kills it:
    counts. Regression: `middleware/edgeauth_test.go`,
    `middleware/accesstoken_test.go`, `middleware/iammiddleware/authz_test.go`.
 
+**v1.46.6 — Red re-review hardening (no bypass reopened).** Red confirmed 1.46.5
+fully closes the bypass (SHIP); 1.46.6 addresses its LOW+INFO findings:
+`checkout/wire.Instructions` now uses `GetOrganizationOK` and fails CLOSED with
+401 (was a `GetOrganization` MustGet panic → 500 on any org-less call after
+EdgeAuth strips X-Org-Id; also never leaks an org's bank/routing/SWIFT to an
+unauthenticated caller — test `api/checkout/wire/instructions_test.go`);
+`oauthmiddleware.TokenRequired`'s (currently unwired) IAM branch converged to the
+same mask enforcement; stale `api/billing/handlers.go` comment corrected. Keep
+`COMMERCE_EDGE_AUTH=true` pinned — the Layer-1 defense depends on it.
+
 **Request**: `{ company, providerHint, currency, customer, items, successUrl, cancelUrl, couponCode? }`
 **Response**: `{ checkoutUrl, sessionId }`
 
