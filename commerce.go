@@ -592,9 +592,17 @@ func (app *App) Bootstrap() error {
 	var systemDB db.DB
 	if sqlURL := getEnv("SQL_URL", ""); sqlURL != "" {
 		pdb, pgErr := db.NewPostgresDB(&db.PostgresDBConfig{
-			DSN:                sqlURL,
-			MaxOpenConns:       4,
-			MaxIdleConns:       2,
+			DSN: sqlURL,
+			// systemDB is the SHARED store for global kinds (organization/user/
+			// token) + billing + checkout across the whole platform. A 4-conn
+			// pool was far too small: a handful of concurrent (or leaked) reads
+			// exhausted it and, because datastore.New detaches to
+			// context.Background (no deadline), every further read then blocked
+			// FOREVER — the checkout HTTP-000 hang. QueryTimeout is now enforced
+			// per-op (db/postgres.go opCtx) to bound each wait; a real pool
+			// removes the headroom problem at the source.
+			MaxOpenConns:       25,
+			MaxIdleConns:       10,
 			ConnMaxLifetime:    30 * time.Minute,
 			ConnMaxIdleTime:    5 * time.Minute,
 			QueryTimeout:       30 * time.Second,

@@ -313,11 +313,32 @@ func (db *PostgresDB) Close() error {
 	return db.db.Close()
 }
 
+// opCtx bounds a single database operation with the configured QueryTimeout so
+// no query — and, critically, no wait for a pooled connection — can block
+// forever. Callers reach the datastore via context.Background() (detached from
+// the HTTP request so a browser disconnect never cancels an in-flight write),
+// which means WITHOUT this bound a query that waits on an exhausted pool hangs
+// indefinitely (HTTP 000). A ctx that already carries a deadline is respected
+// as-is. Returns a cancel func the caller MUST invoke (defer) to release timer
+// resources. QueryTimeout<=0 disables the bound (dev/tests).
+func (db *PostgresDB) opCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	if db.config.QueryTimeout <= 0 {
+		return ctx, func() {}
+	}
+	if _, ok := ctx.Deadline(); ok {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, db.config.QueryTimeout)
+}
+
 // Get retrieves an entity by key
 func (db *PostgresDB) Get(ctx context.Context, key Key, dst interface{}) error {
 	if key == nil {
 		return ErrInvalidKey
 	}
+
+	ctx, cancel := db.opCtx(ctx)
+	defer cancel()
 
 	var row *sql.Row
 	if db.config.TenantID != "" {
@@ -342,6 +363,9 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 	if key == nil {
 		return nil, ErrInvalidKey
 	}
+
+	ctx, cancel := db.opCtx(ctx)
+	defer cancel()
 
 	data, err := json.Marshal(src)
 	if err != nil {
@@ -373,6 +397,9 @@ func (db *PostgresDB) Delete(ctx context.Context, key Key) error {
 		return ErrInvalidKey
 	}
 
+	ctx, cancel := db.opCtx(ctx)
+	defer cancel()
+
 	if db.config.TenantID != "" {
 		_, err := db.stmtDelTenant.ExecContext(ctx, key.Encode(), key.Kind(), db.config.TenantID)
 		return err
@@ -387,6 +414,9 @@ func (db *PostgresDB) GetMulti(ctx context.Context, keys []Key, dst interface{})
 	if len(keys) == 0 {
 		return nil
 	}
+
+	ctx, cancel := db.opCtx(ctx)
+	defer cancel()
 
 	// Build query with ANY
 	ids := make([]string, len(keys))
@@ -899,6 +929,9 @@ func (q *postgresQuery) End(cursor Cursor) Query {
 }
 
 func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error) {
+	ctx, cancel := q.db.opCtx(ctx)
+	defer cancel()
+
 	query, args := q.buildSQL()
 
 	var rows *sql.Rows
@@ -959,6 +992,9 @@ func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, err
 }
 
 func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error) {
+	ctx, cancel := q.db.opCtx(ctx)
+	defer cancel()
+
 	limitedQ := q.Limit(1).(*postgresQuery)
 	query, args := limitedQ.buildSQL()
 
@@ -991,6 +1027,9 @@ func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error)
 }
 
 func (q *postgresQuery) Count(ctx context.Context) (int, error) {
+	ctx, cancel := q.db.opCtx(ctx)
+	defer cancel()
+
 	where, args := q.buildWhere()
 
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM _entities WHERE kind = $1 AND deleted = FALSE%s`, where)
@@ -1009,6 +1048,9 @@ func (q *postgresQuery) Count(ctx context.Context) (int, error) {
 }
 
 func (q *postgresQuery) Keys(ctx context.Context) ([]Key, error) {
+	ctx, cancel := q.db.opCtx(ctx)
+	defer cancel()
+
 	where, args := q.buildWhere()
 
 	query := fmt.Sprintf(`SELECT id FROM _entities WHERE kind = $1 AND deleted = FALSE%s`, where)
@@ -1180,6 +1222,12 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 	}
 
 	if it.rows == nil || !it.rows.Next() {
+		// Terminal: release the underlying *sql.Rows (and its pooled
+		// connection) NOW. database/sql auto-closes on a fully-drained Next,
+		// but any error/early-terminal path below would otherwise pin the
+		// connection — the exact leak that drained the shared pool and hung
+		// every subsequent read. Close is idempotent.
+		it.Close()
 		if it.rows != nil {
 			if err := it.rows.Err(); err != nil {
 				return nil, err
@@ -1192,10 +1240,12 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 	var data []byte
 
 	if err := it.rows.Scan(&id, &data); err != nil {
+		it.Close()
 		return nil, err
 	}
 
 	if err := json.Unmarshal(data, dst); err != nil {
+		it.Close()
 		return nil, err
 	}
 
@@ -1206,6 +1256,17 @@ func (it *postgresIterator) Next(dst interface{}) (Key, error) {
 		stringID:  id,
 		namespace: it.namespace,
 	}, nil
+}
+
+// Close releases the iterator's *sql.Rows and returns its connection to the
+// pool. Idempotent and nil-safe so callers may defer it unconditionally.
+func (it *postgresIterator) Close() error {
+	if it.rows == nil {
+		return nil
+	}
+	err := it.rows.Close()
+	it.rows = nil
+	return err
 }
 
 func (it *postgresIterator) Cursor() (Cursor, error) {
