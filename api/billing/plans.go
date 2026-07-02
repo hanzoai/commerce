@@ -34,7 +34,12 @@ type canonicalPlan struct {
 	Category     string   `json:"category"`
 	Popular      bool     `json:"popular,omitempty"`
 	ContactSales bool     `json:"contactSales,omitempty"`
-	Features     []string `json:"features"`
+	// TrialPeriodDays is the base (no-card) free-trial length advertised for the
+	// plan. The actual on-ramp length is decided at signup by billing/trial
+	// (7 days without a card, 30 with one) — this only surfaces the base offer
+	// on GET /v1/billing/plans.
+	TrialPeriodDays *int     `json:"trialPeriodDays,omitempty"`
+	Features        []string `json:"features"`
 	Bundles      []string `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
 	IncludedIn   []string `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
 	Limits       *struct {
@@ -147,6 +152,9 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		}
 		if cp.PriceAnnual != nil {
 			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+		}
+		if cp.TrialPeriodDays != nil {
+			sp.TrialPeriodDays = *cp.TrialPeriodDays
 		}
 
 		if cp.Limits != nil {
