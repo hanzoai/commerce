@@ -267,8 +267,14 @@ func (r Rest) newKind() mixin.Kind {
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	ctx := middleware.GetContext(c)
 
-	// Create a new entity
-	db := datastore.New(ctx)
+	// Create a new entity bound to the CALLER ORG's own per-org store. Every
+	// generic REST merchant model (product/order/user/store/collection/discount/
+	// variant/…) is physically isolated per org: NewNamespaced routes reads AND
+	// writes to db.Manager.Org(<caller org>) keyed by the namespace the auth
+	// middleware resolved from the gateway/EdgeAuth-minted X-Org-Id (verified JWT
+	// owner). Global/DefaultNamespace kinds (no namespace) fall back to the shared
+	// default DB; an unresolvable namespace fails closed (no DB), never the pool.
+	db := datastore.NewNamespaced(ctx)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
 
 	// Wire up mixin.BaseModel if the entity uses the legacy embedding.
