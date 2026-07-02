@@ -40,6 +40,7 @@ import (
 	b2bApi "github.com/hanzoai/commerce/api/b2b"
 	billingApi "github.com/hanzoai/commerce/api/billing"
 	cartApi "github.com/hanzoai/commerce/api/cart"
+	catalogApi "github.com/hanzoai/commerce/api/catalog"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 	counterApi "github.com/hanzoai/commerce/api/counter"
@@ -166,9 +167,12 @@ func Route(api router.Router) {
 	customergroupApi.Route(api, tokenRequired)
 	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
 	notificationApi.Route(api, tokenRequired)
-	giftcardApi.Route(api, adminRequired) // gift cards + idempotent redeem/void (money — admin only)
-	b2bApi.Route(api, tokenRequired)      // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired) // order exchanges (return + replacement)
+	giftcardApi.Route(api, adminRequired)     // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired)          // B2B: companies, employees, quotes, approvals
+	exchangeApi.Route(api, tokenRequired)     // order exchanges (return + replacement)
+	catalogApi.AdminRoute(api, adminRequired) // platform product catalog CMS (global-admin gated inside)
+	// Public catalog projection GET /v1/commerce/catalog is wired on the
+	// commerce public group (commerce.go) so it serves that exact path.
 
 	// Hanzo APIs, using default namespace (internal use only)
 	organizationApi.Route(api, tokenRequired)
