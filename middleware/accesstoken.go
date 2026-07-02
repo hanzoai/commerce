@@ -143,6 +143,16 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				if orgName == "" {
 					orgName = "hanzo"
 				}
+				// A verified service token authorizes provisioning, but the org
+				// SELECTOR still comes from the caller (stashed client org /
+				// X-Org-Id). Never let a bearer-shaped selector become an org: a
+				// caller forwarding a raw API key here would otherwise seed an
+				// org named after the key (incident 2026-07-02). Reject, don't create.
+				if organization.IsSecretLikeName(orgName) {
+					log.Warn("TokenRequired: service-token org selector is bearer-shaped; refusing to provision")
+					http.Fail(c, 400, "Invalid organization identifier.", errors.New("bearer-shaped org selector"))
+					return
+				}
 				org.Name = orgName
 				org.Enabled = true
 
