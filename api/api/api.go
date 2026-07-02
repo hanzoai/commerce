@@ -59,6 +59,7 @@ import (
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
 	pricingApi "github.com/hanzoai/commerce/api/pricing"
+	producttaxonomyApi "github.com/hanzoai/commerce/api/producttaxonomy"
 	promotionApi "github.com/hanzoai/commerce/api/promotion"
 	referralApi "github.com/hanzoai/commerce/api/referral"
 	regionApi "github.com/hanzoai/commerce/api/region"
@@ -167,10 +168,11 @@ func Route(api router.Router) {
 	customergroupApi.Route(api, tokenRequired)
 	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
 	notificationApi.Route(api, tokenRequired)
-	giftcardApi.Route(api, adminRequired)     // gift cards + idempotent redeem/void (money — admin only)
-	b2bApi.Route(api, tokenRequired)          // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired)     // order exchanges (return + replacement)
-	catalogApi.AdminRoute(api, adminRequired) // platform product catalog CMS (global-admin gated inside)
+	giftcardApi.Route(api, adminRequired)        // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired)             // B2B: companies, employees, quotes, approvals
+	exchangeApi.Route(api, tokenRequired)        // order exchanges (return + replacement)
+	producttaxonomyApi.Route(api, tokenRequired) // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)    // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 
