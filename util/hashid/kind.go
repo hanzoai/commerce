@@ -151,6 +151,10 @@ var kinds = map[string]int{
 
 	// Reusable idempotency guard for money-moving requests (refund/capture).
 	"idempotency-key": 272,
+
+	// Platform product catalog (CMS SOT for Hanzo's own products — the catalog
+	// docs.hanzo.ai + console + pricing derive from). Brand/category-scoped.
+	"catalog-entry": 273,
 }
 
 var kindsReversed = make(map[int]string)
