@@ -20,7 +20,7 @@ import (
 func getCoupon(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 
-	db := datastore.New(c)
+	db := datastore.NewNamespaced(middleware.GetContext(c))
 	cpn := coupon.New(db)
 
 	if err := cpn.GetById(couponid); err != nil {
@@ -43,7 +43,7 @@ func codeFromId(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 	uniqueid := c.Params.ByName("uniqueid")
 
-	db := datastore.New(c)
+	db := datastore.NewNamespaced(middleware.GetContext(c))
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
 		http.Fail(c, 404, "Failed to get coupon", err)
@@ -63,7 +63,7 @@ func codeFromId(c *gin.Context) {
 func codeFromList(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 
-	db := datastore.New(c)
+	db := datastore.NewNamespaced(middleware.GetContext(c))
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
 		http.Fail(c, 404, "Failed to get coupon %v", err)

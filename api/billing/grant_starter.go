@@ -16,11 +16,12 @@ type grantStarterRequest struct {
 	Trigger string `json:"trigger"`
 }
 
-// GrantStarter ensures an explicit subject has received the one-time $5 starter
-// credit, idempotently. It is the on-signup welcome grant invoked by trusted
-// services (chat, cloud-api) with the commerce service token — UNLIKE
-// POST /billing/credit (GrantStarterCredit) it does NOT require a payment method,
-// so a brand-new user "just works" on first chat without a card.
+// GrantStarter ensures an explicit subject has received the one-time $100
+// starter credit, idempotently. It is the on-signup welcome grant invoked by
+// trusted services (chat, cloud-api) with the commerce service token — the
+// service-to-service twin of POST /billing/credit (GrantStarterCredit, the
+// admin/UI path). Neither requires a payment method, so a brand-new user "just
+// works" on first chat without a card (a card gates top-up BEYOND the credit).
 //
 // The subject is explicit and caller-supplied: "owner/name" for per-user
 // (personal-org) billing, or the org slug for org-pooled billing — it MUST match
