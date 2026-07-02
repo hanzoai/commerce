@@ -3,7 +3,7 @@ module github.com/hanzoai/commerce
 go 1.26.4
 
 require (
-	github.com/hanzoai/cloud v0.1.0
+	github.com/hanzoai/cloud v0.1.1
 	github.com/zap-proto/zip v1.2.0
 )
 
