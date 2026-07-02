@@ -172,5 +172,4 @@ var apiPrefixes = []string{
 	"/v1/",
 	"/_/",
 	"/admin/",
-	"/api/", // legacy redirects live here; SPA must not mask them
 }
