@@ -131,6 +131,14 @@ func (s *Store) Load(ps []datastore.Property) (err error) {
 		err = json.DecodeBytes([]byte(s.Listings_), &s.Listings)
 	}
 
+	// A store with no stored listings deserializes to a nil map. Materialize it
+	// as empty so callers (the listing admin API, seeders) can always add a
+	// listing — writing to a nil map panics, which previously 500'd the very
+	// first listing added to any fresh store and blocked catalog seeding.
+	if s.Listings == nil {
+		s.Listings = Listings{}
+	}
+
 	// if len(s.ShippingRateTable_) > 0 {
 	// 	err = json.DecodeBytes([]byte(s.ShippingRateTable_), &s.ShippingRateTable)
 	// }
@@ -153,6 +161,9 @@ func (s *Store) Validator() *val.Validator {
 
 // Add a new listing to the listings map
 func (s *Store) AddListing(id string, listing Listing) {
+	if s.Listings == nil {
+		s.Listings = Listings{}
+	}
 	listing.Currency = s.Currency
 	s.Listings[id] = listing
 }
