@@ -213,14 +213,39 @@ WRITE paths (credentials → KMS):
 
 **K8s**: Single "secret zero" (`commerce-kms-auth`) holds KMS Universal Auth credentials. All payment credentials live in KMS only.
 
-## Checkout Sessions (2026-02-17)
+## Checkout Sessions
 
-`POST /api/v1/checkout/sessions` — Public endpoint (no token auth) that creates Stripe Checkout Sessions.
+`POST /v1/checkout/sessions` — AUTHENTICATED hosted-checkout mint (Square Payment
+Link). Same `publishedRequired` gate as every sibling checkout route
+(`TokenRequired(Admin, Published)`): a service token, a per-org **Published**
+storefront token, or an IAM principal. **There is no anonymous path** — an
+unauthenticated POST is 401 BEFORE any org resolution or Square call (v1.46.4
+closed the anon mint hole; the earlier "public, no token auth" design was the
+CRIT vulnerability).
 
-**Request**: `{ company, providerHint, currency, org, customer, items, successUrl, cancelUrl }`
+**Request**: `{ company, providerHint, currency, customer, items, successUrl, cancelUrl, couponCode? }`
 **Response**: `{ checkoutUrl, sessionId }`
 
-Org resolved from `X-IAM-Org` header or request body `org`/`tenant` field. Per-request Stripe client (multi-tenant safe). Emits `checkout_started` analytics event.
+Security invariants (do not regress):
+- **One org source**: the org is SOLELY the authenticated principal's
+  (`authedOrg(c)` = `middleware.GetOrganization` + KMS hydrate). There is NO
+  request-body `org`/`tenant` field and NO `?org`/`X-Org-Id`/`X-IAM-Org` override
+  on the mint path — a caller can only ever mint for its OWN tenant.
+- **Fail-closed creds**: an org without its own per-tenant KMS Square creds
+  cannot mint live — `squareCheckoutClientForOrg` has NO production env/platform
+  fallback (`isPlatformOrg` removed). Only SANDBOX keeps the env fallback (no
+  money at risk), behind auth, so the per-org sandbox storefront still mints.
+- **Redirect allowlist**: `successUrl`/`cancelUrl` are bounded to the org's own
+  domains via `checkout.AllowedCheckoutRedirect` (org `Websites` + brand
+  first-party hosts + brand registrable domains) — closes the open-redirect /
+  phishing pivot on the minted link. Enforced for authed callers too.
+- Item prices are server-authoritative from the org's per-org catalog
+  (`catalogPrice`); the client `unitPrice` is ignored. Emits `checkout.started`.
+
+The legitimate storefront BFF (server-side, holds the service token or the
+per-org Published storefront token — mint via `POST /v1/store/storefront-token`)
+is the ONE reachable checkout entry. A browser must never call this endpoint
+directly with a client-chosen org.
 
 ## SQLite Query Engine (2026-02-23)
 
