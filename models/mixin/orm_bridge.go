@@ -395,8 +395,17 @@ func (b *Model[T]) RunInTransaction(fn func() error, opts *datastore.Transaction
 
 // --- Query ---
 
-// queryDS returns a raw datastore query (for internal use).
+// queryDS returns a raw datastore query bound to THIS model's datastore (b.ds),
+// so a per-org (namespaced) model lists/queries/GetById against its OWN store —
+// the same store its writes go to via the ORM adapter. Previously this used the
+// package-global query.New(...) default DB, so a Model[T] entity's reads went to
+// the shared pool while its writes went to b.ds: on the live single-tenant
+// Postgres that both leaked cross-tenant AND hid an org's own just-written rows.
+// Falls back to the global default only for an uninitialized model (b.ds == nil).
 func (b *Model[T]) queryDS() datastore.Query {
+	if b.ds != nil {
+		return b.ds.Query(b.Model.Kind())
+	}
 	return query.New(b.Context(), b.Model.Kind())
 }
 
