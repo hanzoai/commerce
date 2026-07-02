@@ -1,19 +1,19 @@
-// Package catalogentry is the CMS source-of-truth for a brand's OWN product
-// catalog — the single list that docs.<brand>, the console product sidebar, the
-// discover/overview surfaces, and pricing all derive from. commerce owns it so
-// that a product's catalog identity (category, icon, docs, api path) and its
-// PRICE live in one place — pricing stops being a separate service.
+// Package catalogentry is the CMS source-of-truth for the platform product
+// catalog — the single list docs.<brand>, the console sidebar, and pricing all
+// derive from. commerce owns the DATA (source + seed + edits); the shape is the
+// @hanzo/products contract (that package owns the schema + the iconKey→component
+// and brandColor→css code-maps). Pricing is native: an entry references a
+// pricing plan by key (PricingId), or carries a fixed PriceCents.
 //
-// One CatalogEntry = one product surface (e.g. "Models", "Vector", "KMS"). It
-// carries CMS-editable presentation meta (iconKey/brandColor/docsUrl/apiPath)
-// plus native pricing (priceCents/currency). Entries are addressed by Slug (the
-// stable path segment, e.g. "models"), brand- and category-scoped, and edited
-// through the standard admin CRUD (the Medusa-parity admin FE).
-//
-// iconKey is a STRING (e.g. "Brain") — NOT a component. The consuming client
-// (@hanzo/products) maps iconKey → its @hanzogui icon component and brandColor
-// token → CSS. commerce stays presentation-agnostic; it stores the keys, the
-// client resolves them.
+// Conformance (GET /v1/commerce/catalog → the @hanzo/products CatalogEntry):
+//   - iconKey  is a @hanzogui/lucide-icons-2 export NAME ("Brain") — never a component.
+//   - brandColor is a swatch KEY ("violet") — never hex. @hanzo/products maps key→css.
+//   - category is EXACTLY one of the 13 canonical labels (others are dropped by scope).
+//   - route is "/<slug>", apiPath is /v1-prefixed, docsUrl is /docs/services/<slug>.
+//   - pricingId is a pricing plans/<key>.json key, or null.
+//   - brands is a category-derived convenience — NOT a hand-authored filter; the
+//     server scopes by CATEGORY (categoriesForBrand), matching @hanzo/products
+//     catalogForBrand.
 package catalogentry
 
 import (
@@ -37,43 +37,43 @@ const (
 	StatusSoon     = "soon"     // primitive shipped, no console surface yet
 )
 
-// CatalogEntry is one product in the platform catalog.
+// CatalogEntry is one product in the platform catalog. Slug (== id) is the
+// stable, globally-unique key the entry is addressed by.
 type CatalogEntry struct {
 	mixin.Model[CatalogEntry]
 
-	// Slug is the stable id / base path segment, e.g. "models". Unique per
-	// brand; the entry is addressed by it (GetById resolves slug).
-	Slug string `json:"slug"`
-
-	// Brand scopes the entry (hanzo/lux/zoo/pars). The catalog projection is
-	// filtered by the requesting brand so each console shows only its catalog.
-	Brand string `json:"brand" orm:"default:hanzo"`
-
-	Name        string `json:"name"`                             // display label, e.g. "Models"
-	Description string `json:"description" datastore:",noindex"` // one-line
-	Category    string `json:"category"`                         // AI/Compute/…/Settings
+	Slug        string `json:"slug"`                             // stable id / path segment, e.g. "gateway"
+	Name        string `json:"name"`                             // "Gateway"
+	Category    string `json:"category"`                         // one of the 13 canonical labels
+	Description string `json:"description" datastore:",noindex"` // one-line (additive; not in the core contract)
 	Gcp         string `json:"gcp,omitempty"`                    // GCP product it stands in for
 
-	// Presentation meta (CMS-editable, resolved by the client).
-	IconKey    string `json:"iconKey"`              // e.g. "Brain" — a @hanzogui icon name
-	BrandColor string `json:"brandColor,omitempty"` // hex ("#7C3AED") or design token string
-	DocsUrl    string `json:"docsUrl,omitempty"`    // canonical docs deep link
-	ApiPath    string `json:"apiPath,omitempty"`    // "/v1/…" — the product's API root
+	// Presentation KEYS (CMS-editable; @hanzo/products resolves them).
+	IconKey    string `json:"iconKey"`    // lucide export name, e.g. "Network"
+	BrandColor string `json:"brandColor"` // swatch key, e.g. "blue"
+
+	Route   string `json:"route"`   // "/<slug>"
+	DocsUrl string `json:"docsUrl"` // https://docs.hanzo.ai/docs/services/<slug>
+	ApiPath string `json:"apiPath"` // /v1-prefixed
+
+	// PricingId references a pricing plan by key (plans/<key>.json); empty ⇒
+	// projected as JSON null. PriceCents is an optional native fixed-price
+	// override (additive to the contract).
+	PricingId  string         `json:"pricingId"`
+	PriceCents currency.Cents `json:"priceCents,omitempty"`
+	Currency   currency.Type  `json:"currency,omitempty"`
 
 	Status string `json:"status" orm:"default:enabled"` // enabled|external|soon
 	Repo   string `json:"repo,omitempty"`               // source repo, e.g. "hanzoai/ai"
 	Admin  bool   `json:"admin,omitempty"`              // admin-gated surface
 
-	// Native pricing (this is why catalog=commerce: price is not a separate
-	// service). PriceCents==0 means free/usage-metered (no fixed price).
-	PriceCents currency.Cents `json:"priceCents"`
-	Currency   currency.Type  `json:"currency" orm:"default:usd"`
+	// Brands is a category-derived convenience preserved from the seed (the
+	// server filters by category, not by this list). Stored as a noindex blob.
+	Brands  []string `json:"brands,omitempty" datastore:"-"`
+	Brands_ string   `json:"-" datastore:",noindex"`
 
-	// Order is the display rank within a category (lower first).
-	Order int `json:"order"`
-
-	// Published gates an entry from the public projection without deleting it.
-	Published bool `json:"published" orm:"default:true"`
+	Order     int  `json:"order"`                        // display rank within a category
+	Published bool `json:"published" orm:"default:true"` // gates from the public projection
 
 	// ProductId optionally links this catalog surface to a real commerce
 	// product for checkout/subscription. Empty = presentation/pricing only.
@@ -87,6 +87,11 @@ func (e *CatalogEntry) Load(ps []datastore.Property) (err error) {
 	if err = datastore.LoadStruct(e, ps); err != nil {
 		return err
 	}
+	if len(e.Brands_) > 0 {
+		if err = json.DecodeBytes([]byte(e.Brands_), &e.Brands); err != nil {
+			return err
+		}
+	}
 	if len(e.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(e.Metadata_), &e.Metadata)
 	}
@@ -94,6 +99,7 @@ func (e *CatalogEntry) Load(ps []datastore.Property) (err error) {
 }
 
 func (e *CatalogEntry) Save() ([]datastore.Property, error) {
+	e.Brands_ = string(json.EncodeBytes(&e.Brands))
 	e.Metadata_ = string(json.EncodeBytes(&e.Metadata))
 	return datastore.SaveStruct(e)
 }
