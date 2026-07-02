@@ -1,6 +1,8 @@
 package wire
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/log"
@@ -21,11 +23,22 @@ type wireInstructionsResponse struct {
 	Instructions  string `json:"instructions,omitempty"`
 }
 
-// Instructions returns wire transfer instructions for the org.
+// Instructions returns the caller org's wire-transfer instructions.
 // GET /v1/checkout/wire/instructions
-// Public endpoint (no auth needed - people need to see where to send money).
+//
+// Fails CLOSED: the org comes ONLY from the authenticated principal (set by the
+// identity/token middleware). A request with no resolved org gets a clean 401 —
+// never a panic (the previous GetOrganization MustGet 500'd on any org-less
+// call after EdgeAuth strips a spoofed X-Org-Id) and never another org's bank
+// details. Account/routing/SWIFT are org-specific sensitive data, so there is
+// no anonymous read.
 func Instructions(c *gin.Context) {
-	org := middleware.GetOrganization(c)
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		http.Fail(c, 401, "Authentication required",
+			errors.New("no authenticated organization for wire instructions"))
+		return
+	}
 
 	// Hydrate payment credentials from KMS
 	if v, ok := c.Get("kms"); ok {
