@@ -34,41 +34,51 @@ import (
 
 	accessTokenApi "github.com/hanzoai/commerce/api/accesstoken"
 	accountApi "github.com/hanzoai/commerce/api/account"
-	billingApi "github.com/hanzoai/commerce/api/billing"
+	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
+	apikeyApi "github.com/hanzoai/commerce/api/apikey"
 	authApi "github.com/hanzoai/commerce/api/auth"
+	b2bApi "github.com/hanzoai/commerce/api/b2b"
+	billingApi "github.com/hanzoai/commerce/api/billing"
 	cartApi "github.com/hanzoai/commerce/api/cart"
+	catalogApi "github.com/hanzoai/commerce/api/catalog"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 	counterApi "github.com/hanzoai/commerce/api/counter"
 	couponApi "github.com/hanzoai/commerce/api/coupon"
+	customergroupApi "github.com/hanzoai/commerce/api/customergroup"
 	dataApi "github.com/hanzoai/commerce/api/data"
 	deployApi "github.com/hanzoai/commerce/api/deploy"
+	exchangeApi "github.com/hanzoai/commerce/api/exchange"
 	formApi "github.com/hanzoai/commerce/api/form"
+	fulfillmentApi "github.com/hanzoai/commerce/api/fulfillment"
+	giftcardApi "github.com/hanzoai/commerce/api/giftcard"
+	inventoryApi "github.com/hanzoai/commerce/api/inventory"
 	libraryApi "github.com/hanzoai/commerce/api/library"
 	namespaceApi "github.com/hanzoai/commerce/api/namespace"
+	notificationApi "github.com/hanzoai/commerce/api/notification"
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
-	affiliateApi "github.com/hanzoai/commerce/api/affiliate"
+	pricingApi "github.com/hanzoai/commerce/api/pricing"
+	producttaxonomyApi "github.com/hanzoai/commerce/api/producttaxonomy"
+	promotionApi "github.com/hanzoai/commerce/api/promotion"
 	referralApi "github.com/hanzoai/commerce/api/referral"
 	regionApi "github.com/hanzoai/commerce/api/region"
 	reviewApi "github.com/hanzoai/commerce/api/review"
 	searchApi "github.com/hanzoai/commerce/api/search"
 	storeApi "github.com/hanzoai/commerce/api/store"
 	subscriptionApi "github.com/hanzoai/commerce/api/subscription"
+	taxApi "github.com/hanzoai/commerce/api/tax"
 	transactionApi "github.com/hanzoai/commerce/api/transaction"
-	inventoryApi "github.com/hanzoai/commerce/api/inventory"
-	pricingApi "github.com/hanzoai/commerce/api/pricing"
-	promotionApi "github.com/hanzoai/commerce/api/promotion"
 	userApi "github.com/hanzoai/commerce/api/user"
 	xdApi "github.com/hanzoai/commerce/api/xd"
 
+	dashv2Api "github.com/hanzoai/commerce/api/dashv2"
 	bitcoinApi "github.com/hanzoai/commerce/thirdparty/bitcoin/api"
 	mercuryApi "github.com/hanzoai/commerce/thirdparty/mercury/api"
 	paypalApi "github.com/hanzoai/commerce/thirdparty/paypal/ipn"
 	reamazeApi "github.com/hanzoai/commerce/thirdparty/reamaze"
 	shipstationApi "github.com/hanzoai/commerce/thirdparty/shipstation"
 	shipwireApi "github.com/hanzoai/commerce/thirdparty/shipwire/api"
-	dashv2Api "github.com/hanzoai/commerce/api/dashv2"
 
 	// Side effect import because of cyclical dependency
 	_ "github.com/hanzoai/commerce/models/referrer/tasks"
@@ -147,6 +157,24 @@ func Route(api router.Router) {
 	userApi.Route(api, tokenRequired)
 	pricingApi.Route(api, tokenRequired)
 	promotionApi.Route(api, tokenRequired)
+
+	// Medusa-parity admin domains. These sub-routers were fully implemented
+	// (models orm.Register'd, tenant-scoped via middleware.Namespace) but never
+	// wired into the /v1 bundle, so their routes 404'd in production. Wiring
+	// them here completes the fulfillment/shipping, tax, customer-group,
+	// publishable-api-key/RBAC, and notification admin domains.
+	fulfillmentApi.Route(api, tokenRequired) // fulfillment sets/providers, shipping options/profiles, service+geo zones, ship/cancel
+	taxApi.Route(api, tokenRequired)         // tax regions/rates/rules/providers + /tax/calculate
+	customergroupApi.Route(api, tokenRequired)
+	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
+	notificationApi.Route(api, tokenRequired)
+	giftcardApi.Route(api, adminRequired)        // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired)             // B2B: companies, employees, quotes, approvals
+	exchangeApi.Route(api, tokenRequired)        // order exchanges (return + replacement)
+	producttaxonomyApi.Route(api, tokenRequired) // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)    // platform product catalog CMS (global-admin gated inside)
+	// Public catalog projection GET /v1/commerce/catalog is wired on the
+	// commerce public group (commerce.go) so it serves that exact path.
 
 	// Hanzo APIs, using default namespace (internal use only)
 	organizationApi.Route(api, tokenRequired)

@@ -335,7 +335,7 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 
 	// Use unique filter based on model type
 	switch q.kind {
-	case "store", "product", "collection", "plan":
+	case "store", "product", "collection", "plan", "catalog-entry":
 		filterField = "Slug="
 	case "variant":
 		filterField = "SKU="
@@ -366,7 +366,25 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		"spend-alert", "bank-transfer-instruction", "payment-intent", "meter-event",
 		"credit-note", "balance-transaction", "customer-balance", "webhook-endpoint",
 		"network-token", "crypto-payment-intent", "usage-watermark", "setup-intent",
-		"refund", "dispute", "crypto-balance":
+		"refund", "dispute", "crypto-balance",
+		// Model[T] (github.com/hanzoai/orm) kinds. All are hashid-keyed only —
+		// none carry a slug/name/SKU secondary lookup — so a failed key decode
+		// is a genuine not-found (HTTP 404), never an unregistered-kind 500.
+		"apipermission", "applicationmethod", "auto-recharge", "campaignbudget",
+		"contributor", "customergroup", "customergroupmembership", "fulfillment",
+		"fulfillmentprovider", "fulfillmentset", "geozone", "inventoryitem",
+		"inventorylevel", "movie", "notification", "oss-accrual", "price",
+		"pricelist", "pricepreference", "pricerule", "priceset", "promotion",
+		"promotionrule", "publishableapikey", "redemption", "region", "reservation",
+		"role", "saleschannel", "sbom-entry", "sbom-record", "servicezone",
+		"shippingoption", "shippingoptionrule", "shippingprofile", "stocklocation",
+		"taxprovider", "taxrate", "taxraterule", "taxregion", "variantinventorylink",
+		"tokensale", "watchlist",
+		// B2B + gift cards (added for Medusa parity — hashid-keyed only).
+		"company", "employee", "quote", "quote-message", "approval",
+		"gift-card", "gift-card-redemption", "exchange", "idempotency-key",
+		"product-option", "product-option-value", "product-category",
+		"product-tag", "product-type", "return-reason", "refund-reason":
 		// These kinds are always identified by hashid-encoded keys only.
 		// If the key decode already failed, return not-found rather than error.
 		return nil, false, nil
