@@ -45,6 +45,14 @@ func cacheKey(name string) string { return "iam:org_by_name:" + name }
 // Caller is responsible for providing the right context — typically
 // a request-scoped context.WithTimeout from the handler.
 func Resolve(ctx context.Context, name string) (*organization.Organization, error) {
+	// Never provision an org from a bearer-shaped identifier. `name` is the
+	// gateway-supplied X-Org-Id; a caller who presents a raw API key as their
+	// bearer would otherwise cause GetOrCreate below to persist the key as an
+	// org name and tenant id, leaking the secret (incident 2026-07-02).
+	if organization.IsSecretLikeName(name) {
+		return nil, organization.ErrSecretLikeName
+	}
+
 	mu.RLock()
 	kv := kvCache
 	mu.RUnlock()
