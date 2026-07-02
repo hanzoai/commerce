@@ -24,10 +24,11 @@ type TransactionDatas struct {
 }
 
 func GetTransactions(ctx context.Context, id, kind string, test bool) (*TransactionDatas, error) {
-	// NewNamespaced so the ledger read hits the caller org's OWN store (per-org
-	// SQLite), matching where the writes land — otherwise the balance check
-	// reads the shared pool and can't see the org's own transactions (Red CRIT-2).
-	db := datastore.NewNamespaced(ctx)
+	// ONE central commerce ledger, org-scoped by the namespace bound on ctx —
+	// the SAME store the deposit write (api/billing.Deposit) and the LLM gateway
+	// prepaid gate (tier/zap/usage) use. NOT NewNamespaced: that read the per-org
+	// SQLite files while deposits/gate used the central store → balance $0 → 402.
+	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -48,10 +49,10 @@ func GetTransactions(ctx context.Context, id, kind string, test bool) (*Transact
 }
 
 func GetTransactionsByCurrency(ctx context.Context, id, kind string, cur currency.Type, test bool) (*TransactionDatas, error) {
-	// NewNamespaced so the ledger read hits the caller org's OWN store (per-org
-	// SQLite), matching where the writes land — otherwise the balance check
-	// reads the shared pool and can't see the org's own transactions (Red CRIT-2).
-	db := datastore.NewNamespaced(ctx)
+	// ONE central commerce ledger, org-scoped by the namespace bound on ctx — the
+	// SAME store the deposit write and the LLM gateway prepaid gate use (see
+	// GetTransactions). NOT NewNamespaced (per-org files) → that was the $0-balance bug.
+	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
