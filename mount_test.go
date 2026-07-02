@@ -14,7 +14,7 @@ import (
 	"github.com/hanzoai/cloud"
 	luxlog "github.com/luxfi/log"
 
-	"github.com/hanzoai/zip"
+	"github.com/zap-proto/zip"
 )
 
 // TestMount_RegistersHealth boots an empty zip.App, runs commerce.Mount,
