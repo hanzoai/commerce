@@ -30,6 +30,14 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(giftcardModel.GiftCard{})
+	// The model kind is "gift-card", so the generated base-CRUD id param would be
+	// ":gift-cardid" — but the money subroutes below, getCard, and every caller use
+	// ":giftcardid". Gin panics on that same-position wildcard-name mismatch
+	// (":giftcardid" vs ":gift-cardid") the moment both are registered on the
+	// /gift-card group, taking down the whole router. Pin the CRUD param to
+	// "giftcardid" so base + subroutes agree (external URL /gift-card/<id>/… is
+	// unchanged — the param name is internal to ByName()).
+	api.ParamId = "giftcardid"
 	api.POST("/:giftcardid/redeem", namespaced, Redeem)
 	api.POST("/:giftcardid/void", namespaced, Void)
 	api.GET("/:giftcardid/balance", namespaced, Balance)
@@ -44,7 +52,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 // returns nil.
 func getCard(c *gin.Context) (*datastore.Datastore, *giftcardModel.GiftCard) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	id := c.Params.ByName("giftcardid")
 	g := giftcardModel.New(db)
 	if err := g.GetById(id); err != nil {
@@ -68,7 +76,12 @@ type redeemResponse struct {
 }
 
 // Redeem draws amountCents from the card. Idempotent on the idempotency key.
+// Admin-only: redeeming moves money off a card, so it is gated INSIDE the
+// handler (the route middleware no-ops on the IAM path — Red HIGH-4).
 func Redeem(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	db, g := getCard(c)
 	if g == nil {
 		return
@@ -116,7 +129,11 @@ type voidRequest struct {
 }
 
 // Void reverses a prior redemption (append-only compensating line). Idempotent.
+// Admin-only (money move) — gated inside the handler like Redeem.
 func Void(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	db, g := getCard(c)
 	if g == nil {
 		return

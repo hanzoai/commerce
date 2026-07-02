@@ -30,6 +30,12 @@ type wireCreditResponse struct {
 // POST /v1/checkout/wire/credit
 // Admin-only endpoint. Marks the pending wire payment as completed.
 func Credit(c *gin.Context) {
+	// Money move (manually marks an order paid): admin-only, enforced inside the
+	// handler because the route middleware no-ops on the IAM path (Red HIGH-4).
+	if !middleware.RequireAdmin(c) {
+		return
+	}
+
 	var req wireCreditRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		http.Fail(c, 400, "Invalid request", err)
@@ -47,9 +53,10 @@ func Credit(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
-	// Set up the db with the namespaced context
+	// Set up the db with the namespaced context. NewNamespaced isolates the
+	// order in the caller org's own store (Red CRIT-2).
 	ctx := org.Namespaced(c)
-	db := datastore.New(ctx)
+	db := datastore.NewNamespaced(ctx)
 
 	// Get the order
 	ord := order.New(db)

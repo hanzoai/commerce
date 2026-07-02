@@ -21,7 +21,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: commerce
-          image: ghcr.io/hanzoai/commerce:v1.38.0
+          image: ghcr.io/hanzoai/commerce:v1.42.50
           ports:
             - containerPort: 8001
               protocol: TCP
@@ -37,6 +37,12 @@ spec:
             # those headers, so this turns the binary into a closed
             # box behind the gateway.
             - name: COMMERCED_REQUIRE_IDENTITY
+              value: "true"
+            # Edge trust boundary: strip forged X-Org-Id / X-User-* and re-mint
+            # from the verified IAM JWT. edgeauth.go is a NO-OP without this, so
+            # an in-cluster pod could forge X-User-IsGlobalAdmin → platform
+            # superadmin (Red CRIT-1). Set here AND in the configmap .env.
+            - name: COMMERCE_EDGE_AUTH
               value: "true"
             - name: KMS_ENABLED
               value: "true"

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
+
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // PostgresDBConfig holds configuration for a PostgreSQL database
@@ -53,12 +55,27 @@ type PostgresDB struct {
 	mu     sync.RWMutex
 	closed bool
 
-	// Prepared statements for hot-path operations
-	stmtGet         *sql.Stmt // Get without tenant filter
-	stmtGetTenant   *sql.Stmt // Get with tenant filter
-	stmtPut         *sql.Stmt // Upsert entity
-	stmtDel         *sql.Stmt // Soft-delete without tenant filter
-	stmtDelTenant   *sql.Stmt // Soft-delete with tenant filter
+	// Prepared statements for hot-path operations. Every one is tenant-scoped:
+	// the shared Postgres store is multi-tenant, so a row is addressed by its
+	// COMPOSITE key (id, kind, tenant_id) and every read/write filters by the
+	// caller's tenant. There is deliberately NO tenant-less variant — an
+	// unscoped get/delete would cross tenants (Red CRIT-2).
+	stmtGet *sql.Stmt // Get: (id, kind, tenant_id)
+	stmtPut *sql.Stmt // Upsert: ON CONFLICT (id, kind, tenant_id)
+	stmtDel *sql.Stmt // Soft-delete: (id, kind, tenant_id)
+}
+
+// tenantFor resolves the tenant scope for a Postgres operation: the request's
+// ctx namespace (per-org isolation — the org == tenant) when present, else the
+// DB's configured TenantID (the systemDB default, "system"). This mirrors the
+// SQLite store, which scopes every row by the ctx namespace — so the SHARED
+// Postgres store can never let org B read, list, or overwrite org A's rows
+// (Red CRIT-2). Empty is a valid tenant value (the global/default partition).
+func (db *PostgresDB) tenantFor(ctx context.Context) string {
+	if ns := nscontext.GetNamespace(ctx); ns != "" {
+		return ns
+	}
+	return db.config.TenantID
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection
@@ -132,25 +149,21 @@ func NewPostgresDB(cfg *PostgresDBConfig) (*PostgresDB, error) {
 }
 
 // prepareStatements creates prepared statements for frequently-executed queries.
+// Every statement is tenant-scoped on the composite key (id, kind, tenant_id).
 func (db *PostgresDB) prepareStatements() error {
 	var err error
 
 	db.stmtGet, err = db.db.Prepare(
-		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE`)
+		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`)
 	if err != nil {
 		return fmt.Errorf("prepare stmtGet: %w", err)
-	}
-
-	db.stmtGetTenant, err = db.db.Prepare(
-		`SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE AND tenant_id = $3`)
-	if err != nil {
-		return fmt.Errorf("prepare stmtGetTenant: %w", err)
 	}
 
 	db.stmtPut, err = db.db.Prepare(`
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
-		ON CONFLICT (id) DO UPDATE SET
+		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
+			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
 	`)
@@ -159,15 +172,9 @@ func (db *PostgresDB) prepareStatements() error {
 	}
 
 	db.stmtDel, err = db.db.Prepare(
-		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2`)
-	if err != nil {
-		return fmt.Errorf("prepare stmtDel: %w", err)
-	}
-
-	db.stmtDelTenant, err = db.db.Prepare(
 		`UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`)
 	if err != nil {
-		return fmt.Errorf("prepare stmtDelTenant: %w", err)
+		return fmt.Errorf("prepare stmtDel: %w", err)
 	}
 
 	return nil
@@ -199,17 +206,26 @@ func (db *PostgresDB) initSchema() error {
 		return err
 	}
 
-	// Create generic entity storage table with JSONB
+	// Create generic entity storage table with JSONB.
+	//
+	// The PRIMARY KEY is COMPOSITE (id, kind, tenant_id): the same entity id in
+	// two different tenants is two distinct rows, so org B's write can never
+	// overwrite org A's row, and the ON CONFLICT upsert only ever collides
+	// within one tenant. tenant_id is NOT NULL DEFAULT '' so it can participate
+	// in the key (a NULL column can't be a reliable PK member). This mirrors the
+	// SQLite store's (id, kind, namespace) key — one canonical multi-tenant
+	// shape across both backends (Red CRIT-2).
 	_, err = db.db.Exec(`
 		CREATE TABLE IF NOT EXISTS _entities (
-			id TEXT PRIMARY KEY,
+			id TEXT NOT NULL,
 			kind TEXT NOT NULL,
-			tenant_id TEXT,
+			tenant_id TEXT NOT NULL DEFAULT '',
 			parent_id TEXT,
 			data JSONB NOT NULL,
 			created_at TIMESTAMPTZ DEFAULT NOW(),
 			updated_at TIMESTAMPTZ DEFAULT NOW(),
-			deleted BOOLEAN DEFAULT FALSE
+			deleted BOOLEAN DEFAULT FALSE,
+			PRIMARY KEY (id, kind, tenant_id)
 		)
 	`)
 	if err != nil {
@@ -301,9 +317,9 @@ func (db *PostgresDB) Close() error {
 
 	// Close prepared statements
 	for _, s := range []*sql.Stmt{
-		db.stmtGet, db.stmtGetTenant,
+		db.stmtGet,
 		db.stmtPut,
-		db.stmtDel, db.stmtDelTenant,
+		db.stmtDel,
 	} {
 		if s != nil {
 			s.Close()
@@ -313,18 +329,14 @@ func (db *PostgresDB) Close() error {
 	return db.db.Close()
 }
 
-// Get retrieves an entity by key
+// Get retrieves an entity by key, scoped to the ctx tenant. A row written by
+// another tenant with the SAME id+kind is invisible here (Red CRIT-2).
 func (db *PostgresDB) Get(ctx context.Context, key Key, dst interface{}) error {
 	if key == nil {
 		return ErrInvalidKey
 	}
 
-	var row *sql.Row
-	if db.config.TenantID != "" {
-		row = db.stmtGetTenant.QueryRowContext(ctx, key.Encode(), key.Kind(), db.config.TenantID)
-	} else {
-		row = db.stmtGet.QueryRowContext(ctx, key.Encode(), key.Kind())
-	}
+	row := db.stmtGet.QueryRowContext(ctx, key.Encode(), key.Kind(), db.tenantFor(ctx))
 
 	var data []byte
 	if err := row.Scan(&data); err != nil {
@@ -354,12 +366,10 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 		parentID = &id
 	}
 
-	var tenantID *string
-	if db.config.TenantID != "" {
-		tenantID = &db.config.TenantID
-	}
-
-	_, err = db.stmtPut.ExecContext(ctx, key.Encode(), key.Kind(), tenantID, parentID, data)
+	// tenant_id is NOT NULL and part of the composite PK — store the resolved
+	// tenant string directly (never NULL). ON CONFLICT (id, kind, tenant_id)
+	// then upserts only WITHIN this tenant.
+	_, err = db.stmtPut.ExecContext(ctx, key.Encode(), key.Kind(), db.tenantFor(ctx), parentID, data)
 	if err != nil {
 		return nil, err
 	}
@@ -367,18 +377,13 @@ func (db *PostgresDB) Put(ctx context.Context, key Key, src interface{}) (Key, e
 	return key, nil
 }
 
-// Delete removes an entity (soft delete)
+// Delete removes an entity (soft delete), scoped to the ctx tenant.
 func (db *PostgresDB) Delete(ctx context.Context, key Key) error {
 	if key == nil {
 		return ErrInvalidKey
 	}
 
-	if db.config.TenantID != "" {
-		_, err := db.stmtDelTenant.ExecContext(ctx, key.Encode(), key.Kind(), db.config.TenantID)
-		return err
-	}
-
-	_, err := db.stmtDel.ExecContext(ctx, key.Encode(), key.Kind())
+	_, err := db.stmtDel.ExecContext(ctx, key.Encode(), key.Kind(), db.tenantFor(ctx))
 	return err
 }
 
@@ -394,13 +399,9 @@ func (db *PostgresDB) GetMulti(ctx context.Context, keys []Key, dst interface{})
 		ids[i] = k.Encode()
 	}
 
-	query := `SELECT id, data FROM _entities WHERE id = ANY($1) AND deleted = FALSE`
-	args := []interface{}{ids}
-
-	if db.config.TenantID != "" {
-		query += ` AND tenant_id = $2`
-		args = append(args, db.config.TenantID)
-	}
+	// Always tenant-scoped — a multi-get must not reach across tenants.
+	query := `SELECT id, data FROM _entities WHERE id = ANY($1) AND tenant_id = $2 AND deleted = FALSE`
+	args := []interface{}{ids, db.tenantFor(ctx)}
 
 	rows, err := db.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -470,7 +471,8 @@ func (db *PostgresDB) PutMulti(ctx context.Context, keys []Key, src interface{})
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
-		ON CONFLICT (id) DO UPDATE SET
+		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
+			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
 	`)
@@ -479,10 +481,7 @@ func (db *PostgresDB) PutMulti(ctx context.Context, keys []Key, src interface{})
 	}
 	defer stmt.Close()
 
-	var tenantID *string
-	if db.config.TenantID != "" {
-		tenantID = &db.config.TenantID
-	}
+	tenantID := db.tenantFor(ctx)
 
 	for i, key := range keys {
 		data, err := json.Marshal(srcVal.Index(i).Interface())
@@ -520,13 +519,9 @@ func (db *PostgresDB) DeleteMulti(ctx context.Context, keys []Key) error {
 		ids[i] = k.Encode()
 	}
 
-	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = ANY($1)`
-	args := []interface{}{ids}
-
-	if db.config.TenantID != "" {
-		query += ` AND tenant_id = $2`
-		args = append(args, db.config.TenantID)
-	}
+	// Always tenant-scoped — a multi-delete must not reach across tenants.
+	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = ANY($1) AND tenant_id = $2`
+	args := []interface{}{ids, db.tenantFor(ctx)}
 
 	_, err := db.db.ExecContext(ctx, query, args...)
 	return err
@@ -682,8 +677,9 @@ func (db *PostgresDB) RunInTransaction(ctx context.Context, fn func(tx Transacti
 	defer sqlTx.Rollback()
 
 	tx := &postgresTransaction{
-		db: db,
-		tx: sqlTx,
+		db:     db,
+		tx:     sqlTx,
+		tenant: db.tenantFor(ctx),
 	}
 
 	if err := fn(tx); err != nil {
@@ -731,20 +727,18 @@ func (k *postgresKey) Equal(other Key) bool {
 	return k.Kind() == other.Kind() && k.Encode() == other.Encode()
 }
 
-// postgresTransaction implements Transaction
+// postgresTransaction implements Transaction. tenant is resolved ONCE from the
+// RunInTransaction ctx (the caller org) and scopes every op in the tx, so a
+// transaction can never read or write across tenants (Red CRIT-2).
 type postgresTransaction struct {
-	db *PostgresDB
-	tx *sql.Tx
+	db     *PostgresDB
+	tx     *sql.Tx
+	tenant string
 }
 
 func (t *postgresTransaction) Get(key Key, dst interface{}) error {
-	query := `SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND deleted = FALSE`
-	args := []interface{}{key.Encode(), key.Kind()}
-
-	if t.db.config.TenantID != "" {
-		query += ` AND tenant_id = $3`
-		args = append(args, t.db.config.TenantID)
-	}
+	query := `SELECT data FROM _entities WHERE id = $1 AND kind = $2 AND tenant_id = $3 AND deleted = FALSE`
+	args := []interface{}{key.Encode(), key.Kind(), t.tenant}
 
 	row := t.tx.QueryRow(query, args...)
 
@@ -771,30 +765,21 @@ func (t *postgresTransaction) Put(key Key, src interface{}) (Key, error) {
 		parentID = &id
 	}
 
-	var tenantID *string
-	if t.db.config.TenantID != "" {
-		tenantID = &t.db.config.TenantID
-	}
-
 	_, err = t.tx.Exec(`
 		INSERT INTO _entities (id, kind, tenant_id, parent_id, data, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW())
-		ON CONFLICT (id) DO UPDATE SET
+		ON CONFLICT (id, kind, tenant_id) DO UPDATE SET
+			parent_id = EXCLUDED.parent_id,
 			data = EXCLUDED.data,
 			updated_at = NOW()
-	`, key.Encode(), key.Kind(), tenantID, parentID, data)
+	`, key.Encode(), key.Kind(), t.tenant, parentID, data)
 
 	return key, err
 }
 
 func (t *postgresTransaction) Delete(key Key) error {
-	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2`
-	args := []interface{}{key.Encode(), key.Kind()}
-
-	if t.db.config.TenantID != "" {
-		query += ` AND tenant_id = $3`
-		args = append(args, t.db.config.TenantID)
-	}
+	query := `UPDATE _entities SET deleted = TRUE, updated_at = NOW() WHERE id = $1 AND kind = $2 AND tenant_id = $3`
+	args := []interface{}{key.Encode(), key.Kind(), t.tenant}
 
 	_, err := t.tx.Exec(query, args...)
 	return err
@@ -804,7 +789,7 @@ func (t *postgresTransaction) Query(kind string) Query {
 	return &postgresQuery{
 		db:       t.db,
 		kind:     kind,
-		tenantID: t.db.config.TenantID,
+		tenantID: t.tenant,
 		tx:       t.tx,
 	}
 }
@@ -899,7 +884,7 @@ func (q *postgresQuery) End(cursor Cursor) Query {
 }
 
 func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, error) {
-	query, args := q.buildSQL()
+	query, args := q.buildSQL(q.db.tenantFor(ctx))
 
 	var rows *sql.Rows
 	var err error
@@ -960,7 +945,7 @@ func (q *postgresQuery) GetAll(ctx context.Context, dst interface{}) ([]Key, err
 
 func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error) {
 	limitedQ := q.Limit(1).(*postgresQuery)
-	query, args := limitedQ.buildSQL()
+	query, args := limitedQ.buildSQL(q.db.tenantFor(ctx))
 
 	var row *sql.Row
 	if q.tx != nil {
@@ -991,7 +976,7 @@ func (q *postgresQuery) First(ctx context.Context, dst interface{}) (Key, error)
 }
 
 func (q *postgresQuery) Count(ctx context.Context) (int, error) {
-	where, args := q.buildWhere()
+	where, args := q.buildWhere(q.db.tenantFor(ctx))
 
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM _entities WHERE kind = $1 AND deleted = FALSE%s`, where)
 	args = append([]interface{}{q.kind}, args...)
@@ -1009,7 +994,7 @@ func (q *postgresQuery) Count(ctx context.Context) (int, error) {
 }
 
 func (q *postgresQuery) Keys(ctx context.Context) ([]Key, error) {
-	where, args := q.buildWhere()
+	where, args := q.buildWhere(q.db.tenantFor(ctx))
 
 	query := fmt.Sprintf(`SELECT id FROM _entities WHERE kind = $1 AND deleted = FALSE%s`, where)
 	args = append([]interface{}{q.kind}, args...)
@@ -1048,7 +1033,7 @@ func (q *postgresQuery) Keys(ctx context.Context) ([]Key, error) {
 }
 
 func (q *postgresQuery) Run(ctx context.Context) Iterator {
-	query, args := q.buildSQL()
+	query, args := q.buildSQL(q.db.tenantFor(ctx))
 
 	var rows *sql.Rows
 	var err error
@@ -1067,8 +1052,8 @@ func (q *postgresQuery) Run(ctx context.Context) Iterator {
 	}
 }
 
-func (q *postgresQuery) buildSQL() (string, []interface{}) {
-	where, args := q.buildWhere()
+func (q *postgresQuery) buildSQL(tenant string) (string, []interface{}) {
+	where, args := q.buildWhere(tenant)
 
 	selectClause := "id, data"
 	if q.distinct {
@@ -1084,17 +1069,19 @@ func (q *postgresQuery) buildSQL() (string, []interface{}) {
 	return query, args
 }
 
-func (q *postgresQuery) buildWhere() (string, []interface{}) {
+// buildWhere scopes the query to `tenant` — the caller org (per-org isolation),
+// resolved from the request ctx by the executor. The tenant filter is ALWAYS
+// applied (even for the empty/default tenant, which matches tenant_id = ''), so
+// a list/count/keys scan can never enumerate another tenant's rows (Red CRIT-2).
+func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 	var conditions []string
 	var args []interface{}
 	argNum := 2 // $1 is kind
 
-	// Tenant filter
-	if q.tenantID != "" {
-		conditions = append(conditions, fmt.Sprintf("tenant_id = $%d", argNum))
-		args = append(args, q.tenantID)
-		argNum++
-	}
+	// Tenant filter — always present.
+	conditions = append(conditions, fmt.Sprintf("tenant_id = $%d", argNum))
+	args = append(args, tenant)
+	argNum++
 
 	// Ancestor filter
 	if q.ancestor != nil {
