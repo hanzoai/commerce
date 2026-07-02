@@ -2,7 +2,10 @@ package square
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"strconv"
 
 	"github.com/hanzoai/commerce/email"
 	"github.com/hanzoai/commerce/log"
@@ -20,7 +23,12 @@ var NonSquarePayment = errors.New("only refunds for Square payments are supporte
 var ZeroRefund = errors.New("refund amount cannot be 0")
 var NegativeRefund = errors.New("refund amount must be a positive integer")
 
-func Refund(org *organization.Organization, ord *order.Order, refundAmount currency.Cents) error {
+// Refund refunds refundAmount against ord's Square payments. idempotencyKey, when
+// non-empty, is forwarded (per payment, deterministically) to Square as ITS
+// idempotency key so a retried refund is de-duplicated AT THE GATEWAY — the money
+// move is idempotent across pods/mutexes/in-flight guards. Empty key = legacy
+// non-idempotent behavior (Square generates a random key).
+func Refund(org *organization.Organization, ord *order.Order, refundAmount currency.Cents, idempotencyKey string) error {
 	if refundAmount == 0 {
 		return ZeroRefund
 	}
@@ -71,10 +79,18 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		}
 
 		if !p.Test {
+			// Per-payment DETERMINISTIC gateway key: same (base key, payment,
+			// amount) ⇒ same Square idempotency key ⇒ Square de-dupes a retry.
+			var gwKey string
+			if idempotencyKey != "" {
+				sum := sha256.Sum256([]byte(idempotencyKey + "|" + p.Account.Square.PaymentId + "|" + strconv.FormatInt(int64(amount), 10)))
+				gwKey = "rfnd_" + hex.EncodeToString(sum[:20])
+			}
 			_, err := proc.Refund(context.Background(), processor.RefundRequest{
-				TransactionID: p.Account.Square.PaymentId,
-				Amount:        amount,
-				Reason:        "customer refund",
+				TransactionID:  p.Account.Square.PaymentId,
+				Amount:         amount,
+				Reason:         "customer refund",
+				IdempotencyKey: gwKey,
 			})
 			if err != nil {
 				return err
