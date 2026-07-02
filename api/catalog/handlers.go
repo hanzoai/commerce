@@ -11,8 +11,9 @@
 //     auth.IAMClaims.GlobalAdmin() — a Hanzo platform admin, never an org-level
 //     admin. Wired on the /v1 bundle under /catalog/entries.
 //
-// The catalog is platform-global: one store in the "system" namespace,
-// partitioned by the Brand field, projected per requesting brand.
+// The catalog is platform-global: one store in the "system" namespace, scoped
+// per requesting brand BY CATEGORY at projection time (matching @hanzo/products
+// catalogForBrand). Entries are keyed by their globally-unique slug.
 package catalog
 
 import (
@@ -93,12 +94,8 @@ func ListEntries(c *gin.Context) {
 		return
 	}
 	db := catalogDB(c)
-	q := catalogentry.Query(db)
-	if brand := c.Query("brand"); brand != "" {
-		q = q.Filter("Brand=", brand)
-	}
 	entries := make([]*catalogentry.CatalogEntry, 0, 128)
-	if _, err := q.GetAll(&entries); err != nil {
+	if _, err := catalogentry.Query(db).GetAll(&entries); err != nil {
 		http.Fail(c, 500, "failed to list catalog entries", err)
 		return
 	}
@@ -120,13 +117,10 @@ func CreateEntry(c *gin.Context) {
 		http.Fail(c, 400, "slug is required", errors.New("missing slug"))
 		return
 	}
-	if e.Brand == "" {
-		e.Brand = "hanzo"
-	}
-	// Reject a duplicate slug+brand (the projection assumes uniqueness).
+	// Slug is the globally-unique catalog key — reject a duplicate.
 	dup := catalogentry.New(db)
-	if ok, _ := dup.Query().Filter("Slug=", e.Slug).Filter("Brand=", e.Brand).Get(); ok {
-		http.Fail(c, 409, "a catalog entry with this slug already exists for this brand", errors.New("duplicate slug"))
+	if ok, _ := dup.Query().Filter("Slug=", e.Slug).Get(); ok {
+		http.Fail(c, 409, "a catalog entry with this slug already exists", errors.New("duplicate slug"))
 		return
 	}
 	if err := e.Create(); err != nil {
@@ -136,21 +130,17 @@ func CreateEntry(c *gin.Context) {
 	http.Render(c, 201, e)
 }
 
-// UpdateEntry edits a catalog entry by slug (platform admin). The slug + brand
-// identity is preserved; other fields are replaced from the body.
+// UpdateEntry edits a catalog entry by slug (platform admin). The slug identity
+// is preserved; other fields are replaced from the body.
 func UpdateEntry(c *gin.Context) {
 	if !requireGlobalAdmin(c) {
 		return
 	}
 	db := catalogDB(c)
 	slug := c.Params.ByName("slug")
-	brand := c.Query("brand")
-	if brand == "" {
-		brand = "hanzo"
-	}
 
 	e := catalogentry.New(db)
-	ok, err := e.Query().Filter("Slug=", slug).Filter("Brand=", brand).Get()
+	ok, err := e.Query().Filter("Slug=", slug).Get()
 	if err != nil {
 		http.Fail(c, 500, "failed to load catalog entry", err)
 		return
@@ -164,9 +154,7 @@ func UpdateEntry(c *gin.Context) {
 		http.Fail(c, 400, "failed to decode request body", err)
 		return
 	}
-	// Identity is immutable — the path slug + brand win over any body value.
-	e.Slug = slug
-	e.Brand = brand
+	e.Slug = slug // identity is immutable — the path slug wins over any body value
 	if err := e.Update(); err != nil {
 		http.Fail(c, 500, "failed to update catalog entry", err)
 		return
@@ -181,12 +169,8 @@ func DeleteEntry(c *gin.Context) {
 	}
 	db := catalogDB(c)
 	slug := c.Params.ByName("slug")
-	brand := c.Query("brand")
-	if brand == "" {
-		brand = "hanzo"
-	}
 	e := catalogentry.New(db)
-	ok, err := e.Query().Filter("Slug=", slug).Filter("Brand=", brand).Get()
+	ok, err := e.Query().Filter("Slug=", slug).Get()
 	if err != nil {
 		http.Fail(c, 500, "failed to load catalog entry", err)
 		return
