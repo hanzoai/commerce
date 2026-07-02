@@ -26,6 +26,14 @@ import (
 // Returns { status, org, token }. The caller stores `token` in KMS and injects
 // it as HANZO_COMMERCE_STOREFRONT_TOKEN on the storefront deployment.
 func mintStorefrontToken(c *gin.Context) {
+	// Authoritative admin gate. The route's TokenRequired(Admin) NO-OPS on the
+	// IAM path (EdgeAuth/gateway-minted identity), so enforce admin here the same
+	// way the money handlers do — IAM-aware, fail-closed — or a non-admin org
+	// member could mint their org's storefront key.
+	if !middleware.RequireAdmin(c) {
+		return
+	}
+
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
 		http.Fail(c, 400, "organization required", errors.New("no organization in context"))
