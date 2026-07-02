@@ -235,15 +235,22 @@ func parsePermissionsHeader(v string) bit.Field {
 	return bit.Field(n)
 }
 
-// IsIAMAuthenticated reports whether the request was identity-attached
-// by either pkg/auth.Gin (preferred) or legacy IAMTokenRequired.
+// IsIAMAuthenticated reports whether a VALIDATED IAM identity is attached to the
+// request — i.e. IAMTokenRequired resolved the org from the trusted (gateway- or
+// EdgeAuth-minted, post-strip) X-Org-Id and set iam_authenticated. It does NOT
+// fall back to the raw X-Org-Id header: trusting mere header presence let an
+// unvalidated opaque bearer + a client X-Org-Id impersonate any org (the checkout
+// money-surface bypass). IAMTokenRequired runs on every /v1, /v1/commerce and
+// /_/commerce group, so the gin-key check covers every legitimate IAM caller; an
+// opaque service token authorizes through TokenRequired's service-token branch
+// instead, never here.
 func IsIAMAuthenticated(c *gin.Context) bool {
 	if v, ok := c.Get("iam_authenticated"); ok {
 		if b, ok := v.(bool); ok && b {
 			return true
 		}
 	}
-	return c.GetHeader(pkgAuth.HeaderOrgID) != ""
+	return false
 }
 
 // GetIAMClaims returns a non-nil *auth.IAMClaims populated from the

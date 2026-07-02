@@ -67,20 +67,23 @@ func TestEdgeAuth_StripsGlobalAdminSpoof(t *testing.T) {
 	}
 }
 
-// TestEdgeAuth_PreservesServiceTokenOrg proves the money path is untouched:
-// cloud-api -> commerce per-org billing authenticates with an OPAQUE Bearer
-// service token (not a JWT) and names the org via X-Org-Id. EdgeAuth must
-// (a) strip any forged X-Org-Id, (b) NOT strip X-Org-Id (it is not an
-// identity header), and (c) never abort — the opaque token is not a JWT, so
-// minting is skipped and the request flows through to the service-token
-// authorizer. Breaking any of these breaks per-org billing.
-func TestEdgeAuth_PreservesServiceTokenOrg(t *testing.T) {
+// TestEdgeAuth_OpaqueBearerStashesOrgNotHeader proves the bypass fix AND that
+// per-org billing survives it. An opaque (non-JWT) bearer — a service token —
+// names its org via X-Org-Id. EdgeAuth must:
+//
+//	(a) STRIP X-Org-Id from the trusted header, so IAMTokenRequired (which runs
+//	    BEFORE the token is validated) can never mistake it for a verified IAM
+//	    identity — restoring the header was the complete auth bypass (opaque
+//	    bearer + X-Org-Id ⇒ forged principal for any org); and
+//	(b) stash the org in a PRIVATE ctx key that ONLY TokenRequired's
+//	    service-token branch reads, AFTER it verifies the token — so per-org
+//	    billing/checkout still resolves the caller's own org.
+//
+// EdgeAuth never aborts an opaque bearer (not a JWT ⇒ minting skipped).
+func TestEdgeAuth_OpaqueBearerStashesOrgNotHeader(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
 	h := EdgeAuth()
 
-	// Opaque service token names its own org via the single canonical X-Org-Id.
-	// EdgeAuth preserves it (non-JWT bearer); the token is validated downstream,
-	// so a forged value is rejected before billing — one header, one way.
 	req := httptest.NewRequest("POST", "/v1/billing/usage", nil)
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token_not_a_jwt")
 	req.Header.Set("X-Org-Id", "maxpower")
@@ -92,8 +95,43 @@ func TestEdgeAuth_PreservesServiceTokenOrg(t *testing.T) {
 	if c.IsAborted() {
 		t.Fatal("EdgeAuth must NOT abort an opaque service-token request (money path)")
 	}
-	if got := c.Request.Header.Get("X-Org-Id"); got != "maxpower" {
-		t.Fatalf("service-token X-Org-Id must be preserved for per-org billing, got %q", got)
+	// (a) X-Org-Id MUST be stripped — never re-exposed to the trust boundary.
+	if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+		t.Fatalf("opaque bearer: X-Org-Id must stay stripped (bypass fix), got %q", got)
+	}
+	// (b) org preserved out-of-band for the validated-service-token branch.
+	if got := clientOrgFromContext(c); got != "maxpower" {
+		t.Fatalf("opaque bearer org must be stashed for per-org billing, got %q", got)
+	}
+}
+
+// TestEdgeAuth_ClosesOpaqueBearerBypass is the explicit RED regression: the
+// live-proved bypass was `Authorization: Bearer <opaque>` + `X-Org-Id: <target>`
+// → EdgeAuth restored the client X-Org-Id → IAMTokenRequired trusted it (no
+// token check) → the checkout money surface minted for the attacker's chosen
+// org. After the fix, X-Org-Id is stripped and NEVER put back on the header for
+// a non-service opaque bearer, so IAMTokenRequired resolves no org and the
+// request cannot forge an IAM principal. The stash is inert unless the token
+// later proves to be COMMERCE_SERVICE_TOKEN, which "redteamprobe" is not.
+func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
+	t.Setenv("COMMERCE_EDGE_AUTH", "true")
+	h := EdgeAuth()
+
+	for _, path := range []string{
+		"/v1/checkout/sessions", "/v1/checkout/charge",
+		"/v1/checkout/authorize", "/v1/checkout/capture",
+	} {
+		req := httptest.NewRequest("POST", path, nil)
+		req.Header.Set("Authorization", "Bearer redteamprobe")
+		req.Header.Set("X-Org-Id", "hanzo")
+
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = req
+		h(c)
+
+		if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+			t.Fatalf("%s: bypass vector X-Org-Id must be stripped, got %q", path, got)
+		}
 	}
 }
 

@@ -98,9 +98,22 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// IAM tokens bypass legacy org-token auth (different permission model)
+		// IAM/gateway identity path. IAMTokenRequired has already set
+		// c["permissions"] from the gateway-minted X-User-Permissions (0 when
+		// absent — fail closed). Enforce the SAME masks the legacy and
+		// service-token paths enforce: a bare c.Next() here made every masked gate
+		// (e.g. TokenRequired(Admin, Published) on the checkout money routes) a
+		// NO-OP for ANY IAM-authenticated principal, so a low-privilege or forged
+		// (perms=0) IAM caller reached the money handlers. No masks
+		// (TokenRequired()) still means "any authenticated principal" — the billing
+		// read path is unchanged; with masks the caller must actually hold them.
 		if iammiddleware.IsIAMAuthenticated(c) {
-			c.Next()
+			if len(masks) == 0 || hasScope(c, permissions) {
+				c.Next()
+				return
+			}
+			http.Fail(c, 403, "Token doesn't support this scope",
+				errors.New("IAM principal lacks required permission scope"))
 			return
 		}
 
@@ -113,8 +126,17 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				db := datastore.New(ctx)
 				org := organization.New(db)
 
-				// Resolve org from X-Org-Id header, COMMERCE_SERVICE_ORG env, or default "hanzo".
-				orgName := c.GetHeader("X-Org-Id")
+				// Resolve the caller-named org, now that the service token is verified.
+				// EdgeAuth (standalone edge) stashes the client's requested org in a
+				// private ctx key AFTER stripping the raw X-Org-Id header — read it
+				// here so an unvalidated token's selector never reached resolution.
+				// Fallbacks: the raw X-Org-Id header (gateway / EdgeAuth-off
+				// deployments, where the private key is unset and the header is
+				// trustworthy), then COMMERCE_SERVICE_ORG, then the default "hanzo".
+				orgName := clientOrgFromContext(c)
+				if orgName == "" {
+					orgName = c.GetHeader("X-Org-Id")
+				}
 				if orgName == "" {
 					orgName = os.Getenv("COMMERCE_SERVICE_ORG")
 				}
@@ -206,4 +228,19 @@ func GetAccessToken(c *gin.Context) string {
 
 func GetPermissions(c *gin.Context) bit.Field {
 	return c.MustGet("permissions").(bit.Field)
+}
+
+// hasScope reports whether the request's resolved permissions (set by
+// IAMTokenRequired for the IAM path, or the service-token branch) include the
+// required mask. It reads c["permissions"] defensively (no MustGet) so a gate
+// mounted without a permission-setting middleware fails CLOSED (false → 403)
+// instead of panicking. bit.Field.Has is intersection semantics, so a combined
+// mask like Admin|Published is satisfied by holding EITHER bit.
+func hasScope(c *gin.Context, need bit.Mask) bool {
+	v, ok := c.Get("permissions")
+	if !ok {
+		return false
+	}
+	f, ok := v.(bit.Field)
+	return ok && f.Has(need)
 }
