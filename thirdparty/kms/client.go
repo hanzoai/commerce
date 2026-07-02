@@ -2,6 +2,7 @@
 package kms
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,15 +65,21 @@ func (c *Client) authenticate() error {
 		return nil
 	}
 
-	body := url.Values{
-		"clientId":     {c.clientID},
-		"clientSecret": {c.clientSecret},
+	body, err := json.Marshal(map[string]string{
+		"clientId":     c.clientID,
+		"clientSecret": c.clientSecret,
+	})
+	if err != nil {
+		return fmt.Errorf("kms auth encode error: %w", err)
 	}
 
-	resp, err := c.httpClient.PostForm(
-		c.baseURL+"/api/v1/auth/universal-auth/login",
-		body,
-	)
+	req, err := http.NewRequest("POST", c.baseURL+"/v1/kms/auth/login", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("kms auth request build error: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("kms auth request failed: %w", err)
 	}
