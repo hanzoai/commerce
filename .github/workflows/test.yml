@@ -84,8 +84,10 @@ jobs:
             ./payment/...
 
       - name: Run Ginkgo test suites
+        # Run the ginkgo CLI pinned by go.mod (v2.28.1) via `go run`, NOT
+        # `go install ...@latest` — the latter mismatched the library version
+        # ("Mismatched package versions found") and risked flag/discovery errors.
         run: |
-          go install github.com/onsi/ginkgo/v2/ginkgo@latest
-          ginkgo -r --randomize-all --fail-fast --trace \
+          go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-fast --trace \
             --skip-package=test-integration \
             test/
