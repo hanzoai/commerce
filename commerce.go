@@ -645,6 +645,15 @@ func (app *App) Bootstrap() error {
 		return fmt.Errorf("commerce: per-org DB resolver not installed after SetOrgDBResolver — refusing to start (money paths would use the shared store)")
 	}
 
+	// Ensure the agency org's per-org catalog exists (the checkout price
+	// authority for the hanzo.agency onboarding plans). Self-healing + create-
+	// if-absent, so it is restored on every boot without clobbering admin edits.
+	// Fail-open: a seed error must not crash boot — an absent catalog fails the
+	// agency checkout CLOSED (400), never a mispriced mint.
+	if err := seed.EnsureAgencyCatalog(context.Background()); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: agency catalog seed failed (agency checkout will fail-closed until present): %v\n", err)
+	}
+
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
 	// record + commerce_tenant_hostnames claim table — the source of truth
 	// for the /v1/commerce/tenant public JSON and /_/commerce/tenants
