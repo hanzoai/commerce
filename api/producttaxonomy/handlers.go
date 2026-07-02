@@ -59,7 +59,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 func ListOptionValues(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	optionId := c.Params.ByName("productoptionid")
+	optionId := c.Params.ByName("product-optionid")
 
 	// Verify the option exists (scopes the 404 to this org's data).
 	opt := productoption.New(db)
@@ -80,7 +80,7 @@ func ListOptionValues(c *gin.Context) {
 func AddOptionValue(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	optionId := c.Params.ByName("productoptionid")
+	optionId := c.Params.ByName("product-optionid")
 
 	opt := productoption.New(db)
 	if err := opt.GetById(optionId); err != nil {
@@ -109,7 +109,7 @@ func AddOptionValue(c *gin.Context) {
 func ListCategoryChildren(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	categoryId := c.Params.ByName("productcategoryid")
+	categoryId := c.Params.ByName("product-categoryid")
 
 	parent := productcategory.New(db)
 	if err := parent.GetById(categoryId); err != nil {
