@@ -59,10 +59,12 @@ var identityHeaders = []string{
 //     subject lands under an arbitrary key that every read (forced to the
 //     slug) can never see — silently orphaning the record.
 //
-// Service tokens (COMMERCE_SERVICE_TOKEN) and hk-/sk- API keys are left
-// untouched: they are not JWTs, so step 2 skips them and the existing
-// TokenRequired service-token branch authorizes them as before (those
-// callers carry X-Org-Id, never X-Org-Id).
+// Service tokens (COMMERCE_SERVICE_TOKEN) and hk-/sk- API keys are not JWTs,
+// so step 2 skips them. Their client-supplied X-Org-Id is NOT restored to the
+// trusted header (that would let IAMTokenRequired treat an unvalidated token as
+// a verified identity — the bypass this boundary now closes); it is stashed in a
+// PRIVATE context key that ONLY TokenRequired's service-token branch reads, after
+// it has verified the bearer equals COMMERCE_SERVICE_TOKEN.
 //
 // ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (both installed by Bootstrap
 // via server.go installIdentityBoundary, ahead of every route group).
@@ -82,9 +84,10 @@ func EdgeAuth() gin.HandlerFunc {
 		}
 
 		// (1) Never trust client-supplied identity at a directly-exposed edge.
-		// Capture the caller-supplied org selector before stripping; the
-		// service-token path (below) restores it once we know the bearer is an
-		// opaque token, not a spoofable JWT-edge identity.
+		// Capture the caller-supplied org selector before stripping so the
+		// validated-service-token branch (below) can honor it via a private ctx
+		// key — WITHOUT re-exposing it on the trusted X-Org-Id header, which
+		// IAMTokenRequired would otherwise mistake for a verified identity.
 		clientOrg := c.Request.Header.Get("X-Org-Id")
 
 		for _, h := range identityHeaders {
@@ -144,16 +147,42 @@ func EdgeAuth() gin.HandlerFunc {
 			}
 		}
 
-		// Service-token path: an opaque (non-JWT) bearer names its own org via
-		// X-Org-Id. Restore it here structurally only — the token itself is
-		// validated downstream (accesstoken.go), which rejects forgeries before
-		// any billing, so a spoofed X-Org-Id can never reach the money path.
+		// Opaque (non-JWT) bearer: a service token or a legacy org access token.
+		// Its client-supplied org selector MUST NOT go back on the trusted
+		// X-Org-Id header. IAMTokenRequired runs BEFORE the token is validated and
+		// treats a present X-Org-Id as a verified IAM identity (iam_authenticated
+		// =true, no token check) — restoring the header was a complete auth bypass
+		// (opaque bearer + X-Org-Id ⇒ forged principal for any org). Stash it in a
+		// PRIVATE ctx key instead; TokenRequired's service-token branch reads it
+		// ONLY after verifying the bearer == COMMERCE_SERVICE_TOKEN. X-Org-Id stays
+		// stripped, so an unvalidated token can never resolve an org.
 		if tok != "" && !looksLikeJWT(tok) && clientOrg != "" {
-			c.Request.Header.Set("X-Org-Id", clientOrg)
+			c.Set(ctxKeyClientOrg, clientOrg)
 		}
 
 		c.Next()
 	}
+}
+
+// ctxKeyClientOrg is the PRIVATE gin context key under which EdgeAuth stashes an
+// opaque bearer's client-supplied org selector (the pre-strip X-Org-Id). It is
+// read ONLY by TokenRequired's service-token branch, and only after that branch
+// has verified the bearer equals COMMERCE_SERVICE_TOKEN — so an unvalidated
+// token's org selector never reaches org resolution. Deliberately NOT the
+// X-Org-Id header: leaving that header stripped stops IAMTokenRequired (which
+// runs first) from mistaking an unvalidated value for a verified IAM identity.
+const ctxKeyClientOrg = "edge_client_org"
+
+// clientOrgFromContext returns the org selector EdgeAuth stashed for an opaque
+// bearer, or "" when absent. Consumed by TokenRequired's service-token branch
+// (middleware/accesstoken.go) only after the service token is verified.
+func clientOrgFromContext(c *gin.Context) string {
+	if v, ok := c.Get(ctxKeyClientOrg); ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
 }
 
 // bearerToken returns the token from an "Authorization: Bearer <tok>"
