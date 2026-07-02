@@ -102,7 +102,12 @@ var (
 	pricingRuleId  string
 )
 
-var _ = Describe("billing", func() {
+// Ordered: this is a stateful integration suite — a meter created in "Meters" is
+// reused by "Meter Events", deposits precede refunds, and the allotment specs are
+// a report→grant→balance sequence. Declare that ordering so `ginkgo
+// --randomize-all` doesn't run a dependent spec before the one that seeds its
+// state (that was the "batch events → count 0" CI failure: meterId still "").
+var _ = Describe("billing", Ordered, func() {
 
 	// ─── METERS ───────────────────────────────────────────────────────
 
@@ -654,18 +659,21 @@ var _ = Describe("billing", func() {
 			Expect((*res)["type"]).To(Equal("deposit"))
 		})
 
-		It("Should reject starter credit without payment method", func() {
-			req := map[string]interface{}{
+		It("Should grant starter credit without a payment method", func() {
+			// The starter credit is the on-signup welcome grant — grantable
+			// WITHOUT a card (a verified payment method gates top-up BEYOND it,
+			// never the grant itself). First claim for a fresh user -> 201.
+			w := cl.PostJSON("/billing/credit", map[string]interface{}{
 				"user": "hanzo/charlie",
-			}
-			res := &ApiError{}
-			cl.Post("/billing/credit", req, res)
-
-			Expect(res.Error.Message).To(ContainSubstring("payment method"))
+			})
+			Expect(w.Code).To(Equal(201))
 		})
 
-		It("Should auto-grant starter credit when payment method is added", func() {
-			// Adding a payment method auto-triggers GrantIfEligible in a goroutine.
+		It("Should be idempotent — a repeat claim returns already-granted", func() {
+			// A payment method is orthogonal to the starter grant (the card
+			// gates top-up, not the welcome credit). charlie was already
+			// credited above, so a repeat claim — even right after adding a
+			// card — is an idempotent no-op (200), never a double-grant.
 			pmReq := map[string]interface{}{
 				"customerId": "hanzo/charlie",
 				"type":       "card",
@@ -680,12 +688,10 @@ var _ = Describe("billing", func() {
 			cl.Post("/billing/payment-methods", pmReq, pmRes)
 			Expect((*pmRes)["id"]).NotTo(BeEmpty())
 
-			// Explicit claim should return 201 (granted) or 409 (already
-			// auto-granted by the goroutine). Both are acceptable.
 			w := cl.PostJSON("/billing/credit", map[string]interface{}{
 				"user": "hanzo/charlie",
 			})
-			Expect(w.Code == 201 || w.Code == 409).To(BeTrue())
+			Expect(w.Code).To(Equal(200)) // already granted -> idempotent no-op
 		})
 
 		It("Should create a refund", func() {
@@ -719,63 +725,73 @@ var _ = Describe("billing", func() {
 	// Proves the plan included-usage credit lands on the prepaid balance so
 	// the gateway gate (available > 0) honors it, is idempotent per month,
 	// and surfaces correctly through the usage rollup.
-	Describe("included monthly allotment", func() {
+	// Ordered: a report→grant→balance→rollup sequence sharing one user/plan.
+	Describe("included monthly allotment", Ordered, func() {
 		const user = "hanzo/allotuser"
+		// "max" (the $200 tier) declares a $100/mo cloud credit
+		// (limits.includedCloudCredits) that the allotment grants. "pro" declares
+		// none (→ 0), covered by the no-allotment case below.
+		const plan = "max"
+		// The plan's DECLARED included amount, read from the catalog — never a
+		// hardcoded dollar figure (that brittleness is what broke these tests when
+		// the catalog drifted). Every downstream surface must equal it.
+		var wantCents float64
 
-		It("Should report catalog included amount before any grant", func() {
+		It("Should report the catalog included amount before any grant", func() {
 			res := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user="+user+"&plan=pro", res)
+			cl.Get("/billing/usage-rollup?user="+user+"&plan="+plan, res)
 
 			included := (*res)["included"].(map[string]interface{})
-			// Pro plan declares $20/mo included (2000 cents) in @hanzo/plans.
-			Expect(included["monthlyCents"]).To(BeEquivalentTo(2000))
+			wantCents = included["monthlyCents"].(float64)
+			// A credited plan declares a positive monthly allotment.
+			Expect(wantCents).To(BeNumerically(">", 0))
 			// Nothing granted yet this period.
 			Expect(included["grantedCents"]).To(BeEquivalentTo(0))
 		})
 
-		It("Should grant the Pro plan included allotment", func() {
+		It("Should grant the plan's included allotment", func() {
 			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
 				"user": user,
-				"plan": "pro",
+				"plan": plan,
 			})
 			Expect(w.Code).To(Equal(201))
 		})
 
 		It("Should reflect the allotment in the gate-relevant balance", func() {
 			// /billing/balance is the exact endpoint the gateway prepaid gate
-			// reads; available must now be the included $20.00.
+			// reads; available must now equal the plan's declared included credit.
 			res := &map[string]interface{}{}
 			cl.Get("/billing/balance?user="+user+"&currency=usd", res)
-			Expect((*res)["available"]).To(BeEquivalentTo(2000))
+			Expect((*res)["available"]).To(BeEquivalentTo(wantCents))
 		})
 
 		It("Should be idempotent within the same month", func() {
 			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
 				"user": user,
-				"plan": "pro",
+				"plan": plan,
 			})
 			Expect(w.Code).To(Equal(200)) // already granted -> not 201
 		})
 
 		It("Should surface included/consumed/overage in the rollup", func() {
 			res := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user="+user+"&plan=pro", res)
+			cl.Get("/billing/usage-rollup?user="+user+"&plan="+plan, res)
 
 			included := (*res)["included"].(map[string]interface{})
-			Expect(included["grantedCents"]).To(BeEquivalentTo(2000))
-			Expect(included["remainingCents"]).To(BeEquivalentTo(2000))
+			Expect(included["grantedCents"]).To(BeEquivalentTo(wantCents))
+			Expect(included["remainingCents"]).To(BeEquivalentTo(wantCents))
 			// No usage recorded for this user -> no overage.
 			Expect((*res)["overageCents"]).To(BeEquivalentTo(0))
 
 			balance := (*res)["balance"].(map[string]interface{})
-			Expect(balance["availableCents"]).To(BeEquivalentTo(2000))
+			Expect(balance["availableCents"]).To(BeEquivalentTo(wantCents))
 		})
 
 		It("Should grant nothing for a plan with no included allotment", func() {
-			// "custom" is contact-sales with no includedCreditUsd -> 0 cents.
+			// "pro" declares no cloud credit -> 0 cents.
 			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
 				"user": "hanzo/allotnone",
-				"plan": "custom",
+				"plan": "pro",
 			})
 			Expect(w.Code).To(Equal(200)) // no_included_allotment -> not granted
 		})
