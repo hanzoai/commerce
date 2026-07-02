@@ -1,8 +1,10 @@
 name: Docker Release
 
 on:
+  # Semver-only publishing: ONLY a v* git tag produces a published image
+  # (ghcr.io/hanzoai/commerce:X.Y.Z). No branch builds — those emitted
+  # sha-<sha>/floating drift and redundant queued runs. Deploys pin vX.Y.Z.
   push:
-    branches: [main, test, dev]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -16,9 +18,10 @@ jobs:
     uses: hanzoai/.github/.github/workflows/docker-build.yml@main
     with:
       image: ghcr.io/hanzoai/commerce
-      # Native multi-arch. amd64 → hanzo-build-linux-amd64 (DOKS ARC).
-      # arm64 → spark (Ampere bare metal arcd). No QEMU.
-      platforms: linux/amd64,linux/arm64
+      # amd64-only: arm64 is PAUSED (DOKS has no arm64 droplets). Building
+      # both emitted per-arch -amd64/-arm64 tag drift; amd64 is the canonical
+      # DOKS build path. Re-add linux/arm64 when DO ships arm64 instances.
+      platforms: linux/amd64
       # @hanzo/plans is the data SOT on npm — public package. The
       # pre-build pulls the tarball into api/billing/plans/ so Go's
       # go:embed bakes the canonical catalog into the binary at
