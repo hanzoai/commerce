@@ -34,6 +34,7 @@ import (
 
 	"github.com/hanzoai/commerce/admin"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
+	catalogapi "github.com/hanzoai/commerce/api/catalog"
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
 	"github.com/hanzoai/commerce/checkout"
@@ -45,6 +46,7 @@ import (
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/models/catalogentry"
 	orgModel "github.com/hanzoai/commerce/models/organization"
 	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/sbomrecord"
@@ -54,6 +56,7 @@ import (
 	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Version, GitCommit, and BuildTime are set via -ldflags at build time.
@@ -761,6 +764,14 @@ func (app *App) Bootstrap() error {
 		app.runStripeSeed()
 	}
 
+	// Platform product catalog seed — populate the CMS source-of-truth for
+	// Hanzo's own products (the list docs/console/pricing derive from) on first
+	// boot. SeedIfEmpty is a cheap count-gated no-op once populated, so CMS
+	// edits are authoritative thereafter. Set COMMERCE_CATALOG_SEED=false to skip.
+	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
+		app.runCatalogSeed()
+	}
+
 	// Anti-spoofing boundary — MUST be installed before any route group so it
 	// wraps EVERY route. gin applies engine.Use() middleware only to routes
 	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
@@ -787,6 +798,22 @@ func (app *App) Bootstrap() error {
 }
 
 // runStripeSeed syncs every static plan in api/billing to Stripe. Errors are
+// runCatalogSeed populates the platform product catalog (the "system" namespace
+// CMS store) on first boot from the embedded seed. Cheap count-gated no-op once
+// populated. Failures are logged, never fatal — the catalog projection simply
+// returns empty until seeded.
+func (app *App) runCatalogSeed() {
+	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	created, err := catalogentry.SeedIfEmpty(db)
+	if err != nil {
+		slog.Error("catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("catalog seeded", "products", created)
+	}
+}
+
 // logged but do not abort bootstrap — the service remains usable without
 // Stripe catalog parity in degraded environments.
 func (app *App) runStripeSeed() {
@@ -938,6 +965,9 @@ func (app *App) setupRoutes() {
 	public := app.Router.Group("/v1/commerce")
 	public.Use(forwardedHostMiddleware())
 	public.GET("/tenant", gin.WrapH(checkout.TenantJSON(orgResolver)))
+	// Public platform product catalog projection (the CMS SOT other surfaces —
+	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
+	public.GET("/catalog", catalogapi.Public)
 	public.POST("/deposits", gin.WrapH(checkout.Deposits(orgResolver, checkout.NewHTTPForwarder())))
 	public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder())))
 	public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder())))
