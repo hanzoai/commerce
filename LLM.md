@@ -472,6 +472,33 @@ covers Medusa v2's admin domains natively — no Medusa/Node fork. Reference:
   for money-moving requests; wired into `api/checkout` `Refund` via
   `X-Idempotency-Key` (replay returns stored response; in-flight → 409).
 
+### Platform product catalog — commerce is the CMS SOT (1.42.41)
+`models/catalogentry` (`catalog-entry`, kind 273) is the source-of-truth for a
+brand's OWN products (Models, Vector, KMS, …) — the list docs.<brand> + the
+console sidebar + pricing all derive from. Pricing is native (`priceCents` on the
+entry), so it stops being a separate service.
+- Presentation meta is CMS-editable STRINGS: `iconKey` ("Brain"), `brandColor`
+  (hex/token), `docsUrl`, `apiPath`. commerce is presentation-agnostic — the
+  client (`@hanzo/products`) maps iconKey→@hanzogui component + colorToken→css.
+- **`GET /v1/commerce/catalog?brand=<b>`** (public, no auth, on the commerce
+  public group so it serves that exact path) → `{brand, categories[], products[]}`,
+  brand-scoped (hanzo=13 canonical categories; lux/zoo/pars=5 subset, mirroring
+  console2 brand-scope), category-ordered, unpublished excluded. This is the
+  typed contract `@hanzo/products` consumes (`models/catalogentry/projection.go`).
+- **Admin CRUD** `/v1/catalog/entries` (+ `/seed`) gates on
+  `auth.IAMClaims.GlobalAdmin()` — the catalog is cross-tenant PLATFORM data in
+  the `system` namespace, so an org-level admin must NOT edit it.
+- **Seed**: 95 Hanzo products extracted from `console2 src/lib/products/registry.tsx`,
+  embedded via `go:embed seed/hanzo-catalog.json`. `SeedIfEmpty` auto-runs on
+  first boot (count-gated no-op once populated; `COMMERCE_CATALOG_SEED=false` to
+  skip). Idempotent + non-destructive — never clobbers CMS edits. Re-baseline by
+  regenerating the JSON from the console registry.
+- Namespace: the catalog is platform-global (`system` ns), brand-partitioned by
+  the `Brand` field, namespaced via CONTEXT (`nscontext.WithNamespace`) — struct
+  `SetNamespace` is a no-op for queries (they read ns from `d.Context`), a latent
+  codebase gotcha `api/billing/osspayout systemDB` also trips (works only because
+  its reads+writes are symmetric in the default ns).
+
 ### Money-correctness design (idempotency WITHOUT working transactions)
 - `datastore.RunInTransaction` (`datastore/datastore.go`) is a **NO-OP** — it
   runs `fn(New(ctx))` with no tx/lock/isolation. `db.SQLiteDB.RunInTransaction`
