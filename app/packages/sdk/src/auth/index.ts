@@ -8,7 +8,7 @@ import { ClientHeaders, Config } from "../types"
  * Casdoor-based OIDC provider.
  */
 const HANZO_IAM_ISSUER = "https://hanzo.id"
-const HANZO_IAM_TOKEN_ENDPOINT = "https://hanzo.id/api/login/oauth/access_token"
+const HANZO_IAM_TOKEN_ENDPOINT = "https://hanzo.id/v1/iam/oauth/token"
 const HANZO_IAM_DEFAULT_CLIENT_ID = "app-hanzo"
 
 /**
