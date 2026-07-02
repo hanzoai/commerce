@@ -10,7 +10,7 @@ import "fmt"
 // bootCloud is the stub returned when the binary is built WITHOUT the
 // `cloud` build tag. The real implementation lives in cloud_boot.go,
 // gated by //go:build cloud, and imports github.com/hanzoai/cloud +
-// hanzoai/zip. Building without the tag keeps the production binary
+// zap-proto/zip. Building without the tag keeps the production binary
 // free of those imports and their transitive deps when only the
 // legacy direct-Gin path is needed.
 func bootCloud(dataDir, httpAddr string, dev, requireIdentity bool) error {

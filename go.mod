@@ -2,10 +2,7 @@ module github.com/hanzoai/commerce
 
 go 1.26.4
 
-require (
-	github.com/hanzoai/cloud v0.1.0
-	github.com/hanzoai/zip v0.2.0
-)
+require github.com/hanzoai/cloud v0.1.0
 
 require (
 	github.com/Machiel/slugify v1.0.1
@@ -39,7 +36,6 @@ require (
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.19.17
-	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo/v2 v2.28.1
@@ -55,7 +51,10 @@ require (
 	golang.org/x/crypto v0.52.0
 )
 
-require github.com/luxfi/zap v0.7.2
+require (
+	github.com/luxfi/zap v0.7.2
+	github.com/zap-proto/zip v1.1.0
+)
 
 require (
 	cel.dev/expr v0.25.1 // indirect
@@ -77,14 +76,18 @@ require (
 	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5 // indirect
 	github.com/consensys/gnark-crypto v0.20.1 // indirect
 	github.com/cronokirby/saferith v0.33.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/dop251/goja v0.0.0-20260607120635-348e6bea910d // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.36.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.0 // indirect
+	github.com/evanw/esbuild v0.28.1 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/gofiber/fiber/v3 v3.2.0 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
 	github.com/gofiber/utils/v2 v2.0.4 // indirect
@@ -126,6 +129,8 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.70.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/zap-proto/go v1.3.0 // indirect
+	github.com/zap-proto/http v0.1.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
@@ -144,7 +149,7 @@ require (
 
 require (
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
-	github.com/Masterminds/semver/v3 v3.4.0 // indirect
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
@@ -251,7 +256,7 @@ require (
 	modernc.org/libc v1.72.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.51.0 // indirect
+	modernc.org/sqlite v1.51.0
 )
 
 // hanzoai/base + hanzoai/cloud are both now published as proper Go
