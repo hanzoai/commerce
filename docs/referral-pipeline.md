@@ -63,7 +63,7 @@ Commerce is the single source of truth for all monetary operations. IAM handles 
                       |           |
                [hanzo.id/callback]
                       |
-              POST Commerce /api/v1/referral/claim
+              POST Commerce /v1/referral/claim
               {referralCode, refereeUserId}
                       |
                [Commerce]
@@ -92,8 +92,8 @@ The correct design: the frontend stores the `ref` param in `sessionStorage` befo
 
 ```
 1. Referrer visits console.hanzo.ai/referral
-2. Console calls: GET /api/v1/referrer/me  (IAM token, userId from JWT)
-   - If no referrer exists, Console calls: POST /api/v1/referrer
+2. Console calls: GET /v1/referrer/me  (IAM token, userId from JWT)
+   - If no referrer exists, Console calls: POST /v1/referrer
      {userId, programId: "hanzo-referral-v1"}
    - Commerce generates unique code, returns Referrer with code
 3. Referrer shares link: hanzo.ai/signup?ref={code}
@@ -105,11 +105,11 @@ The correct design: the frontend stores the `ref` param in `sessionStorage` befo
 8. Callback page:
    a. Exchanges code for tokens (existing flow)
    b. Reads hanzo_referral_code from sessionStorage
-   c. If present, calls: POST /api/v1/referral/claim
+   c. If present, calls: POST /v1/referral/claim
       Authorization: Bearer {iam_token}
       {code: "{referral_code}"}
    d. Clears sessionStorage key
-9. Commerce /api/v1/referral/claim handler:
+9. Commerce /v1/referral/claim handler:
    a. Extract userId from IAM JWT claims
    b. Lookup Referrer by code
    c. Check fraud rules (self-referral, cooldown, IP, daily limit)
@@ -126,7 +126,7 @@ The correct design: the frontend stores the `ref` param in `sessionStorage` befo
 **Commerce** -- new endpoint:
 
 ```
-POST /api/v1/referral/claim
+POST /v1/referral/claim
 Authorization: Bearer {IAM JWT}
 Content-Type: application/json
 
@@ -157,7 +157,7 @@ Errors:
 **Commerce** -- new endpoint:
 
 ```
-GET /api/v1/referrer/me
+GET /v1/referrer/me
 Authorization: Bearer {IAM JWT}
 
 Response (200):
@@ -170,13 +170,13 @@ Response (200):
 }
 
 Response (404):
-User has no referrer record. Console should call POST /api/v1/referrer to create one.
+User has no referrer record. Console should call POST /v1/referrer to create one.
 ```
 
 **Commerce** -- new endpoint:
 
 ```
-GET /api/v1/referrer/code/:code
+GET /v1/referrer/code/:code
 (public, no auth required -- used for link validation)
 
 Response (200): { "valid": true, "referrerName": "Jane D." }
@@ -200,7 +200,7 @@ Credits are created in Flow 1 step 9f/9g. Consumption happens via existing billi
    - metadata: {referralId, referrerCode, tier}
 
 2. User makes API call (e.g. LLM inference via api.hanzo.ai)
-3. Cloud-API calls: POST /api/v1/billing/usage {user, amount, model, ...}
+3. Cloud-API calls: POST /v1/billing/usage {user, amount, model, ...}
 4. Commerce records withdraw transaction
 5. Cloud-API (or billing cycle) calls BurnCredits() which:
    a. Gets active grants sorted by priority ASC, expiry ASC
@@ -208,7 +208,7 @@ Credits are created in Flow 1 step 9f/9g. Consumption happens via existing billi
    c. Referral credits (priority 10) burn after purchased (5) but before trial (20)
 
 3. User views console.hanzo.ai/billing:
-   GET /api/v1/billing/credit-balance/breakdown?userId=...
+   GET /v1/billing/credit-balance/breakdown?userId=...
    Returns: { "breakdown": { "referral-bonus": {cents: 1500}, "purchased": {cents: 5000} } }
 ```
 
@@ -224,7 +224,7 @@ When a referred user generates billable usage, the referrer earns a percentage.
 
 ```
 1. Referred user makes API calls
-2. Cloud-API calls: POST /api/v1/billing/usage
+2. Cloud-API calls: POST /v1/billing/usage
 3. Commerce RecordUsage handler (MODIFIED):
    a. Records withdraw transaction (existing)
    b. Checks if user has an active referral:
@@ -262,7 +262,7 @@ Add a goroutine after the main transaction that checks for active referral and c
 **Commerce** -- new endpoint:
 
 ```
-GET /api/v1/referrer/:id/earnings
+GET /v1/referrer/:id/earnings
 Authorization: Bearer {IAM JWT}
 
 Response (200):
@@ -334,7 +334,7 @@ SubjectContributorPayout = "commerce.contributor.payout"
 |-------|-------|------|
 | `referral.clicked` | hanzo.ai landing page (client-side analytics) | User visits `?ref=CODE` |
 | `referral.signup` | hanzo.id callback page (client-side analytics) | Signup completes with ref code present |
-| `referral.completed` | Commerce `/api/v1/referral/claim` handler | Claim succeeds, credits granted |
+| `referral.completed` | Commerce `/v1/referral/claim` handler | Claim succeeds, credits granted |
 | `credit.granted` | Commerce `CreateCreditGrant` handler | Any credit grant created |
 | `commission.earned` | Commerce `RecordUsage` handler (after fee creation) | Affiliate fee created |
 | `contributor.payout` | Commerce contributor payout cron | Payout executed |
@@ -342,7 +342,7 @@ SubjectContributorPayout = "commerce.contributor.payout"
 Client-side events (`referral.clicked`, `referral.signup`) go to the existing Commerce analytics endpoint:
 
 ```
-POST /api/v1/analytics/event
+POST /v1/analytics/event
 {
   "event": "referral_clicked",
   "properties": {"code": "ABC123", "source": "landing_page"}
@@ -356,9 +356,9 @@ Server-side events go to NATS/JetStream via the existing `Publisher`.
 Console fetches from Commerce, not from an analytics service:
 
 ```
-GET /api/v1/referrer/me           -- code, share URL, tier
-GET /api/v1/referrer/:id/stats    -- referral count, conversion rate, earnings
-GET /api/v1/billing/credit-grants -- user's credits with tag filtering
+GET /v1/referrer/me           -- code, share URL, tier
+GET /v1/referrer/:id/stats    -- referral count, conversion rate, earnings
+GET /v1/billing/credit-grants -- user's credits with tag filtering
 ```
 
 Analytics data (click counts, funnel visualization) comes from the analytics
@@ -371,9 +371,9 @@ pixel/event data that Commerce already collects and stores in ClickHouse.
 Changes by repo:
 
 **Commerce** (`~/work/hanzo/commerce/`):
-1. Add `GET /api/v1/referrer/me` endpoint -- lookup by userId from IAM JWT
-2. Add `GET /api/v1/referrer/code/:code` endpoint -- public code validation
-3. Add `POST /api/v1/referral/claim` endpoint -- the main claim handler
+1. Add `GET /v1/referrer/me` endpoint -- lookup by userId from IAM JWT
+2. Add `GET /v1/referrer/code/:code` endpoint -- public code validation
+3. Add `POST /v1/referral/claim` endpoint -- the main claim handler
 4. Modify referrer creation to auto-generate unique codes (currently caller-supplied)
 5. Wire claim handler to create CreditGrant records (not legacy transactions)
 6. Add referral event subjects to `events/schema.go`
@@ -382,7 +382,7 @@ Changes by repo:
 **hanzo.id** (`~/work/hanzo/id/`):
 1. `SignUpForm.tsx`: read `?ref` param from URL, store in `sessionStorage`
 2. `callback/page.tsx`: after token exchange, if `sessionStorage` has ref code,
-   call `POST commerce.hanzo.ai/api/v1/referral/claim` with IAM bearer token
+   call `POST commerce.hanzo.ai/v1/referral/claim` with IAM bearer token
 
 **hanzo.ai** (landing/marketing site):
 1. Ensure `?ref=CODE` param is preserved through any redirects to `hanzo.id/signup`
@@ -393,7 +393,7 @@ Changes by repo:
 **Commerce**:
 1. Modify `RecordUsage()` to check for active referral and create affiliate fees
 2. Add fee maturity cron: pending -> payable after cooldown days
-3. Add `GET /api/v1/referrer/:id/earnings` endpoint
+3. Add `GET /v1/referrer/:id/earnings` endpoint
 4. Wire tier lookup from `referral-program.json` based on referral count
 
 ### Phase 3: Console Dashboard (1 week)
