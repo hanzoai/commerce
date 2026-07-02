@@ -152,8 +152,13 @@ var DefaultPermissions = map[string]Permissions{
 		"delete": masks(Admin, WriteStore),
 		"patch":  masks(Admin, ReadStore|WriteStore),
 		"update": masks(Admin, ReadStore|WriteStore),
-		"get":    masks(Admin, ReadStore),
-		"list":   masks(Admin, Store),
+		// Published is the anonymous storefront read key (see permission.go doc:
+		// "Anonymous users (via published keys)"). A per-org storefront Published
+		// token reads the published catalog (store + embedded listings) so a
+		// logged-out shopper can browse — the same intent cart.create already
+		// grants Published. Write paths stay Admin/WriteStore only.
+		"get":  masks(Admin, ReadStore, Published),
+		"list": masks(Admin, Store, Published),
 	},
 
 	"subscriber": Permissions{
