@@ -335,7 +335,7 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 
 	// Use unique filter based on model type
 	switch q.kind {
-	case "store", "product", "collection", "plan":
+	case "store", "product", "collection", "plan", "catalog-entry":
 		filterField = "Slug="
 	case "variant":
 		filterField = "SKU="
