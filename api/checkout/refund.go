@@ -3,6 +3,7 @@ package checkout
 import (
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,14 +42,23 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 
 	log.JSON(req)
 
+	// Deterministic gateway idempotency key so a retried refund de-dupes AT
+	// SQUARE (idempotent across pods/mutexes/guards). Prefer the caller's
+	// X-Idempotency-Key; else derive from (order, amount, refunded-so-far) so
+	// concurrent identical refunds collapse to one at the gateway.
+	gwKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	if gwKey == "" {
+		gwKey = ord.Id() + ":" + strconv.FormatInt(int64(req.Amount), 10) + ":" + strconv.FormatInt(int64(ord.Refunded), 10)
+	}
+
 	switch ord.Type {
 	case accounts.SquareType:
-		if err := square.Refund(org, ord, req.Amount); err != nil {
+		if err := square.Refund(org, ord, req.Amount, gwKey); err != nil {
 			return err
 		}
 	default:
 		// Default to Square
-		if err := square.Refund(org, ord, req.Amount); err != nil {
+		if err := square.Refund(org, ord, req.Amount, gwKey); err != nil {
 			return err
 		}
 	}
