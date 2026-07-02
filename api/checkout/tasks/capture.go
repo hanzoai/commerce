@@ -17,7 +17,7 @@ var CaptureAsync = delay.Func("capture-async", func(ctx context.Context, orgId s
 	org := organization.New(db)
 	org.MustGetById(orgId)
 
-	nsdb := datastore.New(org.Namespaced(ctx))
+	nsdb := datastore.NewNamespaced(org.Namespaced(ctx)) // per-org order/user store (Red MED-1)
 	ord := order.New(nsdb)
 	usr := user.New(nsdb)
 
@@ -46,7 +46,7 @@ var SendOrderConfirmation = delay.Func("send-order-confirmation", func(ctx conte
 	org := organization.New(db)
 	org.MustGetById(orgId)
 
-	nsdb := datastore.New(org.Namespaced(ctx))
+	nsdb := datastore.NewNamespaced(org.Namespaced(ctx)) // per-org order/user store (Red MED-1)
 	ord := order.New(nsdb)
 	ord.MustGetById(ordId)
 
