@@ -18,7 +18,16 @@ func TestAllowedCheckoutRedirect(t *testing.T) {
 		{"hanzo app subdomain", "https://console.hanzo.ai/done", "hanzo", nil, true},
 		{"hanzo chat subdomain", "https://maxpower.hanzo.chat/done", "hanzo", nil, true},
 		{"hanzo first-party bot host", "https://playground.hanzo.bot/x", "hanzo", nil, true},
+		{"hanzo agency onboarding success", "https://hanzo.agency/onboarding-success", "hanzo", nil, true},
+		{"hanzo agency www", "https://www.hanzo.agency/onboarding-success", "hanzo", nil, true},
+		{"hanzo agency cancel to pricing", "https://hanzo.agency/pricing", "hanzo", nil, true},
 		{"http scheme accepted", "http://hanzo.ai/x", "hanzo", nil, true},
+
+		// hanzo.agency is first-party to the hanzo brand ONLY — a lux org
+		// must not be able to redirect a real payment link there.
+		{"lux org to hanzo.agency rejected", "https://hanzo.agency/x", "lux", nil, false},
+		// A spoof suffix of hanzo.agency must not match the exact-host entry.
+		{"hanzo.agency suffix spoof", "https://hanzo.agency.evil.com/x", "hanzo", nil, false},
 
 		// The open-redirect / phishing pivots the allowlist must reject.
 		{"attacker host", "https://evil.com/steal", "hanzo", nil, false},
