@@ -35,7 +35,13 @@ type depositRequest struct {
 // processor settlement, manual credit, promotional grants, etc.).
 func Deposit(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	// Write to the org's OWN per-org store (NewNamespaced), matching where the
+	// balance read lands (models/transaction/util.GetTransactionsByCurrency uses
+	// NewNamespaced). `datastore.New` targets the shared defaultDB, so deposits
+	// written there were invisible to the balance query — every org read $0 and
+	// the LLM gateway's prepaid gate 402'd every request. This is the write-side
+	// half of the "Red CRIT-2" per-org ledger fix.
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	var req depositRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -114,7 +120,8 @@ func Deposit(c *gin.Context) {
 //	POST /v1/billing/credit
 func GrantStarterCredit(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	// Per-org store, matching the balance read (see Deposit above).
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	var req struct {
 		User string `json:"user"`
