@@ -12,7 +12,7 @@ import (
 
 func Create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	ord := order.New(db)
 
 	// Decode response body to create new order
@@ -37,7 +37,7 @@ func Create(c *gin.Context) {
 
 func Update(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	ord := order.New(db)
 
 	id := c.Params.ByName("orderid")
@@ -73,7 +73,7 @@ func Update(c *gin.Context) {
 
 func Patch(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	ord := order.New(db)
 
 	id := c.Params.ByName("orderid")

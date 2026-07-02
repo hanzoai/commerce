@@ -76,6 +76,14 @@ func SetOrgDBResolver(fn func(namespace string) (db.DB, error)) {
 	orgDBResolver = fn
 }
 
+// HasOrgDBResolver reports whether the per-org resolver is installed. Bootstrap
+// asserts this AFTER SetOrgDBResolver so a production binary FAILS TO START if
+// the money-path resolver is missing — rather than silently letting every
+// namespaced money handler fall back to the shared store (cross-tenant). The
+// tests/dev nil-resolver path (NewNamespaced → shared default DB, one store per
+// process) is intentional and unaffected: it is gated at Bootstrap, not here.
+func HasOrgDBResolver() bool { return orgDBResolver != nil }
+
 // NewNamespaced returns a Datastore bound to the per-org store for the namespace
 // carried by ctx. This is THE merchant-model datastore: every org's product/
 // order/store/customer/collection/discount/... rows live in that org's OWN

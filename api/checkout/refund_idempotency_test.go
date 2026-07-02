@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/order"
@@ -62,6 +63,10 @@ func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Set("organization", org)
 	c.Set("context", base)
+	// Refund is admin-gated (money move); inject the verified admin claim the
+	// gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes.
+	c.Set("iam_authenticated", true)
+	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
 	c.Params = gin.Params{{Key: "orderid", Value: ord.Id()}}
 	body, _ := json.Marshal(map[string]any{"amount": 1500})
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))
@@ -114,6 +119,10 @@ func TestRefund_Idempotency_InFlightRejected(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Set("organization", org)
 	c.Set("context", base)
+	// Refund is admin-gated (money move); inject the verified admin claim the
+	// gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes.
+	c.Set("iam_authenticated", true)
+	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
 	c.Params = gin.Params{{Key: "orderid", Value: ord.Id()}}
 	body, _ := json.Marshal(map[string]any{"amount": 1500})
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))

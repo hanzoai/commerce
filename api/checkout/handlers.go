@@ -38,9 +38,12 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 		}
 	}
 
-	// Set up the db with the namespaced context
+	// Set up the db with the namespaced context. NewNamespaced routes to the
+	// caller org's OWN physical store (per-org SQLite via db.Manager.Org) so an
+	// order — and every money move on it — is physically isolated per tenant,
+	// never the shared systemDB/Postgres pool (Red CRIT-2).
 	ctx := org.Namespaced(c)
-	db := datastore.New(ctx)
+	db := datastore.NewNamespaced(ctx)
 
 	// Create order that's properly namespaced
 	ord := order.New(db)
@@ -131,6 +134,13 @@ func refundLockFor(key string) *sync.Mutex {
 }
 
 func Refund(c *gin.Context) {
+	// Money move: enforce admin INSIDE the handler. The route's
+	// TokenRequired(Admin) middleware is a no-op on the IAM path (Red HIGH-4),
+	// so a refund must verify admin itself, IAM-aware.
+	if !middleware.RequireAdmin(c) {
+		return
+	}
+
 	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
 		http.Fail(c, 400, err.Error(), err)
@@ -145,6 +155,22 @@ func Refund(c *gin.Context) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	// Re-read the order INSIDE the lock so its Refunded/Paid reflect the latest
+	// COMMITTED state. getOrganizationAndOrder loaded ord BEFORE the lock; two
+	// concurrent distinct-AMOUNT refunds would otherwise each evaluate
+	// square.Refund's over-refund guard against the same STALE ord.Refunded and
+	// both pass (3000 + 3000 on a 5000 order ⇒ 6000 refunded). Reloading under
+	// the lock makes the check-then-write atomic per order (Red HIGH-3),
+	// mirroring giftcard.Redeem which reads the balance inside its per-card lock.
+	// NewNamespaced keeps the order in the caller org's own store (Red CRIT-2).
+	db := datastore.NewNamespaced(org.Namespaced(c))
+	fresh := order.New(db)
+	if err := fresh.GetById(ord.Id()); err != nil {
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
+	ord = fresh
+
 	// Idempotency guard (money-critical). A refund is a non-idempotent money
 	// move: two identical POSTs (a client retry, a double-click, a proxy replay)
 	// would otherwise each hit the gateway and double-refund. When the caller
@@ -158,7 +184,6 @@ func Refund(c *gin.Context) {
 	// square.Refund already guards over-refund (Refunded+amt > Total ⇒ reject);
 	// the guard here adds retry/replay safety on top.
 	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
-	db := datastore.New(org.Namespaced(c))
 	if idemKey != "" {
 		scope := "refund:" + ord.Id()
 		rec, replay, gerr := idempotencykey.Begin(db, scope, idemKey)

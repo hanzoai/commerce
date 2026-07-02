@@ -108,6 +108,30 @@ func TestNewNamespaced_Routing(t *testing.T) {
 	}
 }
 
+// TestHasOrgDBResolver_BootstrapFailClosedContract proves the signal the
+// commerce Bootstrap uses to fail closed (Red CRIT-2). commerce.go calls
+// SetOrgDBResolver(app.DB.Org) and then asserts HasOrgDBResolver(); if it is
+// false the process refuses to start, so a boot that forgot to wire the per-org
+// resolver can never silently run every tenant's money on the shared store.
+func TestHasOrgDBResolver_BootstrapFailClosedContract(t *testing.T) {
+	saveGlobals(t)
+
+	// Unset ⇒ the fatal state Bootstrap must catch.
+	SetOrgDBResolver(nil)
+	if HasOrgDBResolver() {
+		t.Fatal("HasOrgDBResolver()=true with no resolver installed — Bootstrap would NOT fail closed")
+	}
+
+	// Installed ⇒ the healthy state Bootstrap requires to proceed.
+	mgr, sys, cleanup := newTestManager(t)
+	defer cleanup()
+	SetDefaultDB(sys)
+	SetOrgDBResolver(mgr.Org)
+	if !HasOrgDBResolver() {
+		t.Fatal("HasOrgDBResolver()=false after SetOrgDBResolver — Bootstrap would refuse a correctly-wired boot")
+	}
+}
+
 // TestNewNamespaced_PhysicalIsolation proves org-b can NEVER read a row org-a
 // wrote — the core cross-tenant property. Isolation is physical (separate files).
 func TestNewNamespaced_PhysicalIsolation(t *testing.T) {
