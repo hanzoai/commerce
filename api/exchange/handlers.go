@@ -40,7 +40,11 @@ func Cancel(c *gin.Context) {
 // exchanges may be confirmed or canceled; a resolved exchange is rejected.
 func transition(c *gin.Context, target, verb string) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	// Per-org store: exchanges are CREATED via NewNamespaced, so the confirm/
+	// cancel transition MUST read from the same per-org store. datastore.New binds
+	// the shared systemDB regardless of the namespace in the context, so with the
+	// resolver installed in prod it would miss the exchange (Red MED-1).
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	id := c.Params.ByName("exchangeid")
 

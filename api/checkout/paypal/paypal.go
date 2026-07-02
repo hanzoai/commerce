@@ -18,7 +18,10 @@ type PayKeyResponse struct {
 }
 
 func Confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
-	db := datastore.New(c)
+	// Per-org store: payments live in the order's org store (Red MED-1). Raw
+	// datastore.New(c) drops the namespace (gin.Context → Background) AND binds
+	// systemDB, so it would query the wrong store.
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	payments := make([]*payment.Payment, 0)
 
@@ -45,7 +48,8 @@ func Confirm(c *gin.Context, org *organization.Organization, ord *order.Order) (
 }
 
 func Cancel(c *gin.Context, org *organization.Organization, ord *order.Order) (err error) {
-	db := datastore.New(c)
+	// Per-org store (Red MED-1) — see Confirm above.
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	var keys []iface.Key
 	var payments []*payment.Payment

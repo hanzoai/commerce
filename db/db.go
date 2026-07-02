@@ -225,6 +225,17 @@ func isSafeTenantID(id string) bool {
 	if strings.ContainsAny(id, `/\`) || strings.Contains(id, "..") {
 		return false
 	}
+	// Leading-dot names (dotfiles / hidden dirs) are rejected — an org "."-prefixed
+	// name shouldn't be able to create a hidden per-tenant dir (Red LOW-1). This is
+	// pure path-safety, so it also applies to the app's own Org() calls (which
+	// never use dot-names). The RESERVED-namespace policy (system/admin/default) is
+	// intentionally NOT here: this function guards BOTH untrusted tenant requests
+	// AND the app's legitimate Manager.Org("system") systemDB-fallback + test
+	// harness, so rejecting "system" here would break boot. That policy lives at
+	// the tenant boundary — datastore.NewNamespaced.
+	if strings.HasPrefix(id, ".") {
+		return false
+	}
 	return true
 }
 
