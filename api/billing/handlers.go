@@ -212,10 +212,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/test-mode", SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
-	// These endpoints are called by billing.hanzo.ai with user OIDC tokens.
-	// IAM tokens bypass the adminRequired guard above via IsIAMAuthenticated,
-	// but we register them here explicitly under a separate group with a
-	// broader TokenRequired() so that non-IAM service tokens also work.
+	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
+	// TokenRequired(): any authenticated principal is admitted — an IAM user (via
+	// the validated iam_authenticated identity) OR a non-IAM service token (via
+	// the service-token branch). It deliberately does NOT require the Admin bit
+	// the admin endpoints above use, so a normal user can manage their own
+	// billing; per-user/per-org scoping is enforced in the handlers and by
+	// EdgeAuth's billing-subject lock at the edge. (Masked gates DO enforce their
+	// masks on the IAM path since v1.46.5 — see middleware/accesstoken.go.)
 	userRequired := middleware.TokenRequired()
 
 	user := r.Group("billing")

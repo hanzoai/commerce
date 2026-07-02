@@ -195,13 +195,21 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// IAM tokens represent authenticated Hanzo users (hanzo.id).
-		// They bypass legacy org-token permission checks because the permission
-		// models are fundamentally different: IAM uses roles/claims, legacy uses
-		// bit-mask org API keys. Downstream handlers should check IAM claims
-		// (iam_roles, iam_claims) for fine-grained authorization.
+		// IAM tokens represent authenticated Hanzo users (hanzo.id). The IAM
+		// permission model differs from legacy bit-mask org keys, but a masked
+		// gate must STILL enforce its masks against the gateway-minted perms —
+		// mirroring middleware.TokenRequired (v1.46.5). A bare c.Next() here would
+		// make TokenRequired(Admin, …) a no-op for any IAM-authenticated principal
+		// (the checkout money-surface bypass class). No masks = any authenticated
+		// principal. (This handler is currently unwired; converged so it can never
+		// reintroduce the bypass if mounted.)
 		if iammiddleware.IsIAMAuthenticated(c) {
-			c.Next()
+			if len(masks) == 0 || hasScope(c, permissions) {
+				c.Next()
+				return
+			}
+			http.Fail(c, 403, "Token doesn't support this scope",
+				errors.New("IAM principal lacks required permission scope"))
 			return
 		}
 
@@ -278,6 +286,19 @@ func GetAccessToken(c *gin.Context) string {
 
 func GetPermissions(c *gin.Context) bit.Field {
 	return c.MustGet("permissions").(bit.Field)
+}
+
+// hasScope reports whether the request's resolved permissions include the
+// required mask, read defensively (no MustGet) so a gate mounted without a
+// permission-setting middleware fails CLOSED. Mirrors middleware.hasScope so
+// both auth stacks enforce IAM scope identically.
+func hasScope(c *gin.Context, need bit.Mask) bool {
+	v, ok := c.Get("permissions")
+	if !ok {
+		return false
+	}
+	f, ok := v.(bit.Field)
+	return ok && f.Has(need)
 }
 
 func GetStore(c *gin.Context) *app.App {
