@@ -42,11 +42,24 @@ func init() {
 	orm.Register[IdempotencyKey]("idempotency-key", orm.WithStringKey[IdempotencyKey]())
 }
 
+// nowFn is the clock, a seam so tests can simulate elapsed time for the
+// stale-guard recovery path without sleeping.
+var nowFn = time.Now
+
 // Status values.
 const (
 	StatusStarted   = "started"
 	StatusCompleted = "completed"
 )
+
+// StartedTTL bounds how long a "started" guard is treated as a live in-flight
+// operation. A money op (refund/capture) completes in seconds; a "started" guard
+// older than this is presumed CRASHED (the process died between Begin and
+// Complete) and is recoverable — Begin re-claims it and lets the caller retry.
+// This is only safe because the guarded money move ALSO carries the same
+// deterministic gateway idempotency key, so the gateway de-dupes the retry (no
+// double charge). Without that gateway key a stale guard must stay fail-closed.
+const StartedTTL = 5 * time.Minute
 
 // IdempotencyKey records one guarded request. Scope namespaces the key to a
 // resource kind + id (e.g. "refund:ord_123") so the same key under different
@@ -93,7 +106,26 @@ func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, rep
 	// the backend ON CONFLICT(id,kind,namespace) upsert — no ledger fork.
 	existing := New(db)
 	if e := existing.GetById(id); e == nil {
-		return existing, true, nil
+		// Completed → always a replay (return the stored response).
+		if existing.Status == StatusCompleted {
+			return existing, true, nil
+		}
+		// Started + FRESH → a genuine concurrent in-flight op. Replay (caller
+		// 409s) — do not run a second money move alongside it.
+		if !existing.Recoverable() {
+			return existing, true, nil
+		}
+		// Started + STALE → the original crashed between Begin and Complete.
+		// Re-claim (Put bumps UpdatedAt) and let the caller RETRY: the money
+		// move carries the same deterministic gateway key, so the gateway
+		// de-dupes if the original had in fact reached it. Fail-safe recovery
+		// of an otherwise-stuck guard.
+		existing.SetId(id)
+		existing.Status = StatusStarted
+		if e := existing.Put(); e != nil {
+			return nil, false, e
+		}
+		return existing, false, nil
 	} else if !errors.Is(e, datastore.ErrNoSuchEntity) {
 		return nil, false, e
 	}
@@ -141,8 +173,10 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("idempotency-key")
 }
 
-// CompletedRecently reports whether rec finished within the freshness window
-// (used to decide whether a stale "started" marker may be retried).
-func (k *IdempotencyKey) CompletedRecently(window time.Duration) bool {
-	return k.Status == StatusCompleted && time.Since(k.UpdatedAt) < window
+// Recoverable reports whether a "started" guard is stale enough to presume its
+// originator crashed — i.e. safe to re-claim and retry. A completed guard is
+// never recoverable (it's a replay); a fresh started guard is a live in-flight
+// op (fail-closed, caller 409s).
+func (k *IdempotencyKey) Recoverable() bool {
+	return k.Status == StatusStarted && nowFn().Sub(k.UpdatedAt) >= StartedTTL
 }
