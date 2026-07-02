@@ -20,6 +20,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	// Admin dashboard expects /store/current to return the default store.
 	api.GET("/current", getCurrent)
 
+	// Mint the org's least-privilege Published storefront read key (design
+	// path b). Admin-gated + org-bound; the returned token is stored in KMS and
+	// injected as HANZO_COMMERCE_STOREFRONT_TOKEN on the storefront.
+	api.POST("/storefront-token", adminRequired, namespaced, mintStorefrontToken)
+
 	// API for getting a full product/variant/bundle for a specific store
 	api.POST("/:storeid/authorize", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/authorize/:orderid", publishedRequired, namespaced, authorize)
