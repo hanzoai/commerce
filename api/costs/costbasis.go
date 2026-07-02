@@ -76,10 +76,20 @@ func lookupCostRate(model string) (costRate, bool) {
 // modelCostCents applies a model's cost basis to a prompt/completion token split
 // and returns the COGS in cents (rounded to the nearest cent). Returns (0,false)
 // for an unknown model so the caller can report it honestly instead of guessing.
+//
+// Token counts are clamped to >= 0: a malformed usage row with a negative count
+// would otherwise produce NEGATIVE COGS, understating cost and INFLATING margin (a
+// dishonest figure). COGS never subtracts — a bad row contributes 0, not a credit.
 func modelCostCents(model string, promptTokens, completionTokens int64) (int64, bool) {
 	rate, ok := lookupCostRate(model)
 	if !ok {
 		return 0, false
+	}
+	if promptTokens < 0 {
+		promptTokens = 0
+	}
+	if completionTokens < 0 {
+		completionTokens = 0
 	}
 	cents := (float64(promptTokens)*rate.InputCentsPerMTok +
 		float64(completionTokens)*rate.OutputCentsPerMTok) / 1_000_000
