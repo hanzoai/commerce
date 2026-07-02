@@ -64,7 +64,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.42.49"
+	Version   = "1.42.50"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -631,7 +631,19 @@ func (app *App) Bootstrap() error {
 	// isolated per org — no request can read/list/mutate another org's merchant
 	// data on the /v1 REST surface, regardless of whether systemDB is Postgres or
 	// SQLite. Decomplects the single-tenant Postgres out of the merchant path.
+	if app.DB == nil {
+		return fmt.Errorf("commerce: database manager not initialized — cannot install the per-org money resolver")
+	}
 	commerceDatastore.SetOrgDBResolver(app.DB.Org)
+
+	// Fail closed: a production binary must NOT run a money path without the
+	// per-org resolver installed. Without it every NewNamespaced money handler
+	// (gift cards, orders, checkout, transactions, wire, b2b) would silently fall
+	// back to the shared systemDB and cross tenants (Red CRIT-2). Assert here at
+	// Bootstrap rather than degrade on the hot path.
+	if !commerceDatastore.HasOrgDBResolver() {
+		return fmt.Errorf("commerce: per-org DB resolver not installed after SetOrgDBResolver — refusing to start (money paths would use the shared store)")
+	}
 
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
 	// record + commerce_tenant_hostnames claim table — the source of truth
