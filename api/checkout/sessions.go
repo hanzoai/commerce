@@ -25,6 +25,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -60,7 +61,15 @@ type checkoutSessionItem struct {
 	ID        string             `json:"id"`
 	Quantity  int                `json:"quantity"`
 	UnitPrice float64            `json:"unitPrice"` // ignored; server computes price
-	Hat       checkoutSessionHat `json:"hat"`
+	// Catalog references. When any is set, the server prices the item from the
+	// org's real per-org store listing (never from client input) — this is the
+	// generic per-org storefront path. The legacy custom-hat path (Hat below) is
+	// used only when NO catalog reference resolves to a listing.
+	ProductId   string             `json:"productId,omitempty"`
+	ProductSlug string             `json:"productSlug,omitempty"`
+	VariantSku  string             `json:"variantSku,omitempty"`
+	Name        string             `json:"name,omitempty"`
+	Hat         checkoutSessionHat `json:"hat"`
 }
 
 type checkoutSessionRequest struct {
@@ -180,6 +189,76 @@ func safeName(s string) string {
 	return s
 }
 
+// hasCatalogRef reports whether a checkout item references a catalog listing
+// (as opposed to a pure custom-hat item priced by configuration).
+func hasCatalogRef(it checkoutSessionItem) bool {
+	return strings.TrimSpace(it.ProductId) != "" ||
+		strings.TrimSpace(it.ProductSlug) != "" ||
+		strings.TrimSpace(it.VariantSku) != ""
+}
+
+// itemRef returns a human-readable reference for error messages.
+func itemRef(it checkoutSessionItem) string {
+	for _, s := range []string{it.ProductId, it.ProductSlug, it.VariantSku, it.ID} {
+		if strings.TrimSpace(s) != "" {
+			return s
+		}
+	}
+	return "(unspecified)"
+}
+
+// loadOrgCatalog loads the org's default (first) store listings from its own
+// per-org datastore (Red MED-1: NewNamespaced, not the shared systemDB). Returns
+// nil when the org has no store — callers then treat every item as a legacy hat.
+func loadOrgCatalog(c *gin.Context, org *organization.Organization) store.Listings {
+	db := datastore.NewNamespaced(org.Namespaced(c))
+	s := store.New(db)
+	var stores []store.Store
+	if _, err := s.Query().All().Limit(1).GetAll(&stores); err != nil || len(stores) == 0 {
+		return nil
+	}
+	return stores[0].Listings
+}
+
+// catalogPrice resolves a checkout item against the org's real catalog and
+// returns its listing name and price in cents. The price is authoritative —
+// server-side, from the stored listing — never the client's UnitPrice. Returns
+// ok=false when no visible, priced listing matches (caller rejects the item).
+func catalogPrice(listings store.Listings, it checkoutSessionItem) (string, int64, bool) {
+	if listings == nil {
+		return "", 0, false
+	}
+	pid := strings.TrimSpace(it.ProductId)
+	slug := strings.TrimSpace(it.ProductSlug)
+	sku := strings.TrimSpace(it.VariantSku)
+	id := strings.TrimSpace(it.ID)
+	for key, l := range listings {
+		if l.Hidden != nil && *l.Hidden {
+			continue
+		}
+		match := (pid != "" && (l.ProductId == pid || l.VariantId == pid)) ||
+			(slug != "" && l.Slug == slug) ||
+			(sku != "" && l.SKU == sku) ||
+			(id != "" && (key == id || l.ProductId == id || l.Slug == id || l.SKU == id))
+		if !match {
+			continue
+		}
+		if l.Price == nil {
+			// Matched listing with no price cannot be sold.
+			return "", 0, false
+		}
+		name := key
+		if l.Name != nil && strings.TrimSpace(*l.Name) != "" {
+			name = strings.TrimSpace(*l.Name)
+		}
+		if len(name) > 60 {
+			name = name[:60]
+		}
+		return name, int64(*l.Price), true
+	}
+	return "", 0, false
+}
+
 func isValidRedirect(raw string) bool {
 	if strings.TrimSpace(raw) == "" {
 		return false
@@ -233,6 +312,21 @@ func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organi
 	return org, nil
 }
 
+// isPlatformOrg reports whether org is the deployment's own first-party org —
+// the only org permitted to use the platform env Square account in PRODUCTION.
+// Resolved from COMMERCE_PLATFORM_ORG, else COMMERCE_SERVICE_ORG, else "hanzo"
+// (the same default the service-token path uses).
+func isPlatformOrg(org *organization.Organization) bool {
+	platform := strings.TrimSpace(os.Getenv("COMMERCE_PLATFORM_ORG"))
+	if platform == "" {
+		platform = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
+	}
+	if platform == "" {
+		platform = "hanzo"
+	}
+	return org != nil && strings.EqualFold(strings.TrimSpace(org.Name), platform)
+}
+
 // squareCheckoutClientForOrg creates a Square Payment Links client using the
 // org's KMS-hydrated credentials. Falls back to env vars if the org has no
 // Square credentials configured (backwards compat for single-tenant deploys).
@@ -243,10 +337,22 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	token := sqCfg.AccessToken
 	locationID := sqCfg.LocationId
 
-	// Fall back to env vars for backwards compatibility. The SAME
-	// SQUARE_ENVIRONMENT authority (via org.TestMode) picks the sandbox vs
-	// production vars, so the Payment Links base URL always matches.
+	// Fall back to the PLATFORM's env-configured Square creds only when the org
+	// has none of its own. The SAME SQUARE_ENVIRONMENT authority (via
+	// org.TestMode) picks the sandbox vs production vars, so the Payment Links
+	// base URL always matches.
+	//
+	// Red LOW — public POST /v1/checkout/sessions carries the org in the body, so
+	// without a gate ANY org name would borrow the platform's Square account. In
+	// PRODUCTION that mints a REAL square.link (real charge) for an arbitrary org.
+	// So the production env-fallback is restricted to the platform's own
+	// first-party org; every other org must configure its OWN Square creds (KMS)
+	// to sell live. SANDBOX has no money at risk, so the env-fallback stays open
+	// there (that is exactly how the per-org sandbox demo works).
 	if token == "" {
+		if !isSandbox && !isPlatformOrg(org) {
+			return nil, "", errors.New("square is not configured for this organization")
+		}
 		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
 		if isSandbox {
@@ -339,6 +445,13 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
+	// Load the org's real per-org catalog once. Items that reference a catalog
+	// listing (productId/slug/sku) are priced from the listing SERVER-SIDE — the
+	// client-supplied UnitPrice is never trusted. Items with no catalog reference
+	// fall back to the legacy custom-hat pricing. An item that DOES reference the
+	// catalog but matches no listing is rejected (400) — never silently mispriced.
+	catalog := loadOrgCatalog(c, org)
+
 	// Compute subtotal and line items (provider-agnostic).
 	items := make([]checkoutLineItem, 0, len(req.Items))
 	var subtotalCents int64
@@ -347,8 +460,19 @@ func Sessions(c *gin.Context) {
 			http.Fail(c, 400, "Invalid quantity", fmt.Errorf("quantity must be > 0 for item '%s'", it.ID))
 			return
 		}
-		name := safeName(it.Hat.Text)
-		amount := hatPriceCents(it.Hat)
+		var name string
+		var amount int64
+		if hasCatalogRef(it) {
+			n, a, ok := catalogPrice(catalog, it)
+			if !ok {
+				http.Fail(c, 400, "Unknown product", fmt.Errorf("no priced listing for item '%s'", itemRef(it)))
+				return
+			}
+			name, amount = n, a
+		} else {
+			name = safeName(it.Hat.Text)
+			amount = hatPriceCents(it.Hat)
+		}
 		subtotalCents += amount * int64(it.Quantity)
 		items = append(items, checkoutLineItem{Name: name, Quantity: it.Quantity, Amount: amount})
 	}
