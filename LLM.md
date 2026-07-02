@@ -305,7 +305,7 @@ field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration
 | `/api/v1/billing/balance/all` | GET | All currency balances |
 | `/api/v1/billing/usage` | POST | Record API usage (withdraw) |
 | `/api/v1/billing/deposit` | POST | Create deposit transaction |
-| `/api/v1/billing/credit` | POST | Grant starter credit ($5, 30-day expiry) |
+| `/api/v1/billing/credit` | POST | Grant starter credit ($100, 365-day expiry, no card required) |
 | `/api/v1/billing/zap` | POST | Clear balance |
 
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.

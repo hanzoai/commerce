@@ -55,6 +55,15 @@ var JustBeforeEach = ginkgo.JustBeforeEach
 
 var Skip = ginkgo.Skip
 
+// Spec-container decorators (Ginkgo v2). Re-exported so a stateful suite can
+// DECLARE its real ordering constraint (Ordered → specs run in defined order,
+// enabling real BeforeAll/AfterAll) instead of silently depending on file order
+// under `ginkgo --randomize-all`. ContinueOnFailure keeps the rest of an Ordered
+// suite running after one spec fails (useful for report-style sequences).
+var Ordered = ginkgo.Ordered
+var ContinueOnFailure = ginkgo.ContinueOnFailure
+var Serial = ginkgo.Serial
+
 // Declarations for Gomega DSL
 var RegisterFailHandler = gomega.RegisterFailHandler
 var RegisterTestingT = gomega.RegisterTestingT
