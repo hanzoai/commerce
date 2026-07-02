@@ -155,6 +155,18 @@ var kinds = map[string]int{
 	// Platform product catalog (CMS SOT for Hanzo's own products — the catalog
 	// docs.hanzo.ai + console + pricing derive from). Brand/category-scoped.
 	"catalog-entry": 273,
+
+	// Product builder taxonomy (Medusa v2 parity: product-options/values as
+	// first-class admin entities; categories/tags/types for organization).
+	"product-option":       274,
+	"product-option-value": 275,
+	"product-category":     276,
+	"product-tag":          277,
+	"product-type":         278,
+
+	// Order reason lookups (Medusa: return-reasons / refund-reasons).
+	"return-reason": 279,
+	"refund-reason": 280,
 }
 
 var kindsReversed = make(map[int]string)
