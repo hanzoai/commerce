@@ -81,14 +81,19 @@ func TallyTransactions(ctx context.Context, id, kind string, transs []*transacti
 	now := time.Now()
 
 	for _, trans := range transs {
+		// NB: these transactions are query-loaded (via GetAll), so they carry no
+		// datastore/db handle. Calling trans.Id() on them allocates a key against
+		// a nil db (transaction's ParentFn closure) and panics — which surfaced as
+		// a 500 on GET /v1/billing/balance for any ledger holding an expired
+		// deposit. Log the already-loaded fields instead; never call trans.Id() here.
 		if trans.SourceId == trans.DestinationId {
-			log.Warn("Anomylous transaction to self detected: '%v", trans.Id(), ctx)
+			log.Warn("Anomylous transaction to self detected: %v/%v type=%v amount=%v", trans.SourceKind, trans.SourceId, trans.Type, trans.Amount, ctx)
 			continue
 		}
 
 		// Skip expired deposits — they no longer contribute to balance.
 		if trans.Type == transaction.Deposit && !trans.ExpiresAt.IsZero() && trans.ExpiresAt.Before(now) {
-			log.Info("Skipping expired deposit %v (expired %v)", trans.Id(), trans.ExpiresAt, ctx)
+			log.Info("Skipping expired deposit for %v/%v amount=%v %v (expired %v)", trans.DestinationKind, trans.DestinationId, trans.Amount, trans.Currency, trans.ExpiresAt, ctx)
 			continue
 		}
 
