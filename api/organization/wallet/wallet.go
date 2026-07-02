@@ -86,6 +86,14 @@ func CreateAccount(c *gin.Context) {
 }
 
 func Send(c *gin.Context) {
+	// Crypto withdrawal from the org wallet — the highest-value money move.
+	// Admin-only, enforced inside the handler because the route middleware
+	// no-ops on the IAM path (Red HIGH-4). The wallet lives on the caller's own
+	// org record (resolved from the verified X-Org-Id), so it is already
+	// tenant-scoped; this closes the missing authorization check.
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {

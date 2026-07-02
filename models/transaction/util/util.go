@@ -24,7 +24,10 @@ type TransactionDatas struct {
 }
 
 func GetTransactions(ctx context.Context, id, kind string, test bool) (*TransactionDatas, error) {
-	db := datastore.New(ctx)
+	// NewNamespaced so the ledger read hits the caller org's OWN store (per-org
+	// SQLite), matching where the writes land — otherwise the balance check
+	// reads the shared pool and can't see the org's own transactions (Red CRIT-2).
+	db := datastore.NewNamespaced(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -45,7 +48,10 @@ func GetTransactions(ctx context.Context, id, kind string, test bool) (*Transact
 }
 
 func GetTransactionsByCurrency(ctx context.Context, id, kind string, cur currency.Type, test bool) (*TransactionDatas, error) {
-	db := datastore.New(ctx)
+	// NewNamespaced so the ledger read hits the caller org's OWN store (per-org
+	// SQLite), matching where the writes land — otherwise the balance check
+	// reads the shared pool and can't see the org's own transactions (Red CRIT-2).
+	db := datastore.NewNamespaced(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 

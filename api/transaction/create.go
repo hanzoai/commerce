@@ -14,8 +14,13 @@ import (
 )
 
 func Create(c *gin.Context) {
+	// Money move (deposit/withdraw/transfer on the ledger): admin-only, enforced
+	// inside the handler (route middleware no-ops on the IAM path — Red HIGH-4).
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	trans := transaction.New(db)
 
 	// Decode response body to create new transaction

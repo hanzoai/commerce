@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	giftcardModel "github.com/hanzoai/commerce/models/giftcard"
 	"github.com/hanzoai/commerce/models/organization"
@@ -20,13 +21,23 @@ import (
 
 // ctxFor builds a gin test context wired so middleware.GetOrganization(c) +
 // org.Namespaced(c) resolve to the ae SQLite datastore in org `ns`'s namespace
-// — the exact production plumbing (org name IS the namespace).
+// — the exact production plumbing (org name IS the namespace). The caller is an
+// ADMIN, since redeem/void are admin-gated money moves.
 func ctxFor(w http.ResponseWriter, ns string) *gin.Context {
+	return ctxForAs(w, ns, true)
+}
+
+// ctxForAs is ctxFor with an explicit admin flag. It injects the verified IAM
+// claim the gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes
+// (admin=true) or rejects (admin=false) the money action.
+func ctxForAs(w http.ResponseWriter, ns string, admin bool) *gin.Context {
 	c, _ := gin.CreateTestContext(w)
 	org := &organization.Organization{}
 	org.Name = ns
 	c.Set("organization", org)
 	c.Set("context", nscontext.WithNamespace(context.Background(), ns))
+	c.Set("iam_authenticated", true)
+	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
 	return c
 }
 
@@ -106,6 +117,63 @@ func TestRedeem_HTTP_InsufficientFunds(t *testing.T) {
 	if w.Code != 402 {
 		t.Fatalf("over-redeem status = %d, want 402; body=%s", w.Code, w.Body.String())
 	}
+}
+
+// TestRedeem_Void_NonAdmin_403 proves the HIGH-4 fix: the gift-card money
+// subroutes (redeem, void) — which util/rest.Route did NOT wrap with the auth
+// middleware and TokenRequired(Admin) no-ops on the IAM path — now reject a
+// non-admin caller with 403, BEFORE any card mutation. A merchant staffer with a
+// valid non-admin session must not be able to drain gift cards.
+func TestRedeem_Void_NonAdmin_403(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+	gin.SetMode(gin.TestMode)
+
+	g := issueCard(t, context.Background(), "acme", "GIFT-NOADMIN", 5000)
+
+	cases := []struct {
+		name    string
+		handler func(*gin.Context)
+		body    []byte
+	}{
+		{"redeem", Redeem, mustJSON(redeemRequest{AmountCents: 100, Currency: "usd", IdempotencyKey: "na"})},
+		{"void", Void, mustJSON(voidRequest{RedemptionId: "any"})},
+	}
+	for _, tcase := range cases {
+		t.Run(tcase.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c := ctxForAs(w, "acme", false) // authenticated, NOT admin
+			c.Params = gin.Params{{Key: "giftcardid", Value: g.Id()}}
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/commerce/giftcard/"+g.Id()+"/"+tcase.name, bytes.NewReader(tcase.body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			tcase.handler(c)
+			if w.Code != 403 {
+				t.Fatalf("%s as non-admin = %d, want 403 (money subroute must gate admin); body=%s", tcase.name, w.Code, w.Body.String())
+			}
+		})
+	}
+
+	// Balance must be untouched — the gate fired before any redemption.
+	adb := datastore.New(nscontext.WithNamespace(context.Background(), "acme"))
+	after := giftcardModel.New(adb)
+	if err := after.GetById(g.Id()); err != nil {
+		t.Fatalf("reload card: %v", err)
+	}
+	bal, err := giftcardModel.BalanceCents(adb, after)
+	if err != nil {
+		t.Fatalf("balance: %v", err)
+	}
+	if bal != currency.Cents(5000) {
+		t.Fatalf("balance = %d after refused non-admin redeem, want 5000 (no debit)", bal)
+	}
+}
+
+func mustJSON(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 // TestRedeem_HTTP_CrossTenant404 proves a card in org acme is a 404 for org beta.

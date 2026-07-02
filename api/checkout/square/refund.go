@@ -22,6 +22,7 @@ import (
 var NonSquarePayment = errors.New("only refunds for Square payments are supported via this handler")
 var ZeroRefund = errors.New("refund amount cannot be 0")
 var NegativeRefund = errors.New("refund amount must be a positive integer")
+var NoPaymentsToRefund = errors.New("order has no payments to refund")
 
 // Refund refunds refundAmount against ord's Square payments. idempotencyKey, when
 // non-empty, is forwarded (per payment, deterministically) to Square as ITS
@@ -49,6 +50,14 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	payments, err := ord.GetPayments()
 	if err != nil {
 		return err
+	}
+
+	// Fail closed on a zero-payment order: there is nothing to refund, and the
+	// receipt email below dereferences payments[0]. Without this guard an order
+	// whose Paid was set without any payment record would panic mid-refund
+	// (Red HIGH-3) instead of returning a clean error.
+	if len(payments) == 0 {
+		return NoPaymentsToRefund
 	}
 
 	for _, pay := range payments {

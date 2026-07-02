@@ -27,8 +27,13 @@ type CreateHoldReq struct {
 }
 
 func CreateHold(c *gin.Context) {
+	// Money move (places a hold against a balance): admin-only, enforced inside
+	// the handler (route middleware no-ops on the IAM path — Red HIGH-4).
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	req := &CreateHoldReq{}
 
 	// Decode response body to create new request
@@ -95,10 +100,15 @@ func CreateHold(c *gin.Context) {
 }
 
 func RemoveHold(c *gin.Context) {
+	// Money move (releases a hold): admin-only, enforced inside the handler
+	// (route middleware no-ops on the IAM path — Red HIGH-4).
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	id := c.Params.ByName("id")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	trans := transaction.New(db)
 	err := db.RunInTransaction(func(db *datastore.Datastore) error {

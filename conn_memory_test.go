@@ -82,6 +82,14 @@ func TestConnMemory(t *testing.T) {
 	var baseline, peak runtime.MemStats
 	runtime.GC()
 	runtime.ReadMemStats(&baseline)
+	// Snapshot the goroutine count BEFORE opening connections so the per-conn
+	// metric below is a DELTA (goroutines the held connections ADD), exactly like
+	// the heap metric (peak-baseline). An absolute NumGoroutine()/n is polluted
+	// by goroutines unrelated to connections — GC workers, the test framework,
+	// and background goroutines other tests in this package leaked before this
+	// one runs — which made the metric flake near the 1.0 boundary. The delta
+	// isolates the accept-loop's true per-conn cost.
+	baselineGoroutines := runtime.NumGoroutine()
 
 	req := []byte("GET /hold HTTP/1.1\r\nHost: x\r\n\r\n")
 	conns := make([]net.Conn, 0, n)
@@ -127,11 +135,15 @@ func TestConnMemory(t *testing.T) {
 
 	runtime.GC()
 	runtime.ReadMemStats(&peak)
+	peakGoroutines := runtime.NumGoroutine()
 
 	delta := int64(peak.HeapAlloc) - int64(baseline.HeapAlloc)
 	perConn := float64(delta) / float64(n)
-	totalGoroutines := runtime.NumGoroutine()
-	goroutinesPerConn := float64(totalGoroutines) / float64(n)
+	totalGoroutines := peakGoroutines
+	// DELTA per conn — goroutines the held connections added over the pre-conn
+	// baseline (one per held /hold handler), immune to unrelated background
+	// goroutines. Matches the heap delta methodology above.
+	goroutinesPerConn := float64(peakGoroutines-baselineGoroutines) / float64(n)
 
 	fmt.Printf("\n=== Per-connection memory profile (hanzoai/commerce) ===\n")
 	fmt.Printf("conns held       : %d\n", n)
@@ -139,8 +151,8 @@ func TestConnMemory(t *testing.T) {
 	fmt.Printf("peak heap        : %s\n", humanBytes(int64(peak.HeapAlloc)))
 	fmt.Printf("delta            : %s\n", humanBytes(delta))
 	fmt.Printf("per-conn heap    : %.0f B (%.2f KiB)\n", perConn, perConn/1024)
-	fmt.Printf("goroutines total : %d\n", totalGoroutines)
-	fmt.Printf("goroutines / conn: %.2f\n", goroutinesPerConn)
+	fmt.Printf("goroutines total : %d (baseline %d, +%d for %d conns)\n", totalGoroutines, baselineGoroutines, peakGoroutines-baselineGoroutines, n)
+	fmt.Printf("goroutines / conn: %.2f (delta)\n", goroutinesPerConn)
 	fmt.Printf("=======================================================\n\n")
 
 	if perConn > maxPerConnHeapBytes {

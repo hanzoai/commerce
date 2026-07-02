@@ -668,7 +668,14 @@ func (o Order) GetPaymentMethod() (*paymentmethod.PaymentMethod, error) {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
-	if err := payment.Query(o.Datastore()).Ancestor(o.Key()).GetModels(&payments); err != nil {
+	// GetAll, not GetModels. payment.Payment embeds the ORM bridge
+	// (mixin.Model[T]), which does NOT implement datastore/query.Model — so
+	// GetModels' second legacy init pass panics ("not query.Model: missing method
+	// SetEntity") the moment there is ≥1 payment row to hydrate. GetAll returns
+	// the db-hydrated models without that pass (the same path OrderRepository uses
+	// for orders), so refunds/captures actually run against the per-org store
+	// instead of panicking mid-money-move.
+	if _, err := payment.Query(o.Datastore()).Ancestor(o.Key()).GetAll(&payments); err != nil {
 		return nil, err
 	}
 	return payments, nil
