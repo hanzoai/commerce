@@ -61,7 +61,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.42.40"
+	Version   = "1.42.48"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -619,6 +619,16 @@ func (app *App) Bootstrap() error {
 	}
 	commerceDatastore.SetDefaultDB(systemDB)
 	commerceQuery.SetDefaultDB(systemDB)
+
+	// Route the generic REST merchant datastore (product/order/store/customer/
+	// collection/discount/variant/…) to per-org SQLite via db.Manager.Org(<caller
+	// org>). systemDB above remains the store for global kinds (organization/user/
+	// token, which are DefaultNamespace) and for the billing/checkout subsystems
+	// that call datastore.New directly. Merchant models are thus physically
+	// isolated per org — no request can read/list/mutate another org's merchant
+	// data on the /v1 REST surface, regardless of whether systemDB is Postgres or
+	// SQLite. Decomplects the single-tenant Postgres out of the merchant path.
+	commerceDatastore.SetOrgDBResolver(app.DB.Org)
 
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
 	// record + commerce_tenant_hostnames claim table — the source of truth
