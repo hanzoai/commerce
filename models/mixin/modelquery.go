@@ -2,8 +2,6 @@ package mixin
 
 import (
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/datastore/query"
-	"github.com/hanzoai/commerce/log"
 )
 
 // This is a simple Query helper for individual models. Allows you to query for
@@ -120,8 +118,12 @@ func (q *ModelQuery) ById(id string) (bool, error) {
 func (m *BaseModel) Query() *ModelQuery {
 	q := new(ModelQuery)
 	q.entity = m.Entity.(Entity)
-	log.Debug(m.Context())
-	q.dsq = query.New(m.Context(), m.Kind())
+	// Build the query against THIS model's datastore (m.Db) so a per-org
+	// (namespaced) datastore lists/queries its OWN store. Previously this used
+	// the package-global query.New(...) default DB, which meant writes went to
+	// m.Db while reads/lists went to the shared default DB — they must be the
+	// same store, or a per-org entity's list silently reads the pooled store.
+	q.dsq = m.Db.Query(m.Kind())
 	q.db = m.Db
 	return q
 }

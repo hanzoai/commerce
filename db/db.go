@@ -18,6 +18,8 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -210,8 +212,28 @@ func NewManager(cfg *Config) (*Manager, error) {
 	return m, nil
 }
 
+// isSafeTenantID reports whether id is safe to use as a single filesystem path
+// segment for a per-tenant SQLite store. The tenant id is the org (or user)
+// namespace, which derives from a request-supplied — gateway/JWT-verified —
+// owner/subject value, so it must never be able to escape the data dir (e.g.
+// "..", "a/b", "/etc/passwd"). Reject anything that is not a clean single
+// segment; callers fail closed on the returned error.
+func isSafeTenantID(id string) bool {
+	if id == "" || id == "." || id == ".." {
+		return false
+	}
+	if strings.ContainsAny(id, `/\`) || strings.Contains(id, "..") {
+		return false
+	}
+	return true
+}
+
 // User returns the database for a specific user
 func (m *Manager) User(userID string) (DB, error) {
+	if !isSafeTenantID(userID) {
+		return nil, fmt.Errorf("db: unsafe user id %q", userID)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -242,6 +264,10 @@ func (m *Manager) User(userID string) (DB, error) {
 
 // Org returns the database for a specific organization
 func (m *Manager) Org(orgID string) (DB, error) {
+	if !isSafeTenantID(orgID) {
+		return nil, fmt.Errorf("db: unsafe org id %q", orgID)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
