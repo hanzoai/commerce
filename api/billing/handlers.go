@@ -258,10 +258,10 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 
 	// Self-service balance + welcome credit. Identity comes from the
 	// gateway-injected X-Org-Id / X-User-Id headers; the caller never
-	// needs an admin token. Welcome credit is idempotent (tag-deduped),
-	// no payment method required (unlike POST /billing/credit) — it's
-	// the on-signup grant that the playground SPA invokes from
-	// FundingGate on first login.
+	// needs an admin token (unlike POST /billing/credit) — it's the
+	// on-signup grant that the playground SPA invokes from FundingGate on
+	// first login. Idempotent (tag-deduped); no payment method required
+	// (the card gates top-up, not the welcome credit).
 	user.GET("/me/balance", GetMyBalance)
 	user.POST("/me/welcome", PostMyWelcome)
 
