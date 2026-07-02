@@ -23,7 +23,7 @@ func Lookup(c *gin.Context) {
 
 	// Set up the db with the namespaced context
 	ctx := org.Namespaced(c)
-	db := datastore.New(ctx)
+	db := datastore.NewNamespaced(ctx) // per-org payment store (Red MED-1)
 
 	proxyAddress := c.Params.ByName("proxyaddress")
 
