@@ -3,6 +3,7 @@ package order
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -24,7 +25,10 @@ type StatusResponse struct {
 
 func Status(c *gin.Context) {
 	id := c.Params.ByName("orderid")
-	db := datastore.New(c)
+	// Per-org store (Red MED-1): read the order from the caller org's store, not
+	// the shared systemDB (datastore.New drops the namespace + binds systemDB).
+	org := middleware.GetOrganization(c)
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	ord := order.New(db)
 
 	// Ensure order exists
