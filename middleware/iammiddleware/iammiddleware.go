@@ -27,7 +27,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/auth"
-	"github.com/hanzoai/commerce/billing/credit"
+	"github.com/hanzoai/commerce/billing/trial"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -146,15 +146,18 @@ func IAMTokenRequired() gin.HandlerFunc {
 			return
 		}
 
-		// Best-effort signup credit grant on first encounter. Billing is
-		// per-org, so the grant MUST be keyed to the org slug (the same key
-		// GetMyBalance reads) inside the org's namespace — granting to the
-		// user sub in the default namespace writes a row no read path ever
-		// sees. Idempotent (deduped by the starter tag inside GrantIfEligible).
+		// Best-effort new-signup on-ramp on first encounter: a 7-day trial of
+		// the $20 plan funded with one unified credit (billing/trial). Billing
+		// is per-org, so it MUST be keyed to the org slug (the same key
+		// GetMyBalance reads and the gateway gate debits) inside the org's
+		// namespace. New-signup only + idempotent: existing/comped orgs (any
+		// prior subscription or deposit) are left untouched. A card added later
+		// extends the trial to 30 days (see api/billing.CreatePaymentMethod).
 		orgSlug := strings.ToLower(strings.TrimSpace(ownerID))
+		signupIsTest := !liveFromHeaders(c)
 		nsCtx := o.Namespaced(context.Background())
 		go func() {
-			credit.GrantIfEligible(datastore.New(nsCtx), orgSlug, "org-created")
+			_, _ = trial.Start(datastore.New(nsCtx), orgSlug, false, signupIsTest)
 		}()
 
 		// Gateway-trusted identity counts as live by default. An explicit
