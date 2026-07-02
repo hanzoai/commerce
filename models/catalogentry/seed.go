@@ -4,41 +4,39 @@ import (
 	_ "embed"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 )
 
-// hanzoCatalogSeed is the initial Hanzo platform catalog, extracted from the
-// console product registry (console2 src/lib/products/registry.tsx). It is the
-// STARTING state — the CMS (admin FE editing this catalog) is authoritative
-// thereafter. Regenerate only to re-baseline from the console registry.
+// hanzoCatalogSeed is the initial platform catalog, taken verbatim from the
+// @hanzo/products snapshot (hanzoai/ui/pkgs/products/snapshot/catalog.json) —
+// the schema owner. It is the STARTING state / offline fallback; once seeded,
+// the CMS (admin FE editing this catalog) is authoritative. Re-baseline by
+// re-copying the @hanzo/products snapshot.
 //
 //go:embed seed/hanzo-catalog.json
 var hanzoCatalogSeed []byte
 
-// SeedRow is the on-disk seed shape (a superset of the projection Item — it also
-// carries brand/published/currency, which the projection derives or filters).
+// SeedRow is the @hanzo/products snapshot shape (the exact CatalogEntry
+// contract). `id` == `slug`; `pricingId` may be JSON null (→ "").
 type SeedRow struct {
-	Slug        string         `json:"slug"`
-	Brand       string         `json:"brand"`
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Category    string         `json:"category"`
-	Gcp         string         `json:"gcp"`
-	IconKey     string         `json:"iconKey"`
-	BrandColor  string         `json:"brandColor"`
-	DocsUrl     string         `json:"docsUrl"`
-	ApiPath     string         `json:"apiPath"`
-	Status      string         `json:"status"`
-	Repo        string         `json:"repo"`
-	Admin       bool           `json:"admin"`
-	PriceCents  currency.Cents `json:"priceCents"`
-	Currency    currency.Type  `json:"currency"`
-	Order       int            `json:"order"`
-	Published   bool           `json:"published"`
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	Category   string   `json:"category"`
+	BrandColor string   `json:"brandColor"`
+	IconKey    string   `json:"iconKey"`
+	Slug       string   `json:"slug"`
+	Route      string   `json:"route"`
+	DocsUrl    string   `json:"docsUrl"`
+	ApiPath    string   `json:"apiPath"`
+	PricingId  string   `json:"pricingId"` // null → ""
+	Brands     []string `json:"brands"`
+	Repo       string   `json:"repo"`
+	Admin      bool     `json:"admin"`
+	Status     string   `json:"status"`
+	Gcp        string   `json:"gcp"`
 }
 
-// HanzoSeedRows returns the parsed embedded Hanzo catalog seed.
+// HanzoSeedRows returns the parsed embedded snapshot.
 func HanzoSeedRows() ([]SeedRow, error) {
 	var rows []SeedRow
 	if err := json.DecodeBytes(hanzoCatalogSeed, &rows); err != nil {
@@ -47,10 +45,10 @@ func HanzoSeedRows() ([]SeedRow, error) {
 	return rows, nil
 }
 
-// SeedIfEmpty seeds the catalog only when it is currently empty — a cheap
-// single count query gates the full per-row upsert, so it is safe to call on
-// every bootstrap without paying the seed cost once populated. Once any entry
-// exists (seeded or CMS-created), it never re-runs, so CMS state is authoritative.
+// SeedIfEmpty seeds the catalog only when it is currently empty — a cheap single
+// count query gates the full per-row create, so it is safe to call on every
+// bootstrap. Once any entry exists (seeded or CMS-created) it never re-runs, so
+// CMS state stays authoritative.
 func SeedIfEmpty(db *datastore.Datastore) (created int, err error) {
 	n, err := Query(db).Count()
 	if err != nil {
@@ -62,25 +60,25 @@ func SeedIfEmpty(db *datastore.Datastore) (created int, err error) {
 	return Seed(db)
 }
 
-// Seed upserts the embedded Hanzo catalog into db (which MUST be namespaced to
-// the catalog-owning org). It is IDEMPOTENT and NON-DESTRUCTIVE: an entry that
-// already exists (matched by slug+brand) is left UNTOUCHED so CMS edits are
-// never clobbered by a re-seed; only missing entries are created. Returns the
-// number of entries created.
+// Seed loads the embedded @hanzo/products snapshot into db (which MUST be
+// namespaced to the catalog-owning "system" org). IDEMPOTENT + NON-DESTRUCTIVE:
+// an entry whose slug already exists is left UNTOUCHED so CMS edits are never
+// clobbered; only missing slugs are created. Order is the snapshot index (stable
+// display order within a category). Returns the number created.
 func Seed(db *datastore.Datastore) (created int, err error) {
 	rows, err := HanzoSeedRows()
 	if err != nil {
 		return 0, err
 	}
 
-	for _, r := range rows {
-		// Skip if an entry with this slug+brand already exists — never overwrite
-		// CMS edits.
+	for i, r := range rows {
+		slug := r.Slug
+		if slug == "" {
+			slug = r.ID
+		}
+
 		existing := New(db)
-		ok, qerr := existing.Query().
-			Filter("Slug=", r.Slug).
-			Filter("Brand=", r.Brand).
-			Get()
+		ok, qerr := existing.Query().Filter("Slug=", slug).Get()
 		if qerr != nil {
 			return created, qerr
 		}
@@ -89,23 +87,22 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		}
 
 		e := New(db)
-		e.Slug = r.Slug
-		e.Brand = r.Brand
+		e.Slug = slug
 		e.Name = r.Name
-		e.Description = r.Description
 		e.Category = r.Category
-		e.Gcp = r.Gcp
-		e.IconKey = r.IconKey
 		e.BrandColor = r.BrandColor
+		e.IconKey = r.IconKey
+		e.Route = r.Route
 		e.DocsUrl = r.DocsUrl
 		e.ApiPath = r.ApiPath
-		e.Status = r.Status
+		e.PricingId = r.PricingId
+		e.Brands = r.Brands
 		e.Repo = r.Repo
 		e.Admin = r.Admin
-		e.PriceCents = r.PriceCents
-		e.Currency = r.Currency
-		e.Order = r.Order
-		e.Published = r.Published
+		e.Status = r.Status
+		e.Gcp = r.Gcp
+		e.Order = i
+		e.Published = true
 		if err := e.Create(); err != nil {
 			return created, err
 		}
