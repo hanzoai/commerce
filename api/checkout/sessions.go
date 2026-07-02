@@ -25,6 +25,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -271,6 +272,54 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	return client, locationID, nil
 }
 
+// hasHatCustomization reports whether an item carries MEGA-hat storefront
+// customization. Those items are priced by the legacy hatPriceCents rules; every
+// other item is priced from the org's real catalog (never a hardcoded amount).
+func hasHatCustomization(h checkoutSessionHat) bool {
+	return strings.TrimSpace(h.Text) != "" ||
+		strings.TrimSpace(h.BackText) != "" ||
+		strings.TrimSpace(h.HatColor) != ""
+}
+
+// catalogListings loads the org's real catalog (its per-org store rows, the SAME
+// physical per-org store the storefront reads and the merchant writes via REST)
+// and returns a lookup from every reference a checkout item can carry — listing
+// key, productId, slug, or SKU — to that listing. This is what makes checkout
+// price the ORG's products at the ORG's prices instead of a hardcoded amount.
+// Returns an empty (non-nil) map when the org has no catalog; never fabricates.
+func catalogListings(c *gin.Context, org *organization.Organization) map[string]store.Listing {
+	out := map[string]store.Listing{}
+	db := datastore.NewNamespaced(org.Namespaced(c))
+	if db == nil || db.DB() == nil {
+		return out
+	}
+	var stores []*store.Store
+	if _, err := store.Query(db).GetAll(&stores); err != nil {
+		log.Warn("checkout: catalog load for org %q failed: %v", org.Name, err, c)
+		return out
+	}
+	for _, s := range stores {
+		for key, l := range s.Listings {
+			if l.Price == nil {
+				continue // unpriced listing is not purchasable
+			}
+			if key != "" {
+				out[key] = l
+			}
+			if l.ProductId != "" {
+				out[l.ProductId] = l
+			}
+			if l.Slug != "" {
+				out[l.Slug] = l
+			}
+			if l.SKU != "" {
+				out[l.SKU] = l
+			}
+		}
+	}
+	return out
+}
+
 // Sessions creates a provider-agnostic hosted checkout session.
 //
 // Currently implemented using Square Payment Links (hosted checkout URL).
@@ -335,16 +384,48 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
-	// Compute subtotal and line items (provider-agnostic).
+	// Compute subtotal and line items (provider-agnostic). Pricing is
+	// server-authoritative: never trust a client-supplied amount. MEGA-hat
+	// customized items use the legacy hat rules; every other item is priced from
+	// the ORG's real catalog (its per-org store listings). The catalog is loaded
+	// once, only when a non-hat item is present.
 	items := make([]checkoutLineItem, 0, len(req.Items))
 	var subtotalCents int64
+	var catalog map[string]store.Listing
 	for _, it := range req.Items {
 		if it.Quantity <= 0 {
 			http.Fail(c, 400, "Invalid quantity", fmt.Errorf("quantity must be > 0 for item '%s'", it.ID))
 			return
 		}
-		name := safeName(it.Hat.Text)
-		amount := hatPriceCents(it.Hat)
+
+		if hasHatCustomization(it.Hat) {
+			// Legacy MEGA-hat storefront path (unchanged).
+			name := safeName(it.Hat.Text)
+			amount := hatPriceCents(it.Hat)
+			subtotalCents += amount * int64(it.Quantity)
+			items = append(items, checkoutLineItem{Name: name, Quantity: it.Quantity, Amount: amount})
+			continue
+		}
+
+		// Generic catalog item: price from the org's real listing.
+		if catalog == nil {
+			catalog = catalogListings(c, org)
+		}
+		ref := strings.TrimSpace(it.ID)
+		listing, ok := catalog[ref]
+		if !ok || listing.Price == nil {
+			http.Fail(c, 400, "Unknown product", fmt.Errorf("item %q is not in %s's catalog (or has no price)", ref, org.Name))
+			return
+		}
+		amount := int64(*listing.Price)
+		if amount <= 0 {
+			http.Fail(c, 400, "Unpriced product", fmt.Errorf("item %q has a non-positive price", ref))
+			return
+		}
+		name := ref
+		if listing.Name != nil && strings.TrimSpace(*listing.Name) != "" {
+			name = safeName(*listing.Name)
+		}
 		subtotalCents += amount * int64(it.Quantity)
 		items = append(items, checkoutLineItem{Name: name, Quantity: it.Quantity, Amount: amount})
 	}
