@@ -146,6 +146,20 @@ func (r *Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 		group.Handle(route.method, route.url, append(mw, route.handlers...)...)
 	}
 
+	// Custom sub-routes keep their OWN handler chain (each already carries the
+	// middleware it needs, e.g. an explicit Namespace). We deliberately do NOT
+	// blanket-apply the base-CRUD `mw` here: the base middleware is the CRUD's
+	// authz (often adminRequired), which is the WRONG gate for sub-routes meant to
+	// be caller-scoped rather than admin-only (e.g. GET /user/:id/wallet) —
+	// forcing it 401/403s legitimate access.
+	//
+	// Red HIGH-4 (money sub-routes reachable by non-admin) is closed at the
+	// authoritative layer instead: every money-moving handler calls
+	// middleware.RequireAdmin FIRST (IAM-aware, and fail-closed even when no
+	// route-level token middleware ran) — giftcard Redeem/Void, checkout Refund,
+	// b2b Accept/Reject/Approve, wallet Send, transaction Create/Hold, wire
+	// Credit. That is stricter and more precise than propagating the base gate,
+	// and it works on the IAM path where TokenRequired(Admin) no-ops.
 	for _, routes := range r.routes {
 		for _, route := range routes {
 			// log.Debug("%-7s %v", route.method, prefix+route.url)

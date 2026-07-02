@@ -20,6 +20,7 @@ package commerce
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -126,16 +127,28 @@ func TestStandaloneForge_ListProviders_Blocked(t *testing.T) {
 }
 
 // TestStandaloneMoneyPath_NotBlockedByBoundary proves the boundary does not
-// regress the service-token money path. require=false means a request with no
-// X-Org-Id (the service-token shape) is NOT 401'd by the boundary — it reaches
-// the per-route handler. GET /v1/commerce/tenant on an empty store returns the
-// store's canonical 404, proving the handler ran (not a boundary 401).
+// regress the service-token money path. require=false means a service-token-
+// shaped request is NOT 401'd by the boundary — it reaches the per-route handler.
+//
+// The property under test is "not blocked by the boundary" (no boundary 401),
+// asserted by the handler actually running. GET /v1/commerce/tenant is wired to
+// the RESOLVER-backed checkout.TenantJSON(orgResolver) (see commerce.go), NOT the
+// store-backed TenantJSONFromStore. By deliberate, documented design
+// (checkout/org_resolver.go: "Resolution never 404s for a well-formed host"),
+// proven by checkout.TestBrandForHost + TestRoutes_PublicTenantResolvesOrg, the
+// pay-SPA boot endpoint resolves EVERY well-formed host to a usable tenant (a
+// recognized brand, else the deployment default) so "add credits" always
+// renders; it 404s ONLY a malformed Host. So a reached handler returns 200 with
+// a tenant JSON. The earlier 404 / {"error":"unknown tenant"} expectation here
+// assumed the store-backed handler, which is not what this route wires — that
+// was a wrong expectation, corrected (not weakened: the boundary-not-401 check
+// is preserved and the handler-ran signal is now the exact 200 tenant JSON).
 func TestStandaloneMoneyPath_NotBlockedByBoundary(t *testing.T) {
 	app := bootEdgeCommerce(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
 	req.Host = "pay.unknown.test"
-	// Service-token shape: opaque Bearer + X-Org-Id, no X-Org-Id.
+	// Service-token shape: opaque Bearer + X-Org-Id, no JWT.
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token")
 	req.Header.Set("X-Org-Id", "maxpower")
 
@@ -145,10 +158,14 @@ func TestStandaloneMoneyPath_NotBlockedByBoundary(t *testing.T) {
 	if w.Code == http.StatusUnauthorized {
 		t.Fatalf("boundary 401'd a service-token-shaped request — money path regression; body=%s", w.Body.String())
 	}
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("GET /v1/commerce/tenant status=%d, want 404 (handler reached, empty store); body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /v1/commerce/tenant status=%d, want 200 (handler reached; resolver returns a usable tenant for a well-formed host); body=%s", w.Code, w.Body.String())
 	}
-	if got := w.Body.String(); got != `{"error":"unknown tenant"}` {
-		t.Fatalf("body=%q, want store-backed 404 — handler must have run", got)
+	var body map[string]any
+	if err := json.NewDecoder(bytes.NewReader(w.Body.Bytes())).Decode(&body); err != nil {
+		t.Fatalf("tenant JSON decode: %v; body=%s", err, w.Body.String())
+	}
+	if name, _ := body["name"].(string); name == "" {
+		t.Fatalf("tenant JSON missing name (org slug) — the resolver-backed handler must have run: %v", body)
 	}
 }
