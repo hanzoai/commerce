@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/util/nscontext"
@@ -108,5 +109,69 @@ func TestBegin_TenantIsolation(t *testing.T) {
 	}
 	if replay {
 		t.Fatal("beta saw acme's idempotency record — tenant isolation broken")
+	}
+}
+
+// TestBegin_FreshStartedIsInFlight proves a not-yet-completed guard that is
+// still fresh reports replay=true (in-flight) so the caller fails closed (409)
+// rather than running a second concurrent money move.
+func TestBegin_FreshStartedIsInFlight(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := nsDB(c, "acme")
+
+	rec, replay, err := Begin(db, "refund:ord_x", "k")
+	if err != nil || replay {
+		t.Fatalf("first begin: err=%v replay=%v", err, replay)
+	}
+	if rec.Recoverable() {
+		t.Fatal("a just-created started guard must NOT be recoverable")
+	}
+
+	// Second Begin while still fresh + not completed → in-flight replay.
+	_, replay2, err := Begin(db, "refund:ord_x", "k")
+	if err != nil {
+		t.Fatalf("second begin: %v", err)
+	}
+	if !replay2 {
+		t.Fatal("fresh started guard: second Begin must report replay=true (in-flight)")
+	}
+}
+
+// TestBegin_StaleStartedRecovers proves a crashed (stale, never-completed) guard
+// is re-claimed so a retry can proceed — the money move's deterministic gateway
+// key makes the retry safe. Uses the nowFn clock seam to simulate elapsed time.
+func TestBegin_StaleStartedRecovers(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := nsDB(c, "acme")
+
+	if _, replay, err := Begin(db, "refund:ord_y", "k"); err != nil || replay {
+		t.Fatalf("seed started guard: err=%v replay=%v", err, replay)
+	}
+
+	// Jump the clock past StartedTTL — the guard now looks crashed.
+	orig := nowFn
+	nowFn = func() time.Time { return orig().Add(StartedTTL + time.Minute) }
+	defer func() { nowFn = orig }()
+
+	rec, replay, err := Begin(db, "refund:ord_y", "k")
+	if err != nil {
+		t.Fatalf("recover begin: %v", err)
+	}
+	if replay {
+		t.Fatal("stale started guard must be RE-CLAIMED (replay=false) so the caller can retry, not stuck at 409 forever")
+	}
+	if rec.Status != StatusStarted {
+		t.Fatalf("re-claimed guard status = %q, want started", rec.Status)
+	}
+
+	// Completing it now works and future replays return the response.
+	if err := Complete(rec, `{"ok":true}`); err != nil {
+		t.Fatalf("complete after recovery: %v", err)
+	}
+	got, replay3, _ := Begin(db, "refund:ord_y", "k")
+	if !replay3 || got.Status != StatusCompleted || got.Response != `{"ok":true}` {
+		t.Fatalf("post-recovery replay: replay=%v status=%q resp=%q", replay3, got.Status, got.Response)
 	}
 }
