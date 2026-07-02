@@ -473,31 +473,43 @@ covers Medusa v2's admin domains natively — no Medusa/Node fork. Reference:
   `X-Idempotency-Key` (replay returns stored response; in-flight → 409).
 
 ### Platform product catalog — commerce is the CMS SOT (1.42.41)
-`models/catalogentry` (`catalog-entry`, kind 273) is the source-of-truth for a
-brand's OWN products (Models, Vector, KMS, …) — the list docs.<brand> + the
-console sidebar + pricing all derive from. Pricing is native (`priceCents` on the
-entry), so it stops being a separate service.
-- Presentation meta is CMS-editable STRINGS: `iconKey` ("Brain"), `brandColor`
-  (hex/token), `docsUrl`, `apiPath`. commerce is presentation-agnostic — the
-  client (`@hanzo/products`) maps iconKey→@hanzogui component + colorToken→css.
+`models/catalogentry` (`catalog-entry`, kind 273) is the source-of-truth for the
+platform product catalog (Models, Vector, KMS, …) — the list docs.<brand> + the
+console sidebar + pricing all derive from. **commerce owns the DATA (source +
+seed + edits); `@hanzo/products` (hanzoai/ui/pkgs/products) owns the SCHEMA** +
+the iconKey→component and brandColor→css code-maps. Conform to its CatalogEntry
+exactly — the shape is NOT ours to change.
 - **`GET /v1/commerce/catalog?brand=<b>`** (public, no auth, on the commerce
-  public group so it serves that exact path) → `{brand, categories[], products[]}`,
-  brand-scoped (hanzo=13 canonical categories; lux/zoo/pars=5 subset, mirroring
-  console2 brand-scope), category-ordered, unpublished excluded. This is the
-  typed contract `@hanzo/products` consumes (`models/catalogentry/projection.go`).
+  public group so it serves that exact path) → `{brand, categories[], products[]}`;
+  `products` is the `@hanzo/products` CatalogEntry[] (the client reads `.products`,
+  tolerating a bare array or `{catalog|data|items}` too).
+- CatalogEntry contract fields (`models/catalogentry/projection.go` Item): `id`
+  (== slug, unique), `name`, `category` (EXACTLY one of the 13 canonical labels),
+  `brandColor` (a swatch KEY like "violet" — NOT hex; client maps key→css),
+  `iconKey` (a lucide export NAME like "Brain" — NOT a component), `slug`,
+  `route` ("/<slug>"), `docsUrl` ("https://docs.hanzo.ai/docs/services/<slug>"),
+  `apiPath` (/v1-prefixed), `pricingId` (plans/<key>.json key OR **null** — emit
+  `*string`, nil→null). `brands` is a category-DERIVED convenience, never a
+  hand-authored filter. Extra fields (gcp/repo/admin/status/priceCents/order/
+  productId) are additive — the client ignores unknowns.
+- **Brand scope is by CATEGORY** (`categoriesForBrand`, mirroring `@hanzo/products`
+  `catalogForBrand`/`BRAND_CATEGORIES`): hanzo=all 13; lux/zoo/pars=5
+  (Web3/Network/Security/Dev/Settings). There is NO per-entry brand filter — the
+  same `system`-namespace store serves every brand; an entry shows iff its
+  category is in the requested brand's set. Slug is globally unique.
 - **Admin CRUD** `/v1/catalog/entries` (+ `/seed`) gates on
   `auth.IAMClaims.GlobalAdmin()` — the catalog is cross-tenant PLATFORM data in
-  the `system` namespace, so an org-level admin must NOT edit it.
-- **Seed**: 95 Hanzo products extracted from `console2 src/lib/products/registry.tsx`,
-  embedded via `go:embed seed/hanzo-catalog.json`. `SeedIfEmpty` auto-runs on
-  first boot (count-gated no-op once populated; `COMMERCE_CATALOG_SEED=false` to
-  skip). Idempotent + non-destructive — never clobbers CMS edits. Re-baseline by
-  regenerating the JSON from the console registry.
-- Namespace: the catalog is platform-global (`system` ns), brand-partitioned by
-  the `Brand` field, namespaced via CONTEXT (`nscontext.WithNamespace`) — struct
-  `SetNamespace` is a no-op for queries (they read ns from `d.Context`), a latent
-  codebase gotcha `api/billing/osspayout systemDB` also trips (works only because
-  its reads+writes are symmetric in the default ns).
+  the `system` namespace, so an org-level admin must NOT edit it. Keyed by slug.
+- **Seed**: the embedded `seed/hanzo-catalog.json` is the `@hanzo/products`
+  snapshot (`hanzoai/ui/pkgs/products/snapshot/catalog.json`) VERBATIM — 95
+  products with correct brandColor/iconKey/route/docsUrl/apiPath/pricingId.
+  `SeedIfEmpty` auto-runs on first boot (count-gated no-op once populated;
+  `COMMERCE_CATALOG_SEED=false` to skip). Idempotent + non-destructive — never
+  clobbers CMS edits. Re-baseline by re-copying the `@hanzo/products` snapshot.
+- Namespace: platform-global (`system` ns), namespaced via CONTEXT
+  (`nscontext.WithNamespace`) — struct `SetNamespace` is a no-op for queries (they
+  read ns from `d.Context`), a latent gotcha `api/billing/osspayout systemDB`
+  also trips (works only because its reads+writes are symmetric in default ns).
 
 ### Money-correctness design (idempotency WITHOUT working transactions)
 - `datastore.RunInTransaction` (`datastore/datastore.go`) is a **NO-OP** — it
