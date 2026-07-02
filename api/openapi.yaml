@@ -36,11 +36,11 @@ info:
     url: https://hanzo.ai/terms
 
 servers:
-  - url: https://commerce.hanzo.ai/api/v1/billing
+  - url: https://commerce.hanzo.ai/v1/billing
     description: Production
-  - url: https://commerce.staging.hanzo.ai/api/v1/billing
+  - url: https://commerce.staging.hanzo.ai/v1/billing
     description: Staging
-  - url: http://localhost:8090/api/v1/billing
+  - url: http://localhost:8090/v1/billing
     description: Local development
 
 tags:
