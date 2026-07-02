@@ -53,7 +53,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 // the `committed` query param in cents, defaulting to 0.
 func EmployeeSpending(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	emp := employee.New(db)
 	if err := emp.GetById(c.Params.ByName("employeeid")); err != nil {
@@ -80,10 +80,15 @@ func EmployeeSpending(c *gin.Context) {
 	})
 }
 
-// AcceptQuote transitions a pending quote to accepted.
+// AcceptQuote transitions a pending quote to accepted. Accepting a quote commits
+// the org to a negotiated price, so it is admin-only — enforced inside the
+// handler because the route middleware no-ops on the IAM path (Red HIGH-4).
 func AcceptQuote(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	q := quote.New(db)
 	if err := q.GetById(c.Params.ByName("quoteid")); err != nil {
@@ -111,10 +116,14 @@ type rejectQuoteRequest struct {
 	By string `json:"by"`
 }
 
-// RejectQuote transitions a pending quote to a rejected state.
+// RejectQuote transitions a pending quote to a rejected state. Admin-only (a
+// quote state decision) — gated inside the handler like AcceptQuote.
 func RejectQuote(c *gin.Context) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	q := quote.New(db)
 	if err := q.GetById(c.Params.ByName("quoteid")); err != nil {
@@ -164,7 +173,7 @@ type addQuoteMessageRequest struct {
 // AddQuoteMessage appends a message to a quote's negotiation thread.
 func AddQuoteMessage(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	quoteId := c.Params.ByName("quoteid")
 
@@ -209,7 +218,7 @@ func AddQuoteMessage(c *gin.Context) {
 // ListQuoteMessages lists the messages on a quote's thread.
 func ListQuoteMessages(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	quoteId := c.Params.ByName("quoteid")
 
@@ -244,10 +253,15 @@ func RejectApproval(c *gin.Context) {
 }
 
 // resolveApproval applies an approve/reject action to an approval, enforcing
-// the pending-only transition via approval.NextStatus.
+// the pending-only transition via approval.NextStatus. Admin-only: an approval
+// authorizes spend, so both ApproveApproval and RejectApproval gate here inside
+// the handler (the route middleware no-ops on the IAM path — Red HIGH-4).
 func resolveApproval(c *gin.Context, action string) {
+	if !middleware.RequireAdmin(c) {
+		return
+	}
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c))
 
 	id := c.Params.ByName("approvalid")
 
