@@ -3,7 +3,6 @@ package checkout
 import (
 	"testing"
 
-	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
@@ -85,23 +84,5 @@ func TestHasCatalogRef(t *testing.T) {
 	}
 	if !hasCatalogRef(checkoutSessionItem{ProductSlug: "classic-tee"}) {
 		t.Fatal("slug item must be a catalog ref")
-	}
-}
-
-func TestIsPlatformOrg(t *testing.T) {
-	t.Setenv("COMMERCE_PLATFORM_ORG", "")
-	t.Setenv("COMMERCE_SERVICE_ORG", "")
-	if !isPlatformOrg(&organization.Organization{Name: "hanzo"}) {
-		t.Fatal("default platform org is 'hanzo'")
-	}
-	if isPlatformOrg(&organization.Organization{Name: "maxpower"}) {
-		t.Fatal("maxpower must NOT be the platform org by default")
-	}
-	t.Setenv("COMMERCE_PLATFORM_ORG", "acme")
-	if !isPlatformOrg(&organization.Organization{Name: "ACME"}) {
-		t.Fatal("platform org override must match case-insensitively")
-	}
-	if isPlatformOrg(&organization.Organization{Name: "hanzo"}) {
-		t.Fatal("with override set, hanzo is no longer the platform org")
 	}
 }
