@@ -56,7 +56,6 @@ require (
 )
 
 require (
-	github.com/hanzoai/commerce/thirdparty/ethereum v1.40.0
 	github.com/luxfi/zap v0.7.2
 )
 
