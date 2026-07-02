@@ -33,6 +33,12 @@ jobs:
           UNIVERSE_PAT: ${{ secrets.UNIVERSE_PAT }}
         run: git config --global url."https://x-access-token:${UNIVERSE_PAT}@github.com/".insteadOf "https://github.com/"
 
+      - name: Fetch @hanzo/plans
+        # api/billing/plans/ is gitignored (@hanzo/plans is the SOT, fetched at
+        # build). api/billing/plans.go go:embed's plans/{dns,subscription}.json,
+        # so this MUST run before `go vet` compiles the package. Public npm, no auth.
+        run: sh scripts/fetch-plans.sh
+
       - name: Run go vet
         run: go vet ./...
 
@@ -56,6 +62,10 @@ jobs:
         env:
           UNIVERSE_PAT: ${{ secrets.UNIVERSE_PAT }}
         run: git config --global url."https://x-access-token:${UNIVERSE_PAT}@github.com/".insteadOf "https://github.com/"
+
+      - name: Fetch @hanzo/plans
+        # api/billing/plans/ is gitignored; go:embed needs it before compiling.
+        run: sh scripts/fetch-plans.sh
 
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y gcc
