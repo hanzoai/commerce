@@ -270,6 +270,17 @@ func GetPaymentMethod(c *gin.Context) {
 		return
 	}
 
+	// Intra-org IDOR guard (#43a, per-user). This user-group route admits ANY
+	// authenticated org member (no Admin mask), and the :id path-param — which
+	// EdgeAuth does not pin — can name a DIFFERENT subject's saved card
+	// (last4/brand/billing address/providerRef/squareCardId) inside the caller's
+	// namespace. Non-privileged callers may read only their own subject's method;
+	// 404 (not 403) so card ids can't be probed.
+	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
+		http.Fail(c, 404, "payment method not found", nil)
+		return
+	}
+
 	c.JSON(200, paymentMethodResponse(pm))
 }
 
@@ -284,10 +295,24 @@ func ListPaymentMethods(c *gin.Context) {
 	methods := make([]*paymentmethod.PaymentMethod, 0)
 	q := paymentmethod.Query(db).Ancestor(rootKey)
 
-	if customerId := c.Query("customerId"); customerId != "" {
-		q = q.Filter("CustomerId=", customerId)
-	} else if user := c.Query("user"); user != "" {
-		q = q.Filter("CustomerId=", user)
+	// Intra-org IDOR guard (#43a, enumeration). A non-privileged org member may
+	// only ever list its OWN subject's methods. EdgeAuth pins a PRESENT
+	// customerId/user query param to the org slug, but an ABSENT filter would
+	// return EVERY method in the namespace (incl. any service-token-created
+	// per-user records) — so force the subject filter for non-privileged callers,
+	// failing closed when no subject resolves. Privileged callers (service token /
+	// admin / global admin) keep the explicit client-supplied filter.
+	if isPrivilegedBillingCaller(c) {
+		if customerId := c.Query("customerId"); customerId != "" {
+			q = q.Filter("CustomerId=", customerId)
+		} else if user := c.Query("user"); user != "" {
+			q = q.Filter("CustomerId=", user)
+		}
+	} else if subject := orgBillingKey(c); subject != "" {
+		q = q.Filter("CustomerId=", subject)
+	} else {
+		c.JSON(200, []map[string]interface{}{})
+		return
 	}
 	if pmType := c.Query("type"); pmType != "" {
 		q = q.Filter("Type=", pmType)
@@ -327,6 +352,16 @@ func UpdatePaymentMethod(c *gin.Context) {
 		return
 	}
 
+	// Intra-org IDOR guard (#43a, per-user). Mutating another subject's card
+	// (billing address / metadata — including the squareCustomerId/squareCardId
+	// that route later charges) is a cross-subject tamper the unpinned :id can
+	// reach inside the caller's namespace. Non-privileged callers may update only
+	// their own subject's method; 404 so ids can't be probed.
+	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
+		http.Fail(c, 404, "payment method not found", nil)
+		return
+	}
+
 	var req updatePaymentMethodRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		http.Fail(c, 400, "invalid request body", err)
@@ -359,6 +394,15 @@ func DetachPaymentMethod(c *gin.Context) {
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(c.Param("id")); err != nil {
 		http.Fail(c, 404, "payment method not found", err)
+		return
+	}
+
+	// Intra-org IDOR guard (#43a, per-user). Detaching another subject's card
+	// (soft-delete + Square card-on-file removal) breaks their saved-card charges
+	// and auto-recharge — a cross-subject mutation the unpinned :id can reach in
+	// the caller's namespace. Non-privileged callers may detach only their own; 404.
+	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
+		http.Fail(c, 404, "payment method not found", nil)
 		return
 	}
 
@@ -405,6 +449,14 @@ func SetDefaultPaymentMethod(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 	customerId := c.Param("id")
 
+	// Intra-org IDOR guard (#43a, per-user). The :id customer path-param scopes the
+	// default-unset sweep below; a non-privileged caller must not clear another
+	// subject's default flags. 404 keeps customer ids unprobeable.
+	if !callerMayReachBillingSubject(c, customerId) {
+		http.Fail(c, 404, "payment method not found", nil)
+		return
+	}
+
 	var req setDefaultRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		http.Fail(c, 400, "invalid request body", err)
@@ -431,6 +483,14 @@ func SetDefaultPaymentMethod(c *gin.Context) {
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(req.PaymentMethodId); err != nil {
 		http.Fail(c, 404, "payment method not found", err)
+		return
+	}
+
+	// Intra-org IDOR guard (#43a, per-user). paymentMethodId is an unpinned body
+	// field that can name a DIFFERENT subject's card; guard it too so a caller
+	// can't flip another subject's card to default. 404, no existence oracle.
+	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
+		http.Fail(c, 404, "payment method not found", nil)
 		return
 	}
 
