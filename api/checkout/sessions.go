@@ -97,11 +97,15 @@ type checkoutSessionResponse struct {
 
 // resolveCoupon looks up a coupon by code in the datastore and returns it
 // if valid. Returns nil (no error) when couponCode is empty.
-func resolveCoupon(c *gin.Context, couponCode string) (*coupon.Coupon, error) {
+func resolveCoupon(c *gin.Context, org *organization.Organization, couponCode string) (*coupon.Coupon, error) {
 	if couponCode == "" {
 		return nil, nil
 	}
-	db := datastore.New(c)
+	// Per-org store (Red MED-1): coupons are per-org merchant entities, created in
+	// the org's own store. datastore.New(c) binds the shared systemDB (and drops
+	// the namespace), so with the resolver installed it would never find the
+	// caller's coupon → every hosted-checkout coupon silently "not found".
+	db := datastore.NewNamespaced(org.Namespaced(c))
 	cpn := coupon.New(db)
 	ok, err := cpn.Query().Filter("Code_=", strings.ToUpper(strings.TrimSpace(couponCode))).Get()
 	if err != nil || !ok {
@@ -329,7 +333,7 @@ func Sessions(c *gin.Context) {
 	}
 
 	// Resolve coupon before any external calls so we can fail fast.
-	cpn, err := resolveCoupon(c, req.CouponCode)
+	cpn, err := resolveCoupon(c, org, req.CouponCode)
 	if err != nil {
 		http.Fail(c, 400, "Invalid coupon", err)
 		return

@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -106,6 +107,19 @@ func NewNamespaced(ctx context.Context) *Datastore {
 	}
 	ns := nscontext.GetNamespace(d.Context)
 	if ns == "" {
+		return d
+	}
+	// Reserved namespaces (Red LOW-1): an untrusted tenant request (ns from the
+	// verified JWT owner / X-Org-Id) must NEVER resolve to a control namespace.
+	// "system" would alias the shared SQLite-fallback systemDB file
+	// (Manager.Org("system")), pooling every tenant; "admin"/"default" are
+	// reserved. Fail closed — NO database bound — so every op errors rather than
+	// crossing into the pool. The app's OWN systemDB creation calls
+	// Manager.Org("system") directly (never through NewNamespaced), so it is
+	// unaffected. Case-insensitive so "System"/"ADMIN" can't slip through.
+	switch strings.ToLower(ns) {
+	case "system", "admin", "default":
+		d.database = nil
 		return d
 	}
 	odb, err := orgDBResolver(ns)
