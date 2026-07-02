@@ -123,6 +123,14 @@ func returnHostsFor(slug string) []string {
 			"https://s3.hanzo.ai",
 			"https://hanzo.ai",
 			"https://www.hanzo.ai",
+			// hanzo.agency — the agency marketing/onboarding site. Its
+			// onboarding checkout mints a real Square link via the authed
+			// storefront BFF and bounces the buyer to
+			// https://hanzo.agency/onboarding-success on success. A distinct
+			// registrable domain, so it belongs in the brand's first-party
+			// host list (returnHostsFor), not brandDomains.
+			"https://hanzo.agency",
+			"https://www.hanzo.agency",
 		}
 	case "lux":
 		return []string{
