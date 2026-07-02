@@ -43,7 +43,7 @@ func orgBillingKey(c *gin.Context) string {
 // Identity comes from the gateway-injected X-Org-Id / X-User-Id headers;
 // no admin token required.
 //
-//	GET /api/v1/billing/me/balance?currency=usd
+//	GET /v1/billing/me/balance?currency=usd
 func GetMyBalance(c *gin.Context) {
 	user := orgBillingKey(c)
 	if user == "" {
@@ -91,7 +91,7 @@ func GetMyBalance(c *gin.Context) {
 // Idempotent: if the credit was already granted (or zapped), returns
 // 200 with `granted: false` instead of failing.
 //
-//	POST /api/v1/billing/me/welcome
+//	POST /v1/billing/me/welcome
 func PostMyWelcome(c *gin.Context) {
 	user := orgBillingKey(c)
 	if user == "" {
