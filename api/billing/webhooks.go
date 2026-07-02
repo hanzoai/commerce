@@ -139,6 +139,13 @@ func resolveWebhookOrg(c *gin.Context) *organization.Organization {
 	if orgName == "" {
 		orgName = "hanzo"
 	}
+	// A webhook caller must not be able to provision an org named after a raw
+	// API key: reject a bearer-shaped selector before GetOrCreate (incident
+	// 2026-07-02).
+	if organization.IsSecretLikeName(orgName) {
+		log.Warn("webhook org resolve: bearer-shaped org selector; refusing to provision")
+		return nil
+	}
 	org := organization.New(db)
 	org.Name = orgName
 	if err := org.GetOrCreate("Name=", orgName); err != nil {
