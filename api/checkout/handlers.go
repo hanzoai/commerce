@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"sync"
 
@@ -25,17 +26,37 @@ import (
 
 var orderEndpoint = config.UrlFor("api", "/order/")
 
-func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
-	// Get organization for this user
-	org := middleware.GetOrganization(c)
+// authedOrg returns the authenticated caller's organization — set by the route's
+// TokenRequired branch (service token / legacy org-bound token) or the IAM
+// identity middleware — with its payment credentials hydrated from KMS. It is the
+// ONE org source for every checkout money handler: the org is always the
+// validated principal's, never client-supplied. Returns ok=false when no
+// authenticated org is present so callers fail closed (401).
+func authedOrg(c *gin.Context) (*organization.Organization, bool) {
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return nil, false
+	}
 
-	// Hydrate payment credentials from KMS
+	// Hydrate payment credentials from KMS.
 	if v, ok := c.Get("kms"); ok {
 		if kmsClient, ok := v.(*kms.CachedClient); ok {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
 				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
 			}
 		}
+	}
+	return org, true
+}
+
+func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
+	// Org is the authenticated principal's (fail closed if the auth middleware
+	// set none) — never client-supplied.
+	org, ok := authedOrg(c)
+	if !ok {
+		err := errors.New("no authenticated organization")
+		http.Fail(c, 401, "Authentication required", err)
+		return nil, nil, err
 	}
 
 	// Set up the db with the namespaced context. NewNamespaced routes to the
@@ -264,9 +285,13 @@ func route(router router.Router, prefix string) {
 	api := router.Group(prefix)
 	api.Use(middleware.AccessControl("*"))
 
-	// Hosted checkout sessions
+	// Hosted checkout sessions. AUTHENTICATED like every sibling: a valid
+	// service token / per-org Published storefront token (or IAM principal) is
+	// required BEFORE any org resolution or Square call. There is no anonymous
+	// path to mint a payment link — the org is taken from the validated token,
+	// never the request body.
 	if prefix == "/checkout" {
-		api.POST("/sessions", Sessions)
+		api.POST("/sessions", publishedRequired, Sessions)
 	}
 
 	// Auth and Capture Flow (Two-step Payment)
