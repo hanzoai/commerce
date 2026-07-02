@@ -20,6 +20,7 @@ import (
 	"github.com/square/square-go-sdk/v3/core"
 	"github.com/square/square-go-sdk/v3/option"
 
+	hostedcheckout "github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
@@ -27,7 +28,6 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/payment/processor"
-	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -76,8 +76,9 @@ type checkoutSessionRequest struct {
 	Company      string                  `json:"company"`
 	ProviderHint string                  `json:"providerHint"`
 	Currency     string                  `json:"currency"`
-	Tenant       string                  `json:"tenant"`
-	Org          string                  `json:"org"`
+	// NOTE: there is deliberately NO org/tenant field. The org is SOLELY the
+	// authenticated principal's (middleware.GetOrganization) — a client can only
+	// ever mint checkout for its OWN tenant, never one it names in the body.
 	Project      string                  `json:"project"`
 	Customer     checkoutSessionCustomer `json:"customer"`
 	Items        []checkoutSessionItem   `json:"items"`
@@ -276,55 +277,19 @@ func isValidRedirect(raw string) bool {
 	return true
 }
 
-// resolveOrgForCheckout looks up the Organization by name (from request body,
-// X-Org-Id / X-IAM-Org header, or COMMERCE_SERVICE_ORG env) and hydrates
-// its payment credentials from KMS. IAM manages all orgs, so the header is
-// X-Org-Id (X-IAM-Org accepted for backward compat).
-func resolveOrgForCheckout(c *gin.Context, orgName string) (*organization.Organization, error) {
-	if orgName == "" {
-		orgName = c.GetHeader("X-Org-Id")
+// websiteURLs returns the org's registered website URLs — its OWN domains — for
+// the checkout redirect allowlist.
+func websiteURLs(org *organization.Organization) []string {
+	if org == nil || len(org.Websites) == 0 {
+		return nil
 	}
-	if orgName == "" {
-		orgName = c.GetHeader("X-IAM-Org")
-	}
-	if orgName == "" {
-		orgName = os.Getenv("COMMERCE_SERVICE_ORG")
-	}
-	if orgName == "" {
-		return nil, errors.New("organization is required: set org in request body or X-Org-Id header")
-	}
-
-	db := datastore.New(c)
-	org := organization.New(db)
-	if err := org.GetById(orgName); err != nil {
-		return nil, fmt.Errorf("organization %q not found: %w", orgName, err)
-	}
-
-	// Hydrate payment credentials from KMS
-	if v, ok := c.Get("kms"); ok {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
+	out := make([]string, 0, len(org.Websites))
+	for _, w := range org.Websites {
+		if u := strings.TrimSpace(w.Url); u != "" {
+			out = append(out, u)
 		}
 	}
-
-	return org, nil
-}
-
-// isPlatformOrg reports whether org is the deployment's own first-party org —
-// the only org permitted to use the platform env Square account in PRODUCTION.
-// Resolved from COMMERCE_PLATFORM_ORG, else COMMERCE_SERVICE_ORG, else "hanzo"
-// (the same default the service-token path uses).
-func isPlatformOrg(org *organization.Organization) bool {
-	platform := strings.TrimSpace(os.Getenv("COMMERCE_PLATFORM_ORG"))
-	if platform == "" {
-		platform = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
-	}
-	if platform == "" {
-		platform = "hanzo"
-	}
-	return org != nil && strings.EqualFold(strings.TrimSpace(org.Name), platform)
+	return out
 }
 
 // squareCheckoutClientForOrg creates a Square Payment Links client using the
@@ -337,31 +302,24 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 	token := sqCfg.AccessToken
 	locationID := sqCfg.LocationId
 
-	// Fall back to the PLATFORM's env-configured Square creds only when the org
-	// has none of its own. The SAME SQUARE_ENVIRONMENT authority (via
-	// org.TestMode) picks the sandbox vs production vars, so the Payment Links
-	// base URL always matches.
-	//
-	// Red LOW — public POST /v1/checkout/sessions carries the org in the body, so
-	// without a gate ANY org name would borrow the platform's Square account. In
-	// PRODUCTION that mints a REAL square.link (real charge) for an arbitrary org.
-	// So the production env-fallback is restricted to the platform's own
-	// first-party org; every other org must configure its OWN Square creds (KMS)
-	// to sell live. SANDBOX has no money at risk, so the env-fallback stays open
-	// there (that is exactly how the per-org sandbox demo works).
+	// FAIL-CLOSED in production. An org that has not configured its OWN
+	// per-tenant Square credentials (KMS) can NEVER borrow the deployment's
+	// env-configured account to mint a REAL square.link. There is no env
+	// fallback and no platform-org special case for live money — the whole
+	// "anonymous env-token / platform-org" lending path is gone. Only SANDBOX
+	// (no money at risk) keeps the env fallback, so the per-org storefront
+	// sandbox demo still mints intents behind authentication.
 	if token == "" {
-		if !isSandbox && !isPlatformOrg(org) {
+		if !isSandbox {
 			return nil, "", errors.New("square is not configured for this organization")
 		}
 		token = strings.TrimSpace(os.Getenv("SQUARE_ACCESS_TOKEN"))
 		locationID = strings.TrimSpace(os.Getenv("SQUARE_LOCATION_ID"))
-		if isSandbox {
-			if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
-				token = t
-			}
-			if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
-				locationID = l
-			}
+		if t := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_ACCESS_TOKEN")); t != "" {
+			token = t
+		}
+		if l := strings.TrimSpace(os.Getenv("SQUARE_SANDBOX_LOCATION_ID")); l != "" {
+			locationID = l
 		}
 	}
 
@@ -397,11 +355,6 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
-	if !isValidRedirect(req.SuccessURL) {
-		http.Fail(c, 400, "Invalid successUrl", errors.New("successUrl is required"))
-		return
-	}
-
 	currency := strings.ToUpper(strings.TrimSpace(req.Currency))
 	if currency == "" {
 		currency = "USD"
@@ -411,7 +364,7 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
-	// Wire transfer: return instructions URL instead of creating a payment link
+	// Wire transfer: return instructions URL instead of creating a payment link.
 	if strings.ToLower(strings.TrimSpace(req.ProviderHint)) == "wire" {
 		sessionID := uuid.New().String()
 		baseURL := strings.TrimSpace(os.Getenv("BASE_URL"))
@@ -427,14 +380,31 @@ func Sessions(c *gin.Context) {
 		return
 	}
 
-	// Resolve org from request body or X-IAM-Org header, hydrate KMS credentials.
-	orgName := strings.TrimSpace(req.Org)
-	if orgName == "" {
-		orgName = strings.TrimSpace(req.Tenant)
+	// Org is SOLELY the authenticated principal's — the route's
+	// TokenRequired(Admin, Published) branch (service token / Published
+	// storefront token) or the IAM identity middleware set it. There is NO
+	// request-body/header/env org override on the mint path: one org source, so
+	// a caller can only ever mint checkout for its OWN tenant. Fail closed.
+	org, ok := authedOrg(c)
+	if !ok {
+		http.Fail(c, 401, "Authentication required",
+			errors.New("no authenticated organization for checkout"))
+		return
 	}
-	org, err := resolveOrgForCheckout(c, orgName)
-	if err != nil {
-		http.Fail(c, 400, "Organization required", err)
+
+	// The minted payment link's post-payment redirect MUST target one of the
+	// org's OWN domains — otherwise a link carrying the org's brand and a real
+	// charge becomes an open-redirect / phishing pivot.
+	sites := websiteURLs(org)
+	if !hostedcheckout.AllowedCheckoutRedirect(req.SuccessURL, org.Name, sites, c.Request.Host) {
+		http.Fail(c, 400, "Invalid successUrl",
+			errors.New("successUrl must be one of the organization's own domains"))
+		return
+	}
+	if strings.TrimSpace(req.CancelURL) != "" &&
+		!hostedcheckout.AllowedCheckoutRedirect(req.CancelURL, org.Name, sites, c.Request.Host) {
+		http.Fail(c, 400, "Invalid cancelUrl",
+			errors.New("cancelUrl must be one of the organization's own domains"))
 		return
 	}
 
