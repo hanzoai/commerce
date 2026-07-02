@@ -565,9 +565,13 @@ func (db *PostgresDB) VectorSearch(ctx context.Context, opts *VectorSearchOption
 		argNum++
 	}
 
-	if db.config.TenantID != "" {
+	// tenantFor(ctx) so a namespaced request scopes vectors to ITS OWN tenant
+	// (Red LOW-2), falling back to the instance's configured tenant. Vector search
+	// is unreachable today (no handler wires it), but fixing it now means a future
+	// wiring can never enumerate another tenant's vectors.
+	if tenant := db.tenantFor(ctx); tenant != "" {
 		query += fmt.Sprintf(" AND tenant_id = $%d", argNum)
-		args = append(args, db.config.TenantID)
+		args = append(args, tenant)
 		argNum++
 	}
 
@@ -617,9 +621,12 @@ func (db *PostgresDB) PutVector(ctx context.Context, kind string, id string, vec
 		}
 	}
 
+	// Tag the stored vector with the REQUEST tenant (Red LOW-2), not the static
+	// config tenant, so a shared PostgresDB scoping by ctx stores it under the
+	// right tenant.
 	var tenantID *string
-	if db.config.TenantID != "" {
-		tenantID = &db.config.TenantID
+	if tenant := db.tenantFor(ctx); tenant != "" {
+		tenantID = &tenant
 	}
 
 	_, err = db.db.ExecContext(ctx, `
