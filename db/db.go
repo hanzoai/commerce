@@ -177,6 +177,11 @@ type Manager struct {
 	// Hanzo Datastore (shared)
 	datastoreDB Datastore
 
+	// masterKey is the 32-byte KMS-sourced at-rest encryption master key
+	// (COMMERCE_KMS_MASTER_KEY). Nil => per-tenant SQLite files are unencrypted
+	// (dev/CI). Resolved once in NewManager and passed to every tenant store.
+	masterKey []byte
+
 	// Closed flag
 	closed bool
 }
@@ -194,10 +199,19 @@ func NewManager(cfg *Config) (*Manager, error) {
 		cfg.OrgDataDir = cfg.DataDir + "/orgs"
 	}
 
+	// Decide at-rest encryption posture ONCE, from COMMERCE_KMS_MASTER_KEY. On a
+	// non-encrypting (pure-Go) build this hard-errors when the key is set rather
+	// than silently persisting plaintext money data.
+	masterKey, err := resolveMasterKey()
+	if err != nil {
+		return nil, err
+	}
+
 	m := &Manager{
-		config:  cfg,
-		userDBs: make(map[string]*SQLiteDB),
-		orgDBs:  make(map[string]*SQLiteDB),
+		config:    cfg,
+		userDBs:   make(map[string]*SQLiteDB),
+		orgDBs:    make(map[string]*SQLiteDB),
+		masterKey: masterKey,
 	}
 
 	// Initialize Hanzo Datastore if enabled
@@ -264,6 +278,7 @@ func (m *Manager) User(userID string) (DB, error) {
 		VectorDimensions:   m.config.VectorDimensions,
 		TenantID:           userID,
 		TenantType:         "user",
+		MasterKey:          m.masterKey,
 	})
 	if err != nil {
 		return nil, err
@@ -298,6 +313,7 @@ func (m *Manager) Org(orgID string) (DB, error) {
 		VectorDimensions:   m.config.VectorDimensions,
 		TenantID:           orgID,
 		TenantType:         "org",
+		MasterKey:          m.masterKey,
 	})
 	if err != nil {
 		return nil, err
@@ -310,6 +326,12 @@ func (m *Manager) Org(orgID string) (DB, error) {
 // Datastore returns the Hanzo Datastore for deep analytics queries
 func (m *Manager) Datastore() Datastore {
 	return m.datastoreDB
+}
+
+// Encrypted reports whether per-tenant SQLite files are SQLCipher-encrypted at
+// rest (i.e. COMMERCE_KMS_MASTER_KEY was supplied and this build can encrypt).
+func (m *Manager) Encrypted() bool {
+	return m.masterKey != nil
 }
 
 // Close closes all database connections
