@@ -37,6 +37,12 @@ type SQLiteDBConfig struct {
 
 	// TenantType is "user" or "org"
 	TenantType string
+
+	// MasterKey is the 32-byte KMS-sourced master key. When non-nil the file is
+	// opened SQLCipher-encrypted at rest (per-tenant DEK wrapped under a KEK
+	// derived from this key). Nil means unencrypted (dev/CI). Set once by the
+	// Manager from COMMERCE_KMS_MASTER_KEY — see encryption.go.
+	MasterKey []byte
 }
 
 // SQLiteDB implements the DB interface using SQLite
@@ -60,6 +66,9 @@ type SQLiteDB struct {
 	// Closed flag
 	closed bool
 	mu     sync.RWMutex
+
+	// encrypted reports whether this file is SQLCipher-encrypted at rest.
+	encrypted bool
 }
 
 // tableSchema holds cached schema information
@@ -87,11 +96,25 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 		return nil, fmt.Errorf("db: failed to create directory %s: %w", dir, err)
 	}
 
-	// Build connection string with pragmas
-	pragmas := buildPragmas(cfg.Config)
+	// Resolve the at-rest encryption key for this tenant. When a master key is
+	// configured, derive/unwrap the per-tenant DEK (creating its sidecar on first
+	// use); otherwise dek stays nil and the file is opened as plaintext (dev/CI).
+	// The read and write connections MUST key the same file with the same DEK, so
+	// it is resolved once here and reused for both.
+	var dek []byte
+	if cfg.MasterKey != nil {
+		d, err := resolveDEK(cfg.Path, cfg.MasterKey, principalFor(cfg.TenantType), cfg.TenantID)
+		if err != nil {
+			return nil, fmt.Errorf("db: resolve encryption key for tenant %q: %w", cfg.TenantID, err)
+		}
+		dek = d
+		defer zeroBytes(dek) // SQLCipher copies the key into its own state at Open
+	}
+
+	driverName, dsn := encDriverDSN(cfg.Path, dek, cfg.Config)
 
 	// Open read connection (concurrent)
-	readDB, err := sql.Open("sqlite3", cfg.Path+pragmas)
+	readDB, err := sql.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("db: failed to open read connection: %w", err)
 	}
@@ -100,7 +123,7 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	readDB.SetMaxIdleConns(cfg.Config.MaxIdleConns)
 
 	// Open write connection (single, serialized)
-	writeDB, err := sql.Open("sqlite3", cfg.Path+pragmas)
+	writeDB, err := sql.Open(driverName, dsn)
 	if err != nil {
 		readDB.Close()
 		return nil, fmt.Errorf("db: failed to open write connection: %w", err)
@@ -110,10 +133,11 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	writeDB.SetMaxIdleConns(1)
 
 	db := &SQLiteDB{
-		config:  cfg,
-		readDB:  readDB,
-		writeDB: writeDB,
-		schemas: make(map[string]*tableSchema),
+		config:    cfg,
+		readDB:    readDB,
+		writeDB:   writeDB,
+		schemas:   make(map[string]*tableSchema),
+		encrypted: dek != nil,
 	}
 
 	// Initialize base schema
@@ -174,52 +198,43 @@ func buildPragmas(cfg SQLiteConfig) string {
 	return "?" + strings.Join(pragmas, "&")
 }
 
-// initSchema creates the base tables
+// baseSchemaDDL is the tenant store's base schema, applied on create and reused
+// by the encrypt-at-rest migration (cmd/commerce-encrypt-dbs) so a migrated
+// encrypted file is byte-schema-identical to a freshly created one — one
+// definition, no drift.
+var baseSchemaDDL = []string{
+	`CREATE TABLE IF NOT EXISTS _metadata (
+		key TEXT PRIMARY KEY,
+		value TEXT,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS _entities (
+		id TEXT NOT NULL,
+		kind TEXT NOT NULL,
+		namespace TEXT NOT NULL DEFAULT '',
+		parent_id TEXT,
+		data JSON NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		deleted INTEGER DEFAULT 0,
+		PRIMARY KEY (id, kind, namespace)
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_entities_kind ON _entities(kind)`,
+	`CREATE INDEX IF NOT EXISTS idx_entities_ns ON _entities(namespace)`,
+	`CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id)`,
+	`CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted)`,
+}
+
+// initSchema creates the base tables.
 func (db *SQLiteDB) initSchema() error {
 	db.writeMu.Lock()
 	defer db.writeMu.Unlock()
 
-	// Create metadata table
-	_, err := db.writeDB.Exec(`
-		CREATE TABLE IF NOT EXISTS _metadata (
-			key TEXT PRIMARY KEY,
-			value TEXT,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
-	if err != nil {
-		return err
+	for _, stmt := range baseSchemaDDL {
+		if _, err := db.writeDB.Exec(stmt); err != nil {
+			return err
+		}
 	}
-
-	// Create generic entity storage table
-	_, err = db.writeDB.Exec(`
-		CREATE TABLE IF NOT EXISTS _entities (
-			id TEXT NOT NULL,
-			kind TEXT NOT NULL,
-			namespace TEXT NOT NULL DEFAULT '',
-			parent_id TEXT,
-			data JSON NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			deleted INTEGER DEFAULT 0,
-			PRIMARY KEY (id, kind, namespace)
-		)
-	`)
-	if err != nil {
-		return err
-	}
-
-	// Create indexes
-	_, err = db.writeDB.Exec(`
-		CREATE INDEX IF NOT EXISTS idx_entities_kind ON _entities(kind);
-		CREATE INDEX IF NOT EXISTS idx_entities_ns ON _entities(namespace);
-		CREATE INDEX IF NOT EXISTS idx_entities_parent ON _entities(parent_id);
-		CREATE INDEX IF NOT EXISTS idx_entities_deleted ON _entities(deleted);
-	`)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -281,6 +296,11 @@ func (db *SQLiteDB) TenantID() string {
 // TenantType returns "user" or "org"
 func (db *SQLiteDB) TenantType() string {
 	return db.config.TenantType
+}
+
+// Encrypted reports whether this tenant file is SQLCipher-encrypted at rest.
+func (db *SQLiteDB) Encrypted() bool {
+	return db.encrypted
 }
 
 // Close closes the database connections
