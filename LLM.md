@@ -297,6 +297,42 @@ field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration
 
 **PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
 
+## At-Rest Encryption (SQLCipher via hanzoai/sqlite)
+
+Per-tenant SQLite files hold money data (balances, transactions, usage), so they
+can be encrypted at rest with `github.com/hanzoai/sqlite` v0.2.0 (SQLCipher
+AES-256), the SAME envelope scheme Hanzo IAM uses — one at-rest model platform-wide.
+Code: `db/encryption.go` (key posture + per-tenant DEK), `db/migrate.go` (migration).
+
+- **Master key from KMS, ONE source**: `COMMERCE_KMS_MASTER_KEY` (64 hex), read
+  ONLY by `resolveMasterKey()`. Materialised from `kms.hanzo.ai` into
+  `commerce-secrets` by the existing `commerce-kms-sync` KMSSecret (path
+  `/commerce`), same mechanism as `HUSD_TREASURY_KEY`. Never in git/code.
+- **Envelope**: each `data.db` has its own random DEK → SQLCipher pages; the DEK
+  is wrapped (AES-256-GCM, principal-AAD bound) under `KEK = DeriveKey(master,
+  principal, tenantID)` into a `<data.db>.dek` sidecar. Rotating the master key
+  only rewraps the sidecar (O(1), never bricks a file).
+- **Posture decided once**: unset key → unencrypted (dev/CI). Set + codec linked
+  → encrypted. Set + cgo-but-no-libsqlcipher → **refuse to boot** (CodecLinked()
+  probe), never silent plaintext. Set + existing file without a `.dek` sidecar →
+  refuse (migrate first).
+- **Migration** (`cmd/commerce-encrypt-dbs`, idempotent, keeps `.plaintext.bak`):
+  WAL-safe — folds the source WAL with a verified TRUNCATE checkpoint (opened R/W,
+  not mode=ro), verifies per-table row-hash parity, then checkpoints+asserts the
+  encrypted temp WAL-free before an atomic cutover (sidecar last = fail-closed).
+
+**Rollout (deliberate; NOT yet enabled — key unset ⇒ current plaintext behavior):**
+1. Build the image with libsqlcipher linked: add `libsqlite3` to the build tags,
+   `CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1 -I/usr/include/sqlcipher`,
+   `CGO_LDFLAGS=-lsqlcipher`, `apk add sqlcipher-dev` (builder) + `sqlcipher-libs`
+   (runtime), and a test stage with `SQLITE_REQUIRE_CODEC=1` so a mis-link fails CI.
+2. Generate a 32-byte key, store at KMS `/commerce/COMMERCE_KMS_MASTER_KEY`.
+3. Scale commerce to 0 (single-writer PVC), run `commerce-encrypt-dbs` as a Job
+   mounting `commerce-data` (or an idempotent initContainer), verify ciphertext +
+   `.plaintext.bak`.
+4. Add the `COMMERCE_KMS_MASTER_KEY` env (secretKeyRef `commerce-secrets`, optional)
+   to the commerce CR; scale up. Daemon now opens encrypted, refuses plaintext.
+
 ## Billing API (2026-02-23)
 
 | Endpoint | Method | Purpose |
