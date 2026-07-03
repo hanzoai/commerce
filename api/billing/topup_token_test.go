@@ -71,6 +71,49 @@ func TestTopupDestination_SubjectResolution(t *testing.T) {
 	}
 }
 
+// TestTopupBounds proves the server-authoritative amount floor+ceiling that the
+// handler enforces BEFORE any charge: out-of-bounds amounts (0, negative,
+// sub-$1, and a $1,000,000 mega-charge) are rejected; the defaults mirror the
+// console MIN/MAX policy; and a per-deploy env override is honored while a
+// bad/non-positive override fails safe to the default bound.
+func TestTopupBounds(t *testing.T) {
+	minC, maxC := topupBounds()
+	if minC != 100 || maxC != 500000 {
+		t.Fatalf("default topupBounds() = (%d,%d), want (100,500000)", minC, maxC)
+	}
+	inBounds := func(v int64) bool { return v >= minC && v <= maxC }
+	for _, tc := range []struct {
+		cents int64
+		ok    bool
+	}{
+		{0, false},         // zero
+		{-100, false},      // negative
+		{99, false},        // just below the $1 floor
+		{100, true},        // exactly the floor
+		{2500, true},       // typical
+		{500000, true},     // exactly the ceiling
+		{500001, false},    // just over the $5,000 ceiling
+		{100000000, false}, // $1,000,000 mega-charge — rejected
+	} {
+		if inBounds(tc.cents) != tc.ok {
+			t.Fatalf("amount %d cents: inBounds=%v, want %v", tc.cents, inBounds(tc.cents), tc.ok)
+		}
+	}
+
+	// Env override honored.
+	t.Setenv("COMMERCE_TOPUP_MIN_CENTS", "50")
+	t.Setenv("COMMERCE_TOPUP_MAX_CENTS", "1000000")
+	if mn, mx := topupBounds(); mn != 50 || mx != 1000000 {
+		t.Fatalf("overridden topupBounds() = (%d,%d), want (50,1000000)", mn, mx)
+	}
+	// Bad / non-positive override → fail safe to the default bound.
+	t.Setenv("COMMERCE_TOPUP_MIN_CENTS", "-5")
+	t.Setenv("COMMERCE_TOPUP_MAX_CENTS", "garbage")
+	if mn, mx := topupBounds(); mn != 100 || mx != 500000 {
+		t.Fatalf("bad-override topupBounds() = (%d,%d), want defaults (100,500000)", mn, mx)
+	}
+}
+
 // creditLikeTopup mirrors TopupWithToken's post-charge credit EXACTLY: a Deposit
 // keyed by the resolved subject, DestinationKind "iam-user", Test = the org's
 // resolved TestMode — the same row GetBalance/GetMyBalance read and the gateway
