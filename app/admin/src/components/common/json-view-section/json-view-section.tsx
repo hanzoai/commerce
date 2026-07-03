@@ -92,7 +92,7 @@ export const JsonViewSection = ({ data }: JsonViewSectionProps) => {
                   displayDataTypes={false}
                   style={
                     {
-                      "--w-rjv-font-family": "Roboto Mono, monospace",
+                      "--w-rjv-font-family": "Geist Mono, monospace",
                       "--w-rjv-line-color": "var(--contrast-border-base)",
                       "--w-rjv-curlybraces-color":
                         "var(--contrast-fg-secondary)",
