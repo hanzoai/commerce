@@ -39,6 +39,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	shutdown := initTelemetry(ctx, "hanzo-commerce")
+	defer shutdown(context.Background())
+
 	srv, err := commerce.Embed(ctx, commerce.EmbedConfig{
 		DataDir:         *dataDir,
 		HTTPAddr:        *httpAddr,
