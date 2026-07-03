@@ -3,6 +3,8 @@ package billing
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -25,6 +27,27 @@ type topupTokenRequest struct {
 	AmountCents int64  `json:"amountCents"`
 	UserID      string `json:"userId"`
 	Currency    string `json:"currency,omitempty"`
+}
+
+// topupBounds returns the inclusive [min,max] card top-up amount in cents. A
+// server-side bound is the authoritative enforcement of the console's own
+// MIN_TOPUP_CENTS/MAX_TOPUP_CENTS policy (a client cap is advisory — a scripted
+// request bypasses it). Defaults: min 100 ($1), max 500000 ($5,000). Override
+// per-deploy for risk tuning with COMMERCE_TOPUP_MIN_CENTS / COMMERCE_TOPUP_MAX_CENTS.
+func topupBounds() (int64, int64) {
+	return envCents("COMMERCE_TOPUP_MIN_CENTS", 100), envCents("COMMERCE_TOPUP_MAX_CENTS", 500000)
+}
+
+// envCents reads a positive-int-cents override from the environment, falling
+// back to def when unset, non-numeric, or non-positive (fail-safe to the default
+// bound rather than an unbounded/zero limit).
+func envCents(key string, def int64) int64 {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
 }
 
 // topupDestination resolves the billing subject a top-up must credit: the SAME
@@ -97,8 +120,18 @@ func TopupWithToken(c *gin.Context) {
 		jsonhttp.Fail(c, 401, "missing identity headers", nil)
 		return
 	}
-	if req.AmountCents <= 0 {
-		jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
+	// Server-authoritative amount bounds (money-critical). The console UI caps
+	// the amount, but this endpoint charges a REAL card and a scripted/forged
+	// request bypasses the browser entirely — so the floor+ceiling MUST be
+	// enforced here, not just client-side. Defaults mirror the console policy
+	// (min $1, max $5,000: the $1 floor blocks card-testing micro-charges + the
+	// Square per-txn fee floor; the $5,000 ceiling bounds a fat-finger / hostile
+	// mega-charge on a cold, KYC-less card). Deployment-tunable for risk policy
+	// without a rebuild (COMMERCE_TOPUP_{MIN,MAX}_CENTS). Enforced BEFORE the
+	// idempotency guard and the charge — no money moves on an out-of-bounds amount.
+	minCents, maxCents := topupBounds()
+	if req.AmountCents < minCents || req.AmountCents > maxCents {
+		jsonhttp.Fail(c, 400, fmt.Sprintf("amountCents must be between %d and %d", minCents, maxCents), nil)
 		return
 	}
 
