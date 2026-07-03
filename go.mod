@@ -56,7 +56,7 @@ require (
 )
 
 require (
-	github.com/luxfi/zap v0.8.1
+	github.com/luxfi/zap v0.8.11
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 )
