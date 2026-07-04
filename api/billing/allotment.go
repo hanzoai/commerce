@@ -43,6 +43,17 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string) string {
 		default:
 			continue
 		}
+		// C1-a: a PAID tier's included allotment may anchor ONLY on a
+		// payment-backed subscription — never a zero-payment self-created internal
+		// Active sub (CreateBillingSubscription starts one instantly). A free tier
+		// (no included allotment) confers nothing to mint, so it is fine self-serve.
+		slug := s.Plan.Slug
+		if slug == "" {
+			slug = s.PlanId
+		}
+		if IncludedMonthlyCents(slug) > 0 && !subscriptionPaymentBacked(s) {
+			continue
+		}
 		if best == nil || s.PeriodStart.After(best.PeriodStart) {
 			best = s
 		}
@@ -54,6 +65,22 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string) string {
 		return best.Plan.Slug
 	}
 	return best.PlanId
+}
+
+// subscriptionPaymentBacked reports whether a subscription represents a REAL paid
+// relationship — one managed by an external payment provider (Stripe/Square/…),
+// or one that has progressed through invoicing (a linked invoice) — as opposed to
+// the zero-payment internal subscription CreateBillingSubscription starts Active
+// instantly. It is the entitlement anchor for a PAID tier's minted allotment: a
+// forged internal Active sub (ProviderType="internal", no collected invoice) is
+// NOT payment-backed, so its higher-tier allotment can never be minted (C1-a).
+func subscriptionPaymentBacked(s *subscription.Subscription) bool {
+	switch strings.ToLower(strings.TrimSpace(s.ProviderType)) {
+	case "stripe", "square", "paypal", "authorizenet", "authorize.net", "braintree":
+		return true // a real external payment provider manages billing
+	}
+	// internal / bundle / unset: backed only once it has actually been invoiced.
+	return strings.TrimSpace(s.CurrentInvoiceId) != ""
 }
 
 // resolvePlanSlug is the READ-side plan resolver (usage rollup): an explicit
