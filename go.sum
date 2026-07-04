@@ -594,8 +594,8 @@ github.com/luxfi/threshold v1.9.9 h1:zsEuMASTbyiLi7DkbjXBw3hsKIcqvpQt3Xu/MpZA5RQ
 github.com/luxfi/threshold v1.9.9/go.mod h1:8zO1a2f3UMMsM1TkOVUoUbCR9h1sPhWH/ibblf13+h4=
 github.com/luxfi/utils v1.1.5 h1:6q85557b7djbZ/OF6S1k5wyGddozWnsoUuhokPHQRvo=
 github.com/luxfi/utils v1.1.5/go.mod h1:T2OCKT1xG9jtKR/gyJQoSkticzrE9WFQ8eohJHGu9Fg=
-github.com/luxfi/zap v0.8.11 h1:NIiZp/YyS1TQHfU/PHnMXynzPOKCfZOQssn5ytCdYXg=
-github.com/luxfi/zap v0.8.11/go.mod h1:JfqII8VtVQYLLTX6obU1DP9sjGqf9L24vfug5ifh0b8=
+github.com/luxfi/zap v0.8.12 h1:93Bo1JAXaGrWkLSvh7ihQMNUsJnF5SsAjHcNCPKW3y8=
+github.com/luxfi/zap v0.8.12/go.mod h1:JfqII8VtVQYLLTX6obU1DP9sjGqf9L24vfug5ifh0b8=
 github.com/maruel/natural v1.1.1 h1:Hja7XhhmvEFhcByqDoHz9QZbkWey+COd9xWfCfn1ioo=
 github.com/maruel/natural v1.1.1/go.mod h1:v+Rfd79xlw1AgVBjbO0BEQmptqb5HvL/k9GRHB7ZKEg=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
