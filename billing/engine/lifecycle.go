@@ -35,50 +35,27 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 
 // RenewSubscription generates an invoice for the current billing period
 // and attempts to collect payment. Returns the invoice and collection result.
+//
+// It is idempotent per (subscription, period): a PastDue renewal re-runs the
+// SAME period (the period only advances on a successful collection), so this
+// must NEVER mint a second invoice for a period already invoiced. If an
+// invoice for this exact period already exists it is returned as-is (no
+// duplicate, no re-charge); retrying collection on an unpaid invoice is the
+// dunning workflow's job (billing/workflows/dunning.go), not this generator's.
 func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, burnCredits CreditBurner) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	// Generate invoice
-	inv := billinginvoice.New(db)
-	inv.UserId = sub.UserId
-	inv.SubscriptionId = sub.Id()
-	inv.PeriodStart = sub.PeriodStart
-	inv.PeriodEnd = sub.PeriodEnd
-	inv.Currency = sub.Plan.Currency
-
-	// Add subscription line item (flat plan fee)
-	if sub.Plan.Price > 0 {
-		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{
-			Id:          "li_plan_" + sub.PlanId,
-			Type:        billinginvoice.LineSubscription,
-			Description: sub.Plan.Name + " subscription",
-			PlanId:      sub.PlanId,
-			PlanName:    sub.Plan.Name,
-			Amount:      int64(sub.Plan.Price),
-			Currency:    sub.Plan.Currency,
-			PeriodStart: sub.PeriodStart,
-			PeriodEnd:   sub.PeriodEnd,
-		})
-	}
-
-	// Add usage line items
-	usageItems, _, err := AggregateUsage(db, sub.UserId, sub.PeriodStart, sub.PeriodEnd)
+	// Idempotency guard: one invoice per (subscription, period).
+	existing, err := findInvoiceForPeriod(db, sub)
 	if err != nil {
-		// Non-fatal: invoice without usage
-		_ = err
-	} else {
-		inv.LineItems = append(inv.LineItems, usageItems...)
+		return nil, nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
+	}
+	if existing != nil {
+		return existing, resultFromInvoice(existing), nil
 	}
 
-	// Calculate totals
-	inv.RecalculateSubtotal()
-
-	// Finalize (draft -> open)
-	if err := inv.Finalize(); err != nil {
-		return inv, nil, fmt.Errorf("failed to finalize invoice: %w", err)
-	}
-
-	// Persist invoice
-	if err := inv.Create(); err != nil {
-		return inv, nil, fmt.Errorf("failed to create invoice: %w", err)
+	// Generate a fresh, sequentially-numbered invoice for this period.
+	inv, err := buildPeriodInvoice(db, sub)
+	if err != nil {
+		return inv, nil, err
 	}
 
 	// Attempt collection
@@ -102,6 +79,103 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 	}
 
 	return inv, result, nil
+}
+
+// buildPeriodInvoice constructs, numbers, finalizes and persists a new invoice
+// for the subscription's current period. The invoice number is a sequential
+// per-org counter, mirroring the credit-note numbering in refunds.go.
+func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription) (*billinginvoice.BillingInvoice, error) {
+	inv := billinginvoice.New(db)
+	inv.UserId = sub.UserId
+	inv.SubscriptionId = sub.Id()
+	inv.PeriodStart = sub.PeriodStart
+	inv.PeriodEnd = sub.PeriodEnd
+	inv.Currency = sub.Plan.Currency
+
+	// Add subscription line item (flat plan fee)
+	if sub.Plan.Price > 0 {
+		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{
+			Id:          "li_plan_" + sub.PlanId,
+			Type:        billinginvoice.LineSubscription,
+			Description: sub.Plan.Name + " subscription",
+			PlanId:      sub.PlanId,
+			PlanName:    sub.Plan.Name,
+			Amount:      int64(sub.Plan.Price),
+			Currency:    sub.Plan.Currency,
+			PeriodStart: sub.PeriodStart,
+			PeriodEnd:   sub.PeriodEnd,
+		})
+	}
+
+	// Add usage line items (non-fatal: an aggregation error yields no usage).
+	if usageItems, _, err := AggregateUsage(db, sub.UserId, sub.PeriodStart, sub.PeriodEnd); err == nil {
+		inv.LineItems = append(inv.LineItems, usageItems...)
+	}
+
+	// Calculate totals
+	inv.RecalculateSubtotal()
+
+	// Assign a sequential per-org invoice number BEFORE persisting.
+	assignInvoiceNumber(db, inv)
+
+	// Finalize (draft -> open)
+	if err := inv.Finalize(); err != nil {
+		return inv, fmt.Errorf("failed to finalize invoice: %w", err)
+	}
+
+	// Persist invoice
+	if err := inv.Create(); err != nil {
+		return inv, fmt.Errorf("failed to create invoice: %w", err)
+	}
+
+	return inv, nil
+}
+
+// findInvoiceForPeriod returns the existing invoice for this subscription's
+// exact billing period, or nil if none exists. Periods are months/years apart,
+// so PeriodStart/PeriodEnd are matched at second precision to be robust against
+// sub-second serialization differences across the storage round-trip.
+func findInvoiceForPeriod(db *datastore.Datastore, sub *subscription.Subscription) (*billinginvoice.BillingInvoice, error) {
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	existing := make([]*billinginvoice.BillingInvoice, 0)
+	q := billinginvoice.Query(db).Ancestor(rootKey).
+		Filter("SubscriptionId=", sub.Id()).
+		Filter("UserId=", sub.UserId)
+	if _, err := q.GetAll(&existing); err != nil {
+		return nil, err
+	}
+	for _, inv := range existing {
+		if inv.PeriodStart.Unix() == sub.PeriodStart.Unix() &&
+			inv.PeriodEnd.Unix() == sub.PeriodEnd.Unix() {
+			return inv, nil
+		}
+	}
+	return nil, nil
+}
+
+// assignInvoiceNumber sets a sequential per-org invoice number = (count of
+// existing billing invoices) + 1. Mirrors the credit-note numbering pattern in
+// refunds.go; if the count query fails it falls back to 1.
+func assignInvoiceNumber(db *datastore.Datastore, inv *billinginvoice.BillingInvoice) {
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	existing := make([]*billinginvoice.BillingInvoice, 0)
+	if _, err := billinginvoice.Query(db).Ancestor(rootKey).GetAll(&existing); err == nil {
+		inv.SetNumber(len(existing) + 1)
+	} else {
+		inv.SetNumber(1)
+	}
+}
+
+// resultFromInvoice synthesizes a collection result from an invoice's persisted
+// state — used when RenewSubscription returns an already-generated invoice so
+// callers (e.g. the billing cycle) get a non-nil result reflecting whether the
+// period is settled.
+func resultFromInvoice(inv *billinginvoice.BillingInvoice) *CollectionResult {
+	return &CollectionResult{
+		Success:       inv.Status == billinginvoice.Paid,
+		CreditUsed:    inv.CreditApplied,
+		AmountCharged: inv.AmountPaid,
+	}
 }
 
 // TransitionTrialToActive moves a trialing subscription to active.
