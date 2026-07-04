@@ -18,17 +18,20 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-// resolvePlanSlug determines a user's plan slug, preferring an explicit query
-// param, then the user's newest active/trialing subscription. Returns "" when
-// no plan can be determined (the caller then treats included allotment as 0).
-func resolvePlanSlug(db *datastore.Datastore, user, explicit string) string {
-	if explicit = strings.TrimSpace(explicit); explicit != "" {
-		return explicit
-	}
-
-	rootKey := db.NewKey("synckey", "", 1, nil)
+// subscriptionPlanSlug returns the plan slug of `user`'s newest active/trialing
+// subscription, or "" when none. This is the user's REAL, un-spoofable
+// entitlement — the SOLE authority for how much included allotment may be minted
+// on their behalf. It never trusts a client-supplied plan.
+//
+// Subscriptions are registered ancestor-less (orm.Register without WithParent)
+// and keyed by UserId, so they are queried the SAME way
+// billing/trial.findTrialSubscription queries them — a bare UserId filter, NOT
+// under the synckey ancestor. The prior Ancestor(synckey) filter (inherited by
+// the old resolvePlanSlug) matched NOTHING, which would make the grant clamp
+// reject even a legitimate self-service grant for the user's actual plan.
+func subscriptionPlanSlug(db *datastore.Datastore, user string) string {
 	subs := make([]*subscription.Subscription, 0)
-	q := subscription.Query(db).Ancestor(rootKey).Filter("UserId=", user)
+	q := subscription.Query(db).Filter("UserId=", user)
 	if _, err := q.GetAll(&subs); err != nil {
 		return ""
 	}
@@ -51,6 +54,47 @@ func resolvePlanSlug(db *datastore.Datastore, user, explicit string) string {
 		return best.Plan.Slug
 	}
 	return best.PlanId
+}
+
+// resolvePlanSlug is the READ-side plan resolver (usage rollup): an explicit
+// query param wins as a harmless projection preview, else the user's real
+// subscription plan. It NEVER gates money — the mint path (GrantAllotment) uses
+// planForGrant, which does not honor an unprivileged caller's plan override.
+func resolvePlanSlug(db *datastore.Datastore, user, explicit string) string {
+	if explicit = strings.TrimSpace(explicit); explicit != "" {
+		return explicit
+	}
+	return subscriptionPlanSlug(db, user)
+}
+
+// planForGrant resolves the plan whose included allotment `user` may be GRANTED.
+// The cents an allotment mints (IncludedMonthlyCents) is a pure function of the
+// plan, so the plan itself is the money lever — an org-level admin must NOT be
+// able to name a higher tier ("max") and mint its $100/mo for free. Therefore:
+//
+//   - a client-supplied override is honored ONLY for a privileged MINT caller
+//     (the internal service token or a platform global admin — the SAME
+//     principals PlatformOnly admits and the ONLY ones allowed to mint an
+//     arbitrary amount via /deposit), for legitimate comps/backfills; and
+//   - for EVERYONE else it is verified against the real subscription and IGNORED
+//     on mismatch — the grant clamps to the user's actually-paid entitlement
+//     (subscriptionPlanSlug), which yields 0 cents when there is no subscription.
+//
+// This makes /allotment/grant self-service-safe (an org grants its OWN allotment,
+// but only ever its OWN paid plan's amount) without a blanket platform-only gate.
+func planForGrant(c *gin.Context, db *datastore.Datastore, user, explicit string) string {
+	sub := subscriptionPlanSlug(db, user)
+	explicit = strings.TrimSpace(explicit)
+	if explicit == "" {
+		return sub
+	}
+	if middleware.MayMintMoney(c) {
+		return explicit
+	}
+	if sub != "" && strings.EqualFold(explicit, sub) {
+		return explicit
+	}
+	return sub
 }
 
 type grantAllotmentRequest struct {
@@ -82,7 +126,11 @@ func GrantAllotment(c *gin.Context) {
 		return
 	}
 
-	plan := resolvePlanSlug(db, req.User, req.Plan)
+	// MINT path: clamp the plan to the caller's REAL subscription unless the
+	// caller is a privileged mint principal. An org-level admin cannot inflate
+	// their allotment by naming a higher tier (was: resolvePlanSlug trusted
+	// req.Plan verbatim → org-admin grants "max" $100/mo free — C1 miss).
+	plan := planForGrant(c, db, req.User, req.Plan)
 	cents := IncludedMonthlyCents(plan)
 
 	res, err := allotment.Grant(db, req.User, plan, cents, time.Now(), org.TestMode())

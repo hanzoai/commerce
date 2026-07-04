@@ -118,19 +118,37 @@ func TestIncludedMonthlyCents(t *testing.T) {
 		t.Errorf("IncludedMonthlyCents(unknown) = %d, want 0", c)
 	}
 
-	// Contract: whenever a loaded plan declares limits.includedCreditUsd > 0,
-	// IncludedMonthlyCents returns dollars*100; otherwise 0. Asserting the
-	// relationship (not a hard-coded number) keeps the test stable across
-	// @hanzo/plans catalog versions fetched at build time.
+	// Contract MIRRORS the function's real precedence: the monthly allotment is
+	// the plan's declared cloud-credit allowance, sourced (in order) from
+	// limits.includedCloudCredits (flat), then includedCloudCreditsPerUser (per
+	// seat), then the legacy includedCreditUsd alias — dollars*100. Whichever the
+	// plan declares > 0, IncludedMonthlyCents returns it; otherwise 0. Asserting
+	// the RELATIONSHIP (not a hard-coded number) keeps this stable across
+	// @hanzo/plans catalog versions fetched at build time. (The prior test checked
+	// only includedCreditUsd, so plans that declare includedCloudCredits — e.g.
+	// max=$100, team-max=$100/seat — failed with "10000 want 0".)
 	for _, p := range hanzoPlans {
 		got := IncludedMonthlyCents(p.Slug)
-		if p.Limits != nil && p.Limits.IncludedCreditUsd != nil && *p.Limits.IncludedCreditUsd > 0 {
-			want := int64(*p.Limits.IncludedCreditUsd) * 100
-			if got != want {
-				t.Errorf("IncludedMonthlyCents(%q) = %d, want %d", p.Slug, got, want)
+		var want int64
+		if p.Limits != nil {
+			if usd := firstNonNilPositive(p.Limits.IncludedCloudCredits, p.Limits.IncludedCloudCreditsPerUser, p.Limits.IncludedCreditUsd); usd != nil {
+				want = int64(*usd) * 100
 			}
-		} else if got != 0 {
-			t.Errorf("IncludedMonthlyCents(%q) = %d, want 0 (no included allotment)", p.Slug, got)
+		}
+		if got != want {
+			t.Errorf("IncludedMonthlyCents(%q) = %d, want %d (cloudCredits→cloudCreditsPerUser→creditUsd)", p.Slug, got, want)
 		}
 	}
+}
+
+// firstNonNilPositive returns the first argument that is non-nil AND > 0, or nil.
+// Mirrors IncludedMonthlyCents's field-precedence selection so the test and the
+// implementation cannot silently diverge.
+func firstNonNilPositive(vals ...*int) *int {
+	for _, v := range vals {
+		if v != nil && *v > 0 {
+			return v
+		}
+	}
+	return nil
 }
