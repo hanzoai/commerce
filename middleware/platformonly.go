@@ -40,13 +40,7 @@ import (
 // Fail-closed: neither signal present → 403, handler not reached.
 func PlatformOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Verified internal service token — cloud-api's legitimate money path.
-		if IsServiceToken(c) {
-			c.Next()
-			return
-		}
-		// Platform (global) admin — NOT an org owner's org-level IsAdmin.
-		if iammiddleware.GetIAMClaims(c).GlobalAdmin() {
+		if MayMintMoney(c) {
 			c.Next()
 			return
 		}
@@ -54,4 +48,22 @@ func PlatformOnly() gin.HandlerFunc {
 			"This operation requires platform-administrator or internal-service credentials.",
 			errors.New("money-mint route: caller is neither the internal service token nor a platform global admin"))
 	}
+}
+
+// MayMintMoney is THE single predicate for "may this caller MINT money /
+// spendable balance". It admits exactly the two principals PlatformOnly admits:
+//
+//  1. the verified internal service token (cloud-api → commerce), IsServiceToken(c); and
+//  2. a Hanzo PLATFORM (global) administrator, auth.IAMClaims.GlobalAdmin() — the
+//     spoof-proof isGlobalAdmin claim OR membership in the "admin" org.
+//
+// It deliberately does NOT admit the org-level Admin bit (an org OWNER's IAM
+// isAdmin, or a legacy per-org access token). Use it wherever a mint decision is
+// made OUTSIDE the route-middleware chain — the ZAP-over-HTTP dispatcher gates
+// its money-mint method (billing.deposit) with it, and the allotment grant clamps
+// a client plan override on it — so there is ONE expression of the mint principal,
+// shared by the route gate (PlatformOnly) and every in-handler gate. Fail-closed:
+// neither signal present → false.
+func MayMintMoney(c *gin.Context) bool {
+	return IsServiceToken(c) || iammiddleware.GetIAMClaims(c).GlobalAdmin()
 }
