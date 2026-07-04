@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -28,30 +29,28 @@ func GetBalance(c *gin.Context) {
 
 	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
 
-	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
+	// The three-bucket split (credits granted/remaining vs prepaid real money) is
+	// derived from the SAME ledger the balance is; balance/holds/available come
+	// straight from the split so a bucketed read reconciles to the cent and stays
+	// backward compatible with the pre-split {balance,holds,available} shape.
+	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
 	}
+	card := getCardOnFile(datastore.New(ctx), user)
 
-	var balance, holds currency.Cents
-	if data, ok := datas.Data[cur]; ok {
-		balance = data.Balance
-		holds = data.Holds
-	}
-
-	available := balance - holds
-	if available < 0 {
-		available = 0
-	}
-
-	c.JSON(200, gin.H{
+	resp := gin.H{
 		"user":      user,
 		"currency":  cur,
-		"balance":   balance,
-		"holds":     holds,
-		"available": available,
-	})
+		"balance":   int64(split.Balance),
+		"holds":     int64(split.Holds),
+		"available": int64(split.Available),
+	}
+	for k, v := range bucketFields(split, card) {
+		resp[k] = v
+	}
+	c.JSON(200, resp)
 }
 
 // GetBalanceAll returns balances across all currencies for an IAM user.
