@@ -81,7 +81,10 @@ type Split struct {
 	// the "granted" figure. Display: "Credits: $X granted".
 	CreditsGranted currency.Cents `json:"creditsGranted"`
 	// CreditsRemaining is the non-cash credit still spendable now (active grants
-	// minus non-GPU spend, credits-first). Display: "$Y left".
+	// minus non-GPU spend, credits-first). Display: "$Y left". Also surfaced under
+	// the alias `trialBalance` (see bucketFields) — "trial" and "credit" name the
+	// SAME non-cash bucket (starter/welcome/comp grants); the alias is the
+	// consumer-facing name so a UI reads trial-vs-prepaid without ambiguity.
 	CreditsRemaining currency.Cents `json:"creditsRemaining"`
 	// PrepaidBalance is the real-money balance still on the ledger (deposits minus
 	// the spend charged against prepaid). GPUs draw ONLY from this.
