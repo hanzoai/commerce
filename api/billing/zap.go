@@ -2,6 +2,7 @@ package billing
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -15,9 +16,24 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
+	httperr "github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// zapMintMethods are the ZAP-over-HTTP methods that MINT money / spendable
+// balance and therefore carry the SAME platform-only bar as the REST mint routes
+// (middleware.PlatformOnly): the internal service token OR a platform global
+// admin ONLY. billing.deposit is the ZAP twin of POST /v1/billing/deposit —
+// DestinationKind="iam-user", client-supplied amount — so an org-level Admin
+// (a legacy per-org access token or a gateway-minted org owner) must NOT reach
+// it, exactly as it cannot reach /deposit. Reads (getBalance*, getUsage) and
+// recordUsage (a WITHDRAW/debit, not a mint) stay open to the admin group. Kept
+// as a SET so the mint-surface guard (mint_surface_test.go) can assert every ZAP
+// method that mints is gated here — the anti-regression for a new ZAP mint verb.
+var zapMintMethods = map[string]bool{
+	"billing.deposit": true,
+}
 
 // ── ZAP-over-HTTP dispatch ──────────────────────────────────────────────
 //
@@ -68,6 +84,20 @@ func ZapDispatch(c *gin.Context) {
 			ID:    req.ID,
 			Error: &zapError{Code: -32600, Message: "method is required"},
 		})
+		return
+	}
+
+	// Money-MINT methods over ZAP are gated to the internal service token / a
+	// platform global admin ONLY — the SAME principal PlatformOnly enforces on the
+	// REST mint routes. This is the ZAP counterpart of that gate: without it, /zap
+	// billing.deposit let ANY org owner (Admin bit) mint unlimited iam-user balance
+	// while /deposit correctly 403'd them (C1). It is a real HTTP 403 (an auth
+	// boundary), not a 200 JSON-RPC error envelope — mirroring middleware.PlatformOnly.
+	// Reads + recordUsage (a debit) are deliberately NOT gated.
+	if zapMintMethods[req.Method] && !middleware.MayMintMoney(c) {
+		httperr.Fail(c, 403,
+			"This operation requires platform-administrator or internal-service credentials.",
+			errors.New("ZAP money-mint method: caller is neither the internal service token nor a platform global admin"))
 		return
 	}
 
