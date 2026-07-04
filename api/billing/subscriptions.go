@@ -83,6 +83,25 @@ func CreateBillingSubscription(c *gin.Context) {
 		_ = p.Create() // best-effort; ignore dup-key errors
 	}
 
+	// C1-a: a PAID-tier subscription confers a spendable entitlement — its
+	// included monthly allotment is MINTED onto the user's gateway balance — yet
+	// this endpoint starts it Active instantly with ZERO payment
+	// (ProviderType="internal", no CollectInvoice). An org-level admin must NOT be
+	// able to self-mint a paid tier ("max" → $100/mo, recurring) by naming it
+	// here; only a proven mint principal (internal service token / platform global
+	// admin — e.g. cloud-api after a real payment) may create a paid-tier
+	// subscription. A FREE tier (no price and no included allotment) stays
+	// self-serve. Pairs with the payment-backed clamp in subscriptionPlanSlug.
+	planSlug := p.Slug
+	if planSlug == "" {
+		planSlug = req.PlanId
+	}
+	if (p.Price > 0 || IncludedMonthlyCents(planSlug) > 0) && !middleware.MayMintMoney(c) {
+		http.Fail(c, 403,
+			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
+		return
+	}
+
 	// Create subscription
 	sub := subscription.New(db)
 	sub.UserId = req.UserId
