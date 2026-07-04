@@ -459,6 +459,8 @@ github.com/hanzoai/kv-go/v9 v9.18.0 h1:vO2SD8dV0+H9WWCVKV9KHaWZq4yeMsZruohrsZN94
 github.com/hanzoai/kv-go/v9 v9.18.0/go.mod h1:S+Li20E6Bskpw6r+c8WWhfi4hCr8SVV32qPXO0wdl+E=
 github.com/hanzoai/orm v0.5.3 h1:61ISbCXjvPxzfKMK8+h1Fwfgyw6w/wa9vcCz5OJK9KU=
 github.com/hanzoai/orm v0.5.3/go.mod h1:7tXULhLKymkAwlC+jASS66tlLEzU2sdCXX1sRFPoAFs=
+github.com/hanzoai/orm v0.5.4 h1:Tf1Fy6mrpiBEMtOUfWwWgf1FDXoFReFeg+W/NVHpdps=
+github.com/hanzoai/orm v0.5.4/go.mod h1:7tXULhLKymkAwlC+jASS66tlLEzU2sdCXX1sRFPoAFs=
 github.com/hanzoai/pubsub-go v1.0.0 h1:nUZ4jK+MFlFQ5qTMri/Yffnqs/R5avI99SfZ9e3t6Cs=
 github.com/hanzoai/pubsub-go v1.0.0/go.mod h1:ZHWDgSLsYHK4TiitzNwGc7Cn+oApKyMp0uK8cU7jwpg=
 github.com/hanzoai/search-go v0.36.0 h1:bQfbAs/bc/s3qZDCtSqEAxp48koHkb0Z4ezUknt2AQc=
