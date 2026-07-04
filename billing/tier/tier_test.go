@@ -17,10 +17,12 @@ func TestTier(t *testing.T) {
 var _ = Describe("Tier", func() {
 	Describe("Get", func() {
 		It("returns the correct config for known tiers", func() {
+			// No free tier: Free grants NO daily credit, so a zero-balance
+			// account is gated (effectiveAvailable collapses to prepaid).
 			cfg := tier.Get(tier.Free)
 			Expect(cfg.Name).To(Equal(tier.Free))
 			Expect(cfg.MaxAgents).To(Equal(1))
-			Expect(cfg.DailyCreditsCents).To(Equal(int64(100)))
+			Expect(cfg.DailyCreditsCents).To(Equal(int64(0)))
 
 			cfg = tier.Get(tier.Pro)
 			Expect(cfg.Name).To(Equal(tier.Pro))
@@ -65,8 +67,11 @@ var _ = Describe("Tier", func() {
 	})
 
 	Describe("HasDailyCredits", func() {
-		It("returns true only for free tier", func() {
-			Expect(tier.Get(tier.Free).HasDailyCredits()).To(BeTrue())
+		It("is false for every tier — there is no free tier", func() {
+			// The daily-credit mechanism is retained but disabled by config
+			// (DailyCreditsCents == 0 everywhere), so no tier grants a standing
+			// daily balance. A zero-balance account is always gated.
+			Expect(tier.Get(tier.Free).HasDailyCredits()).To(BeFalse())
 			Expect(tier.Get(tier.Starter).HasDailyCredits()).To(BeFalse())
 			Expect(tier.Get(tier.Pro).HasDailyCredits()).To(BeFalse())
 			Expect(tier.Get(tier.Enterprise).HasDailyCredits()).To(BeFalse())
