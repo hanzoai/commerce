@@ -1,9 +1,30 @@
 package test
 
 import (
+	"github.com/hanzoai/commerce/models/transaction"
+	"github.com/hanzoai/commerce/models/types/currency"
+
 	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
+
+// seedCharge writes an original Withdraw (a CHARGE) to the suite org's ledger and
+// returns its id. Only a charge is refundable (refunding a Deposit would double
+// it), and refund.go matches the charge by DestinationId == the refund subject —
+// so the seeded charge carries DestinationId=subject, DestinationKind=iam-user,
+// exactly like the money-correctness harness (api/billing refund_h1_test.go
+// seedCharge). The suite db is built from a NON-gin context → ungated, so this
+// internal seed mints freely without the C1 gate (which guards only inbound HTTP).
+func seedCharge(subject string, cents int64) string {
+	tr := transaction.New(db)
+	tr.Type = transaction.Withdraw
+	tr.DestinationId = subject
+	tr.DestinationKind = "iam-user"
+	tr.Currency = currency.USD
+	tr.Amount = currency.Cents(cents)
+	tr.MustCreate()
+	return tr.Id()
+}
 
 // Response types for JSON parsing
 type meterResponse struct {
@@ -695,18 +716,13 @@ var _ = Describe("billing", Ordered, func() {
 		})
 
 		It("Should create a refund", func() {
-			// First create a deposit
-			depositReq := map[string]interface{}{
-				"user":     "hanzo/dave",
-				"currency": "usd",
-				"amount":   int64(200),
-			}
-			depositRes := &map[string]interface{}{}
-			cl.Post("/billing/deposit", depositReq, depositRes)
+			// Refund reverses a CHARGE (a Withdraw), never a Deposit — so seed a real
+			// charge for the subject, then partially refund it. (The prior version
+			// deposited then tried to refund the deposit, which refund.go correctly
+			// rejects with 400 "not a refundable charge"; that shape is proven in
+			// api/billing TestRefund_NotACharge_400.)
+			txId := seedCharge("hanzo/dave", 200)
 
-			txId := (*depositRes)["transactionId"].(string)
-
-			// Then refund it
 			refundReq := map[string]interface{}{
 				"user":                  "hanzo/dave",
 				"currency":              "usd",

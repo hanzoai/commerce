@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
@@ -12,6 +13,46 @@ import (
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// IAMUserKind is the destination/source kind of the gateway-spendable wallet:
+// the balance the cloud gateway's prepaid gate reads and its usage debits. A
+// credit INTO this wallet mints spendable inference/GPU value cross-charged to
+// Hanzo's real upstream spend, so it is the money-GA asset the mint invariant
+// protects. Legacy per-org "user"/"account" order wallets are org-scoped store
+// credit (checkout capture, account balance) and are NOT gateway-spendable.
+const IAMUserKind = "iam-user"
+
+// MintRequiresAuthorization implements mintauth.Guarded: it reports whether
+// persisting THIS transaction mints spendable balance into the gateway-honored
+// IAM-user wallet. The datastore write sink (mintauth.Enforce) consults it so
+// that enforcement lives at the ledger layer, not in per-route gates.
+//
+//   - Deposit → mints: a deposit has NO funded source, so any deposit crediting
+//     the IAM-user wallet creates spendable balance from nothing.
+//   - Transfer → mints when its destination is the IAM-user wallet: value moves
+//     INTO the gateway-spendable balance. A legitimate internal transfer between
+//     the org's own funded IAM-user accounts is itself a debit on the source
+//     (which required a prior authorized mint), and moving value into the
+//     gateway wallet is exactly what must be authorized.
+//   - Withdraw / Hold / HoldRemoved → never mint (debits / reservations).
+//
+// Non-IAM-user destinations (legacy order wallets) are not gateway-spendable and
+// are deliberately out of scope — gating them would break checkout capture with
+// no money-GA benefit.
+func (t *Transaction) MintRequiresAuthorization() bool {
+	if t.DestinationKind != IAMUserKind {
+		return false
+	}
+	switch t.Type {
+	case Deposit, Transfer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Compile-time guarantee the ledger sink can gate this entity.
+var _ mintauth.Guarded = (*Transaction)(nil)
 
 func init() {
 	orm.Register[Transaction]("transaction", orm.WithParent[Transaction](func(db orm.DB) orm.Key {

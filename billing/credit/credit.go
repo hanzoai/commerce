@@ -7,6 +7,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 
@@ -79,6 +80,9 @@ func GrantIfEligibleNow(db *datastore.Datastore, userId, trigger string) (grante
 			"trigger":    trigger,
 		}
 
+		// Server-FIXED (StarterCreditCents) idempotent welcome credit — the amount
+		// is not caller-controlled — so authorize this write at the ledger sink.
+		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 		if e := trans.Create(); e != nil {
 			return e
 		}
