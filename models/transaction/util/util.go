@@ -72,6 +72,28 @@ func GetTransactionsByCurrency(ctx context.Context, id, kind string, cur currenc
 	return TallyTransactions(ctx, id, kind, transs)
 }
 
+// GetRawByCurrency returns the RAW source- and destination-side transactions for
+// a subject in one currency — the same union GetTransactionsByCurrency tallies,
+// but WITHOUT filtering expired deposits or rolling up a balance. The bucket
+// split (billing/bucket) needs the raw ledger so it can count granted-but-expired
+// credit separately from still-spendable credit. ONE central store, org-scoped by
+// the namespace bound on ctx (identical to GetTransactionsByCurrency).
+func GetRawByCurrency(ctx context.Context, id, kind string, cur currency.Type, test bool) ([]*transaction.Transaction, error) {
+	db := datastore.New(ctx)
+	rootKey := db.NewKey("synckey", "", 1, nil)
+
+	transs := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("SourceKind=", kind).Filter("SourceId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
+		log.Error("GetRawByCurrency source query error '%v'", err, ctx)
+		return nil, err
+	}
+	if _, err := transaction.Query(db).Ancestor(rootKey).Filter("Test=", test).Filter("DestinationKind=", kind).Filter("DestinationId=", id).Filter("Currency=", cur).GetAll(&transs); err != nil {
+		log.Error("GetRawByCurrency destination query error '%v'", err, ctx)
+		return nil, err
+	}
+	return transs, nil
+}
+
 func TallyTransactions(ctx context.Context, id, kind string, transs []*transaction.Transaction) (*TransactionDatas, error) {
 	datas := &TransactionDatas{
 		Id:   id,
