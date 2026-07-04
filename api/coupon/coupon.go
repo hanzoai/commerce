@@ -136,9 +136,24 @@ func validateCoupon(c *gin.Context) {
 		return
 	}
 
+	// This endpoint is PUBLIC (pre-sign-up promo check), so expose ONLY the
+	// fields a checkout/pricing page needs to display and apply the discount.
+	// Internal accounting/attribution — used, limit, campaignId, referrerId,
+	// dynamic, enabled, start/end dates — is never leaked to anonymous callers.
 	result := gin.H{
-		"valid":  true,
-		"coupon": cpn,
+		"valid": true,
+		"coupon": gin.H{
+			"name":          cpn.Name,
+			"type":          cpn.Type,
+			"code":          cpn.Code_,
+			"amount":        cpn.Amount,
+			"filter":        cpn.Filter,
+			"once":          cpn.Once,
+			"productId":     cpn.ProductId,
+			"freeProductId": cpn.FreeProductId,
+			"freeVariantId": cpn.FreeVariantId,
+			"freeQuantity":  cpn.FreeQuantity,
+		},
 	}
 
 	if cpn.Code_ == "TRYFREE" {
@@ -260,7 +275,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Get = getCoupon
 	api.GET("/:couponid/code/:uniqueid", adminRequired, namespaced, codeFromId)
 	api.POST("/:couponid/code", adminRequired, namespaced, codeFromList)
-	api.POST("/validate", tokenRequired, validateCoupon)
+	// Public: the marketing pricing page (commerce.hanzo.ai/commerce) validates
+	// promo codes before sign-up, so there is no user token yet. Validation is
+	// read-only and never grants anything — /redeem below stays token-gated.
+	api.POST("/validate", validateCoupon)
 	api.POST("/redeem", tokenRequired, redeemCoupon)
 
 	api.Route(router, args...)
