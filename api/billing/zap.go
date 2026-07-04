@@ -94,11 +94,17 @@ func ZapDispatch(c *gin.Context) {
 	// while /deposit correctly 403'd them (C1). It is a real HTTP 403 (an auth
 	// boundary), not a 200 JSON-RPC error envelope — mirroring middleware.PlatformOnly.
 	// Reads + recordUsage (a debit) are deliberately NOT gated.
-	if zapMintMethods[req.Method] && !middleware.MayMintMoney(c) {
-		httperr.Fail(c, 403,
-			"This operation requires platform-administrator or internal-service credentials.",
-			errors.New("ZAP money-mint method: caller is neither the internal service token nor a platform global admin"))
-		return
+	if zapMintMethods[req.Method] {
+		if !middleware.MayMintMoney(c) {
+			httperr.Fail(c, 403,
+				"This operation requires platform-administrator or internal-service credentials.",
+				errors.New("ZAP money-mint method: caller is neither the internal service token nor a platform global admin"))
+			return
+		}
+		// Proven mint principal → authorize the ledger sink so zapDeposit's write
+		// passes mintauth.Enforce (its datastore is built after this via
+		// org.Namespaced, which reads the authorized context).
+		middleware.AuthorizeMint(c)
 	}
 
 	var result interface{}
