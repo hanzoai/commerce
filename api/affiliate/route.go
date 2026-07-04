@@ -18,6 +18,16 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
+	// mintRequired gates the treasury payout machinery on the internal service
+	// token OR a platform global admin ONLY — NEVER an org-level Admin (a legacy
+	// per-org access token or a gateway-minted org owner). executePayouts
+	// DISBURSES real value (CreditGrants, queued Stripe transfers, on-chain HUSD);
+	// calculatePayouts computes the split; the SBOM writes feed that attribution.
+	// adminRequired alone let any org owner drive the treasury (latent while
+	// mainnet HUSD is off, HIGH once enabled) — the same C1 org-owner-mint hole
+	// PlatformOnly closes on the billing routes. Reads stay admin/token-scoped.
+	mintRequired := middleware.PlatformOnly()
+
 	// --- Affiliate CRUD + custom endpoints ---
 	affiliateRest := rest.New(mdlaffiliate.Affiliate{})
 	affiliateRest.Create = affiliateCreate(affiliateRest)
@@ -33,13 +43,17 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	contributorRest.Create = contributorCreate(contributorRest)
 	contributorRest.POST("/register", tokenRequired, registerContributor)
 	contributorRest.GET("/by-login/:login", tokenRequired, contributorGetByLogin)
-	contributorRest.POST("/sbom", adminRequired, createSBOMEntry)
+	// Money-OUT / payout machinery: adminRequired FIRST resolves the org and
+	// stamps the service-token marker + permissions; mintRequired (PlatformOnly)
+	// then NARROWS to the service token / global admin. PlatformOnly must run
+	// AFTER TokenRequired (it reads what TokenRequired sets), so both are chained.
+	contributorRest.POST("/sbom", adminRequired, mintRequired, createSBOMEntry)
 	contributorRest.GET("/sbom", adminRequired, listSBOMEntries)
 	contributorRest.GET("/sbom/:sbomid", adminRequired, getSBOMEntry)
-	contributorRest.PUT("/sbom/:sbomid", adminRequired, updateSBOMEntry)
-	contributorRest.POST("/payouts/calculate", adminRequired, calculatePayouts)
+	contributorRest.PUT("/sbom/:sbomid", adminRequired, mintRequired, updateSBOMEntry)
+	contributorRest.POST("/payouts/calculate", adminRequired, mintRequired, calculatePayouts)
 	contributorRest.GET("/payouts/preview", adminRequired, previewPayouts)
-	contributorRest.POST("/payouts/execute", adminRequired, executePayouts)
+	contributorRest.POST("/payouts/execute", adminRequired, mintRequired, executePayouts)
 	contributorRest.GET("/:contributorid/earnings", tokenRequired, getEarnings)
 	contributorRest.GET("/:contributorid/attributions", tokenRequired, getAttributions)
 	contributorRest.Route(r, args...)
