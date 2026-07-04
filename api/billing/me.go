@@ -144,7 +144,7 @@ func PostMyWelcome(c *gin.Context) {
 	trans.DestinationKind = "iam-user"
 	trans.Currency = "usd"
 	trans.Amount = currency.Cents(credit.StarterCreditCents)
-	trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
+	trans.Notes = "Welcome credit: $5.00 USD (expires in 365 days)"
 	trans.Tags = credit.StarterCreditTag
 	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
 	trans.Metadata = Map{
