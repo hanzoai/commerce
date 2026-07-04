@@ -1,11 +1,14 @@
 package transaction
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -62,6 +65,24 @@ func Create(c *gin.Context) {
 		log.Error(ErrorCurrencyRequired.Error(), c)
 		http.Fail(c, 500, ErrorCurrencyRequired.Error(), ErrorCurrencyRequired)
 		return
+	}
+
+	// C1-b: this generic ledger endpoint reaches the SAME mint sink as
+	// /v1/billing/deposit. A Deposit (no funded source) or a credit into the
+	// gateway-spendable IAM-user wallet MINTS money, so the mint case is gated on
+	// MayMintMoney (internal service token / platform global admin) — NOT the
+	// org-level RequireAdmin above, which admits any org owner. Withdraws and
+	// transfers between the org's OWN funded accounts are not mints and remain
+	// org-admin. mintauth.Enforce at the datastore sink is the fail-closed
+	// backstop; this gate returns a clean 403 and authorizes the legitimate write.
+	if trans.MintRequiresAuthorization() {
+		if !middleware.MayMintMoney(c) {
+			http.Fail(c, 403,
+				"minting spendable balance requires platform-administrator or internal-service credentials",
+				errors.New("transaction mint: caller is neither the internal service token nor a platform global admin"))
+			return
+		}
+		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	}
 
 	if !org.Live {
