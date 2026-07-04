@@ -201,14 +201,39 @@ func looksLikeJWT(tok string) bool {
 	return tok != "" && strings.Count(tok, ".") == 2
 }
 
-// permsHeader mirrors the gateway: isAdmin implies Admin|Live; the
-// header carries the bit.Field as a base-10 int64 (commerce parses it in
-// middleware/iammiddleware.parsePermissionsHeader). IAM currently sends
-// no explicit permission names, so isAdmin is the operative signal.
+// permsHeader mints the X-User-Permissions bit.Field a verified JWT carries
+// downstream (commerce parses it in middleware/iammiddleware.parsePermissionsHeader,
+// gated by TokenRequired via hasScope). IAM sends no explicit permission names,
+// so the admin/live posture is derived from the claim flags here — the ONE place
+// the caller's authority is turned into commerce permission bits.
+//
+// The Admin bit is the MONEY/admin authority: TokenRequired(permission.Admin)
+// gates every credit-creating and card-charging billing endpoint
+// (api/billing/handlers.go — deposit, credit-grants, customer-balance/adjustments,
+// auto-recharge/run-all, cycle/run-all, payouts, refund, test-mode). Because
+// bit.Field.Has is intersection semantics, granting Admin to a caller lets that
+// caller satisfy those gates. It is therefore GLOBAL-admin-only: an org-level
+// admin (claims.IsAdmin — an org OWNER like maxpower carries it within their own
+// org) must NOT mint free balance or charge cards platform-wide. Only
+// isGlobalAdmin(claims) — the same spoof-proof predicate this file uses for the
+// cross-org ?org billing-view override (resolveBillingSubject) — grants Admin.
+//
+// Live is the "real money, not sandbox" mode bit, orthogonal to authority: an org
+// owner running live payment flows is exactly right. It stays on claims.IsAdmin so
+// a normal org owner's own real Square top-up / welcome credit / plans / balance
+// reads keep working unchanged (those user-facing routes admit any authenticated
+// principal via TokenRequired() with no mask — the fix removes only the money-CREATE
+// Admin bit, never the self-service surface).
 func permsHeader(claims *auth.IAMClaims) string {
 	var f int64
 	if claims.IsAdmin {
-		f = int64(permission.Admin | permission.Live)
+		// Org-level admin ⇒ live (non-sandbox) mode. Deliberately NOT the Admin
+		// (money/admin) bit — that is global-admin-only below.
+		f |= int64(permission.Live)
+	}
+	if isGlobalAdmin(claims) {
+		// PLATFORM admin ⇒ the money/admin authority the admin billing gates check.
+		f |= int64(permission.Admin)
 	}
 	return strconv.FormatInt(f, 10)
 }
