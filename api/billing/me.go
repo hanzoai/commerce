@@ -1,6 +1,8 @@
 package billing
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"strings"
 	"time"
 
@@ -16,6 +18,21 @@ import (
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// welcomeDepositKey derives the DETERMINISTIC storage key for a user's one-time
+// welcome credit. Making the welcome deposit's id a pure function of the subject
+// means two concurrent first-time grants (the check-then-create TOCTOU) collapse
+// onto the SAME row via the storage ON CONFLICT(id,kind,namespace) upsert — so
+// the welcome credits AT MOST ONCE even under an exact race, the same money-safe
+// primitive giftcard redemptions use. The key is parented under the synckey root
+// so the ancestor-scoped balance query still finds it, and the datastore is
+// org-namespaced, so the id need only be unique per subject. hashid.EncodeKey
+// returns a string-id verbatim, so trans.Id() stays a clean, stable string.
+func welcomeDepositKey(db *datastore.Datastore, user string) datastore.Key {
+	sum := sha256.Sum256([]byte("welcome-credit\x00" + user))
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	return db.NewKey("transaction", "welcome_"+hex.EncodeToString(sum[:16]), 0, rootKey)
+}
 
 // orgBillingKey returns the canonical per-org billing key: the org slug.
 //
@@ -96,7 +113,10 @@ func PostMyWelcome(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
-	// Already granted? — return 200 with granted=false.
+	// Already granted? — return 200 with granted=false. The tag query covers
+	// EVERY historical grant (this endpoint, /credit, and pre-deterministic-key
+	// rows), so sequential retries stay idempotent regardless of how the credit
+	// was first minted.
 	existing := make([]*transaction.Transaction, 0)
 	q := transaction.Query(db).Ancestor(rootKey).
 		Filter("DestinationId=", user).
@@ -111,6 +131,14 @@ func PostMyWelcome(c *gin.Context) {
 	}
 
 	trans := transaction.New(db)
+	// DETERMINISTIC key: two concurrent first-time grants that both pass the tag
+	// check above collapse onto ONE row (ON CONFLICT upsert), so the welcome
+	// credits at most once even in the TOCTOU race the tag query alone leaves open.
+	if err := trans.SetKey(welcomeDepositKey(db, user)); err != nil {
+		log.Error("welcome credit key set failed for %s: %v", user, err, c)
+		http.Fail(c, 500, "failed to grant welcome credit", err)
+		return
+	}
 	trans.Type = transaction.Deposit
 	trans.DestinationId = user
 	trans.DestinationKind = "iam-user"
