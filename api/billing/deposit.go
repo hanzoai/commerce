@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,12 +12,24 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// depositMaxCents is the server-authoritative ceiling on a SINGLE Deposit/Refund,
+// defense-in-depth BEHIND the PlatformOnly gate: even a leaked service token or a
+// fat-fingered internal call cannot mint an absurd balance in one shot. The
+// default ($1,000,000) is generous so legitimate settlement/promo deposits are
+// untouched; tune per-deploy with COMMERCE_DEPOSIT_MAX_CENTS (envCents fails safe
+// to the default on unset/non-positive). Reuses the topup env helper — one way to
+// read a cents bound.
+func depositMaxCents() int64 {
+	return envCents("COMMERCE_DEPOSIT_MAX_CENTS", 100_000_000)
+}
 
 type depositRequest struct {
 	User      string `json:"user"`
@@ -61,9 +74,40 @@ func Deposit(c *gin.Context) {
 		return
 	}
 
+	// Server-authoritative ceiling (H1). Bounds a single mint even for a trusted
+	// caller — no unbounded credit in one request.
+	if maxCents := depositMaxCents(); req.Amount > maxCents {
+		http.Fail(c, 400, fmt.Sprintf("amount %d exceeds maximum deposit of %d cents", req.Amount, maxCents), nil)
+		return
+	}
+
 	cur := currency.Type(strings.ToLower(req.Currency))
 	if cur == "" {
 		cur = "usd"
+	}
+
+	// Optional idempotency (H1). A caller-supplied X-Idempotency-Key makes a
+	// retry / double-submit credit AT MOST ONCE: a completed key replays the
+	// stored body, an in-flight key 409s. Absent a key there is no guard —
+	// distinct deposits to the same user (repeated settlements) are legitimately
+	// additive, so we never dedupe by amount. Scoped to the subject so keys never
+	// collide across users; the datastore is already org-namespaced.
+	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	var idemRec *idempotencykey.IdempotencyKey
+	if idemKey != "" {
+		rec, replay, gerr := idempotencykey.Begin(db, "billing-deposit:"+req.User, idemKey)
+		if gerr != nil {
+			log.Error("deposit idempotency Begin failed (user=%s): %v", req.User, gerr, c)
+		} else if replay {
+			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+				c.Data(200, "application/json", []byte(rec.Response))
+				return
+			}
+			http.Fail(c, 409, "deposit already in progress", nil)
+			return
+		} else {
+			idemRec = rec
+		}
 	}
 
 	notes := req.Notes
@@ -89,6 +133,10 @@ func Deposit(c *gin.Context) {
 	}
 
 	if err := trans.Create(); err != nil {
+		// No balance moved — release the guard so a later retry is not wedged.
+		if idemRec != nil {
+			_ = idemRec.Delete()
+		}
 		log.Error("Failed to create deposit transaction: %v", err, c)
 		http.Fail(c, 500, "failed to create deposit", err)
 		return
@@ -104,6 +152,14 @@ func Deposit(c *gin.Context) {
 	}
 	if !trans.ExpiresAt.IsZero() {
 		resp["expiresAt"] = trans.ExpiresAt
+	}
+
+	// Seal the guard with the exact success body so a same-key retry replays it
+	// verbatim (no second credit).
+	if idemRec != nil {
+		if body, mErr := json.Marshal(resp); mErr == nil {
+			_ = idempotencykey.Complete(idemRec, string(body))
+		}
 	}
 
 	c.JSON(201, resp)

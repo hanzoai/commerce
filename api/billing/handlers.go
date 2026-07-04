@@ -13,6 +13,16 @@ import (
 func Route(r router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
+	// mintRequired gates the money-MINT routes (those that credit spendable
+	// balance from a client-supplied amount) on the internal service token OR a
+	// platform global admin ONLY — NEVER the org-level Admin bit. Without it,
+	// TokenRequired(permission.Admin) admitted any org OWNER (org-level IAM
+	// isAdmin → Admin|Live), who could then self-credit unlimited balance →
+	// unlimited free inference (the real-money-GA blocker). cloud-api's
+	// service-token money path is UNAFFECTED (the service-token branch grants the
+	// marker mintRequired checks). See middleware/platformonly.go.
+	mintRequired := middleware.PlatformOnly()
+
 	api := r.Group("billing")
 	api.Use(adminRequired)
 
@@ -30,8 +40,9 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.GET("/balance/all", GetBalanceAll)
 	api.GET("/usage", GetUsage)
 	api.POST("/usage", RecordUsage)
-	api.POST("/deposit", Deposit)
-	api.POST("/refund", Refund)
+	// Money-MINT routes: service-token / global-admin ONLY (mintRequired).
+	api.POST("/deposit", mintRequired, Deposit)
+	api.POST("/refund", mintRequired, Refund)
 
 	// SBOM-driven OSS-developer payout.
 	//   POST /sbom               — arcd build pipeline ingests an image's SBOM
@@ -55,14 +66,20 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Tier check (lightweight model-access gate for Chat / white-label)
 	api.GET("/tier-check", TierCheck)
 
-	// Credit grants (admin-only writes; reads moved to user group below)
-	api.POST("/credit-grants", CreateCreditGrant)
-	api.POST("/credit-grants/:id/void", VoidCreditGrant)
+	// Credit grants (money-MINT: service-token / global-admin ONLY). Reads moved
+	// to the user group below. Void is a grant mutation in the same resource
+	// family — same platform-only bar, so an org owner can neither create nor
+	// alter a grant.
+	api.POST("/credit-grants", mintRequired, CreateCreditGrant)
+	api.POST("/credit-grants/:id/void", mintRequired, VoidCreditGrant)
 
 	// Starter credit grant (service-to-service, idempotent, no payment method
-	// required). The on-signup $5 welcome deposit invoked by chat / cloud-api on
+	// required). The on-signup welcome deposit invoked by chat / cloud-api on
 	// a user's first use, keyed by an explicit per-user (or per-org) subject.
-	api.POST("/grant-starter", GrantStarter)
+	// Money-MINT: service-token / global-admin ONLY. (The user-facing,
+	// fixed-amount, idempotent welcome credit is the SEPARATE user-group
+	// POST /billing/credit → GrantStarterCredit, which stays self-service.)
+	api.POST("/grant-starter", mintRequired, GrantStarter)
 
 	// Pricing rules
 	api.POST("/pricing-rules", CreatePricingRule)
@@ -130,16 +147,18 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.PATCH("/disputes/:id", SubmitDisputeEvidence)
 	api.POST("/disputes/:id/close", CloseDispute)
 
-	// Customer balance
+	// Customer balance (reads stay admin; the adjustment MINTS balance →
+	// service-token / global-admin ONLY).
 	api.GET("/customer-balance", GetCustomerBalance)
-	api.POST("/customer-balance/adjustments", AdjustCustomerBalance)
+	api.POST("/customer-balance/adjustments", mintRequired, AdjustCustomerBalance)
 	api.GET("/balance-transactions", ListBalanceTransactions)
 
-	// Payouts
-	api.POST("/payouts", CreatePayout)
+	// Payouts. Creating/cancelling a payout MOVES money out — money-MINT bar
+	// (service-token / global-admin ONLY). Reads stay admin-scoped.
+	api.POST("/payouts", mintRequired, CreatePayout)
 	api.GET("/payouts", ListPayouts)
 	api.GET("/payouts/:id", GetPayout)
-	api.POST("/payouts/:id/cancel", CancelPayout)
+	api.POST("/payouts/:id/cancel", mintRequired, CancelPayout)
 
 	// Billing events
 	api.GET("/events", ListBillingEvents)
@@ -204,18 +223,25 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	dns.POST("/usage", RecordDNSUsage)
 	dns.GET("/usage/summary", GetDNSUsageSummary)
 
-	// Billing cycle automation (called by platform scheduler or manually)
-	api.POST("/cycle/run", RunBillingCycle)
-	api.POST("/cycle/run-user", RunBillingCycleUser)
-	api.POST("/cycle/run-all", RunBillingCycleAllOrgs)
+	// Billing cycle automation (platform scheduler / service). Collecting a
+	// cycle charges cards across orgs — money-MINT bar (service-token /
+	// global-admin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
+	// org, so it is emphatically platform-only.
+	api.POST("/cycle/run", mintRequired, RunBillingCycle)
+	api.POST("/cycle/run-user", mintRequired, RunBillingCycleUser)
+	api.POST("/cycle/run-all", mintRequired, RunBillingCycleAllOrgs)
 
 	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
 	// the default card for orgs whose balance dropped below their threshold.
-	api.POST("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
+	// Platform-wide card charging — money-MINT bar (service-token / global-admin
+	// ONLY). An org owner reaching this could sweep-charge saved cards across
+	// every org.
+	api.POST("/auto-recharge/run-all", mintRequired, RunAutoRechargeAllOrgs)
 
-	// Test mode toggle (admin only): move an org between Square sandbox and
-	// production for end-to-end testing with sandbox cards.
-	api.POST("/test-mode", SetOrgTestMode)
+	// Test mode toggle: move an org between Square sandbox and production. This
+	// flips whether charges hit real cards, so it is a money-mode change —
+	// service-token / global-admin ONLY, never an org owner.
+	api.POST("/test-mode", mintRequired, SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
