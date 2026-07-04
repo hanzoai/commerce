@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
@@ -229,6 +230,9 @@ func TopupWithToken(c *gin.Context) {
 	test := org.TestMode()
 	trans.Test = test
 
+	// The card nonce was charged (result.Success): a settled payment IS the mint
+	// authority, so authorize THIS write at the ledger sink (money-in == credit).
+	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — leave the guard STARTED (a
 		// same-key retry 409s rather than re-attempting) and log for manual
