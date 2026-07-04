@@ -11,7 +11,6 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 
@@ -56,30 +55,24 @@ func GetMyBalance(c *gin.Context) {
 
 	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
 
-	datas, err := util.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
+	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
 		http.Fail(c, 500, "failed to query balance", err)
 		return
 	}
+	card := getCardOnFile(datastore.New(ctx), user)
 
-	var balance, holds currency.Cents
-	if data, ok := datas.Data[cur]; ok {
-		balance = data.Balance
-		holds = data.Holds
-	}
-
-	available := balance - holds
-	if available < 0 {
-		available = 0
-	}
-
-	c.JSON(200, gin.H{
+	resp := gin.H{
 		"user":      user,
 		"currency":  cur,
-		"balance":   int64(balance),
-		"holds":     int64(holds),
-		"available": int64(available),
-	})
+		"balance":   int64(split.Balance),
+		"holds":     int64(split.Holds),
+		"available": int64(split.Available),
+	}
+	for k, v := range bucketFields(split, card) {
+		resp[k] = v
+	}
+	c.JSON(200, resp)
 }
 
 // PostMyWelcome grants the welcome credit (idempotent, tag-deduped) to

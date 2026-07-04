@@ -529,6 +529,47 @@ All require: a funded Hanzo source account, per-rail API credentials in **KMS**
 (never plaintext), maintainer onboarding/KYC, tax handling (1099/W-8). The held
 pool waits until a target is resolved + onboarded.
 
+## Three money buckets — credits vs prepaid vs card (billing/bucket)
+
+The ledger was CONFLATED: `starter-credit`/`included-credit:` (non-cash grants)
+and `topup`/deposits (real money) were all `transaction.Deposit` rolled into ONE
+`balance`. They are now split HONESTLY from the real tags — no fabricated numbers.
+
+- **`billing/bucket`** (pure, no I/O, unit-tested) is the ONE classifier + spend
+  projection:
+  - `DepositKind(tags)` → `Credit` (tag `starter-credit`, prefix `included-credit:`,
+    `credit:`, `grant:`) vs `Prepaid` (everything else — topup/husd/bare deposit =
+    real money; UNKNOWN→Prepaid is fail-closed: never mint spendable-on-GPU value
+    from a mystery deposit).
+  - `IsGPUWithdrawal(tags)` → gpu (`gpu`/`gpu-*`/`gpu:*`).
+  - `Compute(transs, id, now) → Split{CreditsGranted, CreditsRemaining,
+    PrepaidBalance, PrepaidAvailable, Balance, Holds, Available}`.
+- **Spend policy** (documented, enforced): non-GPU usage draws CREDITS FIRST then
+  prepaid; GPU usage draws ONLY prepaid. The projection reconciles to the cent:
+  `CreditsRemaining + PrepaidBalance == Balance` (the same balance the gateway
+  gate debits — bucket.Compute is a faithful superset of util.TallyTransactions).
+- **Read**: `GET /v1/billing/balance` + `/me/balance` now ALSO return
+  `creditsGranted`, `creditsRemaining`, `prepaidBalance`, `prepaidAvailable`, and
+  `card{onFile,brand,last4,isDefault}` (additive — the pre-split
+  `{balance,holds,available}` is unchanged, so the cloud proxy + console BFF
+  forward the split verbatim; console shows credits vs prepaid distinctly).
+  `util.GetRawByCurrency` fetches the raw (un-expiry-filtered) ledger the split needs.
+- **GPU rule (server-enforced, fail-closed)** — `api/billing/gpu_charge.go`:
+  - `GET /v1/billing/gpu-eligibility?user=&amountCents=&minPrepaidCents=` — the
+    launch gate: `{eligible,reason}` where reason ∈ `card_required` /
+    `insufficient_prepaid` / `ok`, reading `PrepaidAvailable` (never the combined
+    balance) + card-on-file.
+  - `POST /v1/billing/gpu-charge {user,amountCents,tag?}` — the ONLY writer of a
+    `gpu`-tagged Withdraw. Two gates: (1) a chargeable card MUST be on file
+    (402 `card_required`); (2) `PrepaidAvailable >= amountCents` (402
+    `insufficient_prepaid`) — credits are NEVER consulted, so a GPU can never draw
+    a grant. `gpuTag()` forces the recorded tag into the gpu bucket.
+  Both mounted on the admin group; the cloud GPU launch gate calls them. A GPU
+  charge NEVER calls `BurnCredits`.
+- **CreditGrant** (`models/creditgrant`, `BurnCredits`) is a SEPARATE grant ledger
+  used only for subscription/invoice collection (cycle/invoices/subscriptions) —
+  NOT the pay-as-you-go wallet the balance endpoint reads. Left as-is.
+
 ## Gotchas
 
 - New ORM kinds MUST be registered in `util/hashid/kind.go` (monotonic, never
