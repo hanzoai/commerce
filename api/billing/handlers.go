@@ -257,6 +257,12 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user := r.Group("billing")
 	user.Use(userRequired)
 
+	// Invoice PDF download (user-scoped). Tenant-isolated: the handler loads the
+	// invoice from the caller's OWN org namespace, so a foreign invoice id 404s.
+	// A normal authenticated org member can download their own invoice; Console
+	// opens this as a per-invoice download link.
+	user.GET("/invoices/:id/pdf", DownloadInvoicePDF)
+
 	// Card tokenization — S2S (no provider SDK on frontend)
 	user.POST("/card/tokenize", TokenizeCard)
 
