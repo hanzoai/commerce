@@ -89,6 +89,13 @@ func bucketFields(split bucket.Split, card cardOnFileStatus) gin.H {
 		"creditsRemaining": int64(split.CreditsRemaining),
 		"prepaidBalance":   int64(split.PrepaidBalance),
 		"prepaidAvailable": int64(split.PrepaidAvailable),
-		"card":             card,
+		// Consumer-facing aliases: "trial" == the non-cash credit bucket
+		// (starter/welcome/comp grants), "prepaid" == real money. Same values as
+		// creditsGranted/creditsRemaining, named unambiguously for the wallet/
+		// credit modal ("$5 trial + $X.XX credits"). Additive — never removes the
+		// existing fields.
+		"trialGranted": int64(split.CreditsGranted),
+		"trialBalance": int64(split.CreditsRemaining),
+		"card":         card,
 	}
 }
