@@ -166,6 +166,16 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 					// the same Live=false semantics a test access token carries.
 					// Existing callers omit the header and stay live; the flag
 					// is additive and never widens scope.
+					// Positively mark this request as an internal service caller —
+					// the ONE signal that survives EdgeAuth's header strip and
+					// distinguishes the trusted platform service (cloud-api →
+					// commerce, holding COMMERCE_SERVICE_TOKEN) from an org-scoped
+					// principal that merely holds the Admin bit (an org owner's IAM
+					// isAdmin, or a legacy per-org access token). Money-MINT routes
+					// (PlatformOnly) gate on this + GlobalAdmin ONLY, never on Admin,
+					// so an org owner can never reach them. Set in BOTH the test and
+					// live sub-branches (once here, before the split).
+					c.Set(ctxKeyServiceToken, true)
 					if strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true") {
 						org.Live = false
 						c.Set("permissions", bit.Field(permission.Admin|permission.Test))
@@ -238,6 +248,32 @@ func GetAccessToken(c *gin.Context) string {
 
 func GetPermissions(c *gin.Context) bit.Field {
 	return c.MustGet("permissions").(bit.Field)
+}
+
+// ctxKeyServiceToken marks that TokenRequired verified this request's bearer
+// against COMMERCE_SERVICE_TOKEN — the internal service-to-service secret
+// (cloud-api → commerce). It is the ONLY positive signal that a caller is the
+// trusted platform service rather than an org-scoped principal that merely holds
+// the Admin bit: an org OWNER carries org-level IsAdmin (→ Admin|Live) within
+// their own org, and a legacy per-org access token can hold Admin too. The
+// money-MINT gate (PlatformOnly, middleware/platformonly.go) reads it so those
+// routes admit the service token + platform superadmins ONLY. Set EXCLUSIVELY
+// inside the verified-bearer block, never on any other path.
+const ctxKeyServiceToken = "service_token_verified"
+
+// IsServiceToken reports whether TokenRequired verified this request's bearer
+// against COMMERCE_SERVICE_TOKEN. Fail-closed: a missing or non-bool value → false.
+// It is a POSITIVE, source-recorded fact (set where the secret is checked), never
+// re-derived from indirect signals like the Admin bit or absence of IAM identity —
+// a legacy org access token is also "not IAM authenticated" yet must NOT pass the
+// money-mint gate.
+func IsServiceToken(c *gin.Context) bool {
+	if v, ok := c.Get(ctxKeyServiceToken); ok {
+		if b, ok := v.(bool); ok {
+			return b
+		}
+	}
+	return false
 }
 
 // hasScope reports whether the request's resolved permissions (set by

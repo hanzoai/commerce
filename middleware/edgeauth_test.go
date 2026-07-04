@@ -333,6 +333,57 @@ func TestIsGlobalAdmin(t *testing.T) {
 	}
 }
 
+// TestPermsHeader_AdminBitIsGlobalOnly is the money-hole regression. It pins the
+// exact X-User-Permissions bit.Field permsHeader mints for the three principal
+// classes, in the wire units commerce parses (permission.Live=4, Admin=16). The
+// invariant: the Admin (money/admin) bit is minted ONLY for a global admin; an
+// org-level admin (an org owner) gets Live but NOT Admin, so
+// TokenRequired(permission.Admin) on the credit-creating / card-charging billing
+// endpoints denies them. Before the fix an org owner minted Admin|Live=20 and
+// satisfied every admin money gate → unlimited free balance + platform-wide card
+// charging (live-proven as Dave/maxpower).
+func TestPermsHeader_AdminBitIsGlobalOnly(t *testing.T) {
+	const (
+		live      = 4  // permission.Live  (1 << 2)
+		admin     = 16 // permission.Admin (1 << 4)
+		adminLive = admin | live
+	)
+	cases := []struct {
+		name   string
+		claims *auth.IAMClaims
+		want   int64
+	}{
+		// Plain authenticated user: no admin authority, no live mode. Zero bits.
+		{"plain-user", &auth.IAMClaims{Owner: "hanzo"}, 0},
+		// Org owner (maxpower): live mode YES (real Square top-up must work),
+		// Admin money bit NO. This is the exact principal that exploited the hole.
+		{"org-admin-live-not-admin", &auth.IAMClaims{Owner: "maxpower", IsAdmin: true}, live},
+		// Global admin via the admin org: full Admin|Live.
+		{"global-admin-org", &auth.IAMClaims{Owner: "admin", IsAdmin: true}, adminLive},
+		// Global admin via the explicit claim (any org): full Admin|Live.
+		{"global-admin-flag", &auth.IAMClaims{Owner: "hanzo", IsGlobalAdmin: true, IsAdmin: true}, adminLive},
+		// Global-admin flag WITHOUT org-level IsAdmin still carries Admin (the
+		// money authority), and also Live is absent (IsAdmin gates Live) —
+		// documents the orthogonality: authority (Admin) and mode (Live) are
+		// independent signals.
+		{"global-flag-no-orgadmin", &auth.IAMClaims{Owner: "hanzo", IsGlobalAdmin: true}, admin},
+	}
+	for _, tc := range cases {
+		got, err := strconv.ParseInt(permsHeader(tc.claims), 10, 64)
+		if err != nil {
+			t.Fatalf("%s: permsHeader returned non-integer: %v", tc.name, err)
+		}
+		if got != tc.want {
+			t.Fatalf("%s: permsHeader=%d want %d (admin bit set iff global admin)", tc.name, got, tc.want)
+		}
+		// Belt-and-suspenders: the Admin bit is present iff the caller is a global admin.
+		hasAdmin := got&admin != 0
+		if hasAdmin != isGlobalAdmin(tc.claims) {
+			t.Fatalf("%s: Admin bit=%v but isGlobalAdmin=%v — must match exactly", tc.name, hasAdmin, isGlobalAdmin(tc.claims))
+		}
+	}
+}
+
 // TestResolveBillingSubject_AdminOverride: a global admin may retarget the
 // billing view to another org via ?org=, and the namespace follows it.
 func TestResolveBillingSubject_AdminOverride(t *testing.T) {
