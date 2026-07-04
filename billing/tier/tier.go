@@ -2,13 +2,19 @@
 //
 // Each IAM user has a "tier" property stored in hanzo.id (Hanzo IAM) user
 // properties and propagated via JWT claims. The tier determines:
-//   - daily replenishing free credits (non-accumulating)
 //   - maximum concurrent agents
 //   - which model prefixes are allowed
+//   - a daily replenishing credit allowance (the generic mechanism; the
+//     Free tier's allowance is 0, see below)
 //
-// Free-tier users receive a daily replenishing balance that resets each
-// UTC day and does not roll over. Paid tiers (starter, pro, enterprise)
-// use prepaid balances managed by the existing billing engine.
+// THERE IS NO FREE TIER. A zero-balance account is gated (the metering
+// client refuses when effective available balance <= 0). Onboarding funds an
+// account exactly once via the starter-credit grant (a one-time $100 Deposit,
+// see billing/credit); once that is spent the account is gated until it is
+// topped up. The daily-credit mechanism below is retained (correctly guarded
+// by DailyCreditsCents > 0) but every registered tier sets it to 0, so it
+// never grants a standing balance to anyone. Paid tiers use prepaid balances
+// managed by the existing billing engine.
 package tier
 
 // Name is the canonical tier identifier stored in IAM user properties.
@@ -33,8 +39,10 @@ type Config struct {
 	MaxAgents int `json:"maxAgents"`
 
 	// DailyCreditsCents is the daily replenishing credit allowance in cents.
-	// Only applies to tiers where credits reset every UTC day (i.e. free).
-	// For prepaid tiers this is 0 -- balance is managed externally.
+	// It is 0 for EVERY tier: there is no free tier, so no tier grants a
+	// standing daily balance. The mechanism is kept generic (a nonzero value
+	// would replenish each UTC day, non-accumulating) but is disabled by
+	// configuration. Prepaid balance is managed externally by the billing engine.
 	DailyCreditsCents int64 `json:"dailyCreditsCents"`
 
 	// AllowedModels lists the model prefixes the tier may invoke.
@@ -45,10 +53,12 @@ type Config struct {
 // registry is the authoritative tier configuration.
 var registry = map[Name]*Config{
 	Free: {
-		Name:              Free,
-		DisplayName:       "Free",
-		MaxAgents:         1,
-		DailyCreditsCents: 100, // $1.00 daily, non-accumulating
+		Name:        Free,
+		DisplayName: "Free",
+		MaxAgents:   1,
+		// No free tier: a zero-balance "free" account grants NO daily credit and
+		// is gated. The one-time starter grant is the only onboarding funding.
+		DailyCreditsCents: 0,
 		AllowedModels:     []string{"claude-sonnet", "zen3"},
 	},
 	Starter: {
