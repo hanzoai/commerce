@@ -9,6 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware/svcorg"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 )
@@ -106,5 +108,45 @@ func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized || reached {
 		t.Fatalf("bare X-Org-Id must not authenticate: status=%d reached=%v, want 401,false", w.Code, reached)
+	}
+}
+
+// TestTokenRequired_ServiceTokenResolveFailsFast is the money-critical regression
+// for the 2026-07-04 wedge: when the bearer IS the verified service token but the
+// backing store cannot resolve the org, the branch must fail CLOSED and RETRYABLE
+// (503) — NOT fall through to the legacy per-org-token path (which Peeks the
+// 64-hex service token as a JWT → "Invalid Segments" → a misleading 401 that made
+// cloud-api treat a transient DB hiccup as a bad credential and 402 customers).
+// A nil default datastore forces svcorg.Resolve to error deterministically.
+func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const svc = "svc-token-abc123"
+	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
+
+	// No default DB installed → GetOrCreate inside svcorg.Resolve errors, so we
+	// exercise the resolve-failure branch. Use a distinct org slug so this test's
+	// failure is never masked by another test's cached success.
+	datastore.SetDefaultDB(nil)
+	svcorg.Invalidate("failorg")
+
+	reached := false
+	eng := gin.New()
+	eng.POST("/x", TokenRequired(), func(c *gin.Context) { // no-mask billing-style gate
+		reached = true
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/x", nil)
+	req.Header.Set("Authorization", "Bearer "+svc)
+	req.Header.Set("X-Org-Id", "failorg")
+	w := httptest.NewRecorder()
+	eng.ServeHTTP(w, req)
+
+	if reached {
+		t.Fatalf("handler must NOT be reached when service-token org resolve fails")
+	}
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("verified-service-token resolve failure must be 503 (retryable), got %d; "+
+			"a 401 means it fell through to the legacy Peek path (the wedge)", w.Code)
 	}
 }
