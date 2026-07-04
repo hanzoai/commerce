@@ -24,8 +24,11 @@ import (
 //
 //	GET /v1/billing/tier?user=hanzo/alice
 //
-// Response includes the tier config plus the effective available balance
-// (which for free-tier users includes the daily replenishing credit).
+// Response includes the tier config plus the effective available balance.
+// There is no free tier: a zero-balance account has effectiveAvailable == 0
+// and is gated. The daily-credit term is 0 for every tier (see billing/tier);
+// onboarding funds an account once via the starter-credit grant, and once
+// that is spent the account is gated until it is topped up.
 func GetTier(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	ctx := org.Namespaced(c)
@@ -65,8 +68,11 @@ func GetTier(c *gin.Context) {
 		prepaidAvailable = 0
 	}
 
-	// For free-tier users, compute the daily replenishing credit.
-	// The daily credit resets at midnight UTC and does not accumulate.
+	// Daily replenishing credit. This is 0 for every tier (there is no free
+	// tier), so HasDailyCredits() is false and dailyRemaining stays 0 —
+	// effectiveAvailable collapses to prepaidAvailable and a zero-balance
+	// account is gated. The mechanism is retained (guarded by DailyCreditsCents
+	// > 0) so a tier could re-enable a daily allowance by configuration alone.
 	var dailyRemaining int64
 	if cfg.HasDailyCredits() {
 		dailyUsed := dailyUsageCents(ctx, user, org.TestMode())
