@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/middleware/svcorg"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -122,10 +123,6 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
 			header := c.GetHeader("Authorization")
 			if strings.HasPrefix(header, "Bearer ") && strings.TrimPrefix(header, "Bearer ") == svcToken {
-				ctx := GetContext(c)
-				db := datastore.New(ctx)
-				org := organization.New(db)
-
 				// Resolve the caller-named org, now that the service token is verified.
 				// EdgeAuth (standalone edge) stashes the client's requested org in a
 				// private ctx key AFTER stripping the raw X-Org-Id header — read it
@@ -153,42 +150,59 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 					http.Fail(c, 400, "Invalid organization identifier.", errors.New("bearer-shaped org selector"))
 					return
 				}
-				org.Name = orgName
-				org.Enabled = true
 
-				// GetOrCreate: find existing org by name or create from IAM-derived context.
-				if err := org.GetOrCreate("Name=", orgName); err != nil {
-					log.Warn("Service token org resolve/create for '%s' failed: %v", orgName, err)
-				} else {
-					// Service callers are live by default. An explicit
-					// X-Hanzo-Test: true opts the call into TEST mode so it
-					// charges sandbox processors and writes the test ledger —
-					// the same Live=false semantics a test access token carries.
-					// Existing callers omit the header and stay live; the flag
-					// is additive and never widens scope.
-					// Positively mark this request as an internal service caller —
-					// the ONE signal that survives EdgeAuth's header strip and
-					// distinguishes the trusted platform service (cloud-api →
-					// commerce, holding COMMERCE_SERVICE_TOKEN) from an org-scoped
-					// principal that merely holds the Admin bit (an org owner's IAM
-					// isAdmin, or a legacy per-org access token). Money-MINT routes
-					// (PlatformOnly) gate on this + GlobalAdmin ONLY, never on Admin,
-					// so an org owner can never reach them. Set in BOTH the test and
-					// live sub-branches (once here, before the split).
-					c.Set(ctxKeyServiceToken, true)
-					if strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true") {
-						org.Live = false
-						c.Set("permissions", bit.Field(permission.Admin|permission.Test))
-						c.Set("organization", org)
-						c.Next()
-						return
-					}
-					org.Live = true
-					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-					c.Set("organization", org)
-					c.Next()
+				// Resolve via the CACHED, singleflighted, deadline-detached resolver
+				// (middleware/svcorg). Steady state (org already exists) does NO
+				// datastore work; a cache miss runs ONE GetOrCreate on commerce's own
+				// bounded context, so a busy SQLite writer fast-fails here instead of
+				// being canceled mid-create by the caller's request deadline. This is
+				// the money-critical fix for the 2026-07-04 wedge: the create-on-every-
+				// request read/write that piled behind the single writer under load and
+				// cascaded to a bogus 401 → cloud-api 402 outage.
+				org, err := svcorg.Resolve(orgName)
+				if err != nil {
+					// The service token WAS verified — this is a transient backing-store
+					// failure, NOT a bad credential. Fail CLOSED but RETRYABLE (503), and
+					// do NOT fall through to the legacy per-org-token path: that path would
+					// Peek the 64-hex service token as a JWT ("Invalid Segments") and 401,
+					// masking a retryable hiccup as an auth failure (the old cascade).
+					log.Warn("TokenRequired: service-token org resolve for '%s' failed: %v", orgName, err)
+					http.Fail(c, 503, "Billing service temporarily unavailable; retry.", err)
 					return
 				}
+
+				// Service callers are live by default. An explicit
+				// X-Hanzo-Test: true opts the call into TEST mode so it
+				// charges sandbox processors and writes the test ledger —
+				// the same Live=false semantics a test access token carries.
+				// Existing callers omit the header and stay live; the flag
+				// is additive and never widens scope.
+				// Positively mark this request as an internal service caller —
+				// the ONE signal that survives EdgeAuth's header strip and
+				// distinguishes the trusted platform service (cloud-api →
+				// commerce, holding COMMERCE_SERVICE_TOKEN) from an org-scoped
+				// principal that merely holds the Admin bit (an org owner's IAM
+				// isAdmin, or a legacy per-org access token). Money-MINT routes
+				// (PlatformOnly) gate on this + GlobalAdmin ONLY, never on Admin,
+				// so an org owner can never reach them. Set in BOTH the test and
+				// live sub-branches (once here, before the split).
+				c.Set(ctxKeyServiceToken, true)
+				// Live/Test is a per-REQUEST view. The resolver returns a SHARED,
+				// cached *Organization, so never mutate its Live in place — copy it
+				// per request and set Live on the copy. This keeps steady-state
+				// datastore-free while guaranteeing a concurrent test call can't flip
+				// the cached org's Live for live callers (or vice-versa).
+				reqOrg := *org
+				test := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true")
+				reqOrg.Live = !test
+				if test {
+					c.Set("permissions", bit.Field(permission.Admin|permission.Test))
+				} else {
+					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+				}
+				c.Set("organization", &reqOrg)
+				c.Next()
+				return
 			}
 		}
 
