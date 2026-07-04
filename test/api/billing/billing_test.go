@@ -97,9 +97,9 @@ type invoicePreviewResponse struct {
 
 // Shared state across tests — populated in order by Ginkgo's sequential execution
 var (
-	meterId        string
-	creditGrantId  string
-	pricingRuleId  string
+	meterId       string
+	creditGrantId string
+	pricingRuleId string
 )
 
 // Ordered: this is a stateful integration suite — a meter created in "Meters" is
@@ -695,18 +695,12 @@ var _ = Describe("billing", Ordered, func() {
 		})
 
 		It("Should create a refund", func() {
-			// First create a deposit
-			depositReq := map[string]interface{}{
-				"user":     "hanzo/dave",
-				"currency": "usd",
-				"amount":   int64(200),
-			}
-			depositRes := &map[string]interface{}{}
-			cl.Post("/billing/deposit", depositReq, depositRes)
+			// A refund REVERSES an existing charge (a Withdraw), correcting an
+			// overcharge — it is not a deposit reversal. The hardened handler
+			// rejects refunding a Deposit (that would double a credit), so seed a
+			// real charge for the subject and refund part of it.
+			txId := seedCharge("hanzo/dave", 200)
 
-			txId := (*depositRes)["transactionId"].(string)
-
-			// Then refund it
 			refundReq := map[string]interface{}{
 				"user":                  "hanzo/dave",
 				"currency":              "usd",
