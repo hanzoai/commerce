@@ -14,9 +14,17 @@ import (
 )
 
 // Starter credit constants.
+//
+// The welcome/starter credit is a TRIAL (non-cash) grant: $5.00, classified by
+// its `starter-credit` tag into the Credit bucket (billing/bucket.DepositKind),
+// spendable on non-premium metered usage only (never GPUs, never premium models —
+// see hanzoai/ai openai_api.go, which gates premium behind a balance ABOVE the
+// $5 starter). $5 is the ONE canonical amount, shared across the stack: billing
+// app config `trialCreditCents: 500`, ai `StarterCreditDollars = 5.00`, and the
+// cloud-api-models `features.starter_credit: 5.0`. Keep them equal.
 const (
-	StarterCreditCents = 10000 // $100.00 USD
-	StarterCreditDays  = 365   // expires in 365 days
+	StarterCreditCents = 500 // $5.00 USD
+	StarterCreditDays  = 365 // expires in 365 days
 	StarterCreditTag   = "starter-credit"
 )
 
@@ -41,7 +49,7 @@ func GrantIfEligible(db *datastore.Datastore, userId, trigger string) {
 // transaction so concurrent callers can never double-grant (no bleed). The
 // dedupe key is (DestinationId=userId, Tags=StarterCreditTag).
 //
-// The grant is a real Deposit transaction (tag "starter-credit", $5, 30-day
+// The grant is a real Deposit transaction (tag "starter-credit", $5, 365-day
 // expiry) — so it nets into GET /v1/billing/balance, which is the account the
 // cloud gateway's balance gate reads and its usage debit withdraws from. (It is
 // deliberately NOT a credit-grant record; those live in a separate ledger the
@@ -70,7 +78,7 @@ func GrantIfEligibleNow(db *datastore.Datastore, userId, trigger string) (grante
 		trans.DestinationKind = "iam-user"
 		trans.Currency = "usd"
 		trans.Amount = currency.Cents(StarterCreditCents)
-		trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
+		trans.Notes = "Welcome credit: $5.00 USD (expires in 365 days)"
 		trans.Tags = StarterCreditTag
 		trans.ExpiresAt = time.Now().AddDate(0, 0, StarterCreditDays)
 		trans.Metadata = Map{
