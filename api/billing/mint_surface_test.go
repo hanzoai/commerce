@@ -36,16 +36,43 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/api/affiliate"
+	transactionApi "github.com/hanzoai/commerce/api/transaction"
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/demo/tokentransaction"
+	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
+	"github.com/hanzoai/commerce/util/rest"
+	"github.com/hanzoai/commerce/util/router"
 )
+
+// mountMintSurface mounts the FULL /v1 ledger surface a mint could reach —
+// billing + affiliate + the generic transaction router (POST /v1/transaction is
+// C1-b) + the wallet and demo-tokentransaction REST routers — onto v1. It is the
+// ONE mount point shared by the enumeration and the org-admin probe engine, so the
+// guard sees the same routes api.Route(/v1) registers (minus the full-bootstrap
+// bundle). Adding a mint route anywhere here brings it under the guard
+// automatically. The per-router auth (tokenRequired/adminRequired) matches
+// api.Route so an org-admin probe reproduces production reachability.
+func mountMintSurface(v1 router.Router) {
+	tokenRequired := middleware.TokenRequired(permission.Admin)
+	adminRequired := middleware.TokenRequired(permission.Admin)
+
+	Route(v1)                 // billing
+	affiliate.Route(v1)       // affiliate payouts
+	transactionApi.Route(v1)  // POST /v1/transaction (generic ledger create — C1-b)
+	rest.New(wallet.Wallet{}).Route(v1, adminRequired)
+	rest.New(tokentransaction.Transaction{}).Route(v1, tokenRequired)
+}
 
 // ── mint-sink source analysis ───────────────────────────────────────────────
 
-// pkgDirs are the packages whose route handlers can mint. Relative to this test
-// file's directory (api/billing) at `go test` runtime.
-var mintPkgDirs = []string{".", "../affiliate"}
+// pkgDirs are the packages whose route handlers can mint, spanning the FULL
+// api.Route(/v1) ledger surface (not just billing) so a mint that moves to a
+// sibling package is still caught. Relative to this test file's directory
+// (api/billing) at `go test` runtime.
+var mintPkgDirs = []string{".", "../affiliate", "../transaction", "../../demo/tokentransaction", "../account"}
 
 // mintReachingFuncs returns the set of function short-names (across the analyzed
 // packages) whose bodies reach a money-mint sink, following same-package calls
@@ -76,6 +103,14 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 					if _, seen := calls[name]; !seen {
 						calls[name] = map[string]bool{}
 					}
+					// Per-func state for the GENERIC ledger-create sink: a handler
+					// that decodes request input INTO a transaction.Transaction and
+					// .Create()s it (so its Type is attacker-controlled, e.g. a
+					// Deposit) — the shape the literal `x.Type = Deposit` detector
+					// misses. This is exactly api/transaction.Create.
+					txVars := map[string]bool{}       // vars assigned from transaction.New(...)
+					decodeTargets := map[string]bool{} // vars a request body was decoded INTO
+					hasCreate := false                 // a .Create() call is present
 					ast.Inspect(fn.Body, func(n ast.Node) bool {
 						switch x := n.(type) {
 						case *ast.AssignStmt:
@@ -97,6 +132,13 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 									rawSink[name] = true
 								}
 							}
+							// v := transaction.New(...) → v is a ledger transaction var.
+							for i, lhs := range x.Lhs {
+								if id, ok := lhs.(*ast.Ident); ok && i < len(x.Rhs) &&
+									isSelectorCall2(x.Rhs[i], imports, "models/transaction", "New") {
+									txVars[id.Name] = true
+								}
+							}
 						case *ast.CallExpr:
 							// allotment.Grant(...) — mints included monthly credit.
 							if isSelectorCall(x, imports, "billing/allotment", "Grant") {
@@ -106,6 +148,15 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 							if isPayoutExecutorCall(x, imports) {
 								rawSink[name] = true
 							}
+							// .Create() present (persists whatever was built).
+							if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Create" {
+								hasCreate = true
+							}
+							// A decode of the request body INTO some var → record the
+							// target so we can see if it is a ledger transaction.
+							if tgt := decodeTargetIdent(x); tgt != "" {
+								decodeTargets[tgt] = true
+							}
 							// same-package call by bare identifier → call-graph edge.
 							if id, ok := x.Fun.(*ast.Ident); ok {
 								calls[name][id.Name] = true
@@ -113,6 +164,16 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 						}
 						return true
 					})
+					// Generic ledger-create sink: request body decoded INTO a
+					// transaction.New(...) var that is then .Create()d.
+					if hasCreate {
+						for v := range decodeTargets {
+							if txVars[v] {
+								rawSink[name] = true
+								break
+							}
+						}
+					}
 				}
 			}
 		}
@@ -182,6 +243,46 @@ func isSelectorCall(call *ast.CallExpr, imports map[string]string, pkgSuffix, se
 	return isSelector(call.Fun, imports, pkgSuffix, sel)
 }
 
+// isSelectorCall2 reports whether e is a call expression `alias.sel(...)` where
+// alias imports a path ending in pkgSuffix (accepts an ast.Expr, e.g. an
+// AssignStmt RHS, so `v := transaction.New(...)` can be recognized).
+func isSelectorCall2(e ast.Expr, imports map[string]string, pkgSuffix, sel string) bool {
+	call, ok := e.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	return isSelectorCall(call, imports, pkgSuffix, sel)
+}
+
+// decodeTargetIdent returns the identifier a request-body decode call
+// deserializes INTO (its last argument), or "" if call is not a recognized
+// decode. Recognizes json.Decode/DecodeBytes/Unmarshal(..., v) and gin's
+// Bind/ShouldBind*/BindJSON(&v) — the ways a handler populates a value from
+// untrusted input. Used to catch a handler that decodes straight into a ledger
+// transaction and Creates it (dynamic, attacker-controlled Type).
+func decodeTargetIdent(call *ast.CallExpr) string {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	switch sel.Sel.Name {
+	case "Decode", "DecodeBytes", "Unmarshal", "Bind", "BindJSON", "ShouldBind", "ShouldBindJSON", "ShouldBindWith":
+	default:
+		return ""
+	}
+	if len(call.Args) == 0 {
+		return ""
+	}
+	arg := call.Args[len(call.Args)-1]
+	if u, ok := arg.(*ast.UnaryExpr); ok { // &v
+		arg = u.X
+	}
+	if id, ok := arg.(*ast.Ident); ok {
+		return id.Name
+	}
+	return ""
+}
+
 // isPayoutExecutorCall reports whether call disburses the treasury: a `.Payout`
 // call on an import whose path is under cron/payout (the OSS-contributor executor).
 func isPayoutExecutorCall(call *ast.CallExpr, imports map[string]string) bool {
@@ -217,6 +318,7 @@ var userSafeMintHandlers = map[string]string{
 // (not via route middleware), each verified by a named companion test.
 var methodGatedMintHandlers = map[string]string{
 	"ZapDispatch": "mint methods (billing.deposit) gated per-method on middleware.MayMintMoney (TestZapDeposit_OrgAdminDenied / TestZapReads_OrgAdminNotBlocked)",
+	"Create":      "api/transaction.Create gates the MINT case (Deposit / credit-to-iam-user) on middleware.MayMintMoney inside the handler — org-admin deposit→403 (api/transaction TestCreate_OrgAdminDepositToIAMUser_Denied); non-mint Withdraw/Transfer stay org-admin. mintauth.Enforce at the sink is the fail-closed backstop.",
 }
 
 type mintRoute struct{ method, path, handler string }
@@ -229,8 +331,11 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 
 	// Detector self-check: the known-critical mint functions MUST be flagged, or
 	// the enumeration is silently under-detecting (which is the whole failure mode
-	// we are guarding against).
-	for _, must := range []string{"Deposit", "Refund", "GrantAllotment", "zapDeposit", "ZapDispatch", "PostMyWelcome", "executePayouts"} {
+	// we are guarding against). "Create" is api/transaction.Create — the GENERIC
+	// ledger-create sink (decodes request input INTO a transaction.New var and
+	// .Create()s it), which the literal `Type=Deposit` detector alone misses; if it
+	// is not flagged the generic-sink detector is broken.
+	for _, must := range []string{"Deposit", "Refund", "GrantAllotment", "zapDeposit", "ZapDispatch", "PostMyWelcome", "executePayouts", "Create"} {
 		if !reaches[must] {
 			t.Fatalf("mint-sink detector did NOT flag %q — the source enumeration is broken; fix the detector before trusting this guard", must)
 		}
@@ -284,8 +389,7 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 	gin.SetMode(gin.TestMode)
 	eng := gin.New()
 	v1 := eng.Group("/v1")
-	Route(v1)
-	affiliate.Route(v1)
+	mountMintSurface(v1)
 
 	var out []mintRoute
 	for _, ri := range eng.Routes() {
@@ -310,8 +414,7 @@ func orgAdminEngine(t *testing.T) *gin.Engine {
 		c.Next()
 	})
 	v1 := eng.Group("/v1")
-	Route(v1)
-	affiliate.Route(v1)
+	mountMintSurface(v1)
 	return eng
 }
 

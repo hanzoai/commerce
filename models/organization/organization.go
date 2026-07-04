@@ -11,6 +11,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/app"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/oauthtoken"
@@ -388,17 +389,23 @@ func (o Organization) Namespace() string {
 // upstream proxy timeout fires before the ClickHouse query completes.
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
-		// Try to use a custom detached context stored in gin context.
+		// HTTP boundary: mark every inbound-request datastore context mint-gated
+		// (mintauth.WithGate) so the ledger sink refuses an unauthorized spendable
+		// mint by ANY inbound principal — the single structural gate point. A
+		// proven mint authority (PlatformOnly / settled payment / server-fixed
+		// grant) satisfies it by adding mintauth.WithAuthorized, which rides in
+		// either the stored "context" (route middleware) or the write's own ctx.
+		base := context.Background() // DB ops must survive HTTP disconnect
 		if reqCtx := c.Value("context"); reqCtx != nil {
 			if ctxVal, ok := reqCtx.(context.Context); ok {
-				ctx = ctxVal
-				return nscontext.WithNamespace(ctx, o.Namespace())
+				base = ctxVal
 			}
 		}
-		// Detach from request context — DB ops must survive HTTP disconnect.
-		ctx = context.Background()
+		return nscontext.WithNamespace(mintauth.WithGate(base), o.Namespace())
 	}
 
+	// Non-*gin.Context callers are internal (crons, migrations, tests): NOT gated,
+	// so internal ledger writes are unaffected by the mint invariant.
 	return nscontext.WithNamespace(ctx, o.Namespace())
 }
 
