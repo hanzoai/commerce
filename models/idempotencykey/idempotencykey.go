@@ -97,15 +97,24 @@ func (k *IdempotencyKey) Save() ([]datastore.Property, error) {
 // replay=false with a freshly-created "started" marker when this is the first
 // sighting; the caller performs the side effect then calls Complete.
 func Begin(db *datastore.Datastore, scope, key string) (rec *IdempotencyKey, replay bool, err error) {
-	// Look up by the (Scope, Key) fields — collision-proof, unlike overloading
-	// the hashid id space with a deterministic string (some values mis-decode).
 	id := DeterministicID(scope, key)
 
 	// Replay: the guard for this (scope,key) already exists. Its STORAGE id is
 	// deterministic, so concurrent first-time Begins collapse onto ONE row via
 	// the backend ON CONFLICT(id,kind,namespace) upsert — no ledger fork.
+	//
+	// Read it by its EXACT storage key (kind + deterministic id + namespace). Do
+	// NOT route this read through GetById: GetById decodes the id as a hashid,
+	// and a deterministic NON-hashid string ("idem_<hex>") decodes to a KIND-LESS
+	// key. The production Postgres backend's Get requires an exact kind match
+	// (db/postgres.go), so a kind-less lookup never finds the row this guard just
+	// wrote under kind "idempotency-key" — every retry then looks brand-new and
+	// the money move runs AGAIN (double charge). SQLite's Get has a kind-less
+	// fallback (db/sqlite.go), which is the ONLY reason this passed in tests and
+	// bit solely in production. A kind-qualified Get round-trips on both backends.
 	existing := New(db)
-	if e := existing.GetById(id); e == nil {
+	guardKey := db.NewKey(existing.Kind(), id, 0, nil)
+	if e := existing.Get(guardKey); e == nil {
 		// Completed → always a replay (return the stored response).
 		if existing.Status == StatusCompleted {
 			return existing, true, nil
