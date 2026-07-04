@@ -16,7 +16,10 @@ import (
 // the balance endpoints return is derived from real tagged transactions — and
 // that a GPU charge is provably barred from credit grants.
 
-func credit(db *datastore.Datastore, user string, cents int64, tag string, expires time.Time) {
+// seedCredit inserts a raw deposit transaction for test setup. Named seedCredit
+// (not credit) to avoid shadowing the imported billing/credit package at package
+// scope — the collision broke the whole api/billing test build.
+func seedCredit(db *datastore.Datastore, user string, cents int64, tag string, expires time.Time) {
 	tr := transaction.New(db)
 	tr.Type = transaction.Deposit
 	tr.DestinationId = user
@@ -46,8 +49,8 @@ func TestBucketedSplit_CreditsVsPrepaid(t *testing.T) {
 	db := datastore.New(ctx)
 
 	const user = "split-user"
-	credit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0)) // $100 grant
-	credit(db, user, 5000, "topup", time.Time{})                           // $50 real money
+	seedCredit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0)) // $100 grant
+	seedCredit(db, user, 5000, "topup", time.Time{})                           // $50 real money
 
 	s, err := bucketedSplit(ctx, user, currency.USD, false)
 	if err != nil {
@@ -74,8 +77,8 @@ func TestBucketedSplit_GpuChargeBarredFromCredits(t *testing.T) {
 	db := datastore.New(ctx)
 
 	const user = "gpu-user"
-	credit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0)) // $100 grant
-	credit(db, user, 5000, "topup", time.Time{})                           // $50 prepaid
+	seedCredit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0)) // $100 grant
+	seedCredit(db, user, 5000, "topup", time.Time{})                           // $50 prepaid
 	spend(db, user, 4000, "gpu-h100")                                      // $40 GPU charge
 
 	s, err := bucketedSplit(ctx, user, currency.USD, false)
@@ -99,7 +102,7 @@ func TestBucketedSplit_CreditOnlyWallet_NoPrepaidForGpu(t *testing.T) {
 	db := datastore.New(ctx)
 
 	const user = "credit-only-user"
-	credit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0))
+	seedCredit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0))
 
 	s, err := bucketedSplit(ctx, user, currency.USD, false)
 	if err != nil {
