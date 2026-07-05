@@ -8,8 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/util/json/http"
 )
+
+// AuthorizeMint stamps this request's datastore context as authorized to mint
+// spendable balance, so a downstream ledger write (through an
+// Organization.Namespaced-derived datastore) passes mintauth.Enforce. It is the
+// ONE way an HTTP handler grants the mint capability the ledger sink demands —
+// call it AFTER establishing a proven mint authority (MayMintMoney, a settled
+// payment, or a server-fixed grant). It re-stores the gin "context" key, which
+// Organization.Namespaced reads, so any datastore the handler builds afterward
+// is authorized. Writes that build their datastore BEFORE the authority is known
+// (top-up after the charge, webhook after signature) instead authorize the
+// specific write via mintauth.WithAuthorized on that write's context.
+func AuthorizeMint(c *gin.Context) {
+	c.Set("context", mintauth.WithAuthorized(GetContext(c)))
+}
 
 // PlatformOnly restricts a route to the ONLY two principals allowed to MINT
 // money / spendable balance:
@@ -41,6 +56,11 @@ import (
 func PlatformOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if MayMintMoney(c) {
+			// Proven mint principal → authorize the ledger sink for this request,
+			// so the PlatformOnly-gated mint handlers (deposit, refund,
+			// credit-grants, payouts, cycle, auto-recharge, …) all mint without
+			// per-handler changes while org-admins are still 403'd above.
+			AuthorizeMint(c)
 			c.Next()
 			return
 		}

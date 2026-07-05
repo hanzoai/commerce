@@ -3,9 +3,11 @@ package datastore
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/hanzoai/commerce/datastore/key"
 	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/mintauth"
 )
 
 // Helper to create new incomplete key from string kind
@@ -24,6 +26,16 @@ func convertKeyOrKind(ds *Datastore, keyOrKind interface{}) *key.DatastoreKey {
 func (d *Datastore) Put(keyOrKind interface{}, val interface{}) (*key.DatastoreKey, error) {
 	if d.database == nil {
 		return nil, errors.New("datastore: database not initialized")
+	}
+
+	// Structural money-mint gate (mintauth.Enforce): a write that mints spendable
+	// balance is refused when its context is HTTP-gated but not authorized. This
+	// is the ONE place the invariant lives — every ledger write, on any route or
+	// none, funnels through Put, so no handler can mint without authorization.
+	// No-op for non-ledger entities, non-mint writes, and ungated (cron/test) ctx.
+	if err := mintauth.Enforce(d.Context, val); err != nil {
+		d.warn("Refused unauthorized mint (%v, %#v): %v", convertKeyOrKind(d, keyOrKind), val, err, d.Context)
+		return nil, err
 	}
 
 	dskey := convertKeyOrKind(d, keyOrKind)
@@ -47,6 +59,16 @@ func (d *Datastore) Put(keyOrKind interface{}, val interface{}) (*key.DatastoreK
 func (d *Datastore) PutMulti(keys interface{}, vals interface{}) ([]*key.DatastoreKey, error) {
 	if d.database == nil {
 		return nil, errors.New("datastore: database not initialized")
+	}
+
+	// Same money-mint gate as Put, applied per-element for batch writes.
+	if rv := reflect.ValueOf(vals); rv.Kind() == reflect.Slice {
+		for i := 0; i < rv.Len(); i++ {
+			if err := mintauth.Enforce(d.Context, rv.Index(i).Interface()); err != nil {
+				d.warn("Refused unauthorized mint in PutMulti[%d]: %v", i, err, d.Context)
+				return nil, err
+			}
+		}
 	}
 
 	dskeys := convertKeys(keys)

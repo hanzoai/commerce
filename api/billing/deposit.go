@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -238,6 +239,10 @@ func GrantStarterCredit(c *gin.Context) {
 		trans.Test = true
 	}
 
+	// Server-FIXED (StarterCreditCents), tag-idempotent welcome credit to the
+	// caller's OWN subject — amount not attacker-controlled — so authorize this
+	// write at the ledger sink.
+	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Error("Failed to grant starter credit: %v", err, c)
 		http.Fail(c, 500, "failed to grant starter credit", err)
