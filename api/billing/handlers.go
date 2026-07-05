@@ -285,9 +285,13 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	user.GET("/auto-recharge", GetAutoRecharge)
 	user.PUT("/auto-recharge", SetAutoRecharge)
 
-	// Spend alerts (user-scoped CRUD)
+	// Spend alerts + per-scope spend caps (issue #70). CRUD manages the budget
+	// rows; /authorize is the per-request cap verdict the cloud metering gate
+	// consumes (service-token S2S). Org-scoped via X-Org-Id, so a cap on org X
+	// can never gate org Y.
 	user.GET("/spend-alerts", ListSpendAlerts)
 	user.POST("/spend-alerts", CreateSpendAlert)
+	user.GET("/spend-alerts/authorize", AuthorizeSpendCap)
 	user.PATCH("/spend-alerts/:id", UpdateSpendAlert)
 	user.DELETE("/spend-alerts/:id", DeleteSpendAlert)
 
