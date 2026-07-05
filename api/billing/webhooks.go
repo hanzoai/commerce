@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/subscription"
@@ -262,6 +263,10 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 	// NOT the resolveWebhookOrg forced-live flag: on a SQUARE_ENVIRONMENT=sandbox
 	// deploy a sandbox settlement credits the TEST bucket, never the live one.
 	trans.Test = org.TestMode()
+	// A provider-signature-verified settlement for a real captured payment IS the
+	// mint authority (the trust anchor is the per-provider signature checked in
+	// HandleProviderWebhook), so authorize this write at the ledger sink.
+	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Warn("settlement %s: failed to credit balance: %v", paymentID, err)
 	}

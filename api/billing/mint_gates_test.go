@@ -167,10 +167,13 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 
 // TestAllotment_OrgAdminMatchingSubscriptionHonored proves the clamp is not
 // over-strict: an org admin granting the allotment for a subject who REALLY IS
-// subscribed to "max" gets the max plan's declared credit (10000 cents). This is
-// RED's intended behavior — "an org legitimately grants its own allotment, it
-// just must match the paid plan" — and validates that subscriptionPlanSlug
-// actually finds the subscription (the Ancestor(synckey) fix).
+// subscribed to "max" — via a PAYMENT-BACKED subscription — gets the max plan's
+// declared credit (10000 cents). This is RED's intended behavior — "an org
+// legitimately grants its own allotment, it just must match the paid plan" — and
+// validates that subscriptionPlanSlug actually finds the subscription (the
+// Ancestor(synckey) fix). C1-a: the anchor MUST be payment-backed (external
+// provider or invoiced), never a zero-payment internal Active sub — proven by
+// TestSubscriptionPlanSlug_PaymentBackedOnly + TestPlanForGrant_OrgAdminCannotAnchorOnForgedSub.
 func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	ctx := ae.NewContext()
@@ -181,11 +184,14 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 	org.Name = ns
 	org.Live = true
 
-	// The subject really is subscribed to "max" — seed it in the org's namespace.
+	// The subject really is subscribed to "max", and it is PAYMENT-BACKED (an
+	// external provider manages billing) — the only kind of paid-tier sub whose
+	// allotment may be minted. Seed it in the org's namespace.
 	sub := subscription.New(datastore.New(nscontext.WithNamespace(ctx, ns)))
 	sub.UserId = ns
 	sub.Plan.Slug = "max"
 	sub.Status = subscription.Active
+	sub.ProviderType = "stripe"
 	sub.PeriodStart = time.Now()
 	if err := sub.Create(); err != nil {
 		t.Fatalf("seed subscription: %v", err)
