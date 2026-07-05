@@ -570,12 +570,134 @@ and `topup`/deposits (real money) were all `transaction.Deposit` rolled into ONE
   used only for subscription/invoice collection (cycle/invoices/subscriptions) —
   NOT the pay-as-you-go wallet the balance endpoint reads. Left as-is.
 
+## Chain-Backed Credit Ledger — HUSD-on-Hanzo-EVM (steps 1-6 BUILT + testnet-proven)
+
+Kills the recurring C1 money-mint vuln class by construction: a credit exists
+ONLY as HUSD (Hanzo USD, ERC-20 on the Hanzo EVM) minted by the KMS treasury key
+— which commerce does NOT hold. Commerce can only REQUEST a mint; it becomes a
+read-only indexer of on-chain balances. No commerce code path can create money.
+
+**Foundation landed (branch `feat/chain-backed-credit-ledger` / `chain-ledger-wip`,
+7-step plan — steps 1-3 done, 4-7 staged):**
+
+1. **`treasury.DeriveAccount(masterSeed, orgID)`** (`treasury/derive.go`) — per-org
+   on-chain address, BIP-32-style HMAC-SHA512 → secp256k1 (`luxfi/crypto`, no
+   geth). Deterministic across restarts, collision-safe for string org ids,
+   golden-vector pinned. Private key (settlement-signing, step 5) in memory only.
+2. **`treasury.Mint(ctx, MintRequest)`** (`treasury/treasury.go`) — the ONE mint
+   path: treasury-signed on-chain HUSD transfer to the org address. TWO locks:
+   `mintauth.Require(ctx)` (gated HTTP caller needs proven authority; crons
+   ungated) + KMS key custody (`husd.Config.Configured()` else `ErrNotConfigured`,
+   no DB fallback). Idempotent by key (deterministic `IssuanceID`; replay → stored
+   receipt, no new tx; concurrent same-key → exactly ONE on-chain mint). Bucket
+   (credit|prepaid) recorded off-chain → ledger tag (`credit:husd`|`husd`).
+   Production store: `models/husdissuance` (kind **281**) + `treasury/datastorestore`
+   (deterministic-id ON CONFLICT, mirrors `models/idempotencykey`).
+3. **`billing/husdindex`** — chain is source of truth. `client.go` = CGO-free
+   JSON-RPC read client (BlockNumber/BalanceOf/TransfersTo). `index.go` = `Sync`
+   projector: scan Transfer events → project idempotent bucket-tagged credits
+   (dedup on `txHash:logIndex`), reconcile indexed == `balanceOf` to the cent.
+
+- **`util/husd`** = the ONE HUSD config + cent↔wei source (contributor payout
+  aliases it now — DRY). `mintauth.Require` = the shared "gated & unauthorized ⇒
+  refuse" policy (sink `Enforce` + mint service both call it).
+- **Decomplected for CGO-free proofs**: core logic (derive/mint/index) has no
+  sqlite/geth dependency, so unit tests + the live proof run `CGO_ENABLED=0`
+  locally (the `luxfi/accel` cgo link + `mattn/go-sqlite3` both fail on a laptop;
+  datastore adapters are CI-tested). geth `core/types`/`rlp` are avoided in the
+  live signer too — their transitive `luxfi/pq@v1.0.3` pull trips the upstream
+  force-moved-tag go.sum mismatch; the proof signs EIP-155 with `luxfi/crypto` +
+  hand-rolled RLP (production uses the geth `thirdparty/ethereum` signer via the
+  same `util/blockchain.TransferToken` seam).
+
+**PROVEN on testnet (chainId 36962), end-to-end, independently verified via cast:**
+- Provisioned a fresh HUSD test token `0xe7f1725e7734ce288f8367e1bb143e90bb3f0512`
+  (the ephemeral testnet had reset — no token, unfunded treasury; funded treasury
+  `0xe6da…a51a` from the genesis hardhat account `0xf39F…2266`, minted 1M HUSD to
+  treasury). Node serves the new `/v1/bc/C/rpc` surface (post `/ext→/v1` cutover).
+- Live mint tx `0xd01bc1c1733e83c93a5143552af1ba7e3ac045b2433c2fecff07a29685cf976a`
+  (status 0x1, block 25): `treasury.Mint($12.34, credit)` → treasury → derived
+  org addr `0x3560…9950`. Org `balanceOf` == 1234c; treasury balance dropped by
+  EXACTLY 12.34 (value from real supply, not fabricated); indexer `Sync` projected
+  a `credit:husd` 1234c credit == on-chain; replay of the idem key sent NO second
+  tx. Run: `HUSD_RPC_URL=… HUSD_TREASURY_KEY=… HUSD_TOKEN_ADDRESS=… CGO_ENABLED=0
+  go test -tags onchain -run TestOnChain_ChainBackedLedger ./treasury`.
+
+**Headline: on testnet, minting is treasury-only (commerce holds no key, cannot
+mint) and idempotent, and the indexer reflects on-chain balance — proven live.**
+
+### Steps 4-6 (BUILT + testnet-proven, branch `chain-ledger-wip`)
+
+4. **Mint-path rewire** (`billing/husdledger` + `api/billing/husd_mint.go`).
+   `husdledger.Service` is the ONE mint entrypoint (`MintCredit`): treasury
+   on-chain mint → bounded synchronous `ProjectTx` so `GET /v1/billing/*/balance`
+   reflects it on return; a background/CronJob `SyncOnce` backfills. Adapters:
+   `ledgerStore` (projects a bucket-tagged `transaction.Deposit` — the SAME row
+   the balance read tallies — keyed to the mint's `Subject` in its `Test`
+   partition, idempotent on `txHash:logIndex`), `addressBook` (derive every org
+   address from the org list + seed), `cursorStore` (`models/husdcursor` kind
+   **282**), and `datastorestore.ByTxHash` (the issuance store IS the
+   `IssuanceLookup`, system-ns). `MintRequest`/`Issuance`/`Credit` gained
+   `Subject` (per-org address, per-subject ledger) + `Test`. Handlers
+   `Deposit`/`GrantStarterCredit`/`PostMyWelcome`/`GrantStarter`/`topup` branch to
+   the chain mint when enabled (else the DB path, unchanged). Wired at Bootstrap
+   from `husd.Config` + `HUSD_ORG_DERIVATION_SEED` (fail-closed on partial config).
+   **Proven**: live `TestOnChain_Step4_ProjectTx` (mint `0x3324a75a…` → ProjectTx
+   from the REAL receipt → one credit subject/bucket/test) + CI `ledgerStore`
+   sqlite test (ProjectTx → real Deposit → `bucket` balance, idempotent).
+5. **Settlement** (`husdledger/settlement.go`, `husd.SettlementDrift`, kind **283**).
+   `drift = balanceOf(orgAddr) − max(0, ledgerSpendable)`; sweep org→treasury,
+   signed by the ORG's derived key, when `drift ≥ threshold`. Self-correcting +
+   idempotent. `POST /v1/billing/husd/settle` (platform-only). **Proven**: live
+   `TestOnChain_Step5_Settlement` (mint $50 → gas-fund org → org-key sweep
+   `0xf323bf25…` → org drops EXACTLY $20 == spendable, treasury +$20) + CI
+   `SettleOrg` sqlite test (real ledger $50−$20 → sweep $20, reconcile, idempotent).
+6. **Migration + reconcile** (`husdledger/migration.go`). Snapshot each subject's
+   `bucket.Split` → treasury-mint the equivalent per bucket → neutralize legacy
+   deposits with two idempotent offset withdraws (non-GPU cancels credit
+   credits-first; GPU-tagged cancels prepaid prepaid-only) so the split is
+   preserved → assert chain `balanceOf` == pre-migration DB balance == post DB,
+   exact to the cent, zero settlement drift. `POST /v1/billing/husd/migrate`
+   (dry-run default, platform-only). **Proven**: CI `MigrateOrg` sqlite+fakeChain
+   test (alice 2500c/2000p + bob 1000p → reconcile 5500==5500==5500, buckets
+   preserved, idempotent).
+
+### Step 7 — DB-mint deletion (the mainnet cutover GATE, NOT done this session)
+
+The named money-in paths (deposit/welcome/topup) route through the chain when
+enabled; the DB write stays as belt-and-suspenders (bypassed on the chain path,
+still guarded by #65's `mintauth` sink) until prod migration is 100%. Before the
+deletion, these REMAINING credit-mint surfaces MUST also route through
+`chainMintCredit` (else they DB-mint credit outside the chain when enabled):
+`billing/allotment` (monthly included-credit), `billing/trial`,
+`billing/credit.GrantIfEligibleNow` (shared auto-grant helper),
+`api/billing/refund.go`, `api/billing/topup_token.go`, `api/billing/webhooks.go`
+(settled-payment deposits), `api/transaction/create.go` (raw `/v1/transaction`).
+(`api/checkout/util/capture.go` credits an ORDER wallet, not the gateway-spendable
+iam-user wallet — out of scope.) THEN delete the DB deposit writes; the
+`mintauth` sink stays as the final backstop.
+
+**Mainnet cutover sign-off gate** (separate; do NOT touch mainnet HUSD):
+(a) route the remaining credit-mint surfaces above; (b) provision the mainnet
+HUSD token + a FUNDED mainnet treasury (`HUSD_TOKEN_ADDRESS`, `HUSD_CHAIN_ID=36963`,
+`HUSD_RPC_URL=…hanzo-mainnet…`, `HUSD_TREASURY_KEY` + `HUSD_ORG_DERIVATION_SEED`
+in KMS) with gas float per org address (settlement needs it); (c) run
+`/husd/migrate?execute=true` per org, assert reconcile; (d) enable the chain path;
+(e) run `/husd/sync` + `/husd/settle` on a CronJob; (f) after migration is 100%,
+land step 7's deletion. Testnet-first is complete; mainnet is the sign-off.
+
+Config: `HUSD_TOKEN_ADDRESS`, `HUSD_CHAIN_ID`, `HUSD_RPC_URL`, `HUSD_TOKEN_DECIMALS`,
+`HUSD_TREASURY_KEY`, `HUSD_ORG_DERIVATION_SEED` (all KMS), `HUSD_INDEX_CONFIRMATIONS`
+(default 1), `HUSD_SETTLE_THRESHOLD_CENTS` (default 1). Testnet proof env: token
+`0xe7f1725e…0512`, chainId 36962, RPC `…/v1/bc/C/rpc`, treasury `0xe6dad4…a51a`.
+
 ## Gotchas
 
 - New ORM kinds MUST be registered in `util/hashid/kind.go` (monotonic, never
   reorder) or `Create()` panics "Unknown kind" — `sbom-record`=262, `oss-accrual`=263,
   B2B `company`=264/`employee`=265/`quote`=266/`quote-message`=267/`approval`=268,
-  `gift-card`=269/`gift-card-redemption`=270, `exchange`=271, `idempotency-key`=272.
+  `gift-card`=269/`gift-card-redemption`=270, `exchange`=271, `idempotency-key`=272,
+  `husd-issuance`=281 (chain-backed credit ledger).
 
 ## Medusa parity (native Go /v1 — 1.42.41)
 
