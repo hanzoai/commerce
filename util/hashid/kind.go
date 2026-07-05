@@ -167,6 +167,16 @@ var kinds = map[string]int{
 	// Order reason lookups (Medusa: return-reasons / refund-reasons).
 	"return-reason": 279,
 	"refund-reason": 280,
+
+	// Chain-backed credit ledger (HUSD on the Hanzo EVM). husd-issuance is the
+	// off-chain idempotent record of ONE treasury mint (deterministic-id keyed
+	// on the idempotency key); its TxHash is the on-chain audit anchor.
+	"husd-issuance": 281,
+	// husd-cursor: the indexer's last fully-scanned block (per chain), so a
+	// restart resumes rather than rescans. husd-settlement: the idempotent record
+	// of ONE org→treasury settlement window (metered usage swept back on chain).
+	"husd-cursor":     282,
+	"husd-settlement": 283,
 }
 
 var kindsReversed = make(map[int]string)

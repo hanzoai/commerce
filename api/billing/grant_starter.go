@@ -8,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -56,6 +57,26 @@ func GrantStarter(c *gin.Context) {
 	trigger := strings.TrimSpace(req.Trigger)
 	if trigger == "" {
 		trigger = "service-grant"
+	}
+
+	// Step 4: chain-backed path mints the starter credit on-chain (idempotent by
+	// the shared welcome key), the service twin of GrantStarterCredit's chain path.
+	if chainCreditEnabled() {
+		rc, mErr := chainMintCredit(c, org, user, int64(credit.StarterCreditCents), treasury.BucketCredit,
+			"starter-credit:"+trigger, welcomeMintKey(org, user))
+		if mErr != nil {
+			http.Fail(c, 502, "on-chain starter credit mint failed", mErr)
+			return
+		}
+		c.JSON(200, gin.H{
+			"user":     user,
+			"amount":   credit.StarterCreditCents,
+			"currency": "usd",
+			"granted":  !rc.Replayed,
+			"onChain":  true,
+			"txHash":   rc.TxHash,
+		})
+		return
 	}
 
 	granted, err := credit.GrantIfEligibleNow(db, user, trigger)

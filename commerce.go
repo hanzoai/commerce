@@ -42,6 +42,7 @@ import (
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/events"
+	"github.com/hanzoai/commerce/billing/husdledger"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
@@ -55,7 +56,9 @@ import (
 	"github.com/hanzoai/commerce/seed"
 	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/util/husd"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
@@ -643,6 +646,34 @@ func (app *App) Bootstrap() error {
 	// Bootstrap rather than degrade on the hot path.
 	if !commerceDatastore.HasOrgDBResolver() {
 		return fmt.Errorf("commerce: per-org DB resolver not installed after SetOrgDBResolver — refusing to start (money paths would use the shared store)")
+	}
+
+	// Chain-backed credit ledger (HUSD on the Hanzo EVM). Build the mint+index
+	// service from the KMS-injected HUSD config + the org-derivation master seed
+	// (all in-memory only). When unconfigured (no token/key/seed) the service is
+	// DISABLED and the billing money-in handlers keep their existing DB-mint
+	// behavior — so this is a no-op for deploys without HUSD; the migration
+	// (Step 6) flips it on deliberately. Wired AFTER the DB resolver so its
+	// per-org + system stores resolve. Fail closed on a partial config.
+	husdCfg := husd.Config{}
+	husdCfg.LoadFromEnv()
+	var husdSeed []byte
+	if raw := os.Getenv("HUSD_ORG_DERIVATION_SEED"); raw != "" {
+		s, seedErr := treasury.SeedFromHex(raw)
+		if seedErr != nil {
+			return fmt.Errorf("commerce: invalid HUSD_ORG_DERIVATION_SEED: %w", seedErr)
+		}
+		husdSeed = s
+	}
+	if husdCfg.Configured() && len(husdSeed) == 0 {
+		return fmt.Errorf("commerce: HUSD token+key configured but HUSD_ORG_DERIVATION_SEED missing — refusing to start (the chain ledger would silently disable and mints would fall back to DB)")
+	}
+	husdSvc := husdledger.New(husdCfg, husdSeed)
+	husdledger.SetDefault(husdSvc)
+	if husdSvc.Enabled() {
+		fmt.Fprintf(os.Stderr, "Commerce: chain-backed credit ledger ENABLED (HUSD chainId=%d token=%s)\n", husdCfg.ChainID, husdCfg.TokenAddress)
+	} else {
+		fmt.Fprintln(os.Stderr, "Commerce: chain-backed credit ledger disabled (HUSD not configured — using DB credit path)")
 	}
 
 	// Hanzo/base-backed commerce store. Hosts the authoritative tenant
