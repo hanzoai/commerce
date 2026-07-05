@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -28,7 +29,12 @@ func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h g
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Set("organization", org)
-	c.Set("context", ctx)
+	// These money handlers (Deposit/Refund) run in production ONLY behind
+	// middleware.PlatformOnly, which calls AuthorizeMint. Invoking them directly
+	// here skips that middleware, so authorize the datastore context to faithfully
+	// reproduce the post-gate state; the GATE itself (org-admin → 403 / ledger-sink
+	// refusal) is proven separately in mint_surface_test.go and the C1 tests.
+	c.Set("context", mintauth.WithAuthorized(ctx))
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/x", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {

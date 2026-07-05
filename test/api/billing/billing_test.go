@@ -5,6 +5,9 @@ import (
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
+// seedCharge (a Withdraw the refund test reverses) is defined once for this
+// package in suite_test.go — the shared suite fixture file.
+
 // Response types for JSON parsing
 type meterResponse struct {
 	Id              string   `json:"id"`
@@ -695,10 +698,11 @@ var _ = Describe("billing", Ordered, func() {
 		})
 
 		It("Should create a refund", func() {
-			// A refund REVERSES an existing charge (a Withdraw), correcting an
-			// overcharge — it is not a deposit reversal. The hardened handler
-			// rejects refunding a Deposit (that would double a credit), so seed a
-			// real charge for the subject and refund part of it.
+			// Refund reverses a CHARGE (a Withdraw), never a Deposit — so seed a real
+			// charge for the subject, then partially refund it. (The prior version
+			// deposited then tried to refund the deposit, which refund.go correctly
+			// rejects with 400 "not a refundable charge"; that shape is proven in
+			// api/billing TestRefund_NotACharge_400.)
 			txId := seedCharge("hanzo/dave", 200)
 
 			refundReq := map[string]interface{}{

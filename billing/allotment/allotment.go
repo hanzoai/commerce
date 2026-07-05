@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 
@@ -122,6 +123,10 @@ func Grant(db *datastore.Datastore, user, plan string, cents int64, at time.Time
 		}
 		trans.Test = test
 
+		// The granted amount is subscription-clamped by the caller (planForGrant /
+		// grantOrgAllotments derive `cents` from the user's REAL plan, never a
+		// client-supplied figure), so authorize this write at the ledger sink.
+		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 		if err := trans.Create(); err != nil {
 			return err
 		}
