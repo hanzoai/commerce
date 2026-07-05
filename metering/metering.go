@@ -211,13 +211,19 @@ type AuthInput struct {
 	AmountCents int64
 
 	// Project and Service scope the per-scope spend cap + rate limit (issue #70).
-	// They are the caller's SERVER-DERIVED scope (validated project + path/kind
-	// service), never a client field — a request can only ever narrow its own
-	// org. Empty = the org-wide default scope. Forwarded to commerce so the right
-	// scope cap is resolved; they never change which BALANCE is gated (always the
-	// org via User).
+	// Service is server-derived (route/provider). Empty = the org-wide default
+	// scope. Forwarded to commerce so the right scope cap is resolved; they never
+	// change which BALANCE is gated (always the org via User).
 	Project string
 	Service string
+
+	// ProjectValidated reports whether Project is bound to a VALIDATED identity
+	// claim. When false, commerce DEGRADES a project-scoped hard cap to a soft warn
+	// (records + warns, never 402) so a forgeable X-Project-Id can neither hard-stop
+	// nor be evaded. The org and service axes are always validated. Today IAM mints
+	// no project claim, so cloud sends false; when it does, cloud sends true and
+	// project caps auto-harden.
+	ProjectValidated bool
 }
 
 // Verdict is the full gate outcome AuthorizeVerdict returns, so a gate can render
@@ -372,6 +378,11 @@ func (c *Client) scopeAuthorize(ctx context.Context, in AuthInput) (scopeVerdict
 	}
 	if in.AmountCents > 0 {
 		q.Set("amount", strconv.FormatInt(in.AmountCents, 10))
+	}
+	// pv=1 only when the project axis is bound to a validated claim; otherwise
+	// commerce degrades a project-scoped hard cap to soft (anti project-spoof).
+	if in.ProjectValidated {
+		q.Set("pv", "1")
 	}
 	q.Set("currency", currencyOr(in.Currency))
 
