@@ -124,6 +124,40 @@ func TestAuthorizeVerdict_CapFailsOpen(t *testing.T) {
 	}
 }
 
+// ProjectValidated forwards as pv=1 on the scope-authorize query (and is absent
+// when false), so commerce can degrade an unvalidated project cap to soft.
+func TestAuthorizeVerdict_ProjectValidatedForwarded(t *testing.T) {
+	var gotPV string
+	seen := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/billing/spend-alerts/authorize" {
+			seen = true
+			gotPV = r.URL.Query().Get("pv")
+		}
+		if r.URL.Path == "/v1/billing/balance" {
+			_, _ = w.Write([]byte(`{"available":100000}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"allow":true}`))
+	}))
+	t.Cleanup(srv.Close)
+	c, err := metering.New(metering.Config{BaseURL: srv.URL, Token: "svc", Org: "acme"})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	_, _ = c.AuthorizeVerdict(context.Background(), metering.AuthInput{User: "acme", Org: "acme", AmountCents: 1, Project: "P", ProjectValidated: true})
+	if !seen || gotPV != "1" {
+		t.Fatalf("pv (validated) = %q seen=%v, want \"1\"", gotPV, seen)
+	}
+
+	seen, gotPV = false, ""
+	_, _ = c.AuthorizeVerdict(context.Background(), metering.AuthInput{User: "acme", Org: "acme", AmountCents: 1, Project: "P", ProjectValidated: false})
+	if !seen || gotPV != "" {
+		t.Fatalf("pv (unvalidated) = %q, want \"\" (absent)", gotPV)
+	}
+}
+
 // ScopeRules returns only the rate-limited rows, decoded from the spend-alerts list.
 func TestScopeRules(t *testing.T) {
 	rc := &routingCommerce{
