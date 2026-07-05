@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/meter"
+	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -29,9 +30,13 @@ type usageRequest struct {
 	// it carries sub-cent precision so tiny spends aren't lost to cent rounding.
 	// Chat's tokenValue is already micro-USD (1e6 tokenCredits = $1), so it maps
 	// 1:1. Zero/absent => fall back to Amount*10000.
-	AmountMicros     int64  `json:"amountMicros"`
-	Model            string `json:"model"`
-	Provider         string `json:"provider"`
+	AmountMicros int64  `json:"amountMicros"`
+	Model        string `json:"model"`
+	Provider     string `json:"provider"`
+	// Project / Service attribute this spend to a scope for per-scope caps
+	// (issue #70). Empty = the org-wide default scope.
+	Project          string `json:"project"`
+	Service          string `json:"service"`
 	PromptTokens     int    `json:"promptTokens"`
 	CompletionTokens int    `json:"completionTokens"`
 	TotalTokens      int    `json:"totalTokens"`
@@ -202,6 +207,11 @@ func RecordUsage(c *gin.Context) {
 	trans.Amount = currency.Cents(amountCents)
 	trans.Notes = notes
 	trans.Tags = "api-usage"
+	// Scope attribution (issue #70): the indexed dimensions the per-scope spend
+	// cap sums over. Normalized so the default project ("default") and "no
+	// project" collapse to the same "" scope the org-wide cap counts.
+	trans.Project = spendalert.NormalizeProject(req.Project)
+	trans.Service = strings.TrimSpace(req.Service)
 	trans.Metadata = Map{
 		"model":            req.Model,
 		"provider":         req.Provider,
