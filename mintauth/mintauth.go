@@ -106,6 +106,19 @@ type Guarded interface {
 	MintRequiresAuthorization() bool
 }
 
+// Require is THE mint-authority policy in one place: it refuses (ErrNotAuthorized)
+// exactly when the context is mint-gated (an inbound HTTP principal) and NOT
+// authorized. An ungated context (background cron, migration, unit test) or an
+// authorized one passes. Both the ledger write sink (Enforce, below) and the
+// chain-backed mint service (treasury.Mint) call it, so "who may mint" is
+// defined once and cannot drift between the two enforcement points.
+func Require(ctx context.Context) error {
+	if !Gated(ctx) || Authorized(ctx) {
+		return nil
+	}
+	return ErrNotAuthorized
+}
+
 // Enforce is THE money-mint invariant, called at the datastore write sink for
 // every entity Put. It refuses a spendable-balance mint when the context is
 // mint-gated (an inbound HTTP principal) and not authorized. It is a no-op for
@@ -117,8 +130,5 @@ func Enforce(ctx context.Context, val interface{}) error {
 	if !ok || !g.MintRequiresAuthorization() {
 		return nil
 	}
-	if !Gated(ctx) || Authorized(ctx) {
-		return nil
-	}
-	return ErrNotAuthorized
+	return Require(ctx)
 }

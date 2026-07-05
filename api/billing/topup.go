@@ -19,6 +19,7 @@ import (
 	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
+	"github.com/hanzoai/commerce/treasury"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -82,6 +83,27 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 			msg = "charge declined"
 		}
 		return "", 0, errors.New(msg)
+	}
+
+	// Step 4: the card was charged (money in), so mint the credit ON CHAIN as
+	// prepaid HUSD to the org's derived address instead of a DB deposit row —
+	// idempotent by the processor reference so a retried charge credits once.
+	if chainCreditEnabled() {
+		rc, mErr := chainMintCredit(c, org, userId, amountCents, treasury.BucketPrepaid,
+			fmt.Sprintf("topup via %s (ref: %s)", proc.Type(), result.ProcessorRef),
+			"topup:"+result.ProcessorRef)
+		if mErr != nil {
+			log.Error("RECONCILE: charge succeeded (ref=%s) but chain mint failed for user %s: %v",
+				result.ProcessorRef, userId, mErr, c)
+			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, mErr)
+		}
+		var balanceCents currency.Cents
+		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, org.TestMode()); bErr == nil {
+			if data, ok := datas.Data[cur]; ok {
+				balanceCents = data.Balance
+			}
+		}
+		return rc.TxHash, balanceCents, nil
 	}
 
 	trans := transaction.New(db)

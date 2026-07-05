@@ -15,6 +15,7 @@ import (
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
@@ -111,6 +112,28 @@ func PostMyWelcome(c *gin.Context) {
 	}
 
 	org := middleware.GetOrganization(c)
+
+	// Step 4: chain-backed path mints the welcome credit on-chain (idempotent by
+	// the shared deterministic welcome key), replacing the DB deposit write.
+	if chainCreditEnabled() {
+		rc, err := chainMintCredit(c, org, user, int64(credit.StarterCreditCents), treasury.BucketCredit,
+			"welcome-credit:iam_first_login", welcomeMintKey(org, user))
+		if err != nil {
+			log.Error("chain welcome credit mint failed for %s: %v", user, err, c)
+			http.Fail(c, 502, "on-chain welcome credit mint failed", err)
+			return
+		}
+		c.JSON(200, gin.H{
+			"user":     user,
+			"granted":  !rc.Replayed,
+			"amount":   int64(credit.StarterCreditCents),
+			"currency": "usd",
+			"onChain":  true,
+			"txHash":   rc.TxHash,
+		})
+		return
+	}
+
 	db := datastore.New(org.Namespaced(c))
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
