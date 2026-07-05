@@ -16,6 +16,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/json/http"
 
 	. "github.com/hanzoai/commerce/types"
@@ -85,6 +86,40 @@ func Deposit(c *gin.Context) {
 	cur := currency.Type(strings.ToLower(req.Currency))
 	if cur == "" {
 		cur = "usd"
+	}
+
+	// Step 4: when the chain-backed ledger is enabled, a deposit MINTS on-chain
+	// HUSD to the org's derived address (bucketed by its tags) instead of writing
+	// a DB credit row — the value is created by the treasury key, not this process.
+	// The X-Idempotency-Key (if any) makes the mint exactly-once; without one,
+	// distinct deposits are legitimately additive (a fresh key each call).
+	if chainCreditEnabled() {
+		mintKey := randomIdemKey("deposit:" + req.User + ":")
+		if hdr := strings.TrimSpace(c.GetHeader("X-Idempotency-Key")); hdr != "" {
+			mintKey = "deposit:" + req.User + ":" + hdr
+		}
+		reason := req.Notes
+		if reason == "" {
+			reason = "deposit"
+		}
+		rc, err := chainMintCredit(c, org, req.User, req.Amount, bucketForTags(req.Tags), reason, mintKey)
+		if err != nil {
+			log.Error("chain deposit mint failed for %s: %v", req.User, err, c)
+			http.Fail(c, 502, "on-chain credit mint failed", err)
+			return
+		}
+		c.JSON(201, gin.H{
+			"transactionId": rc.TxHash,
+			"user":          req.User,
+			"amount":        req.Amount,
+			"currency":      cur,
+			"type":          "deposit",
+			"tags":          req.Tags,
+			"onChain":       true,
+			"txHash":        rc.TxHash,
+			"replayed":      rc.Replayed,
+		})
+		return
 	}
 
 	// Optional idempotency (H1). A caller-supplied X-Idempotency-Key makes a
@@ -192,6 +227,33 @@ func GrantStarterCredit(c *gin.Context) {
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
 		http.Fail(c, 400, "user is required", nil)
+		return
+	}
+
+	// Step 4: chain-backed path mints the welcome credit on-chain (idempotent by
+	// the deterministic welcome key → one grant per subject, ever), replacing the
+	// tag-dedupe DB write. The SAME key is shared by /me/welcome and /grant-starter
+	// so no subject can be double-granted across the three welcome endpoints.
+	if chainCreditEnabled() {
+		rc, err := chainMintCredit(c, org, req.User, int64(credit.StarterCreditCents), treasury.BucketCredit,
+			"welcome-credit", welcomeMintKey(org, req.User))
+		if err != nil {
+			log.Error("chain welcome credit mint failed for %s: %v", req.User, err, c)
+			http.Fail(c, 502, "on-chain welcome credit mint failed", err)
+			return
+		}
+		status := 201
+		if rc.Replayed {
+			status = 200 // already granted — matches the DB path's idempotent shape
+		}
+		c.JSON(status, gin.H{
+			"user":     req.User,
+			"granted":  !rc.Replayed,
+			"amount":   credit.StarterCreditCents,
+			"currency": "usd",
+			"onChain":  true,
+			"txHash":   rc.TxHash,
+		})
 		return
 	}
 

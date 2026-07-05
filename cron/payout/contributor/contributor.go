@@ -7,11 +7,7 @@ package contributor
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/big"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -22,93 +18,31 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/blockchain"
+	"github.com/hanzoai/commerce/util/husd"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
-// Hanzo EVM defaults for on-chain HUSD payouts. The HUSD (Hanzo USD)
-// stablecoin token address is greenfield — it is NOT defaulted: set
-// HUSD_TOKEN_ADDRESS (from KMS) once the token is deployed and crypto
-// payouts begin executing on-chain with no further code change.
+// HUSD configuration + cent↔wei math live in the canonical util/husd package —
+// ONE definition of what HUSD means, shared with the chain-backed credit ledger
+// (treasury, billing/husdindex). These aliases keep the contributor executor's
+// existing surface (HUSDConfig, ErrHUSDNotConfigured, the default consts, and
+// the private husdCentsToWei used in tests) while delegating to that one source.
 const (
-	// Hanzo EVM mainnet defaults (chainId 36963). Testnet (36962) and devnet
-	// (36964) are selected by setting HUSD_CHAIN_ID + HUSD_RPC_URL from KMS.
-	// The token address has NO default (greenfield, KMS-only) so an unset
-	// HUSD_TOKEN_ADDRESS fails closed instead of silently targeting mainnet.
-	defaultHUSDChainID  int64 = 36963
-	defaultHUSDRPCURL         = "https://api.hanzo.network/ext/bc/C/rpc"
-	defaultHUSDDecimals       = 18
+	defaultHUSDChainID  = husd.DefaultChainID
+	defaultHUSDRPCURL   = husd.DefaultRPCURL
+	defaultHUSDDecimals = husd.DefaultDecimals
 )
 
 // ErrHUSDNotConfigured is returned by the crypto executor when the HUSD token
 // address or treasury key is missing. The payout is skipped (not lost): once
 // the secrets land in KMS the next run pays it out.
-var ErrHUSDNotConfigured = errors.New("contributor-payout: HUSD on-chain payout not configured (set HUSD_TOKEN_ADDRESS + HUSD_TREASURY_KEY in KMS)")
+var ErrHUSDNotConfigured = husd.ErrNotConfigured
 
-// HUSDConfig configures on-chain HUSD stablecoin payouts. Values are sourced
-// from the environment, which is populated from KMS (KMSSecret CRD → k8s
-// Secret → env). TreasuryKey is held in memory only — never persisted, never
-// logged.
-type HUSDConfig struct {
-	ChainID      int64
-	RPCURL       string
-	TokenAddress string
-	Decimals     int
-	TreasuryKey  string
-	GasLimit     uint64
-}
+// HUSDConfig configures on-chain HUSD stablecoin payouts (see util/husd.Config).
+type HUSDConfig = husd.Config
 
-// LoadFromEnv fills any unset HUSD fields from the environment (KMS-injected).
-// Already-set fields are preserved, so tests can supply values directly.
-func (h *HUSDConfig) LoadFromEnv() {
-	if h.ChainID == 0 {
-		h.ChainID = envInt64("HUSD_CHAIN_ID", defaultHUSDChainID)
-	}
-	if h.RPCURL == "" {
-		h.RPCURL = envStr("HUSD_RPC_URL", defaultHUSDRPCURL)
-	}
-	if h.TokenAddress == "" {
-		h.TokenAddress = os.Getenv("HUSD_TOKEN_ADDRESS")
-	}
-	if h.Decimals == 0 {
-		h.Decimals = int(envInt64("HUSD_TOKEN_DECIMALS", defaultHUSDDecimals))
-	}
-	if h.TreasuryKey == "" {
-		h.TreasuryKey = os.Getenv("HUSD_TREASURY_KEY")
-	}
-	if h.GasLimit == 0 {
-		h.GasLimit = uint64(envInt64("HUSD_GAS_LIMIT", 0))
-	}
-}
-
-func envStr(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
-
-func envInt64(key string, def int64) int64 {
-	if v := os.Getenv(key); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			return n
-		}
-	}
-	return def
-}
-
-// husdCentsToWei converts USD cents into HUSD base units for a token with the
-// given decimals: wei = cents * 10^(decimals-2). e.g. 18 decimals, 100 cents
-// ($1.00) → 1e18.
-func husdCentsToWei(cents int64, decimals int) (*big.Int, error) {
-	if decimals < 2 {
-		return nil, fmt.Errorf("husd: decimals must be >= 2, got %d", decimals)
-	}
-	if cents < 0 {
-		return nil, fmt.Errorf("husd: cents must be non-negative, got %d", cents)
-	}
-	scale := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals-2)), nil)
-	return new(big.Int).Mul(big.NewInt(cents), scale), nil
-}
+// husdCentsToWei converts USD cents into HUSD base units (see util/husd).
+var husdCentsToWei = husd.CentsToWei
 
 // Config holds runtime configuration for the contributor payout cron.
 type Config struct {
