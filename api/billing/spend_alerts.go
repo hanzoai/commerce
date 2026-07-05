@@ -8,7 +8,6 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -45,59 +44,32 @@ type updateSpendAlertRequest struct {
 // out and thereby disable enforcement). loadOrgScopes reads at most this many.
 const maxScopeRowsPerOrg = 200
 
-// resolveSpendAlertUserId returns the ?user= narrowing param (the TRUSTED
-// bridge/admin path uses it; the /billing bridge pins ?user= to the caller's own
-// validated subject). It falls back to the gateway-minted subject. It is NEVER
-// used for ownership on an IAM-user request — see callerSubject.
-func resolveSpendAlertUserId(c *gin.Context) string {
-	user := strings.TrimSpace(c.Query("user"))
-	if user != "" {
-		return user
-	}
-	return strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
-}
-
-// callerSubject returns the caller's OWN identity for ownership/scoping, and
-// whether it is present. It closes the guess-the-id IDOR:
+// billingSubject is the ONE key spend caps are stored and looked up under, on BOTH
+// the writer (this file) and the reader (the cloud gate / metering client). It is
+// the ORG — the resolved organization name, which equals the validated owner claim
+// (X-Org-Id). This is the EXACT key the gate uses (cloud middleware_billing.go
+// identityFromCtx: `user := c.Org()`; ResourceMeter.Gate: `User: org`; the metering
+// client sends `?user=<org>` + `X-Org-Id: <org>`; ScopeRules lists by `X-Org-Id`).
+// Keying the WRITER on the org too makes a cap and its verdict/rate-rule resolve
+// IDENTICALLY — the fix for the live bug where the writer stored under the IAM sub
+// UUID while the reader looked up by org, so enforcement never bound.
 //
-//   - IAM-user request (NOT a service token): the identity is the VALIDATED claim
-//     subject (GetIAMClaims.Subject, the gateway-minted X-User-Id) ONLY. The
-//     client-supplied ?user= is IGNORED — so a user cannot pass ?user=<victim> to
-//     act as another subject.
-//   - Trusted service-token request (cloud-api / the /billing bridge — verified
-//     COMMERCE_SERVICE_TOKEN): the bridge already validated the user's JWT and
-//     PINNED ?user= to that subject, so ?user= is the trustworthy identity here.
-//     (Anyone holding the service token is the platform admin anyway.)
-func callerSubject(c *gin.Context) (string, bool) {
-	if middleware.IsServiceToken(c) {
-		s := resolveSpendAlertUserId(c)
-		return s, s != ""
-	}
-	s := strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
-	return s, s != ""
+// Caps are ORG-LEVEL policy (not per-user): any member of the org manages them,
+// and the org is taken from the VALIDATED X-Org-Id (via TokenRequired), NEVER from
+// a client ?user=/body field — so this is IDOR-safe and cannot cross tenants (a
+// different org resolves to a different namespace AND a different subject). Empty
+// only when no org is resolvable (unauthenticated).
+func billingSubject(c *gin.Context) string {
+	return strings.TrimSpace(middleware.GetOrganization(c).Name)
 }
 
-// listScopeUserId returns the UserId filter for a LIST/read, pinned to the
-// caller's own identity for an IAM user (they can read ONLY their own rows —
-// ?user=<victim> is ignored), or the ?user= narrowing for a trusted service
-// token (empty => the org-wide policy set, e.g. the rate-limit config fetch).
-// The bool is false for an IAM user with no subject (read nothing).
-func listScopeUserId(c *gin.Context) (string, bool) {
-	if middleware.IsServiceToken(c) {
-		return resolveSpendAlertUserId(c), true // "" => all org rows (admin / rate-limit)
-	}
-	s := strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
-	return s, s != ""
-}
-
-// ownsAlert reports whether the caller may mutate this row. Tenant isolation is
-// already structural (org-namespaced datastore); this closes the WITHIN-org IDOR:
-// a caller may PATCH/DELETE only a row whose UserId is their OWN validated
-// subject. Ownership NEVER comes from a client-supplied ?user= on an IAM-user
-// request, nor from the row id alone.
+// ownsAlert reports whether the caller may mutate this row: its owner (the org)
+// must equal the caller's validated org. Cross-org is blocked twice over — the
+// datastore is org-namespaced (a foreign row is unreachable by id) AND this check
+// re-confirms the org. Org comes from the validated X-Org-Id, never a client field.
 func ownsAlert(c *gin.Context, a *spendalert.SpendAlert) bool {
-	caller, ok := callerSubject(c)
-	return ok && a.UserId == caller
+	sub := billingSubject(c)
+	return sub != "" && a.UserId == sub
 }
 
 // spendAlertView is the wire shape of one row plus the DERIVED period spend for
@@ -134,28 +106,23 @@ func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert
 	return view
 }
 
-// ListSpendAlerts returns spend alerts (budgets/caps) plus derived period spend.
-// With ?user= it returns that user's rows (back-compat); without a resolvable
-// user it returns the ORG-WIDE policy set (every scope cap), so the console
-// Budgets page can manage org/project/service caps.
+// ListSpendAlerts returns the ORG's spend alerts (budgets/caps) plus derived
+// period spend. It is the console Budgets read AND the source ScopeRules uses for
+// the rate-limit config, so it MUST key on the same org the writer stored under.
 //
-//	GET /v1/billing/spend-alerts[?user=:userId]
+//	GET /v1/billing/spend-alerts
 func ListSpendAlerts(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
 	test := org.TestMode()
 
-	userId, ok := listScopeUserId(c)
-	if !ok {
-		// IAM user with no validated subject reads nothing (never the org set).
-		c.JSON(200, []gin.H{})
+	sub := billingSubject(c)
+	if sub == "" {
+		c.JSON(200, []gin.H{}) // no resolvable org — nothing to read.
 		return
 	}
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	q := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg)
-	if userId != "" {
-		q = q.Filter("UserId=", userId)
-	}
+	q := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg).Filter("UserId=", sub)
 
 	alerts := make([]*spendalert.SpendAlert, 0)
 	if _, err := q.GetAll(&alerts); err != nil {
@@ -187,22 +154,16 @@ func CreateSpendAlert(c *gin.Context) {
 		return
 	}
 
-	// Owner pinning: an IAM user can create ONLY rows owned by their OWN validated
-	// subject — a client-supplied body userId is IGNORED (so a user can't create a
-	// row "owned by" a victim, then leave it, or otherwise confuse ownership). The
-	// trusted service-token bridge keeps its pinned userId (or ?user=), and may
-	// create an org-wide row (empty owner).
-	if middleware.IsServiceToken(c) {
-		if strings.TrimSpace(req.UserId) == "" {
-			req.UserId = strings.TrimSpace(c.Query("user"))
-		}
-	} else {
-		req.UserId = strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
-		if req.UserId == "" {
-			http.Fail(c, 401, "authentication required", nil)
-			return
-		}
+	// Key the cap on the ORG (billingSubject) — the SAME subject the gate reads by —
+	// NEVER a client-supplied body userId or ?user=. This is the load-bearing fix:
+	// a cap stored under the org is found by the gate's `?user=<org>` /
+	// `X-Org-Id=<org>` lookup, so enforcement binds.
+	subject := billingSubject(c)
+	if subject == "" {
+		http.Fail(c, 401, "authentication required", nil)
+		return
 	}
+	req.UserId = subject
 
 	// Bound the org's row set (storage + authorize-scan-cost abuse; keeps the cap
 	// fail-closed path from being drowned by an attacker-inflated row list).
