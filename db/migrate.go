@@ -112,8 +112,15 @@ func encryptTenantFile(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalTy
 	// we surface as an error: migrating a live money db could miss in-flight rows).
 	// We only issue SELECTs afterwards, so the source's logical data is unchanged;
 	// it is retained as .plaintext.bak either way.
-	srcDSN := fmt.Sprintf("file:%s?_busy_timeout=10000&_journal_mode=WAL", escapeMigratePath(dbPath))
-	src, err := sql.Open("sqlite3", srcDSN)
+	// Open on the ONE canonical "sqlite" driver (hanzoai/sqlite) with no key — a
+	// plaintext read; PragmaDSN escapes the path and emits busy_timeout+WAL in the
+	// active backend's form. This path is CGO-only (encryption) where "sqlite" is
+	// mattn/SQLCipher, which reads a keyless file as plain SQLite.
+	srcDSN := sqlitedrv.PragmaDSN(dbPath, []sqlitedrv.Pragma{
+		{Name: "busy_timeout", Value: "10000"},
+		{Name: "journal_mode", Value: "WAL"},
+	})
+	src, err := sql.Open("sqlite", srcDSN)
 	if err != nil {
 		return 0, false, fmt.Errorf("open plaintext source: %w", err)
 	}
@@ -466,11 +473,4 @@ func quoteCols(cols []string) string {
 		q[i] = `"` + c + `"`
 	}
 	return strings.Join(q, ",")
-}
-
-// escapeMigratePath keeps '/' but escapes '?'/'#' so a path cannot terminate the
-// file portion of the read-only source DSN early.
-func escapeMigratePath(path string) string {
-	r := strings.NewReplacer("?", "%3F", "#", "%23")
-	return r.Replace(path)
 }
