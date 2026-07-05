@@ -44,6 +44,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.POST("/deposit", mintRequired, Deposit)
 	api.POST("/refund", mintRequired, Refund)
 
+	// Chain-backed credit ledger (HUSD): the indexer backfill/reconcile pass and
+	// the metered-usage settlement sweep are platform-only (they move on-chain
+	// money / write the money ledger); status is a read-only observability surface.
+	api.POST("/husd/sync", mintRequired, SyncHUSD)
+	api.POST("/husd/settle", mintRequired, SettleHUSD)
+	api.POST("/husd/migrate", mintRequired, MigrateHUSD)
+	api.GET("/husd/status", StatusHUSD)
+
 	// SBOM-driven OSS-developer payout.
 	//   POST /sbom               — arcd build pipeline ingests an image's SBOM
 	//   GET  /sbom               — list stored SBOM records
