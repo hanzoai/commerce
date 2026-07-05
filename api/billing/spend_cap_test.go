@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -221,38 +222,112 @@ func deleteCapAs(t *testing.T, org *organization.Organization, id, caller, userQ
 	return w.Code
 }
 
-// Per-row ownership (IDOR, HIGH-1): ownership derives ONLY from the validated
-// claim subject, NEVER from ?user=. Bob cannot mutate Alice's budget — not by
-// ?user=bob (mismatch) and CRUCIALLY not by forging ?user=alice (the live repro).
-func TestSpendCap_MutateOwnership_IDOR(t *testing.T) {
+// listCaps drives ListSpendAlerts for the org and returns the parsed rows — the
+// reader path ScopeRules and the console Budgets page both use.
+func listCaps(t *testing.T, org *organization.Organization) []map[string]any {
+	t.Helper()
+	w := httptest.NewRecorder()
+	c := capCtx(w, org)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts", nil)
+	ListSpendAlerts(c)
+	if w.Code != 200 {
+		t.Fatalf("ListSpendAlerts = %d, body=%s", w.Code, w.Body.String())
+	}
+	var rows []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v (body=%s)", err, w.Body.String())
+	}
+	return rows
+}
+
+// Caps are ORG-LEVEL policy (the keying fix): any member of the OWNING org may
+// manage them; a caller in a DIFFERENT org cannot reach them — org-namespace
+// isolation refuses the id (404), and a forged ?user= is ignored (org comes from
+// the validated X-Org-Id).
+func TestSpendCap_MutateOrgScoped_CrossOrgRefused(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+	gin.SetMode(gin.TestMode)
+
+	orgA := &organization.Organization{}
+	orgA.Name = "own-a"
+	orgB := &organization.Organization{}
+	orgB.Name = "own-b"
+
+	id := createCapAs(t, orgA, "alice", `{"title":"org cap","threshold":100,"enforce":true}`)
+
+	// A DIFFERENT org (B) cannot mutate org A's cap by id — even forging ?user=own-a.
+	if code := patchCapAs(t, orgB, id, "mallory", "own-a", `{"threshold":1}`); code != 404 {
+		t.Fatalf("cross-org PATCH = %d, want 404 (namespace isolation; ?user= ignored)", code)
+	}
+	if code := deleteCapAs(t, orgB, id, "mallory", "own-a"); code != 404 {
+		t.Fatalf("cross-org DELETE = %d, want 404", code)
+	}
+
+	// Any member of org A (different user, same org) MAY manage the org-level cap.
+	if code := patchCapAs(t, orgA, id, "bob", "", `{"threshold":200}`); code != 200 {
+		t.Fatalf("same-org PATCH = %d, want 200 (org-level policy)", code)
+	}
+	if code := deleteCapAs(t, orgA, id, "bob", ""); code != 204 {
+		t.Fatalf("same-org DELETE = %d, want 204", code)
+	}
+}
+
+// THE bug the live Playwright e2e caught (integration: writer-key vs reader-key).
+// The WRITER (console POST — an IAM user whose SUB differs from the org) and the
+// READER (the gate, keyed per-ORG) MUST key the cap identically. The cap must be
+// stored under the ORG so the org-keyed reader finds it and enforcement binds; a
+// cap stored under the sub (the old bug) is invisible to the org reader → no 402,
+// ScopeRules 0 rows → no 429. Prior tests used matching keys on both sides and
+// missed this.
+func TestSpendCap_WriterReaderKeyMatch(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
-	org.Name = "idor-org"
+	org.Name = "hanzo"
+	const sub = "2d4d67ab-1111-2222-3333-444455556666" // the IAM sub — DIFFERENT from the org.
 
-	id := createCapAs(t, org, "alice", `{"title":"alice budget","threshold":100,"enforce":true}`)
+	// WRITER: console POST as the IAM user (sub != org).
+	createCapAs(t, org, sub, `{"title":"org cap","threshold":100,"enforce":true,"rateLimitRpm":5}`)
 
-	// The LIVE repro: bob forges ?user=alice to match alice's row. MUST be 404 —
-	// ?user= is ignored; ownership is bob's validated subject.
-	if code := patchCapAs(t, org, id, "bob", "alice", `{"threshold":1}`); code != 404 {
-		t.Fatalf("bob PATCH alice's row via ?user=alice = %d, want 404 (the IDOR)", code)
+	// READER (ScopeRules / console list), keyed per-ORG → FINDS the cap under "hanzo",
+	// stored under the ORG (not the sub), with the rpm ScopeRules needs.
+	rows := listCaps(t, org)
+	if len(rows) != 1 {
+		t.Fatalf("org reader returned %d rows, want 1 (cap must be found under the org)", len(rows))
 	}
-	if code := deleteCapAs(t, org, id, "bob", "alice"); code != 404 {
-		t.Fatalf("bob DELETE alice's row via ?user=alice = %d, want 404 (the IDOR)", code)
+	if rows[0]["userId"] != "hanzo" {
+		t.Fatalf("stored userId = %v, want \"hanzo\" (the ORG, NOT the sub %q)", rows[0]["userId"], sub)
 	}
-	// Also the naive ?user=bob mismatch.
-	if code := patchCapAs(t, org, id, "bob", "bob", `{"threshold":1}`); code != 404 {
-		t.Fatalf("bob PATCH alice's row via ?user=bob = %d, want 404", code)
+	if rpm, _ := rows[0]["rateLimitRpm"].(float64); int(rpm) != 5 {
+		t.Fatalf("rateLimitRpm = %v, want 5 (ScopeRules must see it → 429 binds)", rows[0]["rateLimitRpm"])
 	}
 
-	// Alice (the validated owner) succeeds even with a bogus ?user=bob in the URL.
-	if code := patchCapAs(t, org, id, "alice", "bob", `{"threshold":200}`); code != 200 {
-		t.Fatalf("alice PATCH own row = %d, want 200", code)
+	// READER (the gate authorize, user=org): spend > cap → 402 (enforcement binds).
+	if code := recordUsage(t, org, `{"user":"hanzo","amount":100,"requestId":"wr1"}`); code != 201 {
+		t.Fatalf("RecordUsage = %d", code)
 	}
-	if code := deleteCapAs(t, org, id, "alice", ""); code != 204 {
-		t.Fatalf("alice DELETE own row = %d, want 204", code)
+	v := authorize(t, org, "user=hanzo&amount=1")
+	if v.Allow || v.Reason != "spend_cap" {
+		t.Fatalf("gate authorize = %+v, want deny spend_cap (the cap MUST bind)", v)
+	}
+
+	// REGRESSION: a cap stored the OLD way (UserId = the sub) is INVISIBLE to the
+	// org reader — exactly why enforcement failed before this fix.
+	db := datastore.New(nscontext.WithNamespace(context.Background(), org.Name))
+	legacy := spendalert.New(db)
+	legacy.UserId = sub
+	legacy.Threshold = 50
+	legacy.RateLimitRpm = 9
+	if err := legacy.Create(); err != nil {
+		t.Fatalf("seed legacy sub-keyed row: %v", err)
+	}
+	for _, r := range listCaps(t, org) {
+		if r["userId"] == sub {
+			t.Fatalf("org reader returned a sub-keyed row %q — keying bug NOT fixed", sub)
+		}
 	}
 }
 
