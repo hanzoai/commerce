@@ -46,6 +46,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,9 +55,11 @@ import (
 // commerce/api/billing/handlers.go — a wrong prefix 404s and, fail-closed,
 // denies every request.
 const (
-	pathBalance = "/v1/billing/balance"
-	pathTier    = "/v1/billing/tier"
-	pathUsage   = "/v1/billing/usage"
+	pathBalance         = "/v1/billing/balance"
+	pathTier            = "/v1/billing/tier"
+	pathUsage           = "/v1/billing/usage"
+	pathSpendAlerts     = "/v1/billing/spend-alerts"
+	pathLimitsAuthorize = "/v1/billing/spend-alerts/authorize"
 )
 
 // Header carrying the tenant org slug for commerce namespace resolution.
@@ -76,6 +79,13 @@ const headerTest = "X-Hanzo-Test"
 // user's available balance is non-positive. It is distinct from a connectivity
 // failure so callers can map it to HTTP 402 (vs 503 for "unknown").
 var ErrInsufficientBalance = errors.New("metering: insufficient balance")
+
+// ErrSpendCapExceeded is returned by Authorize when the caller is FUNDED but a
+// configured per-scope spend cap (issue #70) would be exceeded by this request.
+// It is DISTINCT from ErrInsufficientBalance: the balance is fine, the tenant's
+// own policy ceiling is not — callers map it to a 402 spend_cap_exceeded, not the
+// out-of-funds insufficient_balance.
+var ErrSpendCapExceeded = errors.New("metering: spend cap exceeded")
 
 // HTTPDoer is the minimal HTTP surface the client needs. *http.Client
 // satisfies it; tests and instrumented transports can substitute their own.
@@ -199,50 +209,192 @@ type AuthInput struct {
 	// arbitrarily expensive request. Zero preserves the legacy "any positive
 	// balance" gate.
 	AmountCents int64
+
+	// Project and Service scope the per-scope spend cap + rate limit (issue #70).
+	// Service is server-derived (route/provider). Empty = the org-wide default
+	// scope. Forwarded to commerce so the right scope cap is resolved; they never
+	// change which BALANCE is gated (always the org via User).
+	Project string
+	Service string
+
+	// ProjectValidated reports whether Project is bound to a VALIDATED identity
+	// claim. When false, commerce DEGRADES a project-scoped hard cap to a soft warn
+	// (records + warns, never 402) so a forgeable X-Project-Id can neither hard-stop
+	// nor be evaded. The org and service axes are always validated. Today IAM mints
+	// no project claim, so cloud sends false; when it does, cloud sends true and
+	// project caps auto-harden.
+	ProjectValidated bool
 }
 
-// Authorize is the pre-request balance gate.
+// Verdict is the full gate outcome AuthorizeVerdict returns, so a gate can render
+// the distinct denial shapes AND emit the soft-warn header from ONE round trip.
 //
-// Contract — three outcomes, matching the gateway:
+//	Allow=true,  Reason="",                     WarnPct=p  -> allow; if p>0 emit X-Spend-Warn.
+//	Allow=false, Reason="insufficient_balance"             -> 402 out of funds.
+//	Allow=false, Reason="spend_cap", Cap/Spent            -> 402 spend cap exceeded.
+type Verdict struct {
+	Allow      bool
+	Reason     string // "", "insufficient_balance", "spend_cap"
+	WarnPct    int
+	CapCents   int64
+	SpentCents int64
+}
+
+// scopeVerdict mirrors commerce GET /v1/limits/authorize
+// ({allow,reason,capCents,spentCents,warnPct}); reason is "" or "spend_cap".
+type scopeVerdict struct {
+	Allow      bool   `json:"allow"`
+	Reason     string `json:"reason"`
+	CapCents   int64  `json:"capCents"`
+	SpentCents int64  `json:"spentCents"`
+	WarnPct    int    `json:"warnPct"`
+}
+
+// Authorize is the pre-request gate. It is the thin error-mapping wrapper over
+// AuthorizeVerdict, preserving the proven three-outcome contract:
 //
 //	(nil)                       -> allow.
 //	(ErrInsufficientBalance)    -> deny: out of funds          (map to HTTP 402).
+//	(ErrSpendCapExceeded)       -> deny: funded but over a per-scope cap (HTTP 402
+//	                               spend_cap_exceeded — distinct from out-of-funds).
 //	(other error)               -> balance unknown; with the default fail-closed
 //	                               posture this denies          (map to HTTP 503).
 //	                               With FailOpen it returns nil (allow).
 //
 // When the client is not configured (no BaseURL) it always allows.
 func (c *Client) Authorize(ctx context.Context, in AuthInput) error {
-	if !c.Enabled() {
+	v, err := c.AuthorizeVerdict(ctx, in)
+	if err != nil {
+		return err // connectivity/unknown; fail posture already applied inside.
+	}
+	if v.Allow {
 		return nil
+	}
+	if v.Reason == "spend_cap" {
+		return ErrSpendCapExceeded
+	}
+	return ErrInsufficientBalance
+}
+
+// AuthorizeVerdict is the full pre-request gate: it checks FUNDS first (the
+// money-safety backstop, honoring the fail-open/closed posture on a connectivity
+// error) and, only when funded, layers the per-scope SPEND CAP verdict.
+//
+// Spend caps are a POLICY OVERLAY, not a funds check: the balance gate already
+// prevents overspending real money, so a cap-endpoint failure FAILS OPEN
+// (degrades to funds-only gating) regardless of the funds fail posture — a
+// commerce limits blip must never take down all paid traffic. An older commerce
+// without the endpoint (404) is likewise treated as "no cap configured".
+//
+// The returned WarnPct (>0 when at/over a covering cap's soft threshold) lets the
+// caller emit X-Spend-Warn from this one round trip.
+func (c *Client) AuthorizeVerdict(ctx context.Context, in AuthInput) (Verdict, error) {
+	if !c.Enabled() {
+		return Verdict{Allow: true}, nil
 	}
 	user := strings.TrimSpace(in.User)
 	if user == "" {
 		// No identity -> cannot bill. Fail-closed denies (anonymous traffic
 		// must be handled by a public-path bypass before reaching here).
 		if c.failOpen {
-			return nil
+			return Verdict{Allow: true}, nil
 		}
-		return fmt.Errorf("metering: empty user")
+		return Verdict{}, fmt.Errorf("metering: empty user")
 	}
 
 	available, err := c.fetchAvailable(ctx, user, c.orgFor(in.Org), currencyOr(in.Currency))
 	if err != nil {
 		if c.failOpen {
-			return nil
+			return Verdict{Allow: true}, nil
 		}
-		return err // unknown -> deny (fail-closed).
+		return Verdict{}, err // unknown -> deny (fail-closed).
+	}
+	funded := available > 0
+	if in.AmountCents > 0 {
+		funded = available >= in.AmountCents
+	}
+	if !funded {
+		return Verdict{Allow: false, Reason: "insufficient_balance"}, nil
+	}
+
+	// Funded — layer the per-scope spend cap. Fail-open on any cap error.
+	sv, serr := c.scopeAuthorize(ctx, in)
+	if serr != nil {
+		return Verdict{Allow: true}, nil
+	}
+	if !sv.Allow && sv.Reason == "spend_cap" {
+		return Verdict{Allow: false, Reason: "spend_cap", CapCents: sv.CapCents, SpentCents: sv.SpentCents}, nil
+	}
+	return Verdict{Allow: true, WarnPct: sv.WarnPct}, nil
+}
+
+// ScopeRule is one scope's rate-limit config, consumed by the cloud
+// ScopeRateLimit middleware. Only rows with a positive RateLimitRpm are returned.
+type ScopeRule struct {
+	Project      string
+	Service      string
+	RateLimitRpm int
+}
+
+// ScopeRules lists the org's per-scope rate-limit rules (the rate-limited subset
+// of its spend-alert rows). It is the config source for the cloud ScopeRateLimit
+// middleware, which caches it with a short TTL and fails open on error. Org is
+// sent as X-Org-Id so the rules are the caller org's own — never another tenant's.
+func (c *Client) ScopeRules(ctx context.Context, org string) ([]ScopeRule, error) {
+	if !c.Enabled() {
+		return nil, nil
+	}
+	body, err := c.get(ctx, pathSpendAlerts, nil, c.orgFor(org))
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		Project      string `json:"project"`
+		Service      string `json:"service"`
+		RateLimitRpm int    `json:"rateLimitRpm"`
+	}
+	if err := json.Unmarshal(body, &rows); err != nil {
+		return nil, err
+	}
+	out := make([]ScopeRule, 0, len(rows))
+	for _, r := range rows {
+		if r.RateLimitRpm > 0 {
+			out = append(out, ScopeRule{Project: r.Project, Service: r.Service, RateLimitRpm: r.RateLimitRpm})
+		}
+	}
+	return out, nil
+}
+
+// scopeAuthorize consults commerce's per-scope cap verdict for this request. The
+// org (X-Org-Id) is the caller's own, so commerce resolves the cap in the
+// caller's namespace — a scope on org X can never gate org Y.
+func (c *Client) scopeAuthorize(ctx context.Context, in AuthInput) (scopeVerdict, error) {
+	q := url.Values{"user": {strings.TrimSpace(in.User)}}
+	if p := strings.TrimSpace(in.Project); p != "" {
+		q.Set("project", p)
+	}
+	if s := strings.TrimSpace(in.Service); s != "" {
+		q.Set("service", s)
 	}
 	if in.AmountCents > 0 {
-		if available >= in.AmountCents {
-			return nil
-		}
-		return ErrInsufficientBalance
+		q.Set("amount", strconv.FormatInt(in.AmountCents, 10))
 	}
-	if available > 0 {
-		return nil
+	// pv=1 only when the project axis is bound to a validated claim; otherwise
+	// commerce degrades a project-scoped hard cap to soft (anti project-spoof).
+	if in.ProjectValidated {
+		q.Set("pv", "1")
 	}
-	return ErrInsufficientBalance
+	q.Set("currency", currencyOr(in.Currency))
+
+	body, err := c.get(ctx, pathLimitsAuthorize, q, c.orgFor(in.Org))
+	if err != nil {
+		return scopeVerdict{}, err
+	}
+	var v scopeVerdict
+	if err := json.Unmarshal(body, &v); err != nil {
+		return scopeVerdict{}, err
+	}
+	return v, nil
 }
 
 // fetchAvailable returns the spendable balance in cents. With TierAware it uses
@@ -279,13 +431,18 @@ func (c *Client) fetchAvailable(ctx context.Context, user, org, cur string) (int
 // commerce stores on the transaction. Fields mirror commerce's usageRequest
 // (commerce/api/billing/usage.go) one-for-one.
 type Usage struct {
-	User             string `json:"user"`            // per-org billing key (org slug) — the debit destination.
-	Actor            string `json:"actor,omitempty"` // org/sub identity for the audit trail (commerce ignores unknown fields today; forward-compatible).
-	Org              string `json:"-"`               // routed via X-Org-Id, not the body.
-	Currency         string `json:"currency,omitempty"`
-	AmountCents      int64  `json:"amount"`
-	Model            string `json:"model,omitempty"`
-	Provider         string `json:"provider,omitempty"`
+	User        string `json:"user"`            // per-org billing key (org slug) — the debit destination.
+	Actor       string `json:"actor,omitempty"` // org/sub identity for the audit trail (commerce ignores unknown fields today; forward-compatible).
+	Org         string `json:"-"`               // routed via X-Org-Id, not the body.
+	Currency    string `json:"currency,omitempty"`
+	AmountCents int64  `json:"amount"`
+	Model       string `json:"model,omitempty"`
+	Provider    string `json:"provider,omitempty"`
+	// Project and Service attribute this debit to a scope so commerce records the
+	// dimensions the per-scope spend cap sums over (issue #70). Empty = the
+	// org-wide default scope.
+	Project          string `json:"project,omitempty"`
+	Service          string `json:"service,omitempty"`
 	PromptTokens     int    `json:"promptTokens,omitempty"`
 	CompletionTokens int    `json:"completionTokens,omitempty"`
 	TotalTokens      int    `json:"totalTokens,omitempty"`
