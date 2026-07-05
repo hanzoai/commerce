@@ -10,6 +10,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/transaction"
@@ -96,6 +97,9 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 	// (spendable) balance. test==credit-bucket==read-bucket==charge-env.
 	test := org.TestMode()
 	trans.Test = test
+	// The card was charged (result.Success): a settled payment IS the mint
+	// authority, so authorize THIS write at the ledger sink (money-in == credit).
+	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		// Charge succeeded but credit failed — log with full context for manual reconciliation.
 		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for user %s: %v",
