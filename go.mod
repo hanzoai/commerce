@@ -39,7 +39,6 @@ require (
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
 	github.com/lib/pq v1.12.1
 	github.com/luxfi/crypto v1.19.17
-	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mholt/binding v0.3.0
 	github.com/netlify/netlify-go v0.1.11
 	github.com/onsi/ginkgo/v2 v2.28.1
@@ -212,6 +211,7 @@ require (
 	github.com/luxfi/mock v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
