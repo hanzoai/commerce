@@ -1,30 +1,12 @@
 package test
 
 import (
-	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/models/types/currency"
-
 	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
-// seedCharge writes an original Withdraw (a CHARGE) to the suite org's ledger and
-// returns its id. Only a charge is refundable (refunding a Deposit would double
-// it), and refund.go matches the charge by DestinationId == the refund subject —
-// so the seeded charge carries DestinationId=subject, DestinationKind=iam-user,
-// exactly like the money-correctness harness (api/billing refund_h1_test.go
-// seedCharge). The suite db is built from a NON-gin context → ungated, so this
-// internal seed mints freely without the C1 gate (which guards only inbound HTTP).
-func seedCharge(subject string, cents int64) string {
-	tr := transaction.New(db)
-	tr.Type = transaction.Withdraw
-	tr.DestinationId = subject
-	tr.DestinationKind = "iam-user"
-	tr.Currency = currency.USD
-	tr.Amount = currency.Cents(cents)
-	tr.MustCreate()
-	return tr.Id()
-}
+// seedCharge (a Withdraw the refund test reverses) is defined once for this
+// package in suite_test.go — the shared suite fixture file.
 
 // Response types for JSON parsing
 type meterResponse struct {
