@@ -13,8 +13,10 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3" // SQLite driver
-
+	// The "sqlite" driver is registered by github.com/hanzoai/sqlite (imported by
+	// db/encryption.go) — mattn/SQLCipher under CGO, pure-Go modernc under
+	// CGO_ENABLED=0. It is the ONE sqlite backend; commerce imports no mattn or
+	// modernc driver directly. Open via encDriverDSN, never a raw driver name.
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
@@ -156,46 +158,6 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	}
 
 	return db, nil
-}
-
-// buildPragmas creates the pragma query string
-func buildPragmas(cfg SQLiteConfig) string {
-	var pragmas []string
-
-	// Concurrency-safe floor: a zero-value SQLiteConfig must NEVER yield a DB
-	// with no busy_timeout and a rollback journal — that makes a second
-	// concurrent writer fail immediately with "database is locked" instead of
-	// waiting. Default to a 10s wait + WAL (readers don't block the single
-	// writer) unless the caller explicitly overrides.
-	busyTimeout := cfg.BusyTimeout
-	if busyTimeout <= 0 {
-		busyTimeout = 10000
-	}
-	pragmas = append(pragmas, fmt.Sprintf("_busy_timeout=%d", busyTimeout))
-
-	journalMode := cfg.JournalMode
-	if journalMode == "" {
-		journalMode = "WAL"
-	}
-	pragmas = append(pragmas, fmt.Sprintf("_journal_mode=%s", journalMode))
-	if cfg.Synchronous != "" {
-		pragmas = append(pragmas, fmt.Sprintf("_synchronous=%s", cfg.Synchronous))
-	}
-	if cfg.CacheSize != 0 {
-		pragmas = append(pragmas, fmt.Sprintf("_cache_size=%d", cfg.CacheSize))
-	}
-
-	// Always enable foreign keys
-	pragmas = append(pragmas, "_foreign_keys=ON")
-
-	// Use memory for temp storage
-	pragmas = append(pragmas, "_temp_store=MEMORY")
-
-	if len(pragmas) == 0 {
-		return ""
-	}
-
-	return "?" + strings.Join(pragmas, "&")
 }
 
 // baseSchemaDDL is the tenant store's base schema, applied on create and reused

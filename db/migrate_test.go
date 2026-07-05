@@ -149,7 +149,10 @@ func TestEncryptDataDirFoldsPendingSourceWAL(t *testing.T) {
 	// insert's frames stay in the -wal), then copy the {main,-wal} fileset while the
 	// connection is still open — never checkpointed — into the tenant path.
 	staging := filepath.Join(t.TempDir(), "staging.db")
-	src, err := sql.Open("sqlite3", "file:"+staging+"?_busy_timeout=10000&_journal_mode=WAL")
+	src, err := sql.Open("sqlite", sqlitedrv.PragmaDSN(staging, []sqlitedrv.Pragma{
+		{Name: "busy_timeout", Value: "10000"},
+		{Name: "journal_mode", Value: "WAL"},
+	}))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	sqlitedrv "github.com/hanzoai/sqlite"
@@ -197,15 +198,27 @@ func unwrapSidecar(dbPath, dekPath string, kek, aad []byte) ([]byte, error) {
 	return dek, nil
 }
 
-// encDriverDSN returns the (driverName, dsn) to open dbPath.
+// encDriverDSN returns the (driverName, dsn) to open dbPath. Both branches use
+// the SINGLE canonical "sqlite" driver registered by github.com/hanzoai/sqlite —
+// mattn/SQLCipher under CGO, pure-Go modernc under CGO_ENABLED=0. Commerce imports
+// no mattn/modernc driver directly; hanzoai/sqlite is the one sqlite backend.
 //
-//   - dek != nil → the encrypted "sqlite" driver (SQLCipher). The key rides the
-//     canonical driver DSN as SQLCipher's URI `key` param (applied inside
-//     sqlite3_open_v2, before any pragma battery, so create AND reopen succeed);
-//     commerce's extra tuning pragmas are appended. The DSN CONTAINS the key —
-//     callers MUST NOT log it.
-//   - dek == nil → the plaintext "sqlite3" driver, byte-for-byte the legacy DSN.
-//     Used only when no master key is configured (dev / CGO-off CI).
+//   - dek != nil → encrypted at rest (SQLCipher). The key rides the canonical
+//     driver DSN as SQLCipher's URI `key` param (applied inside sqlite3_open_v2,
+//     before any pragma battery, so create AND reopen succeed); commerce's extra
+//     tuning pragmas are appended. The DSN CONTAINS the key — callers MUST NOT log
+//     it. Reached only under CGO (resolveMasterKey fails closed on the pure-Go
+//     build), so sqlitedrv.DSN's key path never panics.
+//   - dek == nil → plaintext (dev/CI + the CGO-off production boot on modernc).
+//     sqlitedrv.PragmaDSN renders plaintextPragmas in the ACTIVE backend's DSN
+//     syntax (mattn `_busy_timeout=N`, modernc `_pragma=busy_timeout(N)`), so WAL +
+//     busy_timeout actually apply under BOTH builds. It deliberately does NOT set
+//     cache=shared: commerce opens a separate concurrent read pool and a serialized
+//     write pool against the same file, and shared-cache table locking turns a
+//     retryable SQLITE_BUSY into an un-retryable SQLITE_LOCKED ("database table is
+//     locked") the instant the read pool holds a cursor open — exactly what the
+//     cache=shared that sqlitedrv.DSN(dbPath, nil) appends did, panicking the test
+//     suite's BeforeSuite fixture load.
 func encDriverDSN(dbPath string, dek []byte, cfg SQLiteConfig) (string, string) {
 	if dek != nil {
 		dsn := sqlitedrv.DSN(dbPath, dek) // file:PATH?_busy_timeout=..&_journal_mode=WAL&..&key=x'..'
@@ -214,7 +227,42 @@ func encDriverDSN(dbPath string, dek []byte, cfg SQLiteConfig) (string, string) 
 		}
 		return "sqlite", dsn
 	}
-	return "sqlite3", dbPath + buildPragmas(cfg)
+	return "sqlite", sqlitedrv.PragmaDSN(dbPath, plaintextPragmas(cfg))
+}
+
+// plaintextPragmas maps commerce's SQLiteConfig to the connection pragmas applied
+// to an UNENCRYPTED per-tenant store, rendered per-backend by sqlitedrv.PragmaDSN.
+// It reproduces the historical buildPragmas floor — a 10s busy_timeout + WAL even
+// for a zero-value config, so a second concurrent writer waits instead of failing
+// with "database is locked" — and deliberately omits cache=shared (the dual
+// read/write pool design requires private per-connection caches; see encDriverDSN).
+func plaintextPragmas(cfg SQLiteConfig) []sqlitedrv.Pragma {
+	busyTimeout := cfg.BusyTimeout
+	if busyTimeout <= 0 {
+		busyTimeout = 10000
+	}
+	journalMode := cfg.JournalMode
+	if journalMode == "" {
+		journalMode = "WAL"
+	}
+	// Order matters: busy_timeout leads so a connection blocks on a busy database
+	// before journal_mode=WAL is set (WAL cannot be enabled while another
+	// connection holds the database).
+	pragmas := []sqlitedrv.Pragma{
+		{Name: "busy_timeout", Value: strconv.Itoa(busyTimeout)},
+		{Name: "journal_mode", Value: journalMode},
+	}
+	if cfg.Synchronous != "" {
+		pragmas = append(pragmas, sqlitedrv.Pragma{Name: "synchronous", Value: cfg.Synchronous})
+	}
+	if cfg.CacheSize != 0 {
+		pragmas = append(pragmas, sqlitedrv.Pragma{Name: "cache_size", Value: strconv.Itoa(cfg.CacheSize)})
+	}
+	pragmas = append(pragmas,
+		sqlitedrv.Pragma{Name: "foreign_keys", Value: "ON"},
+		sqlitedrv.Pragma{Name: "temp_store", Value: "MEMORY"},
+	)
+	return pragmas
 }
 
 // extraEncPragmas emits the tuning pragmas the driver's canonical DSN does NOT
