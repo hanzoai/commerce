@@ -12,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -156,6 +157,10 @@ func PostMyWelcome(c *gin.Context) {
 		trans.Test = true
 	}
 
+	// A server-FIXED (StarterCreditCents), tag-idempotent welcome credit to the
+	// caller's OWN subject — the amount is not attacker-controlled — so authorize
+	// this write at the ledger sink.
+	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Error("welcome credit create failed for %s: %v", user, err, c)
 		http.Fail(c, 500, "failed to grant welcome credit", err)
