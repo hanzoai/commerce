@@ -89,14 +89,36 @@ func scopeSpentCents(db *datastore.Datastore, test bool, project, service string
 	return sum, nil
 }
 
-// loadOrgScopes lists every spend-alert (budget/cap) row in the caller's org
-// namespace, regardless of UserId — the org-wide policy set the cap verdict and
-// the rate-limit config both read.
+// loadOrgScopes lists the org's spend-alert (budget/cap) rows — the org-wide
+// policy set the cap verdict and the rate-limit config both read. BOUNDED to
+// maxScopeRowsPerOrg so an attacker cannot inflate the row set to slow the scan
+// (CreateSpendAlert enforces the same cap on writes).
 func loadOrgScopes(db *datastore.Datastore) ([]*spendalert.SpendAlert, error) {
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	rows := make([]*spendalert.SpendAlert, 0)
-	_, err := spendalert.Query(db).Ancestor(rootKey).GetAll(&rows)
+	_, err := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg).GetAll(&rows)
 	return rows, err
+}
+
+// scopeExhausted reports whether a scope has reached/exceeded its cap such that
+// ENFORCE refuses any further billable (>=1c) request — the ONE boundary both the
+// verdict and the `over` display derive from, so they can never drift. It is
+// exactly !WithinLimit(spent, 1, cap): committing one more cent breaks the cap.
+func scopeExhausted(spent, cap int64) bool {
+	return cap > 0 && !employee.WithinLimit(currency.Cents(spent), 1, currency.Cents(cap))
+}
+
+// hardAxesValidated reports whether a row may HARD-enforce (402) given whether the
+// caller's PROJECT is bound to a validated claim. The ORG axis is always validated
+// (owner claim) and the SERVICE axis is server-derived (route/provider, not a
+// client field) — both always trustworthy. Only a row that constrains PROJECT
+// (row.Project != "") needs projectValidated; without it that row DEGRADES to a
+// soft warn (records + warns, never 402) so a forgeable X-Project-Id can never be
+// used to hard-stop, nor evaded to bypass. (IAM does not yet mint a project claim;
+// when it does, cloud sets pv=1 and project caps auto-harden — see
+// principal.ValidatedProject.)
+func hardAxesValidated(s *spendalert.SpendAlert, projectValidated bool) bool {
+	return s.Project == "" || projectValidated
 }
 
 // authorizeResult is the gate verdict the metering client consumes. reason is
@@ -113,11 +135,17 @@ type authorizeResult struct {
 
 // AuthorizeSpendCap is the per-request cap verdict for a (project,service) scope
 // and a proposed amount, over the org's spend-alert rows. It evaluates EVERY
-// covering row (most-restrictive-wins) and DENIES when any ENFORCE=true row is
-// exceeded, reporting the tightest one. Soft (Enforce=false) rows never block —
-// they only raise the warn utilization, as does an enforced row still under cap.
+// covering row (most-restrictive-wins) and DENIES when any HARD-enforceable
+// ENFORCE=true row is exceeded, reporting the tightest one. Soft rows — and a
+// project-scoped enforce row whose project axis is NOT validated (pv=0) — never
+// block; they only raise the warn utilization.
 //
-//	GET /v1/billing/spend-alerts/authorize?user=&project=&service=&amount=
+// FAIL CLOSED, not open: if a HARD-enforceable enforce row's spend sum cannot be
+// computed, the verdict DENIES (spend_cap) — an attacker must not disable a cap by
+// inducing a compute error. Per-scope sums are memoized so covering rows sharing a
+// scope cost one query. The row scan is bounded (loadOrgScopes).
+//
+//	GET /v1/billing/spend-alerts/authorize?user=&project=&service=&amount=&pv=
 func AuthorizeSpendCap(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -126,6 +154,7 @@ func AuthorizeSpendCap(c *gin.Context) {
 	reqProject := spendalert.NormalizeProject(c.Query("project"))
 	reqService := strings.TrimSpace(c.Query("service"))
 	amount := parseCents(c.Query("amount"))
+	projectValidated := c.Query("pv") == "1"
 
 	rows, err := loadOrgScopes(db)
 	if err != nil {
@@ -134,22 +163,35 @@ func AuthorizeSpendCap(c *gin.Context) {
 		return
 	}
 
+	spentBy := map[string]int64{} // memoize per (project,service) scope.
 	res := authorizeResult{Allow: true}
 	var blockCap int64 // tightest violated enforced cap (most restrictive wins).
 	for _, s := range rows {
 		if s.Threshold <= 0 || !s.Covers(reqProject, reqService) {
 			continue
 		}
-		spent, serr := scopeSpentCents(db, test, s.Project, s.Service)
-		if serr != nil {
-			log.Error("spend-cap: spend agg failed: %v", serr, c)
-			http.Fail(c, 500, "failed to compute period spend", serr)
-			return
+		hard := s.Enforce && hardAxesValidated(s, projectValidated)
+
+		key := s.Project + "\x00" + s.Service
+		spent, ok := spentBy[key]
+		if !ok {
+			v, serr := scopeSpentCents(db, test, s.Project, s.Service)
+			if serr != nil {
+				// FAIL CLOSED for a hard-enforceable row whose spend is unknown.
+				if hard {
+					log.Error("spend-cap: agg failed, failing CLOSED for enforce scope: %v", serr, c)
+					c.JSON(200, authorizeResult{Allow: false, Reason: "spend_cap", CapCents: s.Threshold})
+					return
+				}
+				continue // soft/degraded row: cannot warn, do not block.
+			}
+			spent = v
+			spentBy[key] = v
 		}
-		// REUSE the existing spend primitive: within iff committed+requested <= cap.
+
+		// REUSE the spend primitive: within iff committed+requested <= cap.
 		within := employee.WithinLimit(currency.Cents(spent), currency.Cents(amount), currency.Cents(s.Threshold))
-		if s.Enforce && !within {
-			// Most restrictive wins: keep the smallest violated cap.
+		if hard && !within {
 			if res.Reason != "spend_cap" || s.Threshold < blockCap {
 				blockCap = s.Threshold
 				res.Reason = "spend_cap"
@@ -159,6 +201,8 @@ func AuthorizeSpendCap(c *gin.Context) {
 			}
 			continue
 		}
+		// Warn utilization — for soft rows, degraded project rows, AND enforce rows
+		// still under cap (approaching the ceiling).
 		if pct := int(spent * 100 / s.Threshold); pct >= s.EffectiveSoftPct() && pct > res.WarnPct {
 			res.WarnPct = pct
 		}
