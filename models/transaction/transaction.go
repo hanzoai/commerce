@@ -54,6 +54,14 @@ type Transaction struct {
 	SourceId   string `json:"sourceId,omitempty"`
 	SourceKind string `json:"sourceKind,omitempty"`
 
+	// Scope attribution for per-scope spend caps (issue #70). Both are INDEXED so
+	// spend can be summed per (project,service) scope for the calendar-month
+	// period. Empty = the org-wide default scope (a legacy row that predates
+	// scoping has NO Project/Service property and is therefore only ever counted
+	// in an unfiltered org-wide sum, never in a project- or service-scoped one).
+	Project string `json:"project,omitempty"`
+	Service string `json:"service,omitempty"`
+
 	// ExpiresAt marks when a deposit credit expires. Zero value means no expiry.
 	// Expired deposits are excluded from balance calculations.
 	ExpiresAt time.Time `json:"expiresAt,omitempty"`
