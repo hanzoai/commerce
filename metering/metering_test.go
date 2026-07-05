@@ -16,10 +16,10 @@ import (
 
 // fakeCommerce records the last request and replies with a canned status+body.
 type fakeCommerce struct {
-	mu     sync.Mutex
-	method string
-	path   string
-	query  url.Values
+	mu      sync.Mutex
+	method  string
+	path    string
+	query   url.Values
 	auth    string
 	org     string
 	testHdr string
@@ -33,6 +33,17 @@ func (f *fakeCommerce) handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		// Authorize also consults the per-scope spend-cap endpoint after funds pass
+		// (issue #70). These tests pin the FUNDS contract (balance/tier/usage), so
+		// answer the scope call with the canned body but don't record it as the
+		// asserted request.
+		if strings.HasPrefix(r.URL.Path, "/v1/billing/spend-alerts") {
+			if f.status != 0 {
+				w.WriteHeader(f.status)
+			}
+			_, _ = io.WriteString(w, f.reply)
+			return
+		}
 		f.method = r.Method
 		f.path = r.URL.Path
 		f.query = r.URL.Query()
@@ -351,7 +362,12 @@ func TestConfigFromEnv_ReadsToken(t *testing.T) {
 func TestContractMatchesGateway(t *testing.T) {
 	var gotURL string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotURL = r.URL.String()
+		// Capture ONLY the balance request. Authorize also consults the per-scope
+		// spend-cap endpoint after funds pass (issue #70); this test pins the
+		// balance contract, so ignore the follow-on /spend-alerts/authorize call.
+		if strings.HasPrefix(r.URL.Path, "/v1/billing/balance") {
+			gotURL = r.URL.String()
+		}
 		_, _ = io.WriteString(w, `{"available":1}`)
 	}))
 	defer srv.Close()
