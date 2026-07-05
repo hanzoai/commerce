@@ -650,11 +650,15 @@ func (app *App) Bootstrap() error {
 
 	// Chain-backed credit ledger (HUSD on the Hanzo EVM). Build the mint+index
 	// service from the KMS-injected HUSD config + the org-derivation master seed
-	// (all in-memory only). When unconfigured (no token/key/seed) the service is
+	// (all in-memory only). The SEED is the ledger's sole intent signal: with a
+	// seed AND token+key the ledger is ENABLED; without a seed the service is
 	// DISABLED and the billing money-in handlers keep their existing DB-mint
-	// behavior — so this is a no-op for deploys without HUSD; the migration
-	// (Step 6) flips it on deliberately. Wired AFTER the DB resolver so its
-	// per-org + system stores resolve. Fail closed on a partial config.
+	// behavior — so a deploy with HUSD token+key but no seed (e.g. the shared
+	// config the OSS contributor payout path uses) is a no-op for the ledger, and
+	// the migration (Step 6) flips it on deliberately by provisioning the seed.
+	// Wired AFTER the DB resolver so its per-org + system stores resolve. Fail
+	// closed ONLY on an incoherent ledger config (seed set but token/key missing)
+	// — see husdledger.ValidateConfig.
 	husdCfg := husd.Config{}
 	husdCfg.LoadFromEnv()
 	var husdSeed []byte
@@ -665,8 +669,8 @@ func (app *App) Bootstrap() error {
 		}
 		husdSeed = s
 	}
-	if husdCfg.Configured() && len(husdSeed) == 0 {
-		return fmt.Errorf("commerce: HUSD token+key configured but HUSD_ORG_DERIVATION_SEED missing — refusing to start (the chain ledger would silently disable and mints would fall back to DB)")
+	if err := husdledger.ValidateConfig(husdCfg, husdSeed); err != nil {
+		return fmt.Errorf("commerce: %w", err)
 	}
 	husdSvc := husdledger.New(husdCfg, husdSeed)
 	husdledger.SetDefault(husdSvc)
