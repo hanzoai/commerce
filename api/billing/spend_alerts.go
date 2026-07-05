@@ -39,31 +39,65 @@ type updateSpendAlertRequest struct {
 	RateLimitRpm *int    `json:"rateLimitRpm"`
 }
 
-// resolveSpendAlertUserId returns the userId to scope spend-alert queries, or ""
-// to list the org-wide policy set (all rows). An explicit ?user= wins; otherwise
-// the caller's own subject is used. Empty means "no user filter" (scope-cap view).
-//
-// Behind the /billing bridge the ?user= param is PINNED to the caller's own
-// validated subject (clients/console scopedBillingSearch), so this is the caller's
-// own identity — the trust boundary that makes the id-ownership check below sound.
+// maxScopeRowsPerOrg bounds how many spend-alert rows an org may hold. It caps
+// both storage abuse and the cost of the per-request cap authorize scan (an
+// attacker must not be able to inflate the row set to make the sum error / time
+// out and thereby disable enforcement). loadOrgScopes reads at most this many.
+const maxScopeRowsPerOrg = 200
+
+// resolveSpendAlertUserId returns the ?user= narrowing param (the TRUSTED
+// bridge/admin path uses it; the /billing bridge pins ?user= to the caller's own
+// validated subject). It falls back to the gateway-minted subject. It is NEVER
+// used for ownership on an IAM-user request — see callerSubject.
 func resolveSpendAlertUserId(c *gin.Context) string {
 	user := strings.TrimSpace(c.Query("user"))
 	if user != "" {
 		return user
 	}
-	return iammiddleware.GetIAMClaims(c).Subject
+	return strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
+}
+
+// callerSubject returns the caller's OWN identity for ownership/scoping, and
+// whether it is present. It closes the guess-the-id IDOR:
+//
+//   - IAM-user request (NOT a service token): the identity is the VALIDATED claim
+//     subject (GetIAMClaims.Subject, the gateway-minted X-User-Id) ONLY. The
+//     client-supplied ?user= is IGNORED — so a user cannot pass ?user=<victim> to
+//     act as another subject.
+//   - Trusted service-token request (cloud-api / the /billing bridge — verified
+//     COMMERCE_SERVICE_TOKEN): the bridge already validated the user's JWT and
+//     PINNED ?user= to that subject, so ?user= is the trustworthy identity here.
+//     (Anyone holding the service token is the platform admin anyway.)
+func callerSubject(c *gin.Context) (string, bool) {
+	if middleware.IsServiceToken(c) {
+		s := resolveSpendAlertUserId(c)
+		return s, s != ""
+	}
+	s := strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
+	return s, s != ""
+}
+
+// listScopeUserId returns the UserId filter for a LIST/read, pinned to the
+// caller's own identity for an IAM user (they can read ONLY their own rows —
+// ?user=<victim> is ignored), or the ?user= narrowing for a trusted service
+// token (empty => the org-wide policy set, e.g. the rate-limit config fetch).
+// The bool is false for an IAM user with no subject (read nothing).
+func listScopeUserId(c *gin.Context) (string, bool) {
+	if middleware.IsServiceToken(c) {
+		return resolveSpendAlertUserId(c), true // "" => all org rows (admin / rate-limit)
+	}
+	s := strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
+	return s, s != ""
 }
 
 // ownsAlert reports whether the caller may mutate this row. Tenant isolation is
-// already structural (the datastore is org-namespaced), so this closes the
-// WITHIN-org IDOR: a caller may PATCH/DELETE only a row whose UserId is their OWN
-// resolved subject (the /billing bridge pins ?user= to that subject). A row owned
-// by another subject — reachable only by GUESSING its id — is refused. A caller
-// with no resolved subject can mutate nothing. Ownership never comes from the row
-// id alone.
+// already structural (org-namespaced datastore); this closes the WITHIN-org IDOR:
+// a caller may PATCH/DELETE only a row whose UserId is their OWN validated
+// subject. Ownership NEVER comes from a client-supplied ?user= on an IAM-user
+// request, nor from the row id alone.
 func ownsAlert(c *gin.Context, a *spendalert.SpendAlert) bool {
-	caller := resolveSpendAlertUserId(c)
-	return caller != "" && a.UserId == caller
+	caller, ok := callerSubject(c)
+	return ok && a.UserId == caller
 }
 
 // spendAlertView is the wire shape of one row plus the DERIVED period spend for
@@ -93,13 +127,10 @@ func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert
 		return view
 	}
 	view["periodSpentCents"] = spent
-	if a.Threshold > 0 {
-		view["over"] = spent >= a.Threshold
-		view["warn"] = spent >= a.Threshold*int64(soft)/100
-	} else {
-		view["over"] = false
-		view["warn"] = false
-	}
+	// `over` derives from the SAME boundary as enforce (scopeExhausted) so the flag
+	// can never drift from the verdict: over ⇔ a further billable request is refused.
+	view["over"] = scopeExhausted(spent, a.Threshold)
+	view["warn"] = a.Threshold > 0 && spent >= a.Threshold*int64(soft)/100
 	return view
 }
 
@@ -114,9 +145,15 @@ func ListSpendAlerts(c *gin.Context) {
 	db := datastore.New(org.Namespaced(c))
 	test := org.TestMode()
 
+	userId, ok := listScopeUserId(c)
+	if !ok {
+		// IAM user with no validated subject reads nothing (never the org set).
+		c.JSON(200, []gin.H{})
+		return
+	}
 	rootKey := db.NewKey("synckey", "", 1, nil)
-	q := spendalert.Query(db).Ancestor(rootKey)
-	if userId := resolveSpendAlertUserId(c); userId != "" {
+	q := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg)
+	if userId != "" {
 		q = q.Filter("UserId=", userId)
 	}
 
@@ -150,10 +187,29 @@ func CreateSpendAlert(c *gin.Context) {
 		return
 	}
 
-	// Default UserId to the caller's subject only when the client passed one
-	// implicitly; a truly org-wide scope cap may carry no user.
-	if req.UserId == "" {
-		req.UserId = iammiddleware.GetIAMClaims(c).Subject
+	// Owner pinning: an IAM user can create ONLY rows owned by their OWN validated
+	// subject — a client-supplied body userId is IGNORED (so a user can't create a
+	// row "owned by" a victim, then leave it, or otherwise confuse ownership). The
+	// trusted service-token bridge keeps its pinned userId (or ?user=), and may
+	// create an org-wide row (empty owner).
+	if middleware.IsServiceToken(c) {
+		if strings.TrimSpace(req.UserId) == "" {
+			req.UserId = strings.TrimSpace(c.Query("user"))
+		}
+	} else {
+		req.UserId = strings.TrimSpace(iammiddleware.GetIAMClaims(c).Subject)
+		if req.UserId == "" {
+			http.Fail(c, 401, "authentication required", nil)
+			return
+		}
+	}
+
+	// Bound the org's row set (storage + authorize-scan-cost abuse; keeps the cap
+	// fail-closed path from being drowned by an attacker-inflated row list).
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	if n, cerr := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg + 1).Count(); cerr == nil && n >= maxScopeRowsPerOrg {
+		http.Fail(c, 400, "spend-alert limit reached for this organization", nil)
+		return
 	}
 
 	if req.Threshold < 0 {
