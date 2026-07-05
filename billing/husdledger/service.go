@@ -2,6 +2,7 @@ package husdledger
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strconv"
 	"time"
@@ -84,6 +85,26 @@ const (
 	projectMintPolls    = 15
 	projectMintInterval = time.Second
 )
+
+// ValidateConfig reports a FATAL chain-ledger misconfiguration that a caller must
+// refuse to boot on: a derivation seed is supplied — the chain ledger is clearly
+// intended — but the HUSD token address and/or treasury key are missing, so the
+// ledger cannot run and would silently fall back to the DB credit path for a
+// ledger the operator meant to enable. Fail closed.
+//
+// The asymmetry is deliberate: HUSD token+key WITHOUT a seed is NOT an error — it
+// is the inert state. The shared HUSD config (util/husd) is ALSO used by the OSS
+// contributor payout path, which needs a token+key but no ledger seed; there the
+// ledger stays disabled (Enabled()==false) and the existing DB credit path is
+// used, exactly as before the chain ledger existed. The seed is the ledger's SOLE
+// intent signal, so only "seed set but not Configured" is a partial/incoherent
+// config worth refusing.
+func ValidateConfig(cfg husd.Config, seed []byte) error {
+	if len(seed) > 0 && !cfg.Configured() {
+		return errors.New("HUSD_ORG_DERIVATION_SEED is set (chain ledger intended) but HUSD_TOKEN_ADDRESS/HUSD_TREASURY_KEY are missing — refusing to start; set both, or unset the seed to keep the DB credit path")
+	}
+	return nil
+}
 
 // New builds a Service from the HUSD config and the org-derivation master seed.
 // If the chain path is not fully configured it returns a DISABLED service (no
