@@ -4,13 +4,22 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/hanzoai/commerce/mintauth"
 )
 
 // RequestContext extracts the standard Go context from the HTTP request
 // and stores it in the Gin context for downstream handlers.
+//
+// It also marks the stored context mint-gated (mintauth.WithGate): every inbound
+// request is a potential untrusted principal, so any spendable-balance mint that
+// flows from it must carry mint authorization or the ledger sink refuses it. This
+// backs up the primary gate in Organization.Namespaced for the rare handler that
+// builds a datastore from middleware.GetContext(c) directly. Authorization
+// (PlatformOnly / settled payment / server-fixed grant) rides on top.
 func RequestContext() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+		ctx := mintauth.WithGate(c.Request.Context())
 		c.Set("context", ctx)
 	}
 }
