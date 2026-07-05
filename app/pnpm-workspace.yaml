@@ -2,5 +2,4 @@ packages:
   - 'site'
   - 'store'
   - 'admin'
-  - 'ui-docs'
   - 'packages/*'
