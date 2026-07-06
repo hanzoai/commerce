@@ -641,7 +641,15 @@ mint) and idempotent, and the indexer reflects on-chain balance — proven live.
    `Subject` (per-org address, per-subject ledger) + `Test`. Handlers
    `Deposit`/`GrantStarterCredit`/`PostMyWelcome`/`GrantStarter`/`topup` branch to
    the chain mint when enabled (else the DB path, unchanged). Wired at Bootstrap
-   from `husd.Config` + `HUSD_ORG_DERIVATION_SEED` (fail-closed on partial config).
+   from `husd.Config` + `HUSD_ORG_DERIVATION_SEED`. The **seed is the ledger's
+   sole intent signal** (`husdledger.ValidateConfig`, PR #69): ENABLED only with
+   a seed AND token+key; token+key WITHOUT a seed is the INERT state
+   (`Enabled()==false`, DB credit path) — NOT a boot error — because the shared
+   `util/husd` token+key is ALSO the OSS contributor-payout config, which runs
+   with no ledger seed. Boot refuses ONLY on an incoherent LEDGER config (seed
+   set but token/key missing). This decouple is why v1.46.39 boots inert in prod
+   (the CR carries HUSD token+key for OSS payouts, no seed) instead of
+   crash-looping; the mainnet cutover enables the ledger by provisioning the seed.
    **Proven**: live `TestOnChain_Step4_ProjectTx` (mint `0x3324a75a…` → ProjectTx
    from the REAL receipt → one credit subject/bucket/test) + CI `ledgerStore`
    sqlite test (ProjectTx → real Deposit → `bucket` balance, idempotent).
