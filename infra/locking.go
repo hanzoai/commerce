@@ -41,10 +41,12 @@ func (m *Manager) Acquire(ctx context.Context, key string, ttl time.Duration) (*
 		return nil, fmt.Errorf("lock: KV not enabled")
 	}
 
-	lockKey := m.kv.key("lock:" + key)
+	// Logical key — the KVClient applies its KeyPrefix once, so the on-disk lock
+	// layout is identical whether the KV is Base- or external-backed.
+	lockKey := "lock:" + key
 	lockValue := rand.ShortId()
 
-	ok, err := m.kv.Store().SetNX(lockKey, []byte(lockValue), ttl)
+	ok, err := m.kv.SetNX(lockKey, []byte(lockValue), ttl)
 	if err != nil {
 		return nil, fmt.Errorf("lock: kv error: %w", err)
 	}
@@ -63,7 +65,7 @@ func (m *Manager) Acquire(ctx context.Context, key string, ttl time.Duration) (*
 // Release releases the distributed lock.
 // Only releases if the lock is still held by this instance (compare-and-delete).
 func (l *Lock) Release(ctx context.Context) error {
-	ok, err := l.kv.Store().CompareAndDelete(l.key, []byte(l.value))
+	ok, err := l.kv.CompareAndDelete(l.key, []byte(l.value))
 	if err != nil {
 		return fmt.Errorf("lock: release error: %w", err)
 	}
@@ -76,7 +78,7 @@ func (l *Lock) Release(ctx context.Context) error {
 // Extend extends the TTL of the lock.
 // Only extends if the lock is still held by this instance.
 func (l *Lock) Extend(ctx context.Context, ttl time.Duration) error {
-	ok, err := l.kv.Store().CompareAndExtend(l.key, []byte(l.value), ttl)
+	ok, err := l.kv.CompareAndExtend(l.key, []byte(l.value), ttl)
 	if err != nil {
 		return fmt.Errorf("lock: extend error: %w", err)
 	}
