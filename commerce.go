@@ -704,7 +704,22 @@ func (app *App) Bootstrap() error {
 	// (sharing the commerce store) before Connect so Connect reuses it.
 	app.Infra = infra.New(&app.config.Infra)
 	if app.config.Infra.KV.Enabled {
-		app.Infra.SetKV(infra.NewKVClientFromStore(&app.config.Infra.KV, cStore))
+		// KV_URL selects an external Hanzo KV instance (the on-demand add-on);
+		// unset ⇒ the Base-backed commerce_kv (default — no external datastore).
+		// A malformed KV_URL fails closed rather than silently splitting cache +
+		// lock state across two backends.
+		var kvc *infra.KVClient
+		if kvURL := getEnv("KV_URL", ""); kvURL != "" {
+			c, kvErr := infra.NewKVClientFromURL(&app.config.Infra.KV, kvURL)
+			if kvErr != nil {
+				return fmt.Errorf("commerce: invalid KV_URL: %w", kvErr)
+			}
+			kvc = c
+			fmt.Fprintln(os.Stderr, "Commerce: using external Hanzo KV (KV_URL) for cache + locks")
+		} else {
+			kvc = infra.NewKVClientFromStore(&app.config.Infra.KV, cStore)
+		}
+		app.Infra.SetKV(kvc)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), app.config.Infra.ConnectTimeout)
 	defer cancel()
