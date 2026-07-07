@@ -95,6 +95,20 @@ func (b *baseBackend) close() error {
 // casDelScript / casExtendScript give the external backend the same atomic
 // compare-and-delete / compare-and-extend the base store gets from a serializable
 // SQLite transaction — one server-side script, no read-then-write race.
+//
+// EVICTION SAFETY — guard before wiring a money op to the lock's .Acquire()
+// (locking.go). These CAS primitives, and the distributed lock built on
+// SetNX + CAS, are correct ONLY while a HELD lock key cannot be evicted out from
+// under its holder. An eviction policy that drops live keys under memory pressure
+// (allkeys-lru / allkeys-random — which is exactly the default a dedicated Hanzo
+// KV *cache* instance provisions: see cloud clients/provisioning dedicated.go)
+// would let a still-valid lock vanish, so a second Acquire's SetNX succeeds and
+// TWO holders enter the "mutually exclusive" section — a double refund / double
+// payout. The lock is currently DORMANT (no money caller). Before ANY
+// money-moving op takes .Acquire() on an EXTERNAL KV instance, that instance's
+// lock keyspace MUST be on a non-evicting policy (maxmemory-policy noeviction, or
+// a dedicated lock DB/instance whose keys never expire under pressure) — never
+// the shared allkeys-lru cache DB.
 var (
 	casDelScript    = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`)
 	casExtendScript = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end`)
