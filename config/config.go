@@ -164,12 +164,6 @@ type Config struct {
 		Zone  string
 	}
 
-	// Redis
-	Redis struct {
-		Url      string
-		Password string
-	}
-
 	// Sendgrid API key
 	SendGrid struct {
 		APIKey string
@@ -298,7 +292,6 @@ var Mercury = config.Mercury
 var Netlify = config.Netlify
 var Paypal = config.Paypal
 var Prefixes = config.Prefixes
-var Redis = config.Redis
 var RootDir = config.RootDir
 var SMTPRelay = config.SMTPRelay
 var Salesforce = config.Salesforce
