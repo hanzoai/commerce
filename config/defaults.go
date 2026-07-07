@@ -82,9 +82,6 @@ func Defaults() *Config {
 	config.Mandrill.FromName = "Hanzo"
 	config.Mandrill.FromEmail = "noreply@hanzo.ai"
 
-	config.Redis.Url = envOrDefault("REDIS_URL", "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324")
-	config.Redis.Password = os.Getenv("REDIS_PASSWORD")
-
 	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1"
 	config.Netlify.ClientId = os.Getenv("NETLIFY_CLIENT_ID")
 	config.Netlify.Secret = os.Getenv("NETLIFY_SECRET")
