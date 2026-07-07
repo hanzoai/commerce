@@ -152,6 +152,33 @@ func TestKVClientExists(t *testing.T) {
 	}
 }
 
+// TestKVBackendSelection proves the KV_URL selection: NewKVClientFromStore picks
+// the Base (SQLite) backend — the default when KV_URL is unset — while
+// NewKVClientFromURL picks the external Hanzo KV backend when KV_URL is set, and
+// a malformed KV_URL fails CLOSED (never a silent fallback to Base that would
+// split cache/lock state across two engines).
+func TestKVBackendSelection(t *testing.T) {
+	_, s := newTestKV(t, "")
+
+	base := NewKVClientFromStore(&KVConfig{Enabled: true}, s)
+	if _, ok := base.backend.(*baseBackend); !ok {
+		t.Fatalf("KV_URL unset must select Base, got %T", base.backend)
+	}
+
+	ext, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "redis://:pw@kv.tenant-acme.svc:6379")
+	if err != nil {
+		t.Fatalf("NewKVClientFromURL(valid): %v", err)
+	}
+	if _, ok := ext.backend.(*redisBackend); !ok {
+		t.Fatalf("KV_URL set must select external Hanzo KV, got %T", ext.backend)
+	}
+	_ = ext.Close()
+
+	if _, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "://not-a-url"); err == nil {
+		t.Fatal("malformed KV_URL must fail closed, got nil error")
+	}
+}
+
 // TestLockAcquireReleaseExtend exercises the base-backed distributed lock
 // round-trip via the Manager. SetKV is used so the Manager reuses the test
 // store rather than opening a second base app.
