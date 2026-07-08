@@ -122,6 +122,17 @@ func principalFor(tenantType string) sqlitedrv.PrincipalType {
 // sidecar inside the lock: the loser finds the winner's sidecar and uses it. The
 // common path (sidecar present) takes no lock.
 func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string) ([]byte, error) {
+	// Fail closed on a build that cannot encrypt. resolveMasterKey already refuses
+	// the env-sourced key on the pure-Go backend, but NewSQLiteDB also accepts a
+	// MasterKey injected directly on its config (the encrypt-at-rest migration tool
+	// and the encryption-proof test). Without this guard those paths reach
+	// sqlitedrv.DSN(path, dek), which PANICS on the pure-Go backend — turning a
+	// clear "cannot encrypt" refusal into a crash. Return the error the caller
+	// expects instead, so a keyed open on !cgo never panics and never risks
+	// silently persisting plaintext money data.
+	if !sqlitedrv.EncryptionAvailable() {
+		return nil, fmt.Errorf("cannot open %q encrypted: this build cannot encrypt (pure-Go sqlite); rebuild with CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or open without a master key for an unencrypted dev build", dbPath)
+	}
 	kek, err := sqlitedrv.DeriveKey(masterKey, pt, id)
 	if err != nil {
 		return nil, fmt.Errorf("derive KEK for %s:%s: %w", pt, id, err)
