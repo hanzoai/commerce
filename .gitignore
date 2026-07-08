@@ -60,6 +60,12 @@ checkout/ui/dist/*
 billing/ui/dist/*
 !billing/ui/dist/.gitkeep
 
-# hanzoai/plans is the SOT. CI fetches into api/billing/plans/ at
-# build time via scripts/fetch-plans.sh; never vendored.
-api/billing/plans/
+# hanzoai/plans is the SOT; scripts/fetch-plans.sh refreshes these at build.
+# BUT the two files below are go:embed'd (api/billing/plans.go), so they MUST be
+# committed: a Go module cannot embed a gitignored file, and cloud consumes
+# commerce AS A LIBRARY (the unified binary) where the module zip is all there is
+# — omitting them broke every downstream build from v1.42.30 (0de841321) on. The
+# rest of plans/ stays fetched/untracked.
+api/billing/plans/*
+!api/billing/plans/dns.json
+!api/billing/plans/subscription.json
