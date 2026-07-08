@@ -55,6 +55,7 @@ import (
 	giftcardApi "github.com/hanzoai/commerce/api/giftcard"
 	inventoryApi "github.com/hanzoai/commerce/api/inventory"
 	libraryApi "github.com/hanzoai/commerce/api/library"
+	metricsApi "github.com/hanzoai/commerce/api/metrics"
 	namespaceApi "github.com/hanzoai/commerce/api/namespace"
 	notificationApi "github.com/hanzoai/commerce/api/notification"
 	orderApi "github.com/hanzoai/commerce/api/order"
@@ -144,6 +145,8 @@ func Route(api router.Router) {
 	accountApi.Route(api, tokenRequired)
 	billingApi.Route(api, tokenRequired)
 	costsApi.Route(api, tokenRequired)
+	metricsApi.Route(api, tokenRequired) // SaaS ops god-view (revenue/subs/usage/customers) — global-admin gated inside
+
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
