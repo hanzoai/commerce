@@ -154,6 +154,32 @@ go run cmd/commerce/main.go serve --dev     # Development
 | `/api/v1/analytics/ai/message` | POST | AI message event |
 | `/api/v1/analytics/ai/completion` | POST | AI completion event |
 
+## SaaS Metrics God-View (api/metrics, 2026-07)
+
+`GET /v1/commerce/metrics/saas` — the whole-business SaaS operations snapshot for
+admin.hanzo.ai's "SaaS Metrics" board. ONE cross-org walk (proven all-orgs pattern
+from `api/billing.RunBillingCycleAllOrgs`), cached 45s, folding every org's
+**subscription** ledger (`models/subscription`) + **api-usage** transaction ledger
+into: revenue (MRR/ARR, new/churned MRR, MRR by plan category from the embedded
+@hanzo/plans catalog), subscription mix (per-plan active/trialing/seats + a recent
+create/cancel events feed), metered pay-as-you-go revenue totals, and top customers.
+Params: `window` (7d/30d/90d/mtd/all), `limit` (customers cap). Bundle-child subs
+(ProviderType "bundle") are excluded from counts/MRR. Upgrades/downgrades are `null`
+(plan-change events are not written to `models/billingevent`).
+
+Gate: `middleware.RequirePlatformAdmin` — the SINGLE cross-org read gate (global
+admin OR trusted service token; org-admin refused). `api/costs.requireCostsAdmin`
+delegates to it, so the two god-views share ONE gate definition. The route-level
+`TokenRequired(permission.Admin)` is a no-op on the IAM path — the in-handler gate
+is the boundary. The console reaches it through its OWN global-admin-gated proxy
+(`app/admin/saas`) forwarding `COMMERCE_SERVICE_TOKEN`.
+
+Deliberately NOT here (owned by the fleet o11y god-view `GET /v1/admin/o11y`):
+per-model LLM tokens/latency/error and the per-org AI-spend ranking. Commerce names
+those in the response `gaps[]` array, never fabricates. Per-model latency is
+captured nowhere in the stack; per-model error rate is in ClickHouse
+`cloud_usage.status` but not yet surfaced by the o11y `topModels` SQL.
+
 ## Dependencies
 
 **Core**: cobra, go-sqlite3, gin, hanzoai/datastore-go
