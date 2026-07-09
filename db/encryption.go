@@ -121,6 +121,16 @@ func principalFor(tenantType string) sqlitedrv.PrincipalType {
 // sidecar inside the lock: the loser finds the winner's sidecar and uses it. The
 // common path (sidecar present) takes no lock.
 func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string) ([]byte, error) {
+	// Fail closed on a build that cannot encrypt. Deriving/unwrapping a DEK and
+	// handing it to the driver would either write PLAINTEXT money data (codec
+	// missing) or, on the pure-Go backend, panic inside sqlitedrv.DSN when the key
+	// is applied. NewManager's resolveMasterKey() already rejects a configured key
+	// at startup; this is the defense-in-depth guard for any direct NewSQLiteDB
+	// caller (the migration tool, tests) so the failure is a clean error, never a
+	// panic and never silent plaintext.
+	if !sqlitedrv.EncryptionAvailable() {
+		return nil, fmt.Errorf("db: at-rest encryption requested for %s:%s but this build cannot encrypt (pure-Go sqlite); rebuild with CGO_ENABLED=1 + libsqlcipher, or unset the master key", pt, id)
+	}
 	kek, err := sqlitedrv.DeriveKey(masterKey, pt, id)
 	if err != nil {
 		return nil, fmt.Errorf("derive KEK for %s:%s: %w", pt, id, err)
@@ -204,17 +214,26 @@ func unwrapSidecar(dbPath, dekPath string, kek, aad []byte) ([]byte, error) {
 //     sqlite3_open_v2, before any pragma battery, so create AND reopen succeed);
 //     commerce's extra tuning pragmas are appended. The DSN CONTAINS the key —
 //     callers MUST NOT log it.
-//   - dek == nil → the plaintext "sqlite3" driver, byte-for-byte the legacy DSN.
-//     Used only when no master key is configured (dev / CGO-off CI).
+//   - dek == nil → an UNENCRYPTED file on the SAME backend-registered "sqlite"
+//     driver, via the backend's own DSN builder with a nil key. Used when no
+//     master key is configured (dev / CGO-off CI / the pure-Go production image).
+//
+// Both branches resolve the driver NAME and DSN from the one source of truth,
+// github.com/hanzoai/sqlite, so the merchant store opens identically regardless
+// of the build's backend. The prior unencrypted branch hardcoded the driver name
+// "sqlite3" (registered only by the cgo/mattn backend) plus a mattn-style pragma
+// DSN. Under the canonical CGO_ENABLED=0 build (Dockerfile.production) the pure-Go
+// modernc backend registers only "sqlite", so sql.Open("sqlite3", …) failed with
+// `unknown driver "sqlite3"` — Manager.Org then returned that error and EVERY
+// per-org merchant read/write surfaced as "database not initialized". Sourcing the
+// name+DSN from sqlitedrv.DSN(path, nil) (which emits the pragma form the ACTIVE
+// backend honors) decomplects the merchant store from the CGO build flag.
 func encDriverDSN(dbPath string, dek []byte, cfg SQLiteConfig) (string, string) {
-	if dek != nil {
-		dsn := sqlitedrv.DSN(dbPath, dek) // file:PATH?_busy_timeout=..&_journal_mode=WAL&..&key=x'..'
-		if extra := extraEncPragmas(cfg); extra != "" {
-			dsn += "&" + extra
-		}
-		return "sqlite", dsn
+	dsn := sqlitedrv.DSN(dbPath, dek) // dek==nil → plaintext DSN; else file:…&key=x'..'
+	if extra := extraEncPragmas(cfg); extra != "" {
+		dsn += "&" + extra
 	}
-	return "sqlite3", dbPath + buildPragmas(cfg)
+	return "sqlite", dsn
 }
 
 // extraEncPragmas emits the tuning pragmas the driver's canonical DSN does NOT
