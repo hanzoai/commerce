@@ -1,11 +1,14 @@
 package store
 
 import (
+	"context"
 	"errors"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 )
@@ -34,9 +37,24 @@ func mintStorefrontToken(c *gin.Context) {
 		return
 	}
 
-	org, ok := middleware.GetOrganizationOK(c)
-	if !ok || org == nil {
+	ctxOrg, ok := middleware.GetOrganizationOK(c)
+	if !ok || ctxOrg == nil || ctxOrg.Name == "" {
 		http.Fail(c, 400, "organization required", errors.New("no organization in context"))
+		return
+	}
+
+	// Reload the org on a LIVE datastore before mutating + persisting. The
+	// service-token resolver (middleware/svcorg) returns a CACHED org whose
+	// datastore is bound to a bounded context it has already canceled (defer
+	// cancel once Resolve returns), so calling Put() on that copy fails
+	// "context canceled". Orgs are a global (DefaultNamespace) kind, so an
+	// un-namespaced datastore on a fresh background context lands on the same
+	// shared store svcorg created it in. This mirrors how the REST handlers
+	// build a fresh entity on the request datastore rather than trusting the
+	// cached copy's stale context.
+	org := organization.New(datastore.New(context.Background()))
+	if err := org.GetOrCreate("Name=", ctxOrg.Name); err != nil {
+		http.Fail(c, 500, "failed to load organization", err)
 		return
 	}
 
