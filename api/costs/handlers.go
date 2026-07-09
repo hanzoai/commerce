@@ -1,14 +1,9 @@
 package costs
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/middleware/iammiddleware"
-	"github.com/hanzoai/commerce/util/bit"
-	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
 )
@@ -28,50 +23,22 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 }
 
 // requireCostsAdmin is the in-handler gate for the vendor-cost god-view. It fails
-// closed (403) unless the caller is a PLATFORM admin. It is enforced INSIDE each
+// closed (403) unless the caller is a PLATFORM admin, and is enforced INSIDE each
 // handler because the route-level middleware.TokenRequired(permission.Admin) is a
 // NO-OP on the IAM path: it short-circuits (c.Next) for ANY IAM-authenticated
 // request WITHOUT checking the Admin bit, and IAMTokenRequired stamps
 // iam_authenticated=true whenever an X-Org-Id header is present — which the gateway
 // sets on EVERY authenticated call. A handler must never trust that gate on its own.
 //
-// These figures are cross-tenant, PLATFORM spend (DigitalOcean + the LLM providers
-// we resell) plus the whole-platform revenue/margin, so — UNLIKE the per-org money
-// handlers that use middleware.RequireAdmin (org-level IsAdmin OK) — this gates on
-// the STRICTER GlobalAdmin predicate (see auth.IAMClaims.GlobalAdmin: "the ONLY
-// predicate safe to gate cross-org/superadmin actions on"). An org owner carries
-// IsAdmin=true within their own org and the gateway mints permission.Admin from it
-// (edgeauth.permsHeader), so NEITHER the Admin permission bit NOR IsAdmin may admit
-// an IAM user here — only GlobalAdmin.
-//
-// Two ways in, fail-closed:
-//  1. A JWT-verified GLOBAL admin (isGlobalAdmin claim, or the built-in admin org).
-//  2. The trusted M2M service token — the console's OWN global-admin-gated proxy
-//     (console → commerce) forwards with COMMERCE_SERVICE_TOKEN and X-Org-Id, but
-//     NO user identity. accesstoken.go authorizes that token and sets
-//     permission.Admin; it carries no IAM user (empty Subject). An IAM user ALWAYS
-//     carries a Subject (the JWT sub the gateway mints alongside any permission),
-//     so "Admin bit AND no IAM Subject" uniquely identifies the verified service
-//     token and can never be an org admin. The console proxy is the party that
-//     already enforced global-admin (getAdminGate) before it ever reached here.
-//
-// Reads c["permissions"] without MustGet so a handler mounted without the token
-// gate fails closed (403) rather than panicking (500).
+// These figures are cross-tenant PLATFORM spend/margin, so this gates on the
+// STRICTER GlobalAdmin predicate (or the trusted internal service token), NEVER the
+// org-level Admin bit an org owner carries. That gate is shared with the SaaS
+// metrics god-view (api/metrics) as the single middleware.RequirePlatformAdmin
+// predicate — one and only one definition of "may read cross-org platform data",
+// so costs and metrics can never drift apart. See middleware.MayReadPlatform for
+// the exact principals admitted and why org-level admin is refused.
 func requireCostsAdmin(c *gin.Context) bool {
-	claims := iammiddleware.GetIAMClaims(c) // non-nil by contract
-	if claims.GlobalAdmin() {
-		return true
-	}
-	// Trusted M2M service token: Admin bit present AND no IAM user identity.
-	if claims.Subject == "" {
-		if v, ok := c.Get("permissions"); ok {
-			if f, ok := v.(bit.Field); ok && f.Has(permission.Admin) {
-				return true
-			}
-		}
-	}
-	http.Fail(c, 403, "platform admin required to read vendor costs", errors.New("caller is not a global admin"))
-	return false
+	return middleware.RequirePlatformAdmin(c)
 }
 
 // GetCosts returns the per-vendor COGS breakdown for a period.
