@@ -46,6 +46,7 @@ test:
       sh scripts/fetch-plans.sh
       go test -count=1 -timeout=10m \
         ./billing/... \
+        ./db/... \
         ./delay/... \
         ./models/creditgrant/... \
         ./models/pricingrule/... \
