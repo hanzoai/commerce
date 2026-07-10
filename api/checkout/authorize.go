@@ -329,8 +329,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 				Status:   string(ord.Status),
 				OrgID:    org.Name,
 			}
+			// Detach from the request (survive client disconnect) but keep trace
+			// values — WithoutCancel, not Background. Captured before the goroutine.
+			ctx := context.WithoutCancel(c.Request.Context())
 			go func() {
-				ctx := context.Background()
 				ev.EmitOrderCompleted(ctx, evtOrd)
 			}()
 		}
@@ -340,8 +342,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
 			orderItems := orderLineItemInfos(ord)
+			// Detach from the request (survive client disconnect) but keep trace
+			// values — WithoutCancel, not Background. Captured before the goroutine.
+			ctx := context.WithoutCancel(c.Request.Context())
 			go func() {
-				if pubErr := p.PublishOrderCreated(context.Background(), ord.Id(), org.Name, usr.Id(), usr.Email,
+				if pubErr := p.PublishOrderCreated(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
 					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
 					log.Error("PublishOrderCreated: %v", pubErr, c)
 				}
