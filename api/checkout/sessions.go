@@ -487,8 +487,12 @@ func Sessions(c *gin.Context) {
 	// Publish checkout.started to NATS/JetStream (fire and forget)
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
+			// Detach from the request (survive client disconnect) but keep trace
+			// values — WithoutCancel, not Background. Captured before the goroutine
+			// because gin recycles c after the handler returns.
+			ctx := context.WithoutCancel(c.Request.Context())
 			go func() {
-				if pubErr := p.PublishCheckoutStarted(context.Background(), sessionResp.SessionID, org.Name, finalCents, currency); pubErr != nil {
+				if pubErr := p.PublishCheckoutStarted(ctx, sessionResp.SessionID, org.Name, finalCents, currency); pubErr != nil {
 					log.Error("PublishCheckoutStarted: %v", pubErr, c)
 				}
 			}()

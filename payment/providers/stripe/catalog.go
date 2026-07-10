@@ -9,6 +9,7 @@ package stripe
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -180,11 +181,14 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	// PaymentError from stripe.doRequest has .Code
+	// PaymentError from stripe.doRequest has .Code; errors.As unwraps so a
+	// %w-wrapped PaymentError is still recognized.
 	type coder interface{ Code() string }
-	if c, ok := err.(coder); ok && c.Code() == "resource_missing" {
+	var c coder
+	if errors.As(err, &c) && c.Code() == "resource_missing" {
 		return true
 	}
+	// Fallback for plain (non-coder) errors that carry only the Stripe message.
 	return strings.Contains(err.Error(), "resource_missing") ||
 		strings.Contains(err.Error(), "No such product") ||
 		strings.Contains(err.Error(), "No such price")

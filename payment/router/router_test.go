@@ -343,7 +343,7 @@ func TestLeastLoad(t *testing.T) {
 
 	// Artificially set stripe inflight high.
 	if c := r.getInflight("stripe"); c != nil {
-		atomic.StoreInt64(c, 100)
+		c.Store(100)
 	}
 
 	result, err := r.Charge(context.Background(), baseReq())
