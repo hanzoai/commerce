@@ -25,7 +25,8 @@
 package hooks
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -73,8 +74,8 @@ func (h *Hook[T]) Bind(handler *Handler[T]) {
 	h.handlers = append(h.handlers, handler)
 
 	// Sort by priority
-	sort.Slice(h.handlers, func(i, j int) bool {
-		return h.handlers[i].Priority < h.handlers[j].Priority
+	slices.SortFunc(h.handlers, func(a, b *Handler[T]) int {
+		return cmp.Compare(a.Priority, b.Priority)
 	})
 }
 
@@ -399,5 +400,5 @@ func generateHandlerID() string {
 	handlerIDMu.Lock()
 	defer handlerIDMu.Unlock()
 	handlerIDCounter++
-	return string(rune('A' + handlerIDCounter%26)) + string(rune('0'+handlerIDCounter/26%10))
+	return string(rune('A'+handlerIDCounter%26)) + string(rune('0'+handlerIDCounter/26%10))
 }

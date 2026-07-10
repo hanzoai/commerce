@@ -85,8 +85,11 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
 			orderItems := orderLineItemInfos(ord)
+			// Detach from the request (survive client disconnect) but keep trace
+			// values — WithoutCancel, not Background. Captured before the goroutine.
+			ctx := context.WithoutCancel(c.Request.Context())
 			go func() {
-				if pubErr := p.PublishOrderCompleted(context.Background(), ord.Id(), org.Name, usr.Id(), usr.Email,
+				if pubErr := p.PublishOrderCompleted(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
 					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
 					log.Error("PublishOrderCompleted: %v", pubErr, c)
 				}

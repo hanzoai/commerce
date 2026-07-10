@@ -13,6 +13,19 @@ import (
 	"time"
 )
 
+// StatusError is returned when KMS responds with a non-success HTTP status. It
+// carries the status code so callers branch on it with errors.As instead of
+// string-matching the message (e.g. a 404/400 = secret absent).
+type StatusError struct {
+	Op   string // operation, e.g. "get secret"
+	Code int    // HTTP status code
+	Body string // response body (may carry KMS error detail)
+}
+
+func (e *StatusError) Error() string {
+	return fmt.Sprintf("kms %s failed (status %d): %s", e.Op, e.Code, e.Body)
+}
+
 // Config holds KMS client configuration.
 type Config struct {
 	Enabled      bool
@@ -87,7 +100,7 @@ func (c *Client) authenticate() error {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("kms auth failed (status %d): %s", resp.StatusCode, string(respBody))
+		return &StatusError{Op: "auth", Code: resp.StatusCode, Body: string(respBody)}
 	}
 
 	var authResp authResponse
@@ -147,7 +160,7 @@ func (c *Client) GetSecretRaw(secretPath, secretName string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("kms get secret failed (status %d): %s", resp.StatusCode, string(respBody))
+		return "", &StatusError{Op: "get secret", Code: resp.StatusCode, Body: string(respBody)}
 	}
 
 	var secretResp secretResponse
@@ -189,7 +202,7 @@ func (c *Client) SetSecret(secretPath, secretName, secretValue string) error {
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("kms set secret failed (status %d): %s", resp.StatusCode, string(respBody))
+		return &StatusError{Op: "set secret", Code: resp.StatusCode, Body: string(respBody)}
 	}
 
 	return nil
