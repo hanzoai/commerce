@@ -1,9 +1,10 @@
 package costs
 
 import (
+	"cmp"
 	"context"
 	"net/http"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -47,11 +48,11 @@ func buildReport(ctx context.Context, isTest bool, p string) (CostReport, ledger
 	// stubs (their presence is itself the honest signal).
 	vendors = pruneEmpty(vendors)
 
-	sort.SliceStable(vendors, func(i, j int) bool {
-		if vendors[i].AmountCents != vendors[j].AmountCents {
-			return vendors[i].AmountCents > vendors[j].AmountCents
-		}
-		return vendors[i].Vendor < vendors[j].Vendor
+	slices.SortStableFunc(vendors, func(a, b VendorCost) int {
+		return cmp.Or(
+			cmp.Compare(b.AmountCents, a.AmountCents), // highest first
+			cmp.Compare(a.Vendor, b.Vendor),
+		)
 	})
 
 	return CostReport{

@@ -121,11 +121,13 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 	}
 }
 
-// recordAsync records usage without blocking the response. The detach uses a
-// background context so a client disconnect can't cancel the debit.
+// recordAsync records usage without blocking the response. The detach uses
+// context.WithoutCancel so a client disconnect can't cancel the debit, while
+// preserving the request's trace values (unlike context.Background()).
 func (c *Client) recordAsync(r *http.Request, u Usage, onErr func(*http.Request, Usage, error)) {
+	ctx := context.WithoutCancel(r.Context())
 	go func() {
-		if _, err := c.Record(context.Background(), u); err != nil && onErr != nil {
+		if _, err := c.Record(ctx, u); err != nil && onErr != nil {
 			onErr(r, u, err)
 		}
 	}()
