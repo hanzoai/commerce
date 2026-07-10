@@ -1,10 +1,11 @@
 package husdindex
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"math/big"
-	"sort"
+	"slices"
 
 	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/husd"
@@ -156,11 +157,11 @@ func (ix *Indexer) Sync(ctx context.Context) (int, error) {
 			return projected, err
 		}
 		// Deterministic order: block then logIndex.
-		sort.Slice(transfers, func(i, j int) bool {
-			if transfers[i].Block != transfers[j].Block {
-				return transfers[i].Block < transfers[j].Block
-			}
-			return transfers[i].LogIndex < transfers[j].LogIndex
+		slices.SortFunc(transfers, func(a, b Transfer) int {
+			return cmp.Or(
+				cmp.Compare(a.Block, b.Block),
+				cmp.Compare(a.LogIndex, b.LogIndex),
+			)
 		})
 		for _, t := range transfers {
 			if err := ix.project(ctx, t); err != nil {
@@ -210,7 +211,7 @@ func (ix *Indexer) ProjectTx(ctx context.Context, txHash string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	sort.Slice(transfers, func(i, j int) bool { return transfers[i].LogIndex < transfers[j].LogIndex })
+	slices.SortFunc(transfers, func(a, b Transfer) int { return cmp.Compare(a.LogIndex, b.LogIndex) })
 	n := 0
 	for _, t := range transfers {
 		if err := ix.project(ctx, t); err != nil {

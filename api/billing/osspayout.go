@@ -1,7 +1,8 @@
 package billing
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -244,11 +245,11 @@ func GetOSSPayoutSummary(c *gin.Context) {
 		maintainers = append(maintainers, s)
 	}
 	// Stable, useful order: largest owed first, then PURL.
-	sort.SliceStable(maintainers, func(i, j int) bool {
-		if maintainers[i].AccruedCents != maintainers[j].AccruedCents {
-			return maintainers[i].AccruedCents > maintainers[j].AccruedCents
-		}
-		return maintainers[i].PURL < maintainers[j].PURL
+	slices.SortStableFunc(maintainers, func(a, b *maintainerSummary) int {
+		return cmp.Or(
+			cmp.Compare(b.AccruedCents, a.AccruedCents), // highest first
+			cmp.Compare(a.PURL, b.PURL),
+		)
 	})
 
 	c.JSON(200, gin.H{
