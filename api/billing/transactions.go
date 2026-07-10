@@ -1,7 +1,8 @@
 package billing
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -72,8 +73,8 @@ func ListTransactions(c *gin.Context) {
 	}
 
 	// Sort newest first.
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].CreatedAt > all[j].CreatedAt
+	slices.SortFunc(all, func(a, b txResponse) int {
+		return cmp.Compare(b.CreatedAt, a.CreatedAt) // newest first
 	})
 
 	// Apply limit + offset.

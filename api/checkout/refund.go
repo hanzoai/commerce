@@ -330,8 +330,11 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	// Publish order.refunded to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
 	if pub, ok := c.Get("publisher"); ok {
 		if p, ok := pub.(*events.Publisher); ok {
+			// Detach from the request (survive client disconnect) but keep trace
+			// values — WithoutCancel, not Background. Captured before the goroutine.
+			ctx := context.WithoutCancel(c.Request.Context())
 			go func() {
-				if pubErr := p.PublishOrderRefunded(context.Background(), ord.Id(), org.Name, ord.UserId,
+				if pubErr := p.PublishOrderRefunded(ctx, ord.Id(), org.Name, ord.UserId,
 					int64(req.Amount), string(ord.Currency)); pubErr != nil {
 					log.Error("PublishOrderRefunded: %v", pubErr, c)
 				}

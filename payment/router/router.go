@@ -218,10 +218,10 @@ type Router struct {
 	mu       sync.RWMutex
 
 	// rrCounter is an atomically incremented round-robin counter.
-	rrCounter uint64
+	rrCounter atomic.Uint64
 
 	// inflight tracks per-processor in-flight request counts.
-	inflight map[processor.ProcessorType]*int64
+	inflight map[processor.ProcessorType]*atomic.Int64
 
 	// rng is used for weighted random selection; guarded by rngMu.
 	rng   *rand.Rand
@@ -251,11 +251,10 @@ func NewRouter(registry *processor.Registry, config Config) *Router {
 	}
 
 	breakers := make(map[processor.ProcessorType]*circuitBreaker, len(config.Processors))
-	inflight := make(map[processor.ProcessorType]*int64, len(config.Processors))
+	inflight := make(map[processor.ProcessorType]*atomic.Int64, len(config.Processors))
 	for _, pt := range config.Processors {
 		breakers[pt] = newCircuitBreaker(config.CircuitBreaker)
-		v := int64(0)
-		inflight[pt] = &v
+		inflight[pt] = new(atomic.Int64)
 	}
 
 	base := processor.NewBaseProcessor(routerProcessorType, currencies)
@@ -464,13 +463,13 @@ func (r *Router) routePayment(ctx context.Context, req processor.PaymentRequest,
 		// Track inflight.
 		counter := r.getInflight(pt)
 		if counter != nil {
-			atomic.AddInt64(counter, 1)
+			counter.Add(1)
 		}
 
 		result, err := fn(p, req)
 
 		if counter != nil {
-			atomic.AddInt64(counter, -1)
+			counter.Add(-1)
 		}
 
 		if err != nil {
@@ -547,7 +546,7 @@ func (r *Router) candidatesRoundRobin(_ context.Context, _ processor.PaymentRequ
 		return nil
 	}
 
-	idx := atomic.AddUint64(&r.rrCounter, 1) - 1
+	idx := r.rrCounter.Add(1) - 1
 	result := make([]processor.ProcessorType, n)
 	for i := 0; i < n; i++ {
 		result[i] = r.config.Processors[(int(idx)+i)%n]
@@ -652,7 +651,7 @@ func (r *Router) candidatesLeastLoad(_ context.Context, _ processor.PaymentReque
 	for i, pt := range r.config.Processors {
 		var load int64
 		if c := r.getInflight(pt); c != nil {
-			load = atomic.LoadInt64(c)
+			load = c.Load()
 		}
 		entries[i] = entry{pt, load}
 	}
@@ -747,7 +746,7 @@ func (r *Router) getBreaker(pt processor.ProcessorType) *circuitBreaker {
 }
 
 // getInflight returns the inflight counter for a processor type, or nil.
-func (r *Router) getInflight(pt processor.ProcessorType) *int64 {
+func (r *Router) getInflight(pt processor.ProcessorType) *atomic.Int64 {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.inflight[pt]

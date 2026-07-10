@@ -1,8 +1,9 @@
 package contributor
 
 import (
+	"cmp"
 	"math"
-	"sort"
+	"slices"
 )
 
 // PayoutAllocation represents a single contributor's share of a revenue pool.
@@ -47,13 +48,13 @@ func DefaultConfig() PayoutConfig {
 		MinPayoutCents:  100, // $1 minimum
 		ComponentWeights: map[string]float64{
 			// Core infrastructure weighted higher
-			"@hanzo/bot":       2.0,
-			"@hanzo/agents":    2.0,
-			"@hanzo/mcp":       1.5,
-			"@hanzo/gateway":   1.5,
-			"@hanzo/commerce":  1.5,
-			"@hanzo/auto":      1.0,
-			"@hanzo/ui":        1.0,
+			"@hanzo/bot":      2.0,
+			"@hanzo/agents":   2.0,
+			"@hanzo/mcp":      1.5,
+			"@hanzo/gateway":  1.5,
+			"@hanzo/commerce": 1.5,
+			"@hanzo/auto":     1.0,
+			"@hanzo/ui":       1.0,
 		},
 	}
 }
@@ -67,8 +68,8 @@ func DefaultConfig() PayoutConfig {
 //  4. For each software component used in the billing period:
 //     a. Weight the component's revenue contribution
 //     b. For each contributor to that component:
-//        - Calculate their line attribution percentage
-//        - Multiply by component's weighted revenue share
+//     - Calculate their line attribution percentage
+//     - Multiply by component's weighted revenue share
 //  5. Aggregate per-contributor across all components
 //  6. Apply minimum payout threshold
 //  7. Return sorted allocations (highest first)
@@ -177,8 +178,8 @@ func CalculatePayouts(
 		}
 	}
 
-	sort.Slice(allocations, func(i, j int) bool {
-		return allocations[i].AmountCents > allocations[j].AmountCents
+	slices.SortFunc(allocations, func(a, b PayoutAllocation) int {
+		return cmp.Compare(b.AmountCents, a.AmountCents) // highest first
 	})
 
 	return PayoutSummary{
