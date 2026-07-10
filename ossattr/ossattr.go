@@ -36,10 +36,11 @@
 package ossattr
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/binary"
 	"math/big"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -231,7 +232,7 @@ func Attribute(spendCents int64, pkgs []Package, policy Policy) Result {
 		keys = append(keys, k)
 		total += a.weight
 	}
-	sort.Strings(keys)
+	slices.Sort(keys)
 	res.TotalWeight = total
 
 	if total <= 0 {
@@ -271,11 +272,11 @@ func Attribute(spendCents int64, pkgs []Package, policy Policy) Result {
 	// remainders, deterministically (PURL as tiebreak via stable idx order).
 	leftover := pool - allocated
 	if leftover > 0 {
-		sort.SliceStable(remainders, func(a, b int) bool {
-			if remainders[a].remainder != remainders[b].remainder {
-				return remainders[a].remainder > remainders[b].remainder
-			}
-			return remainders[a].idx < remainders[b].idx
+		slices.SortStableFunc(remainders, func(a, b rem) int {
+			return cmp.Or(
+				cmp.Compare(b.remainder, a.remainder), // higher remainder first
+				cmp.Compare(a.idx, b.idx),             // stable idx tiebreak
+			)
 		})
 		for i := int64(0); i < leftover; i++ {
 			res.Allocations[remainders[i].idx].Cents++

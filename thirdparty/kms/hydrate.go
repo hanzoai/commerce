@@ -1,7 +1,7 @@
 package kms
 
 import (
-	"strings"
+	"errors"
 
 	"github.com/hanzoai/commerce/models/organization"
 )
@@ -118,8 +118,9 @@ func Hydrate(cc *CachedClient, org *organization.Organization) error {
 	for _, m := range mappings(org.Name) {
 		val, err := cc.GetSecret(m.path, m.name)
 		if err != nil {
-			// "not found" errors are expected — skip silently
-			if strings.Contains(err.Error(), "status 404") || strings.Contains(err.Error(), "status 400") {
+			// A 404/400 from KMS means the secret is absent — expected, skip.
+			var se *StatusError
+			if errors.As(err, &se) && (se.Code == 404 || se.Code == 400) {
 				continue
 			}
 			// Real communication failure

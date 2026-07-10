@@ -32,8 +32,9 @@ var (
 	// Alias utils
 	IgnoreFieldMismatch = utils.IgnoreFieldMismatch
 
-	// Global ID counter for allocations
-	globalIDCounter int64 = time.Now().Unix()
+	// Global ID counter for allocations, seeded to now (see init) so allocated
+	// IDs stay roughly monotonic across process restarts.
+	globalIDCounter atomic.Int64
 
 	// defaultDB is the fallback database used when New() is called without an explicit db.DB.
 	// Set via SetDefaultDB during application bootstrap.
@@ -46,6 +47,8 @@ var (
 	// shared default DB (which isolates per-org logically via the namespace column).
 	orgDBResolver func(namespace string) (db.DB, error)
 )
+
+func init() { globalIDCounter.Store(time.Now().Unix()) }
 
 // Query is the interface for datastore queries
 type Query = iface.Query
@@ -135,21 +138,24 @@ func NewNamespaced(ctx context.Context) *Datastore {
 // Uses the default database if one was set via SetDefaultDB.
 //
 // When called with a *gin.Context, the datastore automatically detaches
-// from the HTTP request lifecycle and uses context.Background() so that
+// from the HTTP request lifecycle with context.WithoutCancel so that
 // database queries are never canceled when the browser disconnects or an
 // upstream proxy timeout fires. This prevents "context canceled" errors
-// across all callers without requiring each handler to be updated.
+// across all callers without requiring each handler to be updated, while
+// preserving the request's context values (trace) rather than discarding
+// them as context.Background() would.
 func New(ctx context.Context) *Datastore {
-	// Detach from gin request context to prevent context cancellation
-	// when the HTTP connection closes before the DB query completes.
+	// Detach a *gin.Context from the request lifecycle so a closed HTTP
+	// connection can't cancel an in-flight DB query — but keep its values
+	// (trace) via WithoutCancel rather than dropping them with Background.
 	if _, ok := ctx.(*gin.Context); ok {
-		ctx = context.Background()
+		ctx = context.WithoutCancel(ctx)
 	}
 
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
-	d.allocateCounter = atomic.AddInt64(&globalIDCounter, 1000)
+	d.allocateCounter = globalIDCounter.Add(1000)
 	d.database = defaultDB
 	d.SetContext(ctx)
 	return d

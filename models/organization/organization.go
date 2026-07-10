@@ -383,10 +383,12 @@ func (o Organization) Namespace() string {
 }
 
 // Namespaced returns a context scoped to this organization's namespace.
-// When called with a gin.Context, we always detach from the HTTP request
-// lifecycle and use context.Background() for the database context. This
-// prevents "context canceled" errors when the browser disconnects or the
-// upstream proxy timeout fires before the ClickHouse query completes.
+// When called with a gin.Context, we detach from the HTTP request lifecycle
+// with context.WithoutCancel so the database context survives a browser
+// disconnect or upstream proxy timeout mid-query — while PRESERVING the
+// request's context values (trace and, critically, any mintauth grant).
+// Using WithoutCancel instead of context.Background() is what actually keeps
+// the mint authorization (a context value) reachable through the detach.
 func (o Organization) Namespaced(ctx context.Context) context.Context {
 	if c, ok := ctx.(*gin.Context); ok {
 		// HTTP boundary: mark every inbound-request datastore context mint-gated
@@ -395,12 +397,19 @@ func (o Organization) Namespaced(ctx context.Context) context.Context {
 		// proven mint authority (PlatformOnly / settled payment / server-fixed
 		// grant) satisfies it by adding mintauth.WithAuthorized, which rides in
 		// either the stored "context" (route middleware) or the write's own ctx.
-		base := context.Background() // DB ops must survive HTTP disconnect
+		//
+		// Prefer the stored request context (it carries a mintauth grant applied
+		// by PlatformOnly / settled-payment middleware); fall back to the gin
+		// context, whose Value() chain reaches the HTTP request context.
+		var base context.Context = c
 		if reqCtx := c.Value("context"); reqCtx != nil {
 			if ctxVal, ok := reqCtx.(context.Context); ok {
 				base = ctxVal
 			}
 		}
+		// Drop cancellation (survive HTTP disconnect) but keep values: the mint
+		// gate/grant and trace ride through unchanged.
+		base = context.WithoutCancel(base)
 		return nscontext.WithNamespace(mintauth.WithGate(base), o.Namespace())
 	}
 

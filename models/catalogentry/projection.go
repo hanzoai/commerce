@@ -1,7 +1,8 @@
 package catalogentry
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -151,15 +152,12 @@ func Project(db *datastore.Datastore, brand string) (Catalog, error) {
 		})
 	}
 
-	sort.SliceStable(items, func(i, j int) bool {
-		ri, rj := catRank[items[i].Category], catRank[items[j].Category]
-		if ri != rj {
-			return ri < rj
-		}
-		if items[i].Order != items[j].Order {
-			return items[i].Order < items[j].Order
-		}
-		return items[i].Name < items[j].Name
+	slices.SortStableFunc(items, func(a, b Item) int {
+		return cmp.Or(
+			cmp.Compare(catRank[a.Category], catRank[b.Category]),
+			cmp.Compare(a.Order, b.Order),
+			cmp.Compare(a.Name, b.Name),
+		)
 	})
 
 	return Catalog{Brand: brand, Categories: cats, Products: items}, nil
