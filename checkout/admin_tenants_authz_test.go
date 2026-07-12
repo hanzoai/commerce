@@ -59,11 +59,11 @@ func TestCreateTenant_ForgedSuperadminRole_403(t *testing.T) {
 	}
 }
 
-// TestCreateTenant_GlobalAdminByFlag_201 proves the explicit isGlobalAdmin
-// claim grants superadmin even from a non-admin org — forwards-compat with the
-// explicit gateway X-User-IsGlobalAdmin signal.
-func TestCreateTenant_GlobalAdminByFlag_201(t *testing.T) {
-	claims := &auth.IAMClaims{Owner: "hanzo", IsGlobalAdmin: true}
+// TestCreateTenant_SuperAdminByHomeOrg_201 proves the HOME org (X-User-Owner)
+// grants SuperAdmin even when the EFFECTIVE org (Owner/X-Org-Id) is a non-admin
+// tenant — the masquerade path (home=="admin", effective="hanzo").
+func TestCreateTenant_SuperAdminByHomeOrg_201(t *testing.T) {
+	claims := &auth.IAMClaims{HomeOrg: "admin", Owner: "hanzo"}
 	claims.Subject = "platform-op"
 	code, body := postCreateTenant(t, claims)
 	if code != http.StatusCreated {
