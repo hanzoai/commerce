@@ -55,7 +55,7 @@ func iamIdentity(perms bit.Field, claims *auth.IAMClaims) func(*gin.Context) {
 
 // TestPlatformOnly_OrgAdminDeniedMint is THE C1 proof at the gate: an ORG-level
 // admin (org owner — org-level IsAdmin=true, so the gateway mints Admin|Live, but
-// isGlobalAdmin=false) PASSES TokenRequired(Admin) yet is DENIED (403) by
+// IsSuperAdmin()=false) PASSES TokenRequired(Admin) yet is DENIED (403) by
 // PlatformOnly on the money-mint chain; the handler is never reached. This is the
 // exact principal (e.g. maxpower) that could previously self-mint unlimited balance.
 func TestPlatformOnly_OrgAdminDeniedMint(t *testing.T) {
@@ -67,14 +67,14 @@ func TestPlatformOnly_OrgAdminDeniedMint(t *testing.T) {
 	}
 }
 
-// TestPlatformOnly_GlobalAdminMints proves a PLATFORM (global) admin — the explicit
-// isGlobalAdmin claim OR membership in the "admin" org — passes the same chain
+// TestPlatformOnly_SuperAdminMints proves a PLATFORM (global) admin — the explicit
+// the reserved "admin" org (owner=="admin") — passes the same chain
 // (the legitimate human-superadmin path RED's spec requires to still work).
-func TestPlatformOnly_GlobalAdminMints(t *testing.T) {
+func TestPlatformOnly_SuperAdminMints(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	for _, gc := range []*auth.IAMClaims{
-		{Owner: "hanzo", IsGlobalAdmin: true},
-		{Owner: "admin"}, // the global-admin org
+		{HomeOrg: "admin", Owner: "hanzo"}, // home org grants sudo even from a non-admin effective org
+		{Owner: "admin"},                   // the global-admin org
 	} {
 		status, reached := runMintGate(t, iamIdentity(bit.Field(permission.Admin|permission.Live), gc), nil)
 		if status != http.StatusOK || !reached {
@@ -106,7 +106,7 @@ func TestPlatformOnly_ServiceTokenMints(t *testing.T) {
 
 // TestPlatformOnly_AdminBitAloneDenied pins the gate's core invariant in isolation:
 // holding the org-level Admin bit — or being merely IAM-authenticated as an org
-// owner — is NOT sufficient; only the service-token marker or GlobalAdmin passes.
+// owner — is NOT sufficient; only the service-token marker or SuperAdmin (owner=="admin") passes.
 // This is the anti-conflation that closes C1: a legacy per-org access token and an
 // org owner, both of which carry Admin, are refused. Fail-closed on empty context.
 func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
