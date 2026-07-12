@@ -18,8 +18,8 @@ import (
 // aggregate that spans every tenant. It admits exactly the principals a
 // platform god-view trusts, and fails closed for everyone else:
 //
-//  1. a Hanzo PLATFORM (global) administrator — auth.IAMClaims.GlobalAdmin():
-//     the spoof-proof isGlobalAdmin claim (gateway/EdgeAuth X-User-IsGlobalAdmin)
+//  1. a Hanzo PLATFORM SuperAdmin — auth.IAMClaims.IsSuperAdmin():
+//     owner=="admin" (the reserved admin org), from the gateway/EdgeAuth X-User-Owner header
 //     OR membership in the built-in "admin" org; and
 //  2. the trusted internal service token — IsServiceToken(c), the console's OWN
 //     global-admin-gated proxy forwarding (console → commerce) with the
@@ -35,7 +35,7 @@ import (
 // It deliberately does NOT admit the org-level Admin bit (permission.Admin) held
 // by an org OWNER: the gateway mints permission.Admin from a tenant's own
 // IsAdmin (edgeauth.permsHeader), so gating cross-org reads on that bit would let
-// ANY org owner read the whole fleet's revenue. Only GlobalAdmin (or the trusted
+// ANY org owner read the whole fleet's revenue. Only a SuperAdmin (or the trusted
 // service token) may. This is the same org-admin-vs-global-admin anti-conflation
 // PlatformOnly/MayMintMoney enforce for the money-MINT side.
 //
@@ -43,7 +43,7 @@ import (
 // gate fails closed (false) rather than panicking. Fail-closed: none present → false.
 func MayReadPlatform(c *gin.Context) bool {
 	claims := iammiddleware.GetIAMClaims(c) // non-nil by contract
-	if claims.GlobalAdmin() {
+	if claims.IsSuperAdmin() {
 		return true
 	}
 	if IsServiceToken(c) {
