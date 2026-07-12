@@ -2,8 +2,8 @@
 //
 // Two handlers:
 //
-//	POST /_/commerce/tenants   global-admin-only create (GlobalAdmin: owner==admin
-//	                           or isGlobalAdmin — NOT org-level isAdmin)
+//	POST /_/commerce/tenants   SuperAdmin-only create (owner=="admin"
+//	                           — NOT org-level isAdmin)
 //	GET  /_/commerce/providers tenant-admin list current tenant's providers
 //
 // Security invariants (Red-1 H-1 precedent):
@@ -52,14 +52,14 @@ func NewTenantAdminAPI(s *store.Store) *TenantAdminAPI {
 // than the in-store Tenant: an admin creating a row is not allowed to
 // preset id or timestamps, and hostnames are normalized server-side.
 type createTenantRequest struct {
-	Name               string             `json:"name"`
-	Hostnames          []string           `json:"hostnames"`
-	Brand              store.BrandConfig  `json:"brand"`
-	IAM                store.IAMConfig    `json:"iam"`
-	IDV                store.IDVConfig    `json:"idv"`
-	Providers          []store.Provider   `json:"providers"`
-	BDEndpoint         string             `json:"bd_endpoint"`
-	ReturnURLAllowlist []string           `json:"return_url_allowlist"`
+	Name               string            `json:"name"`
+	Hostnames          []string          `json:"hostnames"`
+	Brand              store.BrandConfig `json:"brand"`
+	IAM                store.IAMConfig   `json:"iam"`
+	IDV                store.IDVConfig   `json:"idv"`
+	Providers          []store.Provider  `json:"providers"`
+	BDEndpoint         string            `json:"bd_endpoint"`
+	ReturnURLAllowlist []string          `json:"return_url_allowlist"`
 }
 
 // createTenantResponse echoes the server-assigned id + timestamps. It does
@@ -75,7 +75,7 @@ type createTenantResponse struct {
 // ─── handler: POST /_/commerce/tenants ──────────────────────────────────
 
 // CreateTenant creates a new tenant row. Only PLATFORM (global) admins —
-// GlobalAdmin(): owner==admin or the explicit isGlobalAdmin claim — may call
+// IsSuperAdmin(): the HOME owner=="admin" (reserved admin org) — may call
 // this. Org owners (org-level isAdmin) and tenant-admins get 403;
 // unauthenticated callers get 401.
 func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
@@ -321,26 +321,25 @@ func publicTenantDTO(t *store.Tenant) publicStoreView {
 // clients. Matches publicView's shape from tenant.go but on store types so
 // there is no accidental type-assertion seam.
 type publicStoreView struct {
-	Name               string              `json:"name"`
-	Brand              store.BrandConfig   `json:"brand"`
-	IAM                store.IAMConfig     `json:"iam"`
-	IDV                store.IDVConfig     `json:"idv"`
-	Providers          []publicProvider    `json:"providers"`
-	ReturnURLAllowlist []string            `json:"returnUrlAllowlist"`
+	Name               string            `json:"name"`
+	Brand              store.BrandConfig `json:"brand"`
+	IAM                store.IAMConfig   `json:"iam"`
+	IDV                store.IDVConfig   `json:"idv"`
+	Providers          []publicProvider  `json:"providers"`
+	ReturnURLAllowlist []string          `json:"returnUrlAllowlist"`
 }
 
 // ─── role predicates ────────────────────────────────────────────────────
 
-// isSuperadmin returns true ONLY for a Hanzo PLATFORM (global) administrator:
-// the explicit isGlobalAdmin claim, or membership in the admin org. It does
-// NOT trust org-level IsAdmin (an org owner carries it within their own org)
-// nor any org-mintable role NAME like "superadmin"/"platform-admin" — either
-// would let an org owner create tenants and perform cross-tenant ops (Red
-// HIGH: org-admin → superadmin escalation). One robust predicate, defined on
-// the claims type (auth.IAMClaims.GlobalAdmin) and shared with the edge
-// billing boundary. nil-safe.
+// isSuperadmin returns true ONLY for a Hanzo PLATFORM SuperAdmin: membership in
+// the reserved "admin" org (the HOME owner == "admin"). It does NOT trust
+// org-level IsAdmin (an org owner carries it within their own org) nor any
+// org-mintable role NAME like "superadmin"/"platform-admin" — either would let an
+// org owner create tenants and perform cross-tenant ops (Red HIGH: org-admin →
+// superadmin escalation). One robust predicate, defined on the claims type
+// (auth.IAMClaims.IsSuperAdmin) and shared with the edge billing boundary. nil-safe.
 func isSuperadmin(c *auth.IAMClaims) bool {
-	return c.GlobalAdmin()
+	return c.IsSuperAdmin()
 }
 
 // isTenantAdmin returns true for an ORG-level admin — the robust isAdmin claim

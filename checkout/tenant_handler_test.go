@@ -8,7 +8,7 @@
 //     secrets / KMS paths / BD endpoints. Public body is a tight
 //     projection.
 //  2. POST /_/commerce/tenants requires a PLATFORM (global) admin —
-//     GlobalAdmin(): owner==admin or the explicit isGlobalAdmin claim. An org
+//     IsSuperAdmin(): the HOME owner=="admin" (reserved admin org). An org
 //     owner (org-level isAdmin) or an org-mintable "superadmin" role gets 403.
 //  3. GET /_/commerce/providers is tenant-scoped from the IAM `owner`
 //     claim, never from the request. A caller whose owner has no tenant
@@ -127,11 +127,11 @@ func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 	// MUST NOT leak: KMS paths, BD endpoint, disabled provider names,
 	// client secrets (none are stored — confirm they never appear).
 	forbidden := []string{
-		"kms/commerce/acme/square",   // KMS path
+		"kms/commerce/acme/square", // KMS path
 		"kms/commerce/acme/braintree",
-		"bd.acme.example.test",       // BD endpoint
-		"braintree",                  // disabled provider
-		"client_secret",              // never stored, confirm projection doesn't invent
+		"bd.acme.example.test", // BD endpoint
+		"braintree",            // disabled provider
+		"client_secret",        // never stored, confirm projection doesn't invent
 	}
 	for _, s := range forbidden {
 		if strings.Contains(body, s) {
