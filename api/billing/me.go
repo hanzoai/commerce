@@ -154,6 +154,23 @@ func PostMyWelcome(c *gin.Context) {
 		return
 	}
 
+	// The welcome credit is REAL MONEY. Granting it to anyone who can POST a signup
+	// form makes it a faucet: a bot farm mints accounts and drains the credit pool.
+	// Require a payment method on file first — the card is the cost of abuse, and it
+	// is also what the free tier is NOT: run the OSS bot with your own keys for free,
+	// or attach a payment method and get $5 to try the hosted models.
+	// getCardOnFile is the SAME primitive that gates real-money GPU debits — one
+	// definition of "this subject can be charged", not a second ad-hoc query.
+	if !getCardOnFile(db, user).OnFile {
+		c.JSON(200, gin.H{
+			"user":    user,
+			"granted": false,
+			"reason":  "payment_method_required",
+			"message": "Add a payment method to claim your $5 starter credit.",
+		})
+		return
+	}
+
 	trans := transaction.New(db)
 	// DETERMINISTIC key: two concurrent first-time grants that both pass the tag
 	// check above collapse onto ONE row (ON CONFLICT upsert), so the welcome
