@@ -63,7 +63,10 @@ func orgBillingKey(c *gin.Context) string {
 //
 //	GET /v1/billing/me/balance?currency=usd
 func GetMyBalance(c *gin.Context) {
-	user := orgBillingKey(c)
+	// The wallet the gate reads: the person on a personal-billing org, the org's pool
+	// otherwise. Reading the org here while the gate read the person is how a customer
+	// tops up one key and sees another.
+	user := userBillingKey(c)
 	if user == "" {
 		http.Fail(c, 401, "missing identity headers", nil)
 		return
@@ -105,7 +108,9 @@ func GetMyBalance(c *gin.Context) {
 //
 //	POST /v1/billing/me/welcome
 func PostMyWelcome(c *gin.Context) {
-	user := orgBillingKey(c)
+	// Grant into the SAME wallet the gate spends from — a credit minted to the org pool
+	// while the person's wallet is what gates their requests buys them nothing.
+	user := userBillingKey(c)
 	if user == "" {
 		http.Fail(c, 401, "missing identity headers", nil)
 		return
