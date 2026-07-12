@@ -402,7 +402,7 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 }
 
 // orgAdminEngine mounts billing + affiliate behind a seed that mints an ORG-admin
-// identity (org-level isAdmin, isGlobalAdmin=false) — the exact C1 adversary.
+// identity (org-level isAdmin, NOT a SuperAdmin) — the exact C1 adversary.
 func orgAdminEngine(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
