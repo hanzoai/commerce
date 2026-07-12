@@ -76,9 +76,14 @@ func TestStandaloneForge_TenantCreate_Blocked(t *testing.T) {
 	body := []byte(`{"name":"` + forgedName + `","hostnames":["pay.forged.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	// The exact forge Red used, plus the org-level admin header for good measure.
+	// The exact forge Red used, PLUS the new HOME-org sudo header (X-User-Owner):
+	// the platform-sudo predicate is now owner=="admin" via X-User-Owner, so a
+	// pod forging `X-User-Owner: admin` is the current escalation vector. EdgeAuth
+	// must strip it (and the retired X-User-IsGlobalAdmin, and X-Org-Id/X-User-IsAdmin)
+	// so nothing is trusted; with IAM disabled nothing is re-minted → 401.
 	req.Header.Set("X-Org-Id", "admin")
-	req.Header.Set("X-User-IsGlobalAdmin", "true")
+	req.Header.Set("X-User-Owner", "admin")        // NEW sudo header — must be stripped
+	req.Header.Set("X-User-IsGlobalAdmin", "true") // retired boolean — still stripped
 	req.Header.Set("X-User-IsAdmin", "true")
 	req.Header.Set("X-User-Id", "mallory")
 

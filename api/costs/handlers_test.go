@@ -30,8 +30,14 @@ func gateCtx(w http.ResponseWriter, claims *auth.IAMClaims, perms *bit.Field) *g
 
 // iamUser builds claims for a JWT-verified IAM user (a non-empty Subject, the sub
 // the gateway always mints). Subject is promoted from the embedded StandardClaims.
-func iamUser(subject, owner string, isAdmin, isGlobalAdmin bool) *auth.IAMClaims {
-	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin, IsGlobalAdmin: isGlobalAdmin}
+// superAdmin maps to the ONE platform-sudo signal: the HOME org == "admin"
+// (X-User-Owner). Set independently of owner (the effective org) so a case can
+// model a SuperAdmin acting from any effective org (the masquerade path).
+func iamUser(subject, owner string, isAdmin, superAdmin bool) *auth.IAMClaims {
+	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin}
+	if superAdmin {
+		cl.HomeOrg = "admin"
+	}
 	cl.Subject = subject
 	return cl
 }
@@ -55,9 +61,9 @@ func TestRequireCostsAdmin(t *testing.T) {
 		want   bool
 	}{
 		// A global admin is admitted.
-		{"global admin (explicit claim)", iamUser("u1", "acme", false, true), adminPerms(), true},
+		{"superadmin (home org, effective=acme)", iamUser("u1", "acme", false, true), adminPerms(), true},
 		// The built-in admin org (owner=="admin") is a global admin.
-		{"global admin (admin org)", iamUser("u1", "admin", false, false), adminPerms(), true},
+		{"superadmin (owner==home==admin)", iamUser("u1", "admin", false, false), adminPerms(), true},
 		// The trusted M2M service token: Admin bit AND no IAM user identity (empty
 		// Subject). This is the console's own global-admin-gated proxy forwarding.
 		{"service token (Admin bit, no IAM user)", &auth.IAMClaims{}, adminPerms(), true},
@@ -67,7 +73,7 @@ func TestRequireCostsAdmin(t *testing.T) {
 		// An org-level admin tenant: the gateway mints permission.Admin from IsAdmin
 		// (edgeauth.permsHeader), so the Admin bit is present — but the caller carries
 		// an IAM Subject, so the service-token branch must NOT admit, and IsAdmin is
-		// NOT GlobalAdmin. This is the headline privilege-escalation the gate closes.
+		// NOT a SuperAdmin. This is the headline privilege-escalation the gate closes.
 		{"org admin tenant (Admin bit + IAM subject) — REJECT", iamUser("u2", "acme", true, false), adminPerms(), false},
 		// A plain tenant with no admin at all.
 		{"plain tenant — REJECT", iamUser("u3", "acme", false, false), nil, false},
