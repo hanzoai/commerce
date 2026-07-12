@@ -29,7 +29,7 @@ import (
 )
 
 // orgAdminSeed sets the exact C1 adversary: an org-level admin (org-level
-// isAdmin, isGlobalAdmin=false) — a gateway-minted org owner or legacy per-org
+// isAdmin, NOT a SuperAdmin) — a gateway-minted org owner or legacy per-org
 // Admin token. NOT the internal service token, NOT a platform global admin.
 func orgAdminSeed(c *gin.Context) {
 	c.Set("iam_authenticated", true)
