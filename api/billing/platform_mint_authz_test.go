@@ -45,7 +45,7 @@ func engineWithSeed(seed func(*gin.Context)) *gin.Engine {
 }
 
 // TestC1_OrgAdminDeniedOnEveryMintRoute is THE acceptance test: an org-admin JWT
-// (org-level isAdmin=true → gateway-minted Admin|Live, isGlobalAdmin=false) is
+// (org-level isAdmin=true → gateway-minted Admin|Live, NOT a SuperAdmin) is
 // FORBIDDEN (403) on every money-mint route. Before the fix, TokenRequired(Admin)
 // admitted this principal and the handler minted a client-supplied amount → a live
 // self-credit-unlimited-balance hole.
