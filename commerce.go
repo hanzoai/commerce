@@ -2,7 +2,7 @@
 //
 // Commerce is a multi-tenant e-commerce platform that runs as a standalone
 // binary with embedded SQLite for per-user/org data and optional analytics
-// via ClickHouse.
+// via the Hanzo Datastore.
 //
 // Architecture:
 //
@@ -112,7 +112,7 @@ type Config struct {
 	// Analytics collector endpoint (optional)
 	AnalyticsEndpoint string
 
-	// Analytics DSN (optional, for direct ClickHouse queries)
+	// Analytics DSN (optional, for direct datastore queries)
 	DatastoreDSN string
 
 	// Infrastructure configuration
@@ -180,7 +180,7 @@ func DefaultConfig() *Config {
 //	KV_PREFIX     = optional key namespace (cache is hanzo/base, embedded)
 //	S3_URL        = s3://key:secret@host:9000/bucket
 //	S3_ENDPOINT   = host:9000  (with S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET)
-//	DATASTORE_URL = clickhouse://host:9000/db
+//	DATASTORE_URL = datastore://host:9000/db
 //	SQL_URL       = postgresql://user:pass@host:5432/db
 //	VECTOR_URL    = qdrant://host:6333
 //	SEARCH_URL    = http://host:7700
