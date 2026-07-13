@@ -362,7 +362,7 @@ GET /v1/billing/credit-grants -- user's credits with tag filtering
 ```
 
 Analytics data (click counts, funnel visualization) comes from the analytics
-pixel/event data that Commerce already collects and stores in ClickHouse.
+pixel/event data that Commerce already collects and stores in the Datastore.
 
 ## Implementation Plan
 

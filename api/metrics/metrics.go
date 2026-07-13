@@ -102,7 +102,7 @@ type SubEvent struct {
 //
 // PER-MODEL tokens, per-org AI-spend ranking, latency and error rate are
 // deliberately NOT here. The canonical fleet LLM-observability aggregate is the
-// cloud god-view GET /v1/admin/o11y (ClickHouse hanzo.cloud_usage + signoz_traces),
+// cloud god-view GET /v1/admin/o11y (the Datastore hanzo.cloud_usage + signoz_traces),
 // already rendered by the console "Fleet Observability" board. The SaaS module
 // consumes THAT for its AI panel rather than re-deriving per-model numbers from
 // commerce's noindex ledger — one aggregate, no fork, no risk of two disagreeing
