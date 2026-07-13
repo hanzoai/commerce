@@ -35,8 +35,8 @@ func gateCtx(w http.ResponseWriter, claims *auth.IAMClaims, perms *bit.Field) *g
 	return c
 }
 
-func iamUser(subject, owner string, isAdmin, isGlobalAdmin bool) *auth.IAMClaims {
-	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin, IsGlobalAdmin: isGlobalAdmin}
+func iamUser(subject, owner string, isAdmin bool) *auth.IAMClaims {
+	cl := &auth.IAMClaims{Owner: owner, IsAdmin: isAdmin}
 	cl.Subject = subject
 	return cl
 }
@@ -47,12 +47,12 @@ func adminPerms() *bit.Field {
 }
 
 // TestGetSaaS_RefusesNonPlatformAdmin is the CRITICAL authz proof: the SaaS
-// god-view is cross-tenant business data, so anyone who is not a PLATFORM global
-// admin (or the trusted internal service token) must get 403 with NO data leaked —
-// before the handler ever touches the datastore. The headline attack is the
-// org-level admin: the gateway mints permission.Admin from a tenant's own IsAdmin,
-// so the Admin bit is present, but the caller carries an IAM Subject and IsAdmin is
-// NOT GlobalAdmin — it must be refused.
+// god-view is cross-tenant business data, so anyone who is not a PLATFORM
+// SuperAdmin (or the trusted internal service token) must get 403 with NO data
+// leaked — before the handler ever touches the datastore. The headline attack is
+// the org-level admin: the gateway mints permission.Admin from a tenant's own
+// IsAdmin, so the Admin bit is present, but the caller carries an IAM Subject and
+// its home org is NOT "admin" — it is not a SuperAdmin and must be refused.
 func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -61,9 +61,9 @@ func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 		claims *auth.IAMClaims
 		perms  *bit.Field
 	}{
-		{"org admin tenant (Admin bit + IAM subject)", iamUser("u2", "acme", true, false), adminPerms()},
-		{"plain tenant (no admin)", iamUser("u3", "acme", false, false), nil},
-		{"iam user, Admin claim but no perms bit", iamUser("u4", "acme", true, false), nil},
+		{"org admin tenant (Admin bit + IAM subject)", iamUser("u2", "acme", true), adminPerms()},
+		{"plain tenant (no admin)", iamUser("u3", "acme", false), nil},
+		{"iam user, Admin claim but no perms bit", iamUser("u4", "acme", true), nil},
 		{"no auth context at all", nil, nil},
 	}
 	for _, tc := range cases {
@@ -82,8 +82,8 @@ func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 }
 
 // TestGate_AdmitsPlatformPrincipals proves the accept side of the shared gate: a
-// global admin (explicit claim or the built-in admin org) and the trusted M2M
-// service token (Admin bit + no IAM Subject) are admitted; org admins are not.
+// SuperAdmin (home org == the built-in "admin" org) and the trusted M2M service
+// token (Admin bit + no IAM Subject) are admitted; org admins are not.
 func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cases := []struct {
@@ -92,12 +92,11 @@ func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
 		perms  *bit.Field
 		want   bool
 	}{
-		{"global admin (explicit claim)", iamUser("u1", "acme", false, true), adminPerms(), true},
-		{"global admin (admin org)", iamUser("u1", "admin", false, false), adminPerms(), true},
+		{"superadmin (admin org)", iamUser("u1", "admin", false), adminPerms(), true},
 		{"service token (Admin bit, no IAM user)", &auth.IAMClaims{}, adminPerms(), true},
 		{"service token (nil claims, Admin bit)", nil, adminPerms(), true},
-		{"org admin tenant — REJECT", iamUser("u2", "acme", true, false), adminPerms(), false},
-		{"plain tenant — REJECT", iamUser("u3", "acme", false, false), nil, false},
+		{"org admin tenant — REJECT", iamUser("u2", "acme", true), adminPerms(), false},
+		{"plain tenant — REJECT", iamUser("u3", "acme", false), nil, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
