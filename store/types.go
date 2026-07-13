@@ -1,6 +1,6 @@
 // Package store is the hanzo/base-backed persistence seam for commerce.
 //
-// This package replaces the scattered hanzoai/datastore-go + bespoke model
+// This package replaces the scattered hanzo-ds/go + bespoke model
 // packages with a single, typed repository facade over a base.Collection set.
 // The first collection migrated is `commerce_tenants` — other collections
 // (orders, products, etc.) follow the same shape: Go model struct + typed
