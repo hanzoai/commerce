@@ -41,7 +41,7 @@ func (a *DatastoreAdapter) Get(ctx context.Context, k orm.Key, dst interface{}) 
 }
 
 // GetForUpdate is required by orm.DB. DatastoreAdapter is a legacy path
-// backed by hanzoai/datastore-go and does not participate in orm-managed
+// backed by hanzo-ds/go and does not participate in orm-managed
 // transactions — GetForUpdate outside a tx is an error per the interface
 // contract. The legacy commerce code never takes out row locks, so this
 // sentinel is the correct forward posture; new code uses commerce/store.
