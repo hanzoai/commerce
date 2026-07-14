@@ -57,6 +57,17 @@ func orgBillingKey(c *gin.Context) string {
 	return strings.ToLower(strings.TrimSpace(org.Name))
 }
 
+// userBillingKey is the wallet the caller pays from: the person on a personal
+// org, the org's pool otherwise (BillingSubjectFor, resolve.go). "" when no org
+// is resolved.
+func userBillingKey(c *gin.Context) string {
+	org := orgBillingKey(c)
+	if org == "" {
+		return ""
+	}
+	return BillingSubjectFor(org, c.GetHeader("X-User-Id"))
+}
+
 // GetMyBalance returns the calling user's balance for a given currency.
 // Identity comes from the gateway-injected X-Org-Id / X-User-Id headers;
 // no admin token required.
