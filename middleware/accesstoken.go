@@ -85,6 +85,35 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 	}
 }
 
+// ensureIAMOrg resolves the request's org from the VALIDATED IAM identity (the
+// gateway-minted X-Org-Id) and sets the "organization" context key — so commerce
+// derives the org from IAM, the ONE org/user/auth authority, never its own
+// Organization table and never requiring commerce-side pre-provisioning. It is
+// idempotent (a no-op when iammiddleware already resolved the org upstream) and
+// uses the SAME cached GetOrCreate resolver as the service-token path, so an IAM
+// principal's first request auto-projects a thin billing record keyed by the IAM
+// org. No org header, or a bearer-shaped selector, leaves the key unset (the
+// handler's GetOrganizationOK degrades cleanly rather than seeding a bogus org).
+func ensureIAMOrg(c *gin.Context) {
+	if _, ok := c.Get("organization"); ok {
+		return
+	}
+	orgName := strings.TrimSpace(c.GetHeader("X-Org-Id"))
+	if orgName == "" || organization.IsSecretLikeName(orgName) {
+		return
+	}
+	org, err := svcorg.Resolve(orgName)
+	if err != nil {
+		log.Warn("TokenRequired: IAM org resolve for '%s' failed: %v", orgName, err)
+		return
+	}
+	// Per-request Live view on a COPY (the resolver returns a shared cached org).
+	reqOrg := *org
+	reqOrg.Live = !strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true")
+	c.Set("organization", &reqOrg)
+	c.Set("active-organization", reqOrg.Id())
+}
+
 // Parses token, default permissions check
 func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
@@ -99,26 +128,20 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// IAM/gateway identity path. IAMTokenRequired has already set
-		// c["permissions"] from the gateway-minted X-User-Permissions (0 when
-		// absent — fail closed). Enforce the SAME masks the legacy and
-		// service-token paths enforce: a bare c.Next() here made every masked gate
-		// (e.g. TokenRequired(Admin, Published) on the checkout money routes) a
-		// NO-OP for ANY IAM-authenticated principal, so a low-privilege or forged
-		// (perms=0) IAM caller reached the money handlers. No masks
-		// (TokenRequired()) still means "any authenticated principal" — the billing
-		// read path is unchanged; with masks the caller must actually hold them.
-		if iammiddleware.IsIAMAuthenticated(c) {
-			if len(masks) == 0 || hasScope(c, permissions) {
-				c.Next()
-				return
-			}
-			http.Fail(c, 403, "Token doesn't support this scope",
-				errors.New("IAM principal lacks required permission scope"))
-			return
-		}
-
-		// Service token: shared secret for service-to-service calls (e.g., cloud-api → commerce).
+		// Service token FIRST — checked before the IAM branch below. A request bearing
+		// the internal S2S secret (COMMERCE_SERVICE_TOKEN) is the trusted platform
+		// caller: the in-process metering/billing dispatch (cloud → commerce via
+		// buildMeteringClient) that reads balances and posts usage debits. It MUST
+		// authenticate as the service, NEVER be subjected to the per-user IAM scope
+		// gate — that dispatch also carries X-Org-Id (to select the tenant namespace),
+		// which IAMTokenRequired stamps as iam_authenticated with ZERO permissions (an
+		// S2S call carries no X-User-Permissions). Left after the IAM branch, an
+		// Admin-masked money route (/v1/billing/{balance,tier,usage}) 403'd "IAM
+		// principal lacks required permission scope" and the completions edge rendered
+		// that internal failure as a client 500. Possession of the KMS-sourced token is
+		// proof of trust — no external caller ever holds it — so ordering it first
+		// neither widens scope nor weakens the gate for real user principals (who never
+		// carry the token; see the IAM branch below). The token is never logged.
 		// Set COMMERCE_SERVICE_TOKEN env var on both the caller and Commerce.
 		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
 			header := c.GetHeader("Authorization")
@@ -204,6 +227,33 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				c.Next()
 				return
 			}
+		}
+
+		// IAM/gateway identity path. IAMTokenRequired has already set
+		// c["permissions"] from the gateway-minted X-User-Permissions (0 when
+		// absent — fail closed). Enforce the SAME masks the legacy and
+		// service-token paths enforce: a bare c.Next() here made every masked gate
+		// (e.g. TokenRequired(Admin, Published) on the checkout money routes) a
+		// NO-OP for ANY IAM-authenticated principal, so a low-privilege or forged
+		// (perms=0) IAM caller reached the money handlers. No masks
+		// (TokenRequired()) still means "any authenticated principal" — the billing
+		// read path is unchanged; with masks the caller must actually hold them.
+		// (Runs AFTER the service-token branch above, so a trusted S2S dispatch that
+		// also carries X-Org-Id is never mis-gated as a scope-less IAM principal.)
+		if iammiddleware.IsIAMAuthenticated(c) {
+			if len(masks) == 0 || hasScope(c, permissions) {
+				// Commerce derives the org from IAM, never its own table: resolve the
+				// validated X-Org-Id via the SAME cached GetOrCreate resolver the
+				// service-token path uses, auto-projecting a thin billing record so an
+				// IAM principal's org "just works" with no commerce-side provisioning.
+				// Idempotent — a no-op when iammiddleware already resolved it upstream.
+				ensureIAMOrg(c)
+				c.Next()
+				return
+			}
+			http.Fail(c, 403, "Token doesn't support this scope",
+				errors.New("IAM principal lacks required permission scope"))
+			return
 		}
 
 		// Parse token
