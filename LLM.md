@@ -850,3 +850,23 @@ commerce/v1/* strip`) rather than re-prefixing the backend bundle.
 - PVC is ReadWriteOnce — use Recreate deployment strategy, not RollingUpdate
 - Filter field names are PascalCase (Go struct) — auto-converted to camelCase JSON
 - Boolean `false` with `omitempty` may be omitted from JSON — COALESCE handles NULL=false
+
+## Un-fork: THIS repo is canonical; cloud imports it (v1.47.0)
+Cloud's inlined fork (`hanzoai/cloud clients/commerce/`, no go.mod) is being
+retired: cloud `import github.com/hanzoai/commerce` + a thin subsystems adapter.
+v1.47.0 = content parity with the fork's last cloud-side deltas:
+- product.created/updated events (`events/`, `api/api/product_events.go`) — storefront loop
+- `middleware/accesstoken.go`: service-token checked BEFORE the IAM branch (S2S
+  metering dispatch must never hit the per-user scope gate) + `ensureIAMOrg`
+  (org from gateway X-Org-Id via svcorg.Resolve; IAM is the one org authority)
+- sessionless webhook fixes: `resolveWebhookOrg` uses GetOrganizationOK (no
+  panic on provider deliveries); square provider seeds from env at init so
+  webhook validation works with no tenant resolver in front
+- `Embedded.brand` (set by the mounter; surfaced in the in-process OrgConfig)
+NOT ported (deliberate): the fork's GCP-style BillingAccount
+(Default/LimitCents/projectbinding budget cluster) — the money-of-record
+BillingAccount + Binding + resolveBilling chain HERE is the one design; the
+fork's spend-cap/budget features must be re-expressed on Binding (#70), not
+imported as a competing model. Also not ported: thirdparty/ethereum (dropped
+deliberately, LGPL), and the cloud bridges (finance-coupled metering client,
+in-process entitlement client, Deps adapter) — those live cloud-side.
