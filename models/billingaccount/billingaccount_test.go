@@ -21,7 +21,7 @@ func nsDB(parent context.Context, ns string) *datastore.Datastore {
 func TestAccountAdoptsSubjectID(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	db := nsDB(c, "hanzo")
+	db := nsDB(c, "acct-adopt")
 
 	a := New(db)
 	a.SetId("hanzo/alice") // adopt the pre-existing per-user subject verbatim
@@ -53,7 +53,7 @@ func TestAccountAdoptsSubjectID(t *testing.T) {
 func TestGetMissingAccount(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	db := nsDB(c, "hanzo")
+	db := nsDB(c, "acct-missing")
 
 	if _, err := Get(db, "acct_does_not_exist"); err != datastore.ErrNoSuchEntity {
 		t.Fatalf("get missing = %v; want ErrNoSuchEntity", err)
