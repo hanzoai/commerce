@@ -13,7 +13,7 @@ import (
 func TestBindIsIdempotent(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	db := nsDB(c, "acme")
+	db := nsDB(c, "bind-idem")
 
 	if _, err := Bind(db, HolderOrg, "acme", "acme", 100); err != nil {
 		t.Fatalf("first bind: %v", err)
@@ -40,7 +40,7 @@ func TestBindIsIdempotent(t *testing.T) {
 func TestForHolderIsPriorityOrdered(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	db := nsDB(c, "acme")
+	db := nsDB(c, "bind-order")
 
 	// Insert out of order; expect priority-ascending back.
 	mustBind(t, db, HolderUser, "alice", "acct_c", 30)
@@ -67,7 +67,7 @@ func TestForHolderIsPriorityOrdered(t *testing.T) {
 func TestForHolderEmptyHolderYieldsNothing(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	db := nsDB(c, "acme")
+	db := nsDB(c, "bind-empty")
 	mustBind(t, db, HolderOrg, "acme", "acme", 100)
 
 	got, err := ForHolder(db, HolderOrg, "")
