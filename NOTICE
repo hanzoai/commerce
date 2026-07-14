@@ -15,7 +15,3 @@ This product includes software from btcd/btcec (https://github.com/btcsuite/btcd
 This product includes software from the Go standard library (https://github.com/golang/go), licensed under the BSD 3-Clause License:
 
     Copyright (c) 2010 The Go Authors. All rights reserved.
-
-This product includes software from go-ethereum (https://github.com/ethereum/go-ethereum), licensed under LGPL-3.0:
-
-    Copyright 2017 The go-ethereum Authors
