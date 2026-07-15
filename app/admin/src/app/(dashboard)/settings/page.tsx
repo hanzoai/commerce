@@ -38,7 +38,7 @@ export default function SettingsPage() {
           <dl className="space-y-4">
             <Field
               label="API Endpoint"
-              value={process.env.NEXT_PUBLIC_COMMERCE_API_URL || 'https://commerce-api.hanzo.ai'}
+              value={process.env.NEXT_PUBLIC_COMMERCE_API_URL || 'https://commerce.hanzo.ai'}
             />
             <Field
               label="IAM Server"

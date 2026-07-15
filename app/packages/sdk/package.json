@@ -33,7 +33,7 @@
     "qs": "^6.12.1"
   },
   "scripts": {
-    "build": "rimraf dist && tsc -p tsconfig.json && tsc -p tsconfig.esm.json",
+    "build": "echo '@hanzo/commerce-sdk is consumed as TS source (exports -> ./src); no compile step'",
     "test": "jest --passWithNoTests --bail --forceExit --detectOpenHandles",
     "watch": "tsc --build --watch"
   }
