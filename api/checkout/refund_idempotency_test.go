@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
@@ -19,6 +20,25 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
+// refundApp registers the real Refund handler on a fresh zip app. The route
+// handler first seeds the locals a live request's auth/identity + request
+// context middleware would set — the caller's organization, the namespaced
+// request context, and the verified admin claim the gateway/EdgeAuth mints (so
+// middleware.RequireAdmin authorizes the money move) — then calls Refund on the
+// SAME ctx. Driving it through app.Fiber().Test exercises the real route so
+// fiber populates the :orderid param exactly as production does.
+func refundApp(org *organization.Organization, base context.Context, ns string) *zip.App {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Post("/v1/order/:orderid/refund", func(c *zip.Ctx) error {
+		c.Locals("organization", org)
+		c.SetContext(base)
+		c.Locals("iam_authenticated", true)
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
+		return Refund(c)
+	})
+	return app
+}
+
 // TestRefund_Idempotency_ReplayReturnsStored proves the refund guard: once a
 // refund with key K has completed, a SECOND POST with the same K returns the
 // stored response and NEVER re-enters refund() (which would hit the gateway and
@@ -28,7 +48,6 @@ import (
 func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	const ns = "acme"
 	base := nscontext.WithNamespace(context.Background(), ns)
@@ -59,31 +78,28 @@ func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = ns
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Set("context", base)
-	// Refund is admin-gated (money move); inject the verified admin claim the
-	// gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes.
-	c.Set("iam_authenticated", true)
-	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
-	c.Params = gin.Params{{Key: "orderid", Value: ord.Id()}}
+	app := refundApp(org, base, ns)
 	body, _ := json.Marshal(map[string]any{"amount": 1500})
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	c.Request.Header.Set("X-Idempotency-Key", "refund_key_1")
+	req := httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Idempotency-Key", "refund_key_1")
 
-	Refund(c)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("refund request: %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
 
-	if w.Code != 200 {
-		t.Fatalf("replay status = %d, want 200; body=%s", w.Code, w.Body.String())
+	if resp.StatusCode != 200 {
+		t.Fatalf("replay status = %d, want 200; body=%s", resp.StatusCode, string(respBody))
 	}
 	var got map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
-		t.Fatalf("replay body not JSON: %s", w.Body.String())
+	if err := json.Unmarshal(respBody, &got); err != nil {
+		t.Fatalf("replay body not JSON: %s", string(respBody))
 	}
 	if got["sentinel"] != true {
-		t.Fatalf("replay did not return the stored response (would have re-refunded!); body=%s", w.Body.String())
+		t.Fatalf("replay did not return the stored response (would have re-refunded!); body=%s", string(respBody))
 	}
 }
 
@@ -93,7 +109,6 @@ func TestRefund_Idempotency_ReplayReturnsStored(t *testing.T) {
 func TestRefund_Idempotency_InFlightRejected(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	const ns = "acme"
 	base := nscontext.WithNamespace(context.Background(), ns)
@@ -115,23 +130,20 @@ func TestRefund_Idempotency_InFlightRejected(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = ns
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Set("context", base)
-	// Refund is admin-gated (money move); inject the verified admin claim the
-	// gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes.
-	c.Set("iam_authenticated", true)
-	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
-	c.Params = gin.Params{{Key: "orderid", Value: ord.Id()}}
+	app := refundApp(org, base, ns)
 	body, _ := json.Marshal(map[string]any{"amount": 1500})
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	c.Request.Header.Set("X-Idempotency-Key", "inflight_key")
+	req := httptest.NewRequest(http.MethodPost, "/v1/order/"+ord.Id()+"/refund", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Idempotency-Key", "inflight_key")
 
-	Refund(c)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("refund request: %v", err)
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
 
-	if w.Code != 409 {
-		t.Fatalf("in-flight replay status = %d, want 409 (must not double-refund); body=%s", w.Code, w.Body.String())
+	if resp.StatusCode != 409 {
+		t.Fatalf("in-flight replay status = %d, want 409 (must not double-refund); body=%s", resp.StatusCode, string(respBody))
 	}
 }

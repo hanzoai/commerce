@@ -66,14 +66,16 @@ func probe(t *testing.T, app *App, method, path string, host string, body []byte
 	if host != "" {
 		req.Host = host
 	}
-	w := httptest.NewRecorder()
-	app.Router.ServeHTTP(w, req)
-	return w.Result()
+	resp, terr := app.Router.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
+	return resp
 }
 
 // TestRoutes_WiredInProduction proves P8-H1 is fixed: the store-backed
 // /v1/commerce/tenant and /_/commerce/tenants endpoints are wired in the
-// booted commerce binary's gin router. If either returns the NoRoute 404
+// booted commerce binary's router. If either returns the NoRoute 404
 // body `{"error":"not found"}` (MountSPA's isAPIPath branch) the wiring is
 // missing.
 //

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -57,27 +57,27 @@ type gpuChargeRequest struct {
 // card / add prepaid). amountCents is the immediate charge; minPrepaidCents is
 // the 24h-minimum prepaid the GPU policy requires before launch (the gate needs
 // prepaidAvailable >= max(amountCents, minPrepaidCents)).
-func GPUChargeEligibility(c *gin.Context) {
+func GPUChargeEligibility(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	if org == nil {
-		http.Fail(c, 401, "missing organization", nil)
-		return
+		return http.Fail(c, 401, "missing organization", nil)
 	}
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
-	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
+	cur := currency.Type(strings.ToLower(c.Query("currency")))
+	if cur == "" {
+		cur = "usd"
+	}
 	amount := currency.Cents(queryInt64(c, "amountCents", 0))
 	minPrepaid := currency.Cents(queryInt64(c, "minPrepaidCents", 0))
 
 	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 	card := getCardOnFile(datastore.New(ctx), user)
 
@@ -95,7 +95,7 @@ func GPUChargeEligibility(c *gin.Context) {
 		eligible, reason = false, "insufficient_prepaid"
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":             user,
 		"currency":         cur,
 		"eligible":         eligible,
@@ -120,28 +120,24 @@ func GPUChargeEligibility(c *gin.Context) {
 //
 // Admin/service token (mounted on the admin group) — called by the cloud GPU
 // launch/meter path, never the browser.
-func ChargeGPU(c *gin.Context) {
+func ChargeGPU(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	if org == nil {
-		http.Fail(c, 401, "missing organization", nil)
-		return
+		return http.Fail(c, 401, "missing organization", nil)
 	}
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	var req gpuChargeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 	if req.AmountCents <= 0 {
-		http.Fail(c, 400, "amountCents must be positive", nil)
-		return
+		return http.Fail(c, 400, "amountCents must be positive", nil)
 	}
 	cur := currency.Type(strings.ToLower(req.Currency))
 	if cur == "" {
@@ -151,28 +147,25 @@ func ChargeGPU(c *gin.Context) {
 	// Gate 1: a chargeable card MUST be on file — a GPU is real money.
 	card := getCardOnFile(db, req.User)
 	if !card.OnFile {
-		c.JSON(402, gin.H{"error": gin.H{
+		return c.JSON(402, map[string]any{"error": map[string]any{
 			"code":    "card_required",
 			"message": "Add a card on file before launching a GPU",
 		}})
-		return
 	}
 
 	// Gate 2: PREPAID real money alone must cover the charge — credits are never
 	// consulted, so a GPU can never draw on a grant.
 	split, err := bucketedSplit(ctx, req.User, cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 	if split.PrepaidAvailable < currency.Cents(req.AmountCents) {
-		c.JSON(402, gin.H{"error": gin.H{
+		return c.JSON(402, map[string]any{"error": map[string]any{
 			"code":             "insufficient_prepaid",
 			"message":          "Add prepaid funds (GPUs are billed from prepaid real money, not credits)",
 			"prepaidAvailable": int64(split.PrepaidAvailable),
 			"requiredCents":    req.AmountCents,
 		}})
-		return
 	}
 
 	// Record the debit as a "gpu"-tagged Withdraw. bucket.Compute attributes a
@@ -200,13 +193,12 @@ func ChargeGPU(c *gin.Context) {
 	}
 	if err := trans.Create(); err != nil {
 		log.Error("Failed to record GPU charge for %s: %v", req.User, err, c)
-		http.Fail(c, 500, "failed to record GPU charge", err)
-		return
+		return http.Fail(c, 500, "failed to record GPU charge", err)
 	}
 
 	// New prepaid balance after the debit.
 	after, _ := bucketedSplit(ctx, req.User, cur, org.TestMode())
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"transactionId":  trans.Id(),
 		"user":           req.User,
 		"amount":         req.AmountCents,
@@ -232,7 +224,7 @@ func gpuTag(tag string) string {
 	return "gpu-" + t
 }
 
-func queryInt64(c *gin.Context, key string, def int64) int64 {
+func queryInt64(c *zip.Ctx, key string, def int64) int64 {
 	s := strings.TrimSpace(c.Query(key))
 	if s == "" {
 		return def

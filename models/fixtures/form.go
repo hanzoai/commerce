@@ -1,13 +1,13 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/form"
 	"github.com/hanzoai/commerce/models/types/thankyou"
 )
 
-var Form = New("form", func(c *gin.Context) *form.Form {
+var Form = New("form", func(c *zip.Ctx) *form.Form {
 	db := getNamespaceDb(c)
 
 	f := form.New(db)

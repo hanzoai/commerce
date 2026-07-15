@@ -9,11 +9,11 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/accounts"
 	"github.com/hanzoai/commerce/models/types/refs"
+	. "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/timeutil"
 	"github.com/hanzoai/commerce/util/val"
-	. "github.com/hanzoai/commerce/types"
 )
 
 // Registration handled by models/subscription

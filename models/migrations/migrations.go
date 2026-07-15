@@ -3,7 +3,7 @@ package migrations
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore/parallel"
 	"github.com/hanzoai/commerce/delay"
@@ -12,11 +12,11 @@ import (
 
 type Row parallel.BigQueryRow
 
-type SetupFn func(*gin.Context) []interface{}
+type SetupFn func(*zip.Ctx) []interface{}
 
 var NoArgs = []interface{}{}
 
-func NoSetup(c *gin.Context) []interface{} {
+func NoSetup(c *zip.Ctx) []interface{} {
 	return NoArgs
 }
 
@@ -28,7 +28,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 		tasks[i] = parallel.New(name+"-task-"+strconv.Itoa(i), fn)
 	}
 
-	return task.Func(name, func(c *gin.Context) {
+	return task.Func(name, func(c *zip.Ctx) error {
 		// Call setup fn
 		args := setupFn(c)
 
@@ -36,6 +36,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 			// Run task fn
 			tasks[i].Run(c, 10, args...)
 		}
+		return nil
 	})
 }
 
@@ -47,7 +48,7 @@ func NewBigQuery(name string, setupFn SetupFn, fns ...interface{}) *delay.Functi
 		tasks[i] = parallel.NewBigQuery(name+"-task-"+strconv.Itoa(i), fn)
 	}
 
-	return task.Func(name, func(c *gin.Context) {
+	return task.Func(name, func(c *zip.Ctx) error {
 		// Call setup fn
 		args := setupFn(c)
 
@@ -55,5 +56,6 @@ func NewBigQuery(name string, setupFn SetupFn, fns ...interface{}) *delay.Functi
 			// Run task fn
 			tasks[i].Run(c, 10, args...)
 		}
+		return nil
 	})
 }

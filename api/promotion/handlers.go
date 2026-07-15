@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -15,10 +15,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	rest.New(promotionModel.Promotion{}).Route(router, args...)
@@ -63,14 +62,13 @@ type evalResponse struct {
 // It queries all active automatic promotions, checks date ranges and
 // currency constraints, then calculates discount adjustments using the
 // associated ApplicationMethod.
-func Evaluate(c *gin.Context) {
+func Evaluate(c *zip.Ctx) error {
 	var req evalRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		jsonhttp.Fail(c, 400, "Invalid request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return jsonhttp.Fail(c, 400, "Invalid request body", err)
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	db := datastore.New(ctx)
@@ -79,8 +77,7 @@ func Evaluate(c *gin.Context) {
 	var promotions []*promotionModel.Promotion
 	q := promotionModel.Query(db).Filter("Status=", "active").Filter("IsAutomatic=", true)
 	if _, err := q.GetAll(&promotions); err != nil {
-		jsonhttp.Fail(c, 500, "Failed to query promotions", err)
-		return
+		return jsonhttp.Fail(c, 500, "Failed to query promotions", err)
 	}
 
 	adjustments := make([]adjustment, 0)
@@ -108,7 +105,7 @@ func Evaluate(c *gin.Context) {
 		switch am.Type {
 		case "percentage":
 			if am.TargetType == "order" {
-					// Value is in basis points: 1500 = 15.00%
+				// Value is in basis points: 1500 = 15.00%
 				discountAmount = req.CartTotal * int64(am.Value) / 10000
 			}
 		case "fixed":
@@ -126,7 +123,7 @@ func Evaluate(c *gin.Context) {
 		}
 	}
 
-	jsonhttp.Render(c, 200, evalResponse{
+	return jsonhttp.Render(c, 200, evalResponse{
 		Adjustments:   adjustments,
 		TotalDiscount: totalDiscount,
 	})

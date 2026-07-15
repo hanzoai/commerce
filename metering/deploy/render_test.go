@@ -45,9 +45,9 @@ func TestRender_Vector_MeteredSidecar(t *testing.T) {
 		"sidecars:",
 		"name: vector", // product runs as sidecar (reached on localhost; no port map)
 		"image: ghcr.io/hanzoai/vector:1.16.3",
-		"mountPath: /qdrant/storage",      // per-tenant storage
-		"claimName: vector-acme-data",     // per-tenant PVC
-		"- acme.vector.hanzo.ai",          // ingress host
+		"mountPath: /qdrant/storage",  // per-tenant storage
+		"claimName: vector-acme-data", // per-tenant PVC
+		"- acme.vector.hanzo.ai",      // ingress host
 	}
 	for _, s := range must {
 		if !strings.Contains(out, s) {
@@ -75,10 +75,10 @@ func TestRender_Search_PriceTableAndStorage(t *testing.T) {
 	for _, s := range []string{
 		"name: search-zoo",
 		`value: "search"`,
-		"POST|/indexes/|3",       // index a document costs 3c
+		"POST|/indexes/|3", // index a document costs 3c
 		"mountPath: /meili_data",
 		"claimName: search-zoo-data",
-		"METERING_TEST",          // test ledger requested
+		"METERING_TEST", // test ledger requested
 		`COMMERCE_SERVICE_ORG`,
 		`value: "zoo"`,
 	} {

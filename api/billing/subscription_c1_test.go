@@ -5,11 +5,12 @@ package billing
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
@@ -22,32 +23,28 @@ import (
 
 // invokeSub drives a subscription handler with an org + datastore context + a
 // caller identity (org-admin vs mint principal), reproducing the production reach.
-func invokeSub(org *organization.Organization, ctx context.Context, identity func(*gin.Context), h gin.HandlerFunc, body string) *httptest.ResponseRecorder {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Set("context", ctx)
-	identity(c)
+func invokeSub(org *organization.Organization, ctx context.Context, identity func(*zip.Ctx), h zip.Handler, body string) *http.Response {
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/subscriptions", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	c.Request = req
-	h(c)
-	return w
+	return driveSeeded(func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(ctx)
+		identity(c)
+	}, "/v1/billing/subscriptions", req, h)
 }
 
 // c1OrgAdmin models the adversary: an org owner (org-level isAdmin) who is NOT a
 // platform global admin and NOT the internal service token → MayMintMoney false.
-func c1OrgAdmin(c *gin.Context) {
-	c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-	c.Set("iam_authenticated", true)
-	c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+func c1OrgAdmin(c *zip.Ctx) {
+	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+	c.Locals("iam_authenticated", true)
+	c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 }
 
 // c1MintPrincipal models cloud-api's internal service token → MayMintMoney true.
-func c1MintPrincipal(c *gin.Context) {
-	c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-	c.Set("service_token_verified", true)
+func c1MintPrincipal(c *zip.Ctx) {
+	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+	c.Locals("service_token_verified", true)
 }
 
 // TestCreateSubscription_OrgAdminPaidTier_Denied is C1-a: an org admin must NOT
@@ -61,8 +58,8 @@ func TestCreateSubscription_OrgAdminPaidTier_Denied(t *testing.T) {
 
 	body := `{"userId":"acme/self","planId":"max"}`
 	w := invokeSub(org, ctx, c1OrgAdmin, CreateBillingSubscription, body)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("org-admin self-subscribe to paid 'max': status=%d body=%s, want 403 (no free paid tier)", w.Code, w.Body.String())
+	if w.StatusCode != http.StatusForbidden {
+		t.Fatalf("org-admin self-subscribe to paid 'max': status=%d body=%s, want 403 (no free paid tier)", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 }
 
@@ -75,8 +72,8 @@ func TestCreateSubscription_OrgAdminFreeTier_Allowed(t *testing.T) {
 
 	body := `{"userId":"acme/self","planId":"developer"}`
 	w := invokeSub(org, ctx, c1OrgAdmin, CreateBillingSubscription, body)
-	if w.Code == http.StatusForbidden {
-		t.Fatalf("org-admin self-subscribe to FREE 'developer': status=403 body=%s, want allowed (free tier is self-serve)", w.Body.String())
+	if w.StatusCode == http.StatusForbidden {
+		t.Fatalf("org-admin self-subscribe to FREE 'developer': status=403 body=%s, want allowed (free tier is self-serve)", func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 }
 
@@ -90,8 +87,8 @@ func TestCreateSubscription_MintPrincipalPaidTier_Allowed(t *testing.T) {
 
 	body := `{"userId":"acme/self","planId":"max"}`
 	w := invokeSub(org, ctx, c1MintPrincipal, CreateBillingSubscription, body)
-	if w.Code == http.StatusForbidden {
-		t.Fatalf("service-token create paid 'max': status=403 body=%s, want allowed (authorized mint principal)", w.Body.String())
+	if w.StatusCode == http.StatusForbidden {
+		t.Fatalf("service-token create paid 'max': status=403 body=%s, want allowed (authorized mint principal)", func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 }
 
@@ -156,9 +153,9 @@ func TestPlanForGrant_OrgAdminCannotAnchorOnForgedSub(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 	seedSub(t, db, "acme/forger", "max", subscription.Active, "internal", "")
 
-	// Build an org-admin gin context (MayMintMoney false).
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
+	// Build an org-admin request context (MayMintMoney false).
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	c := app.TestCtx("POST", "/")
 	c1OrgAdmin(c)
 
 	if got := planForGrant(c, db, "acme/forger", "max"); got != "" {

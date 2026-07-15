@@ -15,12 +15,12 @@ import (
 type Status string
 
 const (
-	Pending    Status = "pending"     // Awaiting deposit
-	Confirming Status = "confirming"  // Deposit detected, awaiting confirmations
-	Succeeded  Status = "succeeded"   // Fully confirmed + settled
-	Expired    Status = "expired"     // No deposit received before timeout
-	Failed     Status = "failed"      // Deposit failed (reorg, etc.)
-	Refunded   Status = "refunded"    // Refund issued on-chain
+	Pending    Status = "pending"    // Awaiting deposit
+	Confirming Status = "confirming" // Deposit detected, awaiting confirmations
+	Succeeded  Status = "succeeded"  // Fully confirmed + settled
+	Expired    Status = "expired"    // No deposit received before timeout
+	Failed     Status = "failed"     // Deposit failed (reorg, etc.)
+	Refunded   Status = "refunded"   // Refund issued on-chain
 )
 
 // Chain represents a supported blockchain.

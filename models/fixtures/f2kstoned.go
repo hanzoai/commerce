@@ -1,7 +1,7 @@
 package fixtures
 
 // import (
-// 	"github.com/gin-gonic/gin"
+// 	"github.com/zap-proto/zip"
 
 // 	"github.com/hanzoai/commerce/datastore"
 // 	"github.com/hanzoai/commerce/models/lineitem"
@@ -14,8 +14,8 @@ package fixtures
 // 	. "github.com/hanzoai/commerce/types"
 // )
 
-// var _ = New("sa-f2k", func(c *gin.Context) *organization.Organization {
-// 	db := datastore.New(c)
+// var _ = New("sa-f2k", func(c *zip.Ctx) *organization.Organization {
+// 	db := datastore.New(c.Context())
 
 // 	org := organization.New(db)
 // 	org.Query().Filter("Name=", "stoned").Get()

@@ -33,7 +33,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/affiliate"
 	transactionApi "github.com/hanzoai/commerce/api/transaction"
@@ -44,7 +44,6 @@ import (
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // mountMintSurface mounts the FULL /v1 ledger surface a mint could reach —
@@ -55,13 +54,13 @@ import (
 // bundle). Adding a mint route anywhere here brings it under the guard
 // automatically. The per-router auth (tokenRequired/adminRequired) matches
 // api.Route so an org-admin probe reproduces production reachability.
-func mountMintSurface(v1 router.Router) {
+func mountMintSurface(v1 zip.Router) {
 	tokenRequired := middleware.TokenRequired(permission.Admin)
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	Route(v1)                 // billing
-	affiliate.Route(v1)       // affiliate payouts
-	transactionApi.Route(v1)  // POST /v1/transaction (generic ledger create — C1-b)
+	Route(v1)                // billing
+	affiliate.Route(v1)      // affiliate payouts
+	transactionApi.Route(v1) // POST /v1/transaction (generic ledger create — C1-b)
 	rest.New(wallet.Wallet{}).Route(v1, adminRequired)
 	rest.New(tokentransaction.Transaction{}).Route(v1, tokenRequired)
 }
@@ -108,7 +107,7 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 					// .Create()s it (so its Type is attacker-controlled, e.g. a
 					// Deposit) — the shape the literal `x.Type = Deposit` detector
 					// misses. This is exactly api/transaction.Create.
-					txVars := map[string]bool{}       // vars assigned from transaction.New(...)
+					txVars := map[string]bool{}        // vars assigned from transaction.New(...)
 					decodeTargets := map[string]bool{} // vars a request body was decoded INTO
 					hasCreate := false                 // a .Create() call is present
 					ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -386,16 +385,15 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 // every registered route whose terminal handler reaches a mint sink.
 func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
-	eng := gin.New()
-	v1 := eng.Group("/v1")
-	mountMintSurface(v1)
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	rr := newRecordingRouter(app)
+	mountMintSurface(rr.Group("/v1"))
 
 	var out []mintRoute
-	for _, ri := range eng.Routes() {
-		short := ri.Handler[strings.LastIndex(ri.Handler, ".")+1:]
+	for _, ri := range *rr.rec {
+		short := ri.handler[strings.LastIndex(ri.handler, ".")+1:]
 		if reaches[short] {
-			out = append(out, mintRoute{ri.Method, ri.Path, short})
+			out = append(out, mintRoute{ri.method, ri.path, short})
 		}
 	}
 	return out
@@ -403,30 +401,31 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 
 // orgAdminEngine mounts billing + affiliate behind a seed that mints an ORG-admin
 // identity (org-level isAdmin, NOT a SuperAdmin) — the exact C1 adversary.
-func orgAdminEngine(t *testing.T) *gin.Engine {
+func orgAdminEngine(t *testing.T) *zip.App {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
-	eng := gin.New()
-	eng.Use(func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
-		c.Next()
+	eng := zip.New(zip.Config{DisableStartupMessage: true})
+	eng.Use(func(c *zip.Ctx) error {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+		return c.Next()
 	})
 	v1 := eng.Group("/v1")
 	mountMintSurface(v1)
 	return eng
 }
 
-func probe(eng *gin.Engine, method, path string) int {
+func probe(eng *zip.App, method, path string) int {
 	req := httptest.NewRequest(method, path, bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-	return w.Code
+	resp, err := eng.Fiber().Test(req)
+	if err != nil {
+		return 0
+	}
+	return resp.StatusCode
 }
 
-// concretePath replaces gin `:param` / `*param` segments with a literal so the
+// concretePath replaces `:param` / `*param` segments with a literal so the
 // route resolves during probing.
 func concretePath(p string) string {
 	segs := strings.Split(p, "/")

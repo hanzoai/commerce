@@ -1,14 +1,13 @@
 package account
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	accountRequired := middleware.AccountRequired()
 	namespaced := middleware.Namespace()
@@ -16,22 +15,22 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("account")
 	api.Use(publishedRequired)
 
-	api.GET("", accountRequired, namespaced, get)
-	api.PUT("", accountRequired, namespaced, update)
-	api.PATCH("", accountRequired, namespaced, patch)
+	api.Get("", accountRequired, namespaced, get)
+	api.Put("", accountRequired, namespaced, update)
+	api.Patch("", accountRequired, namespaced, patch)
 
-	api.GET("/order/:orderid", accountRequired, namespaced, getOrder)
-	api.PATCH("/order/:orderid", accountRequired, namespaced, patchOrder)
-	api.POST("/withdraw", accountRequired, namespaced, withdraw)
-	api.POST("/paymentmethod/:paymentmethodtype", accountRequired, namespaced, createPaymentMethod)
+	api.Get("/order/:orderid", accountRequired, namespaced, getOrder)
+	api.Patch("/order/:orderid", accountRequired, namespaced, patchOrder)
+	api.Post("/withdraw", accountRequired, namespaced, withdraw)
+	api.Post("/paymentmethod/:paymentmethodtype", accountRequired, namespaced, createPaymentMethod)
 
-	api.GET("/exists/:emailorusername", namespaced, exists)
+	api.Get("/exists/:emailorusername", namespaced, exists)
 
-	api.POST("/login", namespaced, login)
+	api.Post("/login", namespaced, login)
 
-	api.POST("/create", namespaced, create)
-	api.POST("/enable/:tokenid", namespaced, enable)
+	api.Post("/create", namespaced, create)
+	api.Post("/enable/:tokenid", namespaced, enable)
 
-	api.POST("/reset", namespaced, reset)
-	api.POST("/confirm/:tokenid", namespaced, confirm)
+	api.Post("/reset", namespaced, reset)
+	api.Post("/confirm/:tokenid", namespaced, confirm)
 }

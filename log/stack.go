@@ -15,12 +15,12 @@ func stack(offset int) string {
 	stack := strings.Split(string(debug.Stack()), "\n")
 	lines := []string{""}
 	for i := offset; i < len(stack); i++ {
-		// Skip after ginkgo, gin
+		// Skip after ginkgo, framework
 		if strings.Contains(stack[i], "github.com/onsi/ginkgo") {
 			break
 		}
 
-		if strings.Contains(stack[i], "github.com/gin-gonic/gin") {
+		if strings.Contains(stack[i], "github.com/zap-proto/fiber") {
 			break
 		}
 

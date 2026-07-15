@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -29,14 +29,13 @@ type createPaymentIntentRequest struct {
 // CreatePaymentIntent creates a new payment intent.
 //
 //	POST /v1/billing/payment-intents
-func CreatePaymentIntent(c *gin.Context) {
+func CreatePaymentIntent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createPaymentIntentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	cur := currency.Type("usd")
@@ -58,8 +57,7 @@ func CreatePaymentIntent(c *gin.Context) {
 	})
 	if err != nil {
 		log.Error("Failed to create payment intent: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if req.Metadata != nil {
@@ -67,31 +65,30 @@ func CreatePaymentIntent(c *gin.Context) {
 		_ = pi.Update()
 	}
 
-	c.JSON(201, paymentIntentResponse(pi))
+	return c.JSON(201, paymentIntentResponse(pi))
 }
 
 // GetPaymentIntent retrieves a payment intent by ID.
 //
 //	GET /v1/billing/payment-intents/:id
-func GetPaymentIntent(c *gin.Context) {
+func GetPaymentIntent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pi := paymentintent.New(db)
 	if err := pi.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment intent not found", err)
-		return
+		return http.Fail(c, 404, "payment intent not found", err)
 	}
 
-	c.JSON(200, paymentIntentResponse(pi))
+	return c.JSON(200, paymentIntentResponse(pi))
 }
 
 // ListPaymentIntents lists payment intents, optionally filtered by customerId.
 //
 //	GET /v1/billing/payment-intents?customerId=...
-func ListPaymentIntents(c *gin.Context) {
+func ListPaymentIntents(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	intents := make([]*paymentintent.PaymentIntent, 0)
@@ -114,7 +111,7 @@ func ListPaymentIntents(c *gin.Context) {
 	for i, pi := range intents {
 		results[i] = paymentIntentResponse(pi)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 type confirmPaymentIntentRequest struct {
@@ -124,27 +121,25 @@ type confirmPaymentIntentRequest struct {
 // ConfirmPaymentIntent confirms a payment intent.
 //
 //	POST /v1/billing/payment-intents/:id/confirm
-func ConfirmPaymentIntent(c *gin.Context) {
+func ConfirmPaymentIntent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pi := paymentintent.New(db)
 	if err := pi.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment intent not found", err)
-		return
+		return http.Fail(c, 404, "payment intent not found", err)
 	}
 
 	var req confirmPaymentIntentRequest
-	_ = c.ShouldBindJSON(&req)
+	_ = c.Bind(&req)
 
 	// No external processor for now — internal-only
-	if err := engine.ConfirmPaymentIntent(c.Request.Context(), db, pi, req.PaymentMethodId, nil); err != nil {
+	if err := engine.ConfirmPaymentIntent(c.Context(), db, pi, req.PaymentMethodId, nil); err != nil {
 		log.Error("Failed to confirm payment intent: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	c.JSON(200, paymentIntentResponse(pi))
+	return c.JSON(200, paymentIntentResponse(pi))
 }
 
 type capturePaymentIntentRequest struct {
@@ -154,26 +149,24 @@ type capturePaymentIntentRequest struct {
 // CapturePaymentIntent captures a previously authorized payment intent.
 //
 //	POST /v1/billing/payment-intents/:id/capture
-func CapturePaymentIntent(c *gin.Context) {
+func CapturePaymentIntent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pi := paymentintent.New(db)
 	if err := pi.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment intent not found", err)
-		return
+		return http.Fail(c, 404, "payment intent not found", err)
 	}
 
 	var req capturePaymentIntentRequest
-	_ = c.ShouldBindJSON(&req)
+	_ = c.Bind(&req)
 
-	if err := engine.CapturePaymentIntent(c.Request.Context(), db, pi, req.AmountToCapture, nil); err != nil {
+	if err := engine.CapturePaymentIntent(c.Context(), db, pi, req.AmountToCapture, nil); err != nil {
 		log.Error("Failed to capture payment intent: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	c.JSON(200, paymentIntentResponse(pi))
+	return c.JSON(200, paymentIntentResponse(pi))
 }
 
 type cancelPaymentIntentRequest struct {
@@ -183,26 +176,24 @@ type cancelPaymentIntentRequest struct {
 // CancelPaymentIntent cancels a payment intent.
 //
 //	POST /v1/billing/payment-intents/:id/cancel
-func CancelPaymentIntent(c *gin.Context) {
+func CancelPaymentIntent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pi := paymentintent.New(db)
 	if err := pi.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment intent not found", err)
-		return
+		return http.Fail(c, 404, "payment intent not found", err)
 	}
 
 	var req cancelPaymentIntentRequest
-	_ = c.ShouldBindJSON(&req)
+	_ = c.Bind(&req)
 
-	if err := engine.CancelPaymentIntent(c.Request.Context(), pi, req.CancellationReason); err != nil {
+	if err := engine.CancelPaymentIntent(c.Context(), pi, req.CancellationReason); err != nil {
 		log.Error("Failed to cancel payment intent: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	c.JSON(200, paymentIntentResponse(pi))
+	return c.JSON(200, paymentIntentResponse(pi))
 }
 
 func paymentIntentResponse(pi *paymentintent.PaymentIntent) map[string]interface{} {

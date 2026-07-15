@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/datastore"
@@ -60,25 +60,24 @@ func (r *Referrent) Total() currency.Cents {
 	return currency.Cents(1)
 }
 
-func create(c *gin.Context) {
+func create(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	req := &createReq{}
 	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
-	req.Username = "\u263A"
-	req.Email = "\u263A"
-	req.FirstName = "\u263A"
-	req.LastName = "\u263A"
-	req.FormId = "\u263A"
+	req.Username = "☺"
+	req.Email = "☺"
+	req.FirstName = "☺"
+	req.LastName = "☺"
+	req.FormId = "☺"
 
 	log.Info("Decoding User Creation Request", c)
 	// Decode response body to create new user
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Pull out user
@@ -87,16 +86,14 @@ func create(c *gin.Context) {
 
 	log.Info("Fetching User Request: %v", json.Encode(usr), c)
 	// Email is required
-	if usr.Email == "" || usr.Email == "\u263A" {
-		http.Fail(c, 400, "Email is required", errors.New("email is required"))
-		return
+	if usr.Email == "" || usr.Email == "☺" {
+		return http.Fail(c, 400, "Email is required", errors.New("email is required"))
 	}
 
 	// If the username is purposely blank or username is required by the
 	// organization...
-	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "\u263A") {
-		http.Fail(c, 400, "Username is required", errors.New("username is required"))
-		return
+	if usr.Username == "" || (org.SignUpOptions.UsernameRequired && usr.Username == "☺") {
+		return http.Fail(c, 400, "Username is required", errors.New("username is required"))
 	}
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
@@ -108,23 +105,22 @@ func create(c *gin.Context) {
 	// Email can't already exist or if it does, can't have a password
 	if err := usr2.GetByEmail(usr.Email); err == nil {
 		if len(usr2.PasswordHash) > 0 {
-			http.Fail(c, 400, "Email is in use", errors.New("email is in use"))
-			return
+			return http.Fail(c, 400, "Email is in use", errors.New("email is in use"))
 		} else {
 			// Transfer name from request user to queried out user if successful
 			req.User = usr2
-			if usr.FirstName != "" && usr.FirstName != "\u263A" {
+			if usr.FirstName != "" && usr.FirstName != "☺" {
 				usr2.FirstName = usr.FirstName
 			}
-			if usr.LastName != "" && usr.FirstName != "\u263A" {
+			if usr.LastName != "" && usr.FirstName != "☺" {
 				usr2.LastName = usr.LastName
 			}
 			// Username isn't set in stone until actually registered
-			if un != "" && un != "\u263A" {
+			if un != "" && un != "☺" {
 				usr2.Username = un
 			}
 			// Username isn't set in stone until actually registered
-			if uf != "" && uf != "\u263A" {
+			if uf != "" && uf != "☺" {
 				usr2.FormId = uf
 			}
 
@@ -134,12 +130,11 @@ func create(c *gin.Context) {
 
 	if !org.SignUpOptions.NoNameRequired {
 		log.Info("Sign up does require Name: %s/%s", usr.FirstName, usr.LastName, c)
-		if usr.FirstName == "" || usr.FirstName == "\u263A" {
-			http.Fail(c, 400, "First name cannot be blank", errors.New("first name cannot be blank"))
-			return
+		if usr.FirstName == "" || usr.FirstName == "☺" {
+			return http.Fail(c, 400, "First name cannot be blank", errors.New("first name cannot be blank"))
 		}
 
-		// if usr.LastName == "" || usr.LastName == "\u263A" {
+		// if usr.LastName == "" || usr.LastName == "☺" {
 		// 	http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
 		// 	return
 		// }
@@ -152,66 +147,61 @@ func create(c *gin.Context) {
 		usr.IsAffiliate = req.User.IsAffiliate
 	}
 
-	if uf == "\u263A" {
+	if uf == "☺" {
 		usr.FormId = ""
 	}
 
-	if un == "\u263A" {
+	if un == "☺" {
 		usr.Username = ""
 	} else {
 		usr3 := user.New(db)
 		// Username can't exist on another user
 		if err := usr3.GetByUsername(usr.Username); err == nil {
 			if usr2.Id() != usr3.Id() {
-				http.Fail(c, 400, "Username is in use", errors.New("Username is in use"))
-				return
+				return http.Fail(c, 400, "Username is in use", errors.New("Username is in use"))
 			}
 		}
 
 		// Username must be valid if it exists
 		log.Info("Checking if Username is valid", c)
 		if ok := usernameRegex.MatchString(usr.Username); !ok {
-			http.Fail(c, 400, "Username '"+usr.Username+"' is not valid", errors.New("Username '"+usr.Username+"' is not valid"))
-			return
+			return http.Fail(c, 400, "Username '"+usr.Username+"' is not valid", errors.New("Username '"+usr.Username+"' is not valid"))
 		}
 	}
 
-	if usr.Email == "\u263A" {
+	if usr.Email == "☺" {
 		usr.Email = ""
 	}
 
-	if usr.FirstName == "\u263A" {
+	if usr.FirstName == "☺" {
 		usr.FirstName = ""
 	}
 
-	if usr.LastName == "\u263A" {
+	if usr.LastName == "☺" {
 		usr.LastName = ""
 	}
 
 	// Email must be valid
 	log.Info("Checking if User email is valid", c)
 	if ok := emailRegex.MatchString(usr.Email); !ok {
-		http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("email '"+usr.Email+"' is not valid"))
-		return
+		return http.Fail(c, 400, "Email '"+usr.Email+"' is not valid", errors.New("email '"+usr.Email+"' is not valid"))
 	}
 
 	if !org.SignUpOptions.NoPasswordRequired {
 		log.Info("Sign up requires password", c)
 		// Password should be at least 6 characters long
 		if len(req.Password) < 6 {
-			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("password needs to be atleast 6 characters"))
-			return
+			return http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("password needs to be atleast 6 characters"))
 		}
 
 		// Password confirm must match
 		if req.Password != req.PasswordConfirm { // pragma: allowlist secret
-			http.Fail(c, 400, "Passwords need to match", errors.New("passwords need to match"))
-			return
+			return http.Fail(c, 400, "Passwords need to match", errors.New("passwords need to match"))
 		}
 
 		// Hash password
 		if hash, err := password.Hash(req.Password); err != nil { // pragma: allowlist secret
-			http.Fail(c, 400, "Failed to hash user password", err)
+			return http.Fail(c, 400, "Failed to hash user password", err)
 		} else {
 			usr.PasswordHash = hash
 		}
@@ -220,8 +210,7 @@ func create(c *gin.Context) {
 	}
 
 	if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-		http.Fail(c, 400, "Captcha needs to be completed", errors.New("captcha needs to be completed"))
-		return
+		return http.Fail(c, 400, "Captcha needs to be completed", errors.New("captcha needs to be completed"))
 	}
 
 	ctx := org.Datastore().Context
@@ -249,7 +238,7 @@ func create(c *gin.Context) {
 	// Save new user
 	log.Info("User is attributed to store: %v", storeId, c)
 	if err := usr.Put(); err != nil {
-		http.Fail(c, 400, "Failed to create user", err)
+		return http.Fail(c, 400, "Failed to create user", err)
 	}
 
 	ref := referrer.New(usr.Datastore())
@@ -337,5 +326,5 @@ func create(c *gin.Context) {
 		log.Info("Skip saving User to Mailchimp: %v", json.Encode(usr), c)
 	}
 
-	http.Render(c, 201, createRes{User: usr, Token: tokStr})
+	return http.Render(c, 201, createRes{User: usr, Token: tokStr})
 }

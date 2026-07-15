@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/blockchains"
@@ -15,16 +15,16 @@ import (
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/wallet"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/rand"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var (
 	ctx  ae.Context
-	c    *gin.Context
+	c    *zip.Ctx
 	db   *datastore.Datastore
 	nsDb *datastore.Datastore
 	ord  *order.Order
@@ -40,7 +40,7 @@ func Test(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c = gincontext.New(ctx)
+	c = zipctx.New(ctx)
 	db = datastore.New(ctx)
 
 	org = fixtures.Organization(c).(*organization.Organization)

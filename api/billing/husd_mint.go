@@ -4,11 +4,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/bucket"
 	"github.com/hanzoai/commerce/billing/husdledger"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/treasury"
@@ -42,8 +41,8 @@ func bucketForTags(tags string) treasury.Bucket {
 // (a PlatformOnly route, a settled payment, or a server-fixed grant) — exactly
 // as before a DB deposit — so wrapping the ctx authorized here is faithful: it is
 // the SAME capability that satisfies the ledger sink on the DB path.
-func chainMintCredit(c *gin.Context, org *organization.Organization, subject string, cents int64, b treasury.Bucket, reason, idemKey string) (*treasury.Receipt, error) {
-	ctx := mintauth.WithAuthorized(org.Namespaced(c))
+func chainMintCredit(c *zip.Ctx, org *organization.Organization, subject string, cents int64, b treasury.Bucket, reason, idemKey string) (*treasury.Receipt, error) {
+	ctx := mintauth.WithAuthorized(org.Namespaced(c.Context()))
 	return husdledger.Default().MintCredit(ctx, treasury.MintRequest{
 		OrgID:       org.Namespace(),
 		Subject:     subject,
@@ -78,18 +77,16 @@ func randomIdemKey(prefix string) string {
 // contributor-payout execute endpoint). Platform-only (touches the money ledger).
 //
 //	POST /v1/billing/husd/sync
-func SyncHUSD(c *gin.Context) {
+func SyncHUSD(c *zip.Ctx) error {
 	svc := husdledger.Default()
 	if !svc.Enabled() {
-		http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
-		return
+		return http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
 	}
-	n, err := svc.SyncOnce(middleware.GetContext(c))
+	n, err := svc.SyncOnce(c.Context())
 	if err != nil {
-		http.Fail(c, 500, "husd indexer sync failed", err)
-		return
+		return http.Fail(c, 500, "husd indexer sync failed", err)
 	}
-	c.JSON(200, gin.H{"projected": n})
+	return c.JSON(200, map[string]any{"projected": n})
 }
 
 // SettleHUSD sweeps every org's on-chain drift back to the treasury (metered
@@ -97,16 +94,14 @@ func SyncHUSD(c *gin.Context) {
 // (self-correcting drift). Returns the per-org settlement outcomes.
 //
 //	POST /v1/billing/husd/settle
-func SettleHUSD(c *gin.Context) {
+func SettleHUSD(c *zip.Ctx) error {
 	svc := husdledger.Default()
 	if !svc.Enabled() {
-		http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
-		return
+		return http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
 	}
-	results, err := svc.Settle(middleware.GetContext(c))
+	results, err := svc.Settle(c.Context())
 	if err != nil {
-		http.Fail(c, 500, "husd settlement failed", err)
-		return
+		return http.Fail(c, 500, "husd settlement failed", err)
 	}
 	settled := 0
 	for _, r := range results {
@@ -114,7 +109,7 @@ func SettleHUSD(c *gin.Context) {
 			settled++
 		}
 	}
-	c.JSON(200, gin.H{"orgs": len(results), "settled": settled, "results": results})
+	return c.JSON(200, map[string]any{"orgs": len(results), "settled": settled, "results": results})
 }
 
 // MigrateHUSD moves every org's existing DB-ledger balance onto chain with zero
@@ -122,17 +117,15 @@ func SettleHUSD(c *gin.Context) {
 // minting); pass ?execute=true to mint. Platform-only.
 //
 //	POST /v1/billing/husd/migrate?execute=true
-func MigrateHUSD(c *gin.Context) {
+func MigrateHUSD(c *zip.Ctx) error {
 	svc := husdledger.Default()
 	if !svc.Enabled() {
-		http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
-		return
+		return http.Fail(c, 503, "chain-backed credit ledger not enabled", nil)
 	}
 	dryRun := c.Query("execute") != "true"
-	results, err := svc.Migrate(middleware.GetContext(c), dryRun)
+	results, err := svc.Migrate(c.Context(), dryRun)
 	if err != nil {
-		http.Fail(c, 500, "husd migration failed", err)
-		return
+		return http.Fail(c, 500, "husd migration failed", err)
 	}
 	migrated, reconciled := 0, 0
 	for _, r := range results {
@@ -143,17 +136,17 @@ func MigrateHUSD(c *gin.Context) {
 			reconciled++
 		}
 	}
-	c.JSON(200, gin.H{"orgs": len(results), "dryRun": dryRun, "migrated": migrated, "reconciled": reconciled, "results": results})
+	return c.JSON(200, map[string]any{"orgs": len(results), "dryRun": dryRun, "migrated": migrated, "reconciled": reconciled, "results": results})
 }
 
 // StatusHUSD reports the chain-ledger configuration + whether it is enabled — a
 // read-only observability surface (no secrets: the treasury key is never exposed).
 //
 //	GET /v1/billing/husd/status
-func StatusHUSD(c *gin.Context) {
+func StatusHUSD(c *zip.Ctx) error {
 	svc := husdledger.Default()
 	cfg := svc.Config()
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"enabled":  svc.Enabled(),
 		"chainId":  cfg.ChainID,
 		"token":    cfg.TokenAddress,

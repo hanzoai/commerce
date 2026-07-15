@@ -6,57 +6,53 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
 )
 
-type ErrorDisplayer func(c *gin.Context, message string, err error)
+type ErrorDisplayer func(c *zip.Ctx, message string, err error)
 
 // Display errors in JSON
-func ErrorJSON(c *gin.Context, stack string, err error) {
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.AbortWithStatus(500)
-	jsonErr := gin.H{
-		"error": gin.H{
+func ErrorJSON(c *zip.Ctx, stack string, err error) {
+	c.SetHeader("Content-Type", "application/json")
+	jsonErr := map[string]any{
+		"error": map[string]any{
 			"type":    "api-error",
 			"message": "Unable to process request. Please try again later.",
 		},
 	}
-	c.Writer.Write(json.EncodeBytes(jsonErr))
+	c.Bytes(500, json.EncodeBytes(jsonErr))
 	log.Error(stack, c)
 }
 
-func ErrorJSONDev(c *gin.Context, stack string, err error) {
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.AbortWithStatus(500)
-	jsonErr := gin.H{
-		"error": gin.H{
+func ErrorJSONDev(c *zip.Ctx, stack string, err error) {
+	c.SetHeader("Content-Type", "application/json")
+	jsonErr := map[string]any{
+		"error": map[string]any{
 			"type":    "api-error",
 			"message": strings.Split(stack, "\n")[0],
 		},
 	}
-	c.Writer.Write(json.EncodeBytes(jsonErr))
+	c.Bytes(500, json.EncodeBytes(jsonErr))
 	log.Error(stack)
 }
 
 // Display errors in HTML
-func ErrorHTML(c *gin.Context, stack string, err error) {
-	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.AbortWithStatus(500)
-	c.Writer.Write([]byte(`<html>
+func ErrorHTML(c *zip.Ctx, stack string, err error) {
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	c.Bytes(500, []byte(`<html>
 		<h1>500 - Internal Server Error</h1>
 		<p>We weren't able to complete your request. Please try again later.</p>
 	</html>`))
 	log.Error(stack, c)
 }
 
-func ErrorHTMLDev(c *gin.Context, stack string, err error) {
-	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.AbortWithStatus(500)
-	c.Writer.Write([]byte(`<html>
+func ErrorHTMLDev(c *zip.Ctx, stack string, err error) {
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	c.Bytes(500, []byte(`<html>
 	<head>
 		<title>Error: 500</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -70,13 +66,15 @@ func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 	<body>
 		<h4>500 Internal Server Error </h4>
 
-		<pre>` + stack + "</pre></body></html>"))
+		<pre>`+stack+"</pre></body></html>"))
 	log.Error(stack)
 }
 
-// Handle errors with appropriate ErrorDisplayer
-func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
-	return func(c *gin.Context) {
+// Handle errors with appropriate ErrorDisplayer. Recovers panics and renders
+// any error a downstream handler returns — the commerce envelope, not zip's
+// default {error,code,status}. Returning nil after rendering ends the request.
+func errorHandler(displayError ErrorDisplayer) zip.Handler {
+	return func(c *zip.Ctx) (result error) {
 		// On panic
 		defer func() {
 			if r := recover(); r != nil {
@@ -86,22 +84,21 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 				stack := string(bytes.Trim(trace, "\x00"))
 				err, _ := r.(error)
 				displayError(c, errstr+"\n\n"+stack, err)
+				result = nil
 			}
 		}()
 
-		c.Next()
-
-		// When someone calls c.Fail(500)
-		if !c.Writer.Written() && c.Writer.Status() == 500 {
-			err := c.Errors.Last()
-			errstr := err.Error()
-			displayError(c, errstr, err)
+		// When a downstream handler returns an error (the c.Fail(500) analog).
+		if err := c.Next(); err != nil {
+			displayError(c, err.Error(), err)
+			return nil
 		}
+		return nil
 	}
 }
 
 // Error middleware
-func ErrorHandler() gin.HandlerFunc {
+func ErrorHandler() zip.Handler {
 	if config.IsDevelopment {
 		return errorHandler(ErrorHTMLDev)
 	} else {
@@ -109,7 +106,7 @@ func ErrorHandler() gin.HandlerFunc {
 	}
 }
 
-func ErrorHandlerJSON() gin.HandlerFunc {
+func ErrorHandlerJSON() zip.Handler {
 	if config.IsDevelopment {
 		return errorHandler(ErrorJSONDev)
 	} else {

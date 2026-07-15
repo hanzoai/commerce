@@ -1,18 +1,16 @@
 package api
 
 import (
-	"net/http/httputil"
+	"github.com/zap-proto/zip"
 
-	"github.com/gin-gonic/gin"
-
-	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/json"
 
 	. "encoding/json"
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
-func getList(c *gin.Context, data []byte, dst interface{}) error {
+func getList(c *zip.Ctx, data []byte, dst interface{}) error {
 	// Decode resource
 	var rsrc Resource
 	if err := json.Unmarshal(data, &rsrc); err != nil {
@@ -35,16 +33,16 @@ func getList(c *gin.Context, data []byte, dst interface{}) error {
 	return nil
 }
 
-// Process individual webhooks
-func webhook(c *gin.Context) {
-	dump, _ := httputil.DumpRequest(c.Request, true)
-	log.Info("Webhook request:\n%s", dump, c)
+// Process individual webhooks. Shipwire only needs a 200 ack; per-topic
+// processing is best-effort (each helper logs its own failures) and the
+// handler always returns the same terminal "ok\n".
+func webhook(c *zip.Ctx) error {
+	log.Info("Webhook request:\n%s", c.Fiber().Request().String(), c)
 
 	var req Request
-	if err := json.Decode(c.Request.Body, &req); err != nil {
+	if err := json.Unmarshal(c.Body(), &req); err != nil {
 		log.Error("Failed to decode request body: %v", err, c)
-		c.String(200, "ok\n")
-		return
+		return c.String(200, "ok\n")
 	}
 
 	switch req.Topic {
@@ -78,19 +76,18 @@ func webhook(c *gin.Context) {
 			updateHolds(c, req.Topic, holds)
 		}
 
-	// case "return.hold.added", "return.hold.cleared":
-	// 	holds := make([]Hold, 0)
-	// 	if err := getList(c, req.Body.Resource, holds); err != nil {
-	// 		updateReturnHolds(c, holds)
-	// 	}
+		// case "return.hold.added", "return.hold.cleared":
+		// 	holds := make([]Hold, 0)
+		// 	if err := getList(c, req.Body.Resource, holds); err != nil {
+		// 		updateReturnHolds(c, holds)
+		// 	}
 
-	// case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
-	// 	trackings := make([]Tracking, 0)
-	// 	if err := getList(c, req.Body.Resource, trackings); err != nil {
-	// 		updateReturnTrackings(c, trackings)
-	// 	}
-
-	default:
-		c.String(200, "ok\n")
+		// case "return.tracking.created", "return.tracking.updated", "return.tracking.delivered":
+		// 	trackings := make([]Tracking, 0)
+		// 	if err := getList(c, req.Body.Resource, trackings); err != nil {
+		// 		updateReturnTrackings(c, trackings)
+		// 	}
 	}
+
+	return c.String(200, "ok\n")
 }

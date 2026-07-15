@@ -4,22 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// withSystemCtx returns a gin context wired so systemDB(c) resolves to the
-// ae-backed SQLite datastore in the "system" namespace.
-func withSystemCtx(c *gin.Context) {
+// withSystemCtx wires a request so systemDB(c) resolves to the ae-backed SQLite
+// datastore in the "system" namespace.
+func withSystemCtx(c *zip.Ctx) {
 	ctx := context.Background()
-	c.Set("context", ctx)
+	c.SetContext(ctx)
 }
 
 // TestOSSPayout_HTTP_EndToEnd drives the real HTTP handlers through a gin
@@ -35,8 +36,6 @@ func TestOSSPayout_HTTP_EndToEnd(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 
-	gin.SetMode(gin.TestMode)
-
 	// ── 1. Ingest an SBOM via the HTTP handler ───────────────────────────
 	ingestBody, _ := json.Marshal(sbomIngestRequest{
 		ImageRef:    "ghcr.io/hanzoai/commerce:1.785.15",
@@ -50,18 +49,15 @@ func TestOSSPayout_HTTP_EndToEnd(t *testing.T) {
 		},
 	})
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	withSystemCtx(c)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/billing/sbom", bytes.NewReader(ingestBody))
-	c.Request.Header.Set("Content-Type", "application/json")
-	IngestSBOM(c)
+	ingestReq := httptest.NewRequest(http.MethodPost, "/v1/billing/sbom", bytes.NewReader(ingestBody))
+	ingestReq.Header.Set("Content-Type", "application/json")
+	w := driveSeeded(withSystemCtx, "/v1/billing/sbom", ingestReq, IngestSBOM)
 
-	if w.Code != 201 {
-		t.Fatalf("ingest status = %d, body=%s", w.Code, w.Body.String())
+	if w.StatusCode != 201 {
+		t.Fatalf("ingest status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 	var ingestResp map[string]any
-	_ = json.Unmarshal(w.Body.Bytes(), &ingestResp)
+	_ = json.Unmarshal(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), &ingestResp)
 	if ingestResp["componentCount"].(float64) != 3 {
 		t.Fatalf("ingest componentCount = %v, want 3", ingestResp["componentCount"])
 	}
@@ -72,14 +68,11 @@ func TestOSSPayout_HTTP_EndToEnd(t *testing.T) {
 	engine.AccrueOSSPayout(orgDB, "acme", "acme/alice", 10_000, "usd", "txn_http_proof", false)
 
 	// ── 3. Read the payout summary via the HTTP handler ──────────────────
-	w2 := httptest.NewRecorder()
-	c2, _ := gin.CreateTestContext(w2)
-	withSystemCtx(c2)
-	c2.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/oss-payout/summary", nil)
-	GetOSSPayoutSummary(c2)
+	w2 := driveSeeded(withSystemCtx, "/v1/billing/oss-payout/summary",
+		httptest.NewRequest(http.MethodGet, "/v1/billing/oss-payout/summary", nil), GetOSSPayoutSummary)
 
-	if w2.Code != 200 {
-		t.Fatalf("summary status = %d, body=%s", w2.Code, w2.Body.String())
+	if w2.StatusCode != 200 {
+		t.Fatalf("summary status = %d, body=%s", w2.StatusCode, func() string { b, _ := io.ReadAll(w2.Body); return string(b) }())
 	}
 
 	var summary struct {
@@ -94,8 +87,8 @@ func TestOSSPayout_HTTP_EndToEnd(t *testing.T) {
 			Status        string `json:"status"`
 		} `json:"maintainers"`
 	}
-	if err := json.Unmarshal(w2.Body.Bytes(), &summary); err != nil {
-		t.Fatalf("decode summary: %v; body=%s", err, w2.Body.String())
+	if err := json.Unmarshal(func() []byte { b, _ := io.ReadAll(w2.Body); return b }(), &summary); err != nil {
+		t.Fatalf("decode summary: %v; body=%s", err, func() string { b, _ := io.ReadAll(w2.Body); return string(b) }())
 	}
 
 	// 25% of $100 = $25.00 = 2500 cents. Weights: 2 direct (1.0) + 1 transitive

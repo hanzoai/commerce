@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -25,19 +25,17 @@ type createPricingRuleRequest struct {
 // CreatePricingRule creates a new pricing rule for a meter.
 //
 //	POST /v1/billing/pricing-rules
-func CreatePricingRule(c *gin.Context) {
+func CreatePricingRule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createPricingRuleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.MeterId == "" {
-		http.Fail(c, 400, "meterId is required", nil)
-		return
+		return http.Fail(c, 400, "meterId is required", nil)
 	}
 
 	model := pricingrule.PricingModel(strings.ToLower(req.Model))
@@ -60,11 +58,10 @@ func CreatePricingRule(c *gin.Context) {
 
 	if err := rule.Create(); err != nil {
 		log.Error("Failed to create pricing rule: %v", err, c)
-		http.Fail(c, 500, "failed to create pricing rule", err)
-		return
+		return http.Fail(c, 500, "failed to create pricing rule", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"id":        rule.Id(),
 		"meterId":   rule.MeterId,
 		"planId":    rule.PlanId,
@@ -79,9 +76,9 @@ func CreatePricingRule(c *gin.Context) {
 // ListPricingRules lists pricing rules, optionally filtered by meter or plan.
 //
 //	GET /v1/billing/pricing-rules?meterId=...&planId=...
-func ListPricingRules(c *gin.Context) {
+func ListPricingRules(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	rules := make([]*pricingrule.PricingRule, 0)
@@ -99,13 +96,12 @@ func ListPricingRules(c *gin.Context) {
 
 	if _, err := q.GetAll(&rules); err != nil {
 		log.Error("Failed to list pricing rules: %v", err, c)
-		http.Fail(c, 500, "failed to list pricing rules", err)
-		return
+		return http.Fail(c, 500, "failed to list pricing rules", err)
 	}
 
-	items := make([]gin.H, 0, len(rules))
+	items := make([]map[string]any, 0, len(rules))
 	for _, r := range rules {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"id":        r.Id(),
 			"meterId":   r.MeterId,
 			"planId":    r.PlanId,
@@ -117,7 +113,7 @@ func ListPricingRules(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"rules": items,
 		"count": len(items),
 	})
@@ -126,29 +122,26 @@ func ListPricingRules(c *gin.Context) {
 // DeletePricingRule removes a pricing rule by ID.
 //
 //	DELETE /v1/billing/pricing-rules/:id
-func DeletePricingRule(c *gin.Context) {
+func DeletePricingRule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	if id == "" {
-		http.Fail(c, 400, "pricing rule id is required", nil)
-		return
+		return http.Fail(c, 400, "pricing rule id is required", nil)
 	}
 
 	rule := pricingrule.New(db)
 	if err := rule.GetById(id); err != nil {
-		http.Fail(c, 404, "pricing rule not found", err)
-		return
+		return http.Fail(c, 404, "pricing rule not found", err)
 	}
 
 	if err := rule.Delete(); err != nil {
 		log.Error("Failed to delete pricing rule: %v", err, c)
-		http.Fail(c, 500, "failed to delete pricing rule", err)
-		return
+		return http.Fail(c, 500, "failed to delete pricing rule", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"id":      id,
 		"deleted": true,
 	})

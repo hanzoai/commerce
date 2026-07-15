@@ -1,7 +1,7 @@
 package subscription
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -12,21 +12,21 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
-func subscriptionRequest(c *gin.Context, org *organization.Organization) (*SubscriptionReq, error) {
+func subscriptionRequest(c *zip.Ctx, org *organization.Organization) (*SubscriptionReq, error) {
 	// Create AuthReq properly by calling order.New
 	sr := new(SubscriptionReq)
-	sr.Db = datastore.New(org.Namespaced(c))
+	sr.Db = datastore.New(org.Namespaced(c.Context()))
 
 	// Try decode request body
-	if err := json.Decode(c.Request.Body, &sr); err != nil {
-		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+	if err := json.DecodeBytes(c.Body(), &sr); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Body(), err, c)
 		return nil, FailedToDecodeRequestBody
 	}
 
 	return sr, nil
 }
 
-func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Subscription, *user.User, error) {
+func subscribe(c *zip.Ctx, org *organization.Organization) (*subscription.Subscription, *user.User, error) {
 	ctx := org.Datastore().Context
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
@@ -89,7 +89,7 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	return sub, usr, nil
 }
 
-func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
+func updateSubscribe(c *zip.Ctx, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
 	ctx := org.Datastore().Context
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
@@ -97,8 +97,8 @@ func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscr
 	userId := sub.UserId
 
 	// Try decode request body
-	if err := json.Decode(c.Request.Body, &sub); err != nil {
-		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+	if err := json.DecodeBytes(c.Body(), &sub); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Body(), err, c)
 		return nil, FailedToDecodeRequestBody
 	}
 
@@ -127,7 +127,7 @@ func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscr
 	return sub, nil
 }
 
-func unsubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
+func unsubscribe(c *zip.Ctx, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
 	_ = c
 	_ = org
 

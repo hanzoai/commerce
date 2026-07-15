@@ -5,9 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -17,7 +18,6 @@ import (
 	"github.com/hanzoai/commerce/util/counter"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
@@ -52,9 +52,9 @@ func updateFromHolds(ord *order.Order, rsrc Resource) {
 	ord.Fulfillment.Holds = holds
 }
 
-func updateOrder(c *gin.Context, topic string, o Order) {
+func updateOrder(c *zip.Ctx, topic string, o Order) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ord := order.New(db)
 	id := o.ExternalID
@@ -107,34 +107,29 @@ func updateOrder(c *gin.Context, topic string, o Order) {
 	if oldPricing != ord.Fulfillment.Pricing && ord.Fulfillment.Pricing != 0 {
 		counter.IncrOrderShip(db.Context, ord, time.Now())
 	}
-
-	c.String(200, "ok\n")
 }
 
-func createOrder(c *gin.Context) {
+func createOrder(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Decode return options
 	opts := OrderOptions{}
-	if err := json.Decode(c.Request.Body, &opts); err != nil {
-		http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
-		return
+	if err := json.Unmarshal(c.Body(), &opts); err != nil {
+		return http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
 	}
 
 	// Fetch order
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
-		return
+		return http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
 	}
 
 	// Fetch user
 	usr := user.New(db)
 	if err := usr.GetById(ord.UserId); err != nil {
-		http.Fail(c, 404, fmt.Errorf("Unable to find user '%s'", ord.UserId), err)
-		return
+		return http.Fail(c, 404, fmt.Errorf("Unable to find user '%s'", ord.UserId), err)
 	}
 
 	// Create order in Shipwire
@@ -142,8 +137,8 @@ func createOrder(c *gin.Context) {
 	_, res, err := client.CreateOrder(ord, usr, opts)
 
 	if err != nil {
-		http.Fail(c, res.Status, res.Message, err)
+		return http.Fail(c, res.Status, res.Message, err)
 	}
 
-	http.Render(c, 200, ord)
+	return http.Render(c, 200, ord)
 }

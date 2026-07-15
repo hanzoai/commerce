@@ -40,17 +40,17 @@ var componentRepo = map[string]string{
 
 // sourceExtensions are file extensions we run git blame on.
 var sourceExtensions = map[string]bool{
-	".go":   true,
-	".ts":   true,
-	".tsx":  true,
-	".js":   true,
-	".jsx":  true,
-	".py":   true,
-	".rs":   true,
-	".sol":  true,
-	".css":  true,
+	".go":     true,
+	".ts":     true,
+	".tsx":    true,
+	".js":     true,
+	".jsx":    true,
+	".py":     true,
+	".rs":     true,
+	".sol":    true,
+	".css":    true,
 	".svelte": true,
-	".vue":  true,
+	".vue":    true,
 }
 
 // SBOMResult is the scan output for one component.

@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/zap-proto/zip"
 )
 
 // ErrUnknownTenant is returned when the incoming Host header does not map
@@ -257,7 +259,7 @@ func toPublicView(t Tenant) publicView {
 	}
 }
 
-// TenantJSON returns an http.Handler for GET /v1/commerce/tenant. The
+// TenantJSON returns a zip.Handler for GET /v1/commerce/tenant. The
 // handler:
 //  1. Extracts and normalizes the Host header.
 //  2. Resolves to a Tenant (or 404 with no Host echo on failure).
@@ -265,19 +267,18 @@ func toPublicView(t Tenant) publicView {
 //
 // Cache policy: short public cache (60s) to absorb SPA boot storms
 // without leaking per-user state. Tenant config is not user-specific.
-func TenantJSON(r Resolver) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		t, err := r.Resolve(req.Host)
+func TenantJSON(r Resolver) zip.Handler {
+	return func(c *zip.Ctx) error {
+		t, err := r.Resolve(c.Fiber().Host())
 		if err != nil {
 			// Do NOT include the Host in the 404 body. Attackers probing
 			// for tenant existence should see a constant response.
-			w.Header().Set("Cache-Control", "no-store")
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(`{"error":"unknown tenant"}`))
-			return
+			c.SetHeader("Cache-Control", "no-store")
+			return c.Bytes(http.StatusNotFound, []byte(`{"error":"unknown tenant"}`))
 		}
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Cache-Control", "public, max-age=60")
-		_ = json.NewEncoder(w).Encode(toPublicView(t))
-	})
+		c.SetHeader("Content-Type", "application/json; charset=utf-8")
+		c.SetHeader("Cache-Control", "public, max-age=60")
+		b, _ := json.Marshal(toPublicView(t))
+		return c.Bytes(http.StatusOK, b)
+	}
 }

@@ -21,11 +21,11 @@ type BankTransferInstruction struct {
 
 	CustomerId    string        `json:"customerId"`
 	Currency      currency.Type `json:"currency" orm:"default:usd"`
-	Type          string        `json:"type"`                    // "ach" | "wire" | "sepa"
-	Reference     string        `json:"reference"`               // unique payment reference
+	Type          string        `json:"type"`      // "ach" | "wire" | "sepa"
+	Reference     string        `json:"reference"` // unique payment reference
 	BankName      string        `json:"bankName"`
 	AccountHolder string        `json:"accountHolder,omitempty"`
-	AccountNumber string        `json:"accountNumber"`           // last 4 only (masked)
+	AccountNumber string        `json:"accountNumber"` // last 4 only (masked)
 	RoutingNumber string        `json:"routingNumber,omitempty"`
 	IBAN          string        `json:"iban,omitempty"`
 	BIC           string        `json:"bic,omitempty"`

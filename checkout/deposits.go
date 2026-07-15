@@ -17,6 +17,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/zap-proto/zip"
 )
 
 // Forwarder wraps "given this request and this tenant, produce a
@@ -44,64 +46,53 @@ func (f ForwarderFunc) Forward(req *http.Request, tenant Tenant) (*http.Response
 //
 // On success the upstream response is streamed back to the client
 // verbatim so the SPA can consume { id, provider, clientToken, ... }.
-func Deposits(r Resolver, fwd Forwarder) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		tenant, err := r.Resolve(req.Host)
+func Deposits(r Resolver, fwd Forwarder) zip.Handler {
+	return func(c *zip.Ctx) error {
+		tenant, err := r.Resolve(c.Fiber().Host())
 		if err != nil {
-			writeJSONError(w, http.StatusNotFound, "unknown tenant")
-			return
+			return writeJSONError(c, http.StatusNotFound, "unknown tenant")
 		}
-		if req.Header.Get("Authorization") == "" {
-			writeJSONError(w, http.StatusUnauthorized, "authorization required")
-			return
+		if c.Header("Authorization") == "" {
+			return writeJSONError(c, http.StatusUnauthorized, "authorization required")
 		}
 		if tenant.Backend.URL == "" {
-			writeJSONError(w, http.StatusServiceUnavailable, "tenant backend not configured")
-			return
+			return writeJSONError(c, http.StatusServiceUnavailable, "tenant backend not configured")
 		}
 
 		// Build an upstream request. We force the URL to the tenant's
 		// Backend.URL — never the Host header — so a spoofed Host cannot
 		// redirect the forwarder to an attacker-controlled URL.
 		upstreamURL := strings.TrimRight(tenant.Backend.URL, "/") + "/v1/bd/deposits"
-		body, err := io.ReadAll(req.Body)
+		up, err := http.NewRequestWithContext(c.Context(), http.MethodPost, upstreamURL, bytes.NewReader(c.Body()))
 		if err != nil {
-			writeJSONError(w, http.StatusBadRequest, "read body")
-			return
-		}
-		up, err := http.NewRequestWithContext(req.Context(), http.MethodPost, upstreamURL, bytes.NewReader(body))
-		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "build upstream")
-			return
+			return writeJSONError(c, http.StatusInternalServerError, "build upstream")
 		}
 		// Forward the Authorization header + content type; drop
 		// everything else so cookies, custom headers, etc. do not leak
 		// to the backend.
-		up.Header.Set("Authorization", req.Header.Get("Authorization"))
-		up.Header.Set("Content-Type", req.Header.Get("Content-Type"))
+		up.Header.Set("Authorization", c.Header("Authorization"))
+		up.Header.Set("Content-Type", c.Header("Content-Type"))
 		up.Header.Set("X-Commerce-Tenant", tenant.Name)
 
 		resp, err := fwd.Forward(up, tenant)
 		if err != nil {
-			writeJSONError(w, http.StatusBadGateway, "upstream error")
-			return
+			return writeJSONError(c, http.StatusBadGateway, "upstream error")
 		}
 		defer resp.Body.Close()
 
+		body, _ := io.ReadAll(resp.Body)
 		if ct := resp.Header.Get("Content-Type"); ct != "" {
-			w.Header().Set("Content-Type", ct)
+			c.SetHeader("Content-Type", ct)
 		}
-		w.WriteHeader(resp.StatusCode)
-		_, _ = io.Copy(w, resp.Body)
-	})
+		return c.Bytes(resp.StatusCode, body)
+	}
 }
 
 // writeJSONError emits a compact JSON error. Intentionally does NOT echo
 // the Host back so attackers cannot use error responses to fingerprint
 // tenant existence.
-func writeJSONError(w http.ResponseWriter, code int, msg string) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.WriteHeader(code)
-	fmt.Fprintf(w, `{"error":%q}`, msg)
+func writeJSONError(c *zip.Ctx, code int, msg string) error {
+	c.SetHeader("Content-Type", "application/json; charset=utf-8")
+	c.SetHeader("Cache-Control", "no-store")
+	return c.Bytes(code, []byte(fmt.Sprintf(`{"error":%q}`, msg)))
 }

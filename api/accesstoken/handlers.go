@@ -1,57 +1,54 @@
 package accesstoken
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Access token routes
-func Get(c *gin.Context) {
-	id := c.Params.ByName("id")
-	mode := c.Params.ByName("mode")
+func Get(c *zip.Ctx) error {
+	id := c.Param("id")
+	mode := c.Param("mode")
 	test := false
 	if mode == "test" {
 		test = true
 	}
 
-	query := c.Request.URL.Query()
-	email := query.Get("email")
-	password := query.Get("password")
+	email := c.Query("email")
+	password := c.Query("password")
 
-	getAccessToken(c, id, email, password, test)
+	return getAccessToken(c, id, email, password, test)
 }
 
-func Post(c *gin.Context) {
+func Post(c *zip.Ctx) error {
 	// If method override is used
-	if c.Request.Method == "DELETE" {
-		Delete(c)
-		return
+	if c.Method() == "DELETE" {
+		return Delete(c)
 	}
 
-	id := c.Params.ByName("id")
-	mode := c.Params.ByName("mode")
+	id := c.Param("id")
+	mode := c.Param("mode")
 	test := false
 	if mode == "test" {
 		test = true
 	}
 
-	email := c.Request.Form.Get("email")
-	password := c.Request.Form.Get("password")
-	getAccessToken(c, id, email, password, test)
+	email := c.Fiber().FormValue("email")
+	password := c.Fiber().FormValue("password")
+	return getAccessToken(c, id, email, password, test)
 }
 
-func Delete(c *gin.Context) {
-	deleteAccessToken(c)
+func Delete(c *zip.Ctx) error {
+	return deleteAccessToken(c)
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := router.Group("/access")
-	api.GET("/:mode/:id", Get)
-	api.POST("/:mode/:id", adminRequired, Delete)
-	api.DELETE("/:mode/:id", adminRequired, Delete)
+	api.Get("/:mode/:id", Get)
+	api.Post("/:mode/:id", adminRequired, Delete)
+	api.Delete("/:mode/:id", adminRequired, Delete)
 }

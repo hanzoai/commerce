@@ -29,7 +29,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // Handler represents a hook handler
@@ -172,7 +172,7 @@ func (e *AppEvent) Next() error {
 // RouteEvent is emitted when setting up routes
 type RouteEvent struct {
 	App    interface{}
-	Router *gin.RouterGroup
+	Router zip.Router
 	chain  *handlerChain[*RouteEvent]
 }
 
@@ -329,7 +329,7 @@ func (r *Registry) TriggerTerminate(app interface{}) error {
 }
 
 // TriggerRouteSetup triggers the route setup hook
-func (r *Registry) TriggerRouteSetup(router *gin.RouterGroup) error {
+func (r *Registry) TriggerRouteSetup(router zip.Router) error {
 	event := &RouteEvent{Router: router}
 	return r.onRouteSetup.Trigger(event, nil)
 }

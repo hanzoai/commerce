@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -17,7 +17,6 @@ import (
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/reflect"
-	"github.com/hanzoai/commerce/util/router"
 	"github.com/hanzoai/commerce/util/search"
 )
 
@@ -26,7 +25,7 @@ var restApis = make([]*Rest, 0)
 type route struct {
 	url      string
 	method   string
-	handlers []gin.HandlerFunc
+	handlers []zip.Handler
 }
 
 type Opts struct {
@@ -43,15 +42,15 @@ type Rest struct {
 	ParamId          string
 	Prefix           string
 	Permissions      Permissions
-	Get              gin.HandlerFunc
-	List             gin.HandlerFunc
-	Create           gin.HandlerFunc
-	Update           gin.HandlerFunc
-	Patch            gin.HandlerFunc
-	Delete           gin.HandlerFunc
-	MethodOverride   gin.HandlerFunc
+	Get              zip.Handler
+	List             zip.Handler
+	Create           zip.Handler
+	Update           zip.Handler
+	Patch            zip.Handler
+	Delete           zip.Handler
+	MethodOverride   zip.Handler
 
-	middleware []gin.HandlerFunc
+	middleware []zip.Handler
 	routes     routeMap
 
 	entityType reflect.Type
@@ -77,7 +76,11 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	ptrType := reflect.ValueOf(r.newKind()).Type()
 	r.sliceType = reflect.SliceOf(ptrType)
 	r.Kind = r.newKind().Kind()
-	r.ParamId = r.Kind + "id"
+	// Param NAME must be dash-free: fiber parses ":product-optionid" as param
+	// "product" + literal "-optionid" (a dash ends the param name), so a dashed
+	// kind would register unmatchable routes. The URL prefix keeps the dashed
+	// kind; only the param placeholder is squashed.
+	r.ParamId = strings.ReplaceAll(r.Kind, "-", "") + "id"
 	r.routes = make(routeMap)
 
 	if r.DefaultSortField != "" {
@@ -121,12 +124,36 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 
 var Namespaced = middleware.Namespace()
 
-func (r *Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
+// handle registers one route chain (middleware…, handler LAST) under the
+// zip.Router method matching the HTTP verb — the single place the generic CRUD
+// scaffold maps a method string onto zip's typed router surface.
+func handle(group zip.Router, method, url string, handlers ...zip.Handler) {
+	switch method {
+	case "GET":
+		group.Get(url, handlers...)
+	case "POST":
+		group.Post(url, handlers...)
+	case "PUT":
+		group.Put(url, handlers...)
+	case "PATCH":
+		group.Patch(url, handlers...)
+	case "DELETE":
+		group.Delete(url, handlers...)
+	case "HEAD":
+		group.Head(url, handlers...)
+	case "OPTIONS":
+		group.Options(url, handlers...)
+	default:
+		log.Panic("rest: unsupported method %q", method)
+	}
+}
+
+func (r *Rest) Route(api zip.Router, mw ...zip.Handler) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
 	// Create group for our API routes
-	group := router.Group(prefix)
+	group := api.Group(prefix)
 
 	mw = append(r.middleware, mw...)
 
@@ -143,7 +170,7 @@ func (r *Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		// log.Debug("%-7s %v", route.method, prefix+route.url)
-		group.Handle(route.method, route.url, append(mw, route.handlers...)...)
+		handle(group, route.method, route.url, append(mw, route.handlers...)...)
 	}
 
 	// Custom sub-routes keep their OWN handler chain (each already carries the
@@ -163,12 +190,15 @@ func (r *Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	for _, routes := range r.routes {
 		for _, route := range routes {
 			// log.Debug("%-7s %v", route.method, prefix+route.url)
-			group.Handle(route.method, route.url, route.handlers...)
+			handle(group, route.method, route.url, route.handlers...)
 		}
 	}
 }
 
-func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
+// CheckPermissions renders a 403 and returns false when the token lacks
+// permission for method; the render is a side-effect (the response is written),
+// so a denied handler just returns nil.
+func (r Rest) CheckPermissions(c *zip.Ctx, method string) bool {
 	// Get permissions of current token
 	tok := middleware.GetPermissions(c)
 
@@ -238,37 +268,37 @@ func (r Rest) defaultRoutes() []route {
 		route{
 			method:   "POST",
 			url:      "",
-			handlers: []gin.HandlerFunc{r.Create},
+			handlers: []zip.Handler{r.Create},
 		},
 		route{
 			method:   "GET",
 			url:      "",
-			handlers: []gin.HandlerFunc{r.List},
+			handlers: []zip.Handler{r.List},
 		},
 		route{
 			method:   "GET",
 			url:      "/:" + r.ParamId,
-			handlers: []gin.HandlerFunc{r.Get},
+			handlers: []zip.Handler{r.Get},
 		},
 		route{
 			method:   "PUT",
 			url:      "/:" + r.ParamId,
-			handlers: []gin.HandlerFunc{r.Update},
+			handlers: []zip.Handler{r.Update},
 		},
 		route{
 			method:   "DELETE",
 			url:      "/:" + r.ParamId,
-			handlers: []gin.HandlerFunc{r.Delete},
+			handlers: []zip.Handler{r.Delete},
 		},
 		route{
 			method:   "POST",
 			url:      "/:" + r.ParamId,
-			handlers: []gin.HandlerFunc{r.MethodOverride},
+			handlers: []zip.Handler{r.MethodOverride},
 		},
 		route{
 			method:   "PATCH",
 			url:      "/:" + r.ParamId,
-			handlers: []gin.HandlerFunc{r.Patch},
+			handlers: []zip.Handler{r.Patch},
 		},
 	}
 }
@@ -278,8 +308,8 @@ func (r Rest) newKind() mixin.Kind {
 }
 
 // Returns a new interface of this entity type
-func (r Rest) newEntity(c *gin.Context) mixin.Entity {
-	ctx := middleware.GetContext(c)
+func (r Rest) newEntity(c *zip.Ctx) mixin.Entity {
+	ctx := c.Context()
 
 	// Create a new entity bound to the CALLER ORG's own per-org store. Every
 	// generic REST merchant model (product/order/user/store/collection/discount/
@@ -326,29 +356,28 @@ func (r Rest) newEntitySlice(length, capacity int) interface{} {
 	return ptr.Interface()
 }
 
-func (r Rest) Render(c *gin.Context, status int, data interface{}) {
-	http.Render(c, status, data)
+func (r Rest) Render(c *zip.Ctx, status int, data interface{}) error {
+	return http.Render(c, status, data)
 }
 
-func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
-	http.Fail(c, status, message, err)
+func (r Rest) Fail(c *zip.Ctx, status int, message interface{}, err error) error {
+	return http.Fail(c, status, message, err)
 }
 
-func (r Rest) get(c *gin.Context) {
+func (r Rest) get(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "get") {
-		return
+		return nil
 	}
 
-	id := c.Params.ByName(r.ParamId)
+	id := c.Param(r.ParamId)
 
 	entity := r.newEntity(c)
 
 	if err := entity.GetById(id); err != nil {
 		// TODO: When is this a 404?
-		r.Fail(c, 404, "Failed to get "+r.Kind, err)
-	} else {
-		r.Render(c, 200, entity)
+		return r.Fail(c, 404, "Failed to get "+r.Kind, err)
 	}
+	return r.Render(c, 200, entity)
 }
 
 // list returns a page of this kind scoped to the caller's org.
@@ -366,22 +395,20 @@ func (r Rest) get(c *gin.Context) {
 // that did not pass Namespace()) is NEVER served an un-scoped full-table scan —
 // that would cross tenants. Fail closed to an empty page; those kinds stay
 // reachable by id via get.
-func (r Rest) list(c *gin.Context) {
+func (r Rest) list(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "list") {
-		return
+		return nil
 	}
 
-	query := c.Request.URL.Query()
-
 	// Default sort order.
-	sortField := query.Get("sort")
+	sortField := c.Query("sort")
 	if sortField == "" {
 		sortField = r.DefaultSortField
 	}
 
-	pageStr := query.Get("page")
-	displayStr := query.Get("display")
-	limitStr := query.Get("limit")
+	pageStr := c.Query("page")
+	displayStr := c.Query("display")
+	limitStr := c.Query("limit")
 
 	entity := r.newEntity(c)
 
@@ -389,20 +416,19 @@ func (r Rest) list(c *gin.Context) {
 	// exact value listBasic scopes every query by. Empty ⇒ no per-tenant scope,
 	// so serve an empty page rather than risk crossing tenants.
 	if nscontext.GetNamespace(entity.Context()) == "" {
-		r.Render(c, 200, Pagination{
+		return r.Render(c, 200, Pagination{
 			Page:    pageStr,
 			Display: displayStr,
 			Models:  r.newEntitySlice(0, 0),
 			Count:   0,
 			Facets:  [][]search.FacetResult{},
 		})
-		return
 	}
 
-	r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
+	return r.listBasic(c, entity, pageStr, displayStr, limitStr, sortField)
 }
 
-func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) {
+func (r Rest) listBasic(c *zip.Ctx, entity mixin.Entity, pageStr, displayStr, limitStr, sortField string) error {
 	// Create query
 	q := entity.Query().All().Order(sortField)
 
@@ -414,8 +440,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
 			q = q.Limit(display)
 		} else {
-			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
-			return
+			return r.Fail(c, 500, "'display' must be positive and non-zero.", err)
 		}
 	}
 
@@ -423,21 +448,18 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
 			q = q.Offset(display * (page - 1))
 		} else {
-			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
-			return
+			return r.Fail(c, 500, "'page' must be positive and non-zero.", err)
 		}
 	}
 
 	entities := r.newEntitySlice(0, 0)
 	if _, err := q.GetAll(entities); err != nil {
-		r.Fail(c, 500, "Failed to list "+r.Kind, err)
-		return
+		return r.Fail(c, 500, "Failed to list "+r.Kind, err)
 	}
 
 	count, err := entity.Query().All().Count()
 	if err != nil {
-		r.Fail(c, 500, "Could not count the models.", err)
-		return
+		return r.Fail(c, 500, "Could not count the models.", err)
 	}
 
 	if limitStr != "" {
@@ -446,7 +468,7 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 		}
 	}
 
-	r.Render(c, 200, Pagination{
+	return r.Render(c, 200, Pagination{
 		Page:    pageStr,
 		Display: displayStr,
 		Models:  entities,
@@ -455,33 +477,31 @@ func (r Rest) listBasic(c *gin.Context, entity mixin.Entity, pageStr, displayStr
 	})
 }
 
-func (r Rest) create(c *gin.Context) {
+func (r Rest) create(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "create") {
-		return
+		return nil
 	}
 
 	entity := r.newEntity(c)
 
-	if err := json.Decode(c.Request.Body, entity); err != nil {
-		r.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), entity); err != nil {
+		return r.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if err := entity.Create(); err != nil {
-		r.Fail(c, 500, "Failed to create "+r.Kind, err)
-	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
-		r.Render(c, 201, entity)
+		return r.Fail(c, 500, "Failed to create "+r.Kind, err)
 	}
+	c.SetHeader("Location", c.Path()+"/"+entity.Id())
+	return r.Render(c, 201, entity)
 }
 
 // Completely replaces an entity for given `id`.
-func (r Rest) update(c *gin.Context) {
+func (r Rest) update(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "update") {
-		return
+		return nil
 	}
 
-	id := c.Params.ByName(r.ParamId)
+	id := c.Param(r.ParamId)
 
 	entity := r.newEntity(c)
 
@@ -489,109 +509,102 @@ func (r Rest) update(c *gin.Context) {
 	key, ok, err := entity.IdExists(id)
 	if !ok {
 		if err != nil {
-			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
-			return
+			return r.Fail(c, 500, "Failed to retrieve key for "+id, err)
 		}
 
-		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
-		return
+		return r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 	}
 
 	// Preserve original key
 	entity.SetKey(key)
 
 	// Decode response body to create new entity
-	if err := json.Decode(c.Request.Body, entity); err != nil {
-		r.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), entity); err != nil {
+		return r.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Replace whatever was in the datastore with our new updated entity
 	if err := entity.Update(); err != nil {
-		r.Fail(c, 500, "Failed to update "+r.Kind, err)
-	} else {
-		r.Render(c, 200, entity)
+		return r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	}
+	return r.Render(c, 200, entity)
 }
 
 // Partially updates pre-existing entity by given `id`.
-func (r Rest) patch(c *gin.Context) {
+func (r Rest) patch(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "patch") {
-		return
+		return nil
 	}
 
-	id := c.Params.ByName(r.ParamId)
+	id := c.Param(r.ParamId)
 
 	entity := r.newEntity(c)
 	err := entity.GetById(id)
 	if err != nil {
-		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
-		return
+		return r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 	}
 
-	if err := json.Decode(c.Request.Body, entity); err != nil {
-		r.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), entity); err != nil {
+		return r.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if err := entity.Update(); err != nil {
-		r.Fail(c, 500, "Failed to update "+r.Kind, err)
-	} else {
-		r.Render(c, 200, entity)
+		return r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	}
+	return r.Render(c, 200, entity)
 }
 
 // Deletes an entity by given `id`
-func (r Rest) delete(c *gin.Context) {
+func (r Rest) delete(c *zip.Ctx) error {
 	if !r.CheckPermissions(c, "delete") {
-		return
+		return nil
 	}
 
-	id := c.Params.ByName(r.ParamId)
+	id := c.Param(r.ParamId)
 	entity := r.newEntity(c)
 	err := entity.GetById(id)
 	if err != nil {
-		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
-		return
+		return r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 	}
 
 	db := entity.Datastore()
 	key := db.NewIncompleteKey("deleted", nil)
 	if _, err := db.Put(key, entity); err != nil {
-		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
-		return
+		return r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
 	}
 
 	if err := entity.Delete(); err != nil {
-		r.Fail(c, 500, "Failed to delete "+r.Kind, err)
-	} else {
-		c.Data(204, "application/json", make([]byte, 0))
+		return r.Fail(c, 500, "Failed to delete "+r.Kind, err)
 	}
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(204, make([]byte, 0))
 }
 
 var methodOverride = middleware.MethodOverride()
 
 // This should be handled by middleware
-func (r Rest) methodOverride(c *gin.Context) {
+func (r Rest) methodOverride(c *zip.Ctx) error {
 
 	// Override request method
-	methodOverride(c)
+	if err := methodOverride(c); err != nil {
+		return err
+	}
 
-	switch c.Request.Method {
+	switch c.Method() {
 	case "PATCH":
-		r.Patch(c)
+		return r.Patch(c)
 	case "POST":
-		r.Patch(c)
+		return r.Patch(c)
 	case "PUT":
-		r.Update(c)
+		return r.Update(c)
 	case "DELETE":
-		r.Delete(c)
+		return r.Delete(c)
 	default:
-		r.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
+		return r.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
 	}
 }
 
-func (r *Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
+func (r *Rest) Handle(method, url string, handlers []zip.Handler) {
 	routes, ok := r.routes[url]
 	if !ok {
 		routes = make(map[string]route)
@@ -606,42 +619,34 @@ func (r *Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
 	r.routes[url] = routes
 }
 
-func (r *Rest) Use(handlers ...gin.HandlerFunc) {
+func (r *Rest) Use(handlers ...zip.Handler) {
 	r.middleware = append(r.middleware, handlers...)
 }
 
-func (r *Rest) GET(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) GET(url string, handlers ...zip.Handler) {
 	r.Handle("GET", url, handlers)
 }
 
-func (r *Rest) POST(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) POST(url string, handlers ...zip.Handler) {
 	r.Handle("POST", url, handlers)
 }
 
-func (r *Rest) DELETE(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) DELETE(url string, handlers ...zip.Handler) {
 	r.Handle("DELETE", url, handlers)
 }
 
-func (r *Rest) PATCH(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) PATCH(url string, handlers ...zip.Handler) {
 	r.Handle("PATCH", url, handlers)
 }
 
-func (r *Rest) PUT(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) PUT(url string, handlers ...zip.Handler) {
 	r.Handle("PUT", url, handlers)
 }
 
-func (r *Rest) HEAD(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) HEAD(url string, handlers ...zip.Handler) {
 	r.Handle("HEAD", url, handlers)
 }
 
-func (r *Rest) OPTIONS(url string, handlers ...gin.HandlerFunc) {
+func (r *Rest) OPTIONS(url string, handlers ...zip.Handler) {
 	r.Handle("OPTIONS", url, handlers)
-}
-
-func (r *Rest) LINK(url string, handlers ...gin.HandlerFunc) {
-	r.Handle("LINK", url, handlers)
-}
-
-func (r *Rest) UNLINK(url string, handlers ...gin.HandlerFunc) {
-	r.Handle("UNLINK", url, handlers)
 }

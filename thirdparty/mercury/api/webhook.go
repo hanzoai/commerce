@@ -2,10 +2,9 @@ package api
 
 import (
 	"errors"
-	"io"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -34,30 +33,23 @@ var (
 //  4. Mark order as paid if it is pending
 //
 // Returns 200 OK to Mercury regardless of processing outcome.
-func Webhook(c *gin.Context) {
+func Webhook(c *zip.Ctx) error {
 	// Read raw body for signature verification.
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		log.Error("Mercury webhook: %v", ErrPayloadRead, c)
-		c.String(200, "ok")
-		return
-	}
+	body := c.Body()
 
 	// Verify signature.
-	signature := c.GetHeader("Mercury-Signature")
+	signature := c.Header("Mercury-Signature")
 	secret := config.Mercury.WebhookSecret
 	if secret != "" && !mercury.VerifySignature(body, signature, secret) {
 		log.Error("Mercury webhook: %v", ErrSignatureInvalid, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	// Parse payload.
 	var payload mercury.WebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		log.Error("Mercury webhook: %v: %v", ErrPayloadParse, err, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	log.Info("Mercury webhook received: eventType=%s resourceId=%s",
@@ -65,14 +57,12 @@ func Webhook(c *gin.Context) {
 
 	// Only process incoming credits on transaction.created.
 	if payload.EventType != "transaction.created" {
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	tx := payload.Data
 	if tx.Direction != "credit" {
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	// Extract order reference from externalMemo or note.
@@ -83,35 +73,31 @@ func Webhook(c *gin.Context) {
 	}
 	if ref == "" {
 		log.Info("Mercury webhook: credit transaction %s has no reference, skipping", tx.ID, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	orgName, orderID := parseReference(ref)
 	if orgName == "" || orderID == "" {
 		log.Info("Mercury webhook: could not parse reference %q from transaction %s", ref, tx.ID, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	// Create a namespaced datastore for the org.
-	ctx := nscontext.WithNamespace(c.Request.Context(), orgName)
+	ctx := nscontext.WithNamespace(c.Context(), orgName)
 	db := datastore.New(ctx)
 
 	// Look up the order.
 	ord := order.New(db)
 	if err := ord.GetById(orderID); err != nil {
 		log.Error("Mercury webhook: order %s not found in org %s: %v", orderID, orgName, err, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	// Only credit orders that are still awaiting payment.
 	if ord.PaymentStatus != payment.Unpaid {
 		log.Info("Mercury webhook: order %s already has payment status %s, skipping",
 			orderID, ord.PaymentStatus, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	// Mark order as paid (same logic as wire credit handler).
@@ -119,14 +105,13 @@ func Webhook(c *gin.Context) {
 	ord.PaymentStatus = payment.Paid
 	if err := ord.Put(); err != nil {
 		log.Error("Mercury webhook: failed to update order %s: %v", orderID, err, c)
-		c.String(200, "ok")
-		return
+		return c.String(200, "ok")
 	}
 
 	log.Info("Mercury webhook: credited order=%s org=%s amount=%.2f txId=%s counterparty=%s",
 		orderID, orgName, tx.Amount, tx.ID, tx.CounterpartyName, c)
 
-	c.String(200, "ok")
+	return c.String(200, "ok")
 }
 
 // parseReference splits a wire reference string into org name and order ID.

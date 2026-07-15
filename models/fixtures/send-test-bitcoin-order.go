@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout"
 	"github.com/hanzoai/commerce/log"
@@ -16,7 +16,7 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
-var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *gin.Context) {
+var SendTestBitcoinOrder = New("send-test-bitcoin-order", func(c *zip.Ctx) {
 	org := Organization(c).(*organization.Organization)
 	accessToken := org.MustGetTokenByName("test-published-key")
 

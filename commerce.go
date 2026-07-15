@@ -29,20 +29,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
+	fiber "github.com/zap-proto/fiber/v3"
+	"github.com/zap-proto/zip"
+	zipmw "github.com/zap-proto/zip/middleware"
 
-	"github.com/hanzoai/commerce/admin"
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	catalogapi "github.com/hanzoai/commerce/api/catalog"
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
+	"github.com/hanzoai/commerce/billing/husdledger"
 	"github.com/hanzoai/commerce/checkout"
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/events"
-	"github.com/hanzoai/commerce/billing/husdledger"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
 	"github.com/hanzoai/commerce/middleware"
@@ -58,6 +59,7 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/types"
+	"github.com/hanzoai/commerce/ui"
 	"github.com/hanzoai/commerce/util/husd"
 	"github.com/hanzoai/commerce/util/nscontext"
 )
@@ -105,6 +107,13 @@ type Config struct {
 
 	// CORS allowed origins
 	AllowedOrigins []string
+
+	// SharedApp, when non-nil, is the host binary's zip app — the NATIVE
+	// co-residence contract (HIP-0106): Bootstrap registers commerce's routes
+	// directly on it (one router, one specificity space) and setupRoutes
+	// skips the standalone-only surfaces (/healthz, legacy /admin SPA, the
+	// checkout SPA catch-all). Serve refuses — the host listens.
+	SharedApp *zip.App
 
 	// Database configuration
 	Database db.Config
@@ -303,8 +312,8 @@ type App struct {
 	// ZAP node for inter-service vector operations
 	ZAP *infra.ZAPNode
 
-	// HTTP router
-	Router *gin.Engine
+	// HTTP router — the native zip app (zap-proto/fiber underneath).
+	Router *zip.App
 
 	// CheckoutResolver maps hostnames (pay.example.com, …) to Tenant
 	// configs for the embedded checkout SPA. Mutable at runtime so the
@@ -317,9 +326,6 @@ type App struct {
 	// handlers that have migrated off the legacy resolver use this directly.
 	// Initialized in Bootstrap from COMMERCE_DATA_DIR / COMMERCE_BASE_URL.
 	CommerceStore *commercestore.Store
-
-	// HTTP server
-	server *http.Server
 
 	// Shutdown handling
 	shutdownOnce sync.Once
@@ -344,11 +350,6 @@ func NewWithConfig(config *Config) *App {
 	}
 
 	// Set Gin mode
-	if config.Dev {
-		gin.SetMode(gin.DebugMode)
-	} else {
-		gin.SetMode(gin.ReleaseMode)
-	}
 
 	// Initialize CLI
 	app.initCLI()
@@ -799,11 +800,17 @@ func (app *App) Bootstrap() error {
 		fmt.Println("Commerce event publisher initialized (NATS/JetStream)")
 	}
 
-	// Initialize router
-	app.Router = gin.New()
-	app.Router.Use(gin.Recovery())
-	if app.config.Dev {
-		app.Router.Use(gin.Logger())
+	// Initialize router — native zip (zap-proto/fiber): zero net/http
+	// adaptation. Co-resident mode registers on the host's shared app; the
+	// host owns Recover/logging for its whole surface.
+	if app.config.SharedApp != nil {
+		app.Router = app.config.SharedApp
+	} else {
+		app.Router = zip.New(zip.Config{AppName: "commerce", DisableStartupMessage: true})
+		app.Router.Use(zipmw.Recover())
+		if app.config.Dev {
+			app.Router.Use(middleware.Logger())
+		}
 	}
 
 	// Wire KV client into IAM middleware for org-lookup caching (if KV is enabled).
@@ -853,7 +860,7 @@ func (app *App) Bootstrap() error {
 	}
 
 	// Anti-spoofing boundary — MUST be installed before any route group so it
-	// wraps EVERY route. gin applies engine.Use() middleware only to routes
+	// wraps EVERY route. zip applies Use() middleware only to routes
 	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
 	// ahead of the /v1 api.Route() bundle the cmd/* binaries register
 	// post-Bootstrap). EdgeAuth strips client-supplied identity and re-mints it
@@ -944,47 +951,37 @@ func (app *App) runStripeSeed() {
 // canonicalPathHandler used to rewrite /v1/commerce/* → /v1/* internally.
 // Deprecated: routes now live at /v1/commerce/* directly. Kept as identity
 // for any caller still wrapping with it.
-func canonicalPathHandler(next http.Handler) http.Handler { return next }
 
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
-	healthHandler := func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "ok",
-			"service": "commerce",
-			"version": Version,
-			"commit":  GitCommit,
-			"built":   BuildTime,
+	embedded := app.config.SharedApp != nil
+	if !embedded {
+		app.Router.Get("/healthz", func(c *zip.Ctx) error {
+			return c.JSON(http.StatusOK, map[string]any{
+				"status":  "ok",
+				"service": "commerce",
+				"version": Version,
+				"commit":  GitCommit,
+				"built":   BuildTime,
+			})
 		})
 	}
-	app.Router.GET("/healthz", healthHandler)
 
-	// Embedded admin surface — two go:embed'd Next.js bundles sharing the
-	// /admin/* mount:
-	//   /admin/billing/*  → hanzoai/billing (IAM-gated: admin/billing_admin/
-	//                       owner/superadmin; 404 otherwise — no existence
-	//                       leak)
-	//   /admin/*          → commerce admin SPA (auth enforced by the admin
-	//                       app itself via IAM redirect)
-	//
-	// Gin cannot register overlapping wildcards, so we dispatch in a single
-	// /admin/*filepath handler. Billing gets first shot; everything else
-	// falls through to the commerce admin bundle. The IAM client reused is
-	// the same singleton the /v1/commerce middleware chain uses — nil means
-	// fail-closed (every billing request 404s until IAM is initialized).
-	adminHandler := admin.Handler("/admin")
-	billingUIMount := "/admin/billing"
-	billingHandler := billingUI.UIHandler(billingUIMount, iammiddleware.Client())
-	adminDispatch := func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, billingUIMount) {
-			billingHandler(c)
-			return
-		}
-		adminHandler.ServeHTTP(c.Writer, c.Request)
+	// Embedded admin surface — two go:embed'd bundles sharing /admin/*:
+	//   /admin/billing/*  → hanzoai/billing bundle (IAM-gated inside the handler:
+	//                       admin/billing_admin/owner/superadmin; 404 otherwise)
+	//   /admin/*          → commerce admin SPA (ui.FS; auth enforced by the app
+	//                       itself via IAM redirect)
+	// The old manual dispatch is gone: zip routes by SPECIFICITY, so the
+	// /admin/billing subtree wins over /admin/* declaratively.
+	if !embedded {
+		billingUIMount := "/admin/billing"
+		app.Router.Get(billingUIMount+"/*", billingUI.UIHandler(billingUIMount, iammiddleware.Client()))
+		adminSPA := zip.Static(ui.FS(), zip.WithIndex("index.html"), zip.WithFallback("index.html"))
+		app.Router.Get("/admin", adminSPA)
+		app.Router.Get("/admin/*", adminSPA)
 	}
-	app.Router.GET("/admin", gin.WrapH(adminHandler))
-	app.Router.GET("/admin/*filepath", adminDispatch)
 
 	// API routes
 	api := app.Router.Group("/v1/commerce")
@@ -1008,21 +1005,21 @@ func (app *App) setupRoutes() {
 		// Individual route groups or handlers may override with CachePublic().
 		api.Use(middleware.CachePrivate())
 
-		// Inject KMS, Events, Publisher, and KV into gin context for handlers.
-		api.Use(func(c *gin.Context) {
+		// Inject KMS, Events, Publisher, and KV into request locals for handlers.
+		api.Use(func(c *zip.Ctx) error {
 			if app.KMS != nil {
-				c.Set("kms", app.KMS)
+				c.Locals("kms", app.KMS)
 			}
 			if app.Events != nil {
-				c.Set("events", app.Events)
+				c.Locals("events", app.Events)
 			}
 			if app.Publisher != nil {
-				c.Set("publisher", app.Publisher)
+				c.Locals("publisher", app.Publisher)
 			}
 			if kv, err := app.Infra.KV(); err == nil {
-				c.Set("kv", kv)
+				c.Locals("kv", kv)
 			}
-			c.Next()
+			return c.Next()
 		})
 
 		// Trigger OnRouteSetup hooks to let extensions add routes
@@ -1034,7 +1031,7 @@ func (app *App) setupRoutes() {
 	//   POST /v1/commerce/deposits — proxied to tenant Backend.URL (e.g. a broker-dealer backend)
 	//   GET  /*                    — embedded Vite SPA with SPA fallback
 	//
-	// Must be registered LAST: the SPA handler is a gin NoRoute catchall,
+	// Must be registered LAST: the SPA handler is the least-specific catch-all,
 	// and everything above this line owns its own route prefix.
 	// Org-as-tenant resolution (ONE way): the IAM org IS the tenant. host→brand→
 	// org slug (checkout.OrgResolver) is the single source of truth for
@@ -1059,14 +1056,14 @@ func (app *App) setupRoutes() {
 	// to a real brand's org.
 	public := app.Router.Group("/v1/commerce")
 	public.Use(forwardedHostMiddleware())
-	public.GET("/tenant", gin.WrapH(checkout.TenantJSON(orgResolver)))
+	public.Get("/tenant", checkout.TenantJSON(orgResolver))
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
-	public.GET("/catalog", catalogapi.Public)
-	public.POST("/deposits", gin.WrapH(checkout.Deposits(orgResolver, checkout.NewHTTPForwarder())))
-	public.POST("/deposits/:id/confirm", gin.WrapH(checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder())))
-	public.GET("/deposits/:id/status", gin.WrapH(checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder())))
-	public.POST("/webhooks/:provider", gin.WrapH(checkout.WebhookIntake(orgResolver)))
+	public.Get("/catalog", catalogapi.Public)
+	public.Post("/deposits", checkout.Deposits(orgResolver, checkout.NewHTTPForwarder()))
+	public.Post("/deposits/:id/confirm", checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder()))
+	public.Get("/deposits/:id/status", checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder()))
+	public.Post("/webhooks/:provider", checkout.WebhookIntake(orgResolver))
 
 	// Superadmin tenant CRUD over the base-backed store stays available for
 	// per-org overrides, but it no longer DRIVES resolution. Gated by IAM +
@@ -1079,27 +1076,23 @@ func (app *App) setupRoutes() {
 		checkout.MountTenantAdmin(adminGroup, app.CommerceStore)
 	}
 
-	// SPA fallback — MUST be last so every API group wins path resolution.
-	checkout.MountSPA(app.Router)
+	// SPA fallback — the least-specific catch-all; standalone only. A host
+	// binary owns its own root surface.
+	if !embedded {
+		checkout.MountSPA(app.Router)
+	}
 }
 
-// Serve starts the HTTP server
+// Serve starts the HTTP listener(s) — zip.Listen on the native transport
+// (zero net/http). The legacy standalone-TLS path uses the documented fiber
+// escape hatch; production terminates TLS at the gateway.
 func (app *App) Serve() error {
+	if app.config.SharedApp != nil {
+		return fmt.Errorf("commerce: co-resident (SharedApp set) — the host binary listens")
+	}
 	// Trigger OnServe hooks
 	if err := app.Hooks.TriggerServe(app); err != nil {
 		return fmt.Errorf("serve hook error: %w", err)
-	}
-
-	// Wrap with canonical path rewrite: /v1/commerce/* -> /v1/*
-	handler := canonicalPathHandler(app.Router)
-
-	app.server = &http.Server{
-		Addr:              app.config.HTTPAddr,
-		Handler:           handler,
-		ReadTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      60 * time.Second,
-		IdleTimeout:       120 * time.Second,
 	}
 
 	fmt.Printf("Commerce %s starting on %s\n", Version, app.config.HTTPAddr)
@@ -1107,29 +1100,19 @@ func (app *App) Serve() error {
 		fmt.Println("Running in DEVELOPMENT mode")
 	}
 
-	// Start HTTPS if configured
 	if app.config.HTTPSAddr != "" && app.config.TLSCert != "" && app.config.TLSKey != "" {
 		go func() {
-			httpsServer := &http.Server{
-				Addr:              app.config.HTTPSAddr,
-				Handler:           handler,
-				ReadTimeout:       30 * time.Second,
-				ReadHeaderTimeout: 10 * time.Second,
-				WriteTimeout:      60 * time.Second,
-				IdleTimeout:       120 * time.Second,
-			}
-			if err := httpsServer.ListenAndServeTLS(app.config.TLSCert, app.config.TLSKey); err != nil && err != http.ErrServerClosed {
+			if err := app.Router.Fiber().Listen(app.config.HTTPSAddr, fiber.ListenConfig{
+				CertFile:              app.config.TLSCert,
+				CertKeyFile:           app.config.TLSKey,
+				DisableStartupMessage: true,
+			}); err != nil {
 				fmt.Fprintf(os.Stderr, "HTTPS error: %v\n", err)
 			}
 		}()
 	}
 
-	// Start HTTP server
-	if err := app.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
-
-	return nil
+	return app.Router.Listen("http://" + app.config.HTTPAddr)
 }
 
 // Shutdown gracefully shuts down the application
@@ -1143,11 +1126,11 @@ func (app *App) Shutdown() error {
 			err = hookErr
 		}
 
-		// Shutdown HTTP server
-		if app.server != nil {
+		// Shutdown HTTP server (drains in-flight requests, runs zip teardown hooks)
+		if app.Router != nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			if shutdownErr := app.server.Shutdown(ctx); shutdownErr != nil {
+			if shutdownErr := app.Router.ShutdownWithContext(ctx); shutdownErr != nil {
 				err = shutdownErr
 			}
 		}
@@ -1211,11 +1194,11 @@ func getEnv(key, defaultVal string) string {
 // (e.g. commerce-api.hanzo.ai). Tenant resolution is exact-match, so a
 // spoofed header still must point at an existing tenant row to do
 // anything — there is no probe oracle. Empty header is a no-op.
-func forwardedHostMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if xfh := c.GetHeader("X-Forwarded-Host"); xfh != "" {
-			c.Request.Host = xfh
+func forwardedHostMiddleware() zip.Handler {
+	return func(c *zip.Ctx) error {
+		if xfh := c.Header("X-Forwarded-Host"); xfh != "" {
+			c.Fiber().Request().Header.SetHost(xfh)
 		}
-		c.Next()
+		return c.Next()
 	}
 }

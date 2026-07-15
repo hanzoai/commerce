@@ -3,7 +3,7 @@ package accesstoken
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/config"
@@ -17,34 +17,30 @@ import (
 	"github.com/hanzoai/commerce/util/session"
 )
 
-func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
-	db := datastore.New(c)
+func getAccessToken(c *zip.Ctx, id, email, pass string, test bool) error {
+	db := datastore.New(c.Context())
 	u := user.New(db)
 
 	// Try to get user by email
 	if err := u.GetByEmail(email); err != nil {
-		http.Fail(c, 401, "Invalid email address.", nil)
-		return
+		return http.Fail(c, 401, "Invalid email address.", nil)
 	}
 
 	// Check password
 	if !password.HashAndCompare(u.PasswordHash, pass) {
-		http.Fail(c, 401, "Invalid password.", nil)
-		return
+		return http.Fail(c, 401, "Invalid password.", nil)
 	}
 
 	// Get organization
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
-		http.Fail(c, 500, "Unable to retrieve organization", err)
-		return
+		return http.Fail(c, 500, "Unable to retrieve organization", err)
 	}
 
 	// Check if we have permission to create an access token
 	if !(org.IsOwner(u) || org.IsAdmin(u)) {
 		log.Warn("user (%v, %v) is not owner of (%v, %v)", u.Email, u.Id(), org.Name, org.Id())
-		http.Fail(c, 500, "Must be owner or admin to create a new access token.", errors.New("Invalid user"))
-		return
+		return http.Fail(c, 500, "Must be owner or admin to create a new access token.", errors.New("Invalid user"))
 	}
 
 	// Get proper token
@@ -67,10 +63,10 @@ func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
 	}
 
 	// Return access token
-	http.Render(c, 200, gin.H{"status": "ok", "token": accessToken})
+	return http.Render(c, 200, map[string]any{"status": "ok", "token": accessToken})
 }
 
-func deleteAccessToken(c *gin.Context) {
+func deleteAccessToken(c *zip.Ctx) error {
 	accessToken := session.GetString(c, "access-token")
 
 	// Save access token in cookie for ease of use during development
@@ -84,18 +80,16 @@ func deleteAccessToken(c *gin.Context) {
 	// Retrieve token
 	tok, err := org.GetToken(accessToken)
 	if err != nil {
-		http.Fail(c, 500, "Invalid token", err)
-		return
+		return http.Fail(c, 500, "Invalid token", err)
 	}
 
 	// Remove token
 	org.RemoveToken(tok.Name)
 
 	if err := org.Put(); err != nil {
-		http.Fail(c, 500, "Unable to update organization", err)
-		return
+		return http.Fail(c, 500, "Unable to update organization", err)
 	}
 
 	// Return access token
-	http.Render(c, 200, gin.H{"status": "ok"})
+	return http.Render(c, 200, map[string]any{"status": "ok"})
 }

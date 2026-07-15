@@ -3,8 +3,8 @@
 // Shape mirrors Deposits() — tenant resolved from Host, forwarded to
 // the tenant's Backend.URL. Each handler pins its own upstream sub-path
 // so the proxy layer is the single enforcement point for path
-// validation. IDs are taken from gin route params (not the request
-// body) and re-escaped for path safety.
+// validation. IDs are taken from route params (not the request body)
+// and re-escaped for path safety.
 
 package checkout
 
@@ -15,58 +15,54 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // DepositConfirm handles POST /v1/commerce/deposits/:id/confirm. The SPA
 // posts the provider-minted token (e.g. Square nonce) back here so BD
 // can complete the pre-auth → capture flow. We never touch the provider
 // directly from commerce — BD owns that call path and the audit record.
-func DepositConfirm(r Resolver, fwd Forwarder) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		tenant, ok := resolveOr404(w, req, r)
+func DepositConfirm(r Resolver, fwd Forwarder) zip.Handler {
+	return func(c *zip.Ctx) error {
+		tenant, ok := resolveOr404(c, r)
 		if !ok {
-			return
+			return nil
 		}
-		if req.Header.Get("Authorization") == "" {
-			writeJSONError(w, http.StatusUnauthorized, "authorization required")
-			return
+		if c.Header("Authorization") == "" {
+			return writeJSONError(c, http.StatusUnauthorized, "authorization required")
 		}
-		id, ok := routeParam(req, "id")
-		if !ok {
-			writeJSONError(w, http.StatusBadRequest, "missing deposit id")
-			return
+		id := c.Param("id")
+		if id == "" {
+			return writeJSONError(c, http.StatusBadRequest, "missing deposit id")
 		}
-		proxyToBackend(w, req, tenant, fwd,
+		return proxyToBackend(c, tenant, fwd,
 			http.MethodPost,
 			"/v1/bd/deposits/"+url.PathEscape(id)+"/confirm",
 		)
-	})
+	}
 }
 
 // DepositStatus handles GET /v1/commerce/deposits/:id/status. Returns
 // the BD-owned state machine (pending, processing, settled, failed). The
 // SPA polls this until terminal or timeout.
-func DepositStatus(r Resolver, fwd Forwarder) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		tenant, ok := resolveOr404(w, req, r)
+func DepositStatus(r Resolver, fwd Forwarder) zip.Handler {
+	return func(c *zip.Ctx) error {
+		tenant, ok := resolveOr404(c, r)
 		if !ok {
-			return
+			return nil
 		}
-		if req.Header.Get("Authorization") == "" {
-			writeJSONError(w, http.StatusUnauthorized, "authorization required")
-			return
+		if c.Header("Authorization") == "" {
+			return writeJSONError(c, http.StatusUnauthorized, "authorization required")
 		}
-		id, ok := routeParam(req, "id")
-		if !ok {
-			writeJSONError(w, http.StatusBadRequest, "missing deposit id")
-			return
+		id := c.Param("id")
+		if id == "" {
+			return writeJSONError(c, http.StatusBadRequest, "missing deposit id")
 		}
-		proxyToBackend(w, req, tenant, fwd,
+		return proxyToBackend(c, tenant, fwd,
 			http.MethodGet,
 			"/v1/bd/deposits/"+url.PathEscape(id)+"/status",
 		)
-	})
+	}
 }
 
 // WebhookIntake handles POST /v1/commerce/webhooks/:provider. The
@@ -80,117 +76,86 @@ func DepositStatus(r Resolver, fwd Forwarder) http.Handler {
 // signing key it would reject live webhooks. BD is the only source of
 // truth for provider keys; having commerce also hold them would be two
 // places to rotate, and two places to forget.
-func WebhookIntake(r Resolver) http.Handler {
+func WebhookIntake(r Resolver) zip.Handler {
 	fwd := NewHTTPForwarder()
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		tenant, ok := resolveOr404(w, req, r)
+	return func(c *zip.Ctx) error {
+		tenant, ok := resolveOr404(c, r)
 		if !ok {
-			return
+			return nil
 		}
-		provider, ok := routeParam(req, "provider")
-		if !ok || !isKnownProvider(provider) {
-			writeJSONError(w, http.StatusNotFound, "unknown provider")
-			return
+		provider := c.Param("provider")
+		if provider == "" || !isKnownProvider(provider) {
+			return writeJSONError(c, http.StatusNotFound, "unknown provider")
 		}
 		// Forward to BD's provider-specific webhook intake.
 		// URL-escape the provider segment even though we validated it
 		// against an allowlist — defense in depth.
 		sub := "/v1/bd/webhooks/" + url.PathEscape(provider)
-		proxyWebhook(w, req, tenant, fwd, sub)
-	})
+		return proxyWebhook(c, tenant, fwd, sub)
+	}
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────
 
 // resolveOr404 is the common tenant-resolve preamble. On failure it
 // writes a 404 with no Host echo and returns ok=false.
-func resolveOr404(w http.ResponseWriter, req *http.Request, r Resolver) (Tenant, bool) {
-	t, err := r.Resolve(req.Host)
+func resolveOr404(c *zip.Ctx, r Resolver) (Tenant, bool) {
+	t, err := r.Resolve(c.Fiber().Host())
 	if err != nil {
-		writeJSONError(w, http.StatusNotFound, "unknown tenant")
+		_ = writeJSONError(c, http.StatusNotFound, "unknown tenant")
 		return Tenant{}, false
 	}
 	return t, true
 }
 
-// routeParam extracts a gin route parameter from the request context.
-// gin stores params on the context — we read them back without needing
-// the gin.Context type so our handlers stay net/http-native and easily
-// unit-testable.
-func routeParam(req *http.Request, name string) (string, bool) {
-	ctx := req.Context()
-	if v := ctx.Value(gin.ContextKey); v != nil {
-		if gc, ok := v.(*gin.Context); ok {
-			if val := gc.Param(name); val != "" {
-				return val, true
-			}
-		}
-	}
-	// Fallback: many tests and non-gin callers set params via
-	// request context value directly.
-	if v := ctx.Value(paramsCtxKey(name)); v != nil {
-		if s, ok := v.(string); ok && s != "" {
-			return s, true
-		}
-	}
-	return "", false
-}
-
-// paramsCtxKey is a test/helper seam for injecting route params without
-// going through gin. Production traffic always reaches us with gin
-// params in context.
-type paramsCtxKey string
-
-// proxyToBackend forwards req to tenant.Backend.URL + sub with
+// proxyToBackend forwards the request to tenant.Backend.URL + sub with
 // Authorization + Content-Type preserved, body copied, and an
 // X-Commerce-Tenant header set so BD logs can attribute correctly.
 func proxyToBackend(
-	w http.ResponseWriter,
-	req *http.Request,
+	c *zip.Ctx,
 	tenant Tenant,
 	fwd Forwarder,
 	method, sub string,
-) {
+) error {
 	if tenant.Backend.URL == "" {
-		writeJSONError(w, http.StatusServiceUnavailable, "tenant backend not configured")
-		return
+		return writeJSONError(c, http.StatusServiceUnavailable, "tenant backend not configured")
 	}
 
 	upstreamURL := strings.TrimRight(tenant.Backend.URL, "/") + sub
 
 	var body io.Reader
-	if req.Body != nil {
-		b, err := io.ReadAll(req.Body)
-		if err != nil {
-			writeJSONError(w, http.StatusBadRequest, "read body")
-			return
-		}
+	if b := c.Body(); len(b) > 0 {
+		// c.Body() is the request buffer (zero-copy); the reader is consumed
+		// before the handler returns, so no copy is needed.
 		body = bytes.NewReader(b)
 	}
 
-	up, err := http.NewRequestWithContext(req.Context(), method, upstreamURL, body)
+	up, err := http.NewRequestWithContext(c.Context(), method, upstreamURL, body)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "build upstream")
-		return
+		return writeJSONError(c, http.StatusInternalServerError, "build upstream")
 	}
-	up.Header.Set("Authorization", req.Header.Get("Authorization"))
-	if ct := req.Header.Get("Content-Type"); ct != "" {
+	up.Header.Set("Authorization", c.Header("Authorization"))
+	if ct := c.Header("Content-Type"); ct != "" {
 		up.Header.Set("Content-Type", ct)
 	}
 	up.Header.Set("X-Commerce-Tenant", tenant.Name)
 
 	resp, err := fwd.Forward(up, tenant)
 	if err != nil {
-		writeJSONError(w, http.StatusBadGateway, "upstream error")
-		return
+		return writeJSONError(c, http.StatusBadGateway, "upstream error")
 	}
 	defer resp.Body.Close()
 
+	// Buffer the upstream response fully before writing. fiber's SendStream
+	// is lazy (SetBodyStream) — it reads resp.Body when the response flushes,
+	// which is AFTER this function's deferred Close has already run, so
+	// streaming would race the close and truncate the body. Read-then-Bytes
+	// matches Deposits(): one proxy-response path, no lazy-close footgun.
+	respBody, _ := io.ReadAll(resp.Body)
 	if ct := resp.Header.Get("Content-Type"); ct != "" {
-		w.Header().Set("Content-Type", ct)
+		c.SetHeader("Content-Type", ct)
 	}
-	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, resp.Body)
+	return c.Bytes(resp.StatusCode, respBody)
 }
 
 // proxyWebhook forwards a provider webhook to BD verbatim, preserving
@@ -198,55 +163,47 @@ func proxyToBackend(
 // one case where we pass headers through un-scrubbed because the
 // upstream needs them all for signature verification.
 func proxyWebhook(
-	w http.ResponseWriter,
-	req *http.Request,
+	c *zip.Ctx,
 	tenant Tenant,
 	fwd Forwarder,
 	sub string,
-) {
+) error {
 	if tenant.Backend.URL == "" {
-		writeJSONError(w, http.StatusServiceUnavailable, "tenant backend not configured")
-		return
+		return writeJSONError(c, http.StatusServiceUnavailable, "tenant backend not configured")
 	}
 
 	upstreamURL := strings.TrimRight(tenant.Backend.URL, "/") + sub
 
-	b, err := io.ReadAll(req.Body)
+	up, err := http.NewRequestWithContext(c.Context(), http.MethodPost, upstreamURL, bytes.NewReader(c.Body()))
 	if err != nil {
-		writeJSONError(w, http.StatusBadRequest, "read body")
-		return
-	}
-	up, err := http.NewRequestWithContext(req.Context(), http.MethodPost, upstreamURL, bytes.NewReader(b))
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "build upstream")
-		return
+		return writeJSONError(c, http.StatusInternalServerError, "build upstream")
 	}
 	// Forward ALL original headers — provider signatures are in there.
 	// The Authorization header (if any) is provider-specific, not a
 	// user bearer, so forwarding it is correct.
-	for k, vs := range req.Header {
+	c.Fiber().Request().Header.VisitAll(func(kb, vb []byte) {
+		k := string(kb)
 		// Drop hop-by-hop headers that don't belong on the upstream
 		// request (connection state, not application payload).
 		switch strings.ToLower(k) {
 		case "connection", "keep-alive", "proxy-authenticate",
 			"proxy-authorization", "te", "trailer", "transfer-encoding",
 			"upgrade", "host", "content-length":
-			continue
+			return
 		}
-		for _, v := range vs {
-			up.Header.Add(k, v)
-		}
-	}
+		up.Header.Add(k, string(vb))
+	})
 	up.Header.Set("X-Commerce-Tenant", tenant.Name)
 
 	resp, err := fwd.Forward(up, tenant)
 	if err != nil {
-		writeJSONError(w, http.StatusBadGateway, "upstream error")
-		return
+		return writeJSONError(c, http.StatusBadGateway, "upstream error")
 	}
 	defer resp.Body.Close()
-	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, resp.Body)
+	// Buffer before writing — see proxyToBackend on fiber SendStream's
+	// lazy-flush vs. deferred Close.
+	respBody, _ := io.ReadAll(resp.Body)
+	return c.Bytes(resp.StatusCode, respBody)
 }
 
 // isKnownProvider bounds the :provider URL param to an allowlist so

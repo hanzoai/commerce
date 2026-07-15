@@ -2,8 +2,10 @@ package wallet
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 
+	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/organization"
@@ -12,7 +14,6 @@ import (
 	"github.com/hanzoai/commerce/util/blockchain"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/rand"
 )
 
@@ -33,90 +34,84 @@ type PayFromAccountResponse struct {
 	TransactionId string `json:"transactionId"`
 }
 
-func Get(c *gin.Context) {
+func Get(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil || orgWallet == nil {
-		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+		return http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
 	org.MustUpdate()
 
-	http.Render(c, 200, orgWallet)
+	return http.Render(c, 200, orgWallet)
 }
 
-func GetAccount(c *gin.Context) {
+func GetAccount(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {
-		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+		return http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
 
-	log.Debug("Requested account name: %v", c.Params.ByName("name"))
-	account, success := orgWallet.GetAccountByName(c.Params.ByName("name"))
+	log.Debug("Requested account name: %v", c.Param("name"))
+	account, success := orgWallet.GetAccountByName(c.Param("name"))
 	if !success {
-		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
-		return
+		return http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 	}
 	org.MustUpdate()
 
-	http.Render(c, 200, account)
+	return http.Render(c, 200, account)
 }
 
-func CreateAccount(c *gin.Context) {
+func CreateAccount(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {
-		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+		return http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
 	request := CreateAccountRequest{}
-	if err := json.Decode(c.Request.Body, &request); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &request); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 	log.Debug("Blockchain requested for account creation: %v", request.Blockchain)
 	blockchainType := blockchains.Type(request.Blockchain)
 	account, err := orgWallet.CreateAccount(request.Name, blockchainType, []byte(org.WalletPassphrase))
 	if err != nil {
-		http.Fail(c, 400, "Failed to create requested account", err)
-		return
+		return http.Fail(c, 400, "Failed to create requested account", err)
 	}
 	org.MustUpdate()
 
-	http.Render(c, 200, account)
+	return http.Render(c, 200, account)
 }
 
-func Send(c *gin.Context) {
+func Send(c *zip.Ctx) error {
 	// Crypto withdrawal from the org wallet — the highest-value money move.
 	// Admin-only, enforced inside the handler because the route middleware
 	// no-ops on the IAM path (Red HIGH-4). The wallet lives on the caller's own
 	// org record (resolved from the verified X-Org-Id), so it is already
 	// tenant-scoped; this closes the missing authorization check.
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
 	orgWallet, err := ReturnWallet(org)
 	if err != nil {
-		http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
+		return http.Fail(c, 400, "Unable to retrieve wallet from datastore", err)
 	}
 	request := PayFromAccountRequest{}
-	if err := json.Decode(c.Request.Body, &request); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &request); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 	account, success := orgWallet.GetAccountByName(request.Name)
 	if !success {
-		http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
-		return
+		return http.Fail(c, 404, "Requested account name was not found.", errors.New("Requested account name was not found."))
 	}
-	transactionId, err := blockchain.MakePayment(middleware.GetContext(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
+	transactionId, err := blockchain.MakePayment(c.Context(), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 	if err != nil {
-		http.Fail(c, 400, "Failed to make payment.", err)
-		return
+		return http.Fail(c, 400, "Failed to make payment.", err)
 	}
 	org.MustUpdate()
 
-	http.Render(c, 200, PayFromAccountResponse{transactionId})
+	return http.Render(c, 200, PayFromAccountResponse{transactionId})
 }
 
 func ReturnWallet(o *organization.Organization) (*wallet.Wallet, error) {

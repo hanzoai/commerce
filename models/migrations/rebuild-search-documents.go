@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/models/cart"
@@ -13,10 +13,10 @@ import (
 )
 
 var _ = New("rebuild-search-documents",
-	func(c *gin.Context) []interface{} {
-		db := ds.New(c)
+	func(c *zip.Ctx) []interface{} {
+		db := ds.New(c.Context())
 
-		c.Set("namespace", "damon")
+		c.Locals("namespace", "damon")
 		db.SetNamespace("damon")
 
 		// Search functionality removed
