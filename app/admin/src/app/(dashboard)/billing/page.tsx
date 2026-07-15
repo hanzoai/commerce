@@ -1,7 +1,7 @@
 'use client'
 
 import { Component, useEffect, useState, type ReactNode } from 'react'
-import { Commerce } from '@hanzo/commerce-client'
+import { Commerce } from '@/lib/commerce-client'
 import { Heading, Text, Container } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { PageHeader } from '@/components/common/page-header'

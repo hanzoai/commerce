@@ -2,6 +2,7 @@
 
 import { Sidebar } from './sidebar'
 import { Topbar } from './topbar'
+import { AiChatDock } from '@/components/ai/ai-chat-dock'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main className="min-h-[calc(100vh-3.5rem)]">{children}</main>
       </div>
+      <AiChatDock />
     </>
   )
 }
