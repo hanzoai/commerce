@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	a "github.com/hanzoai/commerce/api/api"
+	a "github.com/hanzoai/commerce/api"
 	"github.com/hanzoai/commerce/util/router"
 )
 

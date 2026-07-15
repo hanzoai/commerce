@@ -20,7 +20,7 @@ import (
 	"time"
 
 	commerceApp "github.com/hanzoai/commerce"
-	api "github.com/hanzoai/commerce/api/api"
+	api "github.com/hanzoai/commerce/api"
 	commerce "github.com/hanzoai/commerce"
 )
 
