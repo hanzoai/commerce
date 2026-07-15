@@ -9,12 +9,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/util/cache"
-	"github.com/hanzoai/commerce/middleware"
 	// "github.com/hanzoai/commerce/models"
 
 	"github.com/hanzoai/commerce/log"
@@ -28,9 +27,9 @@ var _redirectUri string
 
 // Sets _redirectUri as necessary for dev machines
 // Uses config.UrlFor in production and staging.
-func redirectUri(c *gin.Context) string {
+func redirectUri(c *zip.Ctx) string {
 	// if config.IsDevelopment && _redirectUri == "" {
-	// 	client := urlfetch.Client(middleware.GetContext(c))
+	// 	client := urlfetch.Client(c.Context())
 	// 	req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
 	// 	res, _ := client.Do(req)
 	// 	defer res.Body.Close()
@@ -49,7 +48,7 @@ var graphVersion = config.Facebook.GraphVersion
 
 var app *fb.App
 
-func newSession(c *gin.Context, accessToken string) *fb.Session {
+func newSession(c *zip.Ctx, accessToken string) *fb.Session {
 	if app == nil {
 		app = fb.New(appId, appSecret)
 		app.RedirectUri = redirectUri(c)
@@ -60,7 +59,7 @@ func newSession(c *gin.Context, accessToken string) *fb.Session {
 }
 
 // GET /auth/facebook_callback
-func Callback(c *gin.Context) {
+func Callback(c *zip.Ctx) error {
 	// req := c.Request
 	// e := req.URL.Query().Get("error")
 	// if e != "" {
@@ -75,7 +74,7 @@ func Callback(c *gin.Context) {
 
 	// if resState := req.URL.Query().Get("state"); true {
 	// 	log.Debug(resState)
-	// 	ctx := middleware.GetContext(c)
+	// 	ctx := c.Context()
 	// 	_, err := memcache.Get(ctx, resState)
 	// 	if err != nil {
 	// 		log.Panic("CSRF attempt \n\tExpected: %s", resState)
@@ -130,13 +129,14 @@ func Callback(c *gin.Context) {
 	// 	auth.Logout(c)
 	// 	c.Redirect(302, config.UrlFor("store", "/login"))
 	// }
+	return nil
 }
 
 // Generates a token and inserts it into memcache
 // The token has a TTL of 3 minutes
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func CSRFToken(c *gin.Context) string {
+func CSRFToken(c *zip.Ctx) string {
 	size := 16
 	b := make([]rune, size)
 	for i := range b {
@@ -150,13 +150,13 @@ func CSRFToken(c *gin.Context) string {
 		Expiration: 3 * time.Minute,
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	cache.Set(ctx, item)
 	return url.QueryEscape(token)
 }
 
 // GET /auth/facebook
-func LoginUser(c *gin.Context) {
+func LoginUser(c *zip.Ctx) error {
 	// state := CSRFToken(c)
 	// log.Debug(state)
 	// url := fmt.Sprintf(
@@ -182,9 +182,10 @@ func LoginUser(c *gin.Context) {
 
 	// log.Debug("Not logged in")
 	// c.Redirect(302, url)
+	return nil
 }
 
-func exchangeCode(c *gin.Context, code string) (token string, err error) {
+func exchangeCode(c *zip.Ctx, code string) (token string, err error) {
 	endpoint := fmt.Sprintf(
 		"https://graph.facebook.com/oauth/access_token?client_id=%s&redirect_uri=%s&client_secret=%s&code=%s",
 		appId, redirectUri(c), appSecret, code,

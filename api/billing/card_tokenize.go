@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -35,28 +35,24 @@ type cardTokenizeResponse struct {
 // Level 1 compliance. Use the Square Web Payments SDK (SqPaymentForm) instead.
 //
 // POST /v1/billing/card/tokenize
-func TokenizeCard(c *gin.Context) {
+func TokenizeCard(c *zip.Ctx) error {
 	var req cardTokenizeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	num := strings.ReplaceAll(req.Number, " ", "")
 	if len(num) < 13 || len(num) > 19 {
-		http.Fail(c, 400, "invalid card number", nil)
-		return
+		return http.Fail(c, 400, "invalid card number", nil)
 	}
 	if req.ExpiryMonth == "" || req.ExpiryYear == "" {
-		http.Fail(c, 400, "expiry_month and expiry_year are required", nil)
-		return
+		return http.Fail(c, 400, "expiry_month and expiry_year are required", nil)
 	}
 	if req.CVC == "" {
-		http.Fail(c, 400, "cvc is required", nil)
-		return
+		return http.Fail(c, 400, "cvc is required", nil)
 	}
 
 	// Server-side card tokenization is not supported. Use the Square Web
 	// Payments SDK on the client to obtain a payment token (nonce).
-	http.Fail(c, 503, "server-side card tokenization not available; use Square Web Payments SDK", nil)
+	return http.Fail(c, 503, "server-side card tokenization not available; use Square Web Payments SDK", nil)
 }

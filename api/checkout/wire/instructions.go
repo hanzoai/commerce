@@ -3,7 +3,7 @@ package wire
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -32,30 +32,26 @@ type wireInstructionsResponse struct {
 // call after EdgeAuth strips a spoofed X-Org-Id) and never another org's bank
 // details. Account/routing/SWIFT are org-specific sensitive data, so there is
 // no anonymous read.
-func Instructions(c *gin.Context) {
+func Instructions(c *zip.Ctx) error {
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
-		http.Fail(c, 401, "Authentication required",
+		return http.Fail(c, 401, "Authentication required",
 			errors.New("no authenticated organization for wire instructions"))
-		return
 	}
 
 	// Hydrate payment credentials from KMS
-	if v, ok := c.Get("kms"); ok {
-		if kmsClient, ok := v.(*kms.CachedClient); ok {
-			if err := kms.Hydrate(kmsClient, org); err != nil {
-				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
-			}
+	if kmsClient, ok := c.Locals("kms").(*kms.CachedClient); ok {
+		if err := kms.Hydrate(kmsClient, org); err != nil {
+			log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
 		}
 	}
 
 	w := org.Wire
 	if w.BankName == "" && w.AccountHolder == "" {
-		http.Fail(c, 404, "Wire transfer not configured", nil)
-		return
+		return http.Fail(c, 404, "Wire transfer not configured", nil)
 	}
 
-	http.Render(c, 200, wireInstructionsResponse{
+	return http.Render(c, 200, wireInstructionsResponse{
 		BankName:      w.BankName,
 		AccountHolder: w.AccountHolder,
 		RoutingNumber: w.RoutingNumber,

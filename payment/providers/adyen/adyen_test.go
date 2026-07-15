@@ -359,10 +359,10 @@ func TestBuildPaymentMethod_EncryptedCard(t *testing.T) {
 	req := processor.PaymentRequest{
 		Token: "encrypted-card-number",
 		Options: map[string]interface{}{
-			"encryptedExpiryMonth":    "enc-month",
-			"encryptedExpiryYear":     "enc-year",
-			"encryptedSecurityCode":   "enc-cvc",
-			"paymentMethodType":       "ideal",
+			"encryptedExpiryMonth":  "enc-month",
+			"encryptedExpiryYear":   "enc-year",
+			"encryptedSecurityCode": "enc-cvc",
+			"paymentMethodType":     "ideal",
 		},
 	}
 	pm := buildPaymentMethod(req)

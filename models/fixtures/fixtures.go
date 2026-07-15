@@ -1,10 +1,9 @@
 package fixtures
 
 import (
-	"context"
 	"reflect"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -18,7 +17,7 @@ type Fixture struct {
 	entity mixin.Entity
 }
 
-func New(name string, fn interface{}) func(c context.Context) mixin.Entity {
+func New(name string, fn interface{}) func(c *zip.Ctx) mixin.Entity {
 	fix := new(Fixture)
 
 	// Prefix all fixture tasks
@@ -28,13 +27,14 @@ func New(name string, fn interface{}) func(c context.Context) mixin.Entity {
 	fix.fnv = reflect.ValueOf(fn)
 
 	// Register task
-	task.Func(name, func(c2 *gin.Context) {
+	task.Func(name, func(c2 *zip.Ctx) error {
 		log.Debug("Running %s", name)
 		fix.fnv.Call([]reflect.Value{reflect.ValueOf(c2)})
+		return nil
 	})
 
 	// Return wrapper that memoizes result for safe chaining
-	return func(c3 context.Context) mixin.Entity {
+	return func(c3 *zip.Ctx) mixin.Entity {
 		if fix.entity == nil {
 			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c3)})
 			fix.entity = res[0].Interface().(mixin.Entity)
@@ -45,7 +45,7 @@ func New(name string, fn interface{}) func(c context.Context) mixin.Entity {
 }
 
 // Get db namespaced for our fixtures org
-func getNamespaceDb(c context.Context) *datastore.Datastore {
+func getNamespaceDb(c *zip.Ctx) *datastore.Datastore {
 	org := Organization(c).(*organization.Organization)
 	ctx := org.Namespaced(org.Datastore().Context)
 	db := datastore.New(ctx)
@@ -54,7 +54,7 @@ func getNamespaceDb(c context.Context) *datastore.Datastore {
 
 func init() {
 	// Setup default fixtures
-	task.Func("fixtures-all", func(c *gin.Context) {
+	task.Func("fixtures-all", func(c *zip.Ctx) error {
 		User(c)
 		Organization(c)
 		Product(c)
@@ -64,5 +64,6 @@ func init() {
 		Token(c)
 		Coupon(c)
 		Store(c)
+		return nil
 	})
 }

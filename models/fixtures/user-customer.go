@@ -1,13 +1,13 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/models/user"
 )
 
-var UserCustomer = New("user-customer", func(c *gin.Context) *user.User {
+var UserCustomer = New("user-customer", func(c *zip.Ctx) *user.User {
 	db := getNamespaceDb(c)
 
 	// Such tees owner & operator

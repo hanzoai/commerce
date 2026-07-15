@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // login is intentionally a 410 Gone redirect to Hanzo IAM.
@@ -17,13 +17,13 @@ import (
 // Migration: callers should request an IAM JWT via PKCE flow and pass it as
 // `Authorization: Bearer <token>` to commerce. The iammiddleware validates
 // the JWT and populates `c.Get("user")` automatically.
-func login(c *gin.Context) {
+func login(c *zip.Ctx) error {
 	iam := os.Getenv("IAM_ISSUER")
 	if iam == "" {
 		iam = "https://hanzo.id"
 	}
-	c.Header("Location", iam+"/v1/iam/oauth/authorize")
-	c.JSON(http.StatusGone, gin.H{
+	c.SetHeader("Location", iam+"/v1/iam/oauth/authorize")
+	return c.JSON(http.StatusGone, map[string]any{
 		"error":      "endpoint_deprecated",
 		"message":    "Commerce no longer issues passwords. Use Hanzo IAM (hanzo.id) and pass a Bearer token.",
 		"redirectTo": iam + "/v1/iam/oauth/authorize",

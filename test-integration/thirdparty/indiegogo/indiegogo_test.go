@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/hanzoai/commerce/thirdparty/indiegogo"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/thirdparty/indiegogo"
 )
 
 func Test(t *testing.T) {

@@ -21,12 +21,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
@@ -78,39 +77,34 @@ type createTenantResponse struct {
 // IsSuperAdmin(): the HOME owner=="admin" (reserved admin org) — may call
 // this. Org owners (org-level isAdmin) and tenant-admins get 403;
 // unauthenticated callers get 401.
-func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
+func (a *TenantAdminAPI) CreateTenant(c *zip.Ctx) error {
 	// GetIAMClaims is non-nil by contract, so authentication is decided by
 	// IsIAMAuthenticated (gateway identity present), not a nil check — an
 	// anonymous caller must get 401, never the 403 that leaks admin-gating.
 	if !iammiddleware.IsIAMAuthenticated(c) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-		return
+		return c.JSON(http.StatusUnauthorized, map[string]any{"error": "authentication required"})
 	}
 	claims := iammiddleware.GetIAMClaims(c)
 	if !isSuperadmin(claims) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "global admin required"})
-		return
+		return c.JSON(http.StatusForbidden, map[string]any{"error": "global admin required"})
 	}
 
-	// Bounded body read — the JSONField max is 64KB per column; with six
-	// JSON columns the sum is ~400KB. Cap at 512KB to leave headroom and
-	// block a lazy DoS.
-	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 512*1024))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
-		return
+	// Bounded body — the JSONField max is 64KB per column; with six JSON
+	// columns the sum is ~400KB. Cap at 512KB to leave headroom and block a
+	// lazy DoS. c.Body() is the request buffer (zero-copy), so the cap is a
+	// length check, not a second read.
+	body := c.Body()
+	if len(body) > 512*1024 {
+		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid body"})
 	}
-	defer c.Request.Body.Close()
 
 	var req createTenantRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid JSON"})
 	}
 
 	if req.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
-		return
+		return c.JSON(http.StatusBadRequest, map[string]any{"error": "name required"})
 	}
 
 	tenant := &store.Tenant{
@@ -127,13 +121,12 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 	if err := a.Store.Tenants.Create(tenant); err != nil {
 		switch err {
 		case store.ErrDuplicateTenant:
-			c.JSON(http.StatusConflict, gin.H{"error": "tenant with that name already exists"})
+			return c.JSON(http.StatusConflict, map[string]any{"error": "tenant with that name already exists"})
 		case store.ErrInvalidHostname:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hostname"})
+			return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid hostname"})
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tenant"})
+			return c.JSON(http.StatusBadRequest, map[string]any{"error": "invalid tenant"})
 		}
-		return
 	}
 
 	// Audit: superadmin-created a tenant. Payload hashes (not contents)
@@ -147,7 +140,7 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 		req,
 	)
 
-	c.JSON(http.StatusCreated, createTenantResponse{
+	return c.JSON(http.StatusCreated, createTenantResponse{
 		ID:      tenant.ID,
 		Name:    tenant.Name,
 		Created: tenant.Created,
@@ -161,26 +154,23 @@ func (a *TenantAdminAPI) CreateTenant(c *gin.Context) {
 // derived from the IAM `owner` claim — never from the body or query. If
 // the authenticated user has no tenant row, the response is a byte-
 // identical 404 to the cross-tenant-probe case — same status, same body.
-func (a *TenantAdminAPI) ListProviders(c *gin.Context) {
+func (a *TenantAdminAPI) ListProviders(c *zip.Ctx) error {
 	// Authentication via IsIAMAuthenticated (GetIAMClaims is non-nil by
 	// contract); anonymous → 401, never the authorization 403.
 	if !iammiddleware.IsIAMAuthenticated(c) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-		return
+		return c.JSON(http.StatusUnauthorized, map[string]any{"error": "authentication required"})
 	}
 	claims := iammiddleware.GetIAMClaims(c)
 
 	// Tenant-admin (org-scoped) OR global admin may list. A plain authenticated
 	// user without an admin signal gets 403.
 	if !isSuperadmin(claims) && !isTenantAdmin(claims) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "admin role required"})
-		return
+		return c.JSON(http.StatusForbidden, map[string]any{"error": "admin role required"})
 	}
 
 	owner := claims.Owner
 	if owner == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
+		return c.JSON(http.StatusNotFound, map[string]any{"error": "not found"})
 	}
 
 	// Look up the tenant row by name. No cross-tenant query is possible:
@@ -191,8 +181,7 @@ func (a *TenantAdminAPI) ListProviders(c *gin.Context) {
 		// or the caller is asking about someone else's tenant. We never
 		// reach a state where an authenticated user probes a different
 		// tenant's providers — the owner claim pins scope.
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
+		return c.JSON(http.StatusNotFound, map[string]any{"error": "not found"})
 	}
 
 	// Defense-in-depth: project to public view that strips KMS paths —
@@ -206,7 +195,7 @@ func (a *TenantAdminAPI) ListProviders(c *gin.Context) {
 			Enabled: p.Enabled,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]any{
 		"tenant":    tenant.Name,
 		"providers": projected,
 	})
@@ -245,44 +234,30 @@ func (a *TenantAdminAPI) findTenantByOwner(owner string) (*store.Tenant, error) 
 // StaticResolver; new callers should use this one. Once every deployment
 // is on base, TenantJSON becomes a thin wrapper around this function and
 // StaticResolver is deleted.
-func TenantJSONFromStore(s *store.Store) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+func TenantJSONFromStore(s *store.Store) zip.Handler {
+	return func(c *zip.Ctx) error {
+		c.SetHeader("Content-Type", "application/json; charset=utf-8")
 
-		host, err := readHostFromRequest(req)
+		host, err := normalizeHostForLookup(c.Fiber().Host())
 		if err != nil {
 			// Constant 404 body — never echo host.
-			w.Header().Set("Cache-Control", "no-store")
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write(unknownTenant404)
-			return
+			c.SetHeader("Cache-Control", "no-store")
+			return c.Bytes(http.StatusNotFound, unknownTenant404)
 		}
 
 		t, err := s.Tenants.FindByHostname(host)
 		if err != nil {
-			w.Header().Set("Cache-Control", "no-store")
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write(unknownTenant404)
-			return
+			c.SetHeader("Cache-Control", "no-store")
+			return c.Bytes(http.StatusNotFound, unknownTenant404)
 		}
-		w.Header().Set("Cache-Control", "public, max-age=60")
-		_ = json.NewEncoder(w).Encode(publicTenantDTO(t))
-	})
+		c.SetHeader("Cache-Control", "public, max-age=60")
+		return c.JSON(http.StatusOK, publicTenantDTO(t))
+	}
 }
 
 // unknownTenant404 is the canonical 404 body. Stored as a byte slice so the
 // cross-tenant-probe test can assert byte-identical responses.
 var unknownTenant404 = []byte(`{"error":"unknown tenant"}`)
-
-// readHostFromRequest extracts the Host header via the same normalization
-// rules the repo uses. Kept separate so the handler can pre-reject
-// malformed input without opening a DB connection.
-func readHostFromRequest(req *http.Request) (string, error) {
-	if req == nil {
-		return "", store.ErrInvalidHostname
-	}
-	return normalizeHostForLookup(req.Host)
-}
 
 // normalizeHostForLookup mirrors checkout/tenant.go normalizeHost exactly,
 // so the public endpoint and the admin endpoint agree on "what is a valid

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -146,9 +146,9 @@ type authorizeResult struct {
 // scope cost one query. The row scan is bounded (loadOrgScopes).
 //
 //	GET /v1/billing/spend-alerts/authorize?user=&project=&service=&amount=&pv=
-func AuthorizeSpendCap(c *gin.Context) {
+func AuthorizeSpendCap(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	test := org.TestMode()
 
 	reqProject := spendalert.NormalizeProject(c.Query("project"))
@@ -159,8 +159,7 @@ func AuthorizeSpendCap(c *gin.Context) {
 	rows, err := loadOrgScopes(db)
 	if err != nil {
 		log.Error("spend-cap: load scopes failed: %v", err, c)
-		http.Fail(c, 500, "failed to load spend caps", err)
-		return
+		return http.Fail(c, 500, "failed to load spend caps", err)
 	}
 
 	spentBy := map[string]int64{} // memoize per (project,service) scope.
@@ -180,8 +179,7 @@ func AuthorizeSpendCap(c *gin.Context) {
 				// FAIL CLOSED for a hard-enforceable row whose spend is unknown.
 				if hard {
 					log.Error("spend-cap: agg failed, failing CLOSED for enforce scope: %v", serr, c)
-					c.JSON(200, authorizeResult{Allow: false, Reason: "spend_cap", CapCents: s.Threshold})
-					return
+					return c.JSON(200, authorizeResult{Allow: false, Reason: "spend_cap", CapCents: s.Threshold})
 				}
 				continue // soft/degraded row: cannot warn, do not block.
 			}
@@ -210,5 +208,5 @@ func AuthorizeSpendCap(c *gin.Context) {
 	if !res.Allow {
 		res.WarnPct = 0 // a deny carries no warn.
 	}
-	c.JSON(200, res)
+	return c.JSON(200, res)
 }

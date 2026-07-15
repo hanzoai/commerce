@@ -102,7 +102,7 @@ func TestResolveBilling_PooledRedundancy(t *testing.T) {
 
 	ctx := nsCtx(ae.NewContext(), "poolred")
 	db := datastore.New(ctx)
-	mustBindPkg(t, db, billingaccount.HolderOrg, "poolred", "poolred", 100)     // primary (== anchor)
+	mustBindPkg(t, db, billingaccount.HolderOrg, "poolred", "poolred", 100)      // primary (== anchor)
 	mustBindPkg(t, db, billingaccount.HolderOrg, "poolred", "acct_reserve", 200) // fallback
 	assertChain(t, ctx, Scope{Org: "poolred", User: "bob"}, []string{"poolred", "acct_reserve"})
 }

@@ -8,8 +8,8 @@ import (
 )
 
 func cents(v int64) *currency.Cents { c := currency.Cents(v); return &c }
-func strp(s string) *string        { return &s }
-func boolp(b bool) *bool           { return &b }
+func strp(s string) *string         { return &s }
+func boolp(b bool) *bool            { return &b }
 
 func listings() store.Listings {
 	return store.Listings{

@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/form"
@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("form-enabled",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, f *form.Form) {

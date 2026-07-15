@@ -1,16 +1,15 @@
 package cart
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/cart"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
 

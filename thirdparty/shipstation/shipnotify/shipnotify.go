@@ -2,21 +2,20 @@ package shipnotify
 
 import (
 	"encoding/xml"
-	"io/ioutil"
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/fulfillment"
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/email"
-	"github.com/hanzoai/commerce/log"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -92,36 +91,30 @@ type Request struct {
 	}
 }
 
-func ShipNotify(c *gin.Context) {
-	query := c.Request.URL.Query()
-
+func ShipNotify(c *zip.Ctx) error {
 	// Only support export action
-	action := query.Get("action")
+	action := c.Query("action")
 	if action != "shipnotify" {
 		log.Panic("Invalid action %s, only understand 'shipnotify'", action, c)
 	}
 
-	orderNumber := query.Get("order_number")
+	orderNumber := c.Query("order_number")
 	id, err := strconv.Atoi(orderNumber)
 	if err != nil {
 		log.Panic("Unable to convert order_number '%s' to int: %v", orderNumber, err, c)
 	}
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ord := order.New(db)
 	ok, err := ord.Query().Filter("Number=", id).Get()
 	if !ok || err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
-		c.String(200, "ok\n")
-		return
+		return c.String(200, "ok\n")
 	}
 
-	b, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		log.Panic("Failed to read request body: %v", err, c)
-	}
+	b := c.Body()
 
 	req := Request{}
 	if err := xml.Unmarshal(b, &req); err != nil {
@@ -147,5 +140,5 @@ func ShipNotify(c *gin.Context) {
 
 	ord.MustPut()
 
-	c.String(200, "ok\n")
+	return c.String(200, "ok\n")
 }

@@ -2,13 +2,12 @@ package billing
 
 import (
 	"context"
-	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -43,30 +42,30 @@ import (
 // the right processor regardless. We pass the path segment as a lightweight
 // filter so webhook endpoints are URL-scoped per-provider (easier in Stripe
 // dashboard configuration).
-func HandleProviderWebhook(c *gin.Context) {
+func HandleProviderWebhook(c *zip.Ctx) error {
 	providerHint := strings.ToLower(strings.TrimSpace(c.Param("provider")))
-	payload, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		jsonhttp.Fail(c, http.StatusBadRequest, "cannot read request body", err)
-		return
-	}
+	payload := c.Body()
 
 	// Every provider puts its signature in a different header; let the router
 	// try each processor with the one most likely to match.
-	signature := pickSignatureHeader(c.Request.Header, providerHint)
+	reqHeaders := http.Header{}
+	for k, vals := range c.Fiber().GetReqHeaders() {
+		for _, v := range vals {
+			reqHeaders.Add(k, v)
+		}
+	}
+	signature := pickSignatureHeader(reqHeaders, providerHint)
 	if signature == "" {
-		jsonhttp.Fail(c, http.StatusBadRequest, "missing webhook signature header", nil)
-		return
+		return jsonhttp.Fail(c, http.StatusBadRequest, "missing webhook signature header", nil)
 	}
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(c.Context(), 15*time.Second)
 	defer cancel()
 
 	event, err := tryValidateWebhook(ctx, providerHint, payload, signature)
 	if err != nil || event == nil {
 		log.Warn("webhook signature validation failed (provider hint=%s): %v", providerHint, err)
-		jsonhttp.Fail(c, http.StatusUnauthorized, "invalid webhook signature", err)
-		return
+		return jsonhttp.Fail(c, http.StatusUnauthorized, "invalid webhook signature", err)
 	}
 
 	// Persist the raw event so the app has an audit trail independent of
@@ -74,22 +73,20 @@ func HandleProviderWebhook(c *gin.Context) {
 	// the owning org the same way service-token calls do.
 	org := resolveWebhookOrg(c)
 	if org == nil {
-		jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
-		return
+		return jsonhttp.Fail(c, http.StatusServiceUnavailable, "organization context unavailable", nil)
 	}
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Idempotency: providers retry aggressively (Square retries for up to
 	// 72h until it gets a 2xx). If we already recorded this event ID, ack
 	// without re-applying side effects.
 	if event.ID != "" && eventAlreadyProcessed(db, providerHint, event.ID) {
-		c.JSON(http.StatusOK, gin.H{
+		return c.JSON(http.StatusOK, map[string]any{
 			"received":  true,
 			"type":      event.Type,
 			"id":        event.ID,
 			"duplicate": true,
 		})
-		return
 	}
 
 	evt := billingevent.New(db)
@@ -117,7 +114,7 @@ func HandleProviderWebhook(c *gin.Context) {
 		applySettlementEvent(db, org, event)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]any{
 		"received": true,
 		"type":     event.Type,
 		"id":       event.ID,
@@ -128,7 +125,7 @@ func HandleProviderWebhook(c *gin.Context) {
 // belongs to. Order: X-Org-Id header, COMMERCE_SERVICE_ORG env, then the
 // default "hanzo" org. Mirrors the service-token resolution in
 // middleware/accesstoken.go so webhooks and service calls agree on scope.
-func resolveWebhookOrg(c *gin.Context) *organization.Organization {
+func resolveWebhookOrg(c *zip.Ctx) *organization.Organization {
 	// GetOrganizationOK, not GetOrganization: webhook ingress runs OUTSIDE the
 	// auth-token group, so no middleware ever set "organization" — the MustGet
 	// variant panics (500) on every sessionless delivery, exactly the case this
@@ -136,8 +133,8 @@ func resolveWebhookOrg(c *gin.Context) *organization.Organization {
 	if org, ok := middleware.GetOrganizationOK(c); ok && org != nil {
 		return org
 	}
-	db := datastore.New(middleware.GetContext(c))
-	orgName := strings.TrimSpace(c.GetHeader("X-Org-Id"))
+	db := datastore.New(c.Context())
+	orgName := strings.TrimSpace(c.Header("X-Org-Id"))
 	if orgName == "" {
 		orgName = strings.TrimSpace(os.Getenv("COMMERCE_SERVICE_ORG"))
 	}

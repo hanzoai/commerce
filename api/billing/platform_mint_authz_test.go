@@ -3,11 +3,12 @@ package billing
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/models/organization"
@@ -34,14 +35,13 @@ var mintRoutes = []struct{ method, path, body string }{
 // engineWithSeed mounts the REAL billing Route() behind a pre-group middleware
 // that sets context state exactly as the upstream chain would (EdgeAuth /
 // IAMTokenRequired / the service-token branch).
-func engineWithSeed(seed func(*gin.Context)) *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	eng := gin.New()
+func engineWithSeed(seed func(*zip.Ctx)) *zip.App {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		eng.Use(func(c *gin.Context) { seed(c); c.Next() })
+		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
 	}
-	Route(eng.Group("/v1"))
-	return eng
+	Route(app.Group("/v1"))
+	return app
 }
 
 // TestC1_OrgAdminDeniedOnEveryMintRoute is THE acceptance test: an org-admin JWT
@@ -51,21 +51,23 @@ func engineWithSeed(seed func(*gin.Context)) *gin.Engine {
 // self-credit-unlimited-balance hole.
 func TestC1_OrgAdminDeniedOnEveryMintRoute(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
-	orgAdmin := func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true}) // org owner, NOT global
+	orgAdmin := func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true}) // org owner, NOT global
 	}
 	eng := engineWithSeed(orgAdmin)
 	for _, r := range mintRoutes {
 		t.Run(r.method+" "+r.path, func(t *testing.T) {
 			req := httptest.NewRequest(r.method, r.path, bytes.NewBufferString(r.body))
 			req.Header.Set("Content-Type", "application/json")
-			w := httptest.NewRecorder()
-			eng.ServeHTTP(w, req)
-			if w.Code != http.StatusForbidden {
+			resp, terr := eng.Fiber().Test(req)
+			if terr != nil {
+				t.Fatalf("Test: %v", terr)
+			}
+			if resp.StatusCode != http.StatusForbidden {
 				t.Fatalf("%s %s: status=%d body=%s, want 403 (org-admin must NOT reach a money-mint handler)",
-					r.method, r.path, w.Code, w.Body.String())
+					r.method, r.path, resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 			}
 		})
 	}
@@ -80,24 +82,27 @@ func TestC1_ServiceTokenMintsDeposit(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *gin.Context) { c.Set("context", ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
 	body := `{"user":"acmeorg/alice","amount":250}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/deposit", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "acmeorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusCreated {
-		t.Fatalf("service-token deposit: status=%d body=%s, want 201 (money path must keep working)", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("service-token deposit: status=%d body=%s, want 201 (money path must keep working)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad response json: %v (%s)", err, w.Body.String())
+	raw, _ := io.ReadAll(resp.Body)
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("bad response json: %v (%s)", err, string(raw))
 	}
-	if tid, _ := resp["transactionId"].(string); tid == "" {
-		t.Fatalf("deposit response missing transactionId: %v", resp)
+	if tid, _ := out["transactionId"].(string); tid == "" {
+		t.Fatalf("deposit response missing transactionId: %v", out)
 	}
 }
 
@@ -113,23 +118,25 @@ func TestC1_NonMintRouteNotOverBlocked(t *testing.T) {
 	org.Name = "acme"
 	org.Live = true
 
-	orgAdmin := func(c *gin.Context) {
-		c.Set("context", ctx)
-		c.Set("organization", org) // GetBalance calls middleware.GetOrganization
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+	orgAdmin := func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", org) // GetBalance calls middleware.GetOrganization
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 	}
 	eng := engineWithSeed(orgAdmin)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=acme/alice&currency=usd", nil)
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden {
 		t.Fatalf("GET /balance for org-admin returned 403 — the mint gate over-blocked a non-mint route")
 	}
-	if w.Code != http.StatusOK {
-		t.Fatalf("GET /balance for org-admin: status=%d body=%s, want 200 (admitted, ungated read)", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /balance for org-admin: status=%d body=%s, want 200 (admitted, ungated read)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }

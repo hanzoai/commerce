@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/datastore/key"
@@ -137,21 +135,12 @@ func NewNamespaced(ctx context.Context) *Datastore {
 // New creates a new Datastore with the given context.
 // Uses the default database if one was set via SetDefaultDB.
 //
-// When called with a *gin.Context, the datastore automatically detaches
-// from the HTTP request lifecycle with context.WithoutCancel so that
-// database queries are never canceled when the browser disconnects or an
-// upstream proxy timeout fires. This prevents "context canceled" errors
-// across all callers without requiring each handler to be updated, while
-// preserving the request's context values (trace) rather than discarding
-// them as context.Background() would.
+// Handlers pass the mint-gated request context (c.Context()),
+// which the RequestContext middleware already detached from the HTTP request
+// lifecycle so that database queries are never canceled when the browser
+// disconnects or an upstream proxy timeout fires, while preserving the
+// request's context values (trace).
 func New(ctx context.Context) *Datastore {
-	// Detach a *gin.Context from the request lifecycle so a closed HTTP
-	// connection can't cancel an in-flight DB query — but keep its values
-	// (trace) via WithoutCancel rather than dropping them with Background.
-	if _, ok := ctx.(*gin.Context); ok {
-		ctx = context.WithoutCancel(ctx)
-	}
-
 	d := new(Datastore)
 	d.IgnoreFieldMismatch = true
 	d.Warn = config.DatastoreWarn
@@ -183,15 +172,8 @@ func (d *Datastore) ignoreFieldMismatch(err error) error {
 	return err
 }
 
-// SetContext extracts the Go context from a Gin context (if applicable) and stores it.
+// SetContext stores the Go request context.
 func (d *Datastore) SetContext(ctx context.Context) {
-	if c, ok := ctx.(*gin.Context); ok {
-		if reqCtx := c.Value("context"); reqCtx != nil {
-			if ctxVal, ok := reqCtx.(context.Context); ok {
-				ctx = ctxVal
-			}
-		}
-	}
 	d.Context = ctx
 }
 

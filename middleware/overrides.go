@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // Try and detect verbose flag set on request, we only log DEBUG level in
@@ -34,10 +34,11 @@ func DetectTest(query *url.Values) bool {
 }
 
 // Check query for special config override params and update session.
-func DetectOverrides() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		query := c.Request.URL.Query()
-		c.Set("verbose", DetectVerbose(&query))
-		c.Set("test", DetectTest(&query))
+func DetectOverrides() zip.Handler {
+	return func(c *zip.Ctx) error {
+		query, _ := url.ParseQuery(string(c.Fiber().Request().URI().QueryString()))
+		c.Locals("verbose", DetectVerbose(&query))
+		c.Locals("test", DetectTest(&query))
+		return c.Next()
 	}
 }

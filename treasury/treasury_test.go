@@ -88,7 +88,9 @@ var testCfg = husd.Config{
 }
 
 // authorized ctx (a service-token / global-admin request would carry this).
-func authCtx() context.Context { return mintauth.WithAuthorized(mintauth.WithGate(context.Background())) }
+func authCtx() context.Context {
+	return mintauth.WithAuthorized(mintauth.WithGate(context.Background()))
+}
 
 func TestMint_Success(t *testing.T) {
 	store := newFakeStore()

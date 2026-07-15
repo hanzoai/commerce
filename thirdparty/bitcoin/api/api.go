@@ -1,12 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/hanzoai/commerce/util/router"
+	"github.com/zap-proto/zip"
 )
 
 // Wire up Bitcoin endpoint
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("bitcoin")
-	api.POST("/webhook", Webhook)
+	api.Post("/webhook", Webhook)
 }

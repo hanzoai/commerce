@@ -5,107 +5,92 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // contextKey is a private type to avoid collisions in context values.
 type contextKey string
 
 const (
-	// PaymentReceiptKey is the gin context key for the payment receipt.
+	// PaymentReceiptKey is the request-local key for the payment receipt.
 	PaymentReceiptKey = "x402.receipt"
 )
 
-// Middleware returns a Gin middleware that enforces x402 payment for configured routes.
+// Middleware returns a zip middleware that enforces x402 payment for configured routes.
 // Routes not listed in cfg.Routes pass through without payment.
 //
 // Usage:
 //
 //	router.Use(x402.Middleware(cfg, facilitator))
-func Middleware(cfg *PaywallConfig, facilitator *Facilitator) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func Middleware(cfg *PaywallConfig, facilitator *Facilitator) zip.Handler {
+	return func(c *zip.Ctx) error {
 		// Find matching route config for this request path.
-		route := matchRoute(cfg, c.Request.URL.Path)
+		route := matchRoute(cfg, c.Path())
 		if route == nil {
 			// No payment required for this route.
-			c.Next()
-			return
+			return c.Next()
 		}
 
 		// Check for payment authorization header.
-		authHeader := c.GetHeader(HeaderPaymentAuthorization)
+		authHeader := c.Header(HeaderPaymentAuthorization)
 		if authHeader == "" {
 			// No payment provided — return 402 with payment request.
-			paymentReq := NewPaymentRequest(cfg, route, c.Request.URL.Path)
-			c.Header(HeaderPaymentRequest, paymentReq.MarshalHeader())
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			paymentReq := NewPaymentRequest(cfg, route, c.Path())
+			c.SetHeader(HeaderPaymentRequest, paymentReq.MarshalHeader())
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error":           "payment required",
 				"payment_request": paymentReq,
 			})
-			c.Abort()
-			return
 		}
 
 		// Parse the payment authorization.
 		auth, err := ParsePaymentAuthorization(authHeader)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
+			return c.JSON(http.StatusBadRequest, map[string]any{
 				"error": "invalid payment authorization: " + err.Error(),
 			})
-			c.Abort()
-			return
 		}
 
 		// Check time bounds.
 		if auth.IsExpired() {
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error": "payment authorization expired",
 			})
-			c.Abort()
-			return
 		}
 		if auth.IsNotYetValid() {
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error": "payment authorization not yet valid",
 			})
-			c.Abort()
-			return
 		}
 
 		// Validate the payment amount matches what we asked for.
 		if auth.Value != route.Amount {
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error": "payment amount mismatch",
 			})
-			c.Abort()
-			return
 		}
 
 		// Settle the payment via the facilitator.
-		paymentReq := NewPaymentRequest(cfg, route, c.Request.URL.Path)
-		receipt, err := facilitator.Settle(c.Request.Context(), paymentReq, auth)
+		paymentReq := NewPaymentRequest(cfg, route, c.Path())
+		receipt, err := facilitator.Settle(c.Context(), paymentReq, auth)
 		if err != nil {
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error": "payment settlement failed: " + err.Error(),
 			})
-			c.Abort()
-			return
 		}
 
 		if !receipt.Success {
-			c.JSON(http.StatusPaymentRequired, gin.H{
+			return c.JSON(http.StatusPaymentRequired, map[string]any{
 				"error": "payment settlement rejected",
 			})
-			c.Abort()
-			return
 		}
 
 		// Attach the receipt to the context and response.
 		receiptJSON, _ := json.Marshal(receipt)
-		c.Header(HeaderPaymentReceipt, string(receiptJSON))
-		c.Set(PaymentReceiptKey, receipt)
+		c.SetHeader(HeaderPaymentReceipt, string(receiptJSON))
+		c.Locals(PaymentReceiptKey, receipt)
 
-		c.Next()
+		return c.Next()
 	}
 }
 
@@ -188,11 +173,11 @@ func NetHTTPMiddleware(cfg *PaywallConfig, facilitator *Facilitator) func(http.H
 	}
 }
 
-// GetReceipt retrieves the payment receipt from the Gin context.
+// GetReceipt retrieves the payment receipt from the zip context.
 // Returns nil if no payment was processed for this request.
-func GetReceipt(c *gin.Context) *PaymentReceipt {
-	val, exists := c.Get(PaymentReceiptKey)
-	if !exists {
+func GetReceipt(c *zip.Ctx) *PaymentReceipt {
+	val := c.Locals(PaymentReceiptKey)
+	if val == nil {
 		return nil
 	}
 	receipt, ok := val.(*PaymentReceipt)

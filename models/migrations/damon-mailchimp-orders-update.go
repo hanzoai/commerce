@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/cart"
@@ -15,10 +15,10 @@ import (
 )
 
 var _ = New("damon-mailchimp-orders-update",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "damon")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "damon")
 
-		db := ds.New(c)
+		db := ds.New(c.Context())
 		org := organization.New(db)
 		if _, err := org.Query().Filter("Name=", "damon").Get(); err != nil {
 			panic(err)

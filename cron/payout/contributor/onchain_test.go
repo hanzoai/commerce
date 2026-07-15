@@ -3,7 +3,7 @@
 // Live on-chain proof of the OSS-contributor HUSD payout path against the
 // Hanzo testnet (EVM chainId 36962). This exercises the EXACT production code
 // path — executeCryptoPayout → util/blockchain.TransferToken →
-// thirdparty/ethereum.transferToken (luxfi signing) → real signed ERC-20
+// the luxfi/cevm sub-module's transfer (luxfi signing) → real signed ERC-20
 // transfer — and verifies the resulting transaction on-chain.
 //
 // It is gated behind the `onchain` build tag so it never runs in normal CI;
@@ -37,7 +37,7 @@ import (
 	// Without this blank import, blockchain.TransferToken returns
 	// ErrNoTokenTransfer — this is exactly what cmd/commerced must import in
 	// production to execute on-chain HUSD payouts.
-	_ "github.com/hanzoai/commerce/thirdparty/ethereum"
+	_ "github.com/hanzoai/commerce/luxfi/cevm"
 )
 
 func TestOnChainHUSDPayout_Testnet(t *testing.T) {

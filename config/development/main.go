@@ -2,14 +2,16 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"os"
+
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/util/default_"
 )
 
 func main() {
-	default_.Init()
+	app := zip.New(zip.Config{AppName: "commerce-default", DisableStartupMessage: true})
+	default_.Init(app)
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
@@ -18,7 +20,5 @@ func main() {
 	}
 
 	log.Printf("Starting server on :%s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	log.Fatal(app.Listen("http://:" + port))
 }

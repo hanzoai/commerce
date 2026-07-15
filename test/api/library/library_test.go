@@ -16,10 +16,10 @@ import (
 	"github.com/hanzoai/commerce/models/types/country"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/georate"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 
@@ -32,7 +32,7 @@ func Test(t *testing.T) {
 
 var (
 	ctx         ae.Context
-	cl          *ginclient.Client
+	cl          *zipclient.Client
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
@@ -49,13 +49,13 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
 	// Create mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 
 	// Run fixtures
 	org = fixtures.Organization(c).(*organization.Organization)
 
 	// Setup client and add routes for account API tests.
-	cl = ginclient.New(ctx)
+	cl = zipclient.New(ctx)
 	libraryApi.Route(cl.Router, publishedRequired)
 
 	// Create organization for tests, accessToken

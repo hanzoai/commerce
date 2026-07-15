@@ -3,11 +3,10 @@ package counter
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/util/counter"
 	"github.com/hanzoai/commerce/util/json"
@@ -32,14 +31,13 @@ type productRes struct {
 	Amount int `json:"amount"`
 }
 
-func search(c *gin.Context) {
+func search(c *zip.Ctx) error {
 	req := searchReq{}
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	db := datastore.New(ctx)
 	q := db.Query(counter.ShardKind)
 
@@ -76,19 +74,18 @@ func search(c *gin.Context) {
 		}
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }
 
-func searchProduct(c *gin.Context) {
-	productId := c.Params.ByName("productid")
+func searchProduct(c *zip.Ctx) error {
+	productId := c.Param("productid")
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	db := datastore.New(ctx)
 	prod := product.New(db)
 
 	if err := prod.GetById(productId); err != nil {
-		http.Fail(c, 404, "No product found with id: "+productId, err)
-		return
+		return http.Fail(c, 404, "No product found with id: "+productId, err)
 	}
 
 	tag1 := "product." + prod.Id() + ".revenue"
@@ -129,11 +126,11 @@ func searchProduct(c *gin.Context) {
 		}
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }
 
-func topLine(c *gin.Context) {
-	ctx := middleware.GetContext(c)
+func topLine(c *zip.Ctx) error {
+	ctx := c.Context()
 	db := datastore.New(ctx)
 
 	tag1 := "order.revenue"
@@ -173,5 +170,5 @@ func topLine(c *gin.Context) {
 		}
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

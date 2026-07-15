@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -15,14 +15,13 @@ import (
 // PortalOverview returns a billing summary for the authenticated customer.
 //
 //	GET /v1/billing/portal/overview?customerId=...
-func PortalOverview(c *gin.Context) {
+func PortalOverview(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	customerId := c.Query("customerId")
 	if customerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	// Get balance
@@ -46,7 +45,7 @@ func PortalOverview(c *gin.Context) {
 		Filter("CustomerId=", customerId)
 	_, _ = pmq.GetAll(&pms)
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"customerId":          customerId,
 		"balance":             balance,
 		"currency":            "usd",
@@ -58,14 +57,13 @@ func PortalOverview(c *gin.Context) {
 // PortalInvoices returns the customer's invoice list.
 //
 //	GET /v1/billing/portal/invoices?customerId=...
-func PortalInvoices(c *gin.Context) {
+func PortalInvoices(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	customerId := c.Query("customerId")
 	if customerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -75,9 +73,9 @@ func PortalInvoices(c *gin.Context) {
 		Order("-Created")
 	_, _ = q.GetAll(&invoices)
 
-	results := make([]gin.H, len(invoices))
+	results := make([]map[string]any, len(invoices))
 	for i, inv := range invoices {
-		results[i] = gin.H{
+		results[i] = map[string]any{
 			"id":        inv.Id(),
 			"number":    inv.NumberStr,
 			"status":    inv.Status,
@@ -86,20 +84,19 @@ func PortalInvoices(c *gin.Context) {
 			"created":   inv.Created,
 		}
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // PortalSubscriptions returns the customer's subscriptions.
 //
 //	GET /v1/billing/portal/subscriptions?customerId=...
-func PortalSubscriptions(c *gin.Context) {
+func PortalSubscriptions(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	customerId := c.Query("customerId")
 	if customerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -109,9 +106,9 @@ func PortalSubscriptions(c *gin.Context) {
 		Order("-Created")
 	_, _ = q.GetAll(&subs)
 
-	results := make([]gin.H, len(subs))
+	results := make([]map[string]any, len(subs))
 	for i, s := range subs {
-		results[i] = gin.H{
+		results[i] = map[string]any{
 			"id":          s.Id(),
 			"planId":      s.PlanId,
 			"status":      s.Status,
@@ -120,20 +117,19 @@ func PortalSubscriptions(c *gin.Context) {
 			"created":     s.Created,
 		}
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // PortalPaymentMethods returns the customer's payment methods.
 //
 //	GET /v1/billing/portal/payment-methods?customerId=...
-func PortalPaymentMethods(c *gin.Context) {
+func PortalPaymentMethods(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	customerId := c.Query("customerId")
 	if customerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -147,5 +143,5 @@ func PortalPaymentMethods(c *gin.Context) {
 	for i, pm := range methods {
 		results[i] = paymentMethodResponse(pm)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }

@@ -1,14 +1,13 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/types/fulfillment"
-	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
@@ -22,15 +21,14 @@ func convertHold(h Hold) fulfillment.Hold {
 	}
 }
 
-func updateHolds(c *gin.Context, topic string, holds []Hold) {
+func updateHolds(c *zip.Ctx, topic string, holds []Hold) {
 	log.Info("Holds:\n%v", holds, c)
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Handle no holds
 	if len(holds) == 0 {
-		c.String(200, "ok\n")
 		return
 	}
 
@@ -42,12 +40,11 @@ func updateHolds(c *gin.Context, topic string, holds []Hold) {
 	err := ord.GetById(id)
 	if err != nil {
 		log.Warn("Unable to find order '%s': %v", id, err, c)
-		c.String(200, "ok\n")
 		return
 	}
 
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
+		log.Error("Failed decode request body: %v", err, c)
 		return
 	}
 
@@ -58,6 +55,4 @@ func updateHolds(c *gin.Context, topic string, holds []Hold) {
 	}
 
 	ord.MustPut()
-
-	c.String(200, "ok\n")
 }

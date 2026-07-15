@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -16,30 +16,28 @@ import (
 )
 
 type createInvoiceRequest struct {
-	UserId         string                     `json:"userId"`
-	CustomerEmail  string                     `json:"customerEmail"`
-	SubscriptionId string                     `json:"subscriptionId"`
-	Currency       string                     `json:"currency"`
-	LineItems      []billinginvoice.LineItem  `json:"lineItems"`
-	Metadata       map[string]interface{}     `json:"metadata"`
+	UserId         string                    `json:"userId"`
+	CustomerEmail  string                    `json:"customerEmail"`
+	SubscriptionId string                    `json:"subscriptionId"`
+	Currency       string                    `json:"currency"`
+	LineItems      []billinginvoice.LineItem `json:"lineItems"`
+	Metadata       map[string]interface{}    `json:"metadata"`
 }
 
 // CreateInvoice creates a new draft billing invoice.
 //
 //	POST /v1/billing/invoices
-func CreateInvoice(c *gin.Context) {
+func CreateInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createInvoiceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	inv := billinginvoice.New(db)
@@ -61,19 +59,18 @@ func CreateInvoice(c *gin.Context) {
 
 	if err := inv.Create(); err != nil {
 		log.Error("Failed to create invoice: %v", err, c)
-		http.Fail(c, 500, "failed to create invoice", err)
-		return
+		return http.Fail(c, 500, "failed to create invoice", err)
 	}
 
-	c.JSON(201, invoiceResponse(inv))
+	return c.JSON(201, invoiceResponse(inv))
 }
 
 // ListInvoices lists billing invoices, optionally filtered by userId and status.
 //
 //	GET /v1/billing/invoices?userId=...&status=...
-func ListInvoices(c *gin.Context) {
+func ListInvoices(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	invoices := make([]*billinginvoice.BillingInvoice, 0)
@@ -96,16 +93,15 @@ func ListInvoices(c *gin.Context) {
 
 	if _, err := q.GetAll(&invoices); err != nil {
 		log.Error("Failed to list invoices: %v", err, c)
-		http.Fail(c, 500, "failed to list invoices", err)
-		return
+		return http.Fail(c, 500, "failed to list invoices", err)
 	}
 
-	items := make([]gin.H, 0, len(invoices))
+	items := make([]map[string]any, 0, len(invoices))
 	for _, inv := range invoices {
 		items = append(items, invoiceResponse(inv))
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"invoices": items,
 		"count":    len(items),
 	})
@@ -114,77 +110,70 @@ func ListInvoices(c *gin.Context) {
 // GetInvoice returns a single billing invoice by ID.
 //
 //	GET /v1/billing/invoices/:id
-func GetInvoice(c *gin.Context) {
+func GetInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 // FinalizeInvoice transitions an invoice from draft to open.
 //
 //	POST /v1/billing/invoices/:id/finalize
-func FinalizeInvoice(c *gin.Context) {
+func FinalizeInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	if err := inv.Finalize(); err != nil {
-		http.Fail(c, 400, err.Error(), nil)
-		return
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to finalize invoice: %v", err, c)
-		http.Fail(c, 500, "failed to finalize invoice", err)
-		return
+		return http.Fail(c, 500, "failed to finalize invoice", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 // PayInvoice attempts to collect payment on an open invoice.
 //
 //	POST /v1/billing/invoices/:id/pay
-func PayInvoice(c *gin.Context) {
+func PayInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
-	result, err := engine.CollectInvoice(c.Request.Context(), db, inv, BurnCredits)
+	result, err := engine.CollectInvoice(c.Context(), db, inv, BurnCredits)
 	if err != nil {
 		log.Error("Failed to collect invoice: %v", err, c)
-		http.Fail(c, 500, "failed to collect invoice payment", err)
-		return
+		return http.Fail(c, 500, "failed to collect invoice payment", err)
 	}
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to update invoice after payment: %v", err, c)
-		http.Fail(c, 500, "failed to update invoice", err)
-		return
+		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	c.JSON(200, gin.H{
-		"invoice":   invoiceResponse(inv),
+	return c.JSON(200, map[string]any{
+		"invoice":    invoiceResponse(inv),
 		"collection": result,
 	})
 }
@@ -192,50 +181,45 @@ func PayInvoice(c *gin.Context) {
 // VoidInvoice voids a draft or open invoice.
 //
 //	POST /v1/billing/invoices/:id/void
-func VoidInvoice(c *gin.Context) {
+func VoidInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	if err := inv.MarkVoid(); err != nil {
-		http.Fail(c, 400, err.Error(), nil)
-		return
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to void invoice: %v", err, c)
-		http.Fail(c, 500, "failed to void invoice", err)
-		return
+		return http.Fail(c, 500, "failed to void invoice", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 // UpcomingInvoice generates a preview of the next invoice for a subscription.
 //
 //	GET /v1/billing/invoices/upcoming?userId=...&subscriptionId=...
-func UpcomingInvoice(c *gin.Context) {
+func UpcomingInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := strings.TrimSpace(c.Query("userId"))
 	if userId == "" {
-		http.Fail(c, 400, "userId query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "userId query parameter is required", nil)
 	}
 
 	// Aggregate current usage for this user
 	lineItems, subtotal, err := engine.AggregateUsage(db, userId, time.Time{}, time.Time{})
 	if err != nil {
 		log.Error("Failed to aggregate usage: %v", err, c)
-		http.Fail(c, 500, "failed to aggregate usage", err)
-		return
+		return http.Fail(c, 500, "failed to aggregate usage", err)
 	}
 
 	// Apply credit burn-down for preview
@@ -250,7 +234,7 @@ func UpcomingInvoice(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"userId":        userId,
 		"lineItems":     lineItems,
 		"subtotal":      subtotal,
@@ -283,8 +267,8 @@ func BurnCreditsPreview(db *datastore.Datastore, userId string, amount int64) (i
 	return remaining, nil
 }
 
-func invoiceResponse(inv *billinginvoice.BillingInvoice) gin.H {
-	resp := gin.H{
+func invoiceResponse(inv *billinginvoice.BillingInvoice) map[string]any {
+	resp := map[string]any{
 		"id":             inv.Id(),
 		"userId":         inv.UserId,
 		"customerEmail":  inv.CustomerEmail,

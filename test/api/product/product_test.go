@@ -1,8 +1,8 @@
 package test
 
 import (
-	"github.com/icrowley/fake"
 	"github.com/hanzoai/commerce/models/product"
+	"github.com/icrowley/fake"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

@@ -1,17 +1,16 @@
 package order
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
@@ -27,9 +26,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:orderid/returns", adminRequired, namespaced, Returns)
 	api.GET("/:orderid/status", publishedRequired, namespaced, Status)
 
-	api.GET("/:orderid/sendorderconfirmation", adminRequired, namespaced,SendOrderConfirmation)
-	api.GET("/:orderid/sendrefundconfirmation",adminRequired, namespaced, SendRefundConfirmation)
-	api.GET("/:orderid/sendfulfillmentconfirmation", adminRequired, namespaced,SendFulfillmentConfirmation)
+	api.GET("/:orderid/sendorderconfirmation", adminRequired, namespaced, SendOrderConfirmation)
+	api.GET("/:orderid/sendrefundconfirmation", adminRequired, namespaced, SendRefundConfirmation)
+	api.GET("/:orderid/sendfulfillmentconfirmation", adminRequired, namespaced, SendFulfillmentConfirmation)
 
 	api.Create = Create
 	api.Update = Update

@@ -1,17 +1,16 @@
 package notification
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	notificationModel "github.com/hanzoai/commerce/models/notification"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(notificationModel.Notification{})
@@ -20,16 +19,15 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 }
 
 // Resend resets a notification's status to pending so it can be re-delivered.
-func Resend(c *gin.Context) {
+func Resend(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("notificationid")
+	id := c.Param("notificationid")
 
 	n := notificationModel.New(db)
 	if err := n.GetById(id); err != nil {
-		http.Fail(c, 404, "No notification found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No notification found with id: "+id, err)
 	}
 
 	// Reset status to pending for re-delivery
@@ -37,9 +35,8 @@ func Resend(c *gin.Context) {
 	n.ExternalId = ""
 
 	if err := n.Update(); err != nil {
-		http.Fail(c, 500, "Failed to resend notification", err)
-		return
+		return http.Fail(c, 500, "Failed to resend notification", err)
 	}
 
-	http.Render(c, 200, n)
+	return http.Render(c, 200, n)
 }

@@ -34,8 +34,10 @@ func build(ctx context.Context, typ transaction.Type, destKind, destID string) *
 	return tr
 }
 
-func gated() context.Context     { return mintauth.WithGate(context.Background()) }
-func gatedAuth() context.Context { return mintauth.WithAuthorized(mintauth.WithGate(context.Background())) }
+func gated() context.Context { return mintauth.WithGate(context.Background()) }
+func gatedAuth() context.Context {
+	return mintauth.WithAuthorized(mintauth.WithGate(context.Background()))
+}
 
 // TestSink_RefusesUnauthorizedIAMUserDeposit is THE structural proof: a Deposit
 // crediting the gateway-spendable IAM-user wallet, on a mint-gated context with

@@ -1,25 +1,24 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import "github.com/zap-proto/zip"
 
-func AccessControl(allowOrigin string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func AccessControl(allowOrigin string) zip.Handler {
+	return func(c *zip.Ctx) error {
 		// Set CORS headers for all requests.
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.SetHeader("Access-Control-Allow-Origin", allowOrigin)
+		c.SetHeader("Access-Control-Allow-Credentials", "true")
 
-		if c.Request.Method != "OPTIONS" {
-			c.Next()
-			return
+		if c.Method() != "OPTIONS" {
+			return c.Next()
 		}
 
 		// Handle preflight OPTIONS request
-		reqHeaders := c.Request.Header.Get("Access-Control-Request-Headers")
+		reqHeaders := c.Header("Access-Control-Request-Headers")
 
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", reqHeaders)
-		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+		c.SetHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.SetHeader("Access-Control-Allow-Headers", reqHeaders)
+		c.SetHeader("Access-Control-Max-Age", "86400")
 
-		c.AbortWithStatus(204)
+		return c.NoContent(204)
 	}
 }

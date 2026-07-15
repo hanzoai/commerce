@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.2.0
+	github.com/zap-proto/zip v1.7.5
 )
 
 require (
@@ -18,7 +18,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
-	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/schema v1.4.1
@@ -97,7 +96,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
-	github.com/gofiber/fiber/v3 v3.2.0 // indirect
 	github.com/gofiber/schema v1.7.1 // indirect
 	github.com/gofiber/utils/v2 v2.0.4 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -135,6 +133,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.70.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/zap-proto/fiber/v3 v3.2.1 // indirect
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.2.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect

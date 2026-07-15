@@ -5,7 +5,7 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/util/bit"
@@ -41,7 +41,7 @@ import (
 //
 // Reads c["permissions"] without MustGet so a handler mounted without the token
 // gate fails closed (false) rather than panicking. Fail-closed: none present → false.
-func MayReadPlatform(c *gin.Context) bool {
+func MayReadPlatform(c *zip.Ctx) bool {
 	claims := iammiddleware.GetIAMClaims(c) // non-nil by contract
 	if claims.IsSuperAdmin() {
 		return true
@@ -51,7 +51,7 @@ func MayReadPlatform(c *gin.Context) bool {
 	}
 	// Trusted M2M service token observed structurally: Admin bit AND no IAM user.
 	if claims.Subject == "" {
-		if v, ok := c.Get("permissions"); ok {
+		if v := c.Locals("permissions"); v != nil {
 			if f, ok := v.(bit.Field); ok && f.Has(permission.Admin) {
 				return true
 			}
@@ -67,15 +67,15 @@ func MayReadPlatform(c *gin.Context) bool {
 // for any IAM-authenticated request without checking the Admin bit), so a handler
 // must call this as its first line — never trust the route gate alone.
 //
-//	func GetRevenue(c *gin.Context) {
-//		if !middleware.RequirePlatformAdmin(c) { return }
+//	func GetRevenue(c *zip.Ctx) error {
+//		if !middleware.RequirePlatformAdmin(c) { return nil }
 //		...
 //	}
-func RequirePlatformAdmin(c *gin.Context) bool {
+func RequirePlatformAdmin(c *zip.Ctx) bool {
 	if MayReadPlatform(c) {
 		return true
 	}
-	http.Fail(c, 403,
+	_ = http.Fail(c, 403,
 		"This operation requires platform-administrator or internal-service credentials.",
 		errors.New("cross-org god-view: caller is neither a platform global admin nor the internal service token"))
 	return false

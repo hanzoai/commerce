@@ -16,4 +16,3 @@ func IsZero(t time.Time) bool {
 
 	return false
 }
-

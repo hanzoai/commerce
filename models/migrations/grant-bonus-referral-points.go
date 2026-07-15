@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
@@ -12,10 +12,10 @@ import (
 )
 
 var _ = New("grant-bonus-referral-points",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
 
-		db := ds.New(c)
+		db := ds.New(c.Context())
 		org := organization.New(db)
 		if _, err := org.Query().Filter("Name=", "bellabeat").Get(); err != nil {
 			panic(err)

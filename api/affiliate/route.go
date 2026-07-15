@@ -1,20 +1,19 @@
 package affiliate
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	mdlaffiliate "github.com/hanzoai/commerce/models/affiliate"
 	"github.com/hanzoai/commerce/models/contributor"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Route registers affiliate and contributor routes.
 // This builds on top of the referral base layer: revenue share,
 // commissions, payouts, OSS contributor attribution.
-func Route(r router.Router, args ...gin.HandlerFunc) {
+func Route(r zip.Router, args ...zip.Handler) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 

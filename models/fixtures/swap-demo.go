@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/datastore"
@@ -15,8 +15,8 @@ import (
 	// "github.com/hanzoai/commerce/models/webhook"
 )
 
-var _ = New("swap-demo", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var _ = New("swap-demo", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Name = "swap-demo"
@@ -97,7 +97,7 @@ var _ = New("swap-demo", func(c *gin.Context) *organization.Organization {
 		}
 	}
 
-	// nsDb := datastore.New(org.Namespaced(c))
+	// nsDb := datastore.New(org.Namespaced(c.Context()))
 
 	// wh := webhook.New(nsDb)
 	// wh.Name = "picatic-proxy"

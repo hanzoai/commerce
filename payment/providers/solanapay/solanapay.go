@@ -223,8 +223,8 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		Type:      "payment.confirmed",
 		Processor: processor.SolanaPay,
 		Data: map[string]interface{}{
-			"signature": txSig,
-			"slot":      tx.Slot,
+			"signature":  txSig,
+			"slot":       tx.Slot,
 			"block_time": tx.BlockTime,
 		},
 		Timestamp: tx.BlockTime,

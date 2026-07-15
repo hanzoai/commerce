@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/iface"
@@ -17,11 +17,11 @@ import (
 	"github.com/hanzoai/commerce/util/search"
 )
 
-func searchOrder(c *gin.Context) {
-	q := c.Request.URL.Query().Get("q")
+func searchOrder(c *zip.Ctx) error {
+	q := c.Query("q")
 
 	opts := &search.SearchOptions{}
-	limitStr := c.Request.URL.Query().Get("limit")
+	limitStr := c.Query("limit")
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			opts.Limit = l
@@ -31,8 +31,7 @@ func searchOrder(c *gin.Context) {
 	o := order.Order{}
 	index, err := search.Open(mixin.DefaultIndex)
 	if err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'order'"), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to find index 'order'"), err)
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
@@ -51,8 +50,7 @@ func searchOrder(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			http.Fail(c, 404, fmt.Sprintf("Failed to search index 'order' %v", err), err)
-			return
+			return http.Fail(c, 404, fmt.Sprintf("Failed to search index 'order' %v", err), err)
 		}
 
 		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(db.Context, doc.Id())))
@@ -64,5 +62,5 @@ func searchOrder(c *gin.Context) {
 		// return
 	}
 
-	http.Render(c, 200, orders)
+	return http.Render(c, 200, orders)
 }

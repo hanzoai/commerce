@@ -1,18 +1,27 @@
 package form
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/schema"
+	"github.com/zap-proto/fiber/v3/middleware/adaptor"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 )
 
 var decoder = schema.NewDecoder()
 
-func Parse(c *gin.Context, form interface{}) error {
+func Parse(c *zip.Ctx, form interface{}) error {
 	decoder.IgnoreUnknownKeys(true)
-	c.Request.ParseForm()
-	err := decoder.Decode(form, c.Request.PostForm)
+
+	// Bridge to a net/http request so gorilla/schema decodes the parsed form
+	// values exactly as before (ParseForm populates PostForm from the body).
+	req, err := adaptor.ConvertRequest(c.Fiber(), false)
+	if err != nil {
+		return err
+	}
+	req.ParseForm()
+
+	err = decoder.Decode(form, req.PostForm)
 	if err != nil {
 		log.Panic("Parsing form %#v", err)
 	}

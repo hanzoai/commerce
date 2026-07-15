@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -48,9 +48,9 @@ func defaultPaymentMethod(db *datastore.Datastore, customerId string) *paymentme
 	return pms[0]
 }
 
-func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) gin.H {
+func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) map[string]any {
 	if cfg == nil {
-		return gin.H{
+		return map[string]any{
 			"userId":         userId,
 			"enabled":        false,
 			"thresholdCents": 0,
@@ -58,7 +58,7 @@ func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) gin.H {
 			"currency":       "usd",
 		}
 	}
-	return gin.H{
+	return map[string]any{
 		"userId":          cfg.UserId,
 		"enabled":         cfg.Enabled,
 		"thresholdCents":  cfg.ThresholdCents,
@@ -71,11 +71,11 @@ func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) gin.H {
 // GetAutoRecharge returns the org's auto-recharge config (or disabled defaults).
 //
 //	GET /v1/billing/auto-recharge
-func GetAutoRecharge(c *gin.Context) {
+func GetAutoRecharge(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	cfg := loadAutoRecharge(db, org.Name)
-	c.JSON(200, autoRechargeResponse(cfg, org.Name))
+	return c.JSON(200, autoRechargeResponse(cfg, org.Name))
 }
 
 type autoRechargeRequest struct {
@@ -91,28 +91,24 @@ type autoRechargeRequest struct {
 //
 // Enabling requires a default payment method on file (the card that will be
 // charged off-session when the balance runs low).
-func SetAutoRecharge(c *gin.Context) {
+func SetAutoRecharge(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req autoRechargeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		jsonhttp.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Enabled {
 		if req.AmountCents <= 0 {
-			jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
-			return
+			return jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
 		}
 		if req.ThresholdCents < 0 {
-			jsonhttp.Fail(c, 400, "thresholdCents must not be negative", nil)
-			return
+			return jsonhttp.Fail(c, 400, "thresholdCents must not be negative", nil)
 		}
 		if defaultPaymentMethod(db, org.Name) == nil {
-			jsonhttp.Fail(c, 400, "a default payment method is required to enable auto-recharge", nil)
-			return
+			return jsonhttp.Fail(c, 400, "a default payment method is required to enable auto-recharge", nil)
 		}
 	}
 
@@ -139,11 +135,10 @@ func SetAutoRecharge(c *gin.Context) {
 	}
 	if err != nil {
 		log.Error("Failed to save auto-recharge config for org %q: %v", org.Name, err, c)
-		jsonhttp.Fail(c, 500, "failed to save auto-recharge config", err)
-		return
+		return jsonhttp.Fail(c, 500, "failed to save auto-recharge config", err)
 	}
 
-	c.JSON(200, autoRechargeResponse(cfg, org.Name))
+	return c.JSON(200, autoRechargeResponse(cfg, org.Name))
 }
 
 type autoRechargeRunResult struct {
@@ -162,25 +157,24 @@ type autoRechargeRunResult struct {
 // a recurring schedule (CronJob) by the platform.
 //
 //	POST /v1/billing/auto-recharge/run-all
-func RunAutoRechargeAllOrgs(c *gin.Context) {
+func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 	var kmsClient *kms.CachedClient
-	if v, ok := c.Get("kms"); ok {
+	if v := c.Locals("kms"); v != nil {
 		kmsClient, _ = v.(*kms.CachedClient)
 	}
 
-	rootDb := datastore.New(c)
+	rootDb := datastore.New(c.Context())
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
 		log.Error("Failed to list organizations for auto-recharge: %v", err, c)
-		jsonhttp.Fail(c, 500, "failed to list organizations", err)
-		return
+		return jsonhttp.Fail(c, 500, "failed to list organizations", err)
 	}
 
 	results := make([]autoRechargeRunResult, 0)
 	charged := 0
 
 	for _, org := range orgs {
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 
 		cfg := loadAutoRecharge(db, org.Name)
 		if cfg == nil || !cfg.Enabled || cfg.AmountCents <= 0 {
@@ -194,7 +188,7 @@ func RunAutoRechargeAllOrgs(c *gin.Context) {
 
 		// Available = balance - holds. Skip if still above the threshold.
 		var available int64
-		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), org.Name, "iam-user", cur, org.TestMode()); err == nil {
+		if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), org.Name, "iam-user", cur, org.TestMode()); err == nil {
 			if data, ok := datas.Data[cur]; ok {
 				available = int64(data.Balance) - int64(data.Holds)
 			}
@@ -244,7 +238,7 @@ func RunAutoRechargeAllOrgs(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"orgs":    len(orgs),
 		"charged": charged,
 		"results": results,

@@ -3,7 +3,7 @@ package customergroup
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -12,10 +12,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(customergroupModel.CustomerGroup{})
@@ -33,28 +32,25 @@ type addMemberRequest struct {
 }
 
 // AddMember adds a user to a customer group.
-func AddMember(c *gin.Context) {
+func AddMember(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	groupId := c.Params.ByName("customergroupid")
+	groupId := c.Param("customergroupid")
 
 	// Verify group exists
 	group := customergroupModel.New(db)
 	if err := group.GetById(groupId); err != nil {
-		http.Fail(c, 404, "No customer group found with id: "+groupId, err)
-		return
+		return http.Fail(c, 404, "No customer group found with id: "+groupId, err)
 	}
 
 	var req addMemberRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", errors.New("missing userId"))
-		return
+		return http.Fail(c, 400, "userId is required", errors.New("missing userId"))
 	}
 
 	// Check for duplicate membership
@@ -64,12 +60,10 @@ func AddMember(c *gin.Context) {
 		Filter("UserId=", req.UserId).
 		Get()
 	if err != nil {
-		http.Fail(c, 500, "Failed to query memberships", err)
-		return
+		return http.Fail(c, 500, "Failed to query memberships", err)
 	}
 	if ok {
-		http.Fail(c, 409, "User is already a member of this group", errors.New("duplicate membership"))
-		return
+		return http.Fail(c, 409, "User is already a member of this group", errors.New("duplicate membership"))
 	}
 
 	// Create membership
@@ -78,20 +72,19 @@ func AddMember(c *gin.Context) {
 	membership.UserId = req.UserId
 
 	if err := membership.Create(); err != nil {
-		http.Fail(c, 500, "Failed to create membership", err)
-		return
+		return http.Fail(c, 500, "Failed to create membership", err)
 	}
 
-	http.Render(c, 201, membership)
+	return http.Render(c, 201, membership)
 }
 
 // RemoveMember removes a user from a customer group.
-func RemoveMember(c *gin.Context) {
+func RemoveMember(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	groupId := c.Params.ByName("customergroupid")
-	userId := c.Params.ByName("userId")
+	groupId := c.Param("customergroupid")
+	userId := c.Param("userId")
 
 	// Find membership
 	membership := customergroupmembership.New(db)
@@ -100,42 +93,38 @@ func RemoveMember(c *gin.Context) {
 		Filter("UserId=", userId).
 		Get()
 	if err != nil {
-		http.Fail(c, 500, "Failed to query memberships", err)
-		return
+		return http.Fail(c, 500, "Failed to query memberships", err)
 	}
 	if !ok {
-		http.Fail(c, 404, "Membership not found", errors.New("membership not found"))
-		return
+		return http.Fail(c, 404, "Membership not found", errors.New("membership not found"))
 	}
 
 	if err := membership.Delete(); err != nil {
-		http.Fail(c, 500, "Failed to delete membership", err)
-		return
+		return http.Fail(c, 500, "Failed to delete membership", err)
 	}
 
-	c.Data(204, "application/json", make([]byte, 0))
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(204, make([]byte, 0))
 }
 
 // ListMembers lists all members of a customer group.
-func ListMembers(c *gin.Context) {
+func ListMembers(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	groupId := c.Params.ByName("customergroupid")
+	groupId := c.Param("customergroupid")
 
 	// Verify group exists
 	group := customergroupModel.New(db)
 	if err := group.GetById(groupId); err != nil {
-		http.Fail(c, 404, "No customer group found with id: "+groupId, err)
-		return
+		return http.Fail(c, 404, "No customer group found with id: "+groupId, err)
 	}
 
 	var members []*customergroupmembership.CustomerGroupMembership
 	q := customergroupmembership.Query(db).Filter("CustomerGroupId=", groupId)
 	if _, err := q.GetAll(&members); err != nil {
-		http.Fail(c, 500, "Failed to list members", err)
-		return
+		return http.Fail(c, 500, "Failed to list members", err)
 	}
 
-	http.Render(c, 200, members)
+	return http.Render(c, 200, members)
 }

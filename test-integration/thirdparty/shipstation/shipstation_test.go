@@ -2,13 +2,13 @@ package test
 
 import (
 	"github.com/hanzoai/commerce/api/checkout"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/lineitem"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/variant"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

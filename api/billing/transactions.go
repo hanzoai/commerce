@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/transaction/util"
@@ -18,20 +18,18 @@ import (
 //	GET /v1/billing/transactions?user=hanzo/alice&limit=100&offset=0&currency=usd
 //
 // Response: { "transactions": [...], "count": N, "user": "hanzo/alice" }
-func ListTransactions(c *gin.Context) {
+func ListTransactions(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	datas, err := util.GetTransactions(ctx, user, "iam-user", org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query transactions", err)
-		return
+		return http.Fail(c, 500, "failed to query transactions", err)
 	}
 
 	// Flatten all transactions across currencies.
@@ -101,7 +99,7 @@ func ListTransactions(c *gin.Context) {
 	}
 	page := all[offset:end]
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"transactions": page,
 		"count":        total,
 		"user":         user,

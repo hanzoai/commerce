@@ -4,10 +4,9 @@ package b2b
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 )
@@ -20,29 +19,26 @@ import (
 // first-thing via middleware.RequireAdmin; an authenticated non-admin gets 403
 // before any state change.
 func TestB2B_MoneyRoutes_NonAdmin_403(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	cases := []struct {
 		name    string
-		handler func(*gin.Context)
+		handler func(*zip.Ctx) error
 	}{
 		{"acceptQuote", AcceptQuote},
 		{"rejectQuote", RejectQuote},
 		{"approveApproval", ApproveApproval},
 		{"rejectApproval", RejectApproval},
 	}
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	for _, tcase := range cases {
 		t.Run(tcase.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c, _ := gin.CreateTestContext(w)
+			c := app.TestCtx(http.MethodPost, "/v1/commerce/b2b/"+tcase.name)
 			// Authenticated via IAM, but NOT an admin — the exact caller HIGH-4
 			// let through.
-			c.Set("iam_authenticated", true)
-			c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: false})
-			c.Request = httptest.NewRequest(http.MethodPost, "/v1/commerce/b2b/"+tcase.name, nil)
-			tcase.handler(c)
-			if w.Code != http.StatusForbidden {
-				t.Fatalf("%s as non-admin = %d, want 403 (money subroute must gate admin); body=%s", tcase.name, w.Code, w.Body.String())
+			c.Locals("iam_authenticated", true)
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: false})
+			_ = tcase.handler(c)
+			if st := c.Fiber().Response().StatusCode(); st != http.StatusForbidden {
+				t.Fatalf("%s as non-admin = %d, want 403 (money subroute must gate admin)", tcase.name, st)
 			}
 		})
 	}

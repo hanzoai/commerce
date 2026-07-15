@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -67,15 +67,15 @@ func resetPassword(usr *user.User, req resetPasswordReq) error {
 	return nil
 }
 
-func confirm(c *gin.Context) {
+func confirm(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	usr := user.New(db)
 	tok := token.New(db)
 
 	// Get Token
-	id := c.Params.ByName("tokenid")
+	id := c.Param("tokenid")
 	if err := tok.GetById(id); err != nil {
 		panic(err)
 	}
@@ -86,25 +86,22 @@ func confirm(c *gin.Context) {
 	}
 
 	if tok.Expired() || tok.Used {
-		http.Fail(c, 403, "Token expired", errors.New("token expired"))
-		return
+		return http.Fail(c, 403, "Token expired", errors.New("token expired"))
 	}
 
 	// Get new password
 	req := &confirmPasswordReq{}
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if err := resetPassword(usr, req); err != nil {
 		switch err {
 		case ErrPasswordMismatch, ErrPasswordMinLength:
-			http.Fail(c, 400, err.Error(), err)
+			return http.Fail(c, 400, err.Error(), err)
 		default:
-			http.Fail(c, 500, err.Error(), err)
+			return http.Fail(c, 500, err.Error(), err)
 		}
-		return
 	}
 
 	// Save token
@@ -118,5 +115,5 @@ func confirm(c *gin.Context) {
 	loginTok.UserId = usr.Id()
 	loginTok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
 
-	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.Encode(org.SecretKey)})
+	return http.Render(c, 200, map[string]any{"status": "ok", "token": loginTok.Encode(org.SecretKey)})
 }

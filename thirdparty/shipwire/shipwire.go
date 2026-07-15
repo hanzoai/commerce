@@ -8,10 +8,9 @@ import (
 	"net/http/httputil"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/json"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
@@ -26,8 +25,8 @@ type Client struct {
 	ctx    context.Context
 }
 
-func New(c *gin.Context, username, password string) *Client {
-	ctx := middleware.GetContext(c)
+func New(c *zip.Ctx, username, password string) *Client {
+	ctx := c.Context()
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, time.Second*30)

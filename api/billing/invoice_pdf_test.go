@@ -3,13 +3,14 @@ package billing
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
@@ -93,17 +94,15 @@ func TestRenderInvoicePDF_EscapesAndDefaults(t *testing.T) {
 	}
 }
 
-// pdfHandlerCtx builds a gin context scoped to org `ns`, matching the gateway
-// plumbing so DownloadInvoicePDF resolves the ae datastore in that namespace.
-func pdfHandlerCtx(w http.ResponseWriter, ns, id string) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	org := &organization.Organization{}
-	org.Name = ns
-	c.Set("organization", org)
-	c.Set("context", nscontext.WithNamespace(context.Background(), ns))
-	c.Params = gin.Params{{Key: "id", Value: id}}
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/invoices/"+id+"/pdf", nil)
-	return c
+// pdfSeed scopes a request to org `ns`, matching the gateway plumbing so
+// DownloadInvoicePDF resolves the ae datastore in that namespace.
+func pdfSeed(ns string) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		org := &organization.Organization{}
+		org.Name = ns
+		c.Locals("organization", org)
+		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
+	}
 }
 
 // TestDownloadInvoicePDF_TenantIsolation is the RED-focus test: an org can
@@ -113,7 +112,6 @@ func pdfHandlerCtx(w http.ResponseWriter, ns, id string) *gin.Context {
 func TestDownloadInvoicePDF_TenantIsolation(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	// org A seeds an invoice in its OWN namespace.
 	dbA := datastore.New(nscontext.WithNamespace(context.Background(), "pdf-org-a"))
@@ -131,31 +129,31 @@ func TestDownloadInvoicePDF_TenantIsolation(t *testing.T) {
 
 	// org A downloads its OWN invoice: 200 + PDF.
 	{
-		w := httptest.NewRecorder()
-		DownloadInvoicePDF(pdfHandlerCtx(w, "pdf-org-a", idA))
-		if w.Code != 200 {
-			t.Fatalf("org A own download: status = %d, body=%s", w.Code, w.Body.String())
+		w := driveSeeded(pdfSeed("pdf-org-a"), "/v1/billing/invoices/:id/pdf",
+			httptest.NewRequest(http.MethodGet, "/v1/billing/invoices/"+idA+"/pdf", nil), DownloadInvoicePDF)
+		if w.StatusCode != 200 {
+			t.Fatalf("org A own download: status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 		}
-		if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/pdf") {
+		if ct := w.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/pdf") {
 			t.Fatalf("Content-Type = %q, want application/pdf", ct)
 		}
-		if cd := w.Header().Get("Content-Disposition"); !strings.Contains(cd, "INV-0007.pdf") {
+		if cd := w.Header.Get("Content-Disposition"); !strings.Contains(cd, "INV-0007.pdf") {
 			t.Fatalf("Content-Disposition = %q, want attachment INV-0007.pdf", cd)
 		}
-		if !bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF-")) {
+		if !bytes.HasPrefix(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), []byte("%PDF-")) {
 			t.Fatalf("org A body is not a PDF")
 		}
 	}
 
 	// org B handed org A's id: MUST 404 (cross-tenant read is impossible).
 	{
-		w := httptest.NewRecorder()
-		DownloadInvoicePDF(pdfHandlerCtx(w, "pdf-org-b", idA))
-		if w.Code != 404 {
+		w := driveSeeded(pdfSeed("pdf-org-b"), "/v1/billing/invoices/:id/pdf",
+			httptest.NewRequest(http.MethodGet, "/v1/billing/invoices/"+idA+"/pdf", nil), DownloadInvoicePDF)
+		if w.StatusCode != 404 {
 			t.Fatalf("CROSS-TENANT LEAK: org B got status %d for org A's invoice %s (want 404); body=%s",
-				w.Code, idA, w.Body.String())
+				w.StatusCode, idA, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 		}
-		if bytes.HasPrefix(w.Body.Bytes(), []byte("%PDF-")) {
+		if bytes.HasPrefix(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), []byte("%PDF-")) {
 			t.Fatalf("CROSS-TENANT LEAK: org B received PDF bytes for org A's invoice")
 		}
 	}
