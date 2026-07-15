@@ -4,6 +4,7 @@ package commerce
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -33,11 +34,14 @@ func TestEmbedRequireIdentity(t *testing.T) {
 	})
 
 	// /healthz is unauthenticated by design — probes run before sessions.
-	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	srv.HTTPHandler().ServeHTTP(w, r)
-	if w.Code != http.StatusOK {
-		t.Fatalf("/healthz: want 200 got %d body=%q", w.Code, w.Body.String())
+	resp, terr := srv.Zip().Fiber().Test(r)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("/healthz: want 200 got %d body=%q", resp.StatusCode, string(body))
 	}
 }
 
@@ -54,13 +58,13 @@ func TestEmbedHandlerExposed(t *testing.T) {
 		t.Fatalf("Embed: %v", err)
 	}
 	t.Cleanup(func() { _ = srv.Stop(context.Background()) })
-	if srv.HTTPHandler() == nil {
-		t.Fatalf("HTTPHandler() returned nil")
+	if srv.Zip() == nil {
+		t.Fatalf("Zip() returned nil")
 	}
 	if srv.App() == nil {
 		t.Fatalf("App() returned nil")
 	}
-	if srv.HTTPAddr() == "" {
-		t.Fatalf("HTTPAddr() empty")
+	if srv.App().Config().HTTPAddr == "" {
+		t.Fatalf("HTTPAddr empty")
 	}
 }

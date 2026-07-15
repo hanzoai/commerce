@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -19,10 +19,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	rest.New(fulfillmentset.FulfillmentSet{}).Route(router, args...)
@@ -47,29 +46,26 @@ type ShipRequest struct {
 
 // Ship marks a fulfillment as shipped by setting ShippedAt to now and
 // optionally appending tracking labels provided in the request body.
-func Ship(c *gin.Context) {
+func Ship(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("fulfillmentid")
+	id := c.Param("fulfillmentid")
 
 	f := fulfillmentmodel.New(db)
 	if err := f.GetById(id); err != nil {
-		http.Fail(c, 404, "No fulfillment found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No fulfillment found with id: "+id, err)
 	}
 
 	if f.CanceledAt != nil {
-		http.Fail(c, 400, "Fulfillment has been canceled", errors.New("fulfillment canceled"))
-		return
+		return http.Fail(c, 400, "Fulfillment has been canceled", errors.New("fulfillment canceled"))
 	}
 
 	// Parse optional labels from request body
 	req := ShipRequest{}
-	if c.Request.ContentLength > 0 {
-		if err := json.Decode(c.Request.Body, &req); err != nil {
-			http.Fail(c, 400, "Failed to decode request body", err)
-			return
+	if len(c.Body()) > 0 {
+		if err := json.DecodeBytes(c.Body(), &req); err != nil {
+			return http.Fail(c, 400, "Failed to decode request body", err)
 		}
 	}
 
@@ -81,38 +77,34 @@ func Ship(c *gin.Context) {
 	}
 
 	if err := f.Update(); err != nil {
-		http.Fail(c, 500, "Failed to update fulfillment", err)
-		return
+		return http.Fail(c, 500, "Failed to update fulfillment", err)
 	}
 
-	http.Render(c, 200, f)
+	return http.Render(c, 200, f)
 }
 
 // Cancel marks a fulfillment as canceled by setting CanceledAt to now.
-func Cancel(c *gin.Context) {
+func Cancel(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("fulfillmentid")
+	id := c.Param("fulfillmentid")
 
 	f := fulfillmentmodel.New(db)
 	if err := f.GetById(id); err != nil {
-		http.Fail(c, 404, "No fulfillment found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No fulfillment found with id: "+id, err)
 	}
 
 	if f.CanceledAt != nil {
-		http.Fail(c, 400, "Fulfillment is already canceled", errors.New("already canceled"))
-		return
+		return http.Fail(c, 400, "Fulfillment is already canceled", errors.New("already canceled"))
 	}
 
 	now := time.Now()
 	f.CanceledAt = &now
 
 	if err := f.Update(); err != nil {
-		http.Fail(c, 500, "Failed to cancel fulfillment", err)
-		return
+		return http.Fail(c, 500, "Failed to cancel fulfillment", err)
 	}
 
-	http.Render(c, 200, f)
+	return http.Render(c, 200, f)
 }

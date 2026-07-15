@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -18,7 +18,7 @@ import (
 // expose to the client).
 //
 //	GET /v1/billing/payment-config
-func GetPaymentConfig(c *gin.Context) {
+func GetPaymentConfig(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	// NOTE: do NOT KMS-hydrate here. payment-config is called on dialog-open and
@@ -31,7 +31,7 @@ func GetPaymentConfig(c *gin.Context) {
 	// (/v1/commerce/tenant) can never hand the browser a different Square app.
 	sq := payment.SquarePublicConfig(org)
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"provider":      "square",
 		"applicationId": sq.ApplicationID,
 		"locationId":    sq.LocationID,
@@ -55,23 +55,21 @@ type testModeRequest struct {
 // sandbox to dodge real charges.
 //
 //	POST /v1/billing/test-mode   { testMode: bool }
-func SetOrgTestMode(c *gin.Context) {
+func SetOrgTestMode(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	var req testModeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		jsonhttp.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
 	org.Live = !req.TestMode
 	if err := org.Update(); err != nil {
 		log.Error("Failed to set test mode for org %q: %v", org.Name, err, c)
-		jsonhttp.Fail(c, 500, "failed to set test mode", err)
-		return
+		return jsonhttp.Fail(c, 500, "failed to set test mode", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"orgId":    org.Id(),
 		"orgName":  org.Name,
 		"live":     org.Live,

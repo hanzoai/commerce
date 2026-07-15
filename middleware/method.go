@@ -3,7 +3,7 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 )
@@ -33,33 +33,39 @@ func IsValidMethodOverride(method string) bool {
 
 // OverrideRequestMethod overrides the http
 // request's method with the specified method.
-func OverrideRequestMethod(c *gin.Context, method string) error {
-	c.Request.Header.Set(HeaderMethodOverride, method)
-	c.Request.Method = method
+func OverrideRequestMethod(c *zip.Ctx, method string) error {
+	req := c.Fiber().Request()
+	req.Header.Set(HeaderMethodOverride, method)
+	req.Header.SetMethod(method)
 	return nil
 }
 
-func MethodOverride() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func MethodOverride() zip.Handler {
+	return func(c *zip.Ctx) error {
 		// Only override POST methods
-		if c.Request.Method != "POST" {
-			return
+		if c.Method() != "POST" {
+			return c.Next()
 		}
 
-		// Try to override method using query
-		m := c.Request.FormValue(ParamMethodOverride)
+		// Try to override method using form / query param
+		m := c.Fiber().FormValue(ParamMethodOverride)
+		if m == "" {
+			m = c.Query(ParamMethodOverride)
+		}
 		if IsValidMethodOverride(m) {
 			OverrideRequestMethod(c, m)
 		}
 
 		// Try to override method using header
-		m = c.Request.Header.Get(HeaderMethodOverride)
+		m = c.Header(HeaderMethodOverride)
 		if IsValidMethodOverride(m) {
 			OverrideRequestMethod(c, m)
 		}
 
-		if c.Request.Method != "POST" {
-			log.Warn("Method overriden to %v", c.Request.Method)
+		if c.Method() != "POST" {
+			log.Warn("Method overriden to %v", c.Method())
 		}
+
+		return c.Next()
 	}
 }

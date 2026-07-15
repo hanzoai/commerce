@@ -1078,7 +1078,7 @@ func (q *postgresQuery) buildSQL(tenant string) (string, []interface{}) {
 
 // buildWhere scopes the query to `tenant` — the caller org (per-org isolation),
 // resolved from the request ctx by the executor. The tenant filter is ALWAYS
-// applied (even for the empty/default tenant, which matches tenant_id = ''), so
+// applied (even for the empty/default tenant, which matches tenant_id = ”), so
 // a list/count/keys scan can never enumerate another tenant's rows (Red CRIT-2).
 func (q *postgresQuery) buildWhere(tenant string) (string, []interface{}) {
 	var conditions []string

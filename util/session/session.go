@@ -1,8 +1,11 @@
 package session
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
 	"github.com/gorilla/sessions"
+	"github.com/zap-proto/fiber/v3/middleware/adaptor"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
@@ -19,12 +22,33 @@ func init() {
 	}
 }
 
-func saveSession(c *gin.Context, session *sessions.Session) error {
-	return session.Save(c.Request, c.Writer)
+// getSession decodes the cookie-backed session from the request. gorilla/sessions
+// reads the session cookie off a net/http request, so we bridge the zip.Ctx to
+// one via the fiber adaptor.
+func getSession(c *zip.Ctx) (*sessions.Session, error) {
+	req, err := adaptor.ConvertRequest(c.Fiber(), false)
+	if err != nil {
+		return nil, err
+	}
+	return store.Get(req, config.SessionName)
 }
 
-func Get(c *gin.Context, key string) (interface{}, error) {
-	session, err := store.Get(c.Request, config.SessionName)
+// saveSession writes the session cookie back onto the response. gorilla writes
+// Set-Cookie to a net/http ResponseWriter, so we run the save through the fiber
+// adaptor which copies that response (Set-Cookie included) onto the zip.Ctx.
+func saveSession(c *zip.Ctx, session *sessions.Session) error {
+	var saveErr error
+	h := adaptor.HTTPHandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		saveErr = session.Save(req, w)
+	})
+	if err := h(c.Fiber()); err != nil {
+		return err
+	}
+	return saveErr
+}
+
+func Get(c *zip.Ctx, key string) (interface{}, error) {
+	session, err := getSession(c)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +60,8 @@ func Get(c *gin.Context, key string) (interface{}, error) {
 	return value, nil
 }
 
-func GetString(c *gin.Context, key string) string {
-	session, err := store.Get(c.Request, config.SessionName)
+func GetString(c *zip.Ctx, key string) string {
+	session, err := getSession(c)
 	if err != nil {
 		log.Warn(err)
 		return ""
@@ -55,7 +79,7 @@ func GetString(c *gin.Context, key string) string {
 	return str
 }
 
-func MustGet(c *gin.Context, key string) interface{} {
+func MustGet(c *zip.Ctx, key string) interface{} {
 	value, err := Get(c, key)
 	if err != nil {
 		panic(err)
@@ -64,8 +88,8 @@ func MustGet(c *gin.Context, key string) interface{} {
 	return value
 }
 
-func Set(c *gin.Context, key, value string) error {
-	session, err := store.Get(c.Request, config.SessionName)
+func Set(c *zip.Ctx, key, value string) error {
+	session, err := getSession(c)
 	if err != nil {
 		return err
 	}
@@ -73,8 +97,8 @@ func Set(c *gin.Context, key, value string) error {
 	return saveSession(c, session)
 }
 
-func Delete(c *gin.Context, key string) error {
-	session, err := store.Get(c.Request, config.SessionName)
+func Delete(c *zip.Ctx, key string) error {
+	session, err := getSession(c)
 	if err != nil {
 		return err
 	}
@@ -82,8 +106,8 @@ func Delete(c *gin.Context, key string) error {
 	return saveSession(c, session)
 }
 
-func Clear(c *gin.Context) error {
-	session, err := store.Get(c.Request, config.SessionName)
+func Clear(c *zip.Ctx) error {
+	session, err := getSession(c)
 	if err != nil {
 		return err
 	}

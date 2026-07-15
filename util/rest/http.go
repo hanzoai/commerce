@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -71,27 +71,27 @@ func (e byKind) Len() int           { return len(e) }
 func (e byKind) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 func (e byKind) Less(i, j int) bool { return e[i].Kind < e[j].Kind }
 
-func ListRoutes() gin.HandlerFunc {
+func ListRoutes() zip.Handler {
 	sort.Sort(byKind(restApis))
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Only show routes in development mode
 		if !config.IsDevelopment {
-			c.Next()
-			return
+			return c.Next()
 		}
 
+		ctx := c.Context()
+
 		// Get default org
-		db := datastore.New(c)
+		db := datastore.New(ctx)
 		org := organization.New(db)
 		err := org.GetOrCreate("Name=", "suchtees")
 		if err != nil {
-			http.Fail(c, 500, "Unable to fetch organization", err)
-			return
+			return http.Fail(c, 500, "Unable to fetch organization", err)
 		}
 
 		// Get namespaced datastore context
-		orgDb := datastore.New(org.Namespaced(c))
+		orgDb := datastore.New(org.Namespaced(ctx))
 
 		// We special case order endpoint because of a few useful API calls we want to work.
 		var orderEndpoint *endpoint
@@ -119,7 +119,7 @@ func ListRoutes() gin.HandlerFunc {
 		log.Debug("fixture organization id: %v", org.Id())
 
 		// Generate kind map
-		template.Render(c, "index.html",
+		return template.Render(c, "index.html",
 			"email", "dev@hanzo.ai",
 			"endpoints", endpoints,
 			"orderEndpoint", orderEndpoint,

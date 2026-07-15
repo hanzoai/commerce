@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -13,8 +13,8 @@ import (
 	"github.com/hanzoai/commerce/util/session"
 )
 
-func AcquireOrganization(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func AcquireOrganization(moduleName string) zip.Handler {
+	return func(c *zip.Ctx) error {
 		u := GetCurrentUser(c)
 
 		// How did you get this far without an organization, bruh?
@@ -33,61 +33,62 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 		}
 
 		// Fetch organization
-		db := datastore.New(c)
+		db := datastore.New(c.Context())
 		org := organization.New(db)
-		err := org.GetById(orgId)
-		if err != nil {
+		if err := org.GetById(orgId); err != nil {
 			log.Warn("Unable to acquire organization.", c)
 			session.Clear(c)
-			c.Redirect(302, config.UrlFor(moduleName, "/login"))
-			c.AbortWithStatus(302)
-		} else {
-			log.Debug("Organization acquired")
-			c.Set("user", u)
-			c.Set("organization", org)
-			c.Set("active-organization", org.Id())
-
-			session.Set(c, "active-organization", org.Id())
-
-			// Set for our readme integration
-			c.Writer.Header().Set("x-readme-id", org.Id())
-			c.Writer.Header().Set("x-readme-label", org.Name)
+			return c.Redirect(302, config.UrlFor(moduleName, "/login"))
 		}
+
+		log.Debug("Organization acquired")
+		c.Locals("user", u)
+		c.Locals("organization", org)
+		c.Locals("active-organization", org.Id())
+
+		session.Set(c, "active-organization", org.Id())
+
+		// Set for our readme integration
+		c.SetHeader("x-readme-id", org.Id())
+		c.SetHeader("x-readme-label", org.Name)
+
+		return c.Next()
 	}
 }
 
 // Namespace applies the organization's namespace to the request context.
-func Namespace() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := GetContext(c)
+func Namespace() zip.Handler {
+	return func(c *zip.Ctx) error {
+		ctx := c.Context()
 		org := GetOrganization(c)
 		ctx = org.Namespaced(ctx)
-		c.Set("context", ctx)
+		c.SetContext(ctx)
+		return c.Next()
 	}
 }
 
-func GetOrganization(c *gin.Context) *organization.Organization {
-	return c.MustGet("organization").(*organization.Organization)
+func GetOrganization(c *zip.Ctx) *organization.Organization {
+	return c.Locals("organization").(*organization.Organization)
 }
 
 // GetOrganizationOK returns the request organization without panicking when
 // it is absent. Use this on handlers mounted outside the auth-token group
 // (e.g. signature-verified webhook ingress) where no session has set an
-// organization; GetOrganization would MustGet-panic there.
-func GetOrganizationOK(c *gin.Context) (*organization.Organization, bool) {
-	v, ok := c.Get("organization")
-	if !ok {
+// organization; GetOrganization would panic there.
+func GetOrganizationOK(c *zip.Ctx) (*organization.Organization, bool) {
+	v := c.Locals("organization")
+	if v == nil {
 		return nil, false
 	}
 	org, ok := v.(*organization.Organization)
 	return org, ok
 }
 
-func GetToken(c *gin.Context) *accesstoken.AccessToken {
-	return c.MustGet("token").(*accesstoken.AccessToken)
+func GetToken(c *zip.Ctx) *accesstoken.AccessToken {
+	return c.Locals("token").(*accesstoken.AccessToken)
 }
 
-func GetNamespace(c *gin.Context) context.Context {
-	ctx := GetContext(c)
+func GetNamespace(c *zip.Ctx) context.Context {
+	ctx := c.Context()
 	return GetOrganization(c).Namespaced(ctx)
 }

@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -13,10 +13,10 @@ import (
 )
 
 var _ = New("cover-mailchimp-store",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "cover")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "cover")
 
-		db := ds.New(c)
+		db := ds.New(c.Context())
 		org := organization.New(db)
 		if _, err := org.Query().Filter("Name=", "cover").Get(); err != nil {
 			panic(err)

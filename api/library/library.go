@@ -3,7 +3,7 @@ package library
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -79,16 +79,15 @@ type LoadShopJSRes struct {
 	Live bool `json:"live"`
 }
 
-func LoadShopJS(c *gin.Context) {
+func LoadShopJS(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Decode response body to get ShopJS Params
 	req := &LoadShopJSReq{}
 
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Default store if StoreId is left blank
@@ -98,8 +97,7 @@ func LoadShopJS(c *gin.Context) {
 
 	stor := store.New(db)
 	if err := stor.GetById(req.StoreId); err != nil {
-		http.Fail(c, 404, "Store `"+req.StoreId+"` not found", err)
-		return
+		return http.Fail(c, 404, "Store `"+req.StoreId+"` not found", err)
 	}
 
 	// Build response
@@ -132,16 +130,14 @@ func LoadShopJS(c *gin.Context) {
 				res.TaxRates = tr
 			}
 		} else if err != nil {
-			http.Fail(c, 500, err.Error(), err)
-			return
+			return http.Fail(c, 500, err.Error(), err)
 		}
 	} else {
 		tr := taxrates.New(db)
 		if ok, err := tr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
 			res.TaxRates = tr
 		} else if err != nil {
-			http.Fail(c, 500, err.Error(), err)
-			return
+			return http.Fail(c, 500, err.Error(), err)
 		}
 	}
 
@@ -152,20 +148,18 @@ func LoadShopJS(c *gin.Context) {
 				res.ShippingRates = sr
 			}
 		} else if err != nil {
-			http.Fail(c, 500, err.Error(), err)
-			return
+			return http.Fail(c, 500, err.Error(), err)
 		}
 	} else {
 		sr := shippingrates.New(db)
 		if ok, err := sr.Query().Filter("StoreId=", req.StoreId).Get(); ok {
 			res.ShippingRates = sr
 		} else if err != nil {
-			http.Fail(c, 500, err.Error(), err)
-			return
+			return http.Fail(c, 500, err.Error(), err)
 		}
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }
 
 type LoadDaishoReq struct {
@@ -178,13 +172,12 @@ type LoadDaishoRes struct {
 	Countries []Country `json:"countries,omitempty"`
 }
 
-func LoadDaisho(c *gin.Context) {
+func LoadDaisho(c *zip.Ctx) error {
 	// Decode response body to get ShopJS Params
 	req := &LoadDaishoReq{}
 
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Build response
@@ -195,5 +188,5 @@ func LoadDaisho(c *gin.Context) {
 		res.Countries = Countries
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

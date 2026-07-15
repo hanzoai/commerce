@@ -6,14 +6,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
-	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/valyala/fasthttp"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/log"
@@ -70,39 +70,40 @@ var identityHeaders = []string{
 // PRIVATE context key that ONLY TokenRequired's service-token branch reads, after
 // it has verified the bearer equals COMMERCE_SERVICE_TOKEN.
 //
-// ORDER: EdgeAuth MUST run BEFORE pkg/auth.Gin (both installed by Bootstrap
+// ORDER: EdgeAuth MUST run BEFORE pkg/auth.Zip (both installed by Bootstrap
 // via server.go installIdentityBoundary, ahead of every route group).
-// auth.Gin binds the X-Org-Id header into the request CONTEXT; if EdgeAuth
+// pkg/auth binds the X-Org-Id header into the request CONTEXT; if EdgeAuth
 // ran after it, stripping the header would leave the spoofed value in the
 // context (which IAMTokenRequired reads first). Mounting EdgeAuth first
-// means auth.Gin only ever sees the stripped/minted headers.
+// means the identity binding only ever sees the stripped/minted headers.
 //
 // The IAM client is resolved lazily (iammiddleware.Client()) so mount
 // order is independent of when iammiddleware.Init() runs at boot.
-func EdgeAuth() gin.HandlerFunc {
+func EdgeAuth() zip.Handler {
 	enabled := os.Getenv("COMMERCE_EDGE_AUTH") == "true"
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		if !enabled {
-			c.Next()
-			return
+			return c.Next()
 		}
+
+		req := c.Fiber().Request()
 
 		// (1) Never trust client-supplied identity at a directly-exposed edge.
 		// Capture the caller-supplied org selector before stripping so the
 		// validated-service-token branch (below) can honor it via a private ctx
 		// key — WITHOUT re-exposing it on the trusted X-Org-Id header, which
 		// IAMTokenRequired would otherwise mistake for a verified identity.
-		clientOrg := c.Request.Header.Get("X-Org-Id")
+		clientOrg := string(req.Header.Peek("X-Org-Id"))
 
 		for _, h := range identityHeaders {
-			c.Request.Header.Del(h)
+			req.Header.Del(h)
 		}
 
 		// (2) Mint identity from a verified IAM JWT, if one is present.
-		tok := bearerToken(c.Request.Header.Get("Authorization"))
+		tok := bearerToken(string(req.Header.Peek("Authorization")))
 		iam := iammiddleware.Client()
 		if iam != nil && looksLikeJWT(tok) {
-			ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+			ctx, cancel := context.WithTimeout(c.Context(), 8*time.Second)
 			claims, err := iam.ValidateToken(ctx, tok)
 			cancel()
 			switch {
@@ -120,20 +121,20 @@ func EdgeAuth() gin.HandlerFunc {
 				// another tenant for a SuperAdmin view. IsSuperAdmin (owner=="admin")
 				// reads it, so an org-switch never strips sudo — and no spoofable
 				// boolean is minted (the org IS the signal).
-				c.Request.Header.Set("X-User-Owner", claims.Owner)
-				c.Request.Header.Set("X-Org-Id", claims.Owner)
+				req.Header.Set("X-User-Owner", claims.Owner)
+				req.Header.Set("X-Org-Id", claims.Owner)
 				if uid := claims.Subject; uid != "" {
-					c.Request.Header.Set("X-User-Id", uid)
+					req.Header.Set("X-User-Id", uid)
 				} else if claims.Name != "" {
-					c.Request.Header.Set("X-User-Id", claims.Name)
+					req.Header.Set("X-User-Id", claims.Name)
 				}
 				if claims.Email != "" {
-					c.Request.Header.Set("X-User-Email", claims.Email)
+					req.Header.Set("X-User-Email", claims.Email)
 				}
 				if claims.IsAdmin {
-					c.Request.Header.Set("X-User-IsAdmin", "true")
+					req.Header.Set("X-User-IsAdmin", "true")
 				}
-				c.Request.Header.Set("X-User-Permissions", permsHeader(claims))
+				req.Header.Set("X-User-Permissions", permsHeader(claims))
 
 				// (3) Per-org isolation: the browser never chooses whose
 				// billing it reads — the subject is locked to the caller's
@@ -141,13 +142,13 @@ func EdgeAuth() gin.HandlerFunc {
 				// redirect the view to another org via ?org=<slug>; for
 				// everyone else the override is consumed-and-ignored so
 				// isolation can never be weakened (fail-closed).
-				if strings.Contains(c.Request.URL.Path, "/billing/") {
-					subject, override := resolveBillingSubject(c.Request, claims)
+				if strings.Contains(string(req.URI().Path()), "/billing/") {
+					subject, override := resolveBillingSubject(req, claims)
 					if override {
-						c.Request.Header.Set("X-Org-Id", subject)
+						req.Header.Set("X-Org-Id", subject)
 					}
-					lockBillingSubject(c.Request, subject)
-					lockBillingSubjectBody(c.Request, subject)
+					lockBillingSubject(req, subject)
+					lockBillingSubjectBody(req, subject)
 				}
 			}
 		}
@@ -162,14 +163,14 @@ func EdgeAuth() gin.HandlerFunc {
 		// ONLY after verifying the bearer == COMMERCE_SERVICE_TOKEN. X-Org-Id stays
 		// stripped, so an unvalidated token can never resolve an org.
 		if tok != "" && !looksLikeJWT(tok) && clientOrg != "" {
-			c.Set(ctxKeyClientOrg, clientOrg)
+			c.Locals(ctxKeyClientOrg, clientOrg)
 		}
 
-		c.Next()
+		return c.Next()
 	}
 }
 
-// ctxKeyClientOrg is the PRIVATE gin context key under which EdgeAuth stashes an
+// ctxKeyClientOrg is the PRIVATE request-local key under which EdgeAuth stashes an
 // opaque bearer's client-supplied org selector (the pre-strip X-Org-Id). It is
 // read ONLY by TokenRequired's service-token branch, and only after that branch
 // has verified the bearer equals COMMERCE_SERVICE_TOKEN — so an unvalidated
@@ -181,8 +182,8 @@ const ctxKeyClientOrg = "edge_client_org"
 // clientOrgFromContext returns the org selector EdgeAuth stashed for an opaque
 // bearer, or "" when absent. Consumed by TokenRequired's service-token branch
 // (middleware/accesstoken.go) only after the service token is verified.
-func clientOrgFromContext(c *gin.Context) string {
-	if v, ok := c.Get(ctxKeyClientOrg); ok {
+func clientOrgFromContext(c *zip.Ctx) string {
+	if v := c.Locals(ctxKeyClientOrg); v != nil {
 		if s, ok := v.(string); ok {
 			return s
 		}
@@ -257,11 +258,11 @@ var billingSubjectKeys = []string{"user", "userId", "customerId"}
 // Cross-org isolation also holds because the namespace itself comes from the
 // validated X-Org-Id. This is the QUERY half; lockBillingSubjectBody is the
 // body half for writes.
-func lockBillingSubject(r *http.Request, orgSlug string) {
+func lockBillingSubject(r *fasthttp.Request, orgSlug string) {
 	if orgSlug == "" {
 		return
 	}
-	q := r.URL.Query()
+	q, _ := url.ParseQuery(string(r.URI().QueryString()))
 	changed := false
 	for _, k := range billingSubjectKeys {
 		if q.Has(k) {
@@ -270,14 +271,16 @@ func lockBillingSubject(r *http.Request, orgSlug string) {
 		}
 	}
 	if changed {
-		r.URL.RawQuery = q.Encode()
+		r.URI().SetQueryString(q.Encode())
 	}
 }
 
-// maxBillingBodyBytes caps how much of a write body EdgeAuth buffers to pin the
-// billing subject. Billing writes are small JSON objects; a body larger than
-// this is passed through untouched (subject not pinned) rather than buffered —
-// the handler still receives the full, unmodified stream.
+// maxBillingBodyBytes caps how large a write body EdgeAuth will pin the billing
+// subject in. Billing writes are small JSON objects; a body larger than this is
+// passed through untouched (subject not pinned) rather than rewritten — the
+// handler still receives the full, unmodified body. fasthttp has already read the
+// whole body into memory (bounded by the App BodyLimit), so there is no streaming
+// buffer to manage here.
 const maxBillingBodyBytes = 1 << 20 // 1 MiB
 
 // lockBillingSubjectBody is the write-side companion to lockBillingSubject: for
@@ -289,46 +292,33 @@ const maxBillingBodyBytes = 1 << 20 // 1 MiB
 // keys are rewritten, and only when present; arrays, primitives, other shapes,
 // non-JSON content, and unparseable bodies all pass through untouched. Reads
 // (GET/DELETE/...) carry the subject in the query, locked by lockBillingSubject.
-func lockBillingSubjectBody(r *http.Request, subject string) {
-	if subject == "" || r.Body == nil {
+func lockBillingSubjectBody(r *fasthttp.Request, subject string) {
+	if subject == "" {
 		return
 	}
-	switch r.Method {
-	case http.MethodPost, http.MethodPut, http.MethodPatch:
+	switch string(r.Header.Method()) {
+	case "POST", "PUT", "PATCH":
 	default:
 		return
 	}
-	if ct := r.Header.Get("Content-Type"); !strings.Contains(strings.ToLower(ct), "json") {
+	if ct := string(r.Header.ContentType()); !strings.Contains(strings.ToLower(ct), "json") {
 		return
 	}
 
-	// Buffer at most maxBillingBodyBytes+1 so an oversized body is detected
-	// without reading it all into memory.
-	buf, err := io.ReadAll(io.LimitReader(r.Body, maxBillingBodyBytes+1))
-	if err != nil {
-		// Read failed mid-stream: restore what we have and let the handler's
-		// own JSON binding surface the error rather than pinning a partial body.
-		r.Body = io.NopCloser(bytes.NewReader(buf))
+	body := r.Body()
+	if len(body) > maxBillingBodyBytes {
+		// Oversized: leave the complete body untouched (subject not pinned).
 		return
 	}
-	if len(buf) > maxBillingBodyBytes {
-		// Oversized: stitch the unread remainder back so the handler still
-		// receives the complete, unmodified body.
-		r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(buf), r.Body))
-		return
-	}
-	_ = r.Body.Close()
 
-	pinned, ok := pinJSONSubjectFields(buf, subject)
+	pinned, ok := pinJSONSubjectFields(body, subject)
 	if !ok {
 		// Not a JSON object, no subject keys present, or unparseable: hand the
 		// original bytes back untouched (never reject an unexpected shape).
-		r.Body = io.NopCloser(bytes.NewReader(buf))
 		return
 	}
-	r.Body = io.NopCloser(bytes.NewReader(pinned))
-	r.ContentLength = int64(len(pinned))
-	r.Header.Set("Content-Length", strconv.Itoa(len(pinned)))
+	r.SetBody(pinned)
+	r.Header.SetContentLength(len(pinned))
 }
 
 // pinJSONSubjectFields rewrites any billingSubjectKeys present at the TOP LEVEL
@@ -390,7 +380,7 @@ func pinJSONSubjectFields(raw []byte, subject string) ([]byte, bool) {
 // ORG-level role (an org owner carries IsAdmin=true within their own org), so gating
 // cross-org reads on it would let any org owner view another org via ?org= — the
 // exact isolation break this boundary exists to stop.
-func resolveBillingSubject(r *http.Request, claims *auth.IAMClaims) (string, bool) {
+func resolveBillingSubject(r *fasthttp.Request, claims *auth.IAMClaims) (string, bool) {
 	own := strings.ToLower(strings.TrimSpace(claims.Owner))
 	reqOrg := consumeOrgOverride(r)
 	if reqOrg != "" && claims.IsSuperAdmin() {
@@ -402,14 +392,14 @@ func resolveBillingSubject(r *http.Request, claims *auth.IAMClaims) (string, boo
 // consumeOrgOverride removes and returns a normalized ?org=<slug> billing-view
 // override. It ALWAYS deletes the param (so it never leaks downstream) and
 // returns "" when the param is absent or not a syntactically valid org slug.
-func consumeOrgOverride(r *http.Request) string {
-	q := r.URL.Query()
+func consumeOrgOverride(r *fasthttp.Request) string {
+	q, _ := url.ParseQuery(string(r.URI().QueryString()))
 	if !q.Has("org") {
 		return ""
 	}
 	raw := strings.ToLower(strings.TrimSpace(q.Get("org")))
 	q.Del("org")
-	r.URL.RawQuery = q.Encode()
+	r.URI().SetQueryString(q.Encode())
 	if !validOrgSlug(raw) {
 		return ""
 	}

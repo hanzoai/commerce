@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -30,22 +30,21 @@ func Render(org *organization.Organization) string {
 	return fmt.Sprintf(jsTemplate, org.Analytics.SnippetJSON())
 }
 
-func Js(c *gin.Context) {
-	id := c.Params.ByName("organizationid")
+func Js(c *zip.Ctx) error {
+	id := c.Param("organizationid")
 
 	// Passed organizationid as part of organization.js, strip extension.
 	if strings.Contains(id, ".") {
 		id = strings.Split(id, ".")[0]
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
-		c.String(404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err))
-		return
+		return c.String(404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err))
 	}
 
-	c.Writer.Header().Add("Content-Type", "application/javascript")
-	c.String(200, Render(org))
+	c.SetHeader("Content-Type", "application/javascript")
+	return c.String(200, Render(org))
 }

@@ -10,8 +10,8 @@ type Transaction struct {
 	ID               string  `json:"id"`
 	Amount           float64 `json:"amount"`
 	Status           string  `json:"status"`
-	Kind             string  `json:"kind"`                       // "externalTransfer", "internalTransfer", etc.
-	Method           string  `json:"method,omitempty"`            // "wire", "ach", "check", etc.
+	Kind             string  `json:"kind"`             // "externalTransfer", "internalTransfer", etc.
+	Method           string  `json:"method,omitempty"` // "wire", "ach", "check", etc.
 	CounterpartyName string  `json:"counterpartyName,omitempty"`
 	Note             string  `json:"note,omitempty"`
 	ExternalMemo     string  `json:"externalMemo,omitempty"`

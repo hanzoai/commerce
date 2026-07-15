@@ -1,22 +1,24 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
 )
 
-func Render(c *gin.Context, status int, src interface{}) {
-	// Write headers
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Writer.WriteHeader(status)
-
-	// Render response
-	c.Writer.Write(json.EncodeBytes(src))
+// Render writes src as JSON with the given status. Handlers return it:
+//
+//	return http.Render(c, 200, out)
+func Render(c *zip.Ctx, status int, src interface{}) error {
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(status, json.EncodeBytes(src))
 }
 
-func Fail(c *gin.Context, status int, message interface{}, err error) {
+// Fail renders the canonical {"error": …} envelope and ends the request —
+// callers return it, which is what stops the chain (no gin-style Abort; not
+// calling Next IS the abort).
+func Fail(c *zip.Ctx, status int, message interface{}, err error) error {
 	// Default response
 	res := Error{"api-error", "", "", ""}
 
@@ -46,13 +48,6 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 		status = 402
 	}
 
-	// Write headers
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Writer.WriteHeader(status)
-
-	// Render JSON error message
-	c.Writer.Write(json.EncodeBytes(gin.H{"error": res}))
-
 	// Log error
 	if err != nil {
 		if status < 500 {
@@ -62,6 +57,6 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 		}
 	}
 
-	// Stop processing middleware
-	c.AbortWithStatus(status)
+	c.SetHeader("Content-Type", "application/json")
+	return c.Bytes(status, json.EncodeBytes(map[string]any{"error": res}))
 }

@@ -1,14 +1,14 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/variant"
 )
 
-var Variant = New("variant", func(c *gin.Context) *variant.Variant {
+var Variant = New("variant", func(c *zip.Ctx) *variant.Variant {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

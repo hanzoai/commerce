@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -23,23 +23,20 @@ type createPayoutRequest struct {
 // CreatePayout creates a new outbound payout.
 //
 //	POST /v1/billing/payouts
-func CreatePayout(c *gin.Context) {
+func CreatePayout(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createPayoutRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Amount <= 0 {
-		http.Fail(c, 400, "amount must be positive", nil)
-		return
+		return http.Fail(c, 400, "amount must be positive", nil)
 	}
 	if req.DestinationId == "" {
-		http.Fail(c, 400, "destinationId is required", nil)
-		return
+		return http.Fail(c, 400, "destinationId is required", nil)
 	}
 
 	p := payout.New(db)
@@ -56,35 +53,33 @@ func CreatePayout(c *gin.Context) {
 
 	if err := p.Create(); err != nil {
 		log.Error("Failed to create payout: %v", err, c)
-		http.Fail(c, 500, "failed to create payout", err)
-		return
+		return http.Fail(c, 500, "failed to create payout", err)
 	}
 
-	c.JSON(201, payoutResponse(p))
+	return c.JSON(201, payoutResponse(p))
 }
 
 // GetPayout retrieves a payout by ID.
 //
 //	GET /v1/billing/payouts/:id
-func GetPayout(c *gin.Context) {
+func GetPayout(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	p := payout.New(db)
 	if err := p.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payout not found", err)
-		return
+		return http.Fail(c, 404, "payout not found", err)
 	}
 
-	c.JSON(200, payoutResponse(p))
+	return c.JSON(200, payoutResponse(p))
 }
 
 // ListPayouts lists payouts.
 //
 //	GET /v1/billing/payouts
-func ListPayouts(c *gin.Context) {
+func ListPayouts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	payouts := make([]*payout.Payout, 0)
@@ -102,34 +97,31 @@ func ListPayouts(c *gin.Context) {
 	for i, p := range payouts {
 		results[i] = payoutResponse(p)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // CancelPayout cancels a pending payout.
 //
 //	POST /v1/billing/payouts/:id/cancel
-func CancelPayout(c *gin.Context) {
+func CancelPayout(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	p := payout.New(db)
 	if err := p.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payout not found", err)
-		return
+		return http.Fail(c, 404, "payout not found", err)
 	}
 
 	if err := p.Cancel(); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if err := p.Update(); err != nil {
 		log.Error("Failed to cancel payout: %v", err, c)
-		http.Fail(c, 500, "failed to cancel payout", err)
-		return
+		return http.Fail(c, 500, "failed to cancel payout", err)
 	}
 
-	c.JSON(200, payoutResponse(p))
+	return c.JSON(200, payoutResponse(p))
 }
 
 func payoutResponse(p *payout.Payout) map[string]interface{} {

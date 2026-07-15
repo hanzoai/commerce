@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -12,31 +12,29 @@ import (
 )
 
 type createCreditNoteRequest struct {
-	InvoiceId       string                        `json:"invoiceId"`
-	CustomerId      string                        `json:"customerId,omitempty"`
-	Amount          int64                         `json:"amount,omitempty"`
-	Reason          string                        `json:"reason,omitempty"`
+	InvoiceId       string                      `json:"invoiceId"`
+	CustomerId      string                      `json:"customerId,omitempty"`
+	Amount          int64                       `json:"amount,omitempty"`
+	Reason          string                      `json:"reason,omitempty"`
 	LineItems       []credit.CreditNoteLineItem `json:"lineItems,omitempty"`
-	OutOfBandAmount int64                         `json:"outOfBandAmount,omitempty"`
-	Memo            string                        `json:"memo,omitempty"`
+	OutOfBandAmount int64                       `json:"outOfBandAmount,omitempty"`
+	Memo            string                      `json:"memo,omitempty"`
 }
 
 // CreateCreditNote creates a credit note against an invoice.
 //
 //	POST /v1/billing/credit-notes
-func CreateCreditNote(c *gin.Context) {
+func CreateCreditNote(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createCreditNoteRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.InvoiceId == "" {
-		http.Fail(c, 400, "invoiceId is required", nil)
-		return
+		return http.Fail(c, 400, "invoiceId is required", nil)
 	}
 
 	cn, err := engine.CreateCreditNote(db, engine.CreateCreditNoteParams{
@@ -50,35 +48,33 @@ func CreateCreditNote(c *gin.Context) {
 	})
 	if err != nil {
 		log.Error("Failed to create credit note: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	c.JSON(201, creditNoteResponse(cn))
+	return c.JSON(201, creditNoteResponse(cn))
 }
 
 // GetCreditNote retrieves a credit note by ID.
 //
 //	GET /v1/billing/credit-notes/:id
-func GetCreditNote(c *gin.Context) {
+func GetCreditNote(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	cn := credit.New(db)
 	if err := cn.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "credit note not found", err)
-		return
+		return http.Fail(c, 404, "credit note not found", err)
 	}
 
-	c.JSON(200, creditNoteResponse(cn))
+	return c.JSON(200, creditNoteResponse(cn))
 }
 
 // ListCreditNotes lists credit notes, optionally filtered by invoiceId or customerId.
 //
 //	GET /v1/billing/credit-notes?invoiceId=...&customerId=...
-func ListCreditNotes(c *gin.Context) {
+func ListCreditNotes(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	notes := make([]*credit.CreditNote, 0)
@@ -104,34 +100,31 @@ func ListCreditNotes(c *gin.Context) {
 	for i, cn := range notes {
 		results[i] = creditNoteResponse(cn)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // VoidCreditNote voids a credit note.
 //
 //	POST /v1/billing/credit-notes/:id/void
-func VoidCreditNote(c *gin.Context) {
+func VoidCreditNote(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	cn := credit.New(db)
 	if err := cn.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "credit note not found", err)
-		return
+		return http.Fail(c, 404, "credit note not found", err)
 	}
 
 	if err := cn.MarkVoid(); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if err := cn.Update(); err != nil {
 		log.Error("Failed to void credit note: %v", err, c)
-		http.Fail(c, 500, "failed to void credit note", err)
-		return
+		return http.Fail(c, 500, "failed to void credit note", err)
 	}
 
-	c.JSON(200, creditNoteResponse(cn))
+	return c.JSON(200, creditNoteResponse(cn))
 }
 
 func creditNoteResponse(cn *credit.CreditNote) map[string]interface{} {

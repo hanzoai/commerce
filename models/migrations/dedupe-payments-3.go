@@ -1,15 +1,15 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/payment"
 )
 
-var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {
-	db := datastore.New(c)
+var _ = New("dedupe-payments-3", func(c *zip.Ctx) []interface{} {
+	db := datastore.New(c.Context())
 	db.SetNamespace("kanoa")
 
 	keys, err := payment.Query(db).Filter("Deleted=", true).KeysOnly().Limit(500).GetAll(nil)

@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -9,8 +9,8 @@ import (
 	. "github.com/hanzoai/commerce/models/types/analytics"
 )
 
-var _ = New("cycliq", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var _ = New("cycliq", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Name = "cycliq"

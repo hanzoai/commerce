@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ryanuber/go-glob"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -382,38 +381,25 @@ func (o Organization) Namespace() string {
 }
 
 // Namespaced returns a context scoped to this organization's namespace.
-// When called with a gin.Context, we detach from the HTTP request lifecycle
-// with context.WithoutCancel so the database context survives a browser
-// disconnect or upstream proxy timeout mid-query — while PRESERVING the
-// request's context values (trace and, critically, any mintauth grant).
-// Using WithoutCancel instead of context.Background() is what actually keeps
-// the mint authorization (a context value) reachable through the detach.
+// An inbound HTTP request arrives already mint-gated (mintauth.WithGate) — the
+// request middleware stamps the gate ONCE at the HTTP→datastore boundary, so a
+// gated context IS the HTTP boundary signal (the single structural gate point).
+// For such contexts we detach from the request lifecycle with
+// context.WithoutCancel so the database context survives a browser disconnect or
+// upstream proxy timeout mid-query — while PRESERVING the request's context
+// values (trace and, critically, any mintauth grant applied by PlatformOnly /
+// settled-payment middleware). Using WithoutCancel instead of
+// context.Background() is what keeps the mint authorization (a context value)
+// reachable through the detach.
 func (o Organization) Namespaced(ctx context.Context) context.Context {
-	if c, ok := ctx.(*gin.Context); ok {
-		// HTTP boundary: mark every inbound-request datastore context mint-gated
-		// (mintauth.WithGate) so the ledger sink refuses an unauthorized spendable
-		// mint by ANY inbound principal — the single structural gate point. A
-		// proven mint authority (PlatformOnly / settled payment / server-fixed
-		// grant) satisfies it by adding mintauth.WithAuthorized, which rides in
-		// either the stored "context" (route middleware) or the write's own ctx.
-		//
-		// Prefer the stored request context (it carries a mintauth grant applied
-		// by PlatformOnly / settled-payment middleware); fall back to the gin
-		// context, whose Value() chain reaches the HTTP request context.
-		var base context.Context = c
-		if reqCtx := c.Value("context"); reqCtx != nil {
-			if ctxVal, ok := reqCtx.(context.Context); ok {
-				base = ctxVal
-			}
-		}
+	if mintauth.Gated(ctx) {
 		// Drop cancellation (survive HTTP disconnect) but keep values: the mint
 		// gate/grant and trace ride through unchanged.
-		base = context.WithoutCancel(base)
-		return nscontext.WithNamespace(mintauth.WithGate(base), o.Namespace())
+		ctx = context.WithoutCancel(ctx)
 	}
 
-	// Non-*gin.Context callers are internal (crons, migrations, tests): NOT gated,
-	// so internal ledger writes are unaffected by the mint invariant.
+	// Ungated callers are internal (crons, migrations, tests): NOT gated, so
+	// internal ledger writes are unaffected by the mint invariant.
 	return nscontext.WithNamespace(ctx, o.Namespace())
 }
 

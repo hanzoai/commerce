@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/order"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )

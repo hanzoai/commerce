@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -26,23 +26,24 @@ import (
 //	  "creditBalance": 500,   // cents
 //	  "tier": "developer"
 //	}
-func GetBillingStatus(c *gin.Context) {
+func GetBillingStatus(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	user := strings.TrimSpace(c.Query("user"))
 	if user == "" {
 		// Fall back to the authenticated IAM user from context
-		if email := strings.TrimSpace(c.GetString("iam_email")); email != "" {
+		iamEmail, _ := c.Locals("iam_email").(string)
+		iamUserID, _ := c.Locals("iam_user_id").(string)
+		if email := strings.TrimSpace(iamEmail); email != "" {
 			user = email
-		} else if sub := strings.TrimSpace(c.GetString("iam_user_id")); sub != "" {
+		} else if sub := strings.TrimSpace(iamUserID); sub != "" {
 			user = sub
 		}
 	}
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	// 1. Check whether the user has at least one active payment method.
@@ -70,7 +71,7 @@ func GetBillingStatus(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":             user,
 		"hasPaymentMethod": hasPaymentMethod,
 		"creditBalance":    creditBalance,

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -13,55 +13,50 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func forced404(c *gin.Context) {
-	http.Fail(c, 404, "Review does not exist", nil)
+func forced404(c *zip.Ctx) error {
+	return http.Fail(c, 404, "Review does not exist", nil)
 }
 
-func get(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func get(r *rest.Rest) func(c *zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		if !r.CheckPermissions(c, "get") {
-			return
+			return nil
 		}
 
-		id := c.Params.ByName(r.ParamId)
+		id := c.Param(r.ParamId)
 
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 
 		rev := review.New(db)
 		if err := rev.GetById(id); err != nil {
-			http.Fail(c, 400, "Failed to query review", err)
-			return
+			return http.Fail(c, 400, "Failed to query review", err)
 		}
 
 		if !rev.Enabled {
-			http.Fail(c, 404, "Review does not exist", nil)
-			return
+			return http.Fail(c, 404, "Review does not exist", nil)
 		}
 
-		http.Render(c, 200, rev)
+		return http.Render(c, 200, rev)
 	}
 }
 
-func list(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func list(r *rest.Rest) func(c *zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		if !r.CheckPermissions(c, "list") {
-			return
+			return nil
 		}
 
-		query := c.Request.URL.Query()
-
 		// Determine deafult sort order
-		sortField := query.Get("sort")
+		sortField := c.Query("sort")
 		if sortField == "" {
 			sortField = r.DefaultSortField
 		}
 
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 
 		// Create query
 		q := review.Query(db).Order(sortField).Filter("Enabled=", true)
@@ -69,17 +64,16 @@ func list(r *rest.Rest) func(c *gin.Context) {
 		// Update query with page/display params
 		var display int
 		var err error
-		pageStr := query.Get("page")
-		displayStr := query.Get("display")
-		limitStr := query.Get("limit")
+		pageStr := c.Query("page")
+		displayStr := c.Query("display")
+		limitStr := c.Query("limit")
 
 		// if we have pagination values, then trigger pagination calculations
 		if displayStr != "" {
 			if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
 				q = q.Limit(display)
 			} else {
-				r.Fail(c, 500, "'display' must be positive and non-zero.", err)
-				return
+				return r.Fail(c, 500, "'display' must be positive and non-zero.", err)
 			}
 		}
 
@@ -87,21 +81,18 @@ func list(r *rest.Rest) func(c *gin.Context) {
 			if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
 				q = q.Offset(display * (page - 1))
 			} else {
-				r.Fail(c, 500, "'page' must be positive and non-zero.", err)
-				return
+				return r.Fail(c, 500, "'page' must be positive and non-zero.", err)
 			}
 		}
 
 		var revs []review.Review
 		if _, err = q.GetAll(&revs); err != nil {
-			r.Fail(c, 500, "Failed to list "+r.Kind, err)
-			return
+			return r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		}
 
 		count, err := q.Count()
 		if err != nil {
-			r.Fail(c, 500, "Could not count the models.", err)
-			return
+			return r.Fail(c, 500, "Could not count the models.", err)
 		}
 
 		if limitStr != "" {
@@ -110,7 +101,7 @@ func list(r *rest.Rest) func(c *gin.Context) {
 			}
 		}
 
-		r.Render(c, 200, rest.Pagination{
+		return r.Render(c, 200, rest.Pagination{
 			Page:    pageStr,
 			Display: displayStr,
 			Models:  revs,
@@ -124,40 +115,37 @@ type createReq struct {
 	Captcha string `json:"g-recaptcha-response"`
 }
 
-func post(r *rest.Rest) func(c *gin.Context) {
-	return func(c *gin.Context) {
+func post(r *rest.Rest) func(c *zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		if !r.CheckPermissions(c, "create") {
-			return
+			return nil
 		}
 
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 
 		req := &createReq{}
 		req.Review = review.New(db)
 
 		rev := req.Review
 
-		if err := json.Decode(c.Request.Body, &req); err != nil {
-			r.Fail(c, 400, "Failed decode request body", err)
-			return
+		if err := json.DecodeBytes(c.Body(), &req); err != nil {
+			return r.Fail(c, 400, "Failed decode request body", err)
 		}
 
 		if org.Recaptcha.Enabled && !recaptcha.Challenge(db.Context, org.Recaptcha.SecretKey, req.Captcha) {
-			http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
-			return
+			return http.Fail(c, 400, "Captcha needs to be completed", errors.New("Captcha needs to be completed"))
 		}
 
 		if err := rev.Create(); err != nil {
-			r.Fail(c, 500, "Failed to create "+r.Kind, err)
-		} else {
-			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+rev.Id())
-			r.Render(c, 201, rev)
+			return r.Fail(c, 500, "Failed to create "+r.Kind, err)
 		}
+		c.SetHeader("Location", c.Path()+"/"+rev.Id())
+		return r.Render(c, 201, rev)
 	}
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := rest.New(review.Review{})
 
 	api.Update = forced404

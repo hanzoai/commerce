@@ -1,7 +1,7 @@
 package organization
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/organization/analytics"
 	"github.com/hanzoai/commerce/api/organization/integrations"
@@ -10,12 +10,11 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 
 	. "github.com/hanzoai/commerce/api/organization/newroutes"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
@@ -46,5 +45,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Newer stuff
 	api2 := router.Group("organization")
-	api2.GET("/publicwithdrawableaccounts", publishedRequired, GetWithdrawableAccounts)
+	api2.Get("/publicwithdrawableaccounts", publishedRequired, GetWithdrawableAccounts)
 }

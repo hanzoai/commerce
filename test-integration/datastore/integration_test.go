@@ -6,14 +6,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/test-integration/datastore/tasks"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -23,14 +23,14 @@ func Test(t *testing.T) {
 }
 
 var (
-	c   *gin.Context
+	c   *zip.Ctx
 	ctx ae.Context
 	db  *datastore.Datastore
 )
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c = gincontext.New(ctx)
+	c = zipctx.New(ctx)
 	db = datastore.New(ctx)
 })
 

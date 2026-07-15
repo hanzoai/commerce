@@ -4,11 +4,12 @@ package auth
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 func TestRequireIdentity(t *testing.T) {
@@ -103,34 +104,38 @@ func TestRequireIdentity(t *testing.T) {
 	}
 }
 
-func TestGinRequireIdentity(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(Gin(true))
-	r.GET("/x", func(c *gin.Context) {
-		c.String(http.StatusOK, OrgID(c.Request.Context())+":"+UserID(c.Request.Context()))
+func TestIdentity(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(Identity(true))
+	app.Get("/x", func(c *zip.Ctx) error {
+		return c.String(http.StatusOK, OrgID(c.Context())+":"+UserID(c.Context()))
 	})
 
 	t.Run("401 without identity", func(t *testing.T) {
-		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
-		r.ServeHTTP(w, req)
-		if w.Code != http.StatusUnauthorized {
-			t.Fatalf("want 401 got %d", w.Code)
+		resp, err := app.Fiber().Test(req)
+		if err != nil {
+			t.Fatalf("test request: %v", err)
+		}
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("want 401 got %d", resp.StatusCode)
 		}
 	})
 
 	t.Run("200 with identity", func(t *testing.T) {
-		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
 		req.Header.Set(HeaderOrgID, "hanzo")
 		req.Header.Set(HeaderUserID, "u1")
-		r.ServeHTTP(w, req)
-		if w.Code != http.StatusOK {
-			t.Fatalf("want 200 got %d body=%q", w.Code, w.Body.String())
+		resp, err := app.Fiber().Test(req)
+		if err != nil {
+			t.Fatalf("test request: %v", err)
 		}
-		if w.Body.String() != "hanzo:u1" {
-			t.Fatalf("body: want hanzo:u1 got %q", w.Body.String())
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("want 200 got %d", resp.StatusCode)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		if string(body) != "hanzo:u1" {
+			t.Fatalf("body: want hanzo:u1 got %q", string(body))
 		}
 	})
 }

@@ -1,13 +1,13 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/product"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-var Product = New("product", func(c *gin.Context) *product.Product {
+var Product = New("product", func(c *zip.Ctx) *product.Product {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

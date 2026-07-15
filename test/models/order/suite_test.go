@@ -13,8 +13,8 @@ import (
 	"github.com/hanzoai/commerce/models/taxrates"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/georate"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/types"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
@@ -40,7 +40,7 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(ctx)
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 	ord = fixtures.Order(c).(*order.Order)
 
 	// Add a subscription item

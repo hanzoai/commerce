@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
@@ -49,7 +49,7 @@ func welcomeDepositKey(db *datastore.Datastore, user string) datastore.Key {
 //
 // Returns "" when no org is resolved (or the privileged "platform" org,
 // which has no namespace) — callers should 401.
-func orgBillingKey(c *gin.Context) string {
+func orgBillingKey(c *zip.Ctx) string {
 	org := middleware.GetOrganization(c)
 	if org == nil {
 		return ""
@@ -60,12 +60,12 @@ func orgBillingKey(c *gin.Context) string {
 // userBillingKey is the wallet the caller pays from: the person on a personal
 // org, the org's pool otherwise (BillingSubjectFor, resolve.go). "" when no org
 // is resolved.
-func userBillingKey(c *gin.Context) string {
+func userBillingKey(c *zip.Ctx) string {
 	org := orgBillingKey(c)
 	if org == "" {
 		return ""
 	}
-	return BillingSubjectFor(org, c.GetHeader("X-User-Id"))
+	return BillingSubjectFor(org, c.Header("X-User-Id"))
 }
 
 // GetMyBalance returns the calling user's balance for a given currency.
@@ -73,29 +73,31 @@ func userBillingKey(c *gin.Context) string {
 // no admin token required.
 //
 //	GET /v1/billing/me/balance?currency=usd
-func GetMyBalance(c *gin.Context) {
+func GetMyBalance(c *zip.Ctx) error {
 	// The wallet the gate reads: the person on a personal-billing org, the org's pool
 	// otherwise. Reading the org here while the gate read the person is how a customer
 	// tops up one key and sees another.
 	user := userBillingKey(c)
 	if user == "" {
-		http.Fail(c, 401, "missing identity headers", nil)
-		return
+		return http.Fail(c, 401, "missing identity headers", nil)
 	}
 
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
-	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
+	curQ := c.Query("currency")
+	if curQ == "" {
+		curQ = "usd"
+	}
+	cur := currency.Type(strings.ToLower(curQ))
 
 	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 	card := getCardOnFile(datastore.New(ctx), user)
 
-	resp := gin.H{
+	resp := map[string]any{
 		"user":      user,
 		"currency":  cur,
 		"balance":   int64(split.Balance),
@@ -105,7 +107,7 @@ func GetMyBalance(c *gin.Context) {
 	for k, v := range bucketFields(split, card) {
 		resp[k] = v
 	}
-	c.JSON(200, resp)
+	return c.JSON(200, resp)
 }
 
 // PostMyWelcome grants the welcome credit (idempotent, tag-deduped) to
@@ -118,13 +120,12 @@ func GetMyBalance(c *gin.Context) {
 // 200 with `granted: false` instead of failing.
 //
 //	POST /v1/billing/me/welcome
-func PostMyWelcome(c *gin.Context) {
+func PostMyWelcome(c *zip.Ctx) error {
 	// Grant into the SAME wallet the gate spends from — a credit minted to the org pool
 	// while the person's wallet is what gates their requests buys them nothing.
 	user := userBillingKey(c)
 	if user == "" {
-		http.Fail(c, 401, "missing identity headers", nil)
-		return
+		return http.Fail(c, 401, "missing identity headers", nil)
 	}
 
 	org := middleware.GetOrganization(c)
@@ -136,10 +137,9 @@ func PostMyWelcome(c *gin.Context) {
 			"welcome-credit:iam_first_login", welcomeMintKey(org, user))
 		if err != nil {
 			log.Error("chain welcome credit mint failed for %s: %v", user, err, c)
-			http.Fail(c, 502, "on-chain welcome credit mint failed", err)
-			return
+			return http.Fail(c, 502, "on-chain welcome credit mint failed", err)
 		}
-		c.JSON(200, gin.H{
+		return c.JSON(200, map[string]any{
 			"user":     user,
 			"granted":  !rc.Replayed,
 			"amount":   int64(credit.StarterCreditCents),
@@ -147,10 +147,9 @@ func PostMyWelcome(c *gin.Context) {
 			"onChain":  true,
 			"txHash":   rc.TxHash,
 		})
-		return
 	}
 
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	// Already granted? — return 200 with granted=false. The tag query covers
@@ -162,12 +161,11 @@ func PostMyWelcome(c *gin.Context) {
 		Filter("DestinationId=", user).
 		Filter("Tags=", credit.StarterCreditTag)
 	if _, err := q.Limit(1).GetAll(&existing); err == nil && len(existing) > 0 {
-		c.JSON(200, gin.H{
+		return c.JSON(200, map[string]any{
 			"user":    user,
 			"granted": false,
 			"reason":  "already_granted",
 		})
-		return
 	}
 
 	// The welcome credit is REAL MONEY. Granting it to anyone who can POST a signup
@@ -178,13 +176,12 @@ func PostMyWelcome(c *gin.Context) {
 	// getCardOnFile is the SAME primitive that gates real-money GPU debits — one
 	// definition of "this subject can be charged", not a second ad-hoc query.
 	if !getCardOnFile(db, user).OnFile {
-		c.JSON(200, gin.H{
+		return c.JSON(200, map[string]any{
 			"user":    user,
 			"granted": false,
 			"reason":  "payment_method_required",
 			"message": "Add a payment method to claim your $5 starter credit.",
 		})
-		return
 	}
 
 	trans := transaction.New(db)
@@ -193,8 +190,7 @@ func PostMyWelcome(c *gin.Context) {
 	// credits at most once even in the TOCTOU race the tag query alone leaves open.
 	if err := trans.SetKey(welcomeDepositKey(db, user)); err != nil {
 		log.Error("welcome credit key set failed for %s: %v", user, err, c)
-		http.Fail(c, 500, "failed to grant welcome credit", err)
-		return
+		return http.Fail(c, 500, "failed to grant welcome credit", err)
 	}
 	trans.Type = transaction.Deposit
 	trans.DestinationId = user
@@ -219,11 +215,10 @@ func PostMyWelcome(c *gin.Context) {
 	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Error("welcome credit create failed for %s: %v", user, err, c)
-		http.Fail(c, 500, "failed to grant welcome credit", err)
-		return
+		return http.Fail(c, 500, "failed to grant welcome credit", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"user":      user,
 		"granted":   true,
 		"amount":    int64(credit.StarterCreditCents),

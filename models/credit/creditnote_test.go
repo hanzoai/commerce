@@ -306,7 +306,7 @@ func TestCreditNoteOutOfBandAmount(t *testing.T) {
 
 func TestCreditNoteBalanceTransaction(t *testing.T) {
 	cn := &CreditNote{
-		Status:                  Issued,
+		Status:                   Issued,
 		CreditBalanceTransaction: "txn_abc",
 	}
 	if cn.CreditBalanceTransaction != "txn_abc" {

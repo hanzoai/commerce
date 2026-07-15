@@ -3,7 +3,7 @@ package form
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -21,16 +21,15 @@ import (
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
-func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f *form.Form) {
+func subscribe(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, f *form.Form) error {
 	ctx := db.Context
 
 	// Make sure Subscriber is created with the right context
 	s := subscriber.New(db)
 
 	// Decode response body for subscriber
-	if err := json.Decode(c.Request.Body, s); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), s); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Store metadata about client
@@ -39,11 +38,9 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	// Save subscriber to mailing list
 	if err := f.AddSubscriber(s); err != nil {
 		if err == form.SubscriberAlreadyExists {
-			http.Fail(c, 409, "Subscriber already exists", nil)
-			return
+			return http.Fail(c, 409, "Subscriber already exists", nil)
 		}
-		http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
-		return
+		return http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
 	}
 
 	// Increment subscribers
@@ -105,6 +102,6 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	}
 
 	// Success!
-	c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
-	http.Render(c, 201, s)
+	c.SetHeader("Location", subscriberEndpoint+s.Id())
+	return http.Render(c, 201, s)
 }

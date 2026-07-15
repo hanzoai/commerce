@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/bundle"
 	"github.com/hanzoai/commerce/models/collection"
@@ -19,13 +19,12 @@ import (
 	ds "github.com/hanzoai/commerce/datastore"
 )
 
-func setupNamespaceDelete(c *gin.Context) []interface{} {
-	q := c.Request.URL.Query()
-	ns := q.Get("namespace")
+func setupNamespaceDelete(c *zip.Ctx) []interface{} {
+	ns := c.Query("namespace")
 	if ns == "" {
 		panic("Namespace not specified")
 	}
-	c.Set("namespace", ns)
+	c.Locals("namespace", ns)
 	return NoArgs
 }
 

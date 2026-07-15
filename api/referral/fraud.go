@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/config"
@@ -55,7 +55,7 @@ func NewFraudChecker(db *datastore.Datastore) *FraudChecker {
 // Check runs all fraud checks against a referral claim.
 // Returns (allowed, reason). If not allowed, reason describes why.
 // Sets ref.Blacklisted and ref.Duplicate as appropriate side effects.
-func (fc *FraudChecker) Check(c *gin.Context, ref *referrer.Referrer, claim ClaimRequest) (bool, string) {
+func (fc *FraudChecker) Check(c *zip.Ctx, ref *referrer.Referrer, claim ClaimRequest) (bool, string) {
 	fraud := fc.cfg.Fraud
 
 	// 1. Self-referral block
@@ -79,7 +79,7 @@ func (fc *FraudChecker) Check(c *gin.Context, ref *referrer.Referrer, claim Clai
 
 	// 4. Email verification via IAM
 	if fraud.RequireEmailVerification {
-		if allowed, reason := fc.checkEmailVerified(c.Request.Context(), claim); !allowed {
+		if allowed, reason := fc.checkEmailVerified(c.Context(), claim); !allowed {
 			log.Info("fraud: %s, email=%s", reason, claim.Email, c)
 			return false, reason
 		}

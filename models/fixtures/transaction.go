@@ -1,13 +1,13 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-var Transaction = New("transaction", func(c *gin.Context) *transaction.Transaction {
+var Transaction = New("transaction", func(c *zip.Ctx) *transaction.Transaction {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

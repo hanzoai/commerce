@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/cart"
 	"github.com/hanzoai/commerce/models/coupon"
@@ -10,7 +10,7 @@ import (
 )
 
 var _ = New("fix-coupons-in-cart",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, car *cart.Cart) {

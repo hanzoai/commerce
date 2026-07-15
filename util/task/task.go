@@ -8,17 +8,16 @@ import (
 
 	"github.com/hanzoai/commerce/delay"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/fakecontext"
-	"github.com/hanzoai/commerce/util/gincontext"
+	"github.com/hanzoai/commerce/util/zipctx"
 )
 
 var (
 	Registry    = make(map[string][]*Task)
-	contextType = reflect.TypeOf((**gin.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((**zip.Ctx)(nil)).Elem()
 )
 
 // A Task which can be invoked later by name or HTTP handler
@@ -82,7 +81,7 @@ func Names() []string {
 }
 
 // Run task(s) associated with a given name
-func Run(ctx *gin.Context, name string, args ...interface{}) {
+func Run(ctx *zip.Ctx, name string, args ...interface{}) {
 	tasks, ok := Registry[name]
 
 	if !ok {
@@ -92,24 +91,32 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	for i := 0; i < len(tasks); i++ {
 		switch v := tasks[i].Function.(type) {
 		case *delay.Function:
-			v.Call(middleware.GetContext(ctx), args...)
+			v.Call(ctx.Context(), args...)
 		case func(context.Context):
-			v(middleware.GetContext(ctx)) // TODO: Remove after updating older tasks.
+			v(ctx.Context()) // TODO: Remove after updating older tasks.
 		case func(context.Context, ...interface{}):
-			v(middleware.GetContext(ctx), args...)
-		case func(*gin.Context):
+			v(ctx.Context(), args...)
+		case func(*zip.Ctx):
 			v(ctx)
-		case func(*gin.Context, ...interface{}):
+		case func(*zip.Ctx, ...interface{}):
 			v(ctx, args...)
+		case func(*zip.Ctx) error:
+			if err := v(ctx); err != nil {
+				log.Error(err, ctx)
+			}
+		case func(*zip.Ctx, ...interface{}) error:
+			if err := v(ctx, args...); err != nil {
+				log.Error(err, ctx)
+			}
 		case *Delay:
-			v.Function.Call(middleware.GetContext(ctx), fakecontext.NewContext(ctx))
+			v.Function.Call(ctx.Context(), fakecontext.NewContext(ctx))
 		default:
 			log.Panic("Don't know how to call %v", reflect.ValueOf(v).Type(), ctx)
 		}
 	}
 }
 
-func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
+func getZipContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *zip.Ctx {
 	// If we have a fake context, try to use that
 	if ok {
 		if c, err := fakectx.Context(ctx); err == nil {
@@ -117,7 +124,7 @@ func getGinContext(ctx context.Context, fakectx *fakecontext.Context, ok bool) *
 		}
 	}
 
-	return gincontext.New(ctx)
+	return zipctx.New(ctx)
 }
 
 // Ensure callbacks passed to `Func` match required signature
@@ -138,7 +145,7 @@ func checkFunc(fn interface{}) {
 
 	// First argument fn should be context.Context
 	if t.In(0) != contextType {
-		log.Panic("First argument must be *gin.Context: %v", t)
+		log.Panic("First argument must be *zip.Ctx: %v", t)
 	}
 }
 
@@ -173,9 +180,9 @@ func Func(name string, fn interface{}) *delay.Function {
 			args = args[:len(args)-1]
 		}
 
-		// Recreate gin context from fakecontext if possible, otherwise
+		// Recreate a request context from fakecontext if possible, otherwise
 		// create a new one using this context.
-		ctx := getGinContext(c, fakectx, ok)
+		ctx := getZipContext(c, fakectx, ok)
 
 		// Build arguments for fn
 		in := []reflect.Value{reflect.ValueOf(ctx)}

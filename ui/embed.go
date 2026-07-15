@@ -23,9 +23,6 @@ package ui
 import (
 	"embed"
 	"io/fs"
-	"net/http"
-	"path"
-	"strings"
 )
 
 //go:embed all:dist
@@ -39,55 +36,4 @@ func FS() fs.FS {
 		return distFS
 	}
 	return sub
-}
-
-// Handler returns an http.Handler that serves the embedded SPA.
-//
-// Behaviour:
-//   - Hashed assets under /assets/ are cached forever (Vite emits
-//     content-addressed names).
-//   - index.html and other static files are served with no-cache.
-//   - Anything that doesn't exist falls through to index.html so
-//     react-router's BrowserRouter handles the deep link.
-//   - If the build hasn't run and index.html is missing, every
-//     request returns 503 so operators notice in staging before
-//     shipping a blank image to production.
-func Handler() http.Handler {
-	root := FS()
-	fileServer := http.FileServer(http.FS(root))
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		reqPath := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-		if reqPath == "" {
-			reqPath = "index.html"
-		}
-
-		if _, err := fs.Stat(root, reqPath); err != nil {
-			serveIndex(w, root)
-			return
-		}
-
-		if strings.HasPrefix(reqPath, "assets/") {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-cache")
-		}
-		fileServer.ServeHTTP(w, r)
-	})
-}
-
-func serveIndex(w http.ResponseWriter, root fs.FS) {
-	data, err := fs.ReadFile(root, "index.html")
-	if err != nil {
-		http.Error(w, "commerce admin UI not built (run scripts/sync-admin-ui.sh)", http.StatusServiceUnavailable)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = w.Write(data)
 }

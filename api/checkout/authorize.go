@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout/authorizenet"
 	"github.com/hanzoai/commerce/api/checkout/balance"
@@ -37,13 +37,13 @@ import (
 )
 
 // Decode authorization request, grab user and payment information off it
-func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
+func decodeAuthorization(c *zip.Ctx, ord *order.Order) (*user.User, *payment.Payment, *TokenSale, error) {
 	a := new(Authorization)
 	db := ord.Datastore()
 
 	// Decode request
-	if err := json.Decode(c.Request.Body, a); err != nil {
-		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+	if err := json.DecodeBytes(c.Body(), a); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Body(), err, c)
 		return nil, nil, nil, FailedToDecodeRequestBody
 	}
 
@@ -67,7 +67,7 @@ func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment
 	return a.User, a.Payment, a.TokenSale, nil
 }
 
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
+func authorize(c *zip.Ctx, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
 	var fees []*fee.Fee
 
 	// Decode authorization request
@@ -84,8 +84,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
-	v, ok := c.Get("store")
-	if ok {
+	if v := c.Locals("store"); v != nil {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
 		log.Info("Using Store '%v'", stor.Id(), c)
@@ -318,7 +317,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	multi.MustCreate(entities)
 
 	// Emit order_completed analytics event (fire and forget)
-	if client, ok := c.Get("events"); ok {
+	if client := c.Locals("events"); client != nil {
 		if ev, ok := client.(*events.Client); ok {
 			evtOrd := &events.Order{
 				ID:       ord.Id(),
@@ -331,7 +330,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 			}
 			// Detach from the request (survive client disconnect) but keep trace
 			// values — WithoutCancel, not Background. Captured before the goroutine.
-			ctx := context.WithoutCancel(c.Request.Context())
+			ctx := context.WithoutCancel(c.Context())
 			go func() {
 				ev.EmitOrderCompleted(ctx, evtOrd)
 			}()
@@ -339,16 +338,18 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 
 	// Publish order.created to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
-	if pub, ok := c.Get("publisher"); ok {
+	if pub := c.Locals("publisher"); pub != nil {
 		if p, ok := pub.(*events.Publisher); ok {
 			orderItems := orderLineItemInfos(ord)
 			// Detach from the request (survive client disconnect) but keep trace
 			// values — WithoutCancel, not Background. Captured before the goroutine.
-			ctx := context.WithoutCancel(c.Request.Context())
+			ctx := context.WithoutCancel(c.Context())
 			go func() {
+				// The request ctx is pooled/released after this handler returns,
+				// so the fire-and-forget goroutine must not reference c.
 				if pubErr := p.PublishOrderCreated(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
 					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
-					log.Error("PublishOrderCreated: %v", pubErr, c)
+					log.Error("PublishOrderCreated: %v", pubErr)
 				}
 			}()
 		}

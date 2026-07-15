@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/trial"
 	"github.com/hanzoai/commerce/datastore"
@@ -128,12 +128,12 @@ type createPaymentMethodRequest struct {
 // CreatePaymentMethod creates and attaches a payment method to a customer.
 //
 //	POST /v1/billing/payment-methods
-func CreatePaymentMethod(c *gin.Context) {
+func CreatePaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	// Hydrate payment credentials from KMS so the per-org Square processor
 	// used for card verification carries real credentials.
-	if v, ok := c.Get("kms"); ok {
+	if v := c.Locals("kms"); v != nil {
 		if kmsClient, ok := v.(*kms.CachedClient); ok {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
 				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
@@ -141,17 +141,15 @@ func CreatePaymentMethod(c *gin.Context) {
 		}
 	}
 
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createPaymentMethodRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.CustomerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	// When a Square nonce/sourceId is provided, vault it as a reusable
@@ -166,19 +164,18 @@ func CreatePaymentMethod(c *gin.Context) {
 		reg := payment.ProcessorsForOrg(org)
 		if cp, ok := squareCustomerProcessorFrom(reg); ok {
 			existing := existingSquareCustomerID(db, req.CustomerId)
-			email := strings.TrimSpace(c.GetString("iam_email"))
-			cof, err := attachSquareCardOnFile(c.Request.Context(), cp, existing, email, req.CustomerId, req.ProviderRef)
+			iamEmail, _ := c.Locals("iam_email").(string)
+			email := strings.TrimSpace(iamEmail)
+			cof, err := attachSquareCardOnFile(c.Context(), cp, existing, email, req.CustomerId, req.ProviderRef)
 			if err != nil {
-				http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
-				return
+				return http.Fail(c, 402, parseCardDeclineReason(&processor.PaymentResult{ErrorMessage: err.Error()}, err), nil)
 			}
 			cardOnFile = cof
 			vaulted = true
-		} else if err := verifyCardWithPreAuth(c.Request.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
+		} else if err := verifyCardWithPreAuth(c.Context(), reg, req.ProviderRef, req.CustomerId); err != nil {
 			// Square not available as a customer processor — fall back to the
 			// legacy verify-only flow (the saved card is NOT reusable).
-			http.Fail(c, 402, err.Error(), nil)
-			return
+			return http.Fail(c, 402, err.Error(), nil)
 		}
 	}
 
@@ -238,8 +235,7 @@ func CreatePaymentMethod(c *gin.Context) {
 
 	if err := pm.Create(); err != nil {
 		log.Error("Failed to create payment method: %v", err, c)
-		http.Fail(c, 500, "failed to create payment method", err)
-		return
+		return http.Fail(c, 500, "failed to create payment method", err)
 	}
 
 	// Adding a card extends the new-signup trial from 7 to 30 days (or starts a
@@ -254,20 +250,19 @@ func CreatePaymentMethod(c *gin.Context) {
 		_, _ = trial.ExtendForCard(trialDB, trialSubject, trialIsTest)
 	}()
 
-	c.JSON(201, paymentMethodResponse(pm))
+	return c.JSON(201, paymentMethodResponse(pm))
 }
 
 // GetPaymentMethod retrieves a payment method by ID.
 //
 //	GET /v1/billing/payment-methods/:id
-func GetPaymentMethod(c *gin.Context) {
+func GetPaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment method not found", err)
-		return
+		return http.Fail(c, 404, "payment method not found", err)
 	}
 
 	// Intra-org IDOR guard (#43a, per-user). This user-group route admits ANY
@@ -277,19 +272,18 @@ func GetPaymentMethod(c *gin.Context) {
 	// namespace. Non-privileged callers may read only their own subject's method;
 	// 404 (not 403) so card ids can't be probed.
 	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
-		http.Fail(c, 404, "payment method not found", nil)
-		return
+		return http.Fail(c, 404, "payment method not found", nil)
 	}
 
-	c.JSON(200, paymentMethodResponse(pm))
+	return c.JSON(200, paymentMethodResponse(pm))
 }
 
 // ListPaymentMethods lists payment methods for a customer.
 //
 //	GET /v1/billing/payment-methods?customerId=...&type=...
-func ListPaymentMethods(c *gin.Context) {
+func ListPaymentMethods(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	methods := make([]*paymentmethod.PaymentMethod, 0)
@@ -311,8 +305,7 @@ func ListPaymentMethods(c *gin.Context) {
 	} else if subject := orgBillingKey(c); subject != "" {
 		q = q.Filter("CustomerId=", subject)
 	} else {
-		c.JSON(200, []map[string]interface{}{})
-		return
+		return c.JSON(200, []map[string]interface{}{})
 	}
 	if pmType := c.Query("type"); pmType != "" {
 		q = q.Filter("Type=", pmType)
@@ -331,7 +324,7 @@ func ListPaymentMethods(c *gin.Context) {
 	for i, pm := range methods {
 		results[i] = paymentMethodResponse(pm)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 type updatePaymentMethodRequest struct {
@@ -342,14 +335,13 @@ type updatePaymentMethodRequest struct {
 // UpdatePaymentMethod updates a payment method.
 //
 //	PATCH /v1/billing/payment-methods/:id
-func UpdatePaymentMethod(c *gin.Context) {
+func UpdatePaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment method not found", err)
-		return
+		return http.Fail(c, 404, "payment method not found", err)
 	}
 
 	// Intra-org IDOR guard (#43a, per-user). Mutating another subject's card
@@ -358,14 +350,12 @@ func UpdatePaymentMethod(c *gin.Context) {
 	// reach inside the caller's namespace. Non-privileged callers may update only
 	// their own subject's method; 404 so ids can't be probed.
 	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
-		http.Fail(c, 404, "payment method not found", nil)
-		return
+		return http.Fail(c, 404, "payment method not found", nil)
 	}
 
 	var req updatePaymentMethodRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.BillingAddress != nil {
@@ -377,24 +367,22 @@ func UpdatePaymentMethod(c *gin.Context) {
 
 	if err := pm.Update(); err != nil {
 		log.Error("Failed to update payment method: %v", err, c)
-		http.Fail(c, 500, "failed to update payment method", err)
-		return
+		return http.Fail(c, 500, "failed to update payment method", err)
 	}
 
-	c.JSON(200, paymentMethodResponse(pm))
+	return c.JSON(200, paymentMethodResponse(pm))
 }
 
 // DetachPaymentMethod detaches (soft-deletes) a payment method.
 //
 //	DELETE /v1/billing/payment-methods/:id
-func DetachPaymentMethod(c *gin.Context) {
+func DetachPaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "payment method not found", err)
-		return
+		return http.Fail(c, 404, "payment method not found", err)
 	}
 
 	// Intra-org IDOR guard (#43a, per-user). Detaching another subject's card
@@ -402,8 +390,7 @@ func DetachPaymentMethod(c *gin.Context) {
 	// and auto-recharge — a cross-subject mutation the unpinned :id can reach in
 	// the caller's namespace. Non-privileged callers may detach only their own; 404.
 	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
-		http.Fail(c, 404, "payment method not found", nil)
-		return
+		return http.Fail(c, 404, "payment method not found", nil)
 	}
 
 	// Best-effort: detach the card-on-file from Square so its vault stays in
@@ -412,7 +399,7 @@ func DetachPaymentMethod(c *gin.Context) {
 		custID, _ := pm.Metadata["squareCustomerId"].(string)
 		cardID, _ := pm.Metadata["squareCardId"].(string)
 		if custID != "" && cardID != "" {
-			if v, ok := c.Get("kms"); ok {
+			if v := c.Locals("kms"); v != nil {
 				if kmsClient, ok := v.(*kms.CachedClient); ok {
 					if err := kms.Hydrate(kmsClient, org); err != nil {
 						log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
@@ -421,7 +408,7 @@ func DetachPaymentMethod(c *gin.Context) {
 			}
 			reg := payment.ProcessorsForOrg(org)
 			if cp, ok := squareCustomerProcessorFrom(reg); ok {
-				if err := cp.RemovePaymentMethod(c.Request.Context(), custID, cardID); err != nil {
+				if err := cp.RemovePaymentMethod(c.Context(), custID, cardID); err != nil {
 					log.Warn("Failed to remove Square card %s for customer %s: %v", cardID, custID, err)
 				}
 			}
@@ -430,11 +417,10 @@ func DetachPaymentMethod(c *gin.Context) {
 
 	if err := pm.Delete(); err != nil {
 		log.Error("Failed to detach payment method: %v", err, c)
-		http.Fail(c, 500, "failed to detach payment method", err)
-		return
+		return http.Fail(c, 500, "failed to detach payment method", err)
 	}
 
-	c.JSON(200, gin.H{"deleted": true, "id": pm.Id()})
+	return c.JSON(200, map[string]any{"deleted": true, "id": pm.Id()})
 }
 
 type setDefaultRequest struct {
@@ -444,23 +430,21 @@ type setDefaultRequest struct {
 // SetDefaultPaymentMethod sets the default payment method for a customer.
 //
 //	POST /v1/billing/customers/:id/default-payment-method
-func SetDefaultPaymentMethod(c *gin.Context) {
+func SetDefaultPaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	customerId := c.Param("id")
 
 	// Intra-org IDOR guard (#43a, per-user). The :id customer path-param scopes the
 	// default-unset sweep below; a non-privileged caller must not clear another
 	// subject's default flags. 404 keeps customer ids unprobeable.
 	if !callerMayReachBillingSubject(c, customerId) {
-		http.Fail(c, 404, "payment method not found", nil)
-		return
+		return http.Fail(c, 404, "payment method not found", nil)
 	}
 
 	var req setDefaultRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	// Unset any existing default for this customer
@@ -482,26 +466,23 @@ func SetDefaultPaymentMethod(c *gin.Context) {
 	// Set the new default
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(req.PaymentMethodId); err != nil {
-		http.Fail(c, 404, "payment method not found", err)
-		return
+		return http.Fail(c, 404, "payment method not found", err)
 	}
 
 	// Intra-org IDOR guard (#43a, per-user). paymentMethodId is an unpinned body
 	// field that can name a DIFFERENT subject's card; guard it too so a caller
 	// can't flip another subject's card to default. 404, no existence oracle.
 	if !callerMayReachBillingSubject(c, pm.CustomerId, pm.UserId) {
-		http.Fail(c, 404, "payment method not found", nil)
-		return
+		return http.Fail(c, 404, "payment method not found", nil)
 	}
 
 	pm.IsDefault = true
 	if err := pm.Update(); err != nil {
 		log.Error("Failed to set default payment method: %v", err, c)
-		http.Fail(c, 500, "failed to set default", err)
-		return
+		return http.Fail(c, 500, "failed to set default", err)
 	}
 
-	c.JSON(200, paymentMethodResponse(pm))
+	return c.JSON(200, paymentMethodResponse(pm))
 }
 
 func paymentMethodResponse(pm *paymentmethod.PaymentMethod) map[string]interface{} {

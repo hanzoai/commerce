@@ -122,12 +122,12 @@ type adyenAmount struct {
 }
 
 type adyenPaymentMethod struct {
-	Type                string `json:"type"`
-	EncryptedCardNumber string `json:"encryptedCardNumber,omitempty"`
-	EncryptedExpiryMonth string `json:"encryptedExpiryMonth,omitempty"`
-	EncryptedExpiryYear string `json:"encryptedExpiryYear,omitempty"`
-	EncryptedSecurityCode string `json:"encryptedSecurityCode,omitempty"`
-	StoredPaymentMethodID string `json:"storedPaymentMethodId,omitempty"`
+	Type                     string `json:"type"`
+	EncryptedCardNumber      string `json:"encryptedCardNumber,omitempty"`
+	EncryptedExpiryMonth     string `json:"encryptedExpiryMonth,omitempty"`
+	EncryptedExpiryYear      string `json:"encryptedExpiryYear,omitempty"`
+	EncryptedSecurityCode    string `json:"encryptedSecurityCode,omitempty"`
+	StoredPaymentMethodID    string `json:"storedPaymentMethodId,omitempty"`
 	RecurringDetailReference string `json:"recurringDetailReference,omitempty"`
 }
 
@@ -146,13 +146,13 @@ type adyenPaymentRequest struct {
 }
 
 type adyenPaymentResponse struct {
-	PSPReference   string                 `json:"pspReference"`
-	ResultCode     string                 `json:"resultCode"`
-	RefusalReason  string                 `json:"refusalReason,omitempty"`
-	RefusalReasonCode string              `json:"refusalReasonCode,omitempty"`
-	Amount         *adyenAmount           `json:"amount,omitempty"`
-	MerchantReference string              `json:"merchantReference,omitempty"`
-	AdditionalData map[string]interface{} `json:"additionalData,omitempty"`
+	PSPReference      string                 `json:"pspReference"`
+	ResultCode        string                 `json:"resultCode"`
+	RefusalReason     string                 `json:"refusalReason,omitempty"`
+	RefusalReasonCode string                 `json:"refusalReasonCode,omitempty"`
+	Amount            *adyenAmount           `json:"amount,omitempty"`
+	MerchantReference string                 `json:"merchantReference,omitempty"`
+	AdditionalData    map[string]interface{} `json:"additionalData,omitempty"`
 }
 
 type adyenCaptureRequest struct {
@@ -163,11 +163,11 @@ type adyenCaptureRequest struct {
 }
 
 type adyenCaptureResponse struct {
-	PSPReference   string `json:"pspReference"`
-	Status         string `json:"status"`
-	Reference      string `json:"reference,omitempty"`
-	PaymentPSPReference string `json:"paymentPspReference,omitempty"`
-	Amount         *adyenAmount `json:"amount,omitempty"`
+	PSPReference        string       `json:"pspReference"`
+	Status              string       `json:"status"`
+	Reference           string       `json:"reference,omitempty"`
+	PaymentPSPReference string       `json:"paymentPspReference,omitempty"`
+	Amount              *adyenAmount `json:"amount,omitempty"`
 }
 
 type adyenRefundRequest struct {
@@ -178,11 +178,11 @@ type adyenRefundRequest struct {
 }
 
 type adyenRefundResponse struct {
-	PSPReference   string `json:"pspReference"`
-	Status         string `json:"status"`
-	Reference      string `json:"reference,omitempty"`
-	PaymentPSPReference string `json:"paymentPspReference,omitempty"`
-	Amount         *adyenAmount `json:"amount,omitempty"`
+	PSPReference        string       `json:"pspReference"`
+	Status              string       `json:"status"`
+	Reference           string       `json:"reference,omitempty"`
+	PaymentPSPReference string       `json:"paymentPspReference,omitempty"`
+	Amount              *adyenAmount `json:"amount,omitempty"`
 }
 
 type adyenErrorResponse struct {
@@ -195,7 +195,7 @@ type adyenErrorResponse struct {
 // Webhook types
 
 type adyenNotificationRequest struct {
-	Live              string                    `json:"live"`
+	Live              string                      `json:"live"`
 	NotificationItems []adyenNotificationItemWrap `json:"notificationItems"`
 }
 
@@ -204,18 +204,18 @@ type adyenNotificationItemWrap struct {
 }
 
 type adyenNotificationItem struct {
-	Amount             adyenAmount            `json:"amount"`
-	EventCode          string                 `json:"eventCode"`
-	EventDate          string                 `json:"eventDate"`
-	MerchantAccountCode string                `json:"merchantAccountCode"`
-	MerchantReference  string                 `json:"merchantReference"`
-	Operations         []string               `json:"operations,omitempty"`
-	OriginalReference  string                 `json:"originalReference,omitempty"`
-	PaymentMethod      string                 `json:"paymentMethod"`
-	PSPReference       string                 `json:"pspReference"`
-	Reason             string                 `json:"reason,omitempty"`
-	Success            string                 `json:"success"`
-	AdditionalData     map[string]interface{} `json:"additionalData,omitempty"`
+	Amount              adyenAmount            `json:"amount"`
+	EventCode           string                 `json:"eventCode"`
+	EventDate           string                 `json:"eventDate"`
+	MerchantAccountCode string                 `json:"merchantAccountCode"`
+	MerchantReference   string                 `json:"merchantReference"`
+	Operations          []string               `json:"operations,omitempty"`
+	OriginalReference   string                 `json:"originalReference,omitempty"`
+	PaymentMethod       string                 `json:"paymentMethod"`
+	PSPReference        string                 `json:"pspReference"`
+	Reason              string                 `json:"reason,omitempty"`
+	Success             string                 `json:"success"`
+	AdditionalData      map[string]interface{} `json:"additionalData,omitempty"`
 }
 
 // ------------------------------------------------------------------
@@ -384,7 +384,7 @@ func (p *Provider) Capture(ctx context.Context, transactionID string, amount cur
 		Status:        mapCaptureStatus(resp.Status),
 		Metadata: map[string]interface{}{
 			"paymentPspReference": resp.PaymentPSPReference,
-			"status":             resp.Status,
+			"status":              resp.Status,
 		},
 	}, nil
 }
@@ -549,8 +549,9 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 //
 // The signing string is built by concatenating the following fields with ':'
 // separators, in this exact order:
-//   pspReference + merchantReference + amount.value + amount.currency +
-//   eventCode + success
+//
+//	pspReference + merchantReference + amount.value + amount.currency +
+//	eventCode + success
 //
 // The HMAC key is hex-encoded in Adyen's Customer Area. It is decoded to raw
 // bytes before computing HMAC-SHA256. The expected signature is base64-encoded.

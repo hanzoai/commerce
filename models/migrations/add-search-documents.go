@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	ds "github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/order"
@@ -10,8 +10,8 @@ import (
 )
 
 var _ = New("add-search-documents",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "cryptounderground")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "cryptounderground")
 		return NoArgs
 	},
 	func(db *ds.Datastore, u *user.User) {

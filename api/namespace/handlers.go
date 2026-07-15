@@ -1,17 +1,16 @@
 package namespace
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	// Namespace lookup exposes org names/IDs -- require admin token.
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	router.GET("/c/namespace/by-id/:id", adminRequired, namespaceFromId)
-	router.GET("/c/namespace/to-id/:namespace", adminRequired, idFromNamespace)
+	router.Get("/c/namespace/by-id/:id", adminRequired, namespaceFromId)
+	router.Get("/c/namespace/to-id/:namespace", adminRequired, idFromNamespace)
 }

@@ -3,16 +3,16 @@ package form
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/form"
 )
 
-func Js(c *gin.Context) {
-	id := c.Params.ByName("formid")
-	db := datastore.New(c)
+func Js(c *zip.Ctx) error {
+	id := c.Param("formid")
+	db := datastore.New(c.Context())
 
 	f := form.New(db)
 
@@ -26,10 +26,9 @@ func Js(c *gin.Context) {
 
 	if err := f.Get(nil); err != nil {
 		log.Error("Failed to retrieve form '%s' in namespace '%s': %v", id, namespace, err, c)
-		c.String(404, fmt.Sprintf("Failed to retrieve form '%v': %v", id, err))
-		return
+		return c.String(404, fmt.Sprintf("Failed to retrieve form '%v': %v", id, err))
 	}
 
-	c.Writer.Header().Add("Content-Type", "application/javascript")
-	c.String(200, f.Js())
+	c.SetHeader("Content-Type", "application/javascript")
+	return c.String(200, f.Js())
 }

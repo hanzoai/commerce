@@ -1,7 +1,7 @@
 package inventory
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -12,10 +12,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	// Inventory Items - standard CRUD
@@ -42,23 +41,21 @@ type adjustRequest struct {
 
 // AdjustStock adjusts StockedQuantity, ReservedQuantity, and/or IncomingQuantity
 // on an InventoryLevel by the delta values provided in the request body.
-func AdjustStock(c *gin.Context) {
-	ctx := middleware.GetContext(c)
+func AdjustStock(c *zip.Ctx) error {
+	ctx := c.Context()
 	db := datastore.New(ctx)
-	id := c.Params.ByName("inventorylevelid")
+	id := c.Param("inventorylevelid")
 
 	// Load existing inventory level
 	level := inventorylevel.New(db)
 	if err := level.GetById(id); err != nil {
-		http.Fail(c, 404, "Inventory level not found", err)
-		return
+		return http.Fail(c, 404, "Inventory level not found", err)
 	}
 
 	// Parse adjustment
 	var adj adjustRequest
-	if err := json.Decode(c.Request.Body, &adj); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &adj); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	// Apply deltas
@@ -74,9 +71,8 @@ func AdjustStock(c *gin.Context) {
 
 	// Persist
 	if err := level.Update(); err != nil {
-		http.Fail(c, 500, "Failed to adjust inventory level", err)
-		return
+		return http.Fail(c, 500, "Failed to adjust inventory level", err)
 	}
 
-	http.Render(c, 200, level)
+	return http.Render(c, 200, level)
 }

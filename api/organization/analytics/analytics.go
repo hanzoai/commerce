@@ -3,7 +3,7 @@ package analytics
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/types/analytics"
@@ -11,27 +11,25 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func Get(c *gin.Context) {
+func Get(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	integrations := org.Analytics.UpdateShownDisabledStatus()
-	http.Render(c, 200, integrations)
+	return http.Render(c, 200, integrations)
 }
 
-func Set(c *gin.Context) {
+func Set(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 
 	if id != org.Id() && id != org.Name && id != org.FullName {
-		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
-		return
+		return http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 	}
 
 	integrations := analytics.Analytics{}
 
 	// Decode response body for listing
-	if err := json.Decode(c.Request.Body, &integrations); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &integrations); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	integrations.UpdateStoredDisabledStatus()
@@ -41,35 +39,31 @@ func Set(c *gin.Context) {
 
 	// Save organization
 	if err := org.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save analytics integrations", err)
-	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 201, integrations)
+		return http.Fail(c, 500, "Failed to save analytics integrations", err)
 	}
+	c.SetHeader("Location", c.Path())
+	return http.Render(c, 201, integrations)
 }
 
-func Update(c *gin.Context) {
+func Update(c *zip.Ctx) error {
 	// Get organization
 	org := middleware.GetOrganization(c)
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 
 	if id != org.Id() && id != org.Name && id != org.FullName {
-		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
-		return
+		return http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 	}
 
 	// Decode response body for listing
-	if err := json.Decode(c.Request.Body, &org.Analytics); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &org.Analytics); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	org.Analytics.UpdateStoredDisabledStatus()
 
 	if err := org.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save organization integrations", err)
-	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 201, org.Analytics)
+		return http.Fail(c, 500, "Failed to save organization integrations", err)
 	}
+	c.SetHeader("Location", c.Path())
+	return http.Render(c, 201, org.Analytics)
 }

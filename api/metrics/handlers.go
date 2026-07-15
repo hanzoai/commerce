@@ -3,11 +3,10 @@ package metrics
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Route registers the SaaS-operations god-view. Like api/costs this is a PLATFORM
@@ -19,13 +18,13 @@ import (
 // External (gateway) path: GET /v1/commerce/metrics/saas. Internal (this bundle):
 // GET /v1/metrics/saas — where the cloud admin proxy and the console's
 // global-admin-gated commerce proxy reach it with the service token.
-func Route(r router.Router, args ...gin.HandlerFunc) {
+func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := r.Group("metrics")
 	api.Use(adminRequired)
 
-	api.GET("/saas", GetSaaS)
+	api.Get("/saas", GetSaaS)
 }
 
 // GetSaaS returns the whole-business SaaS snapshot — revenue (MRR/ARR + new/churn),
@@ -36,11 +35,11 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 //
 // window: 7d | 30d | 90d | mtd | all (default 30d) — bounds usage + new/churn.
 // limit:  cap for the top-orgs / customers lists (default 20, max 200).
-func GetSaaS(c *gin.Context) {
+func GetSaaS(c *zip.Ctx) error {
 	if !middleware.RequirePlatformAdmin(c) {
-		return
+		return nil
 	}
-	c.JSON(200, rollup(options{
+	return c.JSON(200, rollup(options{
 		window: c.Query("window"),
 		limit:  parseLimit(c.Query("limit")),
 		test:   c.Query("test") == "true",

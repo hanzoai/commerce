@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -11,7 +11,7 @@ import (
 
 const loginKey = "loggedIn"
 
-func GetCurrentUserId(c *gin.Context) (string, error) {
+func GetCurrentUserId(c *zip.Ctx) (string, error) {
 	log.Debug("Retrieving current id from session")
 	value, err := session.Get(c, loginKey)
 	if err != nil {
@@ -25,7 +25,7 @@ func GetCurrentUserId(c *gin.Context) (string, error) {
 	return value.(string), nil
 }
 
-func GetCurrentUser(c *gin.Context) (*user.User, error) {
+func GetCurrentUser(c *zip.Ctx) (*user.User, error) {
 	log.Debug("Retrieving current user from session")
 	id, err := GetCurrentUserId(c)
 	if err != nil {
@@ -33,7 +33,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 		return nil, err
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 	u := user.New(db)
 
 	if err := u.GetById(id); err != nil {
@@ -47,7 +47,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 
 // // Validates a form and inserts a new user into the datastore
 // // Checks if the Email and Id are unique, and calculates a hash for the password
-// func RegisterNewUser(c *gin.Context) (*user.User, error) {
+// func RegisterNewUser(c *zip.Ctx) (*user.User, error) {
 // 	// Parse register form
 // 	f := new(RegistrationForm)
 // 	if err := f.Parse(c); err != nil {
@@ -55,7 +55,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 // 	}
 
 // 	m := f.User
-// 	db := datastore.New(c)
+// 	db := datastore.New(c.Context())
 
 // 	// If each query returns no keys, then both fields are unique.
 // 	qEmail := db.Query("user").
@@ -84,7 +84,7 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 // 	return &m, nil
 // }
 
-func IsLoggedIn(c *gin.Context) bool {
+func IsLoggedIn(c *zip.Ctx) bool {
 	value, err := session.Get(c, loginKey)
 	if err != nil {
 		return false
@@ -98,10 +98,10 @@ func IsLoggedIn(c *gin.Context) bool {
 	return true
 }
 
-func Login(c *gin.Context, u *user.User) error {
+func Login(c *zip.Ctx, u *user.User) error {
 	return session.Set(c, loginKey, u.Id())
 }
 
-func Logout(c *gin.Context) error {
+func Logout(c *zip.Ctx) error {
 	return session.Clear(c)
 }
