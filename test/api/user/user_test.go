@@ -5,10 +5,10 @@ import (
 
 	"github.com/icrowley/fake"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/models/wallet"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

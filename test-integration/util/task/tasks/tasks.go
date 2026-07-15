@@ -3,7 +3,7 @@ package tasks
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/task"
@@ -15,7 +15,7 @@ import (
 // 	task.Register("orders")
 // })
 
-var Foo = task.Func("foo", func(c *gin.Context) {
+var Foo = task.Func("foo", func(c *zip.Ctx) {
 	// Use context.Background() for test context
 	ctx := context.Background()
 	_ = ctx // Context available if needed for future use
@@ -24,7 +24,7 @@ var Foo = task.Func("foo", func(c *gin.Context) {
 	log.Info("Task foo executed", c)
 })
 
-var Baz = task.Func("baz", func(c *gin.Context) {
+var Baz = task.Func("baz", func(c *zip.Ctx) {
 	// Use context.Background() for test context
 	ctx := context.Background()
 	_ = ctx // Context available if needed for future use
@@ -33,7 +33,7 @@ var Baz = task.Func("baz", func(c *gin.Context) {
 	log.Info("Task baz executed", c)
 })
 
-var NestedBaz = task.Func("nested-baz", func(c *gin.Context) {
+var NestedBaz = task.Func("nested-baz", func(c *zip.Ctx) {
 	ctx := context.Background()
 	Baz.Call(ctx)
 })

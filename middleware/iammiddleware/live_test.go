@@ -3,10 +3,10 @@
 package iammiddleware
 
 import (
-	"net/http/httptest"
+	"net/http"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // TestLiveFromHeaders pins the gateway test-mode contract: a request is
@@ -14,8 +14,6 @@ import (
 // authority payment.ProcessorsForOrg keys Square sandbox-vs-production
 // off of (org.Live=false ⇒ sandbox). Mirrors middleware/accesstoken.go.
 func TestLiveFromHeaders(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	cases := []struct {
 		name     string
 		header   string // value of X-Hanzo-Test; "" means unset
@@ -32,12 +30,12 @@ func TestLiveFromHeaders(t *testing.T) {
 		{"yes (not true) ⇒ live", "yes", true, true},
 	}
 
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, _ := gin.CreateTestContext(httptest.NewRecorder())
-			c.Request = httptest.NewRequest("POST", "/v1/billing/topup/token", nil)
+			c := app.TestCtx(http.MethodPost, "/v1/billing/topup/token")
 			if tc.set {
-				c.Request.Header.Set(HeaderTest, tc.header)
+				c.Fiber().Request().Header.Set(HeaderTest, tc.header)
 			}
 			if got := liveFromHeaders(c); got != tc.wantLive {
 				t.Fatalf("liveFromHeaders(%q set=%v) = %v, want %v",

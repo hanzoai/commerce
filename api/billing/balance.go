@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -17,17 +17,19 @@ import (
 //	GET /v1/billing/balance?user=hanzo/alice&currency=usd
 //
 // All amounts in cents. available = balance - holds.
-func GetBalance(c *gin.Context) {
+func GetBalance(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
-	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "usd")))
+	cur := currency.Type(strings.ToLower(c.Query("currency")))
+	if cur == "" {
+		cur = "usd"
+	}
 
 	// The three-bucket split (credits granted/remaining vs prepaid real money) is
 	// derived from the SAME ledger the balance is; balance/holds/available come
@@ -35,12 +37,11 @@ func GetBalance(c *gin.Context) {
 	// backward compatible with the pre-split {balance,holds,available} shape.
 	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 	card := getCardOnFile(datastore.New(ctx), user)
 
-	resp := gin.H{
+	resp := map[string]any{
 		"user":      user,
 		"currency":  cur,
 		"balance":   int64(split.Balance),
@@ -50,35 +51,33 @@ func GetBalance(c *gin.Context) {
 	for k, v := range bucketFields(split, card) {
 		resp[k] = v
 	}
-	c.JSON(200, resp)
+	return c.JSON(200, resp)
 }
 
 // GetBalanceAll returns balances across all currencies for an IAM user.
 //
 //	GET /v1/billing/balance/all?user=hanzo/alice
-func GetBalanceAll(c *gin.Context) {
+func GetBalanceAll(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	datas, err := util.GetTransactions(ctx, user, "iam-user", org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 
-	balances := make([]gin.H, 0, len(datas.Data))
+	balances := make([]map[string]any, 0, len(datas.Data))
 	for cur, data := range datas.Data {
 		available := data.Balance - data.Holds
 		if available < 0 {
 			available = 0
 		}
-		balances = append(balances, gin.H{
+		balances = append(balances, map[string]any{
 			"currency":  cur,
 			"balance":   data.Balance,
 			"holds":     data.Holds,
@@ -86,7 +85,7 @@ func GetBalanceAll(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":     user,
 		"balances": balances,
 	})

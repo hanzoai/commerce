@@ -1,7 +1,7 @@
 package affiliate
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	payoutcron "github.com/hanzoai/commerce/cron/payout/contributor"
 	"github.com/hanzoai/commerce/datastore"
@@ -13,97 +13,88 @@ import (
 )
 
 // registerContributor allows a user to register as an OSS contributor.
-func registerContributor(c *gin.Context) {
+func registerContributor(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	contrib := contributor.New(db)
-	if err := json.Decode(c.Request.Body, contrib); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), contrib); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	if contrib.GitLogin == "" || contrib.GitEmail == "" {
-		http.Fail(c, 400, "gitLogin and gitEmail are required", nil)
-		return
+		return http.Fail(c, 400, "gitLogin and gitEmail are required", nil)
 	}
 
 	// Check if contributor already exists with this git login
 	existing := contributor.New(db)
 	if _, ok, _ := contributor.Query(db).Filter("GitLogin=", contrib.GitLogin).First(existing); ok {
-		http.Render(c, 200, existing)
-		return
+		return http.Render(c, 200, existing)
 	}
 
 	contrib.Active = true
 	if err := contrib.Create(); err != nil {
-		http.Fail(c, 500, "Failed to create contributor", err)
-		return
+		return http.Fail(c, 500, "Failed to create contributor", err)
 	}
 
-	c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+contrib.Id())
-	http.Render(c, 201, contrib)
+	c.SetHeader("Location", c.Path()+"/"+contrib.Id())
+	return http.Render(c, 201, contrib)
 }
 
 // contributorCreate returns the admin create override for contributor CRUD.
-func contributorCreate(r *rest.Rest) func(*gin.Context) {
-	return func(c *gin.Context) {
+func contributorCreate(r *rest.Rest) func(*zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		if !r.CheckPermissions(c, "create") {
-			return
+			return nil
 		}
 
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 		contrib := contributor.New(db)
 
-		if err := json.Decode(c.Request.Body, contrib); err != nil {
-			r.Fail(c, 400, "Failed to decode request body", err)
-			return
+		if err := json.DecodeBytes(c.Body(), contrib); err != nil {
+			return r.Fail(c, 400, "Failed to decode request body", err)
 		}
 
 		if contrib.GitLogin == "" {
-			r.Fail(c, 400, "gitLogin is required", nil)
-			return
+			return r.Fail(c, 400, "gitLogin is required", nil)
 		}
 
 		if err := contrib.Create(); err != nil {
-			r.Fail(c, 500, "Failed to create contributor", err)
-			return
+			return r.Fail(c, 500, "Failed to create contributor", err)
 		}
 
-		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+contrib.Id())
-		r.Render(c, 201, contrib)
+		c.SetHeader("Location", c.Path()+"/"+contrib.Id())
+		return r.Render(c, 201, contrib)
 	}
 }
 
 // contributorGetByLogin looks up a contributor by their git login.
-func contributorGetByLogin(c *gin.Context) {
+func contributorGetByLogin(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	login := c.Params.ByName("login")
+	db := datastore.New(org.Namespaced(c.Context()))
+	login := c.Param("login")
 
 	contrib := contributor.New(db)
 	if _, ok, _ := contributor.Query(db).Filter("GitLogin=", login).First(contrib); !ok {
-		http.Fail(c, 404, "No contributor found with login: "+login, nil)
-		return
+		return http.Fail(c, 404, "No contributor found with login: "+login, nil)
 	}
 
-	http.Render(c, 200, contrib)
+	return http.Render(c, 200, contrib)
 }
 
 // getEarnings returns a contributor's earnings summary.
-func getEarnings(c *gin.Context) {
+func getEarnings(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("contributorid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	id := c.Param("contributorid")
 
 	contrib := contributor.New(db)
 	if err := contrib.GetById(id); err != nil {
-		http.Fail(c, 404, "Contributor not found: "+id, err)
-		return
+		return http.Fail(c, 404, "Contributor not found: "+id, err)
 	}
 
-	http.Render(c, 200, gin.H{
+	return http.Render(c, 200, map[string]any{
 		"contributorId": contrib.Id(),
 		"gitLogin":      contrib.GitLogin,
 		"totalEarned":   contrib.TotalEarned,
@@ -116,102 +107,93 @@ func getEarnings(c *gin.Context) {
 }
 
 // getAttributions returns a contributor's SBOM attributions.
-func getAttributions(c *gin.Context) {
+func getAttributions(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("contributorid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	id := c.Param("contributorid")
 
 	contrib := contributor.New(db)
 	if err := contrib.GetById(id); err != nil {
-		http.Fail(c, 404, "Contributor not found: "+id, err)
-		return
+		return http.Fail(c, 404, "Contributor not found: "+id, err)
 	}
 
-	http.Render(c, 200, contrib.Attributions)
+	return http.Render(c, 200, contrib.Attributions)
 }
 
 // createSBOMEntry creates or updates an SBOM entry for a component.
-func createSBOMEntry(c *gin.Context) {
+func createSBOMEntry(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	entry := contributor.NewSBOM(db)
-	if err := json.Decode(c.Request.Body, entry); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), entry); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	if entry.Component == "" {
-		http.Fail(c, 400, "component is required", nil)
-		return
+		return http.Fail(c, 400, "component is required", nil)
 	}
 
 	if err := entry.Create(); err != nil {
-		http.Fail(c, 500, "Failed to create SBOM entry", err)
-		return
+		return http.Fail(c, 500, "Failed to create SBOM entry", err)
 	}
 
-	http.Render(c, 201, entry)
+	return http.Render(c, 201, entry)
 }
 
 // listSBOMEntries returns all SBOM entries.
-func listSBOMEntries(c *gin.Context) {
+func listSBOMEntries(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	entries := make([]contributor.SBOMEntry, 0)
 	if _, err := contributor.QuerySBOM(db).GetAll(&entries); err != nil {
-		http.Fail(c, 500, "Failed to query SBOM entries", err)
-		return
+		return http.Fail(c, 500, "Failed to query SBOM entries", err)
 	}
 
-	http.Render(c, 200, entries)
+	return http.Render(c, 200, entries)
 }
 
 // getSBOMEntry returns a single SBOM entry by ID.
-func getSBOMEntry(c *gin.Context) {
+func getSBOMEntry(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("sbomid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	id := c.Param("sbomid")
 
 	entry := contributor.NewSBOM(db)
 	if err := entry.GetById(id); err != nil {
-		http.Fail(c, 404, "SBOM entry not found: "+id, err)
-		return
+		return http.Fail(c, 404, "SBOM entry not found: "+id, err)
 	}
 
-	http.Render(c, 200, entry)
+	return http.Render(c, 200, entry)
 }
 
 // updateSBOMEntry updates an existing SBOM entry.
-func updateSBOMEntry(c *gin.Context) {
+func updateSBOMEntry(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("sbomid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	id := c.Param("sbomid")
 
 	entry := contributor.NewSBOM(db)
 	if err := entry.GetById(id); err != nil {
-		http.Fail(c, 404, "SBOM entry not found: "+id, err)
-		return
+		return http.Fail(c, 404, "SBOM entry not found: "+id, err)
 	}
 
-	if err := json.Decode(c.Request.Body, entry); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), entry); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	if err := entry.Update(); err != nil {
-		http.Fail(c, 500, "Failed to update SBOM entry", err)
-		return
+		return http.Fail(c, 500, "Failed to update SBOM entry", err)
 	}
 
-	http.Render(c, 200, entry)
+	return http.Render(c, 200, entry)
 }
 
 // calculatePayouts runs the payout algorithm and returns results.
-func calculatePayouts(c *gin.Context) {
+func calculatePayouts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req struct {
 		TotalRevenueCents int64                     `json:"totalRevenueCents"`
@@ -219,21 +201,18 @@ func calculatePayouts(c *gin.Context) {
 		Config            *contributor.PayoutConfig `json:"config,omitempty"`
 	}
 
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	if req.TotalRevenueCents <= 0 {
-		http.Fail(c, 400, "totalRevenueCents must be positive", nil)
-		return
+		return http.Fail(c, 400, "totalRevenueCents must be positive", nil)
 	}
 
 	// Load all active, verified contributors
 	contributors := make([]contributor.Contributor, 0)
 	if _, err := contributor.Query(db).Filter("Active=", true).Filter("Verified=", true).GetAll(&contributors); err != nil {
-		http.Fail(c, 500, "Failed to query contributors", err)
-		return
+		return http.Fail(c, 500, "Failed to query contributors", err)
 	}
 
 	cfg := contributor.DefaultConfig()
@@ -248,20 +227,19 @@ func calculatePayouts(c *gin.Context) {
 		cfg,
 	)
 
-	http.Render(c, 200, summary)
+	return http.Render(c, 200, summary)
 }
 
 // previewPayouts returns a dry-run of what payouts would look like
 // using the default config and current SBOM revenue data.
-func previewPayouts(c *gin.Context) {
+func previewPayouts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Load SBOM entries to build component revenue map
 	entries := make([]contributor.SBOMEntry, 0)
 	if _, err := contributor.QuerySBOM(db).GetAll(&entries); err != nil {
-		http.Fail(c, 500, "Failed to query SBOM entries", err)
-		return
+		return http.Fail(c, 500, "Failed to query SBOM entries", err)
 	}
 
 	// Same real per-component attribution the payout cron uses: usage, then
@@ -275,8 +253,7 @@ func previewPayouts(c *gin.Context) {
 	// Load contributors
 	contributors := make([]contributor.Contributor, 0)
 	if _, err := contributor.Query(db).Filter("Active=", true).Filter("Verified=", true).GetAll(&contributors); err != nil {
-		http.Fail(c, 500, "Failed to query contributors", err)
-		return
+		return http.Fail(c, 500, "Failed to query contributors", err)
 	}
 
 	summary := contributor.CalculatePayouts(
@@ -286,7 +263,7 @@ func previewPayouts(c *gin.Context) {
 		contributor.DefaultConfig(),
 	)
 
-	http.Render(c, 200, summary)
+	return http.Render(c, 200, summary)
 }
 
 // executePayouts runs the OSS contributor payout EXECUTOR for the caller's org
@@ -302,17 +279,16 @@ func previewPayouts(c *gin.Context) {
 //
 //	POST /payouts/execute              (dry-run)
 //	POST /payouts/execute?execute=true (live disbursement)
-func executePayouts(c *gin.Context) {
+func executePayouts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	dryRun := c.Query("execute") != "true"
 
-	if err := payoutcron.Payout(org.Namespaced(c), payoutcron.Config{
+	if err := payoutcron.Payout(org.Namespaced(c.Context()), payoutcron.Config{
 		Namespace: org.Namespace(),
 		DryRun:    dryRun,
 	}); err != nil {
-		http.Fail(c, 500, "contributor payout failed", err)
-		return
+		return http.Fail(c, 500, "contributor payout failed", err)
 	}
 
-	http.Render(c, 200, gin.H{"ok": true, "namespace": org.Namespace(), "dryRun": dryRun})
+	return http.Render(c, 200, map[string]any{"ok": true, "namespace": org.Namespace(), "dryRun": dryRun})
 }

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 )
@@ -75,10 +75,9 @@ func TestEmbeddedBillingUI_HasNextBundle(t *testing.T) {
 // a Bearer token, the route returns 404 (not 403/401) to avoid leaking the
 // admin SPA's existence. iam=nil simulates IAM disabled.
 func TestUIHandler_NoAuth_Returns404(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.GET("/admin/billing", UIHandler("/admin/billing", nil))
-	r.GET("/admin/billing/*filepath", UIHandler("/admin/billing", nil))
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Get("/admin/billing", UIHandler("/admin/billing", nil))
+	app.Get("/admin/billing/*", UIHandler("/admin/billing", nil))
 
 	cases := []string{
 		"/admin/billing",
@@ -88,10 +87,12 @@ func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 	}
 	for _, path := range cases {
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		w := httptest.NewRecorder()
-		r.ServeHTTP(w, req)
-		if w.Code != http.StatusNotFound {
-			t.Errorf("%s: expected 404, got %d", path, w.Code)
+		resp, err := app.Fiber().Test(req)
+		if err != nil {
+			t.Fatalf("%s: test request failed: %v", path, err)
+		}
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("%s: expected 404, got %d", path, resp.StatusCode)
 		}
 	}
 }
@@ -100,16 +101,17 @@ func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 // token (e.g. "Basic foo") also 404s — the handler rejects anything that is
 // not a valid "Bearer <token>" header.
 func TestUIHandler_MalformedBearer_Returns404(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.GET("/admin/billing/*filepath", UIHandler("/admin/billing", nil))
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Get("/admin/billing/*", UIHandler("/admin/billing", nil))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/billing/plans", nil)
 	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz")
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Errorf("expected 404 for non-Bearer auth, got %d", w.Code)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404 for non-Bearer auth, got %d", resp.StatusCode)
 	}
 }
 

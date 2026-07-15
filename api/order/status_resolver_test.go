@@ -5,11 +5,12 @@ package order
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	dsquery "github.com/hanzoai/commerce/datastore/query"
@@ -38,8 +39,6 @@ import (
 //  2. the same order is genuinely ABSENT from systemDB (New) — proving the split
 //     is real and the fix is load-bearing, not cosmetic.
 func TestStatus_ResolverInstalled_FindsPerOrgOrder(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	// Real manager with per-org SQLite + the resolver INSTALLED (unlike ae).
 	dir := t.TempDir()
 	cfg := db.DefaultConfig()
@@ -92,24 +91,31 @@ func TestStatus_ResolverInstalled_FindsPerOrgOrder(t *testing.T) {
 		t.Fatal("order unexpectedly found in systemDB — resolver split not in effect; test cannot catch MED-1")
 	}
 
-	// Drive the real Status handler with an acme-scoped request.
+	// Drive the real Status handler with an acme-scoped request. A thin middleware
+	// seeds the "organization" local exactly as the auth/namespace chain does in
+	// production, so middleware.GetOrganization(c) inside Status resolves to acme.
 	org := &organization.Organization{}
 	org.Name = ns
 
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Params = gin.Params{{Key: "orderid", Value: orderId}}
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Get("/order/:orderid/status", func(c *zip.Ctx) error {
+		c.Locals("organization", org)
+		return c.Next()
+	}, Status)
 
-	Status(c)
+	resp, err := app.Fiber().Test(httptest.NewRequest("GET", "/order/"+orderId+"/status", nil))
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
 
 	// Guard #1: handler routed to acme's store → found → 200 with the right id.
-	if w.Code != 200 {
-		t.Fatalf("Status returned %d, want 200 — handler missed the per-org order (MED-1 regression: reading systemDB, not org store). body=%s", w.Code, w.Body.String())
+	if resp.StatusCode != 200 {
+		t.Fatalf("Status returned %d, want 200 — handler missed the per-org order (MED-1 regression: reading systemDB, not org store). body=%s", resp.StatusCode, body)
 	}
 	var res StatusResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
-		t.Fatalf("decode StatusResponse: %v (body=%s)", err, w.Body.String())
+	if err := json.Unmarshal(body, &res); err != nil {
+		t.Fatalf("decode StatusResponse: %v (body=%s)", err, body)
 	}
 	if res.Id != orderId {
 		t.Fatalf("Status returned order id %q, want %q", res.Id, orderId)

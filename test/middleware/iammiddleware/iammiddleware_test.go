@@ -4,7 +4,7 @@
 // (~600 LOC of RSA keys + JWKS server + claim shaping) were removed
 // when the trust boundary moved to hanzoai/gateway. What's left is a
 // minimal contract: when X-Org-Id is present, IAMTokenRequired
-// resolves the org and sets the legacy gin keys; when it's absent, it
+// resolves the org and sets the legacy context locals; when it's absent, it
 // falls through to legacy auth.
 //
 // NB: the earlier `var _ = Describe(...)` Ginkgo block was dead — the JWKS/
@@ -21,22 +21,21 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 )
 
 func TestFallthroughWithoutHeaders(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(iammiddleware.IAMTokenRequired())
-	r.GET("/x", func(c *gin.Context) { c.String(http.StatusOK, "ok") })
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(iammiddleware.IAMTokenRequired())
+	app.Get("/x", func(c *zip.Ctx) error { return c.String(http.StatusOK, "ok") })
 
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("want 200 got %d body=%q", w.Code, w.Body.String())
+	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/x", nil))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("want 200 got %d", resp.StatusCode)
 	}
 }

@@ -7,12 +7,13 @@ package affiliate
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/util/bit"
@@ -20,23 +21,24 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// mountAffiliate mounts the real affiliate Route() behind a seed and returns the
-// engine plus the concrete path registered for the given handler short-name.
-func mountAffiliate(t *testing.T, seed func(*gin.Context), handler string) (*gin.Engine, string) {
+// mountAffiliate mounts the real affiliate Route() behind a seed and returns the app
+// plus the concrete POST path whose registration ends with the given suffix. Fiber
+// exposes no handler names (gin's ri.Handler is gone), so routes are matched by their
+// path tail instead.
+func mountAffiliate(t *testing.T, seed func(*zip.Ctx), pathSuffix string) (*zip.App, string) {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
-	eng := gin.New()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		eng.Use(func(c *gin.Context) { seed(c); c.Next() })
+		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
 	}
-	Route(eng.Group("/v1"))
+	Route(app.Group("/v1"))
 
-	for _, ri := range eng.Routes() {
-		if strings.HasSuffix(ri.Handler, "."+handler) {
-			return eng, ri.Path
+	for _, ri := range app.Fiber().GetRoutes() {
+		if ri.Method == http.MethodPost && strings.HasSuffix(ri.Path, pathSuffix) {
+			return app, ri.Path
 		}
 	}
-	t.Fatalf("route for handler %q not found", handler)
+	t.Fatalf("route with path suffix %q not found", pathSuffix)
 	return nil, ""
 }
 
@@ -44,19 +46,22 @@ func mountAffiliate(t *testing.T, seed func(*gin.Context), handler string) (*gin
 // the payout executor is 403 — it can no longer disburse the treasury.
 func TestPayoutExecute_OrgAdminDenied(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
-	eng, path := mountAffiliate(t, func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
-	}, "executePayouts")
+	app, path := mountAffiliate(t, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+	}, "/payouts/execute")
 
 	req := httptest.NewRequest(http.MethodPost, path+"?execute=true", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("org-admin %s: status=%d body=%s, want 403", path, w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("org-admin %s: status=%d body=%s, want 403", path, resp.StatusCode, body)
 	}
 }
 
@@ -64,19 +69,22 @@ func TestPayoutExecute_OrgAdminDenied(t *testing.T) {
 // gated too (RED grouped calculate/sbom with execute).
 func TestPayoutCalculate_OrgAdminDenied(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
-	eng, path := mountAffiliate(t, func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
-	}, "calculatePayouts")
+	app, path := mountAffiliate(t, func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+	}, "/payouts/calculate")
 
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{"totalRevenueCents":100000}`))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("org-admin %s: status=%d body=%s, want 403", path, w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusForbidden {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("org-admin %s: status=%d body=%s, want 403", path, resp.StatusCode, body)
 	}
 }
 
@@ -89,17 +97,19 @@ func TestPayoutExecute_ServiceTokenReaches(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng, path := mountAffiliate(t, func(c *gin.Context) { c.Set("context", ctx) }, "executePayouts")
+	app, path := mountAffiliate(t, func(c *zip.Ctx) { c.SetContext(ctx) }, "/payouts/execute")
 
 	// dry-run (no ?execute=true) — the gate must ADMIT the service token.
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "payoutorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
 
-	if w.Code == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden {
 		t.Fatalf("service-token %s was 403 — the gate wrongly denied the internal service path", path)
 	}
 }

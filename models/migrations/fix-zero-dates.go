@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/order"
@@ -13,10 +13,10 @@ import (
 )
 
 var _ = New("fix-zero-dates",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 
-		db := datastore.New(c)
+		db := datastore.New(c.Context())
 		org := organization.New(db)
 		org.GetById("kanoa")
 

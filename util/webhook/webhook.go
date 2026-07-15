@@ -2,7 +2,8 @@ package webhook
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
+
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/webhook/tasks"
@@ -12,11 +13,11 @@ func Emit(ctx interface{}, org string, event string, data interface{}) {
 	var reqCtx context.Context
 
 	switch v := ctx.(type) {
-	case *gin.Context:
-		if c, exists := v.Get("context"); exists {
+	case *zip.Ctx:
+		if c := v.Context(); c != nil {
 			reqCtx = c.(context.Context)
 		} else {
-			reqCtx = v.Request.Context()
+			reqCtx = v.Context()
 		}
 	case context.Context:
 		reqCtx = v

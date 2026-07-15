@@ -873,3 +873,26 @@ fork's spend-cap/budget features must be re-expressed on Binding (#70), not
 imported as a competing model. Also not ported: thirdparty/ethereum (dropped
 deliberately, LGPL), and the cloud bridges (finance-coupled metering client,
 in-process entitlement client, Deps adapter) — those live cloud-side.
+
+## v1.48.0 — NATIVE zip (zap-proto/fiber): gin is GONE
+Whole repo runs on zap-proto/zip v1.7.5 (zap-proto/fiber underneath). No gin,
+no gofiber, no net/http adaptation in the serving path. Handlers are
+`func(*zip.Ctx) error`; returning the render IS the abort (no gin Abort()).
+- ONE request context: `middleware.RequestContext()` does `c.SetContext(mintauth.WithGate(...))`
+  at the boundary; everything reads `c.Context()`. `GetContext`/`Locals("context")` are DEAD.
+  `middleware.AuthorizeMint` SetContexts the authorized ctx — the ledger sink reads it there.
+- Route chains are gin-order (middleware…, handler LAST) — zip ≥v1.7.4 executes
+  them in that order (v1.7.4 fixed an inversion; chain_order_test pins it).
+- Empty leaf = group root (zip ≥v1.7.5 normPath); fiber param names are dash-free
+  (rest.ParamId squashes dashes: kind "product-option" → param "productoptionid").
+- Co-residence contract: `EmbedConfig.App *zip.App` / `Config.SharedApp` — commerce
+  registers routes ON the host's app (one router, one specificity space);
+  standalone-only surfaces (healthz, legacy /admin SPA, checkout SPA catch-all,
+  Listen/TLS) are skipped when embedded. `Embedded.HTTPHandler/HTTPAddr` DELETED → `Embedded.Zip()`.
+- SPA serving: zip.Static(+WithIndex/WithFallback) for admin (ui.FS); checkout
+  SPAHandler is a native zip handler (same security headers).
+- Test idioms: zipclient (ex ginclient) drives via the fiber adaptor with
+  SERVER-style requests; PostForm encodes the body (fasthttp parses bytes, not
+  req.PostForm). zip TestCtx for direct handler calls.
+- Pre-existing debt unchanged: test-integration/* needs external services;
+  thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).

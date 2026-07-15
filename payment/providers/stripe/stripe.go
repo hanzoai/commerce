@@ -612,12 +612,12 @@ type refund struct {
 }
 
 type stripeSub struct {
-	ID                 string            `json:"id"`
-	Status             string            `json:"status"`
-	Customer           string            `json:"customer"`
-	CurrentPeriodStart int64             `json:"current_period_start"`
-	CurrentPeriodEnd   int64             `json:"current_period_end"`
-	CancelAtPeriodEnd  bool              `json:"cancel_at_period_end"`
+	ID                 string                 `json:"id"`
+	Status             string                 `json:"status"`
+	Customer           string                 `json:"customer"`
+	CurrentPeriodStart int64                  `json:"current_period_start"`
+	CurrentPeriodEnd   int64                  `json:"current_period_end"`
+	CancelAtPeriodEnd  bool                   `json:"cancel_at_period_end"`
 	Metadata           map[string]interface{} `json:"metadata"`
 	Items              struct {
 		Data []struct {
@@ -738,4 +738,3 @@ var (
 	_ processor.SubscriptionProcessor = (*Provider)(nil)
 	_ processor.CustomerProcessor     = (*Provider)(nil)
 )
-

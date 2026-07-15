@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -48,7 +48,7 @@ type topupRequest struct {
 // SourceID is the saved card id (pm.ProviderRef) and CustomerID must be the
 // Square customer id — a card-on-file is only chargeable in its customer's
 // context (fall back to the org slug for legacy methods saved before card-on-file).
-func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, description string) (string, currency.Cents, error) {
+func chargeAndCredit(c *zip.Ctx, org *organization.Organization, db *datastore.Datastore, pm *paymentmethod.PaymentMethod, amountCents int64, cur currency.Type, userId, description string) (string, currency.Cents, error) {
 	squareCustomerID := pm.CustomerId
 	if pm.Metadata != nil {
 		if v, ok := pm.Metadata["squareCustomerId"].(string); ok && v != "" {
@@ -56,7 +56,7 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 		}
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	chargeReq := processor.PaymentRequest{
 		Token:       pm.ProviderRef,
 		Amount:      currency.Cents(amountCents),
@@ -98,7 +98,7 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 			return "", 0, fmt.Errorf("%w: ref=%s: %v", errChargedButCreditFailed, result.ProcessorRef, mErr)
 		}
 		var balanceCents currency.Cents
-		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, org.TestMode()); bErr == nil {
+		if datas, bErr := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), userId, "iam-user", cur, org.TestMode()); bErr == nil {
 			if data, ok := datas.Data[cur]; ok {
 				balanceCents = data.Balance
 			}
@@ -131,7 +131,7 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 
 	// Read back the new balance so the caller doesn't need a separate request.
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), userId, "iam-user", cur, test); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), userId, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}
@@ -145,11 +145,11 @@ func chargeAndCredit(c *gin.Context, org *organization.Organization, db *datasto
 //
 // Body: { userId, paymentMethodId, amountCents, currency? }
 // Returns: { transactionId, balanceCents, status }
-func Topup(c *gin.Context) {
+func Topup(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	// Hydrate payment credentials from KMS (same pattern as checkout/subscription).
-	if v, ok := c.Get("kms"); ok {
+	if v := c.Locals("kms"); v != nil {
 		if kmsClient, ok := v.(*kms.CachedClient); ok {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
 				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
@@ -157,25 +157,21 @@ func Topup(c *gin.Context) {
 		}
 	}
 
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req topupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		jsonhttp.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserID == "" {
-		jsonhttp.Fail(c, 400, "userId is required", nil)
-		return
+		return jsonhttp.Fail(c, 400, "userId is required", nil)
 	}
 	if req.PaymentMethodID == "" {
-		jsonhttp.Fail(c, 400, "paymentMethodId is required", nil)
-		return
+		return jsonhttp.Fail(c, 400, "paymentMethodId is required", nil)
 	}
 	if req.AmountCents <= 0 {
-		jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
-		return
+		return jsonhttp.Fail(c, 400, "amountCents must be positive", nil)
 	}
 
 	cur := currency.Type(strings.ToLower(req.Currency))
@@ -186,8 +182,7 @@ func Topup(c *gin.Context) {
 	// Load the payment method.
 	pm := paymentmethod.New(db)
 	if err := pm.GetById(req.PaymentMethodID); err != nil {
-		jsonhttp.Fail(c, 404, "payment method not found", err)
-		return
+		return jsonhttp.Fail(c, 404, "payment method not found", err)
 	}
 
 	desc := fmt.Sprintf("Top-up %d %s for user %s", req.AmountCents, cur, req.UserID)
@@ -196,17 +191,16 @@ func Topup(c *gin.Context) {
 		switch {
 		case errors.Is(err, errNoProcessor):
 			log.Error("No processor available for topup: %v", err, c)
-			jsonhttp.Fail(c, 422, "no payment processor available", err)
+			return jsonhttp.Fail(c, 422, "no payment processor available", err)
 		case errors.Is(err, errChargedButCreditFailed):
-			jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
+			return jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
 		default:
 			log.Error("Charge failed for topup (user=%s pm=%s): %v", req.UserID, req.PaymentMethodID, err, c)
-			jsonhttp.Fail(c, 402, err.Error(), nil)
+			return jsonhttp.Fail(c, 402, err.Error(), nil)
 		}
-		return
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"transactionId": txID,
 		"balanceCents":  balanceCents,
 		"status":        "ok",

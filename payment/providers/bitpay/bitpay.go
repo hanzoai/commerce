@@ -164,8 +164,8 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 		ProcessorRef:  resp.Data.ID,
 		Status:        mapInvoiceStatus(resp.Data.Status),
 		Metadata: map[string]interface{}{
-			"invoiceUrl":    resp.Data.URL,
-			"bitpayStatus":  resp.Data.Status,
+			"invoiceUrl":     resp.Data.URL,
+			"bitpayStatus":   resp.Data.Status,
 			"expirationTime": resp.Data.ExpirationTime,
 		},
 	}, nil

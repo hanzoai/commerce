@@ -3,7 +3,7 @@ package namespace
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -14,9 +14,9 @@ type Organization struct {
 }
 
 // Get id from namespace
-func idFromNamespace(c *gin.Context) {
-	namespace := c.Params.ByName("namespace")
-	db := datastore.New(c)
+func idFromNamespace(c *zip.Ctx) error {
+	namespace := c.Param("namespace")
+	db := datastore.New(c.Context())
 	key, ok, err := db.Query("organization").Filter("Name=", namespace).KeysOnly().First(nil)
 	if !ok {
 		log.Panic("Query for organization failed", c)
@@ -29,17 +29,17 @@ func idFromNamespace(c *gin.Context) {
 	}
 
 	id := key.IntID()
-	c.String(200, strconv.Itoa(int(id)))
+	return c.String(200, strconv.Itoa(int(id)))
 }
 
 // Get namespace from id
-func namespaceFromId(c *gin.Context) {
-	v, err := strconv.Atoi(c.Params.ByName("id"))
+func namespaceFromId(c *zip.Ctx) error {
+	v, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		log.Panic("Unable to convert id to int", err, c)
 	}
 	id := int64(v)
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	var org Organization
 	key := db.NewKey("organization", "", id, nil)
@@ -54,5 +54,5 @@ func namespaceFromId(c *gin.Context) {
 		log.Panic("Failed to retrieve organization with IntID '%v'", id, err, c)
 	}
 
-	c.String(200, org.Name)
+	return c.String(200, org.Name)
 }

@@ -3,8 +3,8 @@ package log
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
+	"github.com/zap-proto/zip"
 )
 
 // Custom logger
@@ -23,31 +23,30 @@ func (l *Logger) Verbose() bool {
 	return l.verboseRequested || std.verbose
 }
 
-// Check if we have been passed a gin context
+// Check if we have been passed a request context
 func (l *Logger) detectContext(ctx interface{}) {
 	l.verboseRequested = false
 
 	switch ctx := ctx.(type) {
-	case *gin.Context:
-		// Get request context from session
-		if reqCtx, exists := ctx.Get("context"); exists {
+	case *zip.Ctx:
+		// Get request context from locals (set by RequestContext middleware),
+		// falling back to the fiber request context.
+		if reqCtx := ctx.Context(); reqCtx != nil {
 			l.backend.context = reqCtx.(context.Context)
 		} else {
-			l.backend.context = ctx.Request.Context()
+			l.backend.context = ctx.Context()
 		}
 		// The "verbose" key is only set by middleware/overrides; routes that
 		// don't run it (e.g. the gateway/IAM-authenticated billing handlers)
 		// would otherwise panic here on MustGet. Default to false when absent.
-		if v, ok := ctx.Get("verbose"); ok {
+		if v := ctx.Locals("verbose"); v != nil {
 			if b, ok := v.(bool); ok {
 				l.verboseRequested = b
 			}
 		}
 
 		// Request URI is useful for logging
-		if ctx.Request != nil {
-			l.backend.requestURI = ctx.Request.RequestURI
-		}
+		l.backend.requestURI = ctx.Fiber().OriginalURL()
 	case context.Context:
 		l.backend.context = ctx
 	default:

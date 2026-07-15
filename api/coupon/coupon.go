@@ -3,29 +3,27 @@ package coupon
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/creditgrant"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func getCoupon(c *gin.Context) {
-	couponid := c.Params.ByName("couponid")
+func getCoupon(c *zip.Ctx) error {
+	couponid := c.Param("couponid")
 
-	db := datastore.NewNamespaced(middleware.GetContext(c))
+	db := datastore.NewNamespaced(c.Context())
 	cpn := coupon.New(db)
 
 	if err := cpn.GetById(couponid); err != nil {
-		http.Fail(c, 404, "Failed to get coupon", err)
-		return
+		return http.Fail(c, 404, "Failed to get coupon", err)
 	}
 
 	// if cpn.Dynamic {
@@ -36,18 +34,17 @@ func getCoupon(c *gin.Context) {
 	// Check if coupon has been used
 	cpn.Enabled = cpn.Redeemable()
 
-	http.Render(c, 200, cpn)
+	return http.Render(c, 200, cpn)
 }
 
-func codeFromId(c *gin.Context) {
-	couponid := c.Params.ByName("couponid")
-	uniqueid := c.Params.ByName("uniqueid")
+func codeFromId(c *zip.Ctx) error {
+	couponid := c.Param("couponid")
+	uniqueid := c.Param("uniqueid")
 
-	db := datastore.NewNamespaced(middleware.GetContext(c))
+	db := datastore.NewNamespaced(c.Context())
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
-		http.Fail(c, 404, "Failed to get coupon", err)
-		return
+		return http.Fail(c, 404, "Failed to get coupon", err)
 	}
 
 	cpn.Code_ = cpn.CodeFromId(uniqueid)
@@ -57,25 +54,23 @@ func codeFromId(c *gin.Context) {
 	// Check if coupon has been used
 	cpn.Enabled = cpn.Redeemable()
 
-	http.Render(c, 200, cpn)
+	return http.Render(c, 200, cpn)
 }
 
-func codeFromList(c *gin.Context) {
-	couponid := c.Params.ByName("couponid")
+func codeFromList(c *zip.Ctx) error {
+	couponid := c.Param("couponid")
 
-	db := datastore.NewNamespaced(middleware.GetContext(c))
+	db := datastore.NewNamespaced(c.Context())
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
-		http.Fail(c, 404, "Failed to get coupon %v", err)
-		return
+		return http.Fail(c, 404, "Failed to get coupon %v", err)
 	}
 
 	list := make([]string, 0)
 
 	// Decode response body to create new order
-	if err := json.Decode(c.Request.Body, list); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), list); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	codes := make([]string, len(list))
@@ -84,7 +79,7 @@ func codeFromList(c *gin.Context) {
 		codes = append(codes, cpn.CodeFromId(id))
 	}
 
-	http.Render(c, 200, codes)
+	return http.Render(c, 200, codes)
 }
 
 // couponReward describes a reward granted by coupon redemption.
@@ -115,34 +110,31 @@ func tryfreeRewards() []couponReward {
 	}
 }
 
-func validateCoupon(c *gin.Context) {
+func validateCoupon(c *zip.Ctx) error {
 	var req struct {
 		Code string `json:"code"`
 	}
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Invalid request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Invalid request body", err)
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 	cpn := coupon.New(db)
 	if ok, err := cpn.Query().Filter("Code_=", req.Code).Get(); err != nil || !ok {
-		http.Render(c, 200, gin.H{"valid": false, "error": "Coupon not found"})
-		return
+		return http.Render(c, 200, map[string]any{"valid": false, "error": "Coupon not found"})
 	}
 
 	if !cpn.Redeemable() {
-		http.Render(c, 200, gin.H{"valid": false, "error": "Coupon expired or fully redeemed"})
-		return
+		return http.Render(c, 200, map[string]any{"valid": false, "error": "Coupon expired or fully redeemed"})
 	}
 
 	// This endpoint is PUBLIC (pre-sign-up promo check), so expose ONLY the
 	// fields a checkout/pricing page needs to display and apply the discount.
 	// Internal accounting/attribution — used, limit, campaignId, referrerId,
 	// dynamic, enabled, start/end dates — is never leaked to anonymous callers.
-	result := gin.H{
+	result := map[string]any{
 		"valid": true,
-		"coupon": gin.H{
+		"coupon": map[string]any{
 			"name":          cpn.Name,
 			"type":          cpn.Type,
 			"code":          cpn.Code_,
@@ -160,43 +152,38 @@ func validateCoupon(c *gin.Context) {
 		result["rewards"] = tryfreeRewards()
 	}
 
-	http.Render(c, 200, result)
+	return http.Render(c, 200, result)
 }
 
-func redeemCoupon(c *gin.Context) {
+func redeemCoupon(c *zip.Ctx) error {
 	var req struct {
 		Code string `json:"code"`
 	}
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Invalid request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Invalid request body", err)
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 	cpn := coupon.New(db)
 	if ok, err := cpn.Query().Filter("Code_=", req.Code).Get(); err != nil || !ok {
-		http.Fail(c, 404, "Coupon not found", nil)
-		return
+		return http.Fail(c, 404, "Coupon not found", nil)
 	}
 
 	if !cpn.Redeemable() {
-		http.Fail(c, 400, "Coupon expired or fully redeemed", nil)
-		return
+		return http.Fail(c, 400, "Coupon expired or fully redeemed", nil)
 	}
 
 	// Get authenticated user ID
-	userId, _ := c.Get("userId")
+	userId := c.Locals("userId")
 	uid, _ := userId.(string)
 	if uid == "" {
-		http.Fail(c, 401, "Authentication required", nil)
-		return
+		return http.Fail(c, 401, "Authentication required", nil)
 	}
 
 	// Check if user already redeemed this coupon (via credit grant tag)
 	existing := make([]creditgrant.CreditGrant, 0)
 	if _, err := creditgrant.Query(db).Filter("UserId=", uid).Filter("Tags=", "coupon:"+cpn.Code_).GetAll(&existing); err == nil && len(existing) > 0 {
-		http.Fail(c, 400, "Coupon already redeemed", nil)
-		return
+		return http.Fail(c, 400, "Coupon already redeemed", nil)
 	}
 
 	rewards := make([]couponReward, 0)
@@ -259,13 +246,13 @@ func redeemCoupon(c *gin.Context) {
 
 	log.Info("Coupon %s redeemed by user %s", cpn.Code_, uid)
 
-	http.Render(c, 200, gin.H{
+	return http.Render(c, 200, map[string]any{
 		"success": true,
 		"rewards": rewards,
 	})
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	tokenRequired := middleware.TokenRequired(permission.User)
 	namespaced := middleware.Namespace()

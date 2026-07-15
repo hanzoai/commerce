@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -21,10 +21,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	rest.New(company.Company{}).Route(router, args...)
@@ -51,27 +50,25 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 // EmployeeSpending returns an employee's remaining spend headroom. The amount
 // already committed is supplied by the caller (the cart/order in flight) via
 // the `committed` query param in cents, defaulting to 0.
-func EmployeeSpending(c *gin.Context) {
+func EmployeeSpending(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	emp := employee.New(db)
-	if err := emp.GetById(c.Params.ByName("employeeid")); err != nil {
-		http.Fail(c, 404, "No employee found with id: "+c.Params.ByName("employeeid"), err)
-		return
+	if err := emp.GetById(c.Param("employeeid")); err != nil {
+		return http.Fail(c, 404, "No employee found with id: "+c.Param("employeeid"), err)
 	}
 
 	var committed currency.Cents
 	if raw := c.Query("committed"); raw != "" {
 		n, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			http.Fail(c, 400, "committed must be an integer number of cents", err)
-			return
+			return http.Fail(c, 400, "committed must be an integer number of cents", err)
 		}
 		committed = currency.Cents(n)
 	}
 
-	http.Render(c, 200, gin.H{
+	return http.Render(c, 200, map[string]any{
 		"employeeId":     emp.Id(),
 		"limitCents":     emp.SpendingLimitCents,
 		"committedCents": committed,
@@ -83,31 +80,28 @@ func EmployeeSpending(c *gin.Context) {
 // AcceptQuote transitions a pending quote to accepted. Accepting a quote commits
 // the org to a negotiated price, so it is admin-only — enforced inside the
 // handler because the route middleware no-ops on the IAM path (Red HIGH-4).
-func AcceptQuote(c *gin.Context) {
+func AcceptQuote(c *zip.Ctx) error {
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	q := quote.New(db)
-	if err := q.GetById(c.Params.ByName("quoteid")); err != nil {
-		http.Fail(c, 404, "No quote found with id: "+c.Params.ByName("quoteid"), err)
-		return
+	if err := q.GetById(c.Param("quoteid")); err != nil {
+		return http.Fail(c, 404, "No quote found with id: "+c.Param("quoteid"), err)
 	}
 
 	if !q.IsActionable() {
-		http.Fail(c, 409, "Quote is not actionable in status: "+q.Status, errors.New("quote not actionable"))
-		return
+		return http.Fail(c, 409, "Quote is not actionable in status: "+q.Status, errors.New("quote not actionable"))
 	}
 
 	q.Status = quote.StatusAccepted
 	if err := q.Update(); err != nil {
-		http.Fail(c, 500, "Failed to accept quote", err)
-		return
+		return http.Fail(c, 500, "Failed to accept quote", err)
 	}
 
-	http.Render(c, 200, q)
+	return http.Render(c, 200, q)
 }
 
 // rejectQuoteRequest optionally names who rejected: customer (default) or
@@ -118,29 +112,25 @@ type rejectQuoteRequest struct {
 
 // RejectQuote transitions a pending quote to a rejected state. Admin-only (a
 // quote state decision) — gated inside the handler like AcceptQuote.
-func RejectQuote(c *gin.Context) {
+func RejectQuote(c *zip.Ctx) error {
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	q := quote.New(db)
-	if err := q.GetById(c.Params.ByName("quoteid")); err != nil {
-		http.Fail(c, 404, "No quote found with id: "+c.Params.ByName("quoteid"), err)
-		return
+	if err := q.GetById(c.Param("quoteid")); err != nil {
+		return http.Fail(c, 404, "No quote found with id: "+c.Param("quoteid"), err)
 	}
 
 	if !q.IsActionable() {
-		http.Fail(c, 409, "Quote is not actionable in status: "+q.Status, errors.New("quote not actionable"))
-		return
+		return http.Fail(c, 409, "Quote is not actionable in status: "+q.Status, errors.New("quote not actionable"))
 	}
 
 	var req rejectQuoteRequest
-	if c.Request.Body != nil {
-		// Body is optional; ignore decode errors on an empty body.
-		_ = json.Decode(c.Request.Body, &req)
-	}
+	// Body is optional; ignore decode errors on an empty body.
+	_ = json.DecodeBytes(c.Body(), &req)
 
 	status := quote.StatusCustomerRejected
 	switch req.By {
@@ -149,17 +139,15 @@ func RejectQuote(c *gin.Context) {
 	case quote.AuthorMerchant:
 		status = quote.StatusMerchantRejected
 	default:
-		http.Fail(c, 400, "by must be customer or merchant", errors.New("invalid rejecter"))
-		return
+		return http.Fail(c, 400, "by must be customer or merchant", errors.New("invalid rejecter"))
 	}
 
 	q.Status = status
 	if err := q.Update(); err != nil {
-		http.Fail(c, 500, "Failed to reject quote", err)
-		return
+		return http.Fail(c, 500, "Failed to reject quote", err)
 	}
 
-	http.Render(c, 200, q)
+	return http.Render(c, 200, q)
 }
 
 // addQuoteMessageRequest is the body for appending a message to a quote thread.
@@ -171,33 +159,29 @@ type addQuoteMessageRequest struct {
 }
 
 // AddQuoteMessage appends a message to a quote's negotiation thread.
-func AddQuoteMessage(c *gin.Context) {
+func AddQuoteMessage(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
-	quoteId := c.Params.ByName("quoteid")
+	quoteId := c.Param("quoteid")
 
 	q := quote.New(db)
 	if err := q.GetById(quoteId); err != nil {
-		http.Fail(c, 404, "No quote found with id: "+quoteId, err)
-		return
+		return http.Fail(c, 404, "No quote found with id: "+quoteId, err)
 	}
 
 	var req addQuoteMessageRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if req.Text == "" {
-		http.Fail(c, 400, "text is required", errors.New("missing text"))
-		return
+		return http.Fail(c, 400, "text is required", errors.New("missing text"))
 	}
 	switch req.AuthorType {
 	case quote.AuthorCustomer, quote.AuthorMerchant:
 	default:
-		http.Fail(c, 400, "authorType must be customer or merchant", errors.New("invalid authorType"))
-		return
+		return http.Fail(c, 400, "authorType must be customer or merchant", errors.New("invalid authorType"))
 	}
 
 	msg := quote.NewMessage(db)
@@ -208,33 +192,30 @@ func AddQuoteMessage(c *gin.Context) {
 	msg.ItemId = req.ItemId
 
 	if err := msg.Create(); err != nil {
-		http.Fail(c, 500, "Failed to create quote message", err)
-		return
+		return http.Fail(c, 500, "Failed to create quote message", err)
 	}
 
-	http.Render(c, 201, msg)
+	return http.Render(c, 201, msg)
 }
 
 // ListQuoteMessages lists the messages on a quote's thread.
-func ListQuoteMessages(c *gin.Context) {
+func ListQuoteMessages(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
-	quoteId := c.Params.ByName("quoteid")
+	quoteId := c.Param("quoteid")
 
 	q := quote.New(db)
 	if err := q.GetById(quoteId); err != nil {
-		http.Fail(c, 404, "No quote found with id: "+quoteId, err)
-		return
+		return http.Fail(c, 404, "No quote found with id: "+quoteId, err)
 	}
 
 	var messages []*quote.QuoteMessage
 	if _, err := quote.QueryMessages(db).Filter("QuoteId=", q.Id()).GetAll(&messages); err != nil {
-		http.Fail(c, 500, "Failed to list quote messages", err)
-		return
+		return http.Fail(c, 500, "Failed to list quote messages", err)
 	}
 
-	http.Render(c, 200, messages)
+	return http.Render(c, 200, messages)
 }
 
 // resolveApprovalRequest optionally names the resolver, recorded on HandledBy.
@@ -243,51 +224,46 @@ type resolveApprovalRequest struct {
 }
 
 // ApproveApproval approves a pending approval.
-func ApproveApproval(c *gin.Context) {
-	resolveApproval(c, approval.ActionApprove)
+func ApproveApproval(c *zip.Ctx) error {
+	return resolveApproval(c, approval.ActionApprove)
 }
 
 // RejectApproval rejects a pending approval.
-func RejectApproval(c *gin.Context) {
-	resolveApproval(c, approval.ActionReject)
+func RejectApproval(c *zip.Ctx) error {
+	return resolveApproval(c, approval.ActionReject)
 }
 
 // resolveApproval applies an approve/reject action to an approval, enforcing
 // the pending-only transition via approval.NextStatus. Admin-only: an approval
 // authorizes spend, so both ApproveApproval and RejectApproval gate here inside
 // the handler (the route middleware no-ops on the IAM path — Red HIGH-4).
-func resolveApproval(c *gin.Context, action string) {
+func resolveApproval(c *zip.Ctx, action string) error {
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("approvalid")
+	id := c.Param("approvalid")
 
 	a := approval.New(db)
 	if err := a.GetById(id); err != nil {
-		http.Fail(c, 404, "No approval found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No approval found with id: "+id, err)
 	}
 
 	next, err := approval.NextStatus(a.Status, action)
 	if err != nil {
-		http.Fail(c, 409, err.Error(), err)
-		return
+		return http.Fail(c, 409, err.Error(), err)
 	}
 
 	var req resolveApprovalRequest
-	if c.Request.Body != nil {
-		_ = json.Decode(c.Request.Body, &req)
-	}
+	_ = json.DecodeBytes(c.Body(), &req)
 
 	a.Status = next
 	a.HandledBy = req.HandledBy
 	if err := a.Update(); err != nil {
-		http.Fail(c, 500, "Failed to update approval", err)
-		return
+		return http.Fail(c, 500, "Failed to update approval", err)
 	}
 
-	http.Render(c, 200, a)
+	return http.Render(c, 200, a)
 }

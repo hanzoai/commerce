@@ -15,7 +15,7 @@ package checkout
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // AdminStore is the persistence surface the admin handlers require. The
@@ -51,8 +51,8 @@ type AdminAPI struct {
 // notImplemented is the placeholder body until each endpoint is wired
 // against the base-backed store. Returning 501 explicitly is safer than
 // a silent stub that might look functional in a smoke test.
-func notImplemented(c *gin.Context, op string) {
-	c.JSON(http.StatusNotImplemented, gin.H{
+func notImplemented(c *zip.Ctx, op string) error {
+	return c.JSON(http.StatusNotImplemented, map[string]any{
 		"error": "not implemented",
 		"op":    op,
 	})
@@ -60,39 +60,41 @@ func notImplemented(c *gin.Context, op string) {
 
 // ─── provider endpoints ─────────────────────────────────────────────────
 
-func (a *AdminAPI) ListProviders(c *gin.Context)     { notImplemented(c, "list_providers") }
-func (a *AdminAPI) EnableProvider(c *gin.Context)    { notImplemented(c, "enable_provider") }
-func (a *AdminAPI) DisableProvider(c *gin.Context)   { notImplemented(c, "disable_provider") }
-func (a *AdminAPI) UploadCredentials(c *gin.Context) { notImplemented(c, "upload_credentials") }
-func (a *AdminAPI) RotateCredentials(c *gin.Context) { notImplemented(c, "rotate_credentials") }
-func (a *AdminAPI) TestProvider(c *gin.Context)      { notImplemented(c, "test_provider") }
+func (a *AdminAPI) ListProviders(c *zip.Ctx) error   { return notImplemented(c, "list_providers") }
+func (a *AdminAPI) EnableProvider(c *zip.Ctx) error  { return notImplemented(c, "enable_provider") }
+func (a *AdminAPI) DisableProvider(c *zip.Ctx) error { return notImplemented(c, "disable_provider") }
+func (a *AdminAPI) UploadCredentials(c *zip.Ctx) error {
+	return notImplemented(c, "upload_credentials")
+}
+func (a *AdminAPI) RotateCredentials(c *zip.Ctx) error {
+	return notImplemented(c, "rotate_credentials")
+}
+func (a *AdminAPI) TestProvider(c *zip.Ctx) error { return notImplemented(c, "test_provider") }
 
 // ─── method endpoints ───────────────────────────────────────────────────
 
-func (a *AdminAPI) ListMethods(c *gin.Context)     { notImplemented(c, "list_methods") }
-func (a *AdminAPI) ConfigureMethod(c *gin.Context) { notImplemented(c, "configure_method") }
+func (a *AdminAPI) ListMethods(c *zip.Ctx) error     { return notImplemented(c, "list_methods") }
+func (a *AdminAPI) ConfigureMethod(c *zip.Ctx) error { return notImplemented(c, "configure_method") }
 
 // ─── IDV endpoints ──────────────────────────────────────────────────────
 
-func (a *AdminAPI) GetIDV(c *gin.Context) { notImplemented(c, "get_idv") }
-func (a *AdminAPI) SetIDV(c *gin.Context) { notImplemented(c, "set_idv") }
+func (a *AdminAPI) GetIDV(c *zip.Ctx) error { return notImplemented(c, "get_idv") }
+func (a *AdminAPI) SetIDV(c *zip.Ctx) error { return notImplemented(c, "set_idv") }
 
 // ─── IAM endpoints ──────────────────────────────────────────────────────
 
-func (a *AdminAPI) GetIAM(c *gin.Context) { notImplemented(c, "get_iam") }
-func (a *AdminAPI) SetIAM(c *gin.Context) { notImplemented(c, "set_iam") }
+func (a *AdminAPI) GetIAM(c *zip.Ctx) error { return notImplemented(c, "get_iam") }
+func (a *AdminAPI) SetIAM(c *zip.Ctx) error { return notImplemented(c, "set_iam") }
 
 // ─── audit log ──────────────────────────────────────────────────────────
 
-func (a *AdminAPI) AuditLog(c *gin.Context) { notImplemented(c, "audit_log") }
+func (a *AdminAPI) AuditLog(c *zip.Ctx) error { return notImplemented(c, "audit_log") }
 
 // Mount is the convenience entrypoint used by commerce.go setupRoutes.
 // It wires the public checkout routes onto the /v1/commerce API group
-// (using the caller's existing gin.Engine) and registers the NoRoute SPA
-// fallback. Admin routes are attached separately by the superadmin
+// (on the caller's zip app) and registers the least-specific SPA fallback. Admin routes are attached separately by the superadmin
 // router once the admin API is complete.
-func Mount(router *gin.Engine, r Resolver, fwd Forwarder) {
-	public := router.Group("/v1/commerce")
-	MountPublic(public, r, fwd)
-	MountSPA(router)
+func Mount(app *zip.App, r Resolver, fwd Forwarder) {
+	MountPublic(app.Group("/v1/commerce"), r, fwd)
+	MountSPA(app)
 }

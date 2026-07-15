@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/email"
@@ -32,15 +32,15 @@ func (r twoStageEnableReq) GetPasswordConfirm() string {
 	return r.PasswordConfirm
 }
 
-func enable(c *gin.Context) {
+func enable(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	usr := user.New(db)
 	tok := token.New(db)
 
 	// Get Token
-	id := c.Params.ByName("tokenid")
+	id := c.Param("tokenid")
 	if err := tok.GetById(id); err != nil {
 		panic(err)
 	}
@@ -51,8 +51,7 @@ func enable(c *gin.Context) {
 	}
 
 	if tok.Expired() || tok.Used {
-		http.Fail(c, 403, "Token expired", errors.New("token expired"))
-		return
+		return http.Fail(c, 403, "Token expired", errors.New("token expired"))
 	}
 
 	if org.SignUpOptions.TwoStageEnabled {
@@ -60,17 +59,15 @@ func enable(c *gin.Context) {
 
 		req := &twoStageEnableReq{User: usr}
 
-		if err := json.Decode(c.Request.Body, req); err != nil {
-			http.Fail(c, 400, "Failed decode request body", err)
-			return
+		if err := json.DecodeBytes(c.Body(), req); err != nil {
+			return http.Fail(c, 400, "Failed decode request body", err)
 		}
 
 		if req.Password != "" {
 			if err := resetPassword(usr, req); err != nil {
 				switch err {
 				case ErrPasswordMismatch, ErrPasswordMinLength:
-					http.Fail(c, 400, err.Error(), err)
-					return
+					return http.Fail(c, 400, err.Error(), err)
 				}
 			}
 		}
@@ -79,8 +76,7 @@ func enable(c *gin.Context) {
 	// Set user as enabled
 	usr.Enabled = true
 	if err := usr.Put(); err != nil {
-		http.Fail(c, 500, "Failed to enable user", err)
-		return
+		return http.Fail(c, 500, "Failed to enable user", err)
 	}
 
 	// Token reuseable if no password is set
@@ -93,12 +89,12 @@ func enable(c *gin.Context) {
 	}
 
 	// Send account confirmed email
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	email.SendUserActivated(ctx, org, usr)
 
 	loginTok := middleware.GetToken(c)
 	loginTok.UserId = usr.Id()
 	loginTok.ExpirationTime = time.Now().Add(time.Hour * 24 * 7).Unix()
 
-	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.Encode(org.SecretKey)})
+	return http.Render(c, 200, map[string]any{"status": "ok", "token": loginTok.Encode(org.SecretKey)})
 }

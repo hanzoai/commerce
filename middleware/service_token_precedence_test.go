@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/db"
@@ -40,10 +40,10 @@ func seedInMemDatastore(t *testing.T) {
 // so IAMTokenRequired stamps iam_authenticated=true; it carries NO X-User-Permissions
 // (an S2S call has no per-user scope), so the minted permissions are ZERO. This is
 // the exact context state under which the bug fired.
-func stampIAMForS2S(c *gin.Context) {
-	c.Set("iam_authenticated", true)
-	c.Set("permissions", bit.Field(0))
-	c.Next()
+func stampIAMForS2S(c *zip.Ctx) error {
+	c.Locals("iam_authenticated", true)
+	c.Locals("permissions", bit.Field(0))
+	return c.Next()
 }
 
 // TestTokenRequired_ServiceTokenBeatsIAMScopeGate is the core regression for the
@@ -57,7 +57,6 @@ func stampIAMForS2S(c *gin.Context) {
 // possession of the KMS-sourced secret is proof of trust, so the request authenticates
 // as the service, not a scope-less per-user IAM principal.
 func TestTokenRequired_ServiceTokenBeatsIAMScopeGate(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	const svc = "svc-token-precedence-abc123"
 	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
 	seedInMemDatastore(t)
@@ -65,24 +64,27 @@ func TestTokenRequired_ServiceTokenBeatsIAMScopeGate(t *testing.T) {
 
 	var sawServiceToken bool
 	reached := false
-	eng := gin.New()
-	eng.Use(stampIAMForS2S)
-	eng.GET("/v1/billing/balance", TokenRequired(permission.Admin), func(c *gin.Context) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(stampIAMForS2S)
+	app.Use(TokenRequired(permission.Admin))
+	app.Get("/v1/billing/balance", func(c *zip.Ctx) error {
 		sawServiceToken = IsServiceToken(c)
 		reached = true
-		c.JSON(http.StatusOK, gin.H{"available": 6875})
+		return c.JSON(http.StatusOK, map[string]any{"available": 6875})
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/balance?user=acme", nil)
 	req.Header.Set("Authorization", "Bearer "+svc)
 	req.Header.Set("X-Org-Id", "acme")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
 
-	if w.Code != http.StatusOK || !reached {
+	if resp.StatusCode != http.StatusOK || !reached {
 		t.Fatalf("service-token S2S dispatch on an Admin-masked route must reach the handler: "+
 			"status=%d reached=%v, want 200,true (a 403 means the IAM scope gate wrongly beat the service token)",
-			w.Code, reached)
+			resp.StatusCode, reached)
 	}
 	if !sawServiceToken {
 		t.Fatal("IsServiceToken(c)=false: the S2S dispatch must authenticate as the trusted service, not a per-user IAM principal")

@@ -3,7 +3,7 @@ package account
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -12,43 +12,39 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func getOrder(c *gin.Context) {
+func getOrder(c *zip.Ctx) error {
 	usr := middleware.GetUser(c)
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 400, "Failed to query order", err)
-		return
+		return http.Fail(c, 400, "Failed to query order", err)
 	}
 
 	if usr.Id() != ord.UserId {
-		http.Fail(c, 404, "Order does not exist", errors.New("Order does not exist"))
-		return
+		return http.Fail(c, 404, "Order does not exist", errors.New("Order does not exist"))
 	}
 
-	http.Render(c, 200, ord)
+	return http.Render(c, 200, ord)
 }
 
-func patchOrder(c *gin.Context) {
+func patchOrder(c *zip.Ctx) error {
 	usr := middleware.GetUser(c)
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 400, "Failed to query order", err)
-		return
+		return http.Fail(c, 400, "Failed to query order", err)
 	}
 
 	if usr.Id() != ord.UserId {
-		http.Fail(c, 404, "Order does not exist", errors.New("Order does not exist"))
-		return
+		return http.Fail(c, 404, "Order does not exist", errors.New("Order does not exist"))
 	}
 
 	// We only want to extend the shipping address for right now
@@ -59,16 +55,15 @@ func patchOrder(c *gin.Context) {
 	ord2.ShippingAddress = ord.ShippingAddress
 
 	// Decode into ord2
-	if err := json.Decode(c.Request.Body, ord2); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), ord2); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	ord.ShippingAddress = ord2.ShippingAddress
 
 	if err := ord.Put(); err != nil {
-		http.Fail(c, 400, "Failed to update order", err)
+		return http.Fail(c, 400, "Failed to update order", err)
 	}
 
-	http.Render(c, 200, ord)
+	return http.Render(c, 200, ord)
 }

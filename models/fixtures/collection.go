@@ -1,12 +1,12 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/collection"
 )
 
-var Collection = New("collection", func(c *gin.Context) *collection.Collection {
+var Collection = New("collection", func(c *zip.Ctx) *collection.Collection {
 	db := getNamespaceDb(c)
 
 	collection := collection.New(db)

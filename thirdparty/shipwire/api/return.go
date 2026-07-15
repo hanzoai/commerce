@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/product"
@@ -15,29 +16,26 @@ import (
 	"github.com/hanzoai/commerce/util/counter"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
 
-func createReturn(c *gin.Context) {
-	id := c.Params.ByName("orderid")
+func createReturn(c *zip.Ctx) error {
+	id := c.Param("orderid")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Decode return options
 	opts := ReturnOptions{}
-	if err := json.Decode(c.Request.Body, &opts); err != nil {
-		http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
-		return
+	if err := json.Unmarshal(c.Body(), &opts); err != nil {
+		return http.Fail(c, 400, fmt.Errorf("Failed to decode request body: %v", err), err)
 	}
 
 	// Fetch order
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
-		return
+		return http.Fail(c, 404, fmt.Errorf("Unable to find order '%s'", id), err)
 	}
 
 	// Create return in Shipwire
@@ -45,7 +43,7 @@ func createReturn(c *gin.Context) {
 	r, res, err := client.CreateReturn(ord, opts)
 
 	if err != nil {
-		http.Fail(c, res.Status, res.Message, err)
+		return http.Fail(c, res.Status, res.Message, err)
 	}
 
 	// Save return info
@@ -69,14 +67,13 @@ func createReturn(c *gin.Context) {
 	for i, item := range rtn.Items {
 		prod := product.New(db)
 		if err := prod.GetById(item.ProductId); err != nil {
-			http.Fail(c, 500, fmt.Errorf("Unable to find product '%s'", item.ProductId), err)
-			return
+			return http.Fail(c, 500, fmt.Errorf("Unable to find product '%s'", item.ProductId), err)
 		}
 		rtn.Items[i].ExternalSKU = prod.SKU
 	}
 
 	if err := rtn.Create(); err != nil {
-		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
+		return http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
 	}
 
 	items := rtn.Items
@@ -93,17 +90,17 @@ func createReturn(c *gin.Context) {
 	ord.ReturnIds = append(ord.ReturnIds, rtn.Id())
 
 	if err := ord.Put(); err != nil {
-		http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
+		return http.Fail(c, 500, fmt.Errorf("Unable to save return '%s'", rtn.Id()), err)
 	}
 
-	http.Render(c, 200, rtn)
+	return http.Render(c, 200, rtn)
 }
 
-func updateReturn(c *gin.Context, topic string, r Return) {
+func updateReturn(c *zip.Ctx, topic string, r Return) {
 	log.Info("Update order information:\n%v", r, c)
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rtn := return_.New(db)
 	id := r.ExternalID
@@ -114,11 +111,9 @@ func updateReturn(c *gin.Context, topic string, r Return) {
 	ord := order.New(db)
 	if ok, err := ord.Query().Filter("Fulfillment.ExternalId=", r.ExternalID).Get(); err != nil {
 		log.Warn("Unable to find order '%s': %v", r.ExternalID, err, c)
-		c.String(200, "ok\n")
 		return
 	} else if !ok {
 		log.Warn("Unable to find order '%s'", r.ExternalID, err, c)
-		c.String(200, "ok\n")
 		return
 	}
 
@@ -140,6 +135,4 @@ func updateReturn(c *gin.Context, topic string, r Return) {
 	// need to query something like
 	// "items": {"resourceLocation": "http://api.shipwire.com/api/v3/returns/673/items?offset=0&limit=20&expand=all"},
 	rtn.MustPut()
-
-	c.String(200, "ok\n")
 }

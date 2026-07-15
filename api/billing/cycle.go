@@ -3,7 +3,7 @@ package billing
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -31,9 +31,9 @@ type cycleResult struct {
 // for each due subscription.
 //
 //	POST /v1/billing/cycle/run
-func RunBillingCycle(c *gin.Context) {
+func RunBillingCycle(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	results := renewDueSubscriptions(c, db)
 
@@ -41,10 +41,10 @@ func RunBillingCycle(c *gin.Context) {
 	// current period (idempotent per user+month).
 	allotGranted, allotSkipped, _ := grantOrgAllotments(c, db, time.Now(), !org.TestMode())
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"processed": len(results),
 		"results":   results,
-		"allotments": gin.H{
+		"allotments": map[string]any{
 			"granted": allotGranted,
 			"skipped": allotSkipped,
 		},
@@ -55,24 +55,22 @@ func RunBillingCycle(c *gin.Context) {
 // request's organization.
 //
 //	POST /v1/billing/cycle/run-user
-func RunBillingCycleUser(c *gin.Context) {
+func RunBillingCycleUser(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req cycleUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	results := renewDueSubscriptionsForUser(c, db, req.UserId)
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":      req.UserId,
 		"processed": len(results),
 		"results":   results,
@@ -84,14 +82,13 @@ func RunBillingCycleUser(c *gin.Context) {
 // scheduler to invoke on a recurring basis.
 //
 //	POST /v1/billing/cycle/run-all
-func RunBillingCycleAllOrgs(c *gin.Context) {
-	rootDb := datastore.New(c)
+func RunBillingCycleAllOrgs(c *zip.Ctx) error {
+	rootDb := datastore.New(c.Context())
 
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(rootDb).GetAll(&orgs); err != nil {
 		log.Error("Failed to list organizations for billing cycle: %v", err, c)
-		http.Fail(c, 500, "failed to list organizations", err)
-		return
+		return http.Fail(c, 500, "failed to list organizations", err)
 	}
 
 	type orgResult struct {
@@ -106,7 +103,7 @@ func RunBillingCycleAllOrgs(c *gin.Context) {
 
 	now := time.Now()
 	for _, org := range orgs {
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 		results := renewDueSubscriptions(c, db)
 		totalProcessed += len(results)
 
@@ -123,7 +120,7 @@ func RunBillingCycleAllOrgs(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"orgs":           len(allResults),
 		"totalProcessed": totalProcessed,
 		"results":        allResults,
@@ -133,7 +130,7 @@ func RunBillingCycleAllOrgs(c *gin.Context) {
 // renewDueSubscriptions finds all active or past-due subscriptions whose
 // current period has ended and renews each one. Returns a result per
 // subscription processed.
-func renewDueSubscriptions(c *gin.Context, db *datastore.Datastore) []cycleResult {
+func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore) []cycleResult {
 	now := time.Now()
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -158,7 +155,7 @@ func renewDueSubscriptions(c *gin.Context, db *datastore.Datastore) []cycleResul
 
 // renewDueSubscriptionsForUser is the same as renewDueSubscriptions but
 // scoped to a single user.
-func renewDueSubscriptionsForUser(c *gin.Context, db *datastore.Datastore, userId string) []cycleResult {
+func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId string) []cycleResult {
 	now := time.Now()
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -194,8 +191,8 @@ func isDueForRenewal(sub *subscription.Subscription, now time.Time) bool {
 
 // renewOne generates an invoice and attempts collection for a single
 // subscription, then persists the updated subscription state.
-func renewOne(c *gin.Context, db *datastore.Datastore, sub *subscription.Subscription) cycleResult {
-	inv, result, err := engine.RenewSubscription(c.Request.Context(), db, sub, BurnCredits)
+func renewOne(c *zip.Ctx, db *datastore.Datastore, sub *subscription.Subscription) cycleResult {
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits)
 	if err != nil {
 		log.Error("Billing cycle: failed to renew subscription %s: %v", sub.Id(), err, c)
 		return cycleResult{

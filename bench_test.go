@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/hanzoai/commerce/db"
 	"github.com/hanzoai/commerce/middleware"
 	ujson "github.com/hanzoai/commerce/util/json"
+	"github.com/zap-proto/zip"
 )
 
 // --------------------------------------------------------------------------
@@ -41,9 +40,9 @@ type benchPlan struct {
 }
 
 type benchEcommerceRef struct {
-	Type   string          `json:"type,omitempty"`
-	Stripe benchStripeRef  `json:"stripe,omitempty"`
-	Affirm benchAffirmRef  `json:"affirm,omitempty"`
+	Type   string         `json:"type,omitempty"`
+	Stripe benchStripeRef `json:"stripe,omitempty"`
+	Affirm benchAffirmRef `json:"affirm,omitempty"`
 }
 
 type benchStripeRef struct {
@@ -222,49 +221,35 @@ func BenchmarkSQLiteQueryFilterGetAll(b *testing.B) {
 // ==========================================================================
 
 func BenchmarkCachePublic(b *testing.B) {
-	gin.SetMode(gin.ReleaseMode)
-
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	handler := middleware.CachePublic(300)
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/billing/plans", nil)
+	c := app.TestCtx(http.MethodGet, "/v1/billing/plans")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w = httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = req
-		handler(c)
+		_ = handler(c)
 	}
 }
 
 func BenchmarkCachePrivate(b *testing.B) {
-	gin.SetMode(gin.ReleaseMode)
-
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	handler := middleware.CachePrivate()
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/billing/subscription", nil)
+	c := app.TestCtx(http.MethodGet, "/v1/billing/subscription")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w = httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = req
-		handler(c)
+		_ = handler(c)
 	}
 }
 
 func BenchmarkCachePublicMutation(b *testing.B) {
-	gin.SetMode(gin.ReleaseMode)
-
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	handler := middleware.CachePublic(300)
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/subscribe", nil)
+	c := app.TestCtx(http.MethodPost, "/v1/billing/subscribe")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Request = req
-		handler(c)
+		_ = handler(c)
 	}
 }
 

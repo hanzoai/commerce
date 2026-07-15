@@ -1,23 +1,25 @@
 package site
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	// "github.com/hanzoai/commerce/datastore"
 	// "github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/thirdparty/netlify"
-	"github.com/hanzoai/commerce/log"
 )
 
-func listFiles(c *gin.Context) {
+func listFiles(c *zip.Ctx) error {
+	return nil
 }
 
-func getFile(c *gin.Context) {
+func getFile(c *zip.Ctx) error {
+	return nil
 }
 
-func putFile(c *gin.Context) {
+func putFile(c *zip.Ctx) error {
 	// siteid := c.Param("siteid") // oursiteid
 	deployid := c.Param("deployid")
 	filepath := c.Param("filepath")
@@ -31,12 +33,12 @@ func putFile(c *gin.Context) {
 	// 	return
 	// }
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	org := middleware.GetOrganization(c)
 	accessToken := netlify.GetAccessToken(ctx, org.Name)
 
 	url := config.Netlify.BaseUrl + "/deploys/" + deployid + "/files" + filepath
 	url += "?access_token=" + accessToken
 	log.Debug("Returning redirect, upload file to: %s", url, c)
-	c.Redirect(307, url)
+	return c.Redirect(307, url)
 }

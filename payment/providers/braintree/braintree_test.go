@@ -419,11 +419,11 @@ func TestCharge_Success(t *testing.T) {
 
 	p := configuredProvider(server.URL)
 	result, err := p.Charge(context.Background(), processor.PaymentRequest{
-		Amount:      1000,
-		Currency:    currency.USD,
-		Token:       "tok-1",
-		OrderID:     "ord-1",
-		CustomerID:  "cust-1",
+		Amount:     1000,
+		Currency:   currency.USD,
+		Token:      "tok-1",
+		OrderID:    "ord-1",
+		CustomerID: "cust-1",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

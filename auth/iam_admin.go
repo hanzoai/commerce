@@ -20,7 +20,7 @@ import (
 // IAMAdminClient is a thin HTTP client for IAM admin endpoints on hanzo.id.
 // All calls authenticate via clientId/clientSecret query params — no session.
 type IAMAdminClient struct {
-	BaseURL      string       // e.g. https://hanzo.id
+	BaseURL      string // e.g. https://hanzo.id
 	ClientID     string
 	ClientSecret string
 	HTTPClient   *http.Client

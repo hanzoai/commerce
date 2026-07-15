@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -16,10 +16,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	rest.New(priceset.PriceSet{}).Route(router, args...)
@@ -62,19 +61,17 @@ type calcResponse struct {
 //
 // It finds matching PriceSets, applies PriceRules by priority, and checks
 // PriceLists for overrides/sales.
-func Calculate(c *gin.Context) {
+func Calculate(c *zip.Ctx) error {
 	var req calcRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		jsonhttp.Fail(c, 400, "Invalid request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return jsonhttp.Fail(c, 400, "Invalid request body", err)
 	}
 
 	if len(req.Items) == 0 {
-		jsonhttp.Fail(c, 400, "No items provided", nil)
-		return
+		return jsonhttp.Fail(c, 400, "No items provided", nil)
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	db := datastore.New(ctx)
@@ -87,8 +84,7 @@ func Calculate(c *gin.Context) {
 			Filter("PriceSetId=", item.PriceSetId).
 			Filter("CurrencyCode=", req.CurrencyCode)
 		if _, err := q.GetAll(&prices); err != nil {
-			jsonhttp.Fail(c, 500, "Failed to query prices", err)
-			return
+			return jsonhttp.Fail(c, 500, "Failed to query prices", err)
 		}
 
 		// Find best matching price considering quantity.
@@ -117,5 +113,5 @@ func Calculate(c *gin.Context) {
 		results = append(results, result)
 	}
 
-	jsonhttp.Render(c, 200, calcResponse{Items: results})
+	return jsonhttp.Render(c, 200, calcResponse{Items: results})
 }

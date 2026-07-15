@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
@@ -12,8 +12,8 @@ import (
 )
 
 var _ = New("update-integrations",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "")
 		return NoArgs
 	},
 	func(db *ds.Datastore, org *organization.Organization) {

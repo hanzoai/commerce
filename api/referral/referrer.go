@@ -3,7 +3,7 @@ package referral
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -19,16 +19,15 @@ import (
 )
 
 // referrerCreate returns the custom Create handler for referrer CRUD.
-func referrerCreate(api *rest.Rest) func(*gin.Context) {
-	return func(c *gin.Context) {
+func referrerCreate(api *rest.Rest) func(*zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 		ref := referrer.New(db)
 
 		// Decode request body
-		if err := json.Decode(c.Request.Body, ref); err != nil {
-			http.Fail(c, 400, "Failed decode request body", err)
-			return
+		if err := json.DecodeBytes(c.Body(), ref); err != nil {
+			return http.Fail(c, 400, "Failed decode request body", err)
 		}
 
 		// Override userId from IAM if the gateway authenticated the caller
@@ -62,60 +61,54 @@ func referrerCreate(api *rest.Rest) func(*gin.Context) {
 		}
 
 		if err := ref.Create(); err != nil {
-			http.Fail(c, 500, "Failed to create referrer", err)
-		} else {
-			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+ref.Id())
-			api.Render(c, 201, ref)
+			return http.Fail(c, 500, "Failed to create referrer", err)
 		}
+		c.SetHeader("Location", c.Path()+"/"+ref.Id())
+		return api.Render(c, 201, ref)
 	}
 }
 
 // referrerGet returns the custom Get handler for referrer CRUD.
-func referrerGet(api *rest.Rest) func(*gin.Context) {
-	return func(c *gin.Context) {
+func referrerGet(api *rest.Rest) func(*zip.Ctx) error {
+	return func(c *zip.Ctx) error {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespaced(c))
+		db := datastore.New(org.Namespaced(c.Context()))
 		ref := referrer.New(db)
 
-		id := c.Params.ByName(api.ParamId)
+		id := c.Param(api.ParamId)
 
 		if err := ref.GetById(id); err != nil {
-			http.Fail(c, 404, "No Referrer found with id: "+id, err)
-			return
+			return http.Fail(c, 404, "No Referrer found with id: "+id, err)
 		}
 
 		if err := ref.LoadAffiliate(); err != nil {
-			http.Fail(c, 500, "Referrer affiliate data could not be queries", err)
-			return
+			return http.Fail(c, 500, "Referrer affiliate data could not be queries", err)
 		}
 
-		api.Render(c, 200, ref)
+		return api.Render(c, 200, ref)
 	}
 }
 
 // getMyReferrer returns the current user's referrer record with stats and tier.
 //
 //	GET /v1/referrer/me
-func getMyReferrer(c *gin.Context) {
+func getMyReferrer(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := iamUserIdOrQuery(c)
 	if userId == "" {
-		http.Fail(c, 400, "userId is required (pass as query param or use IAM token)", nil)
-		return
+		return http.Fail(c, 400, "userId is required (pass as query param or use IAM token)", nil)
 	}
 
 	ref := referrer.New(db)
 	key, ok, err := referrer.Query(db).Filter("UserId=", userId).First(ref)
 	if err != nil {
 		log.Error("Failed to query referrer: %v", err, c)
-		http.Fail(c, 500, "failed to query referrer", err)
-		return
+		return http.Fail(c, 500, "failed to query referrer", err)
 	}
 	if !ok {
-		http.Fail(c, 404, "no referrer found for this user", nil)
-		return
+		return http.Fail(c, 404, "no referrer found for this user", nil)
 	}
 	ref.Init(db)
 	ref.SetKey(key)
@@ -127,7 +120,7 @@ func getMyReferrer(c *gin.Context) {
 		referralCount = len(allReferrals)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"referrer":      ref,
 		"referralCount": referralCount,
 		"code":          ref.Code,
@@ -138,26 +131,23 @@ func getMyReferrer(c *gin.Context) {
 // getByCode validates that a referral code exists.
 //
 //	GET /v1/referrer/code/:code
-func getByCode(c *gin.Context) {
+func getByCode(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	code := strings.TrimSpace(c.Param("code"))
 	if code == "" {
-		http.Fail(c, 400, "code is required", nil)
-		return
+		return http.Fail(c, 400, "code is required", nil)
 	}
 
 	if _, ok, err := referrer.Query(db).Filter("Code=", code).FirstKey(); err != nil {
 		log.Error("Failed to query referrer by code: %v", err, c)
-		http.Fail(c, 500, "failed to look up referral code", err)
-		return
+		return http.Fail(c, 500, "failed to look up referral code", err)
 	} else if !ok {
-		c.JSON(404, gin.H{"valid": false})
-		return
+		return c.JSON(404, map[string]any{"valid": false})
 	}
 
-	c.JSON(200, gin.H{"valid": true})
+	return c.JSON(200, map[string]any{"valid": true})
 }
 
 // generateCode creates a short, uppercase, URL-friendly referral code.
@@ -174,7 +164,7 @@ func generateCode() string {
 // param. claims is always non-nil; an empty Subject means the gateway
 // did not authenticate the caller and we fall back to the explicit
 // query parameter.
-func iamUserIdOrQuery(c *gin.Context) string {
+func iamUserIdOrQuery(c *zip.Ctx) string {
 	if subject := iammiddleware.GetIAMClaims(c).Subject; subject != "" {
 		return subject
 	}

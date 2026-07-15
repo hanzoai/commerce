@@ -5,7 +5,7 @@ import (
 
 	"github.com/aymerick/raymond"
 	"github.com/flosch/pongo2"
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
@@ -93,22 +93,22 @@ func getTemplate(path string) *pongo2.Template {
 	return template
 }
 
-func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
+func Render(c *zip.Ctx, path string, pairs ...interface{}) error {
 	// Get template
 	template := getTemplate(path)
 
 	// Create pongo context
 	ctx := createContext(pairs)
 
-	// Render template
-	if err := template.ExecuteWriter(ctx, c.Writer); err != nil {
+	// Render template to a string
+	out, err := template.Execute(ctx)
+	if err != nil {
 		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
-	// Set content type
-	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	return
+	// Set content type and write the rendered body
+	c.SetHeader("Content-Type", "text/html; charset=utf-8")
+	return c.String(200, out)
 }
 
 func RenderEmail(path string, data map[string]interface{}) string {

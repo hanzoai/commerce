@@ -1,4 +1,3 @@
-
 package timeutil
 
 import (
@@ -18,7 +17,6 @@ func YearMonthDiff(t1, t2 time.Time) (years, months int) {
 		months++
 	}
 	months--
-
 
 	return years, months
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/allotment"
 	"github.com/hanzoai/commerce/datastore"
@@ -109,7 +109,7 @@ func resolvePlanSlug(db *datastore.Datastore, user, explicit string) string {
 //
 // This makes /allotment/grant self-service-safe (an org grants its OWN allotment,
 // but only ever its OWN paid plan's amount) without a blanket platform-only gate.
-func planForGrant(c *gin.Context, db *datastore.Datastore, user, explicit string) string {
+func planForGrant(c *zip.Ctx, db *datastore.Datastore, user, explicit string) string {
 	sub := subscriptionPlanSlug(db, user)
 	explicit = strings.TrimSpace(explicit)
 	if explicit == "" {
@@ -138,19 +138,17 @@ type grantAllotmentRequest struct {
 // balance gate (available > 0) passes while the tenant is within allotment and
 // fails closed once both the included credit and any purchased balance are
 // exhausted. Admin token required.
-func GrantAllotment(c *gin.Context) {
+func GrantAllotment(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req grantAllotmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	// MINT path: clamp the plan to the caller's REAL subscription unless the
@@ -163,15 +161,14 @@ func GrantAllotment(c *gin.Context) {
 	res, err := allotment.Grant(db, req.User, plan, cents, time.Now(), org.TestMode())
 	if err != nil {
 		log.Error("Failed to grant monthly allotment for %s: %v", req.User, err, c)
-		http.Fail(c, 500, "failed to grant monthly allotment", err)
-		return
+		return http.Fail(c, 500, "failed to grant monthly allotment", err)
 	}
 
 	status := 200
 	if res.Granted {
 		status = 201
 	}
-	c.JSON(status, gin.H{
+	return c.JSON(status, map[string]any{
 		"user":          req.User,
 		"plan":          plan,
 		"currency":      "usd",
@@ -187,7 +184,7 @@ func GrantAllotment(c *gin.Context) {
 // an active/trialing subscription in the given org datastore, for the UTC month
 // containing `now`. Idempotent per (user, period). Returns a result per user.
 // Shared by the standalone allotment-run endpoint and the billing cycle.
-func grantOrgAllotments(c *gin.Context, db *datastore.Datastore, now time.Time, live bool) (granted, skipped int, results []gin.H) {
+func grantOrgAllotments(c *zip.Ctx, db *datastore.Datastore, now time.Time, live bool) (granted, skipped int, results []map[string]any) {
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
 	subs := make([]*subscription.Subscription, 0)
@@ -219,13 +216,13 @@ func grantOrgAllotments(c *gin.Context, db *datastore.Datastore, now time.Time, 
 		}
 	}
 
-	results = make([]gin.H, 0, len(planByUser))
+	results = make([]map[string]any, 0, len(planByUser))
 	for user, plan := range planByUser {
 		cents := IncludedMonthlyCents(plan)
 		res, err := allotment.Grant(db, user, plan, cents, now, !live)
 		if err != nil {
 			log.Error("allotment run: grant failed for %s: %v", user, err, c)
-			results = append(results, gin.H{"user": user, "plan": plan, "granted": false, "error": err.Error()})
+			results = append(results, map[string]any{"user": user, "plan": plan, "granted": false, "error": err.Error()})
 			continue
 		}
 		if res.Granted {
@@ -233,7 +230,7 @@ func grantOrgAllotments(c *gin.Context, db *datastore.Datastore, now time.Time, 
 		} else {
 			skipped++
 		}
-		results = append(results, gin.H{
+		results = append(results, map[string]any{
 			"user":        user,
 			"plan":        plan,
 			"granted":     res.Granted,
@@ -250,15 +247,15 @@ func grantOrgAllotments(c *gin.Context, db *datastore.Datastore, now time.Time, 
 // scheduler to invoke at period start (alongside the billing cycle).
 //
 //	POST /v1/billing/allotment/run
-func RunAllotments(c *gin.Context) {
+func RunAllotments(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	now := time.Now()
 	// live = !TestMode: allotment grants land in the SAME bucket as charges/usage.
 	granted, skipped, results := grantOrgAllotments(c, db, now, !org.TestMode())
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"period":  allotment.Period(now),
 		"granted": granted,
 		"skipped": skipped,
@@ -274,15 +271,14 @@ func RunAllotments(c *gin.Context) {
 //	GET /v1/billing/usage-rollup?user=hanzo/alice&plan=pro
 //
 // `plan` is optional; when omitted it is resolved from the user's subscription.
-func GetUsageRollup(c *gin.Context) {
+func GetUsageRollup(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	plan := resolvePlanSlug(db, user, c.Query("plan"))
@@ -311,8 +307,7 @@ func GetUsageRollup(c *gin.Context) {
 	var balance, holds currency.Cents
 	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", currency.USD, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 	if data, ok := datas.Data[currency.USD]; ok {
 		balance = data.Balance
@@ -323,12 +318,12 @@ func GetUsageRollup(c *gin.Context) {
 		available = 0
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":     user,
 		"plan":     plan,
 		"currency": "usd",
 		"period":   allotment.Period(now),
-		"included": gin.H{
+		"included": map[string]any{
 			"monthlyCents": includedMonthlyCents, // catalog entitlement
 			"grantedCents": includedGrantedCents, // actually on balance this period
 			"consumedCents": func() int64 {
@@ -341,7 +336,7 @@ func GetUsageRollup(c *gin.Context) {
 		},
 		"consumedCents": consumedCents,
 		"overageCents":  overageCents,
-		"balance": gin.H{
+		"balance": map[string]any{
 			"balanceCents":   int64(balance),
 			"holdsCents":     int64(holds),
 			"availableCents": int64(available),

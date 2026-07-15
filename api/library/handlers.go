@@ -1,20 +1,19 @@
 package library
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
 
 	api := router.Group("library")
 
-	api.POST("/shopjs", publishedRequired, namespaced, LoadShopJS)
-	api.POST("/coinjs", publishedRequired, namespaced, LoadShopJS)
-	api.POST("/daisho", LoadDaisho)
+	api.Post("/shopjs", publishedRequired, namespaced, LoadShopJS)
+	api.Post("/coinjs", publishedRequired, namespaced, LoadShopJS)
+	api.Post("/daisho", LoadDaisho)
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -34,25 +34,22 @@ type withdrawRequest struct {
 // behalf of any user.
 //
 // Fails with 402 if the user has insufficient available balance.
-func Withdraw(c *gin.Context) {
+func Withdraw(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req withdrawRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	if req.Amount <= 0 {
-		http.Fail(c, 400, "amount must be positive", nil)
-		return
+		return http.Fail(c, 400, "amount must be positive", nil)
 	}
 
 	// Non-admin users may only withdraw from their own account. claims
@@ -61,8 +58,7 @@ func Withdraw(c *gin.Context) {
 	if claims := iammiddleware.GetIAMClaims(c); !claims.IsAdmin {
 		ownerUser := strings.ToLower(claims.Owner + "/" + claims.Name)
 		if ownerUser != req.User {
-			http.Fail(c, 403, "cannot withdraw from another user's account", nil)
-			return
+			return http.Fail(c, 403, "cannot withdraw from another user's account", nil)
 		}
 	}
 
@@ -72,10 +68,9 @@ func Withdraw(c *gin.Context) {
 	}
 
 	// Check available balance before creating the withdrawal.
-	datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), req.User, "iam-user", cur, org.TestMode())
+	datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), req.User, "iam-user", cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to check balance", err)
-		return
+		return http.Fail(c, 500, "failed to check balance", err)
 	}
 
 	var available currency.Cents
@@ -87,8 +82,7 @@ func Withdraw(c *gin.Context) {
 	}
 
 	if currency.Cents(req.Amount) > available {
-		http.Fail(c, 402, fmt.Sprintf("insufficient balance: have %d cents, need %d cents", available, req.Amount), nil)
-		return
+		return http.Fail(c, 402, fmt.Sprintf("insufficient balance: have %d cents, need %d cents", available, req.Amount), nil)
 	}
 
 	notes := req.Notes
@@ -111,11 +105,10 @@ func Withdraw(c *gin.Context) {
 
 	if err := trans.Create(); err != nil {
 		log.Error("Failed to create withdrawal transaction: %v", err, c)
-		http.Fail(c, 500, "failed to create withdrawal", err)
-		return
+		return http.Fail(c, 500, "failed to create withdrawal", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        req.Amount,

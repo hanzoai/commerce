@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/hanzoai/commerce/billing/bucket"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/paymentmethod"
@@ -83,8 +81,8 @@ func getCardOnFile(db *datastore.Datastore, subject string) cardOnFileStatus {
 // distinctly from prepaid real money and the card status. The cloud-api customer
 // billing proxy forwards this body verbatim, so the fields reach the console
 // with no cloud change.
-func bucketFields(split bucket.Split, card cardOnFileStatus) gin.H {
-	return gin.H{
+func bucketFields(split bucket.Split, card cardOnFileStatus) map[string]any {
+	return map[string]any{
 		"creditsGranted":   int64(split.CreditsGranted),
 		"creditsRemaining": int64(split.CreditsRemaining),
 		"prepaidBalance":   int64(split.PrepaidBalance),

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
@@ -24,28 +24,29 @@ func parseAuthHeader(fieldValue string) (string, string) {
 	return credentials[0], credentials[1]
 }
 
-func BasicAuth() gin.HandlerFunc {
+func BasicAuth() zip.Handler {
 	realm := "Basic realm=" + strconv.Quote("Authorization Required")
 
-	return func(c *gin.Context) {
-		email, password := parseAuthHeader(c.Request.Header.Get("Authorization"))
+	return func(c *zip.Ctx) error {
+		email, password := parseAuthHeader(c.Header("Authorization"))
 
-		db := datastore.New(c)
+		db := datastore.New(c.Context())
 		usr := user.New(db)
 		if err := usr.GetByEmail(email); err != nil {
-			c.Request.Header.Set("WWW-Authenticate", realm)
-			c.AbortWithStatus(401)
+			c.SetHeader("WWW-Authenticate", realm)
 			log.Warn("Unable to get user with email '%v': %v", email, err, c)
+			return c.NoContent(401)
 		}
 
 		// Validate password
 		if !usr.ComparePassword(password) {
-			c.Request.Header.Set("WWW-Authenticate", realm)
-			c.AbortWithStatus(401)
+			c.SetHeader("WWW-Authenticate", realm)
 			log.Warn("Invalid password for user: %v", usr, c)
+			return c.NoContent(401)
 		}
 
 		// Login user on session
 		auth.Login(c, usr)
+		return c.Next()
 	}
 }

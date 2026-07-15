@@ -3,7 +3,7 @@ package migrations
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
@@ -14,8 +14,8 @@ import (
 var oldestDate = time.Date(2015, time.April, 30, 0, 0, 0, 0, time.UTC)
 
 var _ = New("nuke-old-test-orders",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "cycliq")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "cycliq")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {

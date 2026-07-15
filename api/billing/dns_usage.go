@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -51,29 +51,25 @@ const (
 // the plan's daily query limit.
 //
 //	POST /v1/dns/usage
-func RecordDNSUsage(c *gin.Context) {
+func RecordDNSUsage(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req dnsUsageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Zone == "" {
-		http.Fail(c, 400, "zone is required", nil)
-		return
+		return http.Fail(c, 400, "zone is required", nil)
 	}
 
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	if req.Queries <= 0 {
-		c.JSON(200, dnsUsageResponse{Recorded: true, Remaining: -1, Limit: -1})
-		return
+		return c.JSON(200, dnsUsageResponse{Recorded: true, Remaining: -1, Limit: -1})
 	}
 
 	// Resolve the user's DNS plan to determine limits.
@@ -90,8 +86,7 @@ func RecordDNSUsage(c *gin.Context) {
 		if remaining < 0 {
 			remaining = 0
 		}
-		http.Fail(c, 429, fmt.Sprintf("daily DNS query limit exceeded: %d/%d", todayUsage+req.Queries, dailyLimit), nil)
-		return
+		return http.Fail(c, 429, fmt.Sprintf("daily DNS query limit exceeded: %d/%d", todayUsage+req.Queries, dailyLimit), nil)
 	}
 
 	// Parse timestamp or default to now.
@@ -119,8 +114,7 @@ func RecordDNSUsage(c *gin.Context) {
 
 	if err := evt.Create(); err != nil {
 		log.Error("Failed to create DNS meter event: %v", err, c)
-		http.Fail(c, 500, "failed to record dns usage", err)
-		return
+		return http.Fail(c, 500, "failed to record dns usage", err)
 	}
 
 	remaining := int64(-1)
@@ -131,7 +125,7 @@ func RecordDNSUsage(c *gin.Context) {
 		}
 	}
 
-	c.JSON(201, dnsUsageResponse{
+	return c.JSON(201, dnsUsageResponse{
 		Recorded:  true,
 		Remaining: remaining,
 		Limit:     dailyLimit,
@@ -141,17 +135,19 @@ func RecordDNSUsage(c *gin.Context) {
 // GetDNSUsageSummary returns a usage summary for DNS queries, zones, and records.
 //
 //	GET /v1/dns/usage/summary?user={owner/name}&period=day|month
-func GetDNSUsageSummary(c *gin.Context) {
+func GetDNSUsageSummary(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	user := strings.TrimSpace(c.Query("user"))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
-	period := strings.TrimSpace(c.DefaultQuery("period", "day"))
+	period := strings.TrimSpace(c.Query("period"))
+	if period == "" {
+		period = "day"
+	}
 
 	var periodStart, periodEnd time.Time
 	now := time.Now().UTC()
@@ -170,7 +166,7 @@ func GetDNSUsageSummary(c *gin.Context) {
 
 	planSlug, dailyLimit := resolveDNSPlan(db, user)
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":    user,
 		"period":  period,
 		"queries": queries,
@@ -184,8 +180,8 @@ func GetDNSUsageSummary(c *gin.Context) {
 // ListDNSPlans returns the available DNS plans.
 //
 //	GET /v1/dns/plans
-func ListDNSPlans(c *gin.Context) {
-	c.JSON(200, dnsPlans)
+func ListDNSPlans(c *zip.Ctx) error {
+	return c.JSON(200, dnsPlans)
 }
 
 // resolveDNSPlan looks up the user's active DNS subscription to determine

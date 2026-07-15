@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/util/bit"
@@ -28,8 +28,8 @@ import (
 // It reads c["permissions"] defensively (no MustGet) so a handler reached
 // without a permission-setting middleware fails CLOSED (treated as
 // non-privileged) rather than panicking.
-func isPrivilegedBillingCaller(c *gin.Context) bool {
-	if v, ok := c.Get("permissions"); ok {
+func isPrivilegedBillingCaller(c *zip.Ctx) bool {
+	if v := c.Locals("permissions"); v != nil {
 		if f, ok := v.(bit.Field); ok && f.Has(permission.Admin) {
 			return true
 		}
@@ -54,7 +54,7 @@ func isPrivilegedBillingCaller(c *gin.Context) bool {
 // orgBillingKey, which is exactly the key EdgeAuth pins those records under
 // (== claims.Owner == org.Name == namespace). Fail-closed: an empty subject, or
 // no owner matching it, denies.
-func callerMayReachBillingSubject(c *gin.Context, ownerIDs ...string) bool {
+func callerMayReachBillingSubject(c *zip.Ctx, ownerIDs ...string) bool {
 	if isPrivilegedBillingCaller(c) {
 		return true
 	}
