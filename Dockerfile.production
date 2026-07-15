@@ -27,7 +27,7 @@ RUN --mount=type=secret,id=gh_token \
     if [ -s /run/secrets/gh_token ]; then \
       git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
     fi && \
-    go mod download && \
+    go mod download github.com/hanzoai/... $(go list -m -f '{{if not .Indirect}}{{.Path}}{{end}}' all 2>/dev/null | grep -v '^$' | head -200) 2>/dev/null || true && \
     rm -f /tmp/gitconfig
 
 # Hydrate @hanzo/plans (public npm, no auth) — api/billing/plans.go go:embed's
