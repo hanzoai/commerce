@@ -5,7 +5,13 @@
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    // This is the vendored Medusa `@medusajs/types` lineage — it is not authored to
+    // the workspace's strict/isolatedModules bar (upstream doesn't build it that way).
+    // We only need it to EMIT declarations; the admin consumes them under skipLibCheck.
+    "strict": false,
+    "isolatedModules": false,
+    "skipLibCheck": true
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules", "src/**/__tests__", "src/**/__fixtures__"]
