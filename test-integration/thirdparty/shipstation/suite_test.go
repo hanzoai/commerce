@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/hanzoai/commerce/api/api"
+	"github.com/hanzoai/commerce/api"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
