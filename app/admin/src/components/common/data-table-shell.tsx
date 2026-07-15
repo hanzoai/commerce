@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DataTable, useDataTable } from '@hanzo/commerce-ui'
+import { consumePending, onSearch } from '@/lib/search-bus'
 import type {
   DataTableColumnDef,
   DataTablePaginationState,
@@ -37,7 +38,9 @@ export function DataTableShell<T>({
     pageSize: 20,
   })
   const [sorting, setSorting] = useState<DataTableSortingState | null>(null)
-  const [search, setSearch] = useState('')
+  // Search state is also drivable by the AI dock via the search bus (keyed by `kind`).
+  const [search, setSearch] = useState(() => consumePending(kind))
+  useEffect(() => onSearch(kind, setSearch), [kind])
 
   const params = useMemo<ListParams>(() => {
     const p: ListParams = {

@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrganizations } from '@hanzo/iam/react'
-import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount } from '../data-provider'
-import type { ListParams, ListResponse } from '../data-provider'
+import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore } from '../data-provider'
+import type { ListParams, ListResponse, CurrentStore } from '../data-provider'
 
 /** Every query key is prefixed with the current org so switching orgs gives a clean cache. */
 function orgKey(org: string | null, kind: string, ...rest: unknown[]) {
@@ -72,4 +72,12 @@ export const useCustomer = (id?: string) => useGet<any>('c/user', id)
 export const useCollections = (params?: ListParams) => useList<any>('collection', params)
 export const useVariants = (params?: ListParams) => useList<any>('variant', params)
 export const useStockLocations = (params?: ListParams) => useList<any>('stocklocation', params)
-export const useStore = () => useGet<any>('store', 'current')
+
+/** The caller-org's live store (GET /v1/store/current — meter-exempt), unwrapped + graceful. */
+export function useStore() {
+  const { currentOrgId } = useOrganizations()
+  return useQuery<CurrentStore | null>({
+    queryKey: orgKey(currentOrgId, 'store', 'current'),
+    queryFn: () => fetchCurrentStore(currentOrgId),
+  })
+}

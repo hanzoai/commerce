@@ -1,7 +1,8 @@
 'use client'
 
-import { Heading, Text, Container } from '@hanzo/commerce-ui'
-import { useCount } from '@/lib/api/hooks'
+import { Heading, Text, Container, Badge } from '@hanzo/commerce-ui'
+import { useCount, useStore } from '@/lib/api/hooks'
+import type { StoreListing } from '@/lib/api/data-provider'
 import { StatCard } from '@/components/common/stat-card'
 import { PageHeader } from '@/components/common/page-header'
 
@@ -59,9 +60,85 @@ export default function DashboardPage() {
           />
         </div>
 
+        <StoreOverview />
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <RecentOrders />
           <TopProducts />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function money(cents?: number, currency = 'USD') {
+  if (cents == null) return '-'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
+}
+
+function StoreOverview() {
+  const { data: store, isLoading } = useStore()
+  const listings: StoreListing[] = store?.listings ? Object.values(store.listings) : []
+
+  if (isLoading) {
+    return (
+      <Container className="mb-6 p-6">
+        <div className="h-6 w-48 animate-pulse rounded bg-ui-bg-component" />
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-40 animate-pulse rounded-lg bg-ui-bg-component" />
+          ))}
+        </div>
+      </Container>
+    )
+  }
+
+  if (!store) return null
+
+  return (
+    <Container className="mb-6 p-6">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <Heading level="h3">{store.name}</Heading>
+          <Text size="small" className="text-ui-fg-muted">
+            {store.domain ?? store.slug}
+            {store.currency ? ` · ${store.currency.toUpperCase()}` : ''}
+            {` · ${listings.length} listing${listings.length === 1 ? '' : 's'}`}
+          </Text>
+        </div>
+        <Badge color="green">Live</Badge>
+      </div>
+
+      {listings.length === 0 ? (
+        <Text size="small" className="py-8 text-center text-ui-fg-muted">No listings published yet</Text>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {listings.slice(0, 8).map((l) => (
+            <StoreListingCard key={l.slug} listing={l} storeCurrency={store.currency} />
+          ))}
+        </div>
+      )}
+    </Container>
+  )
+}
+
+function StoreListingCard({ listing, storeCurrency }: { listing: StoreListing; storeCurrency?: string }) {
+  const url = listing.headerImage?.url
+  return (
+    <div className="overflow-hidden rounded-lg border border-ui-border-base bg-ui-bg-subtle">
+      <div className="aspect-square w-full bg-ui-bg-component">
+        {url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={listing.headerImage?.alt ?? listing.name} className="h-full w-full object-cover" loading="lazy" />
+        ) : null}
+      </div>
+      <div className="p-3">
+        <Text size="small" weight="plus" className="truncate text-ui-fg-base">{listing.name}</Text>
+        <div className="mt-1 flex items-center justify-between">
+          <Text size="small" className="text-ui-fg-muted">{money(listing.price, listing.currency ?? storeCurrency ?? 'USD')}</Text>
+          <Badge size="2xsmall" color={listing.available ? 'green' : 'grey'}>
+            {listing.available ? 'Available' : 'Sold out'}
+          </Badge>
         </div>
       </div>
     </div>
