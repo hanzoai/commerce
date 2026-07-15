@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -11,8 +11,8 @@ import (
 )
 
 var _ = New("recalculate-coupon-items",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {

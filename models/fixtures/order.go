@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/types/country"
@@ -11,7 +11,7 @@ import (
 	. "github.com/hanzoai/commerce/models/lineitem"
 )
 
-var Order = New("order", func(c *gin.Context) *order.Order {
+var Order = New("order", func(c *zip.Ctx) *order.Order {
 	db := getNamespaceDb(c)
 
 	u := UserCustomer(c)

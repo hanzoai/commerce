@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -25,16 +25,14 @@ import (
 
 var newNamespace = ""
 
-func setupNamespaceRename(c *gin.Context) []interface{} {
-	// TODO: we SHOULD be able to do this
-	q := c.Request.URL.Query()
-	oldns := q.Get("old-namespace")
-	newns := q.Get("new-namespace")
+func setupNamespaceRename(c *zip.Ctx) []interface{} {
+	oldns := c.Query("old-namespace")
+	newns := c.Query("new-namespace")
 
 	// Should not need global
 	newNamespace = newns
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	// Try to find organization
 	org := new(organization.Organization)
@@ -60,7 +58,7 @@ func setupNamespaceRename(c *gin.Context) []interface{} {
 	}
 
 	// Set namespace to ensure we iterate over old entities
-	c.Set("namespace", oldns)
+	c.Locals("namespace", oldns)
 	return NoArgs
 }
 

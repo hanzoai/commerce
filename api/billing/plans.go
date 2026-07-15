@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -40,9 +40,9 @@ type canonicalPlan struct {
 	// on GET /v1/billing/plans.
 	TrialPeriodDays *int     `json:"trialPeriodDays,omitempty"`
 	Features        []string `json:"features"`
-	Bundles      []string `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
-	IncludedIn   []string `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
-	Limits       *struct {
+	Bundles         []string `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
+	IncludedIn      []string `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
+	Limits          *struct {
 		// Subscription (API) limits
 		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
 		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
@@ -80,8 +80,8 @@ type staticPlan struct {
 	Name            string   `json:"name"`
 	Description     string   `json:"description"`
 	Category        string   `json:"category"`
-	Price           int64    `json:"price"`         // monthly price in cents (0 = free)
-	PriceAnnual     int64    `json:"priceAnnual"`   // annual price in cents per month
+	Price           int64    `json:"price"`       // monthly price in cents (0 = free)
+	PriceAnnual     int64    `json:"priceAnnual"` // annual price in cents per month
 	Currency        string   `json:"currency"`
 	Interval        string   `json:"interval"`
 	IntervalCount   int      `json:"intervalCount"`
@@ -205,11 +205,10 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 //
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
-func ListPlans(c *gin.Context) {
+func ListPlans(c *zip.Ctx) error {
 	category := c.Query("category")
 	if category == "" {
-		c.JSON(200, hanzoPlans)
-		return
+		return c.JSON(200, hanzoPlans)
 	}
 
 	filtered := make([]staticPlan, 0)
@@ -218,21 +217,20 @@ func ListPlans(c *gin.Context) {
 			filtered = append(filtered, p)
 		}
 	}
-	c.JSON(200, filtered)
+	return c.JSON(200, filtered)
 }
 
 // GetPlan returns a single plan by slug.
 //
 //	GET /v1/billing/plans/:id
-func GetPlan(c *gin.Context) {
+func GetPlan(c *zip.Ctx) error {
 	id := c.Param("id")
 	for _, p := range hanzoPlans {
 		if p.Slug == id {
-			c.JSON(200, p)
-			return
+			return c.JSON(200, p)
 		}
 	}
-	http.Fail(c, 404, "plan not found", nil)
+	return http.Fail(c, 404, "plan not found", nil)
 }
 
 // lookupPlan finds a plan by slug across all loaded plans.

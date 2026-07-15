@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/config"
@@ -10,19 +10,19 @@ import (
 	"github.com/hanzoai/commerce/util/session"
 )
 
-func AcquireUser(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if u, err := auth.GetCurrentUser(c); err != nil {
+func AcquireUser(moduleName string) zip.Handler {
+	return func(c *zip.Ctx) error {
+		u, err := auth.GetCurrentUser(c)
+		if err != nil {
 			log.Warn("Unable to acquire user.", c)
 			session.Clear(c)
-			c.Redirect(302, config.UrlFor(moduleName, "/login"))
-			c.AbortWithStatus(302)
-		} else {
-			c.Set("user", u)
+			return c.Redirect(302, config.UrlFor(moduleName, "/login"))
 		}
+		c.Locals("user", u)
+		return c.Next()
 	}
 }
 
-func GetCurrentUser(c *gin.Context) *user.User {
-	return c.MustGet("user").(*user.User)
+func GetCurrentUser(c *zip.Ctx) *user.User {
+	return c.Locals("user").(*user.User)
 }

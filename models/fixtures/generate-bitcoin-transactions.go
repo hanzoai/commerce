@@ -4,7 +4,7 @@ import (
 	"errors"
 	//"math/big"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -14,8 +14,8 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
 )
 
-var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", func(c *gin.Context) {
-	db := datastore.New(c)
+var GenerateTestBitcoinTransaction = New("generate-test-bitcoin-transaction", func(c *zip.Ctx) {
+	db := datastore.New(c.Context())
 	ctx := db.Context
 
 	w := wallet.New(db)

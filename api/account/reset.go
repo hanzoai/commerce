@@ -3,16 +3,16 @@ package account
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/token"
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/email"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 )
 
 type resetReq struct {
@@ -21,16 +21,15 @@ type resetReq struct {
 	Id       string `json:"id"`
 }
 
-func reset(c *gin.Context) {
+func reset(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	usr := user.New(db)
 
 	// Get new password
 	req := &resetReq{}
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	emailAddress := req.Email
@@ -38,8 +37,7 @@ func reset(c *gin.Context) {
 	if err := usr.GetByEmail(emailAddress); err != nil {
 		// If user doesn't exist, we pretend like it's ok
 		log.Warn("Email doesn't exist, unable to reset password: %v", emailAddress, c)
-		http.Render(c, 200, gin.H{"status": "ok"})
-		return
+		return http.Render(c, 200, map[string]any{"status": "ok"})
 	}
 
 	// Create token
@@ -49,13 +47,12 @@ func reset(c *gin.Context) {
 	tok.Expires = time.Now().Add(time.Hour * 72)
 
 	if err := tok.Put(); err != nil {
-		http.Fail(c, 500, "Unable to create reset token", err)
-		return
+		return http.Fail(c, 500, "Unable to create reset token", err)
 	}
 
 	// Send email
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	email.SendResetPassword(ctx, org, usr, tok)
 
-	http.Render(c, 200, gin.H{"status": "ok"})
+	return http.Render(c, 200, map[string]any{"status": "ok"})
 }

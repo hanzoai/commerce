@@ -5,11 +5,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/ossaccrual"
 	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -19,8 +18,8 @@ import (
 
 // systemDB returns a datastore for the global "system" namespace, where SBOM
 // records and OSS accruals live (platform-wide, not per-tenant).
-func systemDB(c *gin.Context) *datastore.Datastore {
-	ctx := middleware.GetContext(c)
+func systemDB(c *zip.Ctx) *datastore.Datastore {
+	ctx := c.Context()
 	db := datastore.New(ctx)
 	db.SetNamespace("system")
 	return db
@@ -54,18 +53,16 @@ type sbomIngestRequest struct {
 // {purl, name, ecosystem, version, scope}, and POSTs it here keyed by the
 // immutable image digest. Idempotent on ImageDigest — re-ingesting the same
 // image updates the record in place.
-func IngestSBOM(c *gin.Context) {
+func IngestSBOM(c *zip.Ctx) error {
 	db := systemDB(c)
 
 	var req sbomIngestRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 	req.ImageDigest = strings.TrimSpace(req.ImageDigest)
 	if req.ImageDigest == "" {
-		http.Fail(c, 400, "imageDigest is required", nil)
-		return
+		return http.Fail(c, 400, "imageDigest is required", nil)
 	}
 
 	in := sbomrecord.New(db)
@@ -79,11 +76,10 @@ func IngestSBOM(c *gin.Context) {
 	rec, err := sbomrecord.Ingest(db, in)
 	if err != nil {
 		log.Error("sbom ingest failed for %s: %v", req.ImageDigest, err, c)
-		http.Fail(c, 500, "failed to store SBOM", err)
-		return
+		return http.Fail(c, 500, "failed to store SBOM", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"id":             rec.Id(),
 		"imageDigest":    rec.ImageDigest,
 		"service":        rec.Service,
@@ -114,17 +110,16 @@ func normalizeComponents(in []sbomComponent) []sbomrecord.Component {
 // ListSBOMs returns the stored SBOM records (metadata only, not components).
 //
 //	GET /v1/billing/sbom
-func ListSBOMs(c *gin.Context) {
+func ListSBOMs(c *zip.Ctx) error {
 	db := systemDB(c)
 	records := make([]*sbomrecord.SBOMRecord, 0, 64)
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	if _, err := sbomrecord.Query(db).Ancestor(rootKey).GetAll(&records); err != nil {
-		http.Fail(c, 500, "failed to query SBOMs", err)
-		return
+		return http.Fail(c, 500, "failed to query SBOMs", err)
 	}
-	items := make([]gin.H, 0, len(records))
+	items := make([]map[string]any, 0, len(records))
 	for _, r := range records {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"id":             r.Id(),
 			"imageRef":       r.ImageRef,
 			"imageDigest":    r.ImageDigest,
@@ -135,7 +130,7 @@ func ListSBOMs(c *gin.Context) {
 			"createdAt":      r.CreatedAt,
 		})
 	}
-	c.JSON(200, gin.H{"count": len(items), "sboms": items})
+	return c.JSON(200, map[string]any{"count": len(items), "sboms": items})
 }
 
 // ── OSS accrual reads ───────────────────────────────────────────────────────
@@ -144,7 +139,7 @@ func ListSBOMs(c *gin.Context) {
 // PURL or spending org.
 //
 //	GET /v1/billing/oss-accruals?purl=&org=
-func ListOSSAccruals(c *gin.Context) {
+func ListOSSAccruals(c *zip.Ctx) error {
 	db := systemDB(c)
 	q := ossaccrual.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
 	if purl := strings.TrimSpace(c.Query("purl")); purl != "" {
@@ -156,13 +151,12 @@ func ListOSSAccruals(c *gin.Context) {
 
 	accruals := make([]*ossaccrual.OSSAccrual, 0, 256)
 	if _, err := q.GetAll(&accruals); err != nil {
-		http.Fail(c, 500, "failed to query accruals", err)
-		return
+		return http.Fail(c, 500, "failed to query accruals", err)
 	}
 
-	items := make([]gin.H, 0, len(accruals))
+	items := make([]map[string]any, 0, len(accruals))
 	for _, a := range accruals {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"id":            a.Id(),
 			"purl":          a.PURL,
 			"name":          a.Name,
@@ -178,7 +172,7 @@ func ListOSSAccruals(c *gin.Context) {
 			"createdAt":     a.CreatedAt,
 		})
 	}
-	c.JSON(200, gin.H{"count": len(items), "accruals": items})
+	return c.JSON(200, map[string]any{"count": len(items), "accruals": items})
 }
 
 // maintainerSummary is the per-package rollup: total owed across all accrual
@@ -201,7 +195,7 @@ type maintainerSummary struct {
 // view — the disbursement job consumes it.
 //
 //	GET /v1/billing/oss-payout/summary?org=
-func GetOSSPayoutSummary(c *gin.Context) {
+func GetOSSPayoutSummary(c *zip.Ctx) error {
 	db := systemDB(c)
 	q := ossaccrual.Query(db).Ancestor(db.NewKey("synckey", "", 1, nil))
 	if org := strings.TrimSpace(c.Query("org")); org != "" {
@@ -210,8 +204,7 @@ func GetOSSPayoutSummary(c *gin.Context) {
 
 	accruals := make([]*ossaccrual.OSSAccrual, 0, 256)
 	if _, err := q.GetAll(&accruals); err != nil {
-		http.Fail(c, 500, "failed to query accruals", err)
-		return
+		return http.Fail(c, 500, "failed to query accruals", err)
 	}
 
 	byPURL := map[string]*maintainerSummary{}
@@ -252,7 +245,7 @@ func GetOSSPayoutSummary(c *gin.Context) {
 		)
 	})
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"totalAccruedCents": totalCents,
 		"heldCents":         heldCents,
 		"packageCount":      len(maintainers),

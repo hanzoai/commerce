@@ -1,7 +1,7 @@
 package account
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/organization/wallet"
 	"github.com/hanzoai/commerce/datastore"
@@ -16,7 +16,7 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func withdraw(c *gin.Context) {
+func withdraw(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
 
@@ -24,15 +24,13 @@ func withdraw(c *gin.Context) {
 	orgWallet, err := wallet.ReturnWallet(org)
 	if err != nil {
 		log.Error("Unable to retrieve wallet: %v", err, c)
-		http.Fail(c, 400, "Unable to retrieve wallet", err)
-		return
+		return http.Fail(c, 400, "Unable to retrieve wallet", err)
 	}
 
 	// Decode the request
 	request := wallet.PayFromAccountRequest{}
-	if err := json.Decode(c.Request.Body, &request); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &request); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
 	// Account on the org should be publically avaiable and withdrawable
@@ -44,8 +42,7 @@ func withdraw(c *gin.Context) {
 		if account != nil && !account.Withdrawable {
 			log.Error("Account %s is not withdrawable", request.Name, c)
 		}
-		http.Fail(c, 400, "Account not withdrawable", ErrorAccountNotWithdrawable)
-		return
+		return http.Fail(c, 400, "Account not withdrawable", ErrorAccountNotWithdrawable)
 	}
 
 	// Determine the currency
@@ -82,7 +79,7 @@ func withdraw(c *gin.Context) {
 			return ErrorInsufficientFunds
 		}
 
-		transactionId, err = blockchain.MakePayment(middleware.GetContext(c), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
+		transactionId, err = blockchain.MakePayment(c.Context(), *account, request.To, request.Amount, request.Fee, []byte(org.WalletPassphrase))
 		if err != nil {
 			log.Error("Failed to create transaction %v", err, c)
 			return err
@@ -102,9 +99,7 @@ func withdraw(c *gin.Context) {
 	}, nil)
 
 	if err != nil {
-		http.Fail(c, 500, err.Error(), err)
-		return
-	} else {
-		http.Render(c, 200, wallet.PayFromAccountResponse{TransactionId: transactionId})
+		return http.Fail(c, 500, err.Error(), err)
 	}
+	return http.Render(c, 200, wallet.PayFromAccountResponse{TransactionId: transactionId})
 }

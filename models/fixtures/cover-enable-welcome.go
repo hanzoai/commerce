@@ -1,14 +1,14 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 )
 
-var _ = New("cover-enable-welcome", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var _ = New("cover-enable-welcome", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.MustGetById("cover")

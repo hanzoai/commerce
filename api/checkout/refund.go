@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout/square"
 	"github.com/hanzoai/commerce/events"
@@ -29,14 +29,14 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
-func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
+func refund(c *zip.Ctx, org *organization.Organization, ord *order.Order) error {
 	type Refund struct {
 		Amount currency.Cents `json:"amount"`
 	}
 
 	req := new(Refund)
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Body(), err, c)
 		return FailedToDecodeRequestBody
 	}
 
@@ -46,7 +46,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	// SQUARE (idempotent across pods/mutexes/guards). Prefer the caller's
 	// X-Idempotency-Key; else derive from (order, amount, refunded-so-far) so
 	// concurrent identical refunds collapse to one at the gateway.
-	gwKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	gwKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if gwKey == "" {
 		gwKey = ord.Id() + ":" + strconv.FormatInt(int64(req.Amount), 10) + ":" + strconv.FormatInt(int64(ord.Refunded), 10)
 	}
@@ -328,15 +328,17 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	}
 
 	// Publish order.refunded to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
-	if pub, ok := c.Get("publisher"); ok {
+	if pub := c.Locals("publisher"); pub != nil {
 		if p, ok := pub.(*events.Publisher); ok {
 			// Detach from the request (survive client disconnect) but keep trace
 			// values — WithoutCancel, not Background. Captured before the goroutine.
-			ctx := context.WithoutCancel(c.Request.Context())
+			ctx := context.WithoutCancel(c.Context())
 			go func() {
+				// The request ctx is pooled/released after the handler returns,
+				// so the fire-and-forget goroutine must not reference c.
 				if pubErr := p.PublishOrderRefunded(ctx, ord.Id(), org.Name, ord.UserId,
 					int64(req.Amount), string(ord.Currency)); pubErr != nil {
-					log.Error("PublishOrderRefunded: %v", pubErr, c)
+					log.Error("PublishOrderRefunded: %v", pubErr)
 				}
 			}()
 		}

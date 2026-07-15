@@ -1,17 +1,17 @@
 package reamaze
 
 import (
-	"github.com/gin-gonic/gin"
+	"crypto/hmac"
+	"crypto/sha256"
+	"net/url"
+
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/thirdparty/reamaze/custommodule"
-	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/util/router"
-
-	"crypto/hmac"
-	"crypto/sha256"
 )
 
 // CheckMAC reports whether messageMAC is a valid HMAC tag for message.
@@ -22,10 +22,10 @@ func checkMAC(message, messageMAC, key []byte) bool {
 	return hmac.Equal(messageMAC, expectedMAC)
 }
 
-func verifyHMAC(c *gin.Context) {
+func verifyHMAC(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
-	q := c.Request.URL.Query()
+	q, _ := url.ParseQuery(string(c.Fiber().Request().URI().QueryString()))
 	hmacStr := q.Get("hmac")
 
 	q.Del("hmac")
@@ -34,21 +34,24 @@ func verifyHMAC(c *gin.Context) {
 	if checkMAC([]byte(queryStr), []byte(hmacStr), []byte(org.Reamaze.Secret)) {
 		log.Panic("Reamaze signature is not valid", c)
 	}
+
+	return c.Next()
 }
 
-func setOrg(c *gin.Context) {
-	db := datastore.New(c)
+func setOrg(c *zip.Ctx) error {
+	db := datastore.New(c.Context())
 	org := organization.New(db)
-	brand := c.Request.URL.Query().Get("brand")
+	brand := c.Query("brand")
 	if err := org.GetById(brand); err != nil {
 		log.Panic("Organization not specified", c)
 	}
 
-	c.Set("organization", org)
+	c.Locals("organization", org)
+	return c.Next()
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("reamaze")
 
-	api.GET("/custommodule", setOrg, verifyHMAC, custommodule.Serve)
+	api.Get("/custommodule", setOrg, verifyHMAC, custommodule.Serve)
 }

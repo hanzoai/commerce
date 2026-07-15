@@ -221,11 +221,11 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 		Type:      mapWebhookType(event.Type),
 		Processor: processor.MoonPay,
 		Data: map[string]interface{}{
-			"transaction_id":   event.Data.ID,
-			"status":           event.Data.Status,
-			"crypto_currency":  event.Data.CurrencyCode,
-			"wallet_address":   event.Data.WalletAddress,
-			"failure_reason":   event.Data.FailureReason,
+			"transaction_id":  event.Data.ID,
+			"status":          event.Data.Status,
+			"crypto_currency": event.Data.CurrencyCode,
+			"wallet_address":  event.Data.WalletAddress,
+			"failure_reason":  event.Data.FailureReason,
 		},
 		Timestamp: parseTime(event.Data.UpdatedAt),
 	}, nil

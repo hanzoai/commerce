@@ -8,8 +8,8 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/mailchimp"
 	"github.com/hanzoai/commerce/types/email"
 	"github.com/hanzoai/commerce/types/integration"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -29,7 +29,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// Mock gin context that we can use with fixtures
-	_ = gincontext.New(ctx)
+	_ = zipctx.New(ctx)
 })
 
 var _ = AfterSuite(func() {

@@ -4,54 +4,67 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/models/catalogentry"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// ctxWith builds a gin test context whose GetContext resolves to the ae SQLite
-// datastore, optionally carrying IAM claims.
-func ctxWith(w http.ResponseWriter, claims *auth.IAMClaims) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	c.Set("context", context.Background())
-	if claims != nil {
-		c.Set("iam_claims", claims)
+// callCatalog drives handler h through a real request whose GetContext resolves
+// to the ae SQLite datastore, optionally carrying IAM claims. Returns the
+// response status and body bytes.
+func callCatalog(t *testing.T, claims *auth.IAMClaims, method, target string, body []byte, h zip.Handler) (int, []byte) {
+	t.Helper()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	seed := func(c *zip.Ctx) error {
+		c.SetContext(context.Background())
+		if claims != nil {
+			c.Locals("iam_claims", claims)
+		}
+		return c.Next()
 	}
-	return c
+	app.All("/*", seed, h)
+
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+	req := httptest.NewRequest(method, target, reader)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, b
 }
 
 func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	// Seed the catalog in the system namespace via a global-admin seed call.
-	sw := httptest.NewRecorder()
-	sc := ctxWith(sw, &auth.IAMClaims{Owner: "admin"})
-	sc.Request = httptest.NewRequest(http.MethodPost, "/v1/catalog/seed", nil)
-	SeedCatalog(sc)
-	if sw.Code != 200 {
-		t.Fatalf("seed status = %d; body=%s", sw.Code, sw.Body.String())
+	if code, body := callCatalog(t, &auth.IAMClaims{Owner: "admin"}, http.MethodPost, "/v1/catalog/seed", nil, SeedCatalog); code != 200 {
+		t.Fatalf("seed status = %d; body=%s", code, body)
 	}
 
 	// Public GET — no auth at all.
-	w := httptest.NewRecorder()
-	c := ctxWith(w, nil)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/commerce/catalog?brand=hanzo", nil)
-	Public(c)
-
-	if w.Code != 200 {
-		t.Fatalf("public catalog status = %d; body=%s", w.Code, w.Body.String())
+	code, body := callCatalog(t, nil, http.MethodGet, "/v1/commerce/catalog?brand=hanzo", nil, Public)
+	if code != 200 {
+		t.Fatalf("public catalog status = %d; body=%s", code, body)
 	}
 	var cat catalogentry.Catalog
-	if err := json.Unmarshal(w.Body.Bytes(), &cat); err != nil {
-		t.Fatalf("projection not JSON: %s", w.Body.String())
+	if err := json.Unmarshal(body, &cat); err != nil {
+		t.Fatalf("projection not JSON: %s", body)
 	}
 	if cat.Brand != "hanzo" || len(cat.Categories) != 13 || len(cat.Products) == 0 {
 		t.Fatalf("bad projection: brand=%s cats=%d products=%d", cat.Brand, len(cat.Categories), len(cat.Products))
@@ -61,7 +74,6 @@ func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 func TestCreateEntry_RequiresSuperAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	body, _ := json.Marshal(map[string]any{
 		"slug": "myproduct", "brand": "hanzo", "name": "My Product",
@@ -69,32 +81,19 @@ func TestCreateEntry_RequiresSuperAdmin(t *testing.T) {
 	})
 
 	// Org-level admin (NOT global) — must be rejected 403.
-	w := httptest.NewRecorder()
-	c := ctxWith(w, &auth.IAMClaims{Owner: "acme", IsAdmin: true})
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/catalog/entries", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	CreateEntry(c)
-	if w.Code != 403 {
-		t.Fatalf("org-admin create status = %d, want 403 (platform-admin only); body=%s", w.Code, w.Body.String())
+	if code, b := callCatalog(t, &auth.IAMClaims{Owner: "acme", IsAdmin: true}, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 403 {
+		t.Fatalf("org-admin create status = %d, want 403 (platform-admin only); body=%s", code, b)
 	}
 
 	// Global admin — allowed 201.
-	w2 := httptest.NewRecorder()
-	c2 := ctxWith(w2, &auth.IAMClaims{Owner: "admin"})
-	c2.Request = httptest.NewRequest(http.MethodPost, "/v1/catalog/entries", bytes.NewReader(body))
-	c2.Request.Header.Set("Content-Type", "application/json")
-	CreateEntry(c2)
-	if w2.Code != 201 {
-		t.Fatalf("global-admin create status = %d, want 201; body=%s", w2.Code, w2.Body.String())
+	if code, b := callCatalog(t, &auth.IAMClaims{Owner: "admin"}, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
+		t.Fatalf("global-admin create status = %d, want 201; body=%s", code, b)
 	}
 
 	// The created entry is now visible in the public projection.
-	w3 := httptest.NewRecorder()
-	c3 := ctxWith(w3, nil)
-	c3.Request = httptest.NewRequest(http.MethodGet, "/v1/commerce/catalog?brand=hanzo", nil)
-	Public(c3)
+	_, projBody := callCatalog(t, nil, http.MethodGet, "/v1/commerce/catalog?brand=hanzo", nil, Public)
 	var cat catalogentry.Catalog
-	_ = json.Unmarshal(w3.Body.Bytes(), &cat)
+	_ = json.Unmarshal(projBody, &cat)
 	found := false
 	for _, p := range cat.Products {
 		if p.Slug == "myproduct" {
@@ -109,26 +108,17 @@ func TestCreateEntry_RequiresSuperAdmin(t *testing.T) {
 func TestCreateEntry_DuplicateSlugRejected(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	body, _ := json.Marshal(map[string]any{
 		"slug": "dup", "brand": "hanzo", "name": "Dup", "category": "AI", "iconKey": "Box",
 	})
 	admin := &auth.IAMClaims{Owner: "admin"}
 
-	w := httptest.NewRecorder()
-	c := ctxWith(w, admin)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/catalog/entries", bytes.NewReader(body))
-	CreateEntry(c)
-	if w.Code != 201 {
-		t.Fatalf("first create = %d, want 201", w.Code)
+	if code, _ := callCatalog(t, admin, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
+		t.Fatalf("first create = %d, want 201", code)
 	}
 
-	w2 := httptest.NewRecorder()
-	c2 := ctxWith(w2, admin)
-	c2.Request = httptest.NewRequest(http.MethodPost, "/v1/catalog/entries", bytes.NewReader(body))
-	CreateEntry(c2)
-	if w2.Code != 409 {
-		t.Fatalf("duplicate create = %d, want 409", w2.Code)
+	if code, _ := callCatalog(t, admin, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 409 {
+		t.Fatalf("duplicate create = %d, want 409", code)
 	}
 }

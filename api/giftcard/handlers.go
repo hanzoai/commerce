@@ -1,6 +1,6 @@
 // Package giftcard is the HTTP surface for gift cards: base CRUD via rest plus
 // money actions (redeem / balance / void). Every handler is tenant-scoped via
-// middleware.GetOrganization(c) + org.Namespaced(c) — the same isolation the
+// middleware.GetOrganization(c) + org.Namespaced(c.Context()) — the same isolation the
 // rest of the /v1 surface uses — so a caller only ever touches its own org's
 // gift cards.
 //
@@ -13,7 +13,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -23,10 +23,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(giftcardModel.GiftCard{})
@@ -50,10 +49,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 // getCard loads the org-scoped gift card named in the path, or writes a 404 and
 // returns nil.
-func getCard(c *gin.Context) (*datastore.Datastore, *giftcardModel.GiftCard) {
+func getCard(c *zip.Ctx) (*datastore.Datastore, *giftcardModel.GiftCard) {
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
-	id := c.Params.ByName("giftcardid")
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
+	id := c.Param("giftcardid")
 	g := giftcardModel.New(db)
 	if err := g.GetById(id); err != nil {
 		http.Fail(c, 404, "No gift card found with id: "+id, err)
@@ -78,34 +77,32 @@ type redeemResponse struct {
 // Redeem draws amountCents from the card. Idempotent on the idempotency key.
 // Admin-only: redeeming moves money off a card, so it is gated INSIDE the
 // handler (the route middleware no-ops on the IAM path — Red HIGH-4).
-func Redeem(c *gin.Context) {
+func Redeem(c *zip.Ctx) error {
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	db, g := getCard(c)
 	if g == nil {
-		return
+		return nil
 	}
 
 	var req redeemRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Idempotency key precedence: explicit body field, else the standard header.
 	key := strings.TrimSpace(req.IdempotencyKey)
 	if key == "" {
-		key = strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+		key = strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	}
 
 	line, bal, err := giftcardModel.Redeem(db, g, req.AmountCents, req.Currency, req.OrderId, key)
 	if err != nil {
-		http.Fail(c, redeemStatus(err), err.Error(), err)
-		return
+		return http.Fail(c, redeemStatus(err), err.Error(), err)
 	}
 
-	http.Render(c, 200, redeemResponse{Redemption: line, BalanceCents: bal, GiftCardId: g.Id()})
+	return http.Render(c, 200, redeemResponse{Redemption: line, BalanceCents: bal, GiftCardId: g.Id()})
 }
 
 // redeemStatus maps money errors to HTTP codes. Client-correctable errors are
@@ -130,50 +127,45 @@ type voidRequest struct {
 
 // Void reverses a prior redemption (append-only compensating line). Idempotent.
 // Admin-only (money move) — gated inside the handler like Redeem.
-func Void(c *gin.Context) {
+func Void(c *zip.Ctx) error {
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	db, g := getCard(c)
 	if g == nil {
-		return
+		return nil
 	}
 
 	var req voidRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 	if strings.TrimSpace(req.RedemptionId) == "" {
-		http.Fail(c, 400, "redemptionId is required", errors.New("missing redemptionId"))
-		return
+		return http.Fail(c, 400, "redemptionId is required", errors.New("missing redemptionId"))
 	}
 
 	bal, err := giftcardModel.Void(db, g, req.RedemptionId)
 	if err != nil {
 		if errors.Is(err, datastore.ErrNoSuchEntity) {
-			http.Fail(c, 404, "No redemption found with id: "+req.RedemptionId, err)
-			return
+			return http.Fail(c, 404, "No redemption found with id: "+req.RedemptionId, err)
 		}
-		http.Fail(c, 500, "Failed to void redemption", err)
-		return
+		return http.Fail(c, 500, "Failed to void redemption", err)
 	}
 
-	http.Render(c, 200, map[string]any{"balanceCents": bal, "giftCardId": g.Id()})
+	return http.Render(c, 200, map[string]any{"balanceCents": bal, "giftCardId": g.Id()})
 }
 
 // Balance returns the projected spendable balance (initial − Σ redemptions).
-func Balance(c *gin.Context) {
+func Balance(c *zip.Ctx) error {
 	db, g := getCard(c)
 	if g == nil {
-		return
+		return nil
 	}
 	bal, err := giftcardModel.BalanceCents(db, g)
 	if err != nil {
-		http.Fail(c, 500, "Failed to compute balance", err)
-		return
+		return http.Fail(c, 500, "Failed to compute balance", err)
 	}
-	http.Render(c, 200, map[string]any{
+	return http.Render(c, 200, map[string]any{
 		"giftCardId":          g.Id(),
 		"code":                g.Code,
 		"currency":            g.Currency,
@@ -183,15 +175,14 @@ func Balance(c *gin.Context) {
 }
 
 // ListRedemptions returns the append-only debit ledger for a card.
-func ListRedemptions(c *gin.Context) {
+func ListRedemptions(c *zip.Ctx) error {
 	db, g := getCard(c)
 	if g == nil {
-		return
+		return nil
 	}
 	lines := make([]*giftcardredemption.GiftCardRedemption, 0, 16)
 	if _, err := giftcardredemption.Query(db).Filter("GiftCardId=", g.Id()).GetAll(&lines); err != nil {
-		http.Fail(c, 500, "Failed to list redemptions", err)
-		return
+		return http.Fail(c, 500, "Failed to list redemptions", err)
 	}
-	http.Render(c, 200, lines)
+	return http.Render(c, 200, lines)
 }

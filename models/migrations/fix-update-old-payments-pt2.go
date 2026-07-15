@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/payment"
@@ -10,8 +10,8 @@ import (
 )
 
 var _ = New("fix-update-old-payments-pt-2",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {

@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -16,8 +16,8 @@ import (
 )
 
 var _ = New("fix-currency-set",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 
 		return NoArgs
 	},
@@ -40,8 +40,8 @@ var _ = New("fix-currency-set",
 )
 
 var _ = New("load-counter-orders",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 
 		return NoArgs
 	},
@@ -94,8 +94,8 @@ var _ = New("load-counter-orders",
 )
 
 var _ = New("load-counter-product-orders",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 
 		return NoArgs
 	},
@@ -129,8 +129,8 @@ var _ = New("load-counter-product-orders",
 )
 
 var _ = New("load-counter-users",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "halcyon")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "halcyon")
 
 		return NoArgs
 	},
@@ -154,8 +154,8 @@ var _ = New("load-counter-users",
 )
 
 var _ = New("load-counter-subscribers",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "halcyon")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "halcyon")
 
 		return NoArgs
 	},

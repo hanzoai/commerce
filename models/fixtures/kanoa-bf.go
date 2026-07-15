@@ -3,7 +3,7 @@ package fixtures
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/coupon"
@@ -12,8 +12,8 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-var _ = New("kanoa-bf", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var _ = New("kanoa-bf", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Name = "kanoa"

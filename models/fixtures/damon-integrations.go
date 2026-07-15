@@ -3,15 +3,15 @@ package fixtures
 import (
 	// "time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/types/integration"
 )
 
-var _ = New("damon-integrations", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var _ = New("damon-integrations", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Name = "damon"

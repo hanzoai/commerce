@@ -1,17 +1,19 @@
 package middleware
 
 import (
+	"io"
+	"mime"
 	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 )
 
-func Static(urlRoot string) gin.HandlerFunc {
+func Static(urlRoot string) zip.Handler {
 	// Shave off leading /, otherwise filepath.Join will fail.
 	directory := strings.TrimLeft(urlRoot, "/")
 	if !filepath.IsAbs(directory) {
@@ -19,44 +21,47 @@ func Static(urlRoot string) gin.HandlerFunc {
 	}
 	dir := http.Dir(directory)
 
-	return func(c *gin.Context) {
-		if c.Request.Method != "GET" && c.Request.Method != "HEAD" {
-			return
+	return func(c *zip.Ctx) error {
+		if c.Method() != "GET" && c.Method() != "HEAD" {
+			return c.Next()
 		}
 
-		url := c.Request.URL
-		file := strings.Replace(url.Path, urlRoot, "", 1)
+		file := strings.Replace(c.Path(), urlRoot, "", 1)
 
 		f, err := dir.Open(file)
 		if err != nil {
-			c.AbortWithStatus(404)
-			return
+			return c.NoContent(404)
 		}
 		defer f.Close()
 		fi, err := f.Stat()
 		if err != nil {
-			c.AbortWithStatus(500)
-			return
+			return c.NoContent(500)
 		}
 
 		if fi.IsDir() {
 			file = path.Join(file, "index.html")
 			f, err = dir.Open(file)
 			if err != nil {
-				c.AbortWithStatus(500)
-				return
+				return c.NoContent(500)
 			}
 			defer f.Close()
 			fi, err = f.Stat()
 			if err != nil || fi.IsDir() {
-				c.AbortWithStatus(500)
-				return
+				return c.NoContent(500)
 			}
 		}
 
-		// res.Header().Set("Expires", expires)
-		http.ServeContent(c.Writer, c.Request, file, fi.ModTime(), f)
+		// Read the whole asset before writing so the deferred Close can't race a
+		// lazily-consumed stream (fasthttp reads a body-stream after the handler
+		// returns). Static assets served here are small.
+		data, err := io.ReadAll(f)
+		if err != nil {
+			return c.NoContent(500)
+		}
 
-		c.Next()
+		if ct := mime.TypeByExtension(filepath.Ext(file)); ct != "" {
+			c.SetHeader("Content-Type", ct)
+		}
+		return c.Bytes(200, data)
 	}
 }

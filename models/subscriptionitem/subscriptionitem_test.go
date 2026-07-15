@@ -106,7 +106,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		PriceId:        "price_abc",
 		PlanId:         "plan_def",
 		MeterId:        "meter_ghi",
-		Quantity:        5,
+		Quantity:       5,
 		BillingMode:    "licensed",
 		Metadata:       map[string]interface{}{"seats": float64(5)},
 	}
@@ -167,7 +167,7 @@ func TestFieldAssignment(t *testing.T) {
 		PriceId:        "price_123",
 		PlanId:         "plan_456",
 		MeterId:        "meter_789",
-		Quantity:        10,
+		Quantity:       10,
 		BillingMode:    "metered",
 	}
 	if si.SubscriptionId != "sub_xyz" {

@@ -38,9 +38,9 @@ var testCfg = husd.Config{
 // --- fakes: a chain reader that serves ONE minted tx's Transfer log ---
 
 type fakeReader struct {
-	head  uint64
-	byTx  map[string][]husdindex.Transfer
-	all   []husdindex.Transfer
+	head uint64
+	byTx map[string][]husdindex.Transfer
+	all  []husdindex.Transfer
 }
 
 func (r *fakeReader) BlockNumber(context.Context) (uint64, error) { return r.head, nil }

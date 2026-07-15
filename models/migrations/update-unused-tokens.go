@@ -3,7 +3,7 @@ package migrations
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/token"
@@ -12,8 +12,8 @@ import (
 )
 
 var _ = New("update-unused-tokens",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
 
 		return NoArgs
 	},

@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -13,25 +13,24 @@ import (
 // GetDispute retrieves a dispute by ID.
 //
 //	GET /v1/billing/disputes/:id
-func GetDispute(c *gin.Context) {
+func GetDispute(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	d := dispute.New(db)
 	if err := d.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "dispute not found", err)
-		return
+		return http.Fail(c, 404, "dispute not found", err)
 	}
 
-	c.JSON(200, disputeResponse(d))
+	return c.JSON(200, disputeResponse(d))
 }
 
 // ListDisputes lists disputes.
 //
 //	GET /v1/billing/disputes?paymentIntentId=...
-func ListDisputes(c *gin.Context) {
+func ListDisputes(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	disputes := make([]*dispute.Dispute, 0)
@@ -54,7 +53,7 @@ func ListDisputes(c *gin.Context) {
 	for i, d := range disputes {
 		results[i] = disputeResponse(d)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 type submitEvidenceRequest struct {
@@ -68,20 +67,18 @@ type submitEvidenceRequest struct {
 // SubmitDisputeEvidence submits evidence for a dispute.
 //
 //	PATCH /v1/billing/disputes/:id
-func SubmitDisputeEvidence(c *gin.Context) {
+func SubmitDisputeEvidence(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	d := dispute.New(db)
 	if err := d.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "dispute not found", err)
-		return
+		return http.Fail(c, 404, "dispute not found", err)
 	}
 
 	var req submitEvidenceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	d.Evidence = &dispute.DisputeEvidence{
@@ -95,35 +92,32 @@ func SubmitDisputeEvidence(c *gin.Context) {
 
 	if err := d.Update(); err != nil {
 		log.Error("Failed to submit dispute evidence: %v", err, c)
-		http.Fail(c, 500, "failed to submit evidence", err)
-		return
+		return http.Fail(c, 500, "failed to submit evidence", err)
 	}
 
-	c.JSON(200, disputeResponse(d))
+	return c.JSON(200, disputeResponse(d))
 }
 
 // CloseDispute closes a dispute.
 //
 //	POST /v1/billing/disputes/:id/close
-func CloseDispute(c *gin.Context) {
+func CloseDispute(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	d := dispute.New(db)
 	if err := d.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "dispute not found", err)
-		return
+		return http.Fail(c, 404, "dispute not found", err)
 	}
 
 	d.Status = dispute.Lost // default to lost when merchant closes
 
 	if err := d.Update(); err != nil {
 		log.Error("Failed to close dispute: %v", err, c)
-		http.Fail(c, 500, "failed to close dispute", err)
-		return
+		return http.Fail(c, 500, "failed to close dispute", err)
 	}
 
-	c.JSON(200, disputeResponse(d))
+	return c.JSON(200, disputeResponse(d))
 }
 
 func disputeResponse(d *dispute.Dispute) map[string]interface{} {

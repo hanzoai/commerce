@@ -2,12 +2,11 @@ package metrics
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
@@ -21,16 +20,18 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// gateCtx builds a gin test context carrying optional IAM claims and/or a
+// testApp backs the synthetic request contexts the gate tests run against.
+var testApp = zip.New(zip.Config{DisableStartupMessage: true})
+
+// gateCtx builds a zip test context carrying optional IAM claims and/or a
 // permissions bit-field, mirroring what the auth middleware would have set.
-func gateCtx(w http.ResponseWriter, claims *auth.IAMClaims, perms *bit.Field) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/commerce/metrics/saas", nil)
+func gateCtx(claims *auth.IAMClaims, perms *bit.Field) *zip.Ctx {
+	c := testApp.TestCtx(http.MethodGet, "/v1/commerce/metrics/saas")
 	if claims != nil {
-		c.Set("iam_claims", claims)
+		c.Locals("iam_claims", claims)
 	}
 	if perms != nil {
-		c.Set("permissions", *perms)
+		c.Locals("permissions", *perms)
 	}
 	return c
 }
@@ -54,8 +55,6 @@ func adminPerms() *bit.Field {
 // IsAdmin, so the Admin bit is present, but the caller carries an IAM Subject and
 // its home org is NOT "admin" — it is not a SuperAdmin and must be refused.
 func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	cases := []struct {
 		name   string
 		claims *auth.IAMClaims
@@ -68,14 +67,15 @@ func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c := gateCtx(w, tc.claims, tc.perms)
-			GetSaaS(c)
-			if w.Code != 403 {
-				t.Fatalf("%s got %d, want 403 (must never read cross-org SaaS metrics; body=%s)", tc.name, w.Code, w.Body.String())
+			c := gateCtx(tc.claims, tc.perms)
+			_ = GetSaaS(c)
+			status := c.Fiber().Response().StatusCode()
+			body := string(c.Fiber().Response().Body())
+			if status != 403 {
+				t.Fatalf("%s got %d, want 403 (must never read cross-org SaaS metrics; body=%s)", tc.name, status, body)
 			}
-			if strings.Contains(w.Body.String(), "mrrCents") || strings.Contains(w.Body.String(), "\"revenue\"") {
-				t.Fatalf("403 body leaked metrics: %s", w.Body.String())
+			if strings.Contains(body, "mrrCents") || strings.Contains(body, "\"revenue\"") {
+				t.Fatalf("403 body leaked metrics: %s", body)
 			}
 		})
 	}
@@ -85,7 +85,6 @@ func TestGetSaaS_RefusesNonPlatformAdmin(t *testing.T) {
 // SuperAdmin (home org == the built-in "admin" org) and the trusted M2M service
 // token (Admin bit + no IAM Subject) are admitted; org admins are not.
 func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	cases := []struct {
 		name   string
 		claims *auth.IAMClaims
@@ -100,8 +99,7 @@ func TestGate_AdmitsPlatformPrincipals(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c := gateCtx(w, tc.claims, tc.perms)
+			c := gateCtx(tc.claims, tc.perms)
 			if got := middleware.MayReadPlatform(c); got != tc.want {
 				t.Fatalf("MayReadPlatform = %v, want %v", got, tc.want)
 			}
@@ -159,7 +157,7 @@ func TestRollupAggregation(t *testing.T) {
 	}, false)
 	foldTxns(a, "beta", []*transaction.Transaction{
 		mkTxn(50, now.AddDate(0, 0, -1), "claude-3-5"),
-		mkTxn(30, now.AddDate(0, 0, -1), ""),        // untagged
+		mkTxn(30, now.AddDate(0, 0, -1), ""),         // untagged
 		mkTxn(999, now.AddDate(0, 0, -60), "gpt-4o"), // outside 30d window → excluded
 	}, false)
 	a.orgSeen["acme"], a.orgSeen["beta"], a.orgSeen["gamma"] = true, true, true

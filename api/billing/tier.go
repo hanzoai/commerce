@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/tier"
 	"github.com/hanzoai/commerce/datastore"
@@ -29,14 +29,13 @@ import (
 // and is gated. The daily-credit term is 0 for every tier (see billing/tier);
 // onboarding funds an account once via the starter-credit grant, and once
 // that is spent the account is gated until it is topped up.
-func GetTier(c *gin.Context) {
+func GetTier(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	// Resolve tier: prefer IAM claim, fall back to query param, default to free.
@@ -53,8 +52,7 @@ func GetTier(c *gin.Context) {
 	cur := currency.Type("usd")
 	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
 	if err != nil {
-		http.Fail(c, 500, "failed to query balance", err)
-		return
+		return http.Fail(c, 500, "failed to query balance", err)
 	}
 
 	var prepaidBalance, holds currency.Cents
@@ -84,9 +82,9 @@ func GetTier(c *gin.Context) {
 
 	effectiveAvailable := int64(prepaidAvailable) + dailyRemaining
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user": user,
-		"tier": gin.H{
+		"tier": map[string]any{
 			"name":              cfg.Name,
 			"displayName":       cfg.DisplayName,
 			"maxAgents":         cfg.MaxAgents,
@@ -94,7 +92,7 @@ func GetTier(c *gin.Context) {
 			"dailyCreditsCents": cfg.DailyCreditsCents,
 			"allowedModels":     cfg.AllowedModels,
 		},
-		"balance": gin.H{
+		"balance": map[string]any{
 			"currency":           cur,
 			"prepaidAvailable":   prepaidAvailable,
 			"dailyRemaining":     dailyRemaining,
@@ -108,11 +106,10 @@ func GetTier(c *gin.Context) {
 // without computing the full balance. Used by Chat and white-label services.
 //
 //	GET /v1/billing/tier-check?user=hanzo/alice&model=zen4-max
-func TierCheck(c *gin.Context) {
+func TierCheck(c *zip.Ctx) error {
 	user := strings.ToLower(strings.TrimSpace(c.Query("user")))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	model := strings.TrimSpace(c.Query("model"))
@@ -127,9 +124,9 @@ func TierCheck(c *gin.Context) {
 
 	cfg := tier.Get(tierName)
 
-	resp := gin.H{
+	resp := map[string]any{
 		"user": user,
-		"tier": gin.H{
+		"tier": map[string]any{
 			"name":          cfg.Name,
 			"displayName":   cfg.DisplayName,
 			"allowedModels": cfg.AllowedModels,
@@ -142,7 +139,7 @@ func TierCheck(c *gin.Context) {
 		resp["allowed"] = cfg.IsModelAllowed(model)
 	}
 
-	c.JSON(200, resp)
+	return c.JSON(200, resp)
 }
 
 // dailyUsageCents sums the api-usage withdrawals for a user since

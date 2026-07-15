@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/product"
@@ -12,7 +12,7 @@ import (
 
 const Month = time.Hour * 24 * 30
 
-var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
+var Coupon = New("coupon", func(c *zip.Ctx) *coupon.Coupon {
 	db := getNamespaceDb(c)
 
 	now := time.Now()

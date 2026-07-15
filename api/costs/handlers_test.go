@@ -2,28 +2,29 @@ package costs
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// gateCtx builds a gin test context that optionally carries IAM claims and/or a
+// testApp backs the synthetic request contexts the gate tests run against.
+var testApp = zip.New(zip.Config{DisableStartupMessage: true})
+
+// gateCtx builds a zip test context that optionally carries IAM claims and/or a
 // permissions bit-field, mirroring what the auth middleware would have set.
-func gateCtx(w http.ResponseWriter, claims *auth.IAMClaims, perms *bit.Field) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	// A real gin context always carries a Request; GetIAMClaims reads headers as a
-	// fallback, so mirror production and give it one (no identity headers set).
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/costs", nil)
+func gateCtx(claims *auth.IAMClaims, perms *bit.Field) *zip.Ctx {
+	// A real request always carries headers; GetIAMClaims reads them as a fallback,
+	// so mirror production and give it one (no identity headers set).
+	c := testApp.TestCtx(http.MethodGet, "/v1/costs")
 	if claims != nil {
-		c.Set("iam_claims", claims)
+		c.Locals("iam_claims", claims)
 	}
 	if perms != nil {
-		c.Set("permissions", *perms)
+		c.Locals("permissions", *perms)
 	}
 	return c
 }
@@ -52,8 +53,6 @@ func adminPerms() *bit.Field {
 // read it. The route-level TokenRequired(permission.Admin) is a no-op on the IAM
 // path, so this in-handler gate is the real boundary.
 func TestRequireCostsAdmin(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	cases := []struct {
 		name   string
 		claims *auth.IAMClaims
@@ -85,14 +84,15 @@ func TestRequireCostsAdmin(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c := gateCtx(w, tc.claims, tc.perms)
+			c := gateCtx(tc.claims, tc.perms)
 			got := requireCostsAdmin(c)
+			status := c.Fiber().Response().StatusCode()
+			body := string(c.Fiber().Response().Body())
 			if got != tc.want {
-				t.Fatalf("requireCostsAdmin = %v, want %v (status=%d body=%s)", got, tc.want, w.Code, w.Body.String())
+				t.Fatalf("requireCostsAdmin = %v, want %v (status=%d body=%s)", got, tc.want, status, body)
 			}
-			if !tc.want && w.Code != 403 {
-				t.Fatalf("rejected caller status = %d, want 403 (body=%s)", w.Code, w.Body.String())
+			if !tc.want && status != 403 {
+				t.Fatalf("rejected caller status = %d, want 403 (body=%s)", status, body)
 			}
 		})
 	}

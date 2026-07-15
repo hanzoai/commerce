@@ -28,9 +28,8 @@ func postCreateTenant(t *testing.T, claims *auth.IAMClaims) (int, string) {
 	body := []byte(`{"name":"authz-tenant","hostnames":["pay.authz.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	return w.Code, w.Body.String()
+	code, respBody, _ := doReq(t, router, req)
+	return code, string(respBody)
 }
 
 // TestCreateTenant_OrgOwner_403 is the core Red HIGH regression: an org owner
@@ -82,9 +81,8 @@ func TestListProviders_ForgedAdminRole_403(t *testing.T) {
 	router := newRouterWithClaims(s, claims)
 
 	req := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("role-name-only tenant-admin status=%d want 403; body=%s", w.Code, w.Body.String())
+	code, body, _ := doReq(t, router, req)
+	if code != http.StatusForbidden {
+		t.Fatalf("role-name-only tenant-admin status=%d want 403; body=%s", code, body)
 	}
 }

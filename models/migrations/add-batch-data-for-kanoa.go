@@ -3,15 +3,15 @@ package migrations
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/hanzoai/commerce/models/order"
+	"github.com/zap-proto/zip"
 
 	ds "github.com/hanzoai/commerce/datastore"
 )
 
 var _ = New("add-batch-data-for-kanoa",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {

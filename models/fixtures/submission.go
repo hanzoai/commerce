@@ -1,12 +1,12 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/submission"
 )
 
-var Submission = New("submission", func(c *gin.Context) *submission.Submission {
+var Submission = New("submission", func(c *zip.Ctx) *submission.Submission {
 	db := getNamespaceDb(c)
 
 	sub := submission.New(db)

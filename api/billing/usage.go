@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -50,15 +50,14 @@ type usageRequest struct {
 // GetUsage returns usage transactions for an IAM user, filtered by tag "api-usage".
 //
 //	GET /v1/billing/usage?user=hanzo/alice&currency=usd
-func GetUsage(c *gin.Context) {
+func GetUsage(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	user := strings.TrimSpace(c.Query("user"))
 	if user == "" {
-		http.Fail(c, 400, "user query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -70,20 +69,19 @@ func GetUsage(c *gin.Context) {
 		Filter("SourceId=", user).
 		Filter("Tags=", "api-usage")
 
-	cur := currency.Type(strings.ToLower(c.DefaultQuery("currency", "")))
+	cur := currency.Type(strings.ToLower(c.Query("currency")))
 	if cur != "" {
 		q = q.Filter("Currency=", cur)
 	}
 
 	if _, err := q.GetAll(&transs); err != nil {
 		log.Error("Failed to query usage transactions: %v", err, c)
-		http.Fail(c, 500, "failed to query usage", err)
-		return
+		return http.Fail(c, 500, "failed to query usage", err)
 	}
 
-	items := make([]gin.H, 0, len(transs))
+	items := make([]map[string]any, 0, len(transs))
 	for _, t := range transs {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"transactionId": t.Id(),
 			"amount":        t.Amount,
 			"currency":      t.Currency,
@@ -93,7 +91,7 @@ func GetUsage(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":  user,
 		"count": len(items),
 		"usage": items,
@@ -119,19 +117,17 @@ func roundMicrosToCents(micros int64) int64 {
 //	POST /v1/billing/usage
 //
 // Creates a withdraw transaction deducting the cost from the user's balance.
-func RecordUsage(c *gin.Context) {
+func RecordUsage(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req usageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	// Lossless sub-cent handling. `amountMicros` (micro-USD, 1e6=$1) carries full
@@ -142,8 +138,7 @@ func RecordUsage(c *gin.Context) {
 	}
 	if effMicros <= 0 {
 		// Genuinely zero-cost — acknowledge, no transaction.
-		c.JSON(200, gin.H{"user": req.User, "amount": 0, "status": "skipped"})
-		return
+		return c.JSON(200, map[string]any{"user": req.User, "amount": 0, "status": "skipped"})
 	}
 
 	// Round to NEAREST cent (round-half-up), NOT floor. Floor systematically
@@ -158,8 +153,7 @@ func RecordUsage(c *gin.Context) {
 	if amountCents <= 0 {
 		// Sub-half-cent spend rounds to $0.00 (statistically fair, E[loss]=0).
 		// Acknowledge without debiting; echo the exact micros for audit.
-		c.JSON(200, gin.H{"user": req.User, "amount": 0, "amountMicros": effMicros, "status": "rounded-to-zero"})
-		return
+		return c.JSON(200, map[string]any{"user": req.User, "amount": 0, "amountMicros": effMicros, "status": "rounded-to-zero"})
 	}
 
 	// Idempotency guard (money-critical). A retry (client lost the response) or a
@@ -168,7 +162,7 @@ func RecordUsage(c *gin.Context) {
 	// spend. The datastore is already org-namespaced, so the key is per-tenant.
 	// No key => caller opted out of the guard (behavior unchanged).
 	var idemRec *idempotencykey.IdempotencyKey
-	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if idemKey == "" {
 		idemKey = strings.TrimSpace(req.RequestID)
 	}
@@ -181,12 +175,11 @@ func RecordUsage(c *gin.Context) {
 		} else if replay {
 			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
 				// Retry of a completed debit — replay the stored body, no 2nd debit.
-				c.Data(200, "application/json", []byte(rec.Response))
-				return
+				c.SetHeader("Content-Type", "application/json")
+				return c.Bytes(200, []byte(rec.Response))
 			}
 			// Concurrent in-flight debit for this key — never run a second one.
-			http.Fail(c, 409, "usage recording already in progress", nil)
-			return
+			return http.Fail(c, 409, "usage recording already in progress", nil)
 		} else {
 			idemRec = rec
 		}
@@ -239,8 +232,7 @@ func RecordUsage(c *gin.Context) {
 	// Balance gating happens at request time in Cloud-API.
 	if err := trans.Create(); err != nil {
 		log.Error("Failed to record usage transaction: %v", err, c)
-		http.Fail(c, 500, "failed to record usage", err)
-		return
+		return http.Fail(c, 500, "failed to record usage", err)
 	}
 
 	// Also create a MeterEvent for backward compatibility with the new
@@ -279,7 +271,7 @@ func RecordUsage(c *gin.Context) {
 	// Fire-and-forget, same posture as revenue share.
 	go engine.AccrueOSSPayout(db, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), !org.Live)
 
-	resp := gin.H{
+	resp := map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        amountCents,
@@ -287,7 +279,6 @@ func RecordUsage(c *gin.Context) {
 		"currency":      cur,
 		"type":          "withdraw",
 	}
-	c.JSON(201, resp)
 
 	// Seal the idempotency guard with the exact success body so a retry replays
 	// it verbatim (no second withdraw, identical response).
@@ -296,4 +287,6 @@ func RecordUsage(c *gin.Context) {
 			_ = idempotencykey.Complete(idemRec, string(body))
 		}
 	}
+
+	return c.JSON(201, resp)
 }

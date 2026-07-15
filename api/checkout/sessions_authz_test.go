@@ -1,24 +1,24 @@
 package checkout
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // mountCheckout registers the real checkout route stack (including the
-// publishedRequired auth middleware on /sessions) on a fresh gin engine, exactly
+// publishedRequired auth middleware on /sessions) on a fresh zip app, exactly
 // as the binary does at /v1.
-func mountCheckout(t *testing.T) *gin.Engine {
+func mountCheckout(t *testing.T) *zip.App {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
-	eng := gin.New()
-	Route(eng.Group("/v1"))
-	return eng
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	Route(app.Group("/v1"))
+	return app
 }
 
 // TestSessions_AnonymousMintBlocked is the core P0 regression: POST
@@ -28,7 +28,7 @@ func mountCheckout(t *testing.T) *gin.Engine {
 // org-selector the old handler honored (body org, ?org, X-Org-Id, X-Hanzo-Org):
 // every one must fail closed with no checkout link in the response.
 func TestSessions_AnonymousMintBlocked(t *testing.T) {
-	eng := mountCheckout(t)
+	app := mountCheckout(t)
 
 	const body = `{"org":"hanzo","tenant":"hanzo","currency":"USD",` +
 		`"successUrl":"https://hanzo.ai/ok",` +
@@ -53,16 +53,20 @@ func TestSessions_AnonymousMintBlocked(t *testing.T) {
 			for k, v := range tc.headers {
 				req.Header.Set(k, v)
 			}
-			w := httptest.NewRecorder()
-			eng.ServeHTTP(w, req)
+			resp, err := app.Fiber().Test(req)
+			if err != nil {
+				t.Fatalf("anon %s: request error: %v", tc.name, err)
+			}
+			defer resp.Body.Close()
+			bodyBytes, _ := io.ReadAll(resp.Body)
 
-			if w.Code != http.StatusUnauthorized && w.Code != http.StatusForbidden {
-				t.Fatalf("anon %s: status = %d, want 401/403 (anonymous mint must be closed)", tc.name, w.Code)
+			if resp.StatusCode != http.StatusUnauthorized && resp.StatusCode != http.StatusForbidden {
+				t.Fatalf("anon %s: status = %d, want 401/403 (anonymous mint must be closed)", tc.name, resp.StatusCode)
 			}
 			// Fail closed: no minted link, ever.
-			if b := w.Body.String(); strings.Contains(b, "checkoutUrl") ||
+			if b := string(bodyBytes); strings.Contains(b, "checkoutUrl") ||
 				strings.Contains(b, "square.link") || strings.Contains(b, "squareup") {
-				t.Fatalf("anon %s leaked a checkout link (status %d): %s", tc.name, w.Code, b)
+				t.Fatalf("anon %s leaked a checkout link (status %d): %s", tc.name, resp.StatusCode, b)
 			}
 		})
 	}

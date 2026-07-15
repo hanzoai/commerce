@@ -3,10 +3,9 @@
 package billing
 
 import (
-	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // TestResolveWebhookOrgSessionlessDoesNotPanic is the regression guard for the
@@ -16,9 +15,8 @@ import (
 // exist") after passing HMAC verification. Sessionless resolution must fall
 // through to header/env/default lookup instead.
 func TestResolveWebhookOrgSessionlessDoesNotPanic(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/v1/billing/webhooks/square", nil)
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	c := app.TestCtx("POST", "/v1/billing/webhooks/square")
 
 	defer func() {
 		if r := recover(); r != nil {

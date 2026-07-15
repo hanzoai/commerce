@@ -37,11 +37,11 @@ type Config struct {
 type Provider struct {
 	*processor.BaseProcessor
 
-	mu           sync.RWMutex
-	config       Config
-	httpClient   *http.Client
-	accessToken  string
-	tokenExpiry  time.Time
+	mu          sync.RWMutex
+	config      Config
+	httpClient  *http.Client
+	accessToken string
+	tokenExpiry time.Time
 }
 
 func init() {
@@ -375,11 +375,11 @@ func (p *Provider) ValidateWebhook(ctx context.Context, payload []byte, signatur
 
 	// Parse the transmission headers from the signature string.
 	var headers struct {
-		TransmissionID  string `json:"transmission_id"`
+		TransmissionID   string `json:"transmission_id"`
 		TransmissionTime string `json:"transmission_time"`
-		CertURL         string `json:"cert_url"`
-		AuthAlgo        string `json:"auth_algo"`
-		TransmissionSig string `json:"transmission_sig"`
+		CertURL          string `json:"cert_url"`
+		AuthAlgo         string `json:"auth_algo"`
+		TransmissionSig  string `json:"transmission_sig"`
 	}
 	if err := json.Unmarshal([]byte(signature), &headers); err != nil {
 		return nil, p.payErr("WEBHOOK_PARSE", "failed to parse webhook signature headers", err)
@@ -703,14 +703,14 @@ func decimalToCents(value string, cur currency.Type) currency.Cents {
 // ---------------------------------------------------------------------------
 
 type paypalOrder struct {
-	ID             string              `json:"id"`
-	Intent         string              `json:"intent"`
-	Status         string              `json:"status"`
-	PurchaseUnits  []paypalPurchaseUnit `json:"purchase_units"`
-	Payer          interface{}         `json:"payer"`
-	Links          interface{}         `json:"links"`
-	CreateTime     string              `json:"create_time"`
-	UpdateTime     string              `json:"update_time"`
+	ID            string               `json:"id"`
+	Intent        string               `json:"intent"`
+	Status        string               `json:"status"`
+	PurchaseUnits []paypalPurchaseUnit `json:"purchase_units"`
+	Payer         interface{}          `json:"payer"`
+	Links         interface{}          `json:"links"`
+	CreateTime    string               `json:"create_time"`
+	UpdateTime    string               `json:"update_time"`
 }
 
 type paypalPurchaseUnit struct {

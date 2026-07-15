@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/query"
@@ -164,13 +165,12 @@ func TestGlobalRegistryPopulated(t *testing.T) {
 
 // ─── HandleProviderWebhook end-to-end ───────────────────────────────────
 
-// newTestEngine builds a gin engine with the real webhook route mounted so
+// newTestEngine builds a zip app with the real webhook route mounted so
 // tests exercise routing + handler exactly as production does.
-func newTestEngine() *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.POST("/v1/billing/webhooks/:provider", HandleProviderWebhook)
-	return r
+func newTestEngine() *zip.App {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Post("/v1/billing/webhooks/:provider", HandleProviderWebhook)
+	return app
 }
 
 // registerSquare installs a configured Square processor in the global registry
@@ -205,11 +205,13 @@ func TestHandleProviderWebhook_MissingSignature(t *testing.T) {
 	r := newTestEngine()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{}`))
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	resp, terr := r.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400 for missing signature header", w.Code)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 for missing signature header", resp.StatusCode)
 	}
 }
 
@@ -225,11 +227,13 @@ func TestHandleProviderWebhook_BadSignatureReachesSquare(t *testing.T) {
 	r := newTestEngine()
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(`{"type":"payment.created"}`))
 	req.Header.Set(squareSigHeader, "dGhpcy1pcy1ub3QtdmFsaWQ=") // valid base64, wrong digest
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	resp, terr := r.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401 (signature rejected by Square)", w.Code)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 (signature rejected by Square)", resp.StatusCode)
 	}
 
 	var body struct {
@@ -237,8 +241,8 @@ func TestHandleProviderWebhook_BadSignatureReachesSquare(t *testing.T) {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v (raw=%s)", err, w.Body.String())
+	if err := json.Unmarshal(func() []byte { b, _ := io.ReadAll(resp.Body); return b }(), &body); err != nil {
+		t.Fatalf("decode error body: %v (raw=%s)", err, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 	if !strings.Contains(body.Error.Message, "invalid webhook signature") {
 		t.Errorf("error message = %q, want it to mention invalid webhook signature", body.Error.Message)
@@ -268,11 +272,13 @@ func TestHandleProviderWebhook_BodyOnlySignatureFails(t *testing.T) {
 	r := newTestEngine()
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/webhooks/square", strings.NewReader(string(body)))
 	req.Header.Set(squareSigHeader, sig)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
+	resp, terr := r.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401 — body-only signature must be rejected by the url+body scheme", w.Code)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 — body-only signature must be rejected by the url+body scheme", resp.StatusCode)
 	}
 }
 

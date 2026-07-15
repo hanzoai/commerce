@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -10,8 +10,8 @@ import (
 	"github.com/hanzoai/commerce/models/blockchains"
 )
 
-var BlockchainNamespace = New("blockchain-namespace", func(c *gin.Context) *namespace.Namespace {
-	db := datastore.New(c)
+var BlockchainNamespace = New("blockchain-namespace", func(c *zip.Ctx) *namespace.Namespace {
+	db := datastore.New(c.Context())
 	ns := namespace.New(db)
 	ns.Id_ = blockchains.BlockchainNamespace
 	ns.Name = blockchains.BlockchainNamespace

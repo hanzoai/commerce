@@ -3,7 +3,7 @@ package region
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -11,10 +11,9 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(regionModel.Region{})
@@ -27,50 +26,45 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 }
 
 // ListCountries returns all countries for a region.
-func ListCountries(c *gin.Context) {
+func ListCountries(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("regionid")
+	id := c.Param("regionid")
 
 	r := regionModel.New(db)
 	if err := r.GetById(id); err != nil {
-		http.Fail(c, 404, "No region found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No region found with id: "+id, err)
 	}
 
-	http.Render(c, 200, r.Countries)
+	return http.Render(c, 200, r.Countries)
 }
 
 // AddCountry adds a country to a region's country list.
-func AddCountry(c *gin.Context) {
+func AddCountry(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("regionid")
+	id := c.Param("regionid")
 
 	r := regionModel.New(db)
 	if err := r.GetById(id); err != nil {
-		http.Fail(c, 404, "No region found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No region found with id: "+id, err)
 	}
 
 	country := regionModel.Country{}
-	if err := json.Decode(c.Request.Body, &country); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &country); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if country.ISO2 == "" {
-		http.Fail(c, 400, "Country iso2 code is required", errors.New("missing iso2"))
-		return
+		return http.Fail(c, 400, "Country iso2 code is required", errors.New("missing iso2"))
 	}
 
 	// Check for duplicate
 	for _, existing := range r.Countries {
 		if existing.ISO2 == country.ISO2 {
-			http.Fail(c, 409, "Country already exists in region: "+country.ISO2, errors.New("duplicate country"))
-			return
+			return http.Fail(c, 409, "Country already exists in region: "+country.ISO2, errors.New("duplicate country"))
 		}
 	}
 
@@ -78,25 +72,23 @@ func AddCountry(c *gin.Context) {
 	r.Countries = append(r.Countries, country)
 
 	if err := r.Update(); err != nil {
-		http.Fail(c, 500, "Failed to update region", err)
-		return
+		return http.Fail(c, 500, "Failed to update region", err)
 	}
 
-	http.Render(c, 200, r)
+	return http.Render(c, 200, r)
 }
 
 // RemoveCountry removes a country from a region by ISO2 code.
-func RemoveCountry(c *gin.Context) {
+func RemoveCountry(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
-	id := c.Params.ByName("regionid")
-	countryCode := c.Params.ByName("countryCode")
+	id := c.Param("regionid")
+	countryCode := c.Param("countryCode")
 
 	r := regionModel.New(db)
 	if err := r.GetById(id); err != nil {
-		http.Fail(c, 404, "No region found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No region found with id: "+id, err)
 	}
 
 	found := false
@@ -110,16 +102,14 @@ func RemoveCountry(c *gin.Context) {
 	}
 
 	if !found {
-		http.Fail(c, 404, "Country not found in region: "+countryCode, errors.New("country not found"))
-		return
+		return http.Fail(c, 404, "Country not found in region: "+countryCode, errors.New("country not found"))
 	}
 
 	r.Countries = countries
 
 	if err := r.Update(); err != nil {
-		http.Fail(c, 500, "Failed to update region", err)
-		return
+		return http.Fail(c, 500, "Failed to update region", err)
 	}
 
-	http.Render(c, 200, r)
+	return http.Render(c, 200, r)
 }

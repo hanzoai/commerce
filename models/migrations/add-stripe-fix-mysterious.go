@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/payment"
@@ -12,8 +12,8 @@ import (
 // Legacy migration: Stripe charge lookups removed.
 // This migration is historical and will no-op.
 var _ = New("add-stripe-fix-mysterious",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {

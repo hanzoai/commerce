@@ -89,4 +89,3 @@ func New(db *datastore.Datastore) *SetupIntent {
 func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query(kind)
 }
-

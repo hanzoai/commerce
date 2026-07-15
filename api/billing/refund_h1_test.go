@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/mintauth"
@@ -22,36 +23,61 @@ import (
 // org + datastore context and an optional header set — the harness for the H1
 // money-correctness tests (Deposit/Refund behavior, independent of the C1 gate,
 // which is proven separately). The org and ctx are shared with the test's setup
-// so the handler's org.Namespaced(c) resolves the SAME namespace + defaultDB the
+// so the handler's org.Namespaced(c.Context()) resolves the SAME namespace + defaultDB the
 // setup wrote to.
-func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h gin.HandlerFunc, body string, headers map[string]string) *httptest.ResponseRecorder {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
+func invokeMoneyHandler(org *organization.Organization, ctx context.Context, h zip.Handler, body string, headers map[string]string) *http.Response {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	// These money handlers (Deposit/Refund) run in production ONLY behind
 	// middleware.PlatformOnly, which calls AuthorizeMint. Invoking them directly
 	// here skips that middleware, so authorize the datastore context to faithfully
 	// reproduce the post-gate state; the GATE itself (org-admin → 403 / ledger-sink
 	// refusal) is proven separately in mint_surface_test.go and the C1 tests.
-	c.Set("context", mintauth.WithAuthorized(ctx))
+	app.Post("/v1/billing/x", func(c *zip.Ctx) error {
+		c.Locals("organization", org)
+		c.SetContext(mintauth.WithAuthorized(ctx))
+		return c.Next()
+	}, h)
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/x", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	c.Request = req
-	h(c)
-	return w
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		panic(err)
+	}
+	return resp
 }
 
-func txID(t *testing.T, w *httptest.ResponseRecorder) string {
-	t.Helper()
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad response json: %v (%s)", err, w.Body.String())
+// driveSeeded mounts handler on a throwaway zip app behind seed (which sets the
+// locals a live middleware chain would set), drives req through REAL routing so
+// path params, query, and body parse exactly as production, and returns the
+// recorder. routePattern carries the :param placeholders; req's URL is the
+// concrete path. The shared harness for the direct-handler-drive tests that a
+// gin CreateTestContext + handler(c) used to express.
+func driveSeeded(seed func(*zip.Ctx), routePattern string, req *http.Request, handler zip.Handler) *http.Response {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.All(routePattern, func(c *zip.Ctx) error {
+		if seed != nil {
+			seed(c)
+		}
+		return c.Next()
+	}, handler)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		panic(err)
 	}
-	id, _ := resp["transactionId"].(string)
+	return resp
+}
+
+func txID(t *testing.T, r *http.Response) string {
+	t.Helper()
+	raw, _ := io.ReadAll(r.Body)
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("bad response json: %v (%s)", err, string(raw))
+	}
+	id, _ := out["transactionId"].(string)
 	return id
 }
 
@@ -84,9 +110,9 @@ func TestRefund_MissingOriginal_404(t *testing.T) {
 	defer ctx.Close()
 	org := moneyOrg("h1r-missing")
 	body := `{"user":"h1r-missing/alice","amount":100,"originalTransactionId":"does-not-exist"}`
-	w := invokeMoneyHandler(org, ctx, Refund, body, nil)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("missing original: status=%d body=%s, want 404", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Refund, body, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing original: status=%d body=%s, want 404", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -99,9 +125,9 @@ func TestRefund_OverOriginalAmount_400(t *testing.T) {
 	origID := seedCharge(t, org, ctx, subject, 1000)
 
 	body := `{"user":"` + subject + `","amount":1500,"originalTransactionId":"` + origID + `"}`
-	w := invokeMoneyHandler(org, ctx, Refund, body, nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("over-cap refund: status=%d body=%s, want 400", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Refund, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("over-cap refund: status=%d body=%s, want 400", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -114,9 +140,9 @@ func TestRefund_WrongSubject_400(t *testing.T) {
 	origID := seedCharge(t, org, ctx, "h1r-subject/alice", 1000)
 
 	body := `{"user":"h1r-subject/bob","amount":100,"originalTransactionId":"` + origID + `"}`
-	w := invokeMoneyHandler(org, ctx, Refund, body, nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("wrong-subject refund: status=%d body=%s, want 400", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Refund, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("wrong-subject refund: status=%d body=%s, want 400", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -139,9 +165,9 @@ func TestRefund_NotACharge_400(t *testing.T) {
 	dep.MustCreate()
 
 	body := `{"user":"` + subject + `","amount":100,"originalTransactionId":"` + dep.Id() + `"}`
-	w := invokeMoneyHandler(org, ctx, Refund, body, nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("refund-of-credit: status=%d body=%s, want 400 (not a refundable charge)", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Refund, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("refund-of-credit: status=%d body=%s, want 400 (not a refundable charge)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -154,9 +180,9 @@ func TestRefund_CurrencyMismatch_400(t *testing.T) {
 	origID := seedCharge(t, org, ctx, subject, 1000) // USD
 
 	body := `{"user":"` + subject + `","amount":100,"currency":"eur","originalTransactionId":"` + origID + `"}`
-	w := invokeMoneyHandler(org, ctx, Refund, body, nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("currency-mismatch refund: status=%d body=%s, want 400", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Refund, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("currency-mismatch refund: status=%d body=%s, want 400", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -173,8 +199,8 @@ func TestRefund_Idempotent_OneRefundPerOriginal(t *testing.T) {
 
 	first := `{"user":"` + subject + `","amount":400,"originalTransactionId":"` + origID + `"}`
 	w1 := invokeMoneyHandler(org, ctx, Refund, first, nil)
-	if w1.Code != http.StatusCreated {
-		t.Fatalf("first refund: status=%d body=%s, want 201", w1.Code, w1.Body.String())
+	if w1.StatusCode != http.StatusCreated {
+		t.Fatalf("first refund: status=%d body=%s, want 201", w1.StatusCode, func() string { b, _ := io.ReadAll(w1.Body); return string(b) }())
 	}
 	tid1 := txID(t, w1)
 	if tid1 == "" {
@@ -184,8 +210,8 @@ func TestRefund_Idempotent_OneRefundPerOriginal(t *testing.T) {
 	// Second refund of the SAME original with a DIFFERENT amount must not double-mint.
 	second := `{"user":"` + subject + `","amount":200,"originalTransactionId":"` + origID + `"}`
 	w2 := invokeMoneyHandler(org, ctx, Refund, second, nil)
-	if w2.Code != http.StatusOK {
-		t.Fatalf("second refund of same original: status=%d body=%s, want 200 (idempotent replay)", w2.Code, w2.Body.String())
+	if w2.StatusCode != http.StatusOK {
+		t.Fatalf("second refund of same original: status=%d body=%s, want 200 (idempotent replay)", w2.StatusCode, func() string { b, _ := io.ReadAll(w2.Body); return string(b) }())
 	}
 	if tid2 := txID(t, w2); tid2 != tid1 {
 		t.Fatalf("second refund minted a NEW transaction %q (first was %q) — double refund", tid2, tid1)

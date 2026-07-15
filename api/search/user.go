@@ -3,7 +3,7 @@ package search
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/iface"
@@ -16,14 +16,13 @@ import (
 	searchutil "github.com/hanzoai/commerce/util/search"
 )
 
-func searchUser(c *gin.Context) {
-	q := c.Request.URL.Query().Get("q")
+func searchUser(c *zip.Ctx) error {
+	q := c.Query("q")
 
 	u := user.User{}
 	index, err := searchutil.Open(mixin.DefaultIndex)
 	if err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'user'"), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to find index 'user'"), err)
 	}
 
 	db := datastore.New(middleware.GetNamespace(c))
@@ -42,8 +41,7 @@ func searchUser(c *gin.Context) {
 			break
 		}
 		if err != nil {
-			http.Fail(c, 404, fmt.Sprintf("Failed to search index 'user' %v", err), err)
-			return
+			return http.Fail(c, 404, fmt.Sprintf("Failed to search index 'user' %v", err), err)
 		}
 
 		keys = append(keys, key.FromDBKey(hashid.MustDecodeKey(db.Context, doc.Id())))
@@ -55,5 +53,5 @@ func searchUser(c *gin.Context) {
 		// return
 	}
 
-	http.Render(c, 200, users)
+	return http.Render(c, 200, users)
 }

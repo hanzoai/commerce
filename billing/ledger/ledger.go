@@ -186,13 +186,13 @@ type Ledger interface {
 // MemLedger is an in-memory Ledger for testing and development.
 type MemLedger struct {
 	mu       sync.RWMutex
-	accounts map[string]*Account            // id -> account
-	entries  map[string]*Entry              // id -> entry
-	holds    map[string]*Hold               // id -> hold
-	balances map[string]*Balance            // "accountID:currency" -> balance
-	idemp    map[string]string              // "tenantID:idempotencyKey" -> entryID
-	postings map[string][]Posting           // entryID -> postings
-	acctName map[string]string              // "tenantID:name" -> accountID
+	accounts map[string]*Account  // id -> account
+	entries  map[string]*Entry    // id -> entry
+	holds    map[string]*Hold     // id -> hold
+	balances map[string]*Balance  // "accountID:currency" -> balance
+	idemp    map[string]string    // "tenantID:idempotencyKey" -> entryID
+	postings map[string][]Posting // entryID -> postings
+	acctName map[string]string    // "tenantID:name" -> accountID
 }
 
 // NewMemLedger creates a new in-memory ledger.
@@ -624,8 +624,8 @@ func (m *MemLedger) RecordPayment(ctx context.Context, tenantID, paymentIntentID
 	}
 
 	postings := []Posting{
-		{AccountID: cashAcct.ID, Amount: amount, Currency: cur},              // debit cash
-		{AccountID: custAcct.ID, Amount: -(amount - fees), Currency: cur},    // credit customer
+		{AccountID: cashAcct.ID, Amount: amount, Currency: cur},           // debit cash
+		{AccountID: custAcct.ID, Amount: -(amount - fees), Currency: cur}, // credit customer
 	}
 
 	if fees > 0 {
@@ -680,8 +680,8 @@ func (m *MemLedger) RecordRefund(ctx context.Context, tenantID, refundID string,
 		Description:    fmt.Sprintf("Refund %s: %d %s to customer %s", refundID, amount, cur, customerID),
 		RefundID:       refundID,
 		Postings: []Posting{
-			{AccountID: custAcct.ID, Amount: amount, Currency: cur},   // debit customer (reduce liability)
-			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur},  // credit cash (reduce asset)
+			{AccountID: custAcct.ID, Amount: amount, Currency: cur},  // debit customer (reduce liability)
+			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur}, // credit cash (reduce asset)
 		},
 	}
 
@@ -718,8 +718,8 @@ func (m *MemLedger) RecordPayout(ctx context.Context, tenantID, payoutID string,
 		Description:    fmt.Sprintf("Payout %s: %d %s to merchant %s", payoutID, amount, cur, merchantID),
 		PayoutID:       payoutID,
 		Postings: []Posting{
-			{AccountID: merchAcct.ID, Amount: amount, Currency: cur},  // debit merchant (reduce liability)
-			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur},  // credit cash (reduce asset)
+			{AccountID: merchAcct.ID, Amount: amount, Currency: cur}, // debit merchant (reduce liability)
+			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur}, // credit cash (reduce asset)
 		},
 	}
 
@@ -756,8 +756,8 @@ func (m *MemLedger) RecordDispute(ctx context.Context, tenantID, disputeID strin
 		Description:    fmt.Sprintf("Dispute %s: %d %s from customer %s", disputeID, amount, cur, customerID),
 		DisputeID:      disputeID,
 		Postings: []Posting{
-			{AccountID: disputeAcct.ID, Amount: amount, Currency: cur},  // debit disputes held
-			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur},    // credit cash
+			{AccountID: disputeAcct.ID, Amount: amount, Currency: cur}, // debit disputes held
+			{AccountID: cashAcct.ID, Amount: -amount, Currency: cur},   // credit cash
 		},
 	}
 
