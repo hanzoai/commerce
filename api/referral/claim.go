@@ -3,7 +3,7 @@ package referral
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -27,19 +27,17 @@ type claimRequest struct {
 // rules, creates credit grants for both parties, and records the referral.
 //
 //	POST /v1/referral/claim
-func ClaimReferral(c *gin.Context) {
+func ClaimReferral(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req claimRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Code == "" {
-		http.Fail(c, 400, "code is required", nil)
-		return
+		return http.Fail(c, 400, "code is required", nil)
 	}
 
 	// Determine referee userId: prefer the gateway-authenticated user
@@ -52,19 +50,16 @@ func ClaimReferral(c *gin.Context) {
 		refereeUserId = subject
 	}
 	if refereeUserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	// 1. Look up referrer by code.
 	ref := referrer.New(db)
 	if key, ok, err := referrer.Query(db).Filter("Code=", req.Code).First(ref); err != nil {
 		log.Error("Failed to query referrer by code: %v", err, c)
-		http.Fail(c, 500, "failed to look up referral code", err)
-		return
+		return http.Fail(c, 500, "failed to look up referral code", err)
 	} else if !ok {
-		http.Fail(c, 404, "invalid referral code", nil)
-		return
+		return http.Fail(c, 404, "invalid referral code", nil)
 	} else {
 		ref.Init(db)
 		ref.SetKey(key)
@@ -72,26 +67,22 @@ func ClaimReferral(c *gin.Context) {
 
 	// 2. Validate: not blacklisted.
 	if ref.Blacklisted {
-		http.Fail(c, 403, "referral code is not available", nil)
-		return
+		return http.Fail(c, 403, "referral code is not available", nil)
 	}
 
 	// 3. Validate: not self-referral.
 	if ref.UserId == refereeUserId {
-		http.Fail(c, 403, "cannot use your own referral code", nil)
-		return
+		return http.Fail(c, 403, "cannot use your own referral code", nil)
 	}
 
 	// 4. Validate: not duplicate (same referee userId already claimed).
 	existingReferrals := make([]*referral.Referral, 0)
 	if _, err := referral.Query(db).Filter("UserId=", refereeUserId).Limit(1).GetAll(&existingReferrals); err != nil {
 		log.Error("Failed to check existing referrals: %v", err, c)
-		http.Fail(c, 500, "failed to check existing referrals", err)
-		return
+		return http.Fail(c, 500, "failed to check existing referrals", err)
 	}
 	if len(existingReferrals) > 0 {
-		http.Fail(c, 409, "user has already claimed a referral", nil)
-		return
+		return http.Fail(c, 409, "user has already claimed a referral", nil)
 	}
 
 	// 5. Validate: referrer daily limit.
@@ -100,8 +91,7 @@ func ClaimReferral(c *gin.Context) {
 	todayReferrals := make([]*referral.Referral, 0)
 	if _, err := referral.Query(db).Filter("Referrer.Id=", ref.Id()).GetAll(&todayReferrals); err != nil {
 		log.Error("Failed to count daily referrals: %v", err, c)
-		http.Fail(c, 500, "failed to check daily limit", err)
-		return
+		return http.Fail(c, 500, "failed to check daily limit", err)
 	}
 	todayCount := 0
 	for _, r := range todayReferrals {
@@ -110,8 +100,7 @@ func ClaimReferral(c *gin.Context) {
 		}
 	}
 	if todayCount >= cfg.Fraud.MaxReferralsPerDay {
-		http.Fail(c, 429, "referrer has reached the daily referral limit", nil)
-		return
+		return http.Fail(c, 429, "referrer has reached the daily referral limit", nil)
 	}
 
 	// 6. Determine the referrer's tier based on total referral count.
@@ -151,8 +140,7 @@ func ClaimReferral(c *gin.Context) {
 
 	if err := refereeGrant.Create(); err != nil {
 		log.Error("Failed to create referee credit grant: %v", err, c)
-		http.Fail(c, 500, "failed to create referee credit", err)
-		return
+		return http.Fail(c, 500, "failed to create referee credit", err)
 	}
 
 	// 8. Create CreditGrant for referrer.
@@ -181,8 +169,7 @@ func ClaimReferral(c *gin.Context) {
 
 	if err := referrerGrant.Create(); err != nil {
 		log.Error("Failed to create referrer credit grant: %v", err, c)
-		http.Fail(c, 500, "failed to create referrer credit", err)
-		return
+		return http.Fail(c, 500, "failed to create referrer credit", err)
 	}
 
 	// 9. Create the Referral record.
@@ -197,8 +184,7 @@ func ClaimReferral(c *gin.Context) {
 
 	if err := rfl.Create(); err != nil {
 		log.Error("Failed to create referral record: %v", err, c)
-		http.Fail(c, 500, "failed to create referral record", err)
-		return
+		return http.Fail(c, 500, "failed to create referral record", err)
 	}
 
 	// 10. Update referrer state.
@@ -211,21 +197,21 @@ func ClaimReferral(c *gin.Context) {
 
 	log.Info("Referral claimed: referee=%s referrer=%s code=%s tier=%s", refereeUserId, ref.UserId, req.Code, tier.Id, c)
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"referralId": rfl.Id(),
 		"referrerId": ref.Id(),
 		"refereeId":  refereeUserId,
 		"tier":       tier.Id,
-		"creditGranted": gin.H{
-			"referee": gin.H{
-				"grantId":    refereeGrant.Id(),
+		"creditGranted": map[string]any{
+			"referee": map[string]any{
+				"grantId":     refereeGrant.Id(),
 				"amountCents": refereeCreditCents,
-				"expiresAt":  refereeGrant.ExpiresAt,
+				"expiresAt":   refereeGrant.ExpiresAt,
 			},
-			"referrer": gin.H{
-				"grantId":    referrerGrant.Id(),
+			"referrer": map[string]any{
+				"grantId":     referrerGrant.Id(),
 				"amountCents": referrerCreditCents,
-				"expiresAt":  referrerGrant.ExpiresAt,
+				"expiresAt":   referrerGrant.ExpiresAt,
 			},
 		},
 	})

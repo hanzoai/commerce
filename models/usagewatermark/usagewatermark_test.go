@@ -81,7 +81,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 		PeriodEnd:          end,
 		AggregatedValue:    10000,
 		EventCount:         100,
-		LastEventTimestamp:  now,
+		LastEventTimestamp: now,
 	}
 
 	ps, err := w.Save()
@@ -147,7 +147,7 @@ func TestFieldAssignment(t *testing.T) {
 		PeriodEnd:          now,
 		AggregatedValue:    7500,
 		EventCount:         55,
-		LastEventTimestamp:  now,
+		LastEventTimestamp: now,
 	}
 	if w.SubscriptionItemId != "si_test" {
 		t.Errorf("expected si_test, got %s", w.SubscriptionItemId)

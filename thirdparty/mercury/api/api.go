@@ -1,12 +1,11 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/hanzoai/commerce/util/router"
+	"github.com/zap-proto/zip"
 )
 
 // Route registers Mercury webhook endpoint.
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("mercury")
-	api.POST("/webhook", Webhook)
+	api.Post("/webhook", Webhook)
 }

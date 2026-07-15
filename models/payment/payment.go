@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"github.com/hanzoai/orm"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fee"
 	"github.com/hanzoai/commerce/models/mixin"
@@ -9,6 +8,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
@@ -27,7 +27,6 @@ const (
 	Refunded   Status = "refunded"
 	Unpaid     Status = "unpaid"
 )
-
 
 func init() { orm.Register[Payment]("payment") }
 

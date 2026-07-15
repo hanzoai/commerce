@@ -81,7 +81,7 @@ func BalanceCents(db *datastore.Datastore, g *GiftCard) (currency.Cents, error) 
 // past debit.
 //
 // db MUST be namespaced to the gift card's org (the caller passes
-// org.Namespaced(c)); every read/write below is thereby tenant-scoped.
+// org.Namespaced(c.Context())); every read/write below is thereby tenant-scoped.
 func Redeem(db *datastore.Datastore, g *GiftCard, amount currency.Cents, curr currency.Type, orderId, idempotencyKey string) (*giftcardredemption.GiftCardRedemption, currency.Cents, error) {
 	if amount <= 0 {
 		return nil, 0, ErrNonPositiveAmount

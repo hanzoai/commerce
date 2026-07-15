@@ -86,7 +86,7 @@ func openReproPostgres(t *testing.T) (backend db.DB, cleanup func()) {
 // (scope, key) perform AT MOST ONE withdraw.
 //
 // Each debit builds its OWN datastore (datastore.NewWithDB) exactly as each HTTP
-// request does in production (datastore.New(org.Namespaced(c))), both sharing the
+// request does in production (datastore.New(org.Namespaced(c.Context()))), both sharing the
 // one Postgres store. On the unfixed code the second Begin cannot find the guard
 // its own first write created (the read decodes the deterministic id into a
 // KIND-LESS key, which Postgres's kind-qualified Get never matches), so it

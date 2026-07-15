@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -16,14 +16,13 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Ensure imports are used.
 var _ = taxprovider.TaxProvider{}
 var _ = taxraterule.TaxRateRule{}
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	// CRUD for tax models
@@ -73,19 +72,17 @@ type calcResponse struct {
 // provinceCode, queries all TaxRates for that region, sums combinable
 // rates (or uses the default rate), then applies the effective rate to
 // each item.
-func Calculate(c *gin.Context) {
+func Calculate(c *zip.Ctx) error {
 	var req calcRequest
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		jsonhttp.Fail(c, 400, "Invalid request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return jsonhttp.Fail(c, 400, "Invalid request body", err)
 	}
 
 	if len(req.Items) == 0 {
-		jsonhttp.Fail(c, 400, "No items provided", nil)
-		return
+		return jsonhttp.Fail(c, 400, "No items provided", nil)
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
@@ -98,8 +95,7 @@ func Calculate(c *gin.Context) {
 		Filter("ProvinceCode=", req.ShippingAddress.ProvinceCode).
 		Get()
 	if err != nil {
-		jsonhttp.Fail(c, 500, "Failed to query tax region", err)
-		return
+		return jsonhttp.Fail(c, 500, "Failed to query tax region", err)
 	}
 
 	// If no province-level region, try country-level (empty province).
@@ -110,8 +106,7 @@ func Calculate(c *gin.Context) {
 			Filter("ProvinceCode=", "").
 			Get()
 		if err != nil {
-			jsonhttp.Fail(c, 500, "Failed to query tax region", err)
-			return
+			return jsonhttp.Fail(c, 500, "Failed to query tax region", err)
 		}
 	}
 
@@ -126,8 +121,7 @@ func Calculate(c *gin.Context) {
 				Tax:      0,
 			}
 		}
-		jsonhttp.Render(c, 200, calcResponse{Items: items, TotalTax: 0})
-		return
+		return jsonhttp.Render(c, 200, calcResponse{Items: items, TotalTax: 0})
 	}
 
 	// Fetch tax rates for this region.
@@ -135,8 +129,7 @@ func Calculate(c *gin.Context) {
 	var rates []*taxrate.TaxRate
 	q := taxrate.Query(db).Filter("TaxRegionId=", regionId)
 	if _, err := q.GetAll(&rates); err != nil {
-		jsonhttp.Fail(c, 500, "Failed to query tax rates", err)
-		return
+		return jsonhttp.Fail(c, 500, "Failed to query tax rates", err)
 	}
 
 	// Compute effective rate: sum all combinable rates, or fall back to
@@ -183,7 +176,7 @@ func Calculate(c *gin.Context) {
 
 	totalTax = roundCents(totalTax)
 
-	jsonhttp.Render(c, 200, calcResponse{
+	return jsonhttp.Render(c, 200, calcResponse{
 		Items:    items,
 		TotalTax: totalTax,
 	})

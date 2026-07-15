@@ -430,13 +430,13 @@ func (p *Provider) verifySNSSignature(ctx context.Context, msg *snsMessage) erro
 // ---------------------------------------------------------------------------
 
 type circlePayment struct {
-	ID         string      `json:"id"`
-	Type       string      `json:"type"`
-	Status     string      `json:"status"`
+	ID         string       `json:"id"`
+	Type       string       `json:"type"`
+	Status     string       `json:"status"`
 	Amount     circleAmount `json:"amount"`
-	Source     interface{} `json:"source"`
-	CreateDate string      `json:"createDate"`
-	UpdateDate string      `json:"updateDate"`
+	Source     interface{}  `json:"source"`
+	CreateDate string       `json:"createDate"`
+	UpdateDate string       `json:"updateDate"`
 }
 
 type circleAmount struct {
@@ -471,12 +471,12 @@ type circleNotification struct {
 }
 
 type snsMessage struct {
-	Type            string `json:"Type"`
-	MessageID       string `json:"MessageId"`
-	Message         string `json:"Message"`
-	Timestamp       string `json:"Timestamp"`
-	Signature       string `json:"Signature"`
-	SigningCertURL  string `json:"SigningCertURL"`
+	Type             string `json:"Type"`
+	MessageID        string `json:"MessageId"`
+	Message          string `json:"Message"`
+	Timestamp        string `json:"Timestamp"`
+	Signature        string `json:"Signature"`
+	SigningCertURL   string `json:"SigningCertURL"`
 	SignatureVersion string `json:"SignatureVersion"`
 }
 

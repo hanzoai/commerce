@@ -1,16 +1,15 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Route registers billing endpoints for service-to-service calls.
 // These are internal endpoints used by Cloud-API; require admin token.
-func Route(r router.Router, args ...gin.HandlerFunc) {
+func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// mintRequired gates the money-MINT routes (those that credit spendable
@@ -27,59 +26,59 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	api.Use(adminRequired)
 
 	// Tier (tier-aware billing)
-	api.GET("/tier", GetTier)
+	api.Get("/tier", GetTier)
 
 	// Included monthly usage allotment (plan free-tier credit).
 	// grant/run mutate; usage-rollup is the read surface for console.
-	api.POST("/allotment/grant", GrantAllotment)
-	api.POST("/allotment/run", RunAllotments)
-	api.GET("/usage-rollup", GetUsageRollup)
+	api.Post("/allotment/grant", GrantAllotment)
+	api.Post("/allotment/run", RunAllotments)
+	api.Get("/usage-rollup", GetUsageRollup)
 
 	// Balance & usage (existing)
-	api.GET("/balance", GetBalance)
-	api.GET("/balance/all", GetBalanceAll)
-	api.GET("/usage", GetUsage)
-	api.POST("/usage", RecordUsage)
+	api.Get("/balance", GetBalance)
+	api.Get("/balance/all", GetBalanceAll)
+	api.Get("/usage", GetUsage)
+	api.Post("/usage", RecordUsage)
 	// Money-MINT routes: service-token / global-admin ONLY (mintRequired).
-	api.POST("/deposit", mintRequired, Deposit)
-	api.POST("/refund", mintRequired, Refund)
+	api.Post("/deposit", mintRequired, Deposit)
+	api.Post("/refund", mintRequired, Refund)
 
 	// Chain-backed credit ledger (HUSD): the indexer backfill/reconcile pass and
 	// the metered-usage settlement sweep are platform-only (they move on-chain
 	// money / write the money ledger); status is a read-only observability surface.
-	api.POST("/husd/sync", mintRequired, SyncHUSD)
-	api.POST("/husd/settle", mintRequired, SettleHUSD)
-	api.POST("/husd/migrate", mintRequired, MigrateHUSD)
-	api.GET("/husd/status", StatusHUSD)
+	api.Post("/husd/sync", mintRequired, SyncHUSD)
+	api.Post("/husd/settle", mintRequired, SettleHUSD)
+	api.Post("/husd/migrate", mintRequired, MigrateHUSD)
+	api.Get("/husd/status", StatusHUSD)
 
 	// SBOM-driven OSS-developer payout.
 	//   POST /sbom               — arcd build pipeline ingests an image's SBOM
 	//   GET  /sbom               — list stored SBOM records
 	//   GET  /oss-accruals       — per-line accrual ledger reads
 	//   GET  /oss-payout/summary — per-package payout rollup (disbursement view)
-	api.POST("/sbom", IngestSBOM)
-	api.GET("/sbom", ListSBOMs)
-	api.GET("/oss-accruals", ListOSSAccruals)
-	api.GET("/oss-payout/summary", GetOSSPayoutSummary)
+	api.Post("/sbom", IngestSBOM)
+	api.Get("/sbom", ListSBOMs)
+	api.Get("/oss-accruals", ListOSSAccruals)
+	api.Get("/oss-payout/summary", GetOSSPayoutSummary)
 
 	// Meters
-	api.POST("/meters", CreateMeter)
-	api.GET("/meters", ListMeters)
-	api.GET("/meters/:id", GetMeter)
+	api.Post("/meters", CreateMeter)
+	api.Get("/meters", ListMeters)
+	api.Get("/meters/:id", GetMeter)
 
 	// Meter events
-	api.POST("/meter-events", RecordMeterEvents)
-	api.GET("/meter-events/summary", GetMeterEventsSummary)
+	api.Post("/meter-events", RecordMeterEvents)
+	api.Get("/meter-events/summary", GetMeterEventsSummary)
 
 	// Tier check (lightweight model-access gate for Chat / white-label)
-	api.GET("/tier-check", TierCheck)
+	api.Get("/tier-check", TierCheck)
 
 	// Credit grants (money-MINT: service-token / global-admin ONLY). Reads moved
 	// to the user group below. Void is a grant mutation in the same resource
 	// family — same platform-only bar, so an org owner can neither create nor
 	// alter a grant.
-	api.POST("/credit-grants", mintRequired, CreateCreditGrant)
-	api.POST("/credit-grants/:id/void", mintRequired, VoidCreditGrant)
+	api.Post("/credit-grants", mintRequired, CreateCreditGrant)
+	api.Post("/credit-grants/:id/void", mintRequired, VoidCreditGrant)
 
 	// Starter credit grant (service-to-service, idempotent, no payment method
 	// required). The on-signup welcome deposit invoked by chat / cloud-api on
@@ -87,169 +86,169 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Money-MINT: service-token / global-admin ONLY. (The user-facing,
 	// fixed-amount, idempotent welcome credit is the SEPARATE user-group
 	// POST /billing/credit → GrantStarterCredit, which stays self-service.)
-	api.POST("/grant-starter", mintRequired, GrantStarter)
+	api.Post("/grant-starter", mintRequired, GrantStarter)
 
 	// Pricing rules
-	api.POST("/pricing-rules", CreatePricingRule)
-	api.GET("/pricing-rules", ListPricingRules)
-	api.DELETE("/pricing-rules/:id", DeletePricingRule)
+	api.Post("/pricing-rules", CreatePricingRule)
+	api.Get("/pricing-rules", ListPricingRules)
+	api.Delete("/pricing-rules/:id", DeletePricingRule)
 
 	// Invoice preview (legacy)
-	api.POST("/invoice-preview", InvoicePreview)
+	api.Post("/invoice-preview", InvoicePreview)
 
 	// Billing invoices
-	api.POST("/invoices", CreateInvoice)
-	api.GET("/invoices", ListInvoices)
-	api.GET("/invoices/upcoming", UpcomingInvoice)
-	api.GET("/invoices/:id", GetInvoice)
-	api.POST("/invoices/:id/finalize", FinalizeInvoice)
-	api.POST("/invoices/:id/pay", PayInvoice)
-	api.POST("/invoices/:id/void", VoidInvoice)
+	api.Post("/invoices", CreateInvoice)
+	api.Get("/invoices", ListInvoices)
+	api.Get("/invoices/upcoming", UpcomingInvoice)
+	api.Get("/invoices/:id", GetInvoice)
+	api.Post("/invoices/:id/finalize", FinalizeInvoice)
+	api.Post("/invoices/:id/pay", PayInvoice)
+	api.Post("/invoices/:id/void", VoidInvoice)
 
 	// Billing subscriptions
-	api.POST("/subscriptions", CreateBillingSubscription)
-	api.GET("/subscriptions", ListBillingSubscriptions)
-	api.GET("/subscriptions/:id", GetBillingSubscription)
-	api.PATCH("/subscriptions/:id", UpdateBillingSubscription)
-	api.POST("/subscriptions/:id/cancel", CancelBillingSubscription)
-	api.POST("/subscriptions/:id/reactivate", ReactivateBillingSubscription)
-	api.POST("/subscriptions/:id/renew", RenewBillingSubscription)
+	api.Post("/subscriptions", CreateBillingSubscription)
+	api.Get("/subscriptions", ListBillingSubscriptions)
+	api.Get("/subscriptions/:id", GetBillingSubscription)
+	api.Patch("/subscriptions/:id", UpdateBillingSubscription)
+	api.Post("/subscriptions/:id/cancel", CancelBillingSubscription)
+	api.Post("/subscriptions/:id/reactivate", ReactivateBillingSubscription)
+	api.Post("/subscriptions/:id/renew", RenewBillingSubscription)
 
 	// Payment intents
-	api.POST("/payment-intents", CreatePaymentIntent)
-	api.GET("/payment-intents", ListPaymentIntents)
-	api.GET("/payment-intents/:id", GetPaymentIntent)
-	api.POST("/payment-intents/:id/confirm", ConfirmPaymentIntent)
-	api.POST("/payment-intents/:id/capture", CapturePaymentIntent)
-	api.POST("/payment-intents/:id/cancel", CancelPaymentIntent)
+	api.Post("/payment-intents", CreatePaymentIntent)
+	api.Get("/payment-intents", ListPaymentIntents)
+	api.Get("/payment-intents/:id", GetPaymentIntent)
+	api.Post("/payment-intents/:id/confirm", ConfirmPaymentIntent)
+	api.Post("/payment-intents/:id/capture", CapturePaymentIntent)
+	api.Post("/payment-intents/:id/cancel", CancelPaymentIntent)
 
 	// Setup intents
-	api.POST("/setup-intents", CreateSetupIntent)
-	api.GET("/setup-intents/:id", GetSetupIntent)
-	api.POST("/setup-intents/:id/confirm", ConfirmSetupIntent)
-	api.POST("/setup-intents/:id/cancel", CancelSetupIntent)
+	api.Post("/setup-intents", CreateSetupIntent)
+	api.Get("/setup-intents/:id", GetSetupIntent)
+	api.Post("/setup-intents/:id/confirm", ConfirmSetupIntent)
+	api.Post("/setup-intents/:id/cancel", CancelSetupIntent)
 
 	// Payment methods — moved to user group below (accepts both admin & user tokens)
 
 	// Subscription items
-	api.POST("/subscription-items", CreateSubscriptionItem)
-	api.GET("/subscription-items", ListSubscriptionItems)
-	api.GET("/subscription-items/:id", GetSubscriptionItem)
-	api.PATCH("/subscription-items/:id", UpdateSubscriptionItem)
-	api.DELETE("/subscription-items/:id", DeleteSubscriptionItem)
+	api.Post("/subscription-items", CreateSubscriptionItem)
+	api.Get("/subscription-items", ListSubscriptionItems)
+	api.Get("/subscription-items/:id", GetSubscriptionItem)
+	api.Patch("/subscription-items/:id", UpdateSubscriptionItem)
+	api.Delete("/subscription-items/:id", DeleteSubscriptionItem)
 
 	// Refunds
-	api.POST("/refunds", CreateRefund)
-	api.GET("/refunds", ListRefunds)
-	api.GET("/refunds/:id", GetRefund)
+	api.Post("/refunds", CreateRefund)
+	api.Get("/refunds", ListRefunds)
+	api.Get("/refunds/:id", GetRefund)
 
 	// Credit notes
-	api.POST("/credit-notes", CreateCreditNote)
-	api.GET("/credit-notes", ListCreditNotes)
-	api.GET("/credit-notes/:id", GetCreditNote)
-	api.POST("/credit-notes/:id/void", VoidCreditNote)
+	api.Post("/credit-notes", CreateCreditNote)
+	api.Get("/credit-notes", ListCreditNotes)
+	api.Get("/credit-notes/:id", GetCreditNote)
+	api.Post("/credit-notes/:id/void", VoidCreditNote)
 
 	// Disputes
-	api.GET("/disputes", ListDisputes)
-	api.GET("/disputes/:id", GetDispute)
-	api.PATCH("/disputes/:id", SubmitDisputeEvidence)
-	api.POST("/disputes/:id/close", CloseDispute)
+	api.Get("/disputes", ListDisputes)
+	api.Get("/disputes/:id", GetDispute)
+	api.Patch("/disputes/:id", SubmitDisputeEvidence)
+	api.Post("/disputes/:id/close", CloseDispute)
 
 	// Customer balance (reads stay admin; the adjustment MINTS balance →
 	// service-token / global-admin ONLY).
-	api.GET("/customer-balance", GetCustomerBalance)
-	api.POST("/customer-balance/adjustments", mintRequired, AdjustCustomerBalance)
-	api.GET("/balance-transactions", ListBalanceTransactions)
+	api.Get("/customer-balance", GetCustomerBalance)
+	api.Post("/customer-balance/adjustments", mintRequired, AdjustCustomerBalance)
+	api.Get("/balance-transactions", ListBalanceTransactions)
 
 	// Payouts. Creating/cancelling a payout MOVES money out — money-MINT bar
 	// (service-token / global-admin ONLY). Reads stay admin-scoped.
-	api.POST("/payouts", mintRequired, CreatePayout)
-	api.GET("/payouts", ListPayouts)
-	api.GET("/payouts/:id", GetPayout)
-	api.POST("/payouts/:id/cancel", mintRequired, CancelPayout)
+	api.Post("/payouts", mintRequired, CreatePayout)
+	api.Get("/payouts", ListPayouts)
+	api.Get("/payouts/:id", GetPayout)
+	api.Post("/payouts/:id/cancel", mintRequired, CancelPayout)
 
 	// Billing events
-	api.GET("/events", ListBillingEvents)
-	api.GET("/events/:id", GetBillingEvent)
+	api.Get("/events", ListBillingEvents)
+	api.Get("/events/:id", GetBillingEvent)
 
 	// Webhook endpoints (outbound: for creating and listing webhook subscriptions)
-	api.POST("/webhook-endpoints", CreateWebhookEndpoint)
-	api.GET("/webhook-endpoints", ListWebhookEndpoints)
-	api.GET("/webhook-endpoints/:id", GetWebhookEndpoint)
-	api.PATCH("/webhook-endpoints/:id", UpdateWebhookEndpoint)
-	api.DELETE("/webhook-endpoints/:id", DeleteWebhookEndpoint)
+	api.Post("/webhook-endpoints", CreateWebhookEndpoint)
+	api.Get("/webhook-endpoints", ListWebhookEndpoints)
+	api.Get("/webhook-endpoints/:id", GetWebhookEndpoint)
+	api.Patch("/webhook-endpoints/:id", UpdateWebhookEndpoint)
+	api.Delete("/webhook-endpoints/:id", DeleteWebhookEndpoint)
 
 	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
 	// Registered outside the admin-token group because providers do not carry
 	// commerce admin tokens; the provider's signature is the trust anchor.
-	r.POST("/billing/webhooks/:provider", HandleProviderWebhook)
+	r.Post("/billing/webhooks/:provider", HandleProviderWebhook)
 
 	// Customer portal
-	api.GET("/portal/overview", PortalOverview)
-	api.GET("/portal/invoices", PortalInvoices)
-	api.GET("/portal/subscriptions", PortalSubscriptions)
-	api.GET("/portal/payment-methods", PortalPaymentMethods)
+	api.Get("/portal/overview", PortalOverview)
+	api.Get("/portal/invoices", PortalInvoices)
+	api.Get("/portal/subscriptions", PortalSubscriptions)
+	api.Get("/portal/payment-methods", PortalPaymentMethods)
 
 	// Subscription schedules
-	api.POST("/subscription-schedules", CreateSubscriptionSchedule)
-	api.GET("/subscription-schedules", ListSubscriptionSchedules)
-	api.GET("/subscription-schedules/:id", GetSubscriptionSchedule)
-	api.PATCH("/subscription-schedules/:id", UpdateSubscriptionSchedule)
-	api.POST("/subscription-schedules/:id/cancel", CancelSubscriptionSchedule)
-	api.POST("/subscription-schedules/:id/release", ReleaseSubscriptionSchedule)
+	api.Post("/subscription-schedules", CreateSubscriptionSchedule)
+	api.Get("/subscription-schedules", ListSubscriptionSchedules)
+	api.Get("/subscription-schedules/:id", GetSubscriptionSchedule)
+	api.Patch("/subscription-schedules/:id", UpdateSubscriptionSchedule)
+	api.Post("/subscription-schedules/:id/cancel", CancelSubscriptionSchedule)
+	api.Post("/subscription-schedules/:id/release", ReleaseSubscriptionSchedule)
 
 	// Bank transfer instructions
-	api.POST("/bank-transfer-instructions", CreateBankTransferInstruction)
-	api.GET("/bank-transfer-instructions", ListBankTransferInstructions)
-	api.GET("/bank-transfer-instructions/:id", GetBankTransferInstruction)
-	api.POST("/reconciliation/match", ReconcileInboundTransfer)
+	api.Post("/bank-transfer-instructions", CreateBankTransferInstruction)
+	api.Get("/bank-transfer-instructions", ListBankTransferInstructions)
+	api.Get("/bank-transfer-instructions/:id", GetBankTransferInstruction)
+	api.Post("/reconciliation/match", ReconcileInboundTransfer)
 
 	// Invoice sub-resources
-	api.POST("/invoices/:id/line-items", AddInvoiceLineItem)
-	api.DELETE("/invoices/:id/line-items/:itemId", RemoveInvoiceLineItem)
-	api.POST("/invoices/:id/apply-discount", ApplyInvoiceDiscount)
-	api.POST("/invoices/:id/calculate-tax", CalculateInvoiceTax)
+	api.Post("/invoices/:id/line-items", AddInvoiceLineItem)
+	api.Delete("/invoices/:id/line-items/:itemId", RemoveInvoiceLineItem)
+	api.Post("/invoices/:id/apply-discount", ApplyInvoiceDiscount)
+	api.Post("/invoices/:id/calculate-tax", CalculateInvoiceTax)
 
 	// Capabilities
-	api.GET("/capabilities", GetCapabilities)
+	api.Get("/capabilities", GetCapabilities)
 
 	// Top-up: charge a saved payment method and credit user balance
-	api.POST("/topup", Topup)
+	api.Post("/topup", Topup)
 
 	// GPU billing (server-enforced prepaid-only + card-required). The cloud GPU
 	// launch gate reads /gpu-eligibility before provisioning and POSTs /gpu-charge
 	// to debit; a GPU charge NEVER draws credit grants (see api/billing/gpu_charge.go).
-	api.GET("/gpu-eligibility", GPUChargeEligibility)
-	api.POST("/gpu-charge", ChargeGPU)
+	api.Get("/gpu-eligibility", GPUChargeEligibility)
+	api.Post("/gpu-charge", ChargeGPU)
 
 	// ZAP protocol endpoint
-	api.POST("/zap", ZapDispatch)
+	api.Post("/zap", ZapDispatch)
 
 	// DNS billing endpoints
 	dns := r.Group("dns")
 	dns.Use(adminRequired)
-	dns.POST("/usage", RecordDNSUsage)
-	dns.GET("/usage/summary", GetDNSUsageSummary)
+	dns.Post("/usage", RecordDNSUsage)
+	dns.Get("/usage/summary", GetDNSUsageSummary)
 
 	// Billing cycle automation (platform scheduler / service). Collecting a
 	// cycle charges cards across orgs — money-MINT bar (service-token /
 	// global-admin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
 	// org, so it is emphatically platform-only.
-	api.POST("/cycle/run", mintRequired, RunBillingCycle)
-	api.POST("/cycle/run-user", mintRequired, RunBillingCycleUser)
-	api.POST("/cycle/run-all", mintRequired, RunBillingCycleAllOrgs)
+	api.Post("/cycle/run", mintRequired, RunBillingCycle)
+	api.Post("/cycle/run-user", mintRequired, RunBillingCycleUser)
+	api.Post("/cycle/run-all", mintRequired, RunBillingCycleAllOrgs)
 
 	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
 	// the default card for orgs whose balance dropped below their threshold.
 	// Platform-wide card charging — money-MINT bar (service-token / global-admin
 	// ONLY). An org owner reaching this could sweep-charge saved cards across
 	// every org.
-	api.POST("/auto-recharge/run-all", mintRequired, RunAutoRechargeAllOrgs)
+	api.Post("/auto-recharge/run-all", mintRequired, RunAutoRechargeAllOrgs)
 
 	// Test mode toggle: move an org between Square sandbox and production. This
 	// flips whether charges hit real cards, so it is a money-mode change —
 	// service-token / global-admin ONLY, never an org owner.
-	api.POST("/test-mode", mintRequired, SetOrgTestMode)
+	api.Post("/test-mode", mintRequired, SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
@@ -269,42 +268,42 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// invoice from the caller's OWN org namespace, so a foreign invoice id 404s.
 	// A normal authenticated org member can download their own invoice; Console
 	// opens this as a per-invoice download link.
-	user.GET("/invoices/:id/pdf", DownloadInvoicePDF)
+	user.Get("/invoices/:id/pdf", DownloadInvoicePDF)
 
 	// Card tokenization — S2S (no provider SDK on frontend)
-	user.POST("/card/tokenize", TokenizeCard)
+	user.Post("/card/tokenize", TokenizeCard)
 
 	// Public Square config for THIS org's Web Payments SDK (sandbox for test
 	// orgs, production for live orgs) — so the browser tokenizes against the
 	// same Square account commerce vaults/charges with.
-	user.GET("/payment-config", GetPaymentConfig)
+	user.Get("/payment-config", GetPaymentConfig)
 
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
-	user.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
-	user.GET("/plans/:id", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), GetPlan)
+	user.Get("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), ListPlans)
+	user.Get("/plans/:id", middleware.CachePublic(3600), middleware.CFCacheTags("plans"), GetPlan)
 
 	// DNS plans (public catalog, cacheable)
 	dnsUser := r.Group("dns")
 	dnsUser.Use(userRequired)
-	dnsUser.GET("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
+	dnsUser.Get("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
 
 	// Auto-recharge config (user-scoped; one per org)
-	user.GET("/auto-recharge", GetAutoRecharge)
-	user.PUT("/auto-recharge", SetAutoRecharge)
+	user.Get("/auto-recharge", GetAutoRecharge)
+	user.Put("/auto-recharge", SetAutoRecharge)
 
 	// Spend alerts + per-scope spend caps (issue #70). CRUD manages the budget
 	// rows; /authorize is the per-request cap verdict the cloud metering gate
 	// consumes (service-token S2S). Org-scoped via X-Org-Id, so a cap on org X
 	// can never gate org Y.
-	user.GET("/spend-alerts", ListSpendAlerts)
-	user.POST("/spend-alerts", CreateSpendAlert)
-	user.GET("/spend-alerts/authorize", AuthorizeSpendCap)
-	user.PATCH("/spend-alerts/:id", UpdateSpendAlert)
-	user.DELETE("/spend-alerts/:id", DeleteSpendAlert)
+	user.Get("/spend-alerts", ListSpendAlerts)
+	user.Post("/spend-alerts", CreateSpendAlert)
+	user.Get("/spend-alerts/authorize", AuthorizeSpendCap)
+	user.Patch("/spend-alerts/:id", UpdateSpendAlert)
+	user.Delete("/spend-alerts/:id", DeleteSpendAlert)
 
 	// Billing status — hasPaymentMethod + creditBalance in one call (used by bot gateway)
-	user.GET("/status", GetBillingStatus)
+	user.Get("/status", GetBillingStatus)
 
 	// Self-service balance + welcome credit. Identity comes from the
 	// gateway-injected X-Org-Id / X-User-Id headers; the caller never
@@ -312,14 +311,14 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// on-signup grant that the playground SPA invokes from FundingGate on
 	// first login. Idempotent (tag-deduped); no payment method required
 	// (the card gates top-up, not the welcome credit).
-	user.GET("/me/balance", GetMyBalance)
-	user.POST("/me/welcome", PostMyWelcome)
+	user.Get("/me/balance", GetMyBalance)
+	user.Post("/me/welcome", PostMyWelcome)
 
 	// Credit grants & balance (read-only, user-scoped)
-	user.GET("/credit-grants", ListCreditGrants)
-	user.GET("/credit-balance", GetCreditBalance)
-	user.GET("/credit-balance/breakdown", GetCreditBalanceBreakdown)
-	user.POST("/credit", GrantStarterCredit)
+	user.Get("/credit-grants", ListCreditGrants)
+	user.Get("/credit-balance", GetCreditBalance)
+	user.Get("/credit-balance/breakdown", GetCreditBalanceBreakdown)
+	user.Post("/credit", GrantStarterCredit)
 
 	// Transaction history / ledger (read-only, user-scoped). Derives identity
 	// from the IAM org/user in context like the sibling reads above. Called by
@@ -327,29 +326,29 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 	// Registered here so it lives under the CORS-enabled API group; an
 	// unregistered route hits gin NoRoute (404, no Access-Control-Allow-Origin)
 	// and the browser reports it as a CORS failure rather than an honest empty list.
-	user.GET("/transactions", ListTransactions)
+	user.Get("/transactions", ListTransactions)
 
 	// Withdraw (user-initiated: move funds out of Commerce balance).
 	// Used by bot wallet funding (source=usd) to deduct from user's account.
 	// Non-admin callers may only withdraw from their own account.
-	user.POST("/withdraw", Withdraw)
+	user.Post("/withdraw", Withdraw)
 
 	// Top-up with a Square Web Payments SDK nonce (no saved PM required)
-	user.POST("/topup/token", TopupWithToken)
+	user.Post("/topup/token", TopupWithToken)
 
 	// Payment methods (user-scoped CRUD)
-	user.POST("/payment-methods", CreatePaymentMethod)
-	user.GET("/payment-methods", ListPaymentMethods)
-	user.GET("/payment-methods/:id", GetPaymentMethod)
-	user.PATCH("/payment-methods/:id", UpdatePaymentMethod)
-	user.DELETE("/payment-methods/:id", DetachPaymentMethod)
-	user.POST("/customers/:id/default-payment-method", SetDefaultPaymentMethod)
+	user.Post("/payment-methods", CreatePaymentMethod)
+	user.Get("/payment-methods", ListPaymentMethods)
+	user.Get("/payment-methods/:id", GetPaymentMethod)
+	user.Patch("/payment-methods/:id", UpdatePaymentMethod)
+	user.Delete("/payment-methods/:id", DetachPaymentMethod)
+	user.Post("/customers/:id/default-payment-method", SetDefaultPaymentMethod)
 
 	// Billing accounts (org-wrapper)
-	user.GET("/accounts", ListBillingAccounts)
-	user.POST("/accounts", CreateBillingAccount)
-	user.GET("/accounts/:id/members", ListAccountMembers)
-	user.POST("/accounts/:id/members", AddAccountMember)
-	user.PATCH("/accounts/:id/members/:memberId", UpdateMemberRole)
-	user.DELETE("/accounts/:id/members/:memberId", RemoveAccountMember)
+	user.Get("/accounts", ListBillingAccounts)
+	user.Post("/accounts", CreateBillingAccount)
+	user.Get("/accounts/:id/members", ListAccountMembers)
+	user.Post("/accounts/:id/members", AddAccountMember)
+	user.Patch("/accounts/:id/members/:memberId", UpdateMemberRole)
+	user.Delete("/accounts/:id/members/:memberId", RemoveAccountMember)
 }

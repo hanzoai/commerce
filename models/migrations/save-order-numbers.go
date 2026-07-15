@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/order"
 
@@ -9,8 +9,8 @@ import (
 )
 
 var _ = New("save-order-numbers",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "stoned")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "stoned")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {

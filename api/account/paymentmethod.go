@@ -1,7 +1,7 @@
 package account
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/paymentmethod"
@@ -22,16 +22,15 @@ type CreateReq struct {
 	Metadata    RawMessage `json:"metadata"`
 }
 
-func createPaymentMethod(c *gin.Context) {
+func createPaymentMethod(c *zip.Ctx) error {
 	usr := middleware.GetUser(c)
 	org := middleware.GetOrganization(c)
 
 	req := &CreateReq{}
 
 	// Decode response body to create new user
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	var (
@@ -39,20 +38,18 @@ func createPaymentMethod(c *gin.Context) {
 		externalUserId string
 	)
 
-	t := c.Params.ByName("paymentmethodtype")
+	t := c.Param("paymentmethodtype")
 	switch t {
 	case "plaid":
 		in := org.Integrations.FindByType(integration.PlaidType)
 		if in == nil {
-			http.Fail(c, 500, "Missing plaid credentials: "+t, ErrorMissingCredentials)
-			return
+			return http.Fail(c, 500, "Missing plaid credentials: "+t, ErrorMissingCredentials)
 		}
 		// TODO: We need to redo the customer id/account object stuff
 		externalUserId = usr.Accounts.StripeAccount.CustomerId
 		pm = plaid.New(org.Context(), in.Plaid.ClientId, in.Plaid.Secret, in.Plaid.PublicKey, plaid.SandboxEnvironment)
 	default:
-		http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
-		return
+		return http.Fail(c, 500, "Invalid payment type: "+t, ErrorInvalidPaymentMethod)
 	}
 
 	out, err := pm.GetPayToken(PaymentMethodParams{
@@ -62,8 +59,7 @@ func createPaymentMethod(c *gin.Context) {
 		Metadata:       req.Metadata,
 	})
 	if err != nil {
-		http.Fail(c, 500, "Error while creating paykey for: "+t, err)
-		return
+		return http.Fail(c, 500, "Error while creating paykey for: "+t, err)
 	}
 
 	p := paymentmethod.New(usr.Datastore())
@@ -75,9 +71,8 @@ func createPaymentMethod(c *gin.Context) {
 	p.Type = string(out.Type)
 
 	if err := p.Create(); err != nil {
-		http.Fail(c, 400, "Failed to add payment method", err)
-		return
+		return http.Fail(c, 400, "Failed to add payment method", err)
 	}
 
-	http.Render(c, 201, p)
+	return http.Render(c, 201, p)
 }

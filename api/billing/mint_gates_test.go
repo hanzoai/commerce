@@ -11,13 +11,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hanzoai/commerce/models/organization"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/billing/credit"
@@ -32,10 +33,10 @@ import (
 // orgAdminSeed sets the exact C1 adversary: an org-level admin (org-level
 // isAdmin, NOT a SuperAdmin) — a gateway-minted org owner or legacy per-org
 // Admin token. NOT the internal service token, NOT a platform global admin.
-func orgAdminSeed(c *gin.Context) {
-	c.Set("iam_authenticated", true)
-	c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-	c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+func orgAdminSeed(c *zip.Ctx) {
+	c.Locals("iam_authenticated", true)
+	c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+	c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 }
 
 // ── ZAP billing.deposit ─────────────────────────────────────────────────────
@@ -44,6 +45,11 @@ func orgAdminSeed(c *gin.Context) {
 // an org admin POSTing the ZAP billing.deposit method is 403 — it can no longer
 // mint iam-user balance from a client amount via /zap (while /deposit already
 // 403'd it). Reproduces RED's exact vector (amount 100000000, no ceiling).
+func respBodyStr(r *http.Response) string {
+	b, _ := io.ReadAll(r.Body)
+	return string(b)
+}
+
 func TestZapDeposit_OrgAdminDenied(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 	eng := engineWithSeed(orgAdminSeed)
@@ -51,11 +57,13 @@ func TestZapDeposit_OrgAdminDenied(t *testing.T) {
 	body := `{"method":"billing.deposit","params":{"user":"acme","amount":100000000,"currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("org-admin /zap billing.deposit: status=%d body=%s, want 403", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("org-admin /zap billing.deposit: status=%d body=%s, want 403", resp.StatusCode, respBodyStr(resp))
 	}
 }
 
@@ -68,30 +76,33 @@ func TestZapDeposit_ServiceTokenMints(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *gin.Context) { c.Set("context", ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
 	body := `{"method":"billing.deposit","id":"z1","params":{"user":"zapmintorg","amount":250,"currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "zapmintorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("service-token /zap billing.deposit: status=%d body=%s, want 200", w.Code, w.Body.String())
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
 	}
-	var resp struct {
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("service-token /zap billing.deposit: status=%d body=%s, want 200", resp.StatusCode, respBodyStr(resp))
+	}
+	var zapResp struct {
 		Result map[string]any            `json:"result"`
 		Error  *struct{ Message string } `json:"error"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad zap response: %v (%s)", err, w.Body.String())
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &zapResp); err != nil {
+		t.Fatalf("bad zap response: %v (%s)", err, raw)
 	}
-	if resp.Error != nil {
-		t.Fatalf("service-token deposit returned zap error: %s", resp.Error.Message)
+	if zapResp.Error != nil {
+		t.Fatalf("service-token deposit returned zap error: %s", zapResp.Error.Message)
 	}
-	if tid, _ := resp.Result["transactionId"].(string); tid == "" {
-		t.Fatalf("service-token deposit missing transactionId: %v", resp.Result)
+	if tid, _ := zapResp.Result["transactionId"].(string); tid == "" {
+		t.Fatalf("service-token deposit missing transactionId: %v", zapResp.Result)
 	}
 }
 
@@ -106,23 +117,25 @@ func TestZapReads_OrgAdminNotBlocked(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = "acme"
 	org.Live = true
-	eng := engineWithSeed(func(c *gin.Context) {
-		c.Set("context", ctx)
-		c.Set("organization", org)
+	eng := engineWithSeed(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", org)
 		orgAdminSeed(c)
 	})
 
 	body := `{"method":"billing.getBalance","id":"r1","params":{"user":"acme/alice","currency":"usd"}}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/zap", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden {
 		t.Fatalf("org-admin /zap billing.getBalance was 403 — the mint gate over-blocked a read")
 	}
-	if w.Code != http.StatusOK {
-		t.Fatalf("org-admin /zap billing.getBalance: status=%d body=%s, want 200", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("org-admin /zap billing.getBalance: status=%d body=%s, want 200", resp.StatusCode, respBodyStr(resp))
 	}
 }
 
@@ -140,28 +153,31 @@ func TestAllotment_OrgAdminCannotInflatePlan(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = "acme"
 	org.Live = true
-	eng := engineWithSeed(func(c *gin.Context) {
-		c.Set("context", ctx)
-		c.Set("organization", org)
+	eng := engineWithSeed(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", org)
 		orgAdminSeed(c)
 	})
 
 	body := `{"user":"acme","plan":"max"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
 	// The route is deliberately NOT platform-only (an org grants its OWN
 	// allotment); the defense is the clamp, so it must be reachable, not 403.
-	if w.Code == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden {
 		t.Fatalf("allotment/grant should be reachable for the org (clamped), got 403")
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad response: %v (%s)", err, w.Body.String())
+	var out map[string]any
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
-	if amt, _ := resp["amountCents"].(float64); amt != 0 {
+	if amt, _ := out["amountCents"].(float64); amt != 0 {
 		t.Fatalf("org-admin named 'max' without subscription: amountCents=%v, want 0 (clamped to real entitlement)", amt)
 	}
 }
@@ -198,25 +214,28 @@ func TestAllotment_OrgAdminMatchingSubscriptionHonored(t *testing.T) {
 		t.Fatalf("seed subscription: %v", err)
 	}
 
-	eng := engineWithSeed(func(c *gin.Context) {
-		c.Set("context", ctx)
-		c.Set("organization", org)
+	eng := engineWithSeed(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		c.Locals("organization", org)
 		orgAdminSeed(c)
 	})
 	body := `{"user":"` + ns + `","plan":"max"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code == http.StatusForbidden {
+	if resp.StatusCode == http.StatusForbidden {
 		t.Fatalf("allotment/grant for a real subscriber should be reachable, got 403")
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad response: %v (%s)", err, w.Body.String())
+	var out map[string]any
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
-	if amt, _ := resp["amountCents"].(float64); amt != 10000 {
+	if amt, _ := out["amountCents"].(float64); amt != 10000 {
 		t.Fatalf("org-admin with a real 'max' subscription: amountCents=%v, want 10000 (clamp honors the matching paid plan)", amt)
 	}
 }
@@ -230,23 +249,26 @@ func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *gin.Context) { c.Set("context", ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
 	body := `{"user":"allotorg","plan":"max"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/allotment/grant", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "allotorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
-		t.Fatalf("service-token allotment/grant: status=%d body=%s, want 200/201", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		t.Fatalf("service-token allotment/grant: status=%d body=%s, want 200/201", resp.StatusCode, respBodyStr(resp))
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad response: %v (%s)", err, w.Body.String())
+	var out map[string]any
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("bad response: %v (%s)", err, raw)
 	}
-	if amt, _ := resp["amountCents"].(float64); amt != 10000 {
+	if amt, _ := out["amountCents"].(float64); amt != 10000 {
 		t.Fatalf("service-token named 'max': amountCents=%v, want 10000 (privileged override honored)", amt)
 	}
 }
@@ -263,7 +285,7 @@ func TestWelcome_ConcurrentGrantsCreditOnce(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *gin.Context) { c.Set("context", ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
 
 	// The welcome credit now requires a chargeable card on file (it is real money;
 	// without the card, open signup turns it into a faucet). Seed one for the
@@ -280,7 +302,7 @@ func TestWelcome_ConcurrentGrantsCreditOnce(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("Authorization", "Bearer "+tok)
 			req.Header.Set("X-Org-Id", "welcomeorg")
-			eng.ServeHTTP(httptest.NewRecorder(), req)
+			_, _ = eng.Fiber().Test(req)
 		}()
 	}
 	wg.Wait()
@@ -289,16 +311,19 @@ func TestWelcome_ConcurrentGrantsCreditOnce(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/v1/billing/me/balance?currency=usd", nil)
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "welcomeorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Fatalf("me/balance: status=%d body=%s", w.Code, w.Body.String())
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad balance response: %v (%s)", err, w.Body.String())
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("me/balance: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
 	}
-	balance, _ := resp["balance"].(float64)
+	var out map[string]any
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("bad balance response: %v (%s)", err, raw)
+	}
+	balance, _ := out["balance"].(float64)
 	if int64(balance) != credit.StarterCreditCents {
 		t.Fatalf("after %d concurrent welcomes, balance=%d cents, want exactly %d (one credit, no double-mint)",
 			n, int64(balance), credit.StarterCreditCents)
@@ -308,17 +333,19 @@ func TestWelcome_ConcurrentGrantsCreditOnce(t *testing.T) {
 // seedCardOnFile vaults a chargeable card through the SAME HTTP surface the
 // welcome handler reads, so the card lands on whatever subject/namespace the
 // middleware resolves — no guessing at org namespacing in the fixture.
-func seedCardOnFile(t *testing.T, eng http.Handler, tok, org string) {
+func seedCardOnFile(t *testing.T, eng *zip.App, tok, org string) {
 	t.Helper()
 	body := fmt.Sprintf(`{"customerId":%q,"type":"card","isDefault":true,"providerRef":"sq-card-test","card":{"brand":"visa","last4":"4242","expMonth":12,"expYear":2032}}`, org)
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/payment-methods", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", org)
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-	if w.Code != http.StatusOK && w.Code != http.StatusCreated {
-		t.Fatalf("seed payment method: status=%d body=%s", w.Code, w.Body.String())
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		t.Fatalf("seed payment method: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
 	}
 }
 
@@ -331,26 +358,29 @@ func TestWelcome_RequiresPaymentMethod(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	eng := engineWithSeed(func(c *gin.Context) { c.Set("context", ctx) })
+	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/me/welcome", bytes.NewBufferString(`{}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("X-Org-Id", "nocardorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, terr := eng.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
+	}
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("welcome without a card: status=%d body=%s", w.Code, w.Body.String())
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("welcome without a card: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
 	}
-	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("bad welcome response: %v (%s)", err, w.Body.String())
+	var out map[string]any
+	raw := respBodyStr(resp)
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("bad welcome response: %v (%s)", err, raw)
 	}
-	if granted, _ := resp["granted"].(bool); granted {
+	if granted, _ := out["granted"].(bool); granted {
 		t.Fatal("welcome credit granted with NO payment method on file — the credit is a faucet")
 	}
-	if reason, _ := resp["reason"].(string); reason != "payment_method_required" {
+	if reason, _ := out["reason"].(string); reason != "payment_method_required" {
 		t.Fatalf("reason = %q, want payment_method_required", reason)
 	}
 }

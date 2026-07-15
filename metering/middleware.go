@@ -106,7 +106,7 @@ func (c *Client) Middleware(cfg MiddlewareConfig) func(http.Handler) http.Handle
 				return
 			}
 			u := Usage{
-				User:        in.User, // per-org debit key (matches the gate)
+				User:        in.User,  // per-org debit key (matches the gate)
 				Actor:       in.Actor, // org/sub, audit only
 				Org:         in.Org,
 				Currency:    in.Currency,

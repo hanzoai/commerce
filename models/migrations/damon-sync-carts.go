@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/cart"
 	"github.com/hanzoai/commerce/models/organization"
@@ -12,11 +12,11 @@ import (
 )
 
 var _ = New("damon-sync-carts",
-	func(c *gin.Context) []interface{} {
-		db := ds.New(c)
+	func(c *zip.Ctx) []interface{} {
+		db := ds.New(c.Context())
 		org := organization.New(db)
 		org.GetById("damon")
-		c.Set("namespace", "damon")
+		c.Locals("namespace", "damon")
 		return []interface{}{org.DefaultStore, org.Mailchimp.APIKey}
 	},
 	func(db *ds.Datastore, car *cart.Cart, defaultStore, apiKey string) {

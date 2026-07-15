@@ -3,11 +3,11 @@ package balance
 import (
 	"errors"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/transaction"
-	"github.com/hanzoai/commerce/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

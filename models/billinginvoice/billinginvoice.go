@@ -82,7 +82,7 @@ type BillingInvoice struct {
 	TaxPercent    float64 `json:"taxPercent"`
 	Discount      int64   `json:"discount"`
 	DiscountName  string  `json:"discountName,omitempty"`
-	CreditApplied int64  `json:"creditApplied"`
+	CreditApplied int64   `json:"creditApplied"`
 	AmountDue     int64   `json:"amountDue"`
 	AmountPaid    int64   `json:"amountPaid"`
 

@@ -1,7 +1,7 @@
 // Package checkout — tenant handler tests against a real hanzo/base store.
 //
 // These tests construct a throwaway store under t.TempDir(), seed tenants
-// via the repo, and exercise the handlers through the real gin router.
+// via the repo, and exercise the handlers through the real zip router.
 // They pin three security contracts that MUST NOT regress:
 //
 //  1. GET /v1/commerce/tenant never leaks provider credentials / client
@@ -21,13 +21,14 @@ package checkout
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/store"
@@ -80,31 +81,43 @@ func seedTenant(t *testing.T, s *store.Store, name string, hosts ...string) *sto
 	return tenant
 }
 
-// newRouterWithClaims builds a gin engine with the admin + public routes
+// newRouterWithClaims builds a zip app with the admin + public routes
 // mounted, plus a pre-handler that injects the provided IAMClaims into the
-// gin context. Passing nil claims simulates an unauthenticated caller.
-func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
+// request locals. Passing nil claims simulates an unauthenticated caller.
+func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *zip.App {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 
 	// Inject claims the same way iammiddleware does. The real middleware
 	// sets additional keys (iam_org, iam_email, …) — the two helpers we
 	// actually read are GetIAMClaims(c) and the presence of "iam_authenticated".
-	router.Use(func(c *gin.Context) {
+	app.Use(func(c *zip.Ctx) error {
 		if claims != nil {
-			c.Set("iam_claims", claims)
-			c.Set("iam_authenticated", true)
+			c.Locals("iam_claims", claims)
+			c.Locals("iam_authenticated", true)
 		}
-		c.Next()
+		return c.Next()
 	})
 
-	public := router.Group("/v1/commerce")
+	public := app.Group("/v1/commerce")
 	MountPublicFromStore(public, s, nil)
 
-	admin := router.Group("/_/commerce")
+	admin := app.Group("/_/commerce")
 	MountTenantAdmin(admin, s)
 
-	return router
+	return app
+}
+
+// doReq runs req through the zip app and returns the status, body bytes,
+// and response headers — the zip analog of httptest.NewRecorder + ServeHTTP.
+func doReq(t *testing.T, app *zip.App, req *http.Request) (int, []byte, http.Header) {
+	t.Helper()
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, body, resp.Header
 }
 
 // ─── public: GET /v1/commerce/tenant ────────────────────────────────────
@@ -116,13 +129,12 @@ func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
 	req.Host = "pay.acme.test"
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, bodyBytes, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", code, bodyBytes)
 	}
-	body := w.Body.String()
+	body := string(bodyBytes)
 
 	// MUST NOT leak: KMS paths, BD endpoint, disabled provider names,
 	// client secrets (none are stored — confirm they never appear).
@@ -163,18 +175,17 @@ func TestTenantJSONFromStore_UnknownHostReturns404(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
 	req.Host = "evil.example.test"
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, bodyBytes, hdr := doReq(t, router, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404", w.Code)
+	if code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", code)
 	}
-	if strings.Contains(w.Body.String(), "evil.example.test") {
-		t.Errorf("404 body echoed Host — body: %s", w.Body.String())
+	if strings.Contains(string(bodyBytes), "evil.example.test") {
+		t.Errorf("404 body echoed Host — body: %s", bodyBytes)
 	}
 	// Cache headers MUST NOT be public — unknown-host responses are
 	// cacheable signals an attacker can use to probe.
-	if cc := w.Header().Get("Cache-Control"); cc != "no-store" {
+	if cc := hdr.Get("Cache-Control"); cc != "no-store" {
 		t.Errorf("Cache-Control = %q, want no-store", cc)
 	}
 }
@@ -188,11 +199,10 @@ func TestCreateTenant_Unauthenticated_401(t *testing.T) {
 	body := []byte(`{"name":"new-tenant","hostnames":["pay.new.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401; body=%s", w.Code, w.Body.String())
+	if code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401; body=%s", code, respBody)
 	}
 }
 
@@ -209,11 +219,10 @@ func TestCreateTenant_TenantAdmin_403(t *testing.T) {
 	body := []byte(`{"name":"new-tenant","hostnames":["pay.new.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body=%s", w.Code, w.Body.String())
+	if code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403; body=%s", code, respBody)
 	}
 	// MUST NOT have created the row — confirm via direct repo read.
 	if _, err := s.Tenants.List(10, 0); err == nil {
@@ -244,15 +253,14 @@ func TestCreateTenant_Superadmin_201(t *testing.T) {
 	}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201; body=%s", w.Code, w.Body.String())
+	if code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body=%s", code, respBody)
 	}
 	var resp createTenantResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("response JSON: %v; body=%s", err, w.Body.String())
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		t.Fatalf("response JSON: %v; body=%s", err, respBody)
 	}
 	if resp.ID == "" || resp.Name != "brand-new" {
 		t.Errorf("response = %+v", resp)
@@ -278,11 +286,10 @@ func TestCreateTenant_DuplicateName_409(t *testing.T) {
 	body := []byte(`{"name":"demo","hostnames":["pay.other.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusConflict {
-		t.Fatalf("status = %d, want 409; body=%s", w.Code, w.Body.String())
+	if code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body=%s", code, respBody)
 	}
 }
 
@@ -296,11 +303,10 @@ func TestCreateTenant_InvalidHostname_400(t *testing.T) {
 	body := []byte(`{"name":"bad","hostnames":[" pay.bad.test"]}`)
 	req := httptest.NewRequest(http.MethodPost, "/_/commerce/tenants", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400; body=%s", w.Code, w.Body.String())
+	if code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", code, respBody)
 	}
 }
 
@@ -311,11 +317,10 @@ func TestListProviders_Unauthenticated_401(t *testing.T) {
 	router := newRouterWithClaims(s, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, _, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401", w.Code)
+	if code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", code)
 	}
 }
 
@@ -327,11 +332,10 @@ func TestListProviders_PlainUser_403(t *testing.T) {
 	router := newRouterWithClaims(s, claims)
 
 	req := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want 403; body=%s", w.Code, w.Body.String())
+	if code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403; body=%s", code, respBody)
 	}
 }
 
@@ -347,25 +351,24 @@ func TestListProviders_TenantAdmin_ScopedToOwner(t *testing.T) {
 	router := newRouterWithClaims(s, claims)
 
 	req := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	code, respBody, _ := doReq(t, router, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", code, respBody)
 	}
 	var resp struct {
 		Tenant    string             `json:"tenant"`
 		Providers []providerListItem `json:"providers"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(respBody, &resp); err != nil {
 		t.Fatalf("JSON: %v", err)
 	}
 	if resp.Tenant != "acme" {
 		t.Errorf("tenant = %q, want acme (cross-tenant leak?)", resp.Tenant)
 	}
 	// MUST NOT leak KMS paths via the public view.
-	if strings.Contains(w.Body.String(), "kms/") {
-		t.Errorf("KMS path leaked in providers list: %s", w.Body.String())
+	if strings.Contains(string(respBody), "kms/") {
+		t.Errorf("KMS path leaked in providers list: %s", respBody)
 	}
 	// Both providers projected (enabled + disabled), but no credentials.
 	if len(resp.Providers) != 2 {
@@ -385,29 +388,27 @@ func TestListProviders_CrossTenantProbe_ByteIdentical404(t *testing.T) {
 	probeA.Subject = "user-probe"
 	routerA := newRouterWithClaims(s, probeA)
 	reqA := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	wA := httptest.NewRecorder()
-	routerA.ServeHTTP(wA, reqA)
+	codeA, bodyA, _ := doReq(t, routerA, reqA)
 
 	// Case B: empty-owner org-level admin.
 	probeB := &auth.IAMClaims{Owner: "", IsAdmin: true}
 	probeB.Subject = "user-empty"
 	routerB := newRouterWithClaims(s, probeB)
 	reqB := httptest.NewRequest(http.MethodGet, "/_/commerce/providers", nil)
-	wB := httptest.NewRecorder()
-	routerB.ServeHTTP(wB, reqB)
+	codeB, bodyB, _ := doReq(t, routerB, reqB)
 
-	if wA.Code != http.StatusNotFound {
-		t.Errorf("probe A status = %d, want 404", wA.Code)
+	if codeA != http.StatusNotFound {
+		t.Errorf("probe A status = %d, want 404", codeA)
 	}
-	if wB.Code != http.StatusNotFound {
-		t.Errorf("probe B status = %d, want 404", wB.Code)
+	if codeB != http.StatusNotFound {
+		t.Errorf("probe B status = %d, want 404", codeB)
 	}
-	if !bytes.Equal(wA.Body.Bytes(), wB.Body.Bytes()) {
-		t.Errorf("cross-tenant probe body differs:\nA: %q\nB: %q", wA.Body.String(), wB.Body.String())
+	if !bytes.Equal(bodyA, bodyB) {
+		t.Errorf("cross-tenant probe body differs:\nA: %q\nB: %q", bodyA, bodyB)
 	}
 	// Also: the tenant name MUST NOT appear in either body.
-	if strings.Contains(wA.Body.String(), "acme") ||
-		strings.Contains(wA.Body.String(), "no-such-tenant") {
-		t.Errorf("probe A body leaks tenant name: %s", wA.Body.String())
+	if strings.Contains(string(bodyA), "acme") ||
+		strings.Contains(string(bodyA), "no-such-tenant") {
+		t.Errorf("probe A body leaks tenant name: %s", bodyA)
 	}
 }

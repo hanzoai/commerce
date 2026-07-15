@@ -3,7 +3,7 @@ package migrations
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/token"
 	"github.com/hanzoai/commerce/models/user"
@@ -12,7 +12,7 @@ import (
 )
 
 var _ = New("fix-emails",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, tok *token.Token) {

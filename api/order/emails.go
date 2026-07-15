@@ -1,25 +1,25 @@
 package order
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/email"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/email"
 )
 
-func SendOrderConfirmation(c *gin.Context) {
+func SendOrderConfirmation(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	// Per-org store (Red MED-1): the order is read via MustGetById, which PANICS
 	// on a miss — datastore.New binds systemDB, so once the resolver is installed
 	// the per-org order isn't found and the receipt handler 500s/panics.
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	o := order.New(db)
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 	o.MustGetById(id)
 
 	u := user.New(db)
@@ -27,18 +27,18 @@ func SendOrderConfirmation(c *gin.Context) {
 
 	email.SendOrderConfirmation(db.Context, org, o, u)
 
-	c.Writer.WriteHeader(204)
+	return c.NoContent(204)
 }
 
-func SendFulfillmentConfirmation(c *gin.Context) {
+func SendFulfillmentConfirmation(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	// Per-org store (Red MED-1): the order is read via MustGetById, which PANICS
 	// on a miss — datastore.New binds systemDB, so once the resolver is installed
 	// the per-org order isn't found and the receipt handler 500s/panics.
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	o := order.New(db)
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 	o.MustGetById(id)
 
 	u := user.New(db)
@@ -49,18 +49,18 @@ func SendFulfillmentConfirmation(c *gin.Context) {
 
 	email.SendOrderShipped(db.Context, org, o, u, p)
 
-	c.Writer.WriteHeader(204)
+	return c.NoContent(204)
 }
 
-func SendRefundConfirmation(c *gin.Context) {
+func SendRefundConfirmation(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	// Per-org store (Red MED-1): the order is read via MustGetById, which PANICS
 	// on a miss — datastore.New binds systemDB, so once the resolver is installed
 	// the per-org order isn't found and the receipt handler 500s/panics.
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
 	o := order.New(db)
-	id := c.Params.ByName("orderid")
+	id := c.Param("orderid")
 	o.MustGetById(id)
 
 	u := user.New(db)
@@ -75,6 +75,5 @@ func SendRefundConfirmation(c *gin.Context) {
 		email.SendOrderPartiallyRefunded(db.Context, org, o, u, p)
 	}
 
-	c.Writer.WriteHeader(204)
+	return c.NoContent(204)
 }
-

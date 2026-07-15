@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -17,9 +17,9 @@ import (
 // ListBillingEvents lists billing events, optionally filtered by type or objectId.
 //
 //	GET /v1/billing/events?type=...&objectId=...
-func ListBillingEvents(c *gin.Context) {
+func ListBillingEvents(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	events := make([]*billingevent.BillingEvent, 0)
@@ -45,23 +45,22 @@ func ListBillingEvents(c *gin.Context) {
 	for i, evt := range events {
 		results[i] = billingEventResponse(evt)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // GetBillingEvent retrieves a single billing event.
 //
 //	GET /v1/billing/events/:id
-func GetBillingEvent(c *gin.Context) {
+func GetBillingEvent(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	evt := billingevent.New(db)
 	if err := evt.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "billing event not found", err)
-		return
+		return http.Fail(c, 404, "billing event not found", err)
 	}
 
-	c.JSON(200, billingEventResponse(evt))
+	return c.JSON(200, billingEventResponse(evt))
 }
 
 type createWebhookEndpointRequest struct {
@@ -73,26 +72,23 @@ type createWebhookEndpointRequest struct {
 // CreateWebhookEndpoint registers a new webhook endpoint.
 //
 //	POST /v1/billing/webhook-endpoints
-func CreateWebhookEndpoint(c *gin.Context) {
+func CreateWebhookEndpoint(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createWebhookEndpointRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Url == "" {
-		http.Fail(c, 400, "url is required", nil)
-		return
+		return http.Fail(c, 400, "url is required", nil)
 	}
 
 	// Generate signing secret
 	secretBytes := make([]byte, 32)
 	if _, err := rand.Read(secretBytes); err != nil {
-		http.Fail(c, 500, "failed to generate secret", err)
-		return
+		return http.Fail(c, 500, "failed to generate secret", err)
 	}
 	secret := "whsec_" + hex.EncodeToString(secretBytes) // pragma: allowlist secret
 
@@ -104,35 +100,33 @@ func CreateWebhookEndpoint(c *gin.Context) {
 
 	if err := ep.Create(); err != nil {
 		log.Error("Failed to create webhook endpoint: %v", err, c)
-		http.Fail(c, 500, "failed to create webhook endpoint", err)
-		return
+		return http.Fail(c, 500, "failed to create webhook endpoint", err)
 	}
 
-	c.JSON(201, webhookEndpointResponse(ep, true))
+	return c.JSON(201, webhookEndpointResponse(ep, true))
 }
 
 // GetWebhookEndpoint retrieves a webhook endpoint.
 //
 //	GET /v1/billing/webhook-endpoints/:id
-func GetWebhookEndpoint(c *gin.Context) {
+func GetWebhookEndpoint(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ep := webhookendpoint.New(db)
 	if err := ep.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "webhook endpoint not found", err)
-		return
+		return http.Fail(c, 404, "webhook endpoint not found", err)
 	}
 
-	c.JSON(200, webhookEndpointResponse(ep, false))
+	return c.JSON(200, webhookEndpointResponse(ep, false))
 }
 
 // ListWebhookEndpoints lists all webhook endpoints.
 //
 //	GET /v1/billing/webhook-endpoints
-func ListWebhookEndpoints(c *gin.Context) {
+func ListWebhookEndpoints(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	endpoints := make([]*webhookendpoint.WebhookEndpoint, 0)
@@ -150,7 +144,7 @@ func ListWebhookEndpoints(c *gin.Context) {
 	for i, ep := range endpoints {
 		results[i] = webhookEndpointResponse(ep, false)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 type updateWebhookEndpointRequest struct {
@@ -163,20 +157,18 @@ type updateWebhookEndpointRequest struct {
 // UpdateWebhookEndpoint updates a webhook endpoint configuration.
 //
 //	PATCH /v1/billing/webhook-endpoints/:id
-func UpdateWebhookEndpoint(c *gin.Context) {
+func UpdateWebhookEndpoint(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ep := webhookendpoint.New(db)
 	if err := ep.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "webhook endpoint not found", err)
-		return
+		return http.Fail(c, 404, "webhook endpoint not found", err)
 	}
 
 	var req updateWebhookEndpointRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Url != "" {
@@ -194,33 +186,30 @@ func UpdateWebhookEndpoint(c *gin.Context) {
 
 	if err := ep.Update(); err != nil {
 		log.Error("Failed to update webhook endpoint: %v", err, c)
-		http.Fail(c, 500, "failed to update webhook endpoint", err)
-		return
+		return http.Fail(c, 500, "failed to update webhook endpoint", err)
 	}
 
-	c.JSON(200, webhookEndpointResponse(ep, false))
+	return c.JSON(200, webhookEndpointResponse(ep, false))
 }
 
 // DeleteWebhookEndpoint removes a webhook endpoint.
 //
 //	DELETE /v1/billing/webhook-endpoints/:id
-func DeleteWebhookEndpoint(c *gin.Context) {
+func DeleteWebhookEndpoint(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	ep := webhookendpoint.New(db)
 	if err := ep.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "webhook endpoint not found", err)
-		return
+		return http.Fail(c, 404, "webhook endpoint not found", err)
 	}
 
 	if err := ep.Delete(); err != nil {
 		log.Error("Failed to delete webhook endpoint: %v", err, c)
-		http.Fail(c, 500, "failed to delete webhook endpoint", err)
-		return
+		return http.Fail(c, 500, "failed to delete webhook endpoint", err)
 	}
 
-	c.JSON(200, gin.H{"deleted": true, "id": ep.Id()})
+	return c.JSON(200, map[string]any{"deleted": true, "id": ep.Id()})
 }
 
 func billingEventResponse(evt *billingevent.BillingEvent) map[string]interface{} {

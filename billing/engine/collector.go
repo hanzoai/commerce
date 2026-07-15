@@ -15,13 +15,13 @@ import (
 
 // CollectionResult describes the outcome of a payment collection attempt.
 type CollectionResult struct {
-	Success        bool   `json:"success"`
-	CreditUsed     int64  `json:"creditUsed"`
-	BalanceUsed    int64  `json:"balanceUsed"`
-	ProviderUsed   int64  `json:"providerUsed"`
-	ProviderRef    string `json:"providerRef,omitempty"`
-	AmountCharged  int64  `json:"amountCharged"`
-	Error          string `json:"error,omitempty"`
+	Success       bool   `json:"success"`
+	CreditUsed    int64  `json:"creditUsed"`
+	BalanceUsed   int64  `json:"balanceUsed"`
+	ProviderUsed  int64  `json:"providerUsed"`
+	ProviderRef   string `json:"providerRef,omitempty"`
+	AmountCharged int64  `json:"amountCharged"`
+	Error         string `json:"error,omitempty"`
 }
 
 // CreditBurner is the function signature for burning credits.

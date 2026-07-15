@@ -1,11 +1,10 @@
 package billing
 
 import (
-	"net/http/httptest"
 	"net/url"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/idempotencykey"
@@ -26,22 +25,22 @@ import (
 //	org A top-up can NEVER touch org B      (per-org isolation, no cross leak)
 //	a retry / double-submit credits ONCE    (idempotent, no double-charge)
 
-// ginCtxWithOrg builds a gin.Context exactly as the edge/proxy hands it to
-// TopupWithToken: an "organization" in context + a `?user=` query (which
-// console2's server proxy sets from the validated session, overwriting any
-// client value).
-func ginCtxWithOrg(orgName, userQuery string) *gin.Context {
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	q := ""
+// topupTestApp backs the synthetic *Ctx handed to topupDestination below.
+var topupTestApp = zip.New(zip.Config{DisableStartupMessage: true})
+
+// ctxWithOrg builds a *Ctx exactly as the edge/proxy hands it to
+// TopupWithToken: an "organization" in the request locals + a `?user=` query
+// (which console2's server proxy sets from the validated session, overwriting
+// any client value).
+func ctxWithOrg(orgName, userQuery string) *zip.Ctx {
+	c := topupTestApp.TestCtx("POST", "/v1/billing/topup/token")
 	if userQuery != "" {
-		q = "?user=" + url.QueryEscape(userQuery)
+		c.Fiber().Request().URI().SetQueryString("user=" + url.QueryEscape(userQuery))
 	}
-	c.Request = httptest.NewRequest("POST", "/v1/billing/topup/token"+q, nil)
 	if orgName != "" {
 		org := &organization.Organization{}
 		org.Name = orgName
-		c.Set("organization", org)
+		c.Locals("organization", org)
 	}
 	return c
 }
@@ -63,7 +62,7 @@ func TestTopupDestination_SubjectResolution(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := topupDestination(ginCtxWithOrg(tc.org, tc.userQuery))
+			got := topupDestination(ctxWithOrg(tc.org, tc.userQuery))
 			if got != tc.want {
 				t.Fatalf("topupDestination(org=%q, ?user=%q) = %q, want %q", tc.org, tc.userQuery, got, tc.want)
 			}

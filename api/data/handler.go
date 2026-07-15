@@ -1,19 +1,18 @@
 package data
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	namespaced := middleware.Namespace()
 
 	api := router.Group("/c/data")
 	api.Use(middleware.AccessControl("*"))
 
-	api.GET("/dashboard/:period/:year/:month/:day/:tzOffset", adminRequired, namespaced, dashboard)
+	api.Get("/dashboard/:period/:year/:month/:day/:tzOffset", adminRequired, namespaced, dashboard)
 }

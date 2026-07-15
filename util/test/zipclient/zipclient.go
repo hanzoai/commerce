@@ -1,4 +1,4 @@
-package ginclient
+package zipclient
 
 import (
 	"context"
@@ -9,11 +9,12 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/fiber/v3/middleware/adaptor"
+	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -27,41 +28,42 @@ type ApiError struct {
 
 type defaultsFunc func(c *http.Request)
 
-func defaultStatus(code int) func([]interface{}) []interface{} {
-	return func(args []interface{}) []interface{} {
-		newargs := make([]interface{}, len(args))
-		for _, arg := range args {
-			switch v := arg.(type) {
-			case int:
-				code = v
-			default:
-				newargs = append(newargs, arg)
-			}
-		}
-		return append(newargs, code)
-	}
-}
-
+// Client drives a zip.App under test the way the old ginclient drove a
+// gin.Engine: register routes/middleware on Router, then issue requests that
+// return an *httptest.ResponseRecorder (Code/Body) exactly as before. Requests
+// run through the zap-proto/fiber net/http adaptor, so the full middleware chain
+// and routing are exercised — no gin, no shims.
+//
+// There is deliberately no post-request Context handle (the old ginclient
+// exposed one): fiber pools and resets the *Ctx when the request completes, so
+// reading it afterward panics. A test that needs the resolved context state
+// reads it INSIDE the handler it registers (where the Ctx is live).
 type Client struct {
-	Router       *gin.Engine
-	Context      *gin.Context
+	Router zip.Router
+
+	app          *zip.App
 	defaultsFn   defaultsFunc
 	ignoreErrors bool
 }
 
-func newRouter(ctx context.Context) *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(func(c *gin.Context) {
-		gincontext.SetDefaults(c, ctx)
+// newApp builds the zip.App backing a Client, seeding every request with the
+// default test locals via zipctx (the successor to gincontext) before any suite
+// middleware runs — the same first-in-chain SetDefaults the gin router installed.
+func newApp(ctx context.Context) *zip.App {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(func(c *zip.Ctx) error {
+		zipctx.SetDefaults(c, ctx)
+		return c.Next()
 	})
-	return router
+	return app
 }
 
 func New(ctx ae.Context) *Client {
 	cl := new(Client)
-	router := newRouter(ctx)
-	cl.Router = router
+	cl.app = newApp(ctx)
+	// Mount routes on a root group so cl.Router satisfies zip.Router (which
+	// *zip.App does not — its Fiber() returns *fiber.App, not fiber.Router).
+	cl.Router = cl.app.Group("")
 	cl.Defaults(func(r *http.Request) {})
 	return cl
 }
@@ -71,23 +73,30 @@ func (cl *Client) IgnoreErrors(ignore bool) {
 }
 
 // Add a new handler to router
-func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
-	wrapper := func(c *gin.Context) {
-		handler(c)
-		cl.Context = c
+func (cl *Client) Handle(method, path string, handler zip.Handler) {
+	switch strings.ToUpper(method) {
+	case http.MethodGet:
+		cl.Router.Get(path, handler)
+	case http.MethodPost:
+		cl.Router.Post(path, handler)
+	case http.MethodPut:
+		cl.Router.Put(path, handler)
+	case http.MethodPatch:
+		cl.Router.Patch(path, handler)
+	case http.MethodDelete:
+		cl.Router.Delete(path, handler)
+	case http.MethodHead:
+		cl.Router.Head(path, handler)
+	case http.MethodOptions:
+		cl.Router.Options(path, handler)
+	default:
+		cl.Router.All(path, handler)
 	}
-
-	cl.Router.Handle(method, path, wrapper)
 }
 
 // Add middleware to router
-func (cl *Client) Use(mw ...gin.HandlerFunc) {
+func (cl *Client) Use(mw ...zip.Handler) {
 	for _, m := range mw {
-		cl.Router.Use(func(c *gin.Context) {
-			c.Next()
-			cl.Context = c
-		})
-
 		cl.Router.Use(m)
 	}
 }
@@ -98,11 +107,11 @@ func (cl *Client) Defaults(fn defaultsFunc) {
 }
 
 func (cl *Client) NewRequest(method, uri string, reader io.Reader) *http.Request {
-	// Create new request
-	r, err := http.NewRequest(method, uri, reader)
-	if err != nil {
-		panic(err)
-	}
+	// SERVER-style request (httptest): RequestURI + Host populated, which is
+	// what a handler-side dispatch needs. A client-style http.NewRequest
+	// leaves RequestURI empty and the adaptor builds a pathless fasthttp URI
+	// → every route 404s.
+	r := httptest.NewRequest(method, uri, reader)
 
 	// Run any sort of setup code necessary
 	cl.defaultsFn(r)
@@ -110,15 +119,17 @@ func (cl *Client) NewRequest(method, uri string, reader io.Reader) *http.Request
 	return r
 }
 
+// serve runs a request through the zip app via the net/http adaptor, recording
+// the response the way ServeHTTP did for the gin engine.
+func (cl *Client) serve(r *http.Request) *httptest.ResponseRecorder {
+	w := httptest.NewRecorder()
+	adaptor.FiberApp(cl.app.Fiber()).ServeHTTP(w, r)
+	return w
+}
+
 // Make request without a body
 func (cl *Client) doRequest(method, uri string) *httptest.ResponseRecorder {
-	// Create request
-	r := cl.NewRequest(method, uri, nil)
-
-	// Do request
-	w := httptest.NewRecorder()
-	cl.Router.ServeHTTP(w, r)
-	return w
+	return cl.serve(cl.NewRequest(method, uri, nil))
 }
 
 // Make request with body
@@ -148,10 +159,7 @@ func (cl *Client) doRequestBody(method, uri string, body interface{}) *httptest.
 		r.Header.Set("Content-Type", "application/json")
 	}
 
-	// Do request
-	w := httptest.NewRecorder()
-	cl.Router.ServeHTTP(w, r)
-	return w
+	return cl.serve(r)
 }
 
 // Generic request handler
@@ -208,10 +216,7 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 func (c *Client) Do(req *http.Request) *httptest.ResponseRecorder {
 	// Run any sort of setup code necessary
 	c.defaultsFn(req)
-
-	w := httptest.NewRecorder()
-	c.Router.ServeHTTP(w, req)
-	return w
+	return c.serve(req)
 }
 
 // Make OPTIONS request
@@ -241,9 +246,11 @@ func (cl *Client) Post(uri string, body interface{}, res interface{}, args ...in
 
 // Make POST with Form Data
 func (c *Client) PostForm(path string, data url.Values) *httptest.ResponseRecorder {
-	req := c.NewRequest("POST", path, nil)
-	req.PostForm = data
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	// Encode into the BODY: the old gin engine read req.PostForm (a parsed
+	// server-side field), but the wire truth is urlencoded bytes — fasthttp
+	// parses PostArgs from the body, so that is what we send.
+	req := c.NewRequest("POST", path, strings.NewReader(data.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return c.Do(req)
 }
 
@@ -288,3 +295,6 @@ func (cl *Client) Delete(uri string, args ...interface{}) *httptest.ResponseReco
 	}
 	return cl.request("DELETE", uri, nil, res, append(filteredArgs, statusCode)...)
 }
+
+// App exposes the backing zip app (route dumps, direct Fiber().Test drives).
+func (cl *Client) App() *zip.App { return cl.app }

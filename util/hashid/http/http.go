@@ -1,22 +1,20 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/hashid"
-	"github.com/hanzoai/commerce/util/router"
 	"github.com/hanzoai/commerce/util/template"
 )
 
-func decodeKey(c *gin.Context) {
-	ctx := middleware.GetContext(c)
-	id := c.Params.ByName("id")
+func decodeKey(c *zip.Ctx) error {
+	ctx := c.Context()
+	id := c.Param("id")
 	key, err := hashid.DecodeKey(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	template.Render(c, "hashid.html",
+	return template.Render(c, "hashid.html",
 		"id", id,
 		"namespace", key.Namespace(),
 		"kind", key.Kind(),
@@ -26,13 +24,13 @@ func decodeKey(c *gin.Context) {
 }
 
 // Setup handlers for HTTP registered tasks
-func SetupRoutes(router router.Router) {
+func SetupRoutes(router zip.Router) {
 	// Redirects
-	router.GET("/hashid", func(c *gin.Context) {
-		template.Render(c, "hashid.html")
+	router.Get("/hashid", func(c *zip.Ctx) error {
+		return template.Render(c, "hashid.html")
 	})
 
 	// Check a hashid
-	router.GET("/hashid/:id", decodeKey)
-	router.POST("/hashid/:id", decodeKey)
+	router.Get("/hashid/:id", decodeKey)
+	router.Post("/hashid/:id", decodeKey)
 }

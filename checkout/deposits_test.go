@@ -5,9 +5,24 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/zap-proto/zip"
 	"strings"
 	"testing"
 )
+
+// drive runs a zip.Handler through a real zip app so Host, params, and body
+// semantics match production routing.
+func drive(t *testing.T, h zip.Handler, req *http.Request) *http.Response {
+	t.Helper()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.All("/*", h)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("Test: %v", err)
+	}
+	return resp
+}
 
 // ─── Auth required ──────────────────────────────────────────────────────
 
@@ -24,11 +39,10 @@ func TestDeposits_RequiresAuthHeader(t *testing.T) {
 	req.Host = "pay.example.com"
 	req.Header.Set("Content-Type", "application/json")
 	// No Authorization header.
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
+	resp := drive(t, h, req)
 
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want 401 without Authorization", w.Code)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 without Authorization", resp.StatusCode)
 	}
 }
 
@@ -46,11 +60,10 @@ func TestDeposits_UnknownTenantReturns404(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "http://evil.com/checkout/v1/deposits", strings.NewReader(`{}`))
 	req.Host = "evil.com"
 	req.Header.Set("Authorization", "Bearer fake")
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
+	resp := drive(t, h, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404 for unknown tenant", w.Code)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 for unknown tenant", resp.StatusCode)
 	}
 }
 
@@ -58,11 +71,11 @@ func TestDeposits_UnknownTenantReturns404(t *testing.T) {
 
 func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 	captured := struct {
-		url     string
-		method  string
-		auth    string
-		body    string
-		tenant  string
+		url    string
+		method string
+		auth   string
+		body   string
+		tenant string
 	}{}
 
 	fwd := ForwarderFunc(func(req *http.Request, tenant Tenant) (*http.Response, error) {
@@ -92,11 +105,10 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 	req.Host = "pay.example.com"
 	req.Header.Set("Authorization", "Bearer user-jwt")
 	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
+	resp := drive(t, h, req)
 
-	if w.Code != 201 {
-		t.Fatalf("status = %d, want 201", w.Code)
+	if resp.StatusCode != 201 {
+		t.Fatalf("status = %d, want 201", resp.StatusCode)
 	}
 	if captured.tenant != "examplecorp" {
 		t.Errorf("tenant = %q, want examplecorp", captured.tenant)
@@ -136,11 +148,10 @@ func TestDeposits_FailsClosedOnMissingBackend(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "http://pay.example.com/checkout/v1/deposits", strings.NewReader(`{}`))
 	req.Host = "pay.example.com"
 	req.Header.Set("Authorization", "Bearer u")
-	w := httptest.NewRecorder()
-	h.ServeHTTP(w, req)
+	resp := drive(t, h, req)
 
-	if w.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want 503 for tenant without backend", w.Code)
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503 for tenant without backend", resp.StatusCode)
 	}
 }
 

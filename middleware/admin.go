@@ -5,7 +5,7 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/util/bit"
@@ -38,8 +38,8 @@ import (
 // Returns true when admin; writes a 403 and returns false otherwise. Reads
 // c["permissions"] without MustGet so a handler mounted without the token gate
 // fails closed (403) rather than panicking (500).
-func RequireAdmin(c *gin.Context) bool {
-	if v, ok := c.Get("permissions"); ok {
+func RequireAdmin(c *zip.Ctx) bool {
+	if v := c.Locals("permissions"); v != nil {
 		if f, ok := v.(bit.Field); ok && f.Has(permission.Admin) {
 			return true
 		}
@@ -50,6 +50,6 @@ func RequireAdmin(c *gin.Context) bool {
 			return true
 		}
 	}
-	http.Fail(c, 403, "admin privileges required", errors.New("caller is not an admin"))
+	_ = http.Fail(c, 403, "admin privileges required", errors.New("caller is not an admin"))
 	return false
 }

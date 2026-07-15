@@ -5,10 +5,30 @@ package checkout
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/zap-proto/zip"
 )
+
+// serveTenant runs TenantJSON(r) against a synthetic request carrying the
+// given Host and returns the status + body. It uses TestCtx (not
+// app.Fiber().Test) so malformed hosts — control bytes, empty, bare ":" —
+// reach the handler's own normalizeHost guard unfiltered; fiber's HTTP
+// parser would otherwise reject them before the handler runs.
+func serveTenant(t *testing.T, r Resolver, host string) (int, string) {
+	t.Helper()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	c := app.TestCtx(http.MethodGet, "/checkout/v1/tenant")
+	// c.Fiber().Host() reads the URI host (fiber's DefaultReq.Host), so inject
+	// there — Header.SetHost would be ignored. Setting it directly also lets
+	// malformed hosts (control bytes, bare ":") reach normalizeHost unfiltered.
+	c.Fiber().Request().URI().SetHost(host)
+	if err := TenantJSON(r)(c); err != nil {
+		t.Fatalf("TenantJSON: %v", err)
+	}
+	return c.Fiber().Response().StatusCode(), string(c.Fiber().Response().Body())
+}
 
 // ─── Resolver ────────────────────────────────────────────────────────────
 
@@ -111,16 +131,11 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 	}
 	r := NewStaticResolver(map[string]Tenant{"pay.example.com": tenant})
 
-	req := httptest.NewRequest(http.MethodGet, "http://pay.example.com/checkout/v1/tenant", nil)
-	req.Host = "pay.example.com"
-	w := httptest.NewRecorder()
+	code, body := serveTenant(t, r, "pay.example.com")
 
-	TenantJSON(r).ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", w.Code)
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
 	}
-	body := w.Body.String()
 
 	// These strings MUST be absent from the payload.
 	forbidden := []string{
@@ -158,7 +173,7 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 
 	// Disabled providers must not show up in the enabled-methods list.
 	var resp map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal([]byte(body), &resp); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
 	methods, _ := resp["providers"].([]any)
@@ -175,18 +190,15 @@ func TestTenantJSON_UnknownHostReturns404(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{
 		"pay.example.com": {Name: "examplecorp"},
 	})
-	req := httptest.NewRequest(http.MethodGet, "http://evil.com/checkout/v1/tenant", nil)
-	req.Host = "evil.com"
-	w := httptest.NewRecorder()
-	TenantJSON(r).ServeHTTP(w, req)
+	code, body := serveTenant(t, r, "evil.com")
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404 for unknown tenant", w.Code)
+	if code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404 for unknown tenant", code)
 	}
 	// 404 body MUST NOT echo the Host back — reflection would help
 	// attackers fingerprint tenant existence.
-	if strings.Contains(w.Body.String(), "evil.com") {
-		t.Errorf("unknown-tenant 404 echoed Host header — body: %s", w.Body.String())
+	if strings.Contains(body, "evil.com") {
+		t.Errorf("unknown-tenant 404 echoed Host header — body: %s", body)
 	}
 }
 
@@ -194,12 +206,9 @@ func TestTenantJSON_UnknownHostReturns404(t *testing.T) {
 func TestTenantJSON_MalformedHost(t *testing.T) {
 	r := NewStaticResolver(map[string]Tenant{})
 	for _, h := range []string{"", ":", "::8080", "\x00badhost"} {
-		req := httptest.NewRequest(http.MethodGet, "http://x/checkout/v1/tenant", nil)
-		req.Host = h
-		w := httptest.NewRecorder()
-		TenantJSON(r).ServeHTTP(w, req)
-		if w.Code != http.StatusNotFound {
-			t.Errorf("Host=%q: status = %d, want 404", h, w.Code)
+		code, _ := serveTenant(t, r, h)
+		if code != http.StatusNotFound {
+			t.Errorf("Host=%q: status = %d, want 404", h, code)
 		}
 	}
 }

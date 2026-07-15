@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 )
@@ -20,52 +20,40 @@ var (
 	reset   = string([]byte{27, 91, 48, 109})
 )
 
-func ErrorLogger() gin.HandlerFunc {
-	return ErrorLoggerT(gin.ErrorTypeAny)
-}
-
-func ErrorLoggerT(typ gin.ErrorType) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Next()
-
-		errs := c.Errors.ByType(typ)
-		if len(errs) > 0 {
-			// -1 status code = do not change current one
-			c.JSON(-1, c.Errors)
-		}
-	}
-}
-
-func Log(c *gin.Context) {
+func Log(c *zip.Ctx) error {
 	// Start timer
 	start := time.Now()
 
 	// Process request
-	c.Next()
+	err := c.Next()
 
 	// Stop timer
 	end := time.Now()
 	latency := end.Sub(start)
 
-	method := c.Request.Method
-	statusCode := c.Writer.Status()
+	method := c.Method()
+	statusCode := c.Fiber().Response().StatusCode()
 	statusColor := colorForStatus(statusCode)
 	methodColor := colorForMethod(method)
 
+	path := c.Path()
+
 	// Ignore static files
-	if strings.Contains(c.Request.URL.Path, "/static/") && c.Writer.Status() < 400 {
-		return
+	if strings.Contains(path, "/static/") && statusCode < 400 {
+		return err
 	}
 
 	log.Info("%s%3d%s %s%s%s %s %v",
 		statusColor, statusCode, reset,
 		methodColor, method, reset,
-		c.Request.URL.Path,
+		path,
 		latency,
 	)
+
+	return err
 }
 
-func Logger() gin.HandlerFunc {
+func Logger() zip.Handler {
 	return Log
 }
 

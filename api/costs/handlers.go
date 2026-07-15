@@ -1,25 +1,24 @@
 package costs
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Route registers the vendor-cost (COGS) endpoints. These are a PLATFORM
 // god-view (what WE pay our vendors across the whole business), so on top of the
 // route-level token gate every handler ALSO enforces requireCostsAdmin — see its
 // doc for why the middleware alone is not enough.
-func Route(r router.Router, args ...gin.HandlerFunc) {
+func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := r.Group("costs")
 	api.Use(adminRequired)
 
-	api.GET("", GetCosts)
-	api.GET("/margin", GetMargin)
+	api.Get("", GetCosts)
+	api.Get("/margin", GetMargin)
 }
 
 // requireCostsAdmin is the in-handler gate for the vendor-cost god-view. It fails
@@ -37,7 +36,7 @@ func Route(r router.Router, args ...gin.HandlerFunc) {
 // predicate — one and only one definition of "may read cross-org platform data",
 // so costs and metrics can never drift apart. See middleware.MayReadPlatform for
 // the exact principals admitted and why org-level admin is refused.
-func requireCostsAdmin(c *gin.Context) bool {
+func requireCostsAdmin(c *zip.Ctx) bool {
 	return middleware.RequirePlatformAdmin(c)
 }
 
@@ -46,16 +45,16 @@ func requireCostsAdmin(c *gin.Context) bool {
 //	GET /v1/costs?period=YYYY-MM
 //
 // Response: {period, vendors:[{vendor,service,amountCents,period,source,note}], totalCents, currency}.
-func GetCosts(c *gin.Context) {
+func GetCosts(c *zip.Ctx) error {
 	if !requireCostsAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	p := period(c.Query("period"))
 
 	report, _ := buildReport(ctx, org.TestMode(), p)
-	c.JSON(200, report)
+	return c.JSON(200, report)
 }
 
 // GetMargin returns revenue (the usage ledger) minus COGS (this package) plus the
@@ -66,12 +65,12 @@ func GetCosts(c *gin.Context) {
 // Revenue is the sum of api-usage charges in the period (what customers paid);
 // COGS is the vendor total. Kept DRY with GetCosts: buildReport returns both the
 // vendor lines and the ledger aggregate, so revenue and cost come from one walk.
-func GetMargin(c *gin.Context) {
+func GetMargin(c *zip.Ctx) error {
 	if !requireCostsAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	p := period(c.Query("period"))
 
 	report, ledger := buildReport(ctx, org.TestMode(), p)
@@ -80,7 +79,7 @@ func GetMargin(c *gin.Context) {
 	cogs := report.TotalCents
 	margin := revenue - cogs
 
-	c.JSON(200, MarginReport{
+	return c.JSON(200, MarginReport{
 		Period:         p,
 		RevenueCents:   revenue,
 		COGSCents:      cogs,

@@ -84,21 +84,21 @@ type Issuance struct {
 	// HUSD is per-ORG (one derived address per OrgID), so many subjects share one
 	// address; Subject records which sub-ledger the projected credit lands in.
 	// Defaults to OrgID (org-pooled) when the caller leaves it empty.
-	Subject     string         `json:"subject"`
-	OrgAddress  string         `json:"orgAddress"`
-	AmountCents int64          `json:"amountCents"`
-	Bucket      Bucket         `json:"bucket"`
-	Reason      string         `json:"reason"`
+	Subject     string `json:"subject"`
+	OrgAddress  string `json:"orgAddress"`
+	AmountCents int64  `json:"amountCents"`
+	Bucket      Bucket `json:"bucket"`
+	Reason      string `json:"reason"`
 	// Test marks a mint on the test chain (matches the ledger's Test partition so
 	// the balance read finds it). A test-mode org mints test HUSD; a live org mints
 	// live HUSD — the projected credit's Test flag MUST equal the balance read's.
-	Test        bool           `json:"test"`
-	ChainID     int64          `json:"chainId"`
-	TokenAddr   string         `json:"tokenAddr"`
-	TxHash      string         `json:"txHash,omitempty"`
-	Status      IssuanceStatus `json:"status"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	MintedAt    time.Time      `json:"mintedAt,omitempty"`
+	Test      bool           `json:"test"`
+	ChainID   int64          `json:"chainId"`
+	TokenAddr string         `json:"tokenAddr"`
+	TxHash    string         `json:"txHash,omitempty"`
+	Status    IssuanceStatus `json:"status"`
+	CreatedAt time.Time      `json:"createdAt"`
+	MintedAt  time.Time      `json:"mintedAt,omitempty"`
 }
 
 // IssuanceStore persists issuances. It is an interface (not a concrete datastore)

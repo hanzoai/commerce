@@ -1,7 +1,7 @@
 package account
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -9,18 +9,17 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func exists(c *gin.Context) {
+func exists(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	emailorusername := c.Params.ByName("emailorusername")
+	db := datastore.New(org.Namespaced(c.Context()))
+	emailorusername := c.Param("emailorusername")
 
 	usr := user.New(db)
 
 	if err := usr.GetByEmail(emailorusername); err == nil {
-		http.Render(c, 200, gin.H{"exists": true})
+		return http.Render(c, 200, map[string]any{"exists": true})
 	} else if err := usr.GetByUsername(emailorusername); err == nil {
-		http.Render(c, 200, gin.H{"exists": true})
-	} else {
-		http.Render(c, 200, gin.H{"exists": false})
+		return http.Render(c, 200, map[string]any{"exists": true})
 	}
+	return http.Render(c, 200, map[string]any{"exists": false})
 }

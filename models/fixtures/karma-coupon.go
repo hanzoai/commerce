@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -12,8 +12,8 @@ import (
 	"github.com/hanzoai/commerce/models/coupon"
 )
 
-var _ = New("karma-coupon", func(c *gin.Context) *coupon.Coupon {
-	db := datastore.New(c)
+var _ = New("karma-coupon", func(c *zip.Ctx) *coupon.Coupon {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Query().Filter("Name=", "karma").Get()

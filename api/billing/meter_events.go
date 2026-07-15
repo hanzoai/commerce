@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -31,36 +31,31 @@ type recordEventsRequest struct {
 // RecordMeterEvents records one or more meter events (batch up to 100).
 //
 //	POST /v1/billing/meter-events
-func RecordMeterEvents(c *gin.Context) {
+func RecordMeterEvents(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req recordEventsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if len(req.Events) == 0 {
-		http.Fail(c, 400, "at least one event is required", nil)
-		return
+		return http.Fail(c, 400, "at least one event is required", nil)
 	}
 
 	if len(req.Events) > 100 {
-		http.Fail(c, 400, "maximum 100 events per batch", nil)
-		return
+		return http.Fail(c, 400, "maximum 100 events per batch", nil)
 	}
 
-	created := make([]gin.H, 0, len(req.Events))
+	created := make([]map[string]any, 0, len(req.Events))
 
 	for _, input := range req.Events {
 		if input.MeterId == "" {
-			http.Fail(c, 400, "meterId is required for each event", nil)
-			return
+			return http.Fail(c, 400, "meterId is required for each event", nil)
 		}
 		if input.UserId == "" {
-			http.Fail(c, 400, "userId is required for each event", nil)
-			return
+			return http.Fail(c, 400, "userId is required for each event", nil)
 		}
 
 		evt := meter.NewEvent(db)
@@ -89,7 +84,7 @@ func RecordMeterEvents(c *gin.Context) {
 				Limit(1)
 			if _, err := q.GetAll(&existing); err == nil && len(existing) > 0 {
 				// Already recorded — skip silently
-				created = append(created, gin.H{
+				created = append(created, map[string]any{
 					"id":     existing[0].Id(),
 					"status": "duplicate",
 				})
@@ -99,17 +94,16 @@ func RecordMeterEvents(c *gin.Context) {
 
 		if err := evt.Create(); err != nil {
 			log.Error("Failed to create meter event: %v", err, c)
-			http.Fail(c, 500, "failed to create meter event", err)
-			return
+			return http.Fail(c, 500, "failed to create meter event", err)
 		}
 
-		created = append(created, gin.H{
+		created = append(created, map[string]any{
 			"id":     evt.Id(),
 			"status": "created",
 		})
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"events": created,
 		"count":  len(created),
 	})
@@ -118,23 +112,21 @@ func RecordMeterEvents(c *gin.Context) {
 // GetMeterEventsSummary returns aggregated usage for a meter+user+period.
 //
 //	GET /v1/billing/meter-events/summary?meterId=...&userId=...&periodStart=...&periodEnd=...
-func GetMeterEventsSummary(c *gin.Context) {
+func GetMeterEventsSummary(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	meterId := strings.TrimSpace(c.Query("meterId"))
 	userId := strings.TrimSpace(c.Query("userId"))
 
 	if meterId == "" {
-		http.Fail(c, 400, "meterId query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "meterId query parameter is required", nil)
 	}
 
 	// Load the meter to get aggregation type
 	m := meter.New(db)
 	if err := m.GetById(meterId); err != nil {
-		http.Fail(c, 404, "meter not found", err)
-		return
+		return http.Fail(c, 404, "meter not found", err)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -166,8 +158,7 @@ func GetMeterEventsSummary(c *gin.Context) {
 
 	if _, err := q.GetAll(&events); err != nil {
 		log.Error("Failed to query meter events: %v", err, c)
-		http.Fail(c, 500, "failed to query meter events", err)
-		return
+		return http.Fail(c, 500, "failed to query meter events", err)
 	}
 
 	// Aggregate based on meter type
@@ -188,7 +179,7 @@ func GetMeterEventsSummary(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"meterId":         meterId,
 		"meterName":       m.Name,
 		"userId":          userId,

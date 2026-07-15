@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -65,7 +65,7 @@ func envCents(key string, def int64) int64 {
 // both were bypassed, a credit can never land outside the caller's own org —
 // `s == org || s startsWith org+"/"`. Anything else falls back to the org slug,
 // fail-secure. Returns "" only when no org is resolved (caller 401s).
-func topupDestination(c *gin.Context) string {
+func topupDestination(c *zip.Ctx) string {
 	org := orgBillingKey(c)
 	if org == "" {
 		return ""
@@ -88,10 +88,10 @@ func topupDestination(c *gin.Context) string {
 // (or, absent a key, the same single-use nonce) never double-charges or
 // double-credits; it replays the first result.
 // Returns: { transactionId, balanceCents, status }
-func TopupWithToken(c *gin.Context) {
+func TopupWithToken(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
-	if v, ok := c.Get("kms"); ok {
+	if v := c.Locals("kms"); v != nil {
 		if kmsClient, ok := v.(*kms.CachedClient); ok {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
 				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
@@ -99,17 +99,15 @@ func TopupWithToken(c *gin.Context) {
 		}
 	}
 
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req topupTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		jsonhttp.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return jsonhttp.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.SourceID == "" {
-		jsonhttp.Fail(c, 400, "sourceId is required", nil)
-		return
+		return jsonhttp.Fail(c, 400, "sourceId is required", nil)
 	}
 
 	// Billing is per-org: credit the org's canonical balance, keyed by the
@@ -118,8 +116,7 @@ func TopupWithToken(c *gin.Context) {
 	// the customer tops up one key and reads another. One identity, one key.
 	billingKey := topupDestination(c)
 	if billingKey == "" {
-		jsonhttp.Fail(c, 401, "missing identity headers", nil)
-		return
+		return jsonhttp.Fail(c, 401, "missing identity headers", nil)
 	}
 	// Server-authoritative amount bounds (money-critical). The console UI caps
 	// the amount, but this endpoint charges a REAL card and a scripted/forged
@@ -132,8 +129,7 @@ func TopupWithToken(c *gin.Context) {
 	// idempotency guard and the charge — no money moves on an out-of-bounds amount.
 	minCents, maxCents := topupBounds()
 	if req.AmountCents < minCents || req.AmountCents > maxCents {
-		jsonhttp.Fail(c, 400, fmt.Sprintf("amountCents must be between %d and %d", minCents, maxCents), nil)
-		return
+		return jsonhttp.Fail(c, 400, fmt.Sprintf("amountCents must be between %d and %d", minCents, maxCents), nil)
 	}
 
 	cur := currency.Type(strings.ToLower(req.Currency))
@@ -146,7 +142,7 @@ func TopupWithToken(c *gin.Context) {
 	// X-Idempotency-Key when supplied, else the single-use Square nonce itself
 	// (Square consumes a nonce on first charge, so it is a natural per-attempt
 	// key). Scoped to the org so keys never collide across tenants.
-	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if idemKey == "" {
 		idemKey = "nonce:" + req.SourceID
 	}
@@ -159,13 +155,12 @@ func TopupWithToken(c *gin.Context) {
 		rec = nil
 	} else if replay {
 		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-			c.Data(200, "application/json", []byte(rec.Response))
-			return
+			c.SetHeader("Content-Type", "application/json")
+			return c.Bytes(200, []byte(rec.Response))
 		}
 		// A genuine concurrent in-flight top-up for this key — do not run a
 		// second money move alongside it.
-		jsonhttp.Fail(c, 409, "top-up already in progress", nil)
-		return
+		return jsonhttp.Fail(c, 409, "top-up already in progress", nil)
 	}
 	// abandon releases the guard so a later attempt (with a fresh nonce) is not
 	// wedged. Called ONLY on pre-credit failures where no balance moved; the
@@ -176,7 +171,7 @@ func TopupWithToken(c *gin.Context) {
 		}
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	chargeReq := processor.PaymentRequest{
 		Token:       req.SourceID,
 		Amount:      currency.Cents(req.AmountCents),
@@ -193,16 +188,14 @@ func TopupWithToken(c *gin.Context) {
 	if err != nil {
 		abandon()
 		log.Error("No processor available for token topup: %v", err, c)
-		jsonhttp.Fail(c, 422, "no payment processor available", err)
-		return
+		return jsonhttp.Fail(c, 422, "no payment processor available", err)
 	}
 
 	result, err := proc.Charge(ctx, chargeReq)
 	if err != nil {
 		abandon()
 		log.Error("Charge failed for token topup (org=%s): %v", billingKey, err, c)
-		jsonhttp.Fail(c, 402, "charge failed", err)
-		return
+		return jsonhttp.Fail(c, 402, "charge failed", err)
 	}
 	if !result.Success {
 		abandon()
@@ -210,8 +203,7 @@ func TopupWithToken(c *gin.Context) {
 		if msg == "" {
 			msg = "charge declined"
 		}
-		jsonhttp.Fail(c, 402, msg, nil)
-		return
+		return jsonhttp.Fail(c, 402, msg, nil)
 	}
 
 	// Credit the org's canonical balance (per-org key — see topupDestination).
@@ -239,20 +231,19 @@ func TopupWithToken(c *gin.Context) {
 		// reconciliation. The money moved; the dead nonce blocks a re-charge.
 		log.Error("RECONCILE: charge succeeded (ref=%s) but deposit failed for org %s: %v",
 			result.ProcessorRef, billingKey, err, c)
-		jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
-		return
+		return jsonhttp.Fail(c, 500, "charge succeeded but balance credit failed; contact support", err)
 	}
 
 	// Read back the SAME key just credited so the returned balance matches
 	// what me/balance will report (read == credit).
 	var balanceCents currency.Cents
-	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c), billingKey, "iam-user", cur, test); err == nil {
+	if datas, err := util.GetTransactionsByCurrency(org.Namespaced(c.Context()), billingKey, "iam-user", cur, test); err == nil {
 		if data, ok := datas.Data[cur]; ok {
 			balanceCents = data.Balance
 		}
 	}
 
-	resp := gin.H{
+	resp := map[string]any{
 		"transactionId": trans.Id(),
 		"balanceCents":  balanceCents,
 		"status":        "ok",
@@ -264,5 +255,5 @@ func TopupWithToken(c *gin.Context) {
 			_ = idempotencykey.Complete(rec, string(body))
 		}
 	}
-	c.JSON(200, resp)
+	return c.JSON(200, resp)
 }

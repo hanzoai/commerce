@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/types/fulfillment"
 	"github.com/hanzoai/commerce/thirdparty/shipwire"
-	"github.com/hanzoai/commerce/log"
 
 	. "github.com/hanzoai/commerce/thirdparty/shipwire/types"
 )
@@ -40,7 +40,7 @@ func convertTracking(t Tracking) fulfillment.Tracking {
 	return trk
 }
 
-func getOrderFromShipwire(c *gin.Context, org *organization.Organization, ord *order.Order, id int) error {
+func getOrderFromShipwire(c *zip.Ctx, org *organization.Organization, ord *order.Order, id int) error {
 	client := shipwire.New(c, org.Shipwire.Username, org.Shipwire.Password)
 	o, res, err := client.GetOrder(id)
 	if res.Status < 300 && err != nil {
@@ -53,9 +53,9 @@ func getOrderFromShipwire(c *gin.Context, org *organization.Organization, ord *o
 	return fmt.Errorf("No matching order found for Shipwire order %d", id)
 }
 
-func getOrderForTracking(c *gin.Context, t Tracking) (*order.Order, error) {
+func getOrderForTracking(c *zip.Ctx, t Tracking) (*order.Order, error) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	ord := order.New(db)
 
 	log.Info("Looking up order using OrderExternalID", c)
@@ -84,12 +84,11 @@ func updateOrderTracking(ord *order.Order, t Tracking) {
 	ord.Fulfillment.Trackings = append(ord.Fulfillment.Trackings, convertTracking(t))
 }
 
-func updateTracking(c *gin.Context, topic string, t Tracking) {
+func updateTracking(c *zip.Ctx, topic string, t Tracking) {
 	log.Info("Fetching order associated with tracking %s", t.ID, c)
 	ord, err := getOrderForTracking(c, t)
 	if err != nil {
 		log.Warn("Unable to find order for tracking '%s': %v", t.ID, err, c)
-		c.String(200, "ok\n")
 		return
 	}
 
@@ -98,6 +97,4 @@ func updateTracking(c *gin.Context, topic string, t Tracking) {
 
 	log.Info("Saving order", c)
 	ord.MustPut()
-
-	c.String(200, "ok\n")
 }
