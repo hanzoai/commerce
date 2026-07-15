@@ -1,34 +1,40 @@
 # commerce-admin — the Medusa-lineage admin SPA (app/admin, @hanzo/commerce-dashboard,
-# Next.js `output: 'export'`) served via hanzoai/static (NOT nginx, NOT a node server).
+# Next.js `output: 'export'`) built FROM SOURCE and served via hanzoai/static
+# (NOT nginx, NOT a node server).
 #
-# Ships the last-known-good static export at app/admin/out. A fresh from-source
-# `pnpm build` is currently blocked UPSTREAM (its own task), not by this image:
-#   1. @hanzo/commerce-ui is neither buildable (build script points at nonexistent
-#      tsconfig.{cjs,esm}.json, invokes yarn under a pnpm workspace, no tsc-alias)
-#      nor source-consumable (169 unresolved internal `@/` aliases) — and every
-#      admin page imports Button/Heading/Text from it.
-#   2. app/admin/src/app/(dashboard)/billing/page.tsx imports a phantom
-#      `@hanzo/commerce-client` package that is not declared anywhere.
-# Once (1)+(2) land, restore a node builder stage here:
-#   FROM node:22-alpine AS builder ... pnpm -r build && pnpm --filter admin build
-#   COPY --from=builder /app/admin/out /out
-# and bake NEXT_PUBLIC_* (IAM_CLIENT_ID=hanzo-commerce, COMMERCE_API_URL, IAM_SERVER_URL).
-#
-# The committed export bakes prod defaults (hanzo.id, client_id `hanzo-commerce`,
-# commerce-api.hanzo.ai) so it runs at commerce.hanzo.ai unchanged. It was built
-# with assetPrefix=/admin (the legacy /admin mount): pages are root-relative
-# (out/login, out/overview, …) but JS/CSS chunks load from /admin/_next/*. Serving
-# at ROOT therefore requires _next reachable at BOTH /_next and /admin/_next.
+# v0.2.0: from-source build. The workspace build chain was repaired so `pnpm build`
+# is green end-to-end — @hanzo/commerce-ui now builds via tsup (esbuild resolves the
+# `@/` aliases; cjs+esm+dts), and the ui-preset/admin-shared/types/sdk build-tooling
+# gaps were fixed (see app/packages/*). The phantom `@hanzo/commerce-client` import
+# is gone (replaced by @/lib/commerce-client). NEXT_PUBLIC_* are baked at build time
+# (Next inlines them). No assetPrefix — chunks are root-relative (/_next/*), so the
+# static tree serves at ROOT directly (no /admin/_next duplication needed).
 
-# ── Arrange the served tree (hanzoai/static has no shell) ─────────────────────
+# ── Stage 1: build the admin export from source ───────────────────────────────
+FROM node:20-slim AS builder
+RUN npm install -g pnpm@9.15.9
+WORKDIR /build
+# The FE pnpm workspace is the only input the admin build needs.
+COPY app/ ./app/
+WORKDIR /build/app
+RUN pnpm install --frozen-lockfile
+
+# Prod defaults baked into the client bundle. commerce.hanzo.ai is same-origin for
+# the API (bare /v1/*); hanzo.id is the OIDC issuer; client_id hanzo-commerce is the
+# working PKCE client; the AI dock calls the api.hanzo.ai chat-completions gateway.
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+    NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
+    NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
+    NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \
+    NEXT_PUBLIC_HANZO_AI_MODEL=best
+
+RUN node_modules/.bin/turbo run build --filter=@hanzo/commerce-dashboard
+
+# ── Stage 2: arrange the served tree (hanzoai/static has no shell) ────────────
 FROM busybox:1.36 AS arrange
-COPY app/admin/out /out
-RUN mkdir -p /srv \
- && cp -a /out/. /srv/ \
- && mkdir -p /srv/admin \
- && cp -a /out/_next /srv/admin/_next
+COPY --from=builder /build/app/admin/out /srv
 
-# ── Serve via the canonical Hanzo static plugin on :3000, SPA fallback ────────
+# ── Stage 3: serve via the canonical Hanzo static plugin on :3000, SPA fallback ─
 FROM ghcr.io/hanzoai/static:0.4.1
 COPY --from=arrange /srv /srv
 EXPOSE 3000
