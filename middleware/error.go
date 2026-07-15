@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 type ErrorDisplayer func(c *zip.Ctx, message string, err error)
@@ -88,8 +90,19 @@ func errorHandler(displayError ErrorDisplayer) zip.Handler {
 			}
 		}()
 
-		// When a downstream handler returns an error (the c.Fail(500) analog).
+		// A downstream handler returned an error — the c.Fail analog. The error's
+		// KIND decides the status: a typed *zip.HTTPError carries its status as a
+		// VALUE (ErrForbidden→403, ErrUnauthorized→401, ErrNotFound→404,
+		// Errorf(status,…)), so it renders with THAT status through the canonical
+		// envelope. The status is derived here, in this ONE place, never re-guessed
+		// per handler. Anything else — a plain error or a typed 500 — is a genuine
+		// internal fault and falls through to the generic 500 renderer, which hides
+		// internals rather than leaking a real cause to the client.
 		if err := c.Next(); err != nil {
+			var he *zip.HTTPError
+			if errors.As(err, &he) && he.Status != 0 && he.Status != 500 {
+				return http.Fail(c, he.Status, he.Msg, he)
+			}
 			displayError(c, err.Error(), err)
 			return nil
 		}
