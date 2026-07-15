@@ -863,6 +863,9 @@ v1.47.0 = content parity with the fork's last cloud-side deltas:
   panic on provider deliveries); square provider seeds from env at init so
   webhook validation works with no tenant resolver in front
 - `Embedded.brand` (set by the mounter; surfaced in the in-process OrgConfig)
+- v1.47.1: `api/api` flattened to `api` (package api at api/; the old GAE-era
+  api/main.go binary moved to cmd/api) + the service-token-precedence regression
+  tests live HERE with the accesstoken fix they pin
 NOT ported (deliberate): the fork's GCP-style BillingAccount
 (Default/LimitCents/projectbinding budget cluster) — the money-of-record
 BillingAccount + Binding + resolveBilling chain HERE is the one design; the
