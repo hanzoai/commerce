@@ -24,7 +24,7 @@ import (
 	"net/http"
 
 	"github.com/hanzoai/cloud"
-	api "github.com/hanzoai/commerce/api/api"
+	api "github.com/hanzoai/commerce/api"
 	"github.com/zap-proto/zip"
 )
 
