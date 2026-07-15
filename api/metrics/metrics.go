@@ -74,13 +74,13 @@ type SubscriptionMetrics struct {
 
 // PlanBreakdown is one plan's active/trialing counts, seats, and MRR contribution.
 type PlanBreakdown struct {
-	Plan          string `json:"plan"` // plan slug
-	Name          string `json:"name"`
-	Category      string `json:"category"`
-	Active        int    `json:"active"`
-	Trialing      int    `json:"trialing"`
-	Seats         int    `json:"seats"`
-	MRRCents      int64  `json:"mrrCents"`
+	Plan     string `json:"plan"` // plan slug
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	Active   int    `json:"active"`
+	Trialing int    `json:"trialing"`
+	Seats    int    `json:"seats"`
+	MRRCents int64  `json:"mrrCents"`
 }
 
 // SubEvent is one entry in the recent-subscription feed. Type is "created" or

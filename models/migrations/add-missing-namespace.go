@@ -1,15 +1,15 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/namespace"
 )
 
-var _ = New("add-missing-namespace", func(c *gin.Context) []interface{} {
-	db := datastore.New(c)
+var _ = New("add-missing-namespace", func(c *zip.Ctx) []interface{} {
+	db := datastore.New(c.Context())
 	ns := namespace.New(db)
 	ns.Name = "4050001"
 	ns.IntId = 4050001

@@ -27,9 +27,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-
-	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
@@ -51,7 +48,6 @@ import (
 func TestRefund_Concurrent_DistinctAmounts_NoOverRefund(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	const ns = "acme"
 	base := nscontext.WithNamespace(context.Background(), ns)
@@ -95,21 +91,23 @@ func TestRefund_Concurrent_DistinctAmounts_NoOverRefund(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = ns
 
+	// The real Refund handler behind the same locals-injector the idempotency
+	// test uses; fiber populates :orderid from the route.
+	app := refundApp(org, base, ns)
+
 	// Fire a refund via the real handler as an admin (money move).
 	fire := func(amount int64, idem string) int {
-		w := httptest.NewRecorder()
-		c, _ := gin.CreateTestContext(w)
-		c.Set("organization", org)
-		c.Set("context", base)
-		c.Set("iam_authenticated", true)
-		c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: true})
-		c.Params = gin.Params{{Key: "orderid", Value: orderId}}
 		body, _ := json.Marshal(map[string]any{"amount": amount})
-		c.Request = httptest.NewRequest(http.MethodPost, "/v1/order/"+orderId+"/refund", bytes.NewReader(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-		c.Request.Header.Set("X-Idempotency-Key", idem)
-		Refund(c)
-		return w.Code
+		req := httptest.NewRequest(http.MethodPost, "/v1/order/"+orderId+"/refund", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Idempotency-Key", idem)
+		resp, err := app.Fiber().Test(req)
+		if err != nil {
+			t.Errorf("refund request: %v", err)
+			return 0
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode
 	}
 
 	// Two concurrent 3000 refunds on a 5000 order, DISTINCT idempotency keys so

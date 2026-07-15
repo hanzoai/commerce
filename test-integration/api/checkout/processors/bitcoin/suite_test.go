@@ -12,10 +12,10 @@ import (
 	"github.com/hanzoai/commerce/models/tokensale"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 	storeApi "github.com/hanzoai/commerce/api/store"
@@ -29,7 +29,7 @@ func Test(t *testing.T) {
 
 var (
 	accessToken string
-	cl          *ginclient.Client
+	cl          *zipclient.Client
 	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
@@ -48,7 +48,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
 	fixtures.PlatformWallet(c)
@@ -61,7 +61,7 @@ var _ = BeforeSuite(func() {
 	ts.MustCreate()
 
 	// Setup client and add routes for payment API tests.
-	cl = ginclient.New(ctx)
+	cl = zipclient.New(ctx)
 	cl.IgnoreErrors(true)
 	checkoutApi.Route(cl.Router, adminRequired)
 	storeApi.Route(cl.Router, adminRequired)

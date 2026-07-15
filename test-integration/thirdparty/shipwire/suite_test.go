@@ -8,9 +8,9 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -23,8 +23,8 @@ var (
 	ctx  ae.Context
 	db   *datastore.Datastore
 	org  *organization.Organization
-	cl   *ginclient.Client
-	bacl *ginclient.Client
+	cl   *zipclient.Client
+	bacl *zipclient.Client
 )
 
 // Setup test context
@@ -33,7 +33,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
@@ -44,7 +44,7 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(org.Namespaced(ctx))
 
 	// Client for API calls
-	cl = ginclient.New(ctx)
+	cl = zipclient.New(ctx)
 	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken.String)
 	})

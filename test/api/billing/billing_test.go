@@ -1,8 +1,8 @@
 package test
 
 import (
-	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/zipclient"
 )
 
 // seedCharge (a Withdraw the refund test reverses) is defined once for this

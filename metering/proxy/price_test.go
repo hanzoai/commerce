@@ -12,13 +12,13 @@ func TestParsePriceTable_VectorSpec(t *testing.T) {
 		status       int
 		want         int64
 	}{
-		{"POST", "/collections/docs/points", 200, 2}, // upsert
+		{"POST", "/collections/docs/points", 200, 2},        // upsert
 		{"POST", "/collections/docs/points/search", 200, 2}, // POST under /collections -> first rule
-		{"GET", "/collections/docs", 200, 1},          // read
-		{"PUT", "/collections/docs", 200, 1},          // create collection -> 2nd rule (not POST)
-		{"GET", "/healthz", 200, 0},                   // unmatched -> default 0
-		{"POST", "/collections/docs/points", 500, 0},  // error -> never charged
-		{"POST", "/collections/docs/points", 402, 0},  // 4xx -> never charged
+		{"GET", "/collections/docs", 200, 1},                // read
+		{"PUT", "/collections/docs", 200, 1},                // create collection -> 2nd rule (not POST)
+		{"GET", "/healthz", 200, 0},                         // unmatched -> default 0
+		{"POST", "/collections/docs/points", 500, 0},        // error -> never charged
+		{"POST", "/collections/docs/points", 402, 0},        // 4xx -> never charged
 	}
 	for _, c := range cases {
 		if got := tbl.Price(c.method, c.path, c.status); got != c.want {

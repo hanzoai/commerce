@@ -1,36 +1,37 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/router"
 )
 
-func setOrg(c *gin.Context) {
-	db := datastore.New(c)
+func setOrg(c *zip.Ctx) error {
+	db := datastore.New(c.Context())
 	org := organization.New(db)
-	if err := org.GetById(c.Params.ByName("organization")); err != nil {
+	if err := org.GetById(c.Param("organization")); err != nil {
 		log.Panic("Organization not specified", c)
 	}
 
-	c.Set("organization", org)
+	c.Locals("organization", org)
+	return c.Next()
 }
 
-func Route(r router.Router, args ...gin.HandlerFunc) {
+func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := r.Group("shipwire")
-	api.HEAD("/webhook/:organization", setOrg, router.Ok)
-	api.GET("/webhook/:organization", setOrg, webhook)
-	api.POST("/webhook/:organization", setOrg, webhook)
+	api.Head("/webhook/:organization", setOrg, router.Ok)
+	api.Get("/webhook/:organization", setOrg, webhook)
+	api.Post("/webhook/:organization", setOrg, webhook)
 
-	api.POST("/return/:orderid", adminRequired, createReturn)
-	api.POST("/order/:orderid", adminRequired, createOrder)
-	api.POST("/rate", publishedRequired, rate)
+	api.Post("/return/:orderid", adminRequired, createReturn)
+	api.Post("/order/:orderid", adminRequired, createOrder)
+	api.Post("/rate", publishedRequired, rate)
 }

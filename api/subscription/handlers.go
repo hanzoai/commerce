@@ -1,7 +1,7 @@
 package subscription
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -12,14 +12,13 @@ import (
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 var subscriptionEndpoint = config.UrlFor("api", "/subscription/")
 
 // hydrateOrg populates payment credentials from KMS onto the org.
-func hydrateOrg(c *gin.Context, org *organization.Organization) {
-	if v, ok := c.Get("kms"); ok {
+func hydrateOrg(c *zip.Ctx, org *organization.Organization) {
+	if v := c.Locals("kms"); v != nil {
 		if kmsClient, ok := v.(*kms.CachedClient); ok {
 			if err := kms.Hydrate(kmsClient, org); err != nil {
 				log.Error("KMS hydration failed for org %q: %v", org.Name, err, c)
@@ -28,19 +27,19 @@ func hydrateOrg(c *gin.Context, org *organization.Organization) {
 	}
 }
 
-func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
+func getSubscription(c *zip.Ctx) (*subscription.Subscription, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
 
 	// Set up the db with the namespaced context
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	// Create order that's properly namespaced
 	sub := subscription.New(db)
 
 	// Get order if an existing order was referenced
-	if id := c.Params.ByName("subscriptionid"); id != "" {
+	if id := c.Param("subscriptionid"); id != "" {
 		if err := sub.GetById(id); err != nil {
 			return nil, err
 		}
@@ -49,104 +48,95 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 	return sub, nil
 }
 
-func Subscribe(c *gin.Context) {
+func Subscribe(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	hydrateOrg(c, org)
 
 	sub, _, err := subscribe(c, org)
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 
-	c.Writer.Header().Add("Location", subscriptionEndpoint+sub.Id())
+	c.SetHeader("Location", subscriptionEndpoint+sub.Id())
 	num, err := sub.NumberFromId()
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 	sub.Number = num
 
-	http.Render(c, 200, sub)
+	return http.Render(c, 200, sub)
 }
 
-func GetSubscribe(c *gin.Context) {
+func GetSubscribe(c *zip.Ctx) error {
 	sub, err := getSubscription(c)
 	if err != nil {
-		http.Fail(c, 404, "No subscription found", err)
-		return
+		return http.Fail(c, 404, "No subscription found", err)
 	}
 
 	num, err := sub.NumberFromId()
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 	sub.Number = num
-	http.Render(c, 200, sub)
+	return http.Render(c, 200, sub)
 }
 
-func UpdateSubscribe(c *gin.Context) {
+func UpdateSubscribe(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	hydrateOrg(c, org)
 	sub, err := getSubscription(c)
 	if err != nil {
-		http.Fail(c, 404, "No subscription found", err)
-		return
+		return http.Fail(c, 404, "No subscription found", err)
 	}
 
 	_, err = updateSubscribe(c, org, sub)
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 
 	num, err := sub.NumberFromId()
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 	sub.Number = num
 
-	http.Render(c, 200, sub)
+	return http.Render(c, 200, sub)
 }
 
-func Unsubscribe(c *gin.Context) {
+func Unsubscribe(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	hydrateOrg(c, org)
 	sub, err := getSubscription(c)
 	if err != nil {
-		http.Fail(c, 404, "No subscription found", err)
-		return
+		return http.Fail(c, 404, "No subscription found", err)
 	}
 
 	_, err = unsubscribe(c, org, sub)
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 
 	num, err := sub.NumberFromId()
 	if err != nil {
-		http.Fail(c, 500, "Error during subscribe", err)
-		return
+		return http.Fail(c, 500, "Error during subscribe", err)
 	}
 	sub.Number = num
 
-	http.Render(c, 200, sub)
+	return http.Render(c, 200, sub)
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("")
-	api.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	api.Use(func(c *zip.Ctx) error {
+		c.SetHeader("Access-Control-Allow-Origin", "*")
+		return c.Next()
 	})
 
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	// Charge Payment API
-	api.POST("/subscribe", publishedRequired, Subscribe)
-	api.GET("/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
-	api.PATCH("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
-	api.DELETE("/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
+	api.Post("/subscribe", publishedRequired, Subscribe)
+	api.Get("/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
+	api.Patch("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
+	api.Delete("/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
 }

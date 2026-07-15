@@ -1,26 +1,25 @@
 package site
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := router.Group("site")
 
 	// Deploys
-	api.GET("/:siteid/deploy", adminRequired, listDeploys)
-	api.GET("/:siteid/deploy/:deployid", adminRequired, getDeploy)
-	api.POST("/:siteid/deploy", adminRequired, createDeploy)
-	api.GET("/:siteid/deploy/:deployid/restore", adminRequired, restoreDeploy)
-	api.PUT("/:siteid/deploy/:deployid/files/*filepath", adminRequired, putFile)
+	api.Get("/:siteid/deploy", adminRequired, listDeploys)
+	api.Get("/:siteid/deploy/:deployid", adminRequired, getDeploy)
+	api.Post("/:siteid/deploy", adminRequired, createDeploy)
+	api.Get("/:siteid/deploy/:deployid/restore", adminRequired, restoreDeploy)
+	api.Put("/:siteid/deploy/:deployid/files/*filepath", adminRequired, putFile)
 
 	// Files
-	api.GET("/:siteid/file", adminRequired, listFiles)
-	api.GET("/:siteid/file/*filepath", adminRequired, getFile)
+	api.Get("/:siteid/file", adminRequired, listFiles)
+	api.Get("/:siteid/file/*filepath", adminRequired, getFile)
 }

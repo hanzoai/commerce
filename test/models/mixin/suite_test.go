@@ -6,8 +6,8 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -27,7 +27,7 @@ var _ = BeforeSuite(func() {
 	db = datastore.New(ctx)
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 
 	org := fixtures.Organization(c).(*organization.Organization)
 	org.MustUpdate()

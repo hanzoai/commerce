@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/iface"
@@ -307,20 +307,18 @@ type Response struct {
 	Pages   int `xml:"pages,attr"`
 }
 
-func Export(c *gin.Context) {
-	query := c.Request.URL.Query()
-
+func Export(c *zip.Ctx) error {
 	limit := 50
 	offset := 0
 
 	// Only support export action
-	action := query.Get("action")
+	action := c.Query("action")
 	if action != "export" {
 		log.Panic("Invalid action %s, only understand 'export'", action, c)
 	}
 
 	// Parse offset
-	page, err := strconv.Atoi(query.Get("page"))
+	page, err := strconv.Atoi(c.Query("page"))
 	if err == nil && page > 1 {
 		offset = limit * (page - 1)
 	}
@@ -328,11 +326,11 @@ func Export(c *gin.Context) {
 	log.Debug("Page %s, err %s", page, err, c)
 
 	// Get start/end dates
-	startDate := parseDate(query.Get("start_date"))
-	endDate := parseDate(query.Get("end_date"))
+	startDate := parseDate(c.Query("start_date"))
+	endDate := parseDate(c.Query("end_date"))
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	// Query out relevant orders
 	q := order.Query(db).Order("UpdatedAt").
@@ -419,5 +417,6 @@ func Export(c *gin.Context) {
 
 	buf, _ := xml.MarshalIndent(res, "", "  ")
 	buf = append([]byte(xml.Header), buf...)
-	c.Data(200, "text/xml", buf)
+	c.SetHeader("Content-Type", "text/xml")
+	return c.Bytes(200, buf)
 }

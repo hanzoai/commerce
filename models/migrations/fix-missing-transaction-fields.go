@@ -1,14 +1,14 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	ds "github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/transaction"
 )
 
 var _ = New("fix-missing-transaction-fields",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, t *transaction.Transaction) {

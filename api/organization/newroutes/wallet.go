@@ -1,14 +1,14 @@
 package newroutes
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 )
 
 type AccountNameRes struct {
@@ -21,7 +21,7 @@ type GetWithdrawableAccountsRes struct {
 	Accounts []AccountNameRes `json:"accounts"`
 }
 
-func GetWithdrawableAccounts(c *gin.Context) {
+func GetWithdrawableAccounts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	// Create the response object
@@ -29,14 +29,13 @@ func GetWithdrawableAccounts(c *gin.Context) {
 
 	// Wallet doesn't exist so return empty response object
 	if org.WalletId == "" {
-		http.Render(c, 200, res)
-		return
+		return http.Render(c, 200, res)
 	}
 
 	// Fetch the wallet
 	w, err := org.GetOrCreateWallet(org.Datastore())
 	if err != nil {
-		http.Fail(c, 400, "Failed to lookup wallets", err)
+		return http.Fail(c, 400, "Failed to lookup wallets", err)
 	}
 
 	// Loop over accounts
@@ -67,5 +66,5 @@ func GetWithdrawableAccounts(c *gin.Context) {
 
 	log.Error("res %v", json.Encode(res))
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

@@ -8,14 +8,14 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	billingApi "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -53,22 +53,22 @@ const (
 // orgBillingKey resolves and what EdgeAuth pins owned records under.
 func idorSubject() string { return strings.ToLower(strings.TrimSpace(org.Name)) }
 
-func idorShim(c *gin.Context) {
-	c.Set("organization", org)
-	switch c.GetHeader("X-Test-Profile") {
+func idorShim(c *zip.Ctx) error {
+	c.Locals("organization", org)
+	switch c.Header("X-Test-Profile") {
 	case idorService:
 		// TokenRequired's verified-service-token branch sets Admin perms + an org;
 		// EdgeAuth stripped identity headers so there is no IAM principal. The Admin
 		// permission bit is the ONLY privilege signal.
-		c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 	default: // idorNonPriv: authenticated ordinary member, own subject only.
-		c.Set("permissions", bit.Field(0))
-		c.Set("iam_claims", &auth.IAMClaims{Owner: idorSubject()})
+		c.Locals("permissions", bit.Field(0))
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: idorSubject()})
 	}
-	c.Next()
+	return c.Next()
 }
 
-var idorCl *ginclient.Client
+var idorCl *zipclient.Client
 
 func idorReq(method, uri, profile string, body io.Reader, ct string) *httptest.ResponseRecorder {
 	r := idorCl.NewRequest(method, uri, body)
@@ -76,9 +76,7 @@ func idorReq(method, uri, profile string, body io.Reader, ct string) *httptest.R
 		r.Header.Set("Content-Type", ct)
 	}
 	r.Header.Set("X-Test-Profile", profile)
-	w := httptest.NewRecorder()
-	idorCl.Router.ServeHTTP(w, r)
-	return w
+	return idorCl.Do(r)
 }
 
 func idorGet(uri, profile string) *httptest.ResponseRecorder {
@@ -115,7 +113,7 @@ func customerIdsIn(w *httptest.ResponseRecorder) map[string]bool {
 
 // seedPaymentMethod creates a card in the fixture-org namespace owned by `owner`
 // (CustomerId == UserId == owner). The handler reads the same namespace via
-// org.Namespaced(c).
+// org.Namespaced(c.Context()).
 func seedPaymentMethod(owner string) string {
 	pm := paymentmethod.New(db)
 	pm.CustomerId = owner
@@ -132,7 +130,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 	// realCl mounts the ACTUAL billing router (admin/user groups + their real
 	// middleware) with a non-admin authenticated IAM identity, to prove the admin
 	// gate — not any in-handler guard — is what protects the admin-only money routes.
-	var realCl *ginclient.Client
+	var realCl *zipclient.Client
 
 	BeforeAll(func() {
 		subject = idorSubject()
@@ -140,21 +138,21 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		// whose records a non-privileged caller must never reach.
 		other = subject + "-victim"
 
-		idorCl = ginclient.New(ctx)
+		idorCl = zipclient.New(ctx)
 		idorCl.Router.Use(idorShim)
-		idorCl.Router.GET("/billing/payment-methods", billingApi.ListPaymentMethods)
-		idorCl.Router.GET("/billing/payment-methods/:id", billingApi.GetPaymentMethod)
-		idorCl.Router.PATCH("/billing/payment-methods/:id", billingApi.UpdatePaymentMethod)
-		idorCl.Router.DELETE("/billing/payment-methods/:id", billingApi.DetachPaymentMethod)
-		idorCl.Router.POST("/billing/customers/:id/default-payment-method", billingApi.SetDefaultPaymentMethod)
+		idorCl.Router.Get("/billing/payment-methods", billingApi.ListPaymentMethods)
+		idorCl.Router.Get("/billing/payment-methods/:id", billingApi.GetPaymentMethod)
+		idorCl.Router.Patch("/billing/payment-methods/:id", billingApi.UpdatePaymentMethod)
+		idorCl.Router.Delete("/billing/payment-methods/:id", billingApi.DetachPaymentMethod)
+		idorCl.Router.Post("/billing/customers/:id/default-payment-method", billingApi.SetDefaultPaymentMethod)
 
-		realCl = ginclient.New(ctx)
+		realCl = zipclient.New(ctx)
 		// A non-admin authenticated IAM member: iam_authenticated + zero permissions.
-		realCl.Router.Use(func(c *gin.Context) {
-			c.Set("organization", org)
-			c.Set("iam_authenticated", true)
-			c.Set("permissions", bit.Field(0))
-			c.Next()
+		realCl.Router.Use(func(c *zip.Ctx) error {
+			c.Locals("organization", org)
+			c.Locals("iam_authenticated", true)
+			c.Locals("permissions", bit.Field(0))
+			return c.Next()
 		})
 		billingApi.Route(realCl.Router)
 	})
@@ -248,8 +246,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 			for _, uri := range []string{"/billing/topup", "/billing/credit-grants/anyid/void"} {
 				r := realCl.NewRequest(http.MethodPost, uri, strings.NewReader("{}"))
 				r.Header.Set("Content-Type", "application/json")
-				w := httptest.NewRecorder()
-				realCl.Router.ServeHTTP(w, r)
+				w := realCl.Do(r)
 				Expect(w.Code).To(Equal(403), uri)
 			}
 		})

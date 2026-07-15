@@ -14,29 +14,35 @@ package commerce
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 
+	"github.com/zap-proto/zip"
 )
 
 // EmbedConfig configures the in-process Commerce server. Empty values
 // fall through to commerce.DefaultConfig (env-based) so commerced binds
 // the same env contract the legacy commerce binary did.
 type EmbedConfig struct {
-	DataDir          string       // "" → COMMERCE_DIR or ./commerce_data
-	HTTPAddr         string       // "" → COMMERCE_HTTP or 127.0.0.1:8090
-	Dev              bool         // dev mode — gin.DebugMode + reload-friendly logging
-	RequireIdentity  bool         // gateway trust: refuse requests without X-Org-Id/X-User-Id
-	Logger           *slog.Logger // nil → slog.Default()
-	AllowedOrigins   []string     // CORS — usually ["*"] behind gateway
+	DataDir         string       // "" → COMMERCE_DIR or ./commerce_data
+	HTTPAddr        string       // "" → COMMERCE_HTTP or 127.0.0.1:8090
+	Dev             bool         // dev mode — reload-friendly logging
+	RequireIdentity bool         // gateway trust: refuse requests without X-Org-Id/X-User-Id
+	Logger          *slog.Logger // nil → slog.Default()
+	AllowedOrigins  []string     // CORS — usually ["*"] behind gateway
+
+	// App is the NATIVE co-residence contract: when set, commerce registers
+	// its routes directly on this shared zip app (one router, one specificity
+	// space — no handler adaptation, no second engine) and skips the
+	// standalone-only surfaces (/healthz, the legacy /admin SPA, the checkout
+	// SPA root catch-all, Listen). nil → commerce builds its own app and
+	// serves standalone.
+	App *zip.App
 }
 
 // Embedded is the handle to a running in-process Commerce server. The
 // underlying *App owns the heavy lifting (DB, infra, KMS,
-// hooks, cron) — Embedded wraps it for clean Stop/HTTPHandler/HTTPAddr
-// access from commerced.
+// hooks, cron) — Embedded wraps it for clean Stop/Zip access.
 type Embedded struct {
 	cfg EmbedConfig
 	app *App
@@ -72,12 +78,13 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	if cfg.RequireIdentity {
 		appCfg.RequireIdentity = true
 	}
+	appCfg.SharedApp = cfg.App
 
 	app := NewWithConfig(appCfg)
 
 	// Run Bootstrap synchronously so the returned Embedded is fully
-	// ready: Router populated, DB connected, hooks fired. setupRoutes
-	// is called inside Bootstrap; we expose that handler via HTTPHandler.
+	// ready: Router populated (the shared app in co-resident mode), DB
+	// connected, hooks fired. setupRoutes is called inside Bootstrap.
 	// Bootstrap installs the identity trust boundary (EdgeAuth + auth.Gin)
 	// BEFORE registering any route group and mounts the admin SPA after — so
 	// /_/commerce/*, /v1/commerce/* and the post-Bootstrap /v1 api.Route()
@@ -99,27 +106,13 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	return &Embedded{cfg: cfg, app: app}, nil
 }
 
-// HTTPHandler returns the gin router as a plain http.Handler.
-// commerced wraps this with healthz + the embedded SPA at /_/commerce/.
-func (e *Embedded) HTTPHandler() http.Handler {
-	if e == nil || e.app == nil || e.app.Router == nil {
-		return http.NotFoundHandler()
+// Zip returns the zip app commerce's routes live on — its own in
+// standalone mode, the shared app in co-resident mode.
+func (e *Embedded) Zip() *zip.App {
+	if e == nil || e.app == nil {
+		return nil
 	}
 	return e.app.Router
-}
-
-// HTTPAddr returns the configured listen address.
-func (e *Embedded) HTTPAddr() string {
-	if e == nil {
-		return ""
-	}
-	if e.cfg.HTTPAddr != "" {
-		return e.cfg.HTTPAddr
-	}
-	if e.app != nil {
-		return e.app.Config().HTTPAddr
-	}
-	return ""
 }
 
 // App exposes the underlying App for tests and hook registration.
@@ -135,7 +128,7 @@ func (e *Embedded) Stop(ctx context.Context) error {
 	if e == nil || e.app == nil {
 		return nil
 	}
-	if err := e.app.Shutdown(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := e.app.Shutdown(); err != nil {
 		return err
 	}
 	_ = ctx

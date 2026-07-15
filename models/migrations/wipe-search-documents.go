@@ -1,15 +1,15 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 )
 
 var _ = New("wipe-search-documents",
-	func(c *gin.Context) []interface{} {
-		db := datastore.New(c)
+	func(c *zip.Ctx) []interface{} {
+		db := datastore.New(c.Context())
 		db.SetNamespace("damon")
 		ctx := db.Context
 

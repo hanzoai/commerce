@@ -159,10 +159,10 @@ func (p *Provider) Charge(ctx context.Context, req processor.PaymentRequest) (*p
 	}
 
 	metadata := map[string]interface{}{
-		"lightningInvoice": resp.Data.LightningInvoice.PayReq,
-		"onchainAddress":   resp.Data.ChainInvoice.Address,
+		"lightningInvoice":  resp.Data.LightningInvoice.PayReq,
+		"onchainAddress":    resp.Data.ChainInvoice.Address,
 		"hostedCheckoutURL": resp.Data.HostedCheckoutURL,
-		"status":           resp.Data.Status,
+		"status":            resp.Data.Status,
 	}
 
 	return &processor.PaymentResult{
@@ -204,9 +204,9 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		CreatedAt:    createdAt,
 		UpdatedAt:    createdAt,
 		Metadata: map[string]interface{}{
-			"opennodeStatus":    resp.Data.Status,
-			"description":       resp.Data.Description,
-			"lightningInvoice":  resp.Data.LightningInvoice.PayReq,
+			"opennodeStatus":   resp.Data.Status,
+			"description":      resp.Data.Description,
+			"lightningInvoice": resp.Data.LightningInvoice.PayReq,
 		},
 	}, nil
 }

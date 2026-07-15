@@ -15,11 +15,11 @@ import (
 	// The package import doubles as the cloud.Registry side-effect
 	// trigger — commerce.Mount registers itself via init() at the same
 	// import path. One named binding, not two.
-	commerce "github.com/hanzoai/commerce"
 	"github.com/hanzoai/cloud"
+	commerce "github.com/hanzoai/commerce"
+	luxlog "github.com/luxfi/log"
 	"github.com/zap-proto/zip"
 	"github.com/zap-proto/zip/middleware"
-	luxlog "github.com/luxfi/log"
 )
 
 // bootCloud serves commerce as a subsystem inside a zip.App per the

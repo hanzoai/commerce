@@ -322,10 +322,10 @@ func (p *Provider) GetTransaction(ctx context.Context, txID string) (*processor.
 		Status:       txn.Status,
 		CustomerID:   txn.AccountCode,
 		Metadata: map[string]interface{}{
-			"uuid":             txn.UUID,
-			"payment_method":   txn.PaymentMethod,
+			"uuid":              txn.UUID,
+			"payment_method":    txn.PaymentMethod,
 			"collection_method": txn.CollectionMethod,
-			"origin":           txn.Origin,
+			"origin":            txn.Origin,
 		},
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
@@ -842,11 +842,11 @@ type recurlyRefundRequest struct {
 // --- Webhook XML types ---
 
 type webhookNotification struct {
-	XMLName      xml.Name                `xml:""`
-	Account      webhookAccount          `xml:"account"`
-	Transaction  webhookTransaction      `xml:"transaction"`
-	Invoice      webhookInvoice          `xml:"invoice"`
-	Subscription webhookSubscription     `xml:"subscription"`
+	XMLName      xml.Name            `xml:""`
+	Account      webhookAccount      `xml:"account"`
+	Transaction  webhookTransaction  `xml:"transaction"`
+	Invoice      webhookInvoice      `xml:"invoice"`
+	Subscription webhookSubscription `xml:"subscription"`
 }
 
 type webhookAccount struct {

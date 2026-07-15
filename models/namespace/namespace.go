@@ -9,7 +9,6 @@ import (
 
 var kind = "namespace"
 
-
 func init() { orm.Register[Namespace]("namespace") }
 
 type Namespace struct {

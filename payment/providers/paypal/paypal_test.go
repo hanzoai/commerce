@@ -992,9 +992,9 @@ func TestValidateWebhook_Success(t *testing.T) {
 	})
 
 	payload, _ := json.Marshal(map[string]interface{}{
-		"id":         "WH-EVT-1",
-		"event_type": "PAYMENT.CAPTURE.COMPLETED",
-		"resource":   map[string]string{"id": "CAP-1"},
+		"id":          "WH-EVT-1",
+		"event_type":  "PAYMENT.CAPTURE.COMPLETED",
+		"resource":    map[string]string{"id": "CAP-1"},
 		"create_time": "2026-01-15T10:00:00Z",
 	})
 

@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/user"
 
@@ -9,8 +9,8 @@ import (
 )
 
 var _ = New("fix-ludela-pt1",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "ludela")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "ludela")
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {

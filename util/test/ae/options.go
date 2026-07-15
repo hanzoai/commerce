@@ -15,8 +15,8 @@ type Options struct {
 // Generate safe defaults
 func defaults(args ...Options) Options {
 	opts := Options{
-		AppID: "None",
-		Debug: false,
+		AppID:                       "None",
+		Debug:                       false,
 		StronglyConsistentDatastore: true,
 		Modules:                     []string{"default"},
 	}

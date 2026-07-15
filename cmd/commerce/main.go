@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-
 	// Register the EVM ERC-20 transfer implementation into util/blockchain so
 	// the contributor payout path can execute on-chain HUSD payouts
 	// (PayoutMethod="crypto"). Without this blank import,

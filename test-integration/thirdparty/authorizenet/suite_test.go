@@ -3,14 +3,14 @@ package test
 import (
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/util/gincontext"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	"github.com/hanzoai/commerce/thirdparty/authorizenet"
 
@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	c      *gin.Context
+	c      *zip.Ctx
 	ctx    ae.Context
 	db     *datastore.Datastore
 	client *authorizenet.Client
-	token string
+	token  string
 )
 
 func Test(t *testing.T) {
@@ -31,8 +31,8 @@ func Test(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c = gincontext.New(ctx)
-	db = datastore.New(c)
+	c = zipctx.New(ctx)
+	db = datastore.New(ctx)
 	log.Warn("Before Suite")
 	org := fixtures.Organization(c).(*organization.Organization)
 	loginId := org.AuthorizeNet.Sandbox.LoginId
@@ -46,7 +46,7 @@ var _ = AfterSuite(func() {
 })
 
 /*
-* API Login Id: 
-* Transaction Key: 
+* API Login Id:
+* Transaction Key:
 * Key: Simon
-*/
+ */

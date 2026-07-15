@@ -4,7 +4,7 @@ import (
 	// "math/rand"
 	// "time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/datastore"
@@ -19,8 +19,8 @@ import (
 	// "github.com/hanzoai/commerce/util/fake"
 )
 
-var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+var SECDemo = New("sec-demo", func(c *zip.Ctx) *organization.Organization {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Name = "sec-demo"
@@ -108,7 +108,7 @@ var SECDemo = New("sec-demo", func(c *gin.Context) *organization.Organization {
 	// 	wh.MustUpdate()
 	// }
 
-	// nsDb := datastore.New(org.Namespaced(c))
+	// nsDb := datastore.New(org.Namespaced(c.Context()))
 
 	// users := make([]*user.User, 0)
 

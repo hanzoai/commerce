@@ -12,8 +12,8 @@ import (
 type TaxLine struct {
 	TaxRateId    string  `json:"taxRateId"`
 	Description  string  `json:"description"`
-	Amount       int64   `json:"amount"`       // tax amount in cents
-	Rate         float64 `json:"rate"`          // e.g., 0.0875 for 8.75%
+	Amount       int64   `json:"amount"` // tax amount in cents
+	Rate         float64 `json:"rate"`   // e.g., 0.0875 for 8.75%
 	Inclusive    bool    `json:"inclusive"`
 	Jurisdiction string  `json:"jurisdiction"`
 }

@@ -3,7 +3,7 @@ package migrations
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	ds "github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -14,7 +14,7 @@ import (
 var errNoSuchEntity = errors.New("datastore: no such entity")
 
 var _ = New("mark-dangling-payments-for-deletion",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {

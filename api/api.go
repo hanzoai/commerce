@@ -1,7 +1,10 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/zap-proto/fiber/v3/middleware/adaptor"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/delay"
@@ -86,28 +89,32 @@ import (
 	_ "github.com/hanzoai/commerce/models/referrer/tasks"
 )
 
-func Route(api router.Router) {
+func Route(api zip.Router) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	// Index
 	if config.IsDevelopment {
-		api.GET("/", middleware.ParseToken, rest.ListRoutes())
+		api.Get("/", middleware.ParseToken, rest.ListRoutes())
 	} else {
-		api.GET("/", router.Ok)
-		api.HEAD("/", router.Empty)
+		api.Get("/", router.Ok)
+		api.Head("/", router.Empty)
 	}
 
 	// Use permissive CORS policy for all API routes.
 	api.Use(middleware.AccessControl("*"))
-	api.OPTIONS("*wildcard", func(c *gin.Context) {
-		c.Next()
+	api.Options("*wildcard", func(c *zip.Ctx) error {
+		return c.Next()
 	})
 
-	// Setup routes for delay funcs
-	api.POST(delay.Path, func(c *gin.Context) {
-		ctx := c.Request.Context()
-		delay.RunFunc(ctx, c.Writer, c.Request)
+	// Setup routes for delay funcs. RunFunc is a net/http-shaped handler
+	// (ResponseWriter + *http.Request); adaptor.HTTPHandler bridges it onto the
+	// fiber ctx so the delayed-task dispatch stays byte-for-byte the same.
+	api.Post(delay.Path, func(c *zip.Ctx) error {
+		ctx := c.Context()
+		return adaptor.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			delay.RunFunc(ctx, w, req)
+		}))(c.Fiber())
 	})
 
 	// Checkout APIs (charge, authorize, capture)

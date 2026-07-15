@@ -37,8 +37,6 @@ type MeterEvent struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-
-
 func (e *MeterEvent) Defaults() {
 	e.Parent = e.Datastore().NewKey("synckey", "", 1, nil)
 	if e.Timestamp.IsZero() {

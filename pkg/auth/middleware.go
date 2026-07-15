@@ -12,7 +12,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // Header names — vendor-free X-* convention (see /Users/z/work/hanzo/CLAUDE.md).
@@ -55,40 +55,39 @@ func RequireIdentity(require bool) func(http.Handler) http.Handler {
 	}
 }
 
-// Gin returns a Gin middleware that mirrors RequireIdentity. Used by
-// pkg/commerce/server.go to gate the /v1/commerce and /_/commerce groups.
-func Gin(require bool) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		org := c.GetHeader(HeaderOrgID)
-		user := c.GetHeader(HeaderUserID)
-		email := c.GetHeader(HeaderUserEmail)
+// Identity returns a zip middleware that mirrors RequireIdentity. Used by
+// server.go to gate the /v1/commerce and /_/commerce groups.
+func Identity(require bool) zip.Handler {
+	return func(c *zip.Ctx) error {
+		org := c.Header(HeaderOrgID)
+		user := c.Header(HeaderUserID)
+		email := c.Header(HeaderUserEmail)
 
 		if require && org == "" && user == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			return c.JSON(http.StatusUnauthorized, map[string]any{
 				"error": "identity required",
 				"code":  401,
 			})
-			return
 		}
 
-		ctx := c.Request.Context()
+		ctx := c.Context()
 		ctx = context.WithValue(ctx, ctxKeyOrgID, org)
 		ctx = context.WithValue(ctx, ctxKeyUserID, user)
 		ctx = context.WithValue(ctx, ctxKeyUserEmail, email)
-		c.Request = c.Request.WithContext(ctx)
+		c.Fiber().SetContext(ctx)
 
-		// Mirror onto Gin keys for legacy handlers that read from c.Get.
+		// Mirror onto request locals for legacy handlers that read from c.Locals.
 		if org != "" {
-			c.Set("iam_org", org)
-			c.Set("iam_authenticated", true)
+			c.Locals("iam_org", org)
+			c.Locals("iam_authenticated", true)
 		}
 		if user != "" {
-			c.Set("iam_user_id", user)
+			c.Locals("iam_user_id", user)
 		}
 		if email != "" {
-			c.Set("iam_email", email)
+			c.Locals("iam_email", email)
 		}
-		c.Next()
+		return c.Next()
 	}
 }
 

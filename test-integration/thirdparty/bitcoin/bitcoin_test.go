@@ -3,22 +3,22 @@ package test
 import (
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/blockchains"
 	"github.com/hanzoai/commerce/models/blockchains/blocktransaction"
 	"github.com/hanzoai/commerce/models/fixtures"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
 
 var (
 	ctx ae.Context
-	c   *gin.Context
+	c   *zip.Ctx
 	db  *datastore.Datastore
 )
 
@@ -29,7 +29,7 @@ func Test(t *testing.T) {
 // Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c = gincontext.New(ctx)
+	c = zipctx.New(ctx)
 	db = datastore.New(ctx)
 
 	fixtures.BlockchainNamespace(c)

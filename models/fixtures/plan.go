@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/deprecated/plan"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -9,7 +9,7 @@ import (
 	. "github.com/hanzoai/commerce/types"
 )
 
-var Plan = New("plan", func(c *gin.Context) *plan.Plan {
+var Plan = New("plan", func(c *zip.Ctx) *plan.Plan {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

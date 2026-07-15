@@ -27,14 +27,14 @@ type Product struct {
 
 // Price represents a Stripe Price attached to a Product.
 type Price struct {
-	ID          string            `json:"id"`
-	Product     string            `json:"product"`
-	Active      bool              `json:"active"`
-	Currency    string            `json:"currency"`
-	UnitAmount  int64             `json:"unit_amount"`
-	LookupKey   string            `json:"lookup_key"`
-	Recurring   *PriceRecurring   `json:"recurring"`
-	Metadata    map[string]string `json:"metadata"`
+	ID         string            `json:"id"`
+	Product    string            `json:"product"`
+	Active     bool              `json:"active"`
+	Currency   string            `json:"currency"`
+	UnitAmount int64             `json:"unit_amount"`
+	LookupKey  string            `json:"lookup_key"`
+	Recurring  *PriceRecurring   `json:"recurring"`
+	Metadata   map[string]string `json:"metadata"`
 }
 
 // PriceRecurring describes the billing cadence.

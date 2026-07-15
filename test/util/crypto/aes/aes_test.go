@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"github.com/hanzoai/commerce/util/crypto/aes"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/util/crypto/aes"
 	"github.com/hanzoai/commerce/util/rand"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"

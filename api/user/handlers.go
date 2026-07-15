@@ -1,17 +1,16 @@
 package user
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/user/wallet"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	readUserRequired := middleware.TokenRequired(permission.Admin, permission.ReadUser)
 	writeUserRequired := middleware.TokenRequired(permission.Admin, permission.WriteUser)
 	readOrderOrSubscriptionRequired := middleware.TokenRequired(permission.Admin, permission.ReadOrder)

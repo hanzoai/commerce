@@ -1,8 +1,8 @@
 package test
 
 import (
-	"github.com/hanzoai/commerce/models/site"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/site"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

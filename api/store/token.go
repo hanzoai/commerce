@@ -3,7 +3,7 @@ package store
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -25,27 +25,26 @@ import (
 //
 // Returns { status, org, token }. The caller stores `token` in KMS and injects
 // it as HANZO_COMMERCE_STOREFRONT_TOKEN on the storefront deployment.
-func mintStorefrontToken(c *gin.Context) {
+func mintStorefrontToken(c *zip.Ctx) error {
 	// Authoritative admin gate. The route's TokenRequired(Admin) NO-OPS on the
 	// IAM path (EdgeAuth/gateway-minted identity), so enforce admin here the same
 	// way the money handlers do — IAM-aware, fail-closed — or a non-admin org
-	// member could mint their org's storefront key.
+	// member could mint their org's storefront key. RequireAdmin renders the
+	// rejection itself, so returning nil here ends the chain.
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 
 	org, ok := middleware.GetOrganizationOK(c)
 	if !ok || org == nil {
-		http.Fail(c, 400, "organization required", errors.New("no organization in context"))
-		return
+		return http.Fail(c, 400, "organization required", errors.New("no organization in context"))
 	}
 
 	org.RemoveToken("storefront")
 	token := org.AddToken("storefront", permission.Published)
 	if err := org.Put(); err != nil {
-		http.Fail(c, 500, "failed to persist storefront token", err)
-		return
+		return http.Fail(c, 500, "failed to persist storefront token", err)
 	}
 
-	http.Render(c, 200, gin.H{"status": "ok", "org": org.Name, "token": token})
+	return http.Render(c, 200, map[string]any{"status": "ok", "org": org.Name, "token": token})
 }

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware/svcorg"
@@ -15,33 +15,31 @@ import (
 	"github.com/hanzoai/commerce/util/permission"
 )
 
-// runGate drives TokenRequired(masks...) through a real gin engine with the
-// given pre-set context state (iam_authenticated / permissions), returning the
-// HTTP status and whether the protected handler was reached. COMMERCE_SERVICE_TOKEN
+// runGate drives TokenRequired(masks...) through a real zip app with the given
+// pre-set context state (iam_authenticated / permissions), returning the HTTP
+// status and whether the protected handler was reached. COMMERCE_SERVICE_TOKEN
 // is cleared so only the IAM branch under test is exercised.
-func runGate(t *testing.T, masks []bit.Mask, seed func(*gin.Context)) (int, bool) {
+func runGate(t *testing.T, masks []bit.Mask, seed func(*zip.Ctx)) (int, bool) {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reached := false
-	eng := gin.New()
-	eng.Use(func(c *gin.Context) { seed(c); c.Next() })
-	eng.POST("/x", TokenRequired(masks...), func(c *gin.Context) {
-		reached = true
-		c.Status(http.StatusOK)
-	})
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
+	app.Use(TokenRequired(masks...))
+	app.Post("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
-	req := httptest.NewRequest(http.MethodPost, "/x", nil)
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-	return w.Code, reached
+	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodPost, "/x", nil))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	return resp.StatusCode, reached
 }
 
-func iamAuth(perms bit.Field) func(*gin.Context) {
-	return func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", perms)
+func iamAuth(perms bit.Field) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", perms)
 	}
 }
 
@@ -91,23 +89,25 @@ func TestTokenRequired_IAMBranchEnforcesMasks(t *testing.T) {
 // as an IAM principal — it falls through to token auth and 401s. Before the fix,
 // the bare header alone satisfied IsIAMAuthenticated and reached the handler.
 func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
 	reached := false
-	eng := gin.New()
-	eng.POST("/x", TokenRequired(permission.Admin, permission.Published), func(c *gin.Context) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(TokenRequired(permission.Admin, permission.Published))
+	app.Post("/x", func(c *zip.Ctx) error {
 		reached = true
-		c.Status(http.StatusOK)
+		return c.NoContent(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("X-Org-Id", "hanzo") // spoofed org selector, no token behind it
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
 
-	if w.Code != http.StatusUnauthorized || reached {
-		t.Fatalf("bare X-Org-Id must not authenticate: status=%d reached=%v, want 401,false", w.Code, reached)
+	if resp.StatusCode != http.StatusUnauthorized || reached {
+		t.Fatalf("bare X-Org-Id must not authenticate: status=%d reached=%v, want 401,false", resp.StatusCode, reached)
 	}
 }
 
@@ -119,7 +119,6 @@ func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
 // cloud-api treat a transient DB hiccup as a bad credential and 402 customers).
 // A nil default datastore forces svcorg.Resolve to error deterministically.
 func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	const svc = "svc-token-abc123"
 	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
 
@@ -130,23 +129,26 @@ func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
 	svcorg.Invalidate("failorg")
 
 	reached := false
-	eng := gin.New()
-	eng.POST("/x", TokenRequired(), func(c *gin.Context) { // no-mask billing-style gate
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(TokenRequired()) // no-mask billing-style gate
+	app.Post("/x", func(c *zip.Ctx) error {
 		reached = true
-		c.Status(http.StatusOK)
+		return c.NoContent(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	req.Header.Set("Authorization", "Bearer "+svc)
 	req.Header.Set("X-Org-Id", "failorg")
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
 
 	if reached {
 		t.Fatalf("handler must NOT be reached when service-token org resolve fails")
 	}
-	if w.Code != http.StatusServiceUnavailable {
+	if resp.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("verified-service-token resolve failure must be 503 (retryable), got %d; "+
-			"a 401 means it fell through to the legacy Peek path (the wedge)", w.Code)
+			"a 401 means it fell through to the legacy Peek path (the wedge)", resp.StatusCode)
 	}
 }

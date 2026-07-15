@@ -23,7 +23,7 @@ type HUSDCursor struct {
 	LastBlock uint64 `json:"lastBlock"`
 }
 
-func (c *HUSDCursor) Load(ps []datastore.Property) error { return datastore.LoadStruct(c, ps) }
+func (c *HUSDCursor) Load(ps []datastore.Property) error  { return datastore.LoadStruct(c, ps) }
 func (c *HUSDCursor) Save() ([]datastore.Property, error) { return datastore.SaveStruct(c) }
 
 // New returns an initialized HUSDCursor bound to db.

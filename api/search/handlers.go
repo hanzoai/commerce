@@ -1,21 +1,20 @@
 package search
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/util/permission"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	namespaced := middleware.Namespace()
 
 	group := router.Group("search")
 	group.Use(middleware.AccessControl("*"))
 
-	group.GET("/user", adminRequired, namespaced, searchUser)
-	group.GET("/order", adminRequired, namespaced, searchOrder)
-	group.POST("/note", adminRequired, namespaced, searchNote)
+	group.Get("/user", adminRequired, namespaced, searchUser)
+	group.Get("/order", adminRequired, namespaced, searchOrder)
+	group.Post("/note", adminRequired, namespaced, searchNote)
 }

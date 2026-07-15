@@ -793,8 +793,8 @@ func TestGetTransaction_Success(t *testing.T) {
 			"origin":                "api",
 			"created_at":            "2026-01-15T10:00:00Z",
 			"updated_at":            "2026-01-15T10:05:00Z",
-			"account":              map[string]interface{}{"code": "acct-1"},
-			"invoice":              map[string]interface{}{"id": "inv-1"},
+			"account":               map[string]interface{}{"code": "acct-1"},
+			"invoice":               map[string]interface{}{"id": "inv-1"},
 		})
 	}))
 	defer server.Close()

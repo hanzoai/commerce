@@ -3,7 +3,7 @@ package billing
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -31,19 +31,17 @@ type lineItem struct {
 // InvoicePreview calculates an invoice preview: usage x pricing - credits.
 //
 //	POST /v1/billing/invoice-preview
-func InvoicePreview(c *gin.Context) {
+func InvoicePreview(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req invoicePreviewRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	var periodStart, periodEnd time.Time
@@ -52,16 +50,14 @@ func InvoicePreview(c *gin.Context) {
 	if req.PeriodStart != "" {
 		periodStart, err = parseDateOrTime(req.PeriodStart)
 		if err != nil {
-			http.Fail(c, 400, "invalid periodStart format", err)
-			return
+			return http.Fail(c, 400, "invalid periodStart format", err)
 		}
 	}
 
 	if req.PeriodEnd != "" {
 		periodEnd, err = parseDateOrTime(req.PeriodEnd)
 		if err != nil {
-			http.Fail(c, 400, "invalid periodEnd format", err)
-			return
+			return http.Fail(c, 400, "invalid periodEnd format", err)
 		}
 	}
 
@@ -71,8 +67,7 @@ func InvoicePreview(c *gin.Context) {
 	mq := meter.Query(db).Ancestor(rootKey)
 	if _, err := mq.GetAll(&meters); err != nil {
 		log.Error("Failed to query meters: %v", err, c)
-		http.Fail(c, 500, "failed to query meters", err)
-		return
+		return http.Fail(c, 500, "failed to query meters", err)
 	}
 
 	// 2. Get all pricing rules
@@ -80,8 +75,7 @@ func InvoicePreview(c *gin.Context) {
 	rq := pricingrule.Query(db).Ancestor(rootKey)
 	if _, err := rq.GetAll(&rules); err != nil {
 		log.Error("Failed to query pricing rules: %v", err, c)
-		http.Fail(c, 500, "failed to query pricing rules", err)
-		return
+		return http.Fail(c, 500, "failed to query pricing rules", err)
 	}
 
 	// Index pricing rules by meterId
@@ -174,7 +168,7 @@ func InvoicePreview(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"userId":        req.UserId,
 		"periodStart":   req.PeriodStart,
 		"periodEnd":     req.PeriodEnd,

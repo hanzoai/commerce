@@ -5,37 +5,59 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
-	"io"
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/valyala/fasthttp"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 )
 
-func init() { gin.SetMode(gin.TestMode) }
+// runEdgeAuth mounts EdgeAuth ahead of a probe and drives req through the real
+// zip chain. EdgeAuth mutates the underlying fasthttp request in place (strips /
+// mints identity headers); the probe — running AFTER EdgeAuth via c.Next() —
+// observes exactly what the downstream chain sees: the captured request headers,
+// the stashed opaque-bearer org, and whether it was reached at all (EdgeAuth
+// never aborts a non-JWT bearer). The *Ctx is pooled and reset once the request
+// returns, so every observation is taken inside the probe, never after.
+func runEdgeAuth(t *testing.T, req *http.Request, captureHeaders ...string) (reached bool, headers map[string]string, stashedOrg string) {
+	t.Helper()
+	headers = map[string]string{}
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	app.Use(EdgeAuth())
+	app.All("/*", func(c *zip.Ctx) error {
+		reached = true
+		for _, k := range captureHeaders {
+			headers[k] = c.Header(k)
+		}
+		stashedOrg = clientOrgFromContext(c)
+		return c.NoContent(http.StatusOK)
+	})
+	if _, err := app.Fiber().Test(req); err != nil {
+		t.Fatalf("edgeauth request: %v", err)
+	}
+	return
+}
 
 // TestEdgeAuth_StripsSpoofedIdentity proves the core security fix: at a
 // directly-exposed edge a client-supplied X-Org-Id (and friends) must be
 // removed so it can't impersonate an org via the header-trust path.
 func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance?user=hanzo&currency=usd", nil)
 	req.Header.Set("X-Org-Id", "hanzo")
 	req.Header.Set("X-User-Permissions", "16") // spoofed admin bit
 	req.Header.Set("X-User-IsAdmin", "true")
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = req
-	h(c)
-
-	for _, k := range []string{"X-Org-Id", "X-User-Permissions", "X-User-IsAdmin"} {
-		if got := c.Request.Header.Get(k); got != "" {
+	keys := []string{"X-Org-Id", "X-User-Permissions", "X-User-IsAdmin"}
+	_, headers, _ := runEdgeAuth(t, req, keys...)
+	for _, k := range keys {
+		if got := headers[k]; got != "" {
 			t.Fatalf("EdgeAuth(enabled) must strip spoofed %s, got %q", k, got)
 		}
 	}
@@ -51,7 +73,6 @@ func TestEdgeAuth_StripsSpoofedIdentity(t *testing.T) {
 // nothing is re-minted; every identity header must come out empty).
 func TestEdgeAuth_StripsSuperAdminSpoof(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth()
 
 	req := httptest.NewRequest("POST", "/_/commerce/tenants", nil)
 	req.Header.Set("X-Org-Id", "admin")
@@ -59,12 +80,10 @@ func TestEdgeAuth_StripsSuperAdminSpoof(t *testing.T) {
 	req.Header.Set("X-User-IsGlobalAdmin", "true") // forged retired boolean
 	req.Header.Set("X-User-IsAdmin", "true")
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = req
-	h(c)
-
-	for _, k := range []string{"X-Org-Id", "X-User-Owner", "X-User-IsGlobalAdmin", "X-User-IsAdmin"} {
-		if got := c.Request.Header.Get(k); got != "" {
+	keys := []string{"X-Org-Id", "X-User-Owner", "X-User-IsGlobalAdmin", "X-User-IsAdmin"}
+	_, headers, _ := runEdgeAuth(t, req, keys...)
+	for _, k := range keys {
+		if got := headers[k]; got != "" {
 			t.Fatalf("EdgeAuth must strip spoofed %s, got %q", k, got)
 		}
 	}
@@ -85,26 +104,23 @@ func TestEdgeAuth_StripsSuperAdminSpoof(t *testing.T) {
 // EdgeAuth never aborts an opaque bearer (not a JWT ⇒ minting skipped).
 func TestEdgeAuth_OpaqueBearerStashesOrgNotHeader(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth()
 
 	req := httptest.NewRequest("POST", "/v1/billing/usage", nil)
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token_not_a_jwt")
 	req.Header.Set("X-Org-Id", "maxpower")
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = req
-	h(c)
+	reached, headers, stashedOrg := runEdgeAuth(t, req, "X-Org-Id")
 
-	if c.IsAborted() {
+	if !reached {
 		t.Fatal("EdgeAuth must NOT abort an opaque service-token request (money path)")
 	}
 	// (a) X-Org-Id MUST be stripped — never re-exposed to the trust boundary.
-	if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+	if got := headers["X-Org-Id"]; got != "" {
 		t.Fatalf("opaque bearer: X-Org-Id must stay stripped (bypass fix), got %q", got)
 	}
 	// (b) org preserved out-of-band for the validated-service-token branch.
-	if got := clientOrgFromContext(c); got != "maxpower" {
-		t.Fatalf("opaque bearer org must be stashed for per-org billing, got %q", got)
+	if stashedOrg != "maxpower" {
+		t.Fatalf("opaque bearer org must be stashed for per-org billing, got %q", stashedOrg)
 	}
 }
 
@@ -118,7 +134,6 @@ func TestEdgeAuth_OpaqueBearerStashesOrgNotHeader(t *testing.T) {
 // later proves to be COMMERCE_SERVICE_TOKEN, which "redteamprobe" is not.
 func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth()
 
 	for _, path := range []string{
 		"/v1/checkout/sessions", "/v1/checkout/charge",
@@ -128,11 +143,9 @@ func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer redteamprobe")
 		req.Header.Set("X-Org-Id", "hanzo")
 
-		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		c.Request = req
-		h(c)
+		_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
 
-		if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+		if got := headers["X-Org-Id"]; got != "" {
 			t.Fatalf("%s: bypass vector X-Org-Id must be stripped, got %q", path, got)
 		}
 	}
@@ -142,16 +155,13 @@ func TestEdgeAuth_ClosesOpaqueBearerBypass(t *testing.T) {
 // unaffected: with the flag off, identity headers pass through untouched.
 func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "")
-	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance", nil)
 	req.Header.Set("X-Org-Id", "hanzo")
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = req
-	h(c)
+	_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
 
-	if got := c.Request.Header.Get("X-Org-Id"); got != "hanzo" {
+	if got := headers["X-Org-Id"]; got != "hanzo" {
 		t.Fatalf("EdgeAuth(disabled) must be a no-op, X-Org-Id=%q", got)
 	}
 }
@@ -161,29 +171,40 @@ func TestEdgeAuth_DisabledIsNoOp(t *testing.T) {
 // header is stripped and nothing is trusted in its place.
 func TestEdgeAuth_NilClientNeverMints(t *testing.T) {
 	t.Setenv("COMMERCE_EDGE_AUTH", "true")
-	h := EdgeAuth()
 
 	req := httptest.NewRequest("GET", "/v1/billing/balance", nil)
 	req.Header.Set("Authorization", "Bearer a.b.c")
 	req.Header.Set("X-Org-Id", "evil")
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = req
-	h(c)
+	_, headers, _ := runEdgeAuth(t, req, "X-Org-Id")
 
-	if got := c.Request.Header.Get("X-Org-Id"); got != "" {
+	if got := headers["X-Org-Id"]; got != "" {
 		t.Fatalf("nil verifier must not mint identity, X-Org-Id=%q", got)
 	}
+}
+
+// billingReq builds a fasthttp request (method + URI + optional JSON body) for
+// the header/body-locking unit tests — the direct callees now take the
+// fasthttp request EdgeAuth mutates, not a net/http one.
+func billingReq(method, uri, body string) *fasthttp.Request {
+	req := &fasthttp.Request{}
+	req.Header.SetMethod(method)
+	req.SetRequestURI(uri)
+	if body != "" {
+		req.Header.SetContentType("application/json")
+		req.SetBody([]byte(body))
+	}
+	return req
 }
 
 // TestLockBillingSubject proves per-org isolation: the billing subject is
 // pinned to the caller's own org slug, other query params are preserved.
 func TestLockBillingSubject(t *testing.T) {
-	req := httptest.NewRequest("GET",
-		"/v1/billing/transactions?user=victim/other&userId=x&customerId=y&limit=5", nil)
+	req := billingReq("GET",
+		"/v1/billing/transactions?user=victim/other&userId=x&customerId=y&limit=5", "")
 	lockBillingSubject(req, "hanzo")
 
-	q := req.URL.Query()
+	q, _ := url.ParseQuery(string(req.URI().QueryString()))
 	for _, k := range []string{"user", "userId", "customerId"} {
 		if q.Get(k) != "hanzo" {
 			t.Fatalf("%s must be locked to org slug, got %q", k, q.Get(k))
@@ -203,12 +224,11 @@ func TestLockBillingSubjectBody(t *testing.T) {
 	// amount is 2^53+1: a value float64 cannot hold exactly, so a clean
 	// round-trip proves the rewrite preserves numeric precision (json.Number).
 	const body = `{"customerId":"victim/other","amount":9007199254740993,"currency":"usd","brand":"visa"}`
-	req := httptest.NewRequest("POST", "/v1/billing/payment-methods", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := billingReq("POST", "/v1/billing/payment-methods", body)
 
 	lockBillingSubjectBody(req, "hanzo")
 
-	raw, _ := io.ReadAll(req.Body)
+	raw := req.Body()
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
 	var m map[string]any
@@ -224,8 +244,8 @@ func TestLockBillingSubjectBody(t *testing.T) {
 	if m["currency"] != "usd" || m["brand"] != "visa" {
 		t.Fatalf("unrelated fields clobbered: %v", m)
 	}
-	if got := req.Header.Get("Content-Length"); got != strconv.Itoa(len(raw)) {
-		t.Fatalf("Content-Length must track rewritten body (%d), got %q", len(raw), got)
+	if got := req.Header.ContentLength(); got != len(raw) {
+		t.Fatalf("Content-Length must track rewritten body (%d), got %d", len(raw), got)
 	}
 }
 
@@ -233,13 +253,12 @@ func TestLockBillingSubjectBody(t *testing.T) {
 // the body (user/userId/customerId) is pinned, mirroring the query lock's set.
 func TestLockBillingSubjectBody_PinsAllSubjectKeys(t *testing.T) {
 	const body = `{"user":"a/b","userId":"c/d","customerId":"e/f","note":"keep"}`
-	req := httptest.NewRequest("PUT", "/v1/billing/payment-methods/123", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := billingReq("PUT", "/v1/billing/payment-methods/123", body)
 
 	lockBillingSubjectBody(req, "hanzo")
 
 	var m map[string]any
-	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+	if err := json.NewDecoder(bytes.NewReader(req.Body())).Decode(&m); err != nil {
 		t.Fatalf("rewritten body must stay valid JSON: %v", err)
 	}
 	for _, k := range []string{"user", "userId", "customerId"} {
@@ -263,10 +282,12 @@ func TestLockBillingSubjectBody_ShapeAgnostic(t *testing.T) {
 		`not json at all`,                 // unparseable
 		``,                                // empty
 	} {
-		req := httptest.NewRequest("POST", "/v1/billing/topup", strings.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
+		req := billingReq("POST", "/v1/billing/topup", body)
+		// billingReq skips Content-Type for an empty body; set it so the
+		// content-type gate is exercised for every shape.
+		req.Header.SetContentType("application/json")
 		lockBillingSubjectBody(req, "hanzo")
-		if got, _ := io.ReadAll(req.Body); string(got) != body {
+		if got := string(req.Body()); got != body {
 			t.Fatalf("body %q must pass through untouched, got %q", body, got)
 		}
 	}
@@ -277,10 +298,9 @@ func TestLockBillingSubjectBody_ShapeAgnostic(t *testing.T) {
 // would consume the stream — must leave non-write methods untouched.
 func TestLockBillingSubjectBody_NonWriteMethodIgnored(t *testing.T) {
 	const body = `{"customerId":"victim/other"}`
-	req := httptest.NewRequest("GET", "/v1/billing/balance", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	req := billingReq("GET", "/v1/billing/balance", body)
 	lockBillingSubjectBody(req, "hanzo")
-	if got, _ := io.ReadAll(req.Body); string(got) != body {
+	if got := string(req.Body()); got != body {
 		t.Fatalf("GET body must be untouched, got %q", got)
 	}
 }
@@ -289,10 +309,13 @@ func TestLockBillingSubjectBody_NonWriteMethodIgnored(t *testing.T) {
 // billing-subject fields to pin, so the body is left untouched (and unread).
 func TestLockBillingSubjectBody_NonJSONIgnored(t *testing.T) {
 	const body = `customerId=victim%2Fother&amount=100`
-	req := httptest.NewRequest("POST", "/v1/billing/payment-methods", strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req := &fasthttp.Request{}
+	req.Header.SetMethod("POST")
+	req.SetRequestURI("/v1/billing/payment-methods")
+	req.Header.SetContentType("application/x-www-form-urlencoded")
+	req.SetBody([]byte(body))
 	lockBillingSubjectBody(req, "hanzo")
-	if got, _ := io.ReadAll(req.Body); string(got) != body {
+	if got := string(req.Body()); got != body {
 		t.Fatalf("non-JSON body must be untouched, got %q", got)
 	}
 }
@@ -366,16 +389,17 @@ func TestPermsHeader_AdminBitIsSuperAdminOnly(t *testing.T) {
 // TestResolveBillingSubject_AdminOverride: a global admin may retarget the
 // billing view to another org via ?org=, and the namespace follows it.
 func TestResolveBillingSubject_AdminOverride(t *testing.T) {
-	req := httptest.NewRequest("GET", "/v1/billing/balance?user=admin/z&org=hanzo&currency=usd", nil)
+	req := billingReq("GET", "/v1/billing/balance?user=admin/z&org=hanzo&currency=usd", "")
 	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
 	if subject != "hanzo" || !override {
 		t.Fatalf("admin ?org=hanzo => subject=%q override=%v, want hanzo,true", subject, override)
 	}
-	if req.URL.Query().Has("org") {
-		t.Fatalf("?org must be stripped from the query, got %q", req.URL.RawQuery)
+	q, _ := url.ParseQuery(string(req.URI().QueryString()))
+	if q.Has("org") {
+		t.Fatalf("?org must be stripped from the query, got %q", req.URI().QueryString())
 	}
-	if req.URL.Query().Get("currency") != "usd" {
-		t.Fatalf("unrelated query param clobbered: %q", req.URL.RawQuery)
+	if q.Get("currency") != "usd" {
+		t.Fatalf("unrelated query param clobbered: %q", req.URI().QueryString())
 	}
 }
 
@@ -384,20 +408,21 @@ func TestResolveBillingSubject_AdminOverride(t *testing.T) {
 // stripped and the subject stays pinned to the caller's own org.
 func TestResolveBillingSubject_NonAdminIgnoresOverride(t *testing.T) {
 	// Dave: org owner with IsAdmin=true (org-level), NOT a global admin.
-	req := httptest.NewRequest("GET", "/v1/billing/balance?org=hanzo&currency=usd", nil)
+	req := billingReq("GET", "/v1/billing/balance?org=hanzo&currency=usd", "")
 	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "maxpower", IsAdmin: true})
 	if subject != "maxpower" || override {
 		t.Fatalf("non-admin ?org=hanzo => subject=%q override=%v, want maxpower,false (isolation)", subject, override)
 	}
-	if req.URL.Query().Has("org") {
-		t.Fatalf("?org must be stripped even for non-admins, got %q", req.URL.RawQuery)
+	q, _ := url.ParseQuery(string(req.URI().QueryString()))
+	if q.Has("org") {
+		t.Fatalf("?org must be stripped even for non-admins, got %q", req.URI().QueryString())
 	}
 }
 
 // TestResolveBillingSubject_NoOverride: without ?org, every caller (incl. a
 // global admin) defaults to their own org and the namespace is untouched.
 func TestResolveBillingSubject_NoOverride(t *testing.T) {
-	req := httptest.NewRequest("GET", "/v1/billing/balance?currency=usd", nil)
+	req := billingReq("GET", "/v1/billing/balance?currency=usd", "")
 	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
 	if subject != "admin" || override {
 		t.Fatalf("no ?org => subject=%q override=%v, want admin,false", subject, override)
@@ -408,7 +433,7 @@ func TestResolveBillingSubject_NoOverride(t *testing.T) {
 // (treated as absent), so even an admin stays on their own org rather than a
 // smuggled value.
 func TestResolveBillingSubject_RejectsBadSlug(t *testing.T) {
-	req := httptest.NewRequest("GET", "/v1/billing/balance?org=hanzo%2Fevil", nil)
+	req := billingReq("GET", "/v1/billing/balance?org=hanzo%2Fevil", "")
 	subject, override := resolveBillingSubject(req, &auth.IAMClaims{Owner: "admin"})
 	if subject != "admin" || override {
 		t.Fatalf("bad ?org slug => subject=%q override=%v, want admin,false", subject, override)

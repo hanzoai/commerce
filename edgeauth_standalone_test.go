@@ -21,9 +21,11 @@ package commerce
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -69,6 +71,11 @@ func bootEdgeCommerce(t *testing.T) *App {
 // forged platform-superadmin POST to /_/commerce/tenants MUST be stripped at
 // the boundary and rejected (401), and MUST NOT create a tenant row. On the
 // pre-fix code (EdgeAuth mounted after setupRoutes) this returned 201.
+func respBody(r *http.Response) string {
+	b, _ := io.ReadAll(r.Body)
+	return string(b)
+}
+
 func TestStandaloneForge_TenantCreate_Blocked(t *testing.T) {
 	app := bootEdgeCommerce(t)
 
@@ -87,14 +94,16 @@ func TestStandaloneForge_TenantCreate_Blocked(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 	req.Header.Set("X-User-Id", "mallory")
 
-	w := httptest.NewRecorder()
-	app.Router.ServeHTTP(w, req)
-
-	if w.Code == http.StatusCreated {
-		t.Fatalf("FORGE SUCCEEDED: POST /_/commerce/tenants with forged identity returned 201 — boundary not wired. body=%s", w.Body.String())
+	resp, terr := app.Router.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
 	}
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("forged tenant-create status=%d, want 401 (identity stripped → unauthenticated); body=%s", w.Code, w.Body.String())
+
+	if resp.StatusCode == http.StatusCreated {
+		t.Fatalf("FORGE SUCCEEDED: POST /_/commerce/tenants with forged identity returned 201 — boundary not wired. body=%s", respBody(resp))
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("forged tenant-create status=%d, want 401 (identity stripped → unauthenticated); body=%s", resp.StatusCode, respBody(resp))
 	}
 
 	// Defense-in-depth: confirm no tenant row leaked into the store.
@@ -104,7 +113,7 @@ func TestStandaloneForge_TenantCreate_Blocked(t *testing.T) {
 	}
 	for _, tn := range tenants {
 		if tn.Name == forgedName {
-			t.Fatalf("forged tenant %q was created despite %d response — store mutated", forgedName, w.Code)
+			t.Fatalf("forged tenant %q was created despite %d response — store mutated", forgedName, resp.StatusCode)
 		}
 	}
 }
@@ -120,14 +129,16 @@ func TestStandaloneForge_ListProviders_Blocked(t *testing.T) {
 	req.Header.Set("X-User-IsAdmin", "true")
 	req.Header.Set("X-Roles", "admin,owner,superadmin")
 
-	w := httptest.NewRecorder()
-	app.Router.ServeHTTP(w, req)
-
-	if w.Code == http.StatusOK {
-		t.Fatalf("forged provider-list returned 200 — boundary not wired; body=%s", w.Body.String())
+	resp, terr := app.Router.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
 	}
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("forged provider-list status=%d, want 401; body=%s", w.Code, w.Body.String())
+
+	if resp.StatusCode == http.StatusOK {
+		t.Fatalf("forged provider-list returned 200 — boundary not wired; body=%s", respBody(resp))
+	}
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("forged provider-list status=%d, want 401; body=%s", resp.StatusCode, respBody(resp))
 	}
 }
 
@@ -157,18 +168,20 @@ func TestStandaloneMoneyPath_NotBlockedByBoundary(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer st_opaque_service_token")
 	req.Header.Set("X-Org-Id", "maxpower")
 
-	w := httptest.NewRecorder()
-	app.Router.ServeHTTP(w, req)
-
-	if w.Code == http.StatusUnauthorized {
-		t.Fatalf("boundary 401'd a service-token-shaped request — money path regression; body=%s", w.Body.String())
+	resp, terr := app.Router.Fiber().Test(req)
+	if terr != nil {
+		t.Fatalf("Test: %v", terr)
 	}
-	if w.Code != http.StatusOK {
-		t.Fatalf("GET /v1/commerce/tenant status=%d, want 200 (handler reached; resolver returns a usable tenant for a well-formed host); body=%s", w.Code, w.Body.String())
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		t.Fatalf("boundary 401'd a service-token-shaped request — money path regression; body=%s", respBody(resp))
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /v1/commerce/tenant status=%d, want 200 (handler reached; resolver returns a usable tenant for a well-formed host); body=%s", resp.StatusCode, respBody(resp))
 	}
 	var body map[string]any
-	if err := json.NewDecoder(bytes.NewReader(w.Body.Bytes())).Decode(&body); err != nil {
-		t.Fatalf("tenant JSON decode: %v; body=%s", err, w.Body.String())
+	if err := json.NewDecoder(strings.NewReader(respBody(resp))).Decode(&body); err != nil {
+		t.Fatalf("tenant JSON decode: %v; body=%s", err, respBody(resp))
 	}
 	if name, _ := body["name"].(string); name == "" {
 		t.Fatalf("tenant JSON missing name (org slug) — the resolver-backed handler must have run: %v", body)
