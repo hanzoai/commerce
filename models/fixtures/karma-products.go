@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -14,8 +14,8 @@ type size struct {
 	id   string
 }
 
-var _ = New("karma-products", func(c *gin.Context) []*product.Product {
-	db := datastore.New(c)
+var _ = New("karma-products", func(c *zip.Ctx) []*product.Product {
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.Query().Filter("Name=", "karma").Get()

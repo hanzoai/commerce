@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -29,24 +29,21 @@ type createCreditGrantRequest struct {
 // CreateCreditGrant creates a new credit grant for a user.
 //
 //	POST /v1/billing/credit-grants
-func CreateCreditGrant(c *gin.Context) {
+func CreateCreditGrant(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createCreditGrantRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	if req.AmountCents <= 0 {
-		http.Fail(c, 400, "amountCents must be positive", nil)
-		return
+		return http.Fail(c, 400, "amountCents must be positive", nil)
 	}
 
 	cur := currency.Type(strings.ToLower(req.Currency))
@@ -67,19 +64,17 @@ func CreateCreditGrant(c *gin.Context) {
 	if req.ExpiresIn != "" {
 		dur, err := time.ParseDuration(req.ExpiresIn)
 		if err != nil {
-			http.Fail(c, 400, "invalid expiresIn duration", err)
-			return
+			return http.Fail(c, 400, "invalid expiresIn duration", err)
 		}
 		grant.ExpiresAt = time.Now().Add(dur)
 	}
 
 	if err := grant.Create(); err != nil {
 		log.Error("Failed to create credit grant: %v", err, c)
-		http.Fail(c, 500, "failed to create credit grant", err)
-		return
+		return http.Fail(c, 500, "failed to create credit grant", err)
 	}
 
-	resp := gin.H{
+	resp := map[string]any{
 		"id":             grant.Id(),
 		"userId":         grant.UserId,
 		"name":           grant.Name,
@@ -95,20 +90,19 @@ func CreateCreditGrant(c *gin.Context) {
 		resp["expiresAt"] = grant.ExpiresAt
 	}
 
-	c.JSON(201, resp)
+	return c.JSON(201, resp)
 }
 
 // ListCreditGrants lists credit grants for a user.
 //
 //	GET /v1/billing/credit-grants?userId=...
-func ListCreditGrants(c *gin.Context) {
+func ListCreditGrants(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := strings.TrimSpace(c.Query("userId"))
 	if userId == "" {
-		http.Fail(c, 400, "userId query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "userId query parameter is required", nil)
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -118,13 +112,12 @@ func ListCreditGrants(c *gin.Context) {
 
 	if _, err := q.GetAll(&grants); err != nil {
 		log.Error("Failed to list credit grants: %v", err, c)
-		http.Fail(c, 500, "failed to list credit grants", err)
-		return
+		return http.Fail(c, 500, "failed to list credit grants", err)
 	}
 
-	items := make([]gin.H, 0, len(grants))
+	items := make([]map[string]any, 0, len(grants))
 	for _, g := range grants {
-		item := gin.H{
+		item := map[string]any{
 			"id":             g.Id(),
 			"userId":         g.UserId,
 			"name":           g.Name,
@@ -144,7 +137,7 @@ func ListCreditGrants(c *gin.Context) {
 		items = append(items, item)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"grants": items,
 		"count":  len(items),
 	})
@@ -153,21 +146,19 @@ func ListCreditGrants(c *gin.Context) {
 // GetCreditBalance returns the total available credit balance for a user.
 //
 //	GET /v1/billing/credit-balance?userId=...
-func GetCreditBalance(c *gin.Context) {
+func GetCreditBalance(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := strings.TrimSpace(c.Query("userId"))
 	if userId == "" {
-		http.Fail(c, 400, "userId query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "userId query parameter is required", nil)
 	}
 
 	grants, err := getActiveGrants(db, userId)
 	if err != nil {
 		log.Error("Failed to query credit grants: %v", err, c)
-		http.Fail(c, 500, "failed to query credit balance", err)
-		return
+		return http.Fail(c, 500, "failed to query credit balance", err)
 	}
 
 	// Sum by currency
@@ -176,15 +167,15 @@ func GetCreditBalance(c *gin.Context) {
 		balances[g.Currency] += g.RemainingCents
 	}
 
-	items := make([]gin.H, 0, len(balances))
+	items := make([]map[string]any, 0, len(balances))
 	for cur, amount := range balances {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"currency":  cur,
 			"available": amount,
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"userId":   userId,
 		"balances": items,
 	})
@@ -194,21 +185,19 @@ func GetCreditBalance(c *gin.Context) {
 // Used by Chat to distinguish trial vs paid credits.
 //
 //	GET /v1/billing/credit-balance/breakdown?userId=...
-func GetCreditBalanceBreakdown(c *gin.Context) {
+func GetCreditBalanceBreakdown(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	userId := strings.TrimSpace(c.Query("userId"))
 	if userId == "" {
-		http.Fail(c, 400, "userId query parameter is required", nil)
-		return
+		return http.Fail(c, 400, "userId query parameter is required", nil)
 	}
 
 	grants, err := getActiveGrants(db, userId)
 	if err != nil {
 		log.Error("Failed to query credit grants for breakdown: %v", err, c)
-		http.Fail(c, 500, "failed to query credit balance", err)
-		return
+		return http.Fail(c, 500, "failed to query credit balance", err)
 	}
 
 	type tagBalance struct {
@@ -242,45 +231,41 @@ func GetCreditBalanceBreakdown(c *gin.Context) {
 		}
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"userId":    userId,
 		"breakdown": breakdown,
-		"total":     gin.H{"cents": totalCents},
+		"total":     map[string]any{"cents": totalCents},
 	})
 }
 
 // VoidCreditGrant voids a specific credit grant, making it unusable.
 //
 //	POST /v1/billing/credit-grants/:id/void
-func VoidCreditGrant(c *gin.Context) {
+func VoidCreditGrant(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	if id == "" {
-		http.Fail(c, 400, "grant id is required", nil)
-		return
+		return http.Fail(c, 400, "grant id is required", nil)
 	}
 
 	grant := creditgrant.New(db)
 	if err := grant.GetById(id); err != nil {
-		http.Fail(c, 404, "credit grant not found", err)
-		return
+		return http.Fail(c, 404, "credit grant not found", err)
 	}
 
 	if grant.Voided {
-		http.Fail(c, 400, "grant is already voided", nil)
-		return
+		return http.Fail(c, 400, "grant is already voided", nil)
 	}
 
 	grant.Voided = true
 	if err := grant.Update(); err != nil {
 		log.Error("Failed to void credit grant: %v", err, c)
-		http.Fail(c, 500, "failed to void credit grant", err)
-		return
+		return http.Fail(c, 500, "failed to void credit grant", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"id":     grant.Id(),
 		"voided": true,
 	})

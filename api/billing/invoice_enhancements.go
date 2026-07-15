@@ -3,7 +3,7 @@ package billing
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -16,7 +16,7 @@ import (
 
 type addLineItemRequest struct {
 	Description string `json:"description"`
-	Amount      int64  `json:"amount"`   // cents
+	Amount      int64  `json:"amount"` // cents
 	Quantity    int64  `json:"quantity"`
 	MeterId     string `json:"meterId,omitempty"`
 	PlanId      string `json:"planId,omitempty"`
@@ -27,31 +27,27 @@ type addLineItemRequest struct {
 // the subtotal.
 //
 //	POST /v1/billing/invoices/:id/line-items
-func AddInvoiceLineItem(c *gin.Context) {
+func AddInvoiceLineItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	if inv.Status != billinginvoice.Draft {
-		http.Fail(c, 400, "can only add line items to draft invoices", nil)
-		return
+		return http.Fail(c, 400, "can only add line items to draft invoices", nil)
 	}
 
 	var req addLineItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Description == "" {
-		http.Fail(c, 400, "description is required", nil)
-		return
+		return http.Fail(c, 400, "description is required", nil)
 	}
 
 	// Compute amount from quantity * unitPrice if amount not provided
@@ -90,37 +86,33 @@ func AddInvoiceLineItem(c *gin.Context) {
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to add line item: %v", err, c)
-		http.Fail(c, 500, "failed to update invoice", err)
-		return
+		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 // RemoveInvoiceLineItem removes a line item from a draft invoice by index
 // or line item ID.
 //
 //	DELETE /v1/billing/invoices/:id/line-items/:itemId
-func RemoveInvoiceLineItem(c *gin.Context) {
+func RemoveInvoiceLineItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	if inv.Status != billinginvoice.Draft {
-		http.Fail(c, 400, "can only remove line items from draft invoices", nil)
-		return
+		return http.Fail(c, 400, "can only remove line items from draft invoices", nil)
 	}
 
 	itemId := c.Param("itemId")
 	if itemId == "" {
-		http.Fail(c, 400, "itemId is required", nil)
-		return
+		return http.Fail(c, 400, "itemId is required", nil)
 	}
 
 	// Find and remove by line item ID
@@ -135,8 +127,7 @@ func RemoveInvoiceLineItem(c *gin.Context) {
 	}
 
 	if !found {
-		http.Fail(c, 404, "line item not found", nil)
-		return
+		return http.Fail(c, 404, "line item not found", nil)
 	}
 
 	inv.LineItems = updated
@@ -150,11 +141,10 @@ func RemoveInvoiceLineItem(c *gin.Context) {
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to remove line item: %v", err, c)
-		http.Fail(c, 500, "failed to update invoice", err)
-		return
+		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 type applyDiscountRequest struct {
@@ -167,31 +157,27 @@ type applyDiscountRequest struct {
 // the amount due.
 //
 //	POST /v1/billing/invoices/:id/apply-discount
-func ApplyInvoiceDiscount(c *gin.Context) {
+func ApplyInvoiceDiscount(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	if inv.Status != billinginvoice.Draft {
-		http.Fail(c, 400, "can only apply discounts to draft invoices", nil)
-		return
+		return http.Fail(c, 400, "can only apply discounts to draft invoices", nil)
 	}
 
 	var req applyDiscountRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.DiscountAmount <= 0 && req.CouponId == "" {
-		http.Fail(c, 400, "discountAmount or couponId is required", nil)
-		return
+		return http.Fail(c, 400, "discountAmount or couponId is required", nil)
 	}
 
 	// If couponId is provided, look up the coupon amount.
@@ -220,26 +206,24 @@ func ApplyInvoiceDiscount(c *gin.Context) {
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to apply discount: %v", err, c)
-		http.Fail(c, 500, "failed to update invoice", err)
-		return
+		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	c.JSON(200, invoiceResponse(inv))
+	return c.JSON(200, invoiceResponse(inv))
 }
 
 // CalculateInvoiceTax computes tax for an invoice based on a customer address
 // and updates the invoice with the resulting tax lines.
 //
 //	POST /v1/billing/invoices/:id/calculate-tax?country=...&state=...
-func CalculateInvoiceTax(c *gin.Context) {
+func CalculateInvoiceTax(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	// Build customer address from query parameters
@@ -251,15 +235,13 @@ func CalculateInvoiceTax(c *gin.Context) {
 	}
 
 	if addr.Country == "" {
-		http.Fail(c, 400, "country query parameter is required for tax calculation", nil)
-		return
+		return http.Fail(c, 400, "country query parameter is required for tax calculation", nil)
 	}
 
 	taxLines, totalTax, err := engine.CalculateInvoiceTax(db, inv, addr)
 	if err != nil {
 		log.Error("Failed to calculate tax: %v", err, c)
-		http.Fail(c, 500, "failed to calculate tax", err)
-		return
+		return http.Fail(c, 500, "failed to calculate tax", err)
 	}
 
 	inv.Tax = totalTax
@@ -275,11 +257,10 @@ func CalculateInvoiceTax(c *gin.Context) {
 
 	if err := inv.Update(); err != nil {
 		log.Error("Failed to update invoice with tax: %v", err, c)
-		http.Fail(c, 500, "failed to update invoice", err)
-		return
+		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"invoice":  invoiceResponse(inv),
 		"taxLines": taxLines,
 		"totalTax": totalTax,

@@ -177,16 +177,16 @@ func TestValidateWebhook_EmptySecret(t *testing.T) {
 
 func TestMapEventType(t *testing.T) {
 	cases := map[string]string{
-		"payment_intent.succeeded":         "payment.completed",
-		"payment_intent.payment_failed":    "payment.failed",
-		"charge.refunded":                  "refund.succeeded",
-		"charge.dispute.created":           "dispute.created",
-		"customer.subscription.created":    "subscription.created",
-		"customer.subscription.deleted":    "subscription.canceled",
-		"invoice.paid":                     "invoice.paid",
-		"invoice.payment_failed":           "invoice.payment_failed",
-		"customer.created":                 "customer.created",
-		"unknown.event.type":               "unknown.event.type",
+		"payment_intent.succeeded":      "payment.completed",
+		"payment_intent.payment_failed": "payment.failed",
+		"charge.refunded":               "refund.succeeded",
+		"charge.dispute.created":        "dispute.created",
+		"customer.subscription.created": "subscription.created",
+		"customer.subscription.deleted": "subscription.canceled",
+		"invoice.paid":                  "invoice.paid",
+		"invoice.payment_failed":        "invoice.payment_failed",
+		"customer.created":              "customer.created",
+		"unknown.event.type":            "unknown.event.type",
 	}
 	for input, expected := range cases {
 		got := mapEventType(input)
@@ -198,11 +198,11 @@ func TestMapEventType(t *testing.T) {
 
 func TestMapRefundReason(t *testing.T) {
 	cases := map[string]string{
-		"duplicate":   "duplicate",
-		"fraudulent":  "fraudulent",
-		"fraud":       "fraudulent",
-		"other":       "requested_by_customer",
-		"":            "requested_by_customer",
+		"duplicate":  "duplicate",
+		"fraudulent": "fraudulent",
+		"fraud":      "fraudulent",
+		"other":      "requested_by_customer",
+		"":           "requested_by_customer",
 	}
 	for input, expected := range cases {
 		got := mapRefundReason(input)

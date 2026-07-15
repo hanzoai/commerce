@@ -1,7 +1,10 @@
 package default_
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/zap-proto/fiber/v3/middleware/adaptor"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/delay"
@@ -26,31 +29,33 @@ import (
 	// _ "github.com/hanzoai/commerce/thirdparty/salesforce/tasks"
 )
 
-func Init() {
-	gin.SetMode(gin.ReleaseMode)
-
-	router := router.New("default")
+func Init(app *zip.App) {
+	router := router.New(app, "default")
 
 	// Index, development has nice index with links
 	if config.IsDevelopment {
-		router.GET("/", func(c *gin.Context) {
-			template.Render(c, "index.html")
+		router.Get("/", func(c *zip.Ctx) error {
+			return template.Render(c, "index.html")
 		})
 	} else {
-		router.GET("/", func(c *gin.Context) {
-			c.String(200, "ok")
+		router.Get("/", func(c *zip.Ctx) error {
+			return c.String(200, "ok")
 		})
 	}
 
 	// Monitoring test
-	router.GET("/wake-up", func(c *gin.Context) {
+	router.Get("/wake-up", func(c *zip.Ctx) error {
 		log.Panic("I think I heard, I think I heard a shot.")
+		return nil
 	})
 
-	// Setup routes for delay funcs
-	router.POST(delay.Path, func(c *gin.Context) {
-		ctx := middleware.GetContext(c)
-		delay.RunFunc(ctx, c.Writer, c.Request)
+	// Setup routes for delay funcs. delay.RunFunc is net/http-native, so bridge
+	// it through the fiber adaptor.
+	router.Post(delay.Path, func(c *zip.Ctx) error {
+		ctx := c.Context()
+		return adaptor.HTTPHandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			delay.RunFunc(ctx, w, req)
+		})(c.Fiber())
 	})
 
 	// Setup routes for tasks
@@ -65,6 +70,6 @@ func Init() {
 	}
 
 	// Static assets
-	router.GET("/static/*file", middleware.Static("static/"))
-	router.GET("/assets/*file", middleware.Static("assets/"))
+	router.Get("/static/*file", middleware.Static("static/"))
+	router.Get("/assets/*file", middleware.Static("assets/"))
 }

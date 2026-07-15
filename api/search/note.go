@@ -3,7 +3,7 @@ package search
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -17,23 +17,21 @@ type searchReq struct {
 	Before time.Time `json:"before"`
 }
 
-func searchNote(c *gin.Context) {
+func searchNote(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	req := &searchReq{}
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	nts := make([]*note.Note, 0)
 
 	q := note.Query(db).Filter("Enabled=", true).Filter("Time>", req.After).Filter("Time<=", req.Before)
 	if _, err := q.GetAll(&nts); err != nil {
-		http.Fail(c, 500, "Failed to get logs", err)
-		return
+		return http.Fail(c, 500, "Failed to get logs", err)
 	}
 
-	http.Render(c, 200, nts)
+	return http.Render(c, 200, nts)
 }

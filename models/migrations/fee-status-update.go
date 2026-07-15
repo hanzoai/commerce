@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/fee"
@@ -13,7 +13,7 @@ import (
 // Legacy migration: Stripe fee sync removed.
 // Fee status updates are now handled by the payment processor abstraction.
 var _ = New("payment-fee-status-update",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
@@ -22,7 +22,7 @@ var _ = New("payment-fee-status-update",
 )
 
 var _ = New("fee-status-update",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		return NoArgs
 	},
 	func(db *ds.Datastore, fe *fee.Fee) {

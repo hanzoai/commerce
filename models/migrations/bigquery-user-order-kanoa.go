@@ -4,12 +4,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore/parallel"
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/bigquery"
@@ -59,13 +58,13 @@ var OrderFields = bigquery.Fields{
 }
 
 var _ = NewBigQuery("bigquery-export-kanoa-user-order",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "kanoa")
 
 		t := time.Now()
 		suffix := t.Format("20060102T150405")
 
-		ctx := middleware.GetContext(c)
+		ctx := c.Context()
 
 		client, err := bigquery.NewClient(ctx)
 		if err != nil {

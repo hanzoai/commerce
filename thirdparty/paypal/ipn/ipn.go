@@ -11,7 +11,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -19,7 +19,6 @@ import (
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/payment"
-	"github.com/hanzoai/commerce/util/router"
 )
 
 // Read body from response
@@ -64,14 +63,14 @@ func respond(ctx context.Context, message url.Values) (string, error) {
 	return readBody(res)
 }
 
-func Webhook(c *gin.Context) {
-	orgName := c.Params.ByName("organization")
+func Webhook(c *zip.Ctx) error {
+	orgName := c.Param("organization")
 	if orgName == "" {
 		log.Panic("Organization not specified", c)
 	}
 
 	// Get org
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 	org := organization.New(db)
 	err := org.GetById(orgName)
 
@@ -80,28 +79,32 @@ func Webhook(c *gin.Context) {
 
 	ctx := db.Context
 
-	// Parse form
-	if err := c.Request.ParseForm(); err != nil {
+	// Parse form — PayPal IPN posts application/x-www-form-urlencoded, so the
+	// raw request body IS the form. c.Body() is zero-copy; ParseQuery copies
+	// what it keeps, so nothing is retained past the request.
+	form, err := url.ParseQuery(string(c.Body()))
+	if err != nil {
 		log.Panic("Failed to parse request from PayPal", c)
 	}
-
-	form := c.Request.Form
 	log.Debug("IPN message: %v", form, ctx)
 
 	// Append cmd=_notify-validate
 	form.Add("cmd", "_notify-validate")
 
-	// Send command as received with cmd=_notify-validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
-	c.String(200, "")
-
-	// Send response
+	// PayPal only needs an empty 200 ack; we return that at every exit below
+	// (single-render) and treat the validation result as a side effect so an
+	// internal lookup failure never makes PayPal retry. Send command as received
+	// with cmd=_notify-validate, in its own request client. Check to make sure
+	// Paypal responds with "VALIDATED".
 	status, err := respond(ctx, form)
 	if err != nil {
-		log.Panic("Failed to respond to PayPal: %s", err, ctx)
+		log.Error("Failed to respond to PayPal: %s", err, ctx)
+		return c.String(200, "")
 	}
 
 	if status != "VERIFIED" {
-		log.Panic("Response was not verified", ctx)
+		log.Error("Response was not verified", ctx)
+		return c.String(200, "")
 	}
 
 	// Parse form into ipnMessage for ease of use.
@@ -111,21 +114,21 @@ func Webhook(c *gin.Context) {
 	pay := payment.New(db)
 	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).Get()
 	if err != nil {
-		log.Panic("Could not find PayKey: %s", err, ctx)
-		return
+		log.Error("Could not find PayKey: %s", err, ctx)
+		return c.String(200, "")
 	}
 
 	ord := order.New(db)
 	err = ord.GetById(pay.OrderId)
 	if err != nil {
-		log.Panic("Could not find Order: %s", err, ctx)
-		return
+		log.Error("Could not find Order: %s", err, ctx)
+		return c.String(200, "")
 	}
 
 	if ipnMessage.Status != "Completed" {
 		switch ipnMessage.Status {
 		case "Processing", "Pending", "Created":
-			return
+			return c.String(200, "")
 		case "Refunded", "Partially_Refunded", "Reversed":
 			pay.Status = payment.Refunded
 			ord.Status = order.Cancelled
@@ -140,7 +143,7 @@ func Webhook(c *gin.Context) {
 		// No need to call Refund API.
 		pay.MustUpdate()
 		ord.MustUpdate()
-		return
+		return c.String(200, "")
 	}
 
 	if pay.Amount != ipnMessage.Amount || pay.Currency != ipnMessage.Currency {
@@ -153,7 +156,7 @@ func Webhook(c *gin.Context) {
 		ord.MustUpdate()
 
 		// call refund API
-		return
+		return c.String(200, "")
 	}
 
 	// Looking good.
@@ -162,9 +165,10 @@ func Webhook(c *gin.Context) {
 
 	// TODO: Make this part of the payment model API
 	// checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
+	return c.String(200, "")
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("paypal")
-	api.POST("/ipn/:organization", Webhook)
+	api.Post("/ipn/:organization", Webhook)
 }

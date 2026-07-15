@@ -7,8 +7,8 @@ import (
 
 	"github.com/icrowley/fake"
 
-	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/log"
+	"github.com/hanzoai/commerce/models/coupon"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

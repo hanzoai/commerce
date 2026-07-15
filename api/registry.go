@@ -1,16 +1,14 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-
-	"github.com/hanzoai/commerce/util/router"
+	"github.com/zap-proto/zip"
 )
 
 // RouteFn is an optional side-car wirer for API routes that don't ship
 // in-tree — typically sub-modules like luxfi/cevm which would
 // otherwise transitively pull heavy deps (geth, warp, etc.) into consumers
 // that don't need them.
-type RouteFn func(r router.Router, args ...gin.HandlerFunc)
+type RouteFn func(r zip.Router, args ...zip.Handler)
 
 var extraRoutes []RouteFn
 
@@ -22,7 +20,7 @@ func RegisterRoute(fn RouteFn) {
 	extraRoutes = append(extraRoutes, fn)
 }
 
-func applyExtraRoutes(r router.Router, args ...gin.HandlerFunc) {
+func applyExtraRoutes(r zip.Router, args ...zip.Handler) {
 	for _, fn := range extraRoutes {
 		fn(r, args...)
 	}

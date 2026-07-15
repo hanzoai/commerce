@@ -5,9 +5,9 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/fixtures"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -25,7 +25,7 @@ var (
 // Setup test context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 
 	// Create the suchtees org and namespace for realism
 	fixtures.Organization(c)

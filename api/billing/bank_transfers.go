@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -31,39 +31,33 @@ type createBankTransferInstructionRequest struct {
 // CreateBankTransferInstruction creates bank transfer details for a customer.
 //
 //	POST /v1/billing/bank-transfer-instructions
-func CreateBankTransferInstruction(c *gin.Context) {
+func CreateBankTransferInstruction(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createBankTransferInstructionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.CustomerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	if req.Type == "" {
-		http.Fail(c, 400, "type is required (ach, wire, sepa)", nil)
-		return
+		return http.Fail(c, 400, "type is required (ach, wire, sepa)", nil)
 	}
 
 	if req.Type != "ach" && req.Type != "wire" && req.Type != "sepa" {
-		http.Fail(c, 400, "type must be one of: ach, wire, sepa", nil)
-		return
+		return http.Fail(c, 400, "type must be one of: ach, wire, sepa", nil)
 	}
 
 	if req.BankName == "" {
-		http.Fail(c, 400, "bankName is required", nil)
-		return
+		return http.Fail(c, 400, "bankName is required", nil)
 	}
 
 	if req.AccountNumber == "" {
-		http.Fail(c, 400, "accountNumber is required", nil)
-		return
+		return http.Fail(c, 400, "accountNumber is required", nil)
 	}
 
 	inst := banktransferinstruction.New(db)
@@ -85,20 +79,19 @@ func CreateBankTransferInstruction(c *gin.Context) {
 
 	if err := inst.Create(); err != nil {
 		log.Error("Failed to create bank transfer instruction: %v", err, c)
-		http.Fail(c, 500, "failed to create bank transfer instruction", err)
-		return
+		return http.Fail(c, 500, "failed to create bank transfer instruction", err)
 	}
 
-	c.JSON(201, instructionResponse(inst))
+	return c.JSON(201, instructionResponse(inst))
 }
 
 // ListBankTransferInstructions lists bank transfer instructions, optionally
 // filtered by customerId.
 //
 //	GET /v1/billing/bank-transfer-instructions?customerId=...
-func ListBankTransferInstructions(c *gin.Context) {
+func ListBankTransferInstructions(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	q := banktransferinstruction.Query(db).Ancestor(rootKey)
@@ -123,7 +116,7 @@ func ListBankTransferInstructions(c *gin.Context) {
 		items = append(items, instructionResponse(item))
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"instructions": items,
 		"count":        len(items),
 	})
@@ -132,18 +125,17 @@ func ListBankTransferInstructions(c *gin.Context) {
 // GetBankTransferInstruction returns a single bank transfer instruction by ID.
 //
 //	GET /v1/billing/bank-transfer-instructions/:id
-func GetBankTransferInstruction(c *gin.Context) {
+func GetBankTransferInstruction(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inst := banktransferinstruction.New(db)
 	if err := inst.GetById(id); err != nil {
-		http.Fail(c, 404, "bank transfer instruction not found", err)
-		return
+		return http.Fail(c, 404, "bank transfer instruction not found", err)
 	}
 
-	c.JSON(200, instructionResponse(inst))
+	return c.JSON(200, instructionResponse(inst))
 }
 
 type reconcileRequest struct {
@@ -156,24 +148,21 @@ type reconcileRequest struct {
 // and creates a balance transaction for the customer.
 //
 //	POST /v1/billing/bank-transfer-instructions/reconciliation/match
-func ReconcileInboundTransfer(c *gin.Context) {
+func ReconcileInboundTransfer(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req reconcileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Reference == "" {
-		http.Fail(c, 400, "reference is required", nil)
-		return
+		return http.Fail(c, 400, "reference is required", nil)
 	}
 
 	if req.Amount <= 0 {
-		http.Fail(c, 400, "amount must be positive", nil)
-		return
+		return http.Fail(c, 400, "amount must be positive", nil)
 	}
 
 	// Look up instruction by reference
@@ -184,8 +173,7 @@ func ReconcileInboundTransfer(c *gin.Context) {
 		Filter("Status=", "active")
 
 	if _, err := q.GetAll(&instructions); err != nil || len(instructions) == 0 {
-		http.Fail(c, 404, "no active instruction found for reference", nil)
-		return
+		return http.Fail(c, 404, "no active instruction found for reference", nil)
 	}
 
 	inst := instructions[0]
@@ -200,11 +188,10 @@ func ReconcileInboundTransfer(c *gin.Context) {
 	bt, err := engine.AdjustCustomerBalance(db, inst.CustomerId, req.Amount, cur, "bank_transfer", description)
 	if err != nil {
 		log.Error("Failed to reconcile bank transfer: %v", err, c)
-		http.Fail(c, 500, "failed to reconcile transfer", err)
-		return
+		return http.Fail(c, 500, "failed to reconcile transfer", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"matched":      true,
 		"reference":    inst.Reference,
 		"customerId":   inst.CustomerId,

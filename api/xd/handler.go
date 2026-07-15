@@ -1,23 +1,21 @@
 package xd
 
 import (
-	"github.com/hanzoai/commerce/util/router"
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	api := router.Group("/xd")
 
-	api.GET("/:domain/proxy.html", func(c *gin.Context) {
-		c.Writer.WriteHeader(200)
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	api.Get("/:domain/proxy.html", func(c *zip.Ctx) error {
+		c.SetHeader("Access-Control-Allow-Origin", "*")
+		c.SetHeader("Content-Type", "text/html; charset=utf-8")
 
-		domain := c.Params.ByName("domain")
+		domain := c.Param("domain")
 
 		// Render response
-		c.Writer.Write([]byte(`<!DOCTYPE HTML>
-<script src="//cdn.rawgit.com/jpillora/xdomain/0.7.4/dist/xdomain.min.js" master="https://` + domain + `">
+		return c.Bytes(200, []byte(`<!DOCTYPE HTML>
+<script src="//cdn.rawgit.com/jpillora/xdomain/0.7.4/dist/xdomain.min.js" master="https://`+domain+`">
 </script>`))
 	})
 }

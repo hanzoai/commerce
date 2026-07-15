@@ -328,7 +328,7 @@ func TestTaxLine_Struct(t *testing.T) {
 		Description:  "CA State Tax",
 		Amount:       875,
 		Rate:         0.0875,
-		Inclusive:     false,
+		Inclusive:    false,
 		Jurisdiction: "US-CA",
 	}
 

@@ -7,8 +7,8 @@ import (
 	// "github.com/hanzoai/commerce/util/json"
 	// "github.com/hanzoai/commerce/log"
 
-	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/zipclient"
 )
 
 var _ = Describe("transaction", func() {

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -19,20 +19,19 @@ import (
 //	GET /v1/billing/invoices/:id/pdf
 //
 // Tenant isolation: the invoice is loaded from the caller's OWN org namespace
-// (datastore.New(org.Namespaced(c))). GetById scopes the lookup to that
+// (datastore.New(org.Namespaced(c.Context()))). GetById scopes the lookup to that
 // namespace at the storage layer, so an org can only ever fetch its own
 // invoice — a foreign id resolves to nothing and returns 404. It is mounted on
 // the user group so a normal authenticated org member can download their own
 // invoice.
-func DownloadInvoicePDF(c *gin.Context) {
+func DownloadInvoicePDF(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	inv := billinginvoice.New(db)
 	if err := inv.GetById(id); err != nil {
-		http.Fail(c, 404, "invoice not found", err)
-		return
+		return http.Fail(c, 404, "invoice not found", err)
 	}
 
 	orgName := org.FullName
@@ -47,8 +46,9 @@ func DownloadInvoicePDF(c *gin.Context) {
 		filename = "invoice-" + inv.Id()
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, filename))
-	c.Data(200, "application/pdf", pdf)
+	c.SetHeader("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.pdf"`, filename))
+	c.SetHeader("Content-Type", "application/pdf")
+	return c.Bytes(200, pdf)
 }
 
 // ── Deterministic, dependency-free PDF writer ────────────────────────────────

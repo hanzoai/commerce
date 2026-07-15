@@ -3,9 +3,9 @@ package test
 import (
 	"strings"
 
-	"github.com/icrowley/fake"
 	"github.com/hanzoai/commerce/models/subscriber"
 	"github.com/hanzoai/commerce/models/user"
+	"github.com/icrowley/fake"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

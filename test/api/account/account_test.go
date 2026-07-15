@@ -13,11 +13,11 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/thirdparty/bitcoin"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
+	"github.com/hanzoai/commerce/util/zipctx"
 
-	. "github.com/hanzoai/commerce/util/test/ginclient"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
+	. "github.com/hanzoai/commerce/util/test/zipclient"
 
 	accountApi "github.com/hanzoai/commerce/api/account"
 )
@@ -42,7 +42,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
 	// Create mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 
 	// Run fixtures
 	u = fixtures.User(c).(*user.User)

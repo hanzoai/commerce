@@ -12,11 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/commerce/config"
-	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/util/json"
+	"github.com/zap-proto/zip"
 
-	"github.com/gin-gonic/gin"
+	"github.com/hanzoai/commerce/config"
+	"github.com/hanzoai/commerce/util/json"
 )
 
 // Client is a Cloudflare API v4 client.
@@ -29,9 +28,9 @@ type Client struct {
 	client *http.Client
 }
 
-// New creates a Client from the gin request context using global config.
-func New(c *gin.Context) *Client {
-	ctx := middleware.GetContext(c)
+// New creates a Client from the request context using global config.
+func New(c *zip.Ctx) *Client {
+	ctx := c.Context()
 
 	var cancel context.CancelFunc
 	ctx, cancel = context.WithTimeout(ctx, time.Second*55)
@@ -153,4 +152,3 @@ func IsConfigured() bool {
 
 // purgeContext is unused for now — kept for future sync purge use.
 var _ = context.Background
-

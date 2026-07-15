@@ -7,7 +7,7 @@ package producttaxonomy
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -21,22 +21,21 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	namespaced := middleware.Namespace()
 
 	// Options + their values (the variant builder's raw material).
-	// The nested param reuses rest's derived ParamId ("product-optionid" =
+	// The nested param reuses rest's derived ParamId ("productoptionid" =
 	// kind + "id"), so the /values subroute shares the same wildcard slot as
-	// the default /:product-optionid route. gin panics on sibling wildcards
+	// the default /:productoptionid route. gin panics on sibling wildcards
 	// with differing names, so a dash-free "productoptionid" here would panic
 	// at wiring. The dash lives only in the internal param name, never in the
 	// URL path a client sends.
 	options := rest.New(productoption.ProductOption{})
-	options.GET("/:product-optionid/values", namespaced, ListOptionValues)
-	options.POST("/:product-optionid/values", namespaced, AddOptionValue)
+	options.GET("/:productoptionid/values", namespaced, ListOptionValues)
+	options.POST("/:productoptionid/values", namespaced, AddOptionValue)
 	options.Route(router, args...)
 
 	rest.New(productoptionvalue.ProductOptionValue{}).Route(router, args...)
@@ -56,71 +55,63 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 }
 
 // ListOptionValues returns the values belonging to a product option.
-func ListOptionValues(c *gin.Context) {
+func ListOptionValues(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	optionId := c.Params.ByName("product-optionid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	optionId := c.Param("productoptionid")
 
 	// Verify the option exists (scopes the 404 to this org's data).
 	opt := productoption.New(db)
 	if err := opt.GetById(optionId); err != nil {
-		http.Fail(c, 404, "No product option found with id: "+optionId, err)
-		return
+		return http.Fail(c, 404, "No product option found with id: "+optionId, err)
 	}
 
 	values := make([]*productoptionvalue.ProductOptionValue, 0, 16)
 	if _, err := productoptionvalue.Query(db).Filter("OptionId=", opt.Id()).GetAll(&values); err != nil {
-		http.Fail(c, 500, "Failed to list option values", err)
-		return
+		return http.Fail(c, 500, "Failed to list option values", err)
 	}
-	http.Render(c, 200, values)
+	return http.Render(c, 200, values)
 }
 
 // AddOptionValue creates a value under a product option.
-func AddOptionValue(c *gin.Context) {
+func AddOptionValue(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	optionId := c.Params.ByName("product-optionid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	optionId := c.Param("productoptionid")
 
 	opt := productoption.New(db)
 	if err := opt.GetById(optionId); err != nil {
-		http.Fail(c, 404, "No product option found with id: "+optionId, err)
-		return
+		return http.Fail(c, 404, "No product option found with id: "+optionId, err)
 	}
 
 	v := productoptionvalue.New(db)
-	if err := json.Decode(c.Request.Body, v); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), v); err != nil {
+		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 	if v.Value == "" {
-		http.Fail(c, 400, "value is required", errors.New("missing value"))
-		return
+		return http.Fail(c, 400, "value is required", errors.New("missing value"))
 	}
 	v.OptionId = opt.Id() // the path option wins over any body value
 	if err := v.Create(); err != nil {
-		http.Fail(c, 500, "Failed to create option value", err)
-		return
+		return http.Fail(c, 500, "Failed to create option value", err)
 	}
-	http.Render(c, 201, v)
+	return http.Render(c, 201, v)
 }
 
 // ListCategoryChildren returns the direct children of a category.
-func ListCategoryChildren(c *gin.Context) {
+func ListCategoryChildren(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	categoryId := c.Params.ByName("product-categoryid")
+	db := datastore.New(org.Namespaced(c.Context()))
+	categoryId := c.Param("product-categoryid")
 
 	parent := productcategory.New(db)
 	if err := parent.GetById(categoryId); err != nil {
-		http.Fail(c, 404, "No product category found with id: "+categoryId, err)
-		return
+		return http.Fail(c, 404, "No product category found with id: "+categoryId, err)
 	}
 
 	children := make([]*productcategory.ProductCategory, 0, 16)
 	if _, err := productcategory.Query(db).Filter("ParentId=", parent.Id()).GetAll(&children); err != nil {
-		http.Fail(c, 500, "Failed to list category children", err)
-		return
+		return http.Fail(c, 500, "Failed to list category children", err)
 	}
-	http.Render(c, 200, children)
+	return http.Render(c, 200, children)
 }

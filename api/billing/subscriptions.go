@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -36,24 +36,21 @@ type cancelSubscriptionRequest struct {
 // CreateBillingSubscription creates a new subscription and starts the billing lifecycle.
 //
 //	POST /v1/billing/subscriptions
-func CreateBillingSubscription(c *gin.Context) {
+func CreateBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createSubscriptionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.UserId == "" {
-		http.Fail(c, 400, "userId is required", nil)
-		return
+		return http.Fail(c, 400, "userId is required", nil)
 	}
 
 	if req.PlanId == "" {
-		http.Fail(c, 400, "planId is required", nil)
-		return
+		return http.Fail(c, 400, "planId is required", nil)
 	}
 
 	// Fetch plan — first try DB, then fall back to static catalog.
@@ -68,8 +65,7 @@ func CreateBillingSubscription(c *gin.Context) {
 			}
 		}
 		if staticP == nil {
-			http.Fail(c, 404, "plan not found", err)
-			return
+			return http.Fail(c, 404, "plan not found", err)
 		}
 		// Populate plan from static catalog and seed into DB.
 		p.Slug = staticP.Slug
@@ -97,9 +93,8 @@ func CreateBillingSubscription(c *gin.Context) {
 		planSlug = req.PlanId
 	}
 	if (p.Price > 0 || IncludedMonthlyCents(planSlug) > 0) && !middleware.MayMintMoney(c) {
-		http.Fail(c, 403,
+		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
-		return
 	}
 
 	// Create subscription
@@ -118,8 +113,7 @@ func CreateBillingSubscription(c *gin.Context) {
 
 	if err := sub.Create(); err != nil {
 		log.Error("Failed to create subscription: %v", err, c)
-		http.Fail(c, 500, "failed to create subscription", err)
-		return
+		return http.Fail(c, 500, "failed to create subscription", err)
 	}
 
 	// Bundle expansion. Plans declare their bundle list in the
@@ -177,7 +171,7 @@ func CreateBillingSubscription(c *gin.Context) {
 		}
 	}
 
-	c.JSON(201, subscriptionResponse(sub))
+	return c.JSON(201, subscriptionResponse(sub))
 }
 
 // bundledPlansForSlug returns the slugs of plans that ride along with
@@ -197,9 +191,9 @@ func bundledPlansForSlug(slug string) []string {
 // ListBillingSubscriptions lists subscriptions for a user.
 //
 //	GET /v1/billing/subscriptions?userId=...
-func ListBillingSubscriptions(c *gin.Context) {
+func ListBillingSubscriptions(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	subs := make([]*subscription.Subscription, 0)
@@ -217,16 +211,15 @@ func ListBillingSubscriptions(c *gin.Context) {
 
 	if _, err := q.GetAll(&subs); err != nil {
 		log.Error("Failed to list subscriptions: %v", err, c)
-		http.Fail(c, 500, "failed to list subscriptions", err)
-		return
+		return http.Fail(c, 500, "failed to list subscriptions", err)
 	}
 
-	items := make([]gin.H, 0, len(subs))
+	items := make([]map[string]any, 0, len(subs))
 	for _, s := range subs {
 		items = append(items, subscriptionResponse(s))
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"subscriptions": items,
 		"count":         len(items),
 	})
@@ -235,52 +228,47 @@ func ListBillingSubscriptions(c *gin.Context) {
 // GetBillingSubscription returns a single subscription.
 //
 //	GET /v1/billing/subscriptions/:id
-func GetBillingSubscription(c *gin.Context) {
+func GetBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil {
-		http.Fail(c, 404, "subscription not found", err)
-		return
+		return http.Fail(c, 404, "subscription not found", err)
 	}
 
-	c.JSON(200, subscriptionResponse(sub))
+	return c.JSON(200, subscriptionResponse(sub))
 }
 
 // UpdateBillingSubscription updates a subscription (plan change, quantity).
 //
 //	PATCH /v1/billing/subscriptions/:id
-func UpdateBillingSubscription(c *gin.Context) {
+func UpdateBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil {
-		http.Fail(c, 404, "subscription not found", err)
-		return
+		return http.Fail(c, 404, "subscription not found", err)
 	}
 
 	var req updateSubscriptionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.PlanId != "" && req.PlanId != sub.PlanId {
 		// Fetch new plan
 		newPlan := plan.New(db)
 		if err := newPlan.GetById(req.PlanId); err != nil {
-			http.Fail(c, 404, "new plan not found", err)
-			return
+			return http.Fail(c, 404, "new plan not found", err)
 		}
 
 		_, err := engine.ChangePlan(sub, newPlan, req.Prorate)
 		if err != nil {
-			http.Fail(c, 400, err.Error(), nil)
-			return
+			return http.Fail(c, 400, err.Error(), nil)
 		}
 	}
 
@@ -290,73 +278,66 @@ func UpdateBillingSubscription(c *gin.Context) {
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription: %v", err, c)
-		http.Fail(c, 500, "failed to update subscription", err)
-		return
+		return http.Fail(c, 500, "failed to update subscription", err)
 	}
 
-	c.JSON(200, subscriptionResponse(sub))
+	return c.JSON(200, subscriptionResponse(sub))
 }
 
 // CancelBillingSubscription cancels a subscription.
 //
 //	POST /v1/billing/subscriptions/:id/cancel
-func CancelBillingSubscription(c *gin.Context) {
+func CancelBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil {
-		http.Fail(c, 404, "subscription not found", err)
-		return
+		return http.Fail(c, 404, "subscription not found", err)
 	}
 
 	var req cancelSubscriptionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		// Default to cancel at period end
 		req.AtPeriodEnd = true
 	}
 
 	if err := engine.CancelSubscription(sub, req.AtPeriodEnd); err != nil {
-		http.Fail(c, 400, err.Error(), nil)
-		return
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to cancel subscription: %v", err, c)
-		http.Fail(c, 500, "failed to cancel subscription", err)
-		return
+		return http.Fail(c, 500, "failed to cancel subscription", err)
 	}
 
-	c.JSON(200, subscriptionResponse(sub))
+	return c.JSON(200, subscriptionResponse(sub))
 }
 
 // ReactivateBillingSubscription reactivates a canceled subscription.
 //
 //	POST /v1/billing/subscriptions/:id/reactivate
-func ReactivateBillingSubscription(c *gin.Context) {
+func ReactivateBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil {
-		http.Fail(c, 404, "subscription not found", err)
-		return
+		return http.Fail(c, 404, "subscription not found", err)
 	}
 
 	if err := engine.ReactivateSubscription(sub); err != nil {
-		http.Fail(c, 400, err.Error(), nil)
-		return
+		return http.Fail(c, 400, err.Error(), nil)
 	}
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to reactivate subscription: %v", err, c)
-		http.Fail(c, 500, "failed to reactivate subscription", err)
-		return
+		return http.Fail(c, 500, "failed to reactivate subscription", err)
 	}
 
-	c.JSON(200, subscriptionResponse(sub))
+	return c.JSON(200, subscriptionResponse(sub))
 }
 
 // RenewBillingSubscription manually triggers a billing cycle renewal.
@@ -364,39 +345,36 @@ func ReactivateBillingSubscription(c *gin.Context) {
 // manual triggering for testing and for deployments without Temporal.
 //
 //	POST /v1/billing/subscriptions/:id/renew
-func RenewBillingSubscription(c *gin.Context) {
+func RenewBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	sub := subscription.New(db)
 	if err := sub.GetById(id); err != nil {
-		http.Fail(c, 404, "subscription not found", err)
-		return
+		return http.Fail(c, 404, "subscription not found", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(c.Request.Context(), db, sub, BurnCredits)
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits)
 	if err != nil {
 		log.Error("Failed to renew subscription: %v", err, c)
-		http.Fail(c, 500, "failed to renew subscription", err)
-		return
+		return http.Fail(c, 500, "failed to renew subscription", err)
 	}
 
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription after renewal: %v", err, c)
-		http.Fail(c, 500, "failed to update subscription", err)
-		return
+		return http.Fail(c, 500, "failed to update subscription", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"subscription": subscriptionResponse(sub),
 		"invoice":      invoiceResponse(inv),
 		"collection":   result,
 	})
 }
 
-func subscriptionResponse(sub *subscription.Subscription) gin.H {
-	resp := gin.H{
+func subscriptionResponse(sub *subscription.Subscription) map[string]any {
+	resp := map[string]any{
 		"id":                   sub.Id(),
 		"userId":               sub.UserId,
 		"planId":               sub.PlanId,
@@ -407,7 +385,7 @@ func subscriptionResponse(sub *subscription.Subscription) gin.H {
 		"cancelAtPeriodEnd":    sub.EndCancel,
 		"providerType":         sub.ProviderType,
 		"defaultPaymentMethod": sub.DefaultPaymentMethod,
-		"plan": gin.H{
+		"plan": map[string]any{
 			"id":       sub.Plan.Id(),
 			"name":     sub.Plan.Name,
 			"price":    sub.Plan.Price,

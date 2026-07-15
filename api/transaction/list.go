@@ -1,28 +1,27 @@
 package transaction
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 )
 
-func List(c *gin.Context) {
-	id := c.Params.ByName("id")
-	kind := c.Params.ByName("kind")
+func List(c *zip.Ctx) error {
+	id := c.Param("id")
+	kind := c.Param("kind")
 
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	res, err := util.GetTransactions(ctx, id, kind, !org.Live)
 
 	if err != nil {
 		log.Error("transaction/%v/%v error: '%v'", id, kind, err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

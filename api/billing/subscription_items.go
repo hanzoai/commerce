@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -23,19 +23,17 @@ type createSubscriptionItemRequest struct {
 // CreateSubscriptionItem adds an item to a subscription.
 //
 //	POST /v1/billing/subscription-items
-func CreateSubscriptionItem(c *gin.Context) {
+func CreateSubscriptionItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createSubscriptionItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.SubscriptionId == "" {
-		http.Fail(c, 400, "subscriptionId is required", nil)
-		return
+		return http.Fail(c, 400, "subscriptionId is required", nil)
 	}
 
 	si := subscriptionitem.New(db)
@@ -54,35 +52,33 @@ func CreateSubscriptionItem(c *gin.Context) {
 
 	if err := si.Create(); err != nil {
 		log.Error("Failed to create subscription item: %v", err, c)
-		http.Fail(c, 500, "failed to create subscription item", err)
-		return
+		return http.Fail(c, 500, "failed to create subscription item", err)
 	}
 
-	c.JSON(201, subscriptionItemResponse(si))
+	return c.JSON(201, subscriptionItemResponse(si))
 }
 
 // GetSubscriptionItem retrieves a subscription item by ID.
 //
 //	GET /v1/billing/subscription-items/:id
-func GetSubscriptionItem(c *gin.Context) {
+func GetSubscriptionItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	si := subscriptionitem.New(db)
 	if err := si.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription item not found", err)
-		return
+		return http.Fail(c, 404, "subscription item not found", err)
 	}
 
-	c.JSON(200, subscriptionItemResponse(si))
+	return c.JSON(200, subscriptionItemResponse(si))
 }
 
 // ListSubscriptionItems lists items for a subscription.
 //
 //	GET /v1/billing/subscription-items?subscriptionId=...
-func ListSubscriptionItems(c *gin.Context) {
+func ListSubscriptionItems(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	items := make([]*subscriptionitem.SubscriptionItem, 0)
@@ -105,7 +101,7 @@ func ListSubscriptionItems(c *gin.Context) {
 	for i, si := range items {
 		results[i] = subscriptionItemResponse(si)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 type updateSubscriptionItemRequest struct {
@@ -116,20 +112,18 @@ type updateSubscriptionItemRequest struct {
 // UpdateSubscriptionItem updates a subscription item (e.g. seat count).
 //
 //	PATCH /v1/billing/subscription-items/:id
-func UpdateSubscriptionItem(c *gin.Context) {
+func UpdateSubscriptionItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	si := subscriptionitem.New(db)
 	if err := si.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription item not found", err)
-		return
+		return http.Fail(c, 404, "subscription item not found", err)
 	}
 
 	var req updateSubscriptionItemRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Quantity > 0 {
@@ -141,33 +135,30 @@ func UpdateSubscriptionItem(c *gin.Context) {
 
 	if err := si.Update(); err != nil {
 		log.Error("Failed to update subscription item: %v", err, c)
-		http.Fail(c, 500, "failed to update subscription item", err)
-		return
+		return http.Fail(c, 500, "failed to update subscription item", err)
 	}
 
-	c.JSON(200, subscriptionItemResponse(si))
+	return c.JSON(200, subscriptionItemResponse(si))
 }
 
 // DeleteSubscriptionItem removes an item from a subscription.
 //
 //	DELETE /v1/billing/subscription-items/:id
-func DeleteSubscriptionItem(c *gin.Context) {
+func DeleteSubscriptionItem(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	si := subscriptionitem.New(db)
 	if err := si.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription item not found", err)
-		return
+		return http.Fail(c, 404, "subscription item not found", err)
 	}
 
 	if err := si.Delete(); err != nil {
 		log.Error("Failed to delete subscription item: %v", err, c)
-		http.Fail(c, 500, "failed to delete subscription item", err)
-		return
+		return http.Fail(c, 500, "failed to delete subscription item", err)
 	}
 
-	c.JSON(200, gin.H{"deleted": true, "id": si.Id()})
+	return c.JSON(200, map[string]any{"deleted": true, "id": si.Id()})
 }
 
 func subscriptionItemResponse(si *subscriptionitem.SubscriptionItem) map[string]interface{} {

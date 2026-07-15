@@ -44,10 +44,10 @@ type Contributor struct {
 	TotalPending       currency.Cents `json:"totalPending"`
 
 	// Status
-	Verified  bool      `json:"verified"`  // Email/identity verified
-	Active    bool      `json:"active"`    // Actively receiving payouts
-	JoinedAt  time.Time `json:"joinedAt"`
-	LastPaid  time.Time `json:"lastPaid,omitempty"`
+	Verified bool      `json:"verified"` // Email/identity verified
+	Active   bool      `json:"active"`   // Actively receiving payouts
+	JoinedAt time.Time `json:"joinedAt"`
+	LastPaid time.Time `json:"lastPaid,omitempty"`
 
 	// On-chain payout receipt (PayoutMethod="crypto"): the hash and chain id
 	// of the most recent HUSD transfer. Set by the contributor payout cron.
@@ -65,11 +65,11 @@ type Contributor struct {
 
 // Attribution represents a contributor's share in a specific software component.
 type Attribution struct {
-	Component string  `json:"component"` // Package name (e.g., "@hanzo/ui")
-	Repo      string  `json:"repo"`      // GitHub repo (e.g., "hanzoai/ui")
-	Lines     int64   `json:"lines"`     // Lines of code authored
-	TotalLines int64  `json:"totalLines"` // Total lines in component
-	Percent   float64 `json:"percent"`   // Percentage of component authored
+	Component  string  `json:"component"`  // Package name (e.g., "@hanzo/ui")
+	Repo       string  `json:"repo"`       // GitHub repo (e.g., "hanzoai/ui")
+	Lines      int64   `json:"lines"`      // Lines of code authored
+	TotalLines int64   `json:"totalLines"` // Total lines in component
+	Percent    float64 `json:"percent"`    // Percentage of component authored
 }
 
 func (c *Contributor) Load(ps []datastore.Property) (err error) {

@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/user"
@@ -51,10 +51,10 @@ var userIds = map[string]bool{
 }
 
 var _ = New("cleanup-damon",
-	func(c *gin.Context) []interface{} {
-		db := ds.New(c)
+	func(c *zip.Ctx) []interface{} {
+		db := ds.New(c.Context())
 
-		c.Set("namespace", "damon")
+		c.Locals("namespace", "damon")
 		db.SetNamespace("damon")
 
 		return NoArgs

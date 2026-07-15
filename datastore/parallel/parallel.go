@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/delay"
@@ -135,14 +135,14 @@ func (fn *ParallelFn) Call(ctx context.Context, args ...interface{}) {
 }
 
 // Run fn in parallel across all entities
-func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) error {
+func (fn *ParallelFn) Run(c *zip.Ctx, batchSize int, args ...interface{}) error {
 	// Limit results in test mode
-	if c.MustGet("test").(bool) {
+	if c.Locals("test").(bool) {
 		batchSize = 1
 	}
 
-	ctx := c.Request.Context()
-	if reqCtx := c.Value("context"); reqCtx != nil {
+	ctx := c.Context()
+	if reqCtx := c.Context(); reqCtx != nil {
 		if ctxVal, ok := reqCtx.(context.Context); ok {
 			ctx = ctxVal
 		}
@@ -151,10 +151,8 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 	namespaces := make([]string, 0)
 
 	// Check if namespace is set explicitly
-	v, ok := c.Get("namespace")
-	if ok {
-		namespace, ok := v.(string)
-		if ok {
+	if v := c.Locals("namespace"); v != nil {
+		if namespace, ok := v.(string); ok {
 			namespaces = append(namespaces, namespace)
 		}
 	}

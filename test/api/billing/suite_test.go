@@ -11,9 +11,9 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -35,7 +35,7 @@ var (
 	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
-	cl          *ginclient.Client
+	cl          *zipclient.Client
 	accessToken string
 )
 
@@ -44,8 +44,8 @@ var _ = BeforeSuite(func() {
 	// Create new test context
 	ctx = ae.NewContext()
 
-	// Mock gin context for fixtures
-	c := gincontext.New(ctx)
+	// Synthetic request context for fixtures
+	c := zipctx.New(ctx)
 
 	// Run default fixtures to setup organization
 	org = fixtures.Organization(c).(*organization.Organization)
@@ -65,7 +65,7 @@ var _ = BeforeSuite(func() {
 	os.Setenv("COMMERCE_SERVICE_TOKEN", serviceToken)
 
 	// Create client
-	cl = ginclient.New(ctx)
+	cl = zipclient.New(ctx)
 
 	// Authenticate the way cloud-api actually calls commerce billing: the
 	// internal service token (Bearer COMMERCE_SERVICE_TOKEN) + the target org

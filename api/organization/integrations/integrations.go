@@ -4,7 +4,7 @@ import (
 	"errors"
 	// "net/http/httputil"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -14,13 +14,12 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func Get(c *gin.Context) {
+func Get(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 
 	if id != org.Id() && id != org.Name && id != org.FullName {
-		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
-		return
+		return http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 	}
 
 	ins := org.Integrations
@@ -42,37 +41,34 @@ func Get(c *gin.Context) {
 		ins[i] = in
 	}
 
-	http.Render(c, 200, ins)
+	return http.Render(c, 200, ins)
 }
 
-func Delete(c *gin.Context) {
+func Delete(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 
 	if id != org.Id() && id != org.Name && id != org.FullName {
-		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
-		return
+		return http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 	}
 
-	iId := c.Params.ByName("integrationid")
+	iId := c.Param("integrationid")
 	org.Integrations = org.Integrations.MustRemove(iId)
 
 	// Save organization
 	if err := org.Update(); err != nil {
-		http.Fail(c, 500, "Failed to save integrations", err)
-	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 200, org.Integrations)
+		return http.Fail(c, 500, "Failed to save integrations", err)
 	}
+	c.SetHeader("Location", c.Path())
+	return http.Render(c, 200, org.Integrations)
 }
 
-func Upsert(c *gin.Context) {
+func Upsert(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 
 	if id != org.Id() && id != org.Name && id != org.FullName {
-		http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
-		return
+		return http.Fail(c, 403, "Organization Id does not match key", errors.New("Organization Id does not match key"))
 	}
 
 	ins := org.Integrations
@@ -82,9 +78,8 @@ func Upsert(c *gin.Context) {
 	// log.Warn("Request %s", dump, c)
 
 	// Decode response body
-	if err := json.Decode(c.Request.Body, &updateIns); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &updateIns); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// log.Warn("Received %s", string(json.EncodeBytes(in.Data)), c)
@@ -210,9 +205,10 @@ func Upsert(c *gin.Context) {
 		if err := org.Update(); err != nil {
 			http.Fail(c, 500, "Failed to save integrations", err)
 		} else {
-			c.Writer.Header().Add("Location", c.Request.URL.Path)
+			c.SetHeader("Location", c.Path())
 			http.Render(c, 200, org.Integrations)
 		}
 		return nil
 	}, nil)
+	return nil
 }

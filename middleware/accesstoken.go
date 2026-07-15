@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -37,20 +37,27 @@ func accessTokenFromHeader(fieldValue string) string {
 	return accessToken
 }
 
-func ParseToken(c *gin.Context) {
-	query := c.Request.URL.Query()
+// ParseToken is the route-middleware form: extract, stash, continue.
+func ParseToken(c *zip.Ctx) error {
+	parseAccessToken(c)
+	return c.Next()
+}
 
+// parseAccessToken extracts the access token from query/header/session and
+// stashes it in locals. Pure helper — no chain control, so in-gate callers
+// (TokenRequired) can parse without running the rest of the chain.
+func parseAccessToken(c *zip.Ctx) {
 	// Check for `key` query param by default
-	accessToken := query.Get("key")
+	accessToken := c.Query("key")
 
 	// Fallback to `token` query param
 	if accessToken == "" {
-		accessToken = query.Get("token")
+		accessToken = c.Query("token")
 	}
 
 	// Try to grab key from Authorization header (basic auth)
 	if accessToken == "" {
-		accessToken = accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+		accessToken = accessTokenFromHeader(c.Header("Authorization"))
 	}
 
 	// If it's still not set and dev server is running, grab from session
@@ -61,11 +68,11 @@ func ParseToken(c *gin.Context) {
 		}
 	}
 
-	c.Set("access-token", accessToken)
+	c.Locals("access-token", accessToken)
 }
 
 // Permissions required to access route
-func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
+func TokenPermits(masks ...bit.Mask) zip.Handler {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.All
 
@@ -77,11 +84,12 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Verify permissions
 		if !GetPermissions(c).Has(permissions) {
-			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
+			return http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
 		}
+		return c.Next()
 	}
 }
 
@@ -94,11 +102,11 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 // principal's first request auto-projects a thin billing record keyed by the IAM
 // org. No org header, or a bearer-shaped selector, leaves the key unset (the
 // handler's GetOrganizationOK degrades cleanly rather than seeding a bogus org).
-func ensureIAMOrg(c *gin.Context) {
-	if _, ok := c.Get("organization"); ok {
+func ensureIAMOrg(c *zip.Ctx) {
+	if c.Locals("organization") != nil {
 		return
 	}
-	orgName := strings.TrimSpace(c.GetHeader("X-Org-Id"))
+	orgName := strings.TrimSpace(c.Header("X-Org-Id"))
 	if orgName == "" || organization.IsSecretLikeName(orgName) {
 		return
 	}
@@ -109,13 +117,13 @@ func ensureIAMOrg(c *gin.Context) {
 	}
 	// Per-request Live view on a COPY (the resolver returns a shared cached org).
 	reqOrg := *org
-	reqOrg.Live = !strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true")
-	c.Set("organization", &reqOrg)
-	c.Set("active-organization", reqOrg.Id())
+	reqOrg.Live = !strings.EqualFold(strings.TrimSpace(c.Header("X-Hanzo-Test")), "true")
+	c.Locals("organization", &reqOrg)
+	c.Locals("active-organization", reqOrg.Id())
 }
 
 // Parses token, default permissions check
-func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
+func TokenRequired(masks ...bit.Mask) zip.Handler {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.All
 
@@ -127,7 +135,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Service token FIRST — checked before the IAM branch below. A request bearing
 		// the internal S2S secret (COMMERCE_SERVICE_TOKEN) is the trusted platform
 		// caller: the in-process metering/billing dispatch (cloud → commerce via
@@ -144,7 +152,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// carry the token; see the IAM branch below). The token is never logged.
 		// Set COMMERCE_SERVICE_TOKEN env var on both the caller and Commerce.
 		if svcToken := os.Getenv("COMMERCE_SERVICE_TOKEN"); svcToken != "" {
-			header := c.GetHeader("Authorization")
+			header := c.Header("Authorization")
 			if strings.HasPrefix(header, "Bearer ") && strings.TrimPrefix(header, "Bearer ") == svcToken {
 				// Resolve the caller-named org, now that the service token is verified.
 				// EdgeAuth (standalone edge) stashes the client's requested org in a
@@ -155,7 +163,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				// trustworthy), then COMMERCE_SERVICE_ORG, then the default "hanzo".
 				orgName := clientOrgFromContext(c)
 				if orgName == "" {
-					orgName = c.GetHeader("X-Org-Id")
+					orgName = c.Header("X-Org-Id")
 				}
 				if orgName == "" {
 					orgName = os.Getenv("COMMERCE_SERVICE_ORG")
@@ -170,8 +178,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				// org named after the key (incident 2026-07-02). Reject, don't create.
 				if organization.IsSecretLikeName(orgName) {
 					log.Warn("TokenRequired: service-token org selector is bearer-shaped; refusing to provision")
-					http.Fail(c, 400, "Invalid organization identifier.", errors.New("bearer-shaped org selector"))
-					return
+					return http.Fail(c, 400, "Invalid organization identifier.", errors.New("bearer-shaped org selector"))
 				}
 
 				// Resolve via the CACHED, singleflighted, deadline-detached resolver
@@ -190,8 +197,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 					// Peek the 64-hex service token as a JWT ("Invalid Segments") and 401,
 					// masking a retryable hiccup as an auth failure (the old cascade).
 					log.Warn("TokenRequired: service-token org resolve for '%s' failed: %v", orgName, err)
-					http.Fail(c, 503, "Billing service temporarily unavailable; retry.", err)
-					return
+					return http.Fail(c, 503, "Billing service temporarily unavailable; retry.", err)
 				}
 
 				// Service callers are live by default. An explicit
@@ -209,23 +215,22 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				// (PlatformOnly) gate on this + SuperAdmin ONLY, never on Admin,
 				// so an org owner can never reach them. Set in BOTH the test and
 				// live sub-branches (once here, before the split).
-				c.Set(ctxKeyServiceToken, true)
+				c.Locals(ctxKeyServiceToken, true)
 				// Live/Test is a per-REQUEST view. The resolver returns a SHARED,
 				// cached *Organization, so never mutate its Live in place — copy it
 				// per request and set Live on the copy. This keeps steady-state
 				// datastore-free while guaranteeing a concurrent test call can't flip
 				// the cached org's Live for live callers (or vice-versa).
 				reqOrg := *org
-				test := strings.EqualFold(strings.TrimSpace(c.GetHeader("X-Hanzo-Test")), "true")
+				test := strings.EqualFold(strings.TrimSpace(c.Header("X-Hanzo-Test")), "true")
 				reqOrg.Live = !test
 				if test {
-					c.Set("permissions", bit.Field(permission.Admin|permission.Test))
+					c.Locals("permissions", bit.Field(permission.Admin|permission.Test))
 				} else {
-					c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+					c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 				}
-				c.Set("organization", &reqOrg)
-				c.Next()
-				return
+				c.Locals("organization", &reqOrg)
+				return c.Next()
 			}
 		}
 
@@ -248,70 +253,66 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 				// IAM principal's org "just works" with no commerce-side provisioning.
 				// Idempotent — a no-op when iammiddleware already resolved it upstream.
 				ensureIAMOrg(c)
-				c.Next()
-				return
+				return c.Next()
 			}
-			http.Fail(c, 403, "Token doesn't support this scope",
+			return http.Fail(c, 403, "Token doesn't support this scope",
 				errors.New("IAM principal lacks required permission scope"))
-			return
 		}
 
 		// Parse token
-		ParseToken(c)
+		parseAccessToken(c)
 
 		// Try to fetch access token
 		accessToken := GetAccessToken(c)
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
-			http.Fail(c, 401, "No access token provided.", errors.New("No access token provided"))
-			return
+			return http.Fail(c, 401, "No access token provided.", errors.New("No access token provided"))
 		}
 
-		ctx := GetContext(c)
+		ctx := c.Context()
 		db := datastore.New(ctx)
 		org := organization.New(db)
 
 		// Try to find organization using access token
 		tok, err := org.GetWithAccessToken(accessToken)
 		if err != nil {
-			http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
-			return
+			return http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 		}
 
 		// Verify token signature
 		if ok, err := tok.Verify(org.SecretKey); !ok {
 			log.Error("Org '%s' == '%s', Token '%s' == '%s', Verify error '%s'", org.Id(), tok.Subject, tok.String, accessToken, err, ctx)
-			http.Fail(c, 403, "Unable to verify token.", err)
-			return
+			return http.Fail(c, 403, "Unable to verify token.", err)
 		}
 
 		// Verify permissions
 		if !tok.HasPermission(permissions) {
-			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
+			return http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
 		}
 
 		// Whether or not we can make live calls
 		org.Live = tok.HasPermission(permission.Live)
 
 		// Save organization in context
-		c.Set("permissions", tok.Permissions)
-		c.Set("organization", org)
-		c.Set("token", tok)
+		c.Locals("permissions", tok.Permissions)
+		c.Locals("organization", org)
+		c.Locals("token", tok)
+		return c.Next()
 	}
 }
 
-func GetAccessToken(c *gin.Context) string {
-	tok, ok := c.Get("access-token")
-	if !ok {
+func GetAccessToken(c *zip.Ctx) string {
+	tok := c.Locals("access-token")
+	if tok == nil {
 		return ""
 	}
 
 	return tok.(string)
 }
 
-func GetPermissions(c *gin.Context) bit.Field {
-	return c.MustGet("permissions").(bit.Field)
+func GetPermissions(c *zip.Ctx) bit.Field {
+	return c.Locals("permissions").(bit.Field)
 }
 
 // ctxKeyServiceToken marks that TokenRequired verified this request's bearer
@@ -331,8 +332,8 @@ const ctxKeyServiceToken = "service_token_verified"
 // re-derived from indirect signals like the Admin bit or absence of IAM identity —
 // a legacy org access token is also "not IAM authenticated" yet must NOT pass the
 // money-mint gate.
-func IsServiceToken(c *gin.Context) bool {
-	if v, ok := c.Get(ctxKeyServiceToken); ok {
+func IsServiceToken(c *zip.Ctx) bool {
+	if v := c.Locals(ctxKeyServiceToken); v != nil {
 		if b, ok := v.(bool); ok {
 			return b
 		}
@@ -346,9 +347,9 @@ func IsServiceToken(c *gin.Context) bool {
 // mounted without a permission-setting middleware fails CLOSED (false → 403)
 // instead of panicking. bit.Field.Has is intersection semantics, so a combined
 // mask like Admin|Published is satisfied by holding EITHER bit.
-func hasScope(c *gin.Context, need bit.Mask) bool {
-	v, ok := c.Get("permissions")
-	if !ok {
+func hasScope(c *zip.Ctx, need bit.Mask) bool {
+	v := c.Locals("permissions")
+	if v == nil {
 		return false
 	}
 	f, ok := v.(bit.Field)

@@ -1,14 +1,14 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/referralprogram"
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {
+var Referrer = New("referrer", func(c *zip.Ctx) *referrer.Referrer {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

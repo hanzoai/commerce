@@ -35,7 +35,7 @@ const (
 
 type StripeAccount struct {
 	TransferId string `json:"transferId,omitempty"`
-	Type string `json:"type,omitempty"`
+	Type       string `json:"type,omitempty"`
 
 	ApplicationFee int64 `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
 

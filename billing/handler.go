@@ -13,10 +13,11 @@ package billing
 
 import (
 	"io/fs"
+	"mime"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 )
@@ -48,10 +49,9 @@ func isAuthorized(claims *auth.IAMClaims) bool {
 	return false
 }
 
-// extractBearer returns the Bearer token from the Authorization header, or
-// an empty string if absent/malformed.
-func extractBearer(r *http.Request) string {
-	h := r.Header.Get("Authorization")
+// extractBearer returns the Bearer token from the Authorization header
+// value, or an empty string if absent/malformed.
+func extractBearer(h string) string {
 	if h == "" {
 		return ""
 	}
@@ -62,65 +62,64 @@ func extractBearer(r *http.Request) string {
 	return strings.TrimSpace(h[len(prefix):])
 }
 
-// UIHandler returns a gin handler that serves the embedded billing admin
+// UIHandler returns a zip handler that serves the embedded billing admin
 // SPA at the given mount prefix (typically "/admin/billing"). Unauthorized
 // requests get a plain 404 — no existence leak.
 //
 // The IAMClient is optional in test harnesses; a nil client (IAM disabled)
 // means every request is treated as unauthorized, which produces the same
 // 404 — safer fail-closed default.
-func UIHandler(prefix string, iam *auth.IAMClient) gin.HandlerFunc {
+func UIHandler(prefix string, iam *auth.IAMClient) zip.Handler {
 	root := UISub()
-	fileServer := http.FileServer(http.FS(root))
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Authorize first — non-admin requests never touch the FS.
-		token := extractBearer(c.Request)
+		token := extractBearer(c.Header("Authorization"))
 		if token == "" {
-			http.NotFound(c.Writer, c.Request)
-			return
+			return c.NoContent(http.StatusNotFound)
 		}
 		if iam == nil {
-			http.NotFound(c.Writer, c.Request)
-			return
+			return c.NoContent(http.StatusNotFound)
 		}
-		claims, err := iam.ValidateToken(c.Request.Context(), token)
+		claims, err := iam.ValidateToken(c.Context(), token)
 		if err != nil {
-			http.NotFound(c.Writer, c.Request)
-			return
+			return c.NoContent(http.StatusNotFound)
 		}
 		if !isAuthorized(claims) {
-			http.NotFound(c.Writer, c.Request)
-			return
+			return c.NoContent(http.StatusNotFound)
 		}
 
 		// Strip the mount prefix so FS lookups match embedded paths.
-		path := strings.TrimPrefix(c.Request.URL.Path, prefix)
+		path := strings.TrimPrefix(c.Path(), prefix)
 		if path == "" || path == "/" {
 			path = "index.html"
 		}
 		path = strings.TrimPrefix(path, "/")
 
 		// Asset request (has a file extension) — serve directly with caching.
+		// Read the embedded bytes and set the content type off the extension
+		// (with a sniff fallback), mirroring http.FileServer without a
+		// ResponseWriter.
 		if i := strings.LastIndexByte(path, '.'); i >= 0 && !strings.Contains(path[i:], "/") {
-			if _, err := fs.Stat(root, path); err == nil {
-				c.Writer.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-				r2 := c.Request.Clone(c.Request.Context())
-				r2.URL.Path = "/" + path
-				fileServer.ServeHTTP(c.Writer, r2)
-				return
+			if data, err := fs.ReadFile(root, path); err == nil {
+				ct := mime.TypeByExtension(path[i:])
+				if ct == "" {
+					ct = http.DetectContentType(data)
+				}
+				c.SetHeader("Cache-Control", "public, max-age=31536000, immutable")
+				c.SetHeader("Content-Type", ct)
+				return c.Bytes(http.StatusOK, data)
 			}
 		}
 
 		// SPA fallback — serve index.html for any unmatched route under the
 		// mount prefix. Client-side router resolves the rest.
-		c.Writer.Header().Set("Cache-Control", "no-cache")
-		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 		idx, err := fs.ReadFile(root, "index.html")
 		if err != nil {
-			http.Error(c.Writer, "billing SPA not built", http.StatusServiceUnavailable)
-			return
+			return c.String(http.StatusServiceUnavailable, "billing SPA not built")
 		}
-		_, _ = c.Writer.Write(idx)
+		c.SetHeader("Cache-Control", "no-cache")
+		c.SetHeader("Content-Type", "text/html; charset=utf-8")
+		return c.Bytes(http.StatusOK, idx)
 	}
 }

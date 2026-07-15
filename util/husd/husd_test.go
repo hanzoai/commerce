@@ -13,11 +13,11 @@ func TestCentsToWei(t *testing.T) {
 		want     string
 	}{
 		{0, 18, "0"},
-		{1, 18, "10000000000000000"},        // $0.01 → 1e16
-		{100, 18, "1000000000000000000"},    // $1.00 → 1e18
-		{2550, 18, "25500000000000000000"},  // $25.50 → 25.5e18
-		{100, 6, "1000000"},                 // 6-decimal stablecoin: $1.00 → 1e6
-		{100, 2, "100"},                     // 2-decimal: cents == base units
+		{1, 18, "10000000000000000"},       // $0.01 → 1e16
+		{100, 18, "1000000000000000000"},   // $1.00 → 1e18
+		{2550, 18, "25500000000000000000"}, // $25.50 → 25.5e18
+		{100, 6, "1000000"},                // 6-decimal stablecoin: $1.00 → 1e6
+		{100, 2, "100"},                    // 2-decimal: cents == base units
 		{1234567, 18, "12345670000000000000000"},
 	}
 	for _, c := range cases {
@@ -142,16 +142,16 @@ var _ = os.Getenv
 
 func TestSettlementDrift(t *testing.T) {
 	cases := []struct {
-		name              string
-		onchain, spend    int64
-		threshold         int64
-		wantDrift         int64
-		wantSettle        bool
+		name           string
+		onchain, spend int64
+		threshold      int64
+		wantDrift      int64
+		wantSettle     bool
 	}{
-		{"usage drew down", 10000, 7000, 1, 3000, true},       // $30 consumed → settle
-		{"nothing consumed", 10000, 10000, 1, 0, false},        // level → no settle
-		{"below threshold", 10000, 9950, 100, 50, false},       // 50c < $1 threshold
-		{"exactly threshold", 10000, 9900, 100, 100, true},     // 100c == threshold
+		{"usage drew down", 10000, 7000, 1, 3000, true},                  // $30 consumed → settle
+		{"nothing consumed", 10000, 10000, 1, 0, false},                  // level → no settle
+		{"below threshold", 10000, 9950, 100, 50, false},                 // 50c < $1 threshold
+		{"exactly threshold", 10000, 9900, 100, 100, true},               // 100c == threshold
 		{"ledger ahead (unprojected mint)", 5000, 8000, 1, -3000, false}, // never over-sweep
 		{"spendable negative clamps to 0", 4200, -10, 1, 4200, true},
 	}

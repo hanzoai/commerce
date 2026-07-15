@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -62,29 +61,21 @@ type zapError struct {
 }
 
 // ZapDispatch is the single ZAP-over-HTTP endpoint for billing.
-func ZapDispatch(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(400, zapResponse{
-			Error: &zapError{Code: -32700, Message: "read error: " + err.Error()},
-		})
-		return
-	}
+func ZapDispatch(c *zip.Ctx) error {
+	body := c.Body()
 
 	var req zapRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		c.JSON(400, zapResponse{
+		return c.JSON(400, zapResponse{
 			Error: &zapError{Code: -32700, Message: "parse error: " + err.Error()},
 		})
-		return
 	}
 
 	if req.Method == "" {
-		c.JSON(400, zapResponse{
+		return c.JSON(400, zapResponse{
 			ID:    req.ID,
 			Error: &zapError{Code: -32600, Message: "method is required"},
 		})
-		return
 	}
 
 	// Money-MINT methods over ZAP are gated to the internal service token / a
@@ -96,10 +87,9 @@ func ZapDispatch(c *gin.Context) {
 	// Reads + recordUsage (a debit) are deliberately NOT gated.
 	if zapMintMethods[req.Method] {
 		if !middleware.MayMintMoney(c) {
-			httperr.Fail(c, 403,
+			return httperr.Fail(c, 403,
 				"This operation requires platform-administrator or internal-service credentials.",
 				errors.New("ZAP money-mint method: caller is neither the internal service token nor a platform global admin"))
-			return
 		}
 		// Proven mint principal → authorize the ledger sink so zapDeposit's write
 		// passes mintauth.Enforce (its datastore is built after this via
@@ -126,11 +116,10 @@ func ZapDispatch(c *gin.Context) {
 	}
 
 	if zapErr != nil {
-		c.JSON(200, zapResponse{ID: req.ID, Error: zapErr})
-		return
+		return c.JSON(200, zapResponse{ID: req.ID, Error: zapErr})
 	}
 
-	c.JSON(200, zapResponse{ID: req.ID, Result: result})
+	return c.JSON(200, zapResponse{ID: req.ID, Result: result})
 }
 
 // ── ZAP method handlers ─────────────────────────────────────────────────
@@ -140,7 +129,7 @@ type zapBalanceParams struct {
 	Currency string `json:"currency"`
 }
 
-func zapGetBalance(c *gin.Context, params json.RawMessage) (interface{}, *zapError) {
+func zapGetBalance(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var p zapBalanceParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, &zapError{Code: -32602, Message: "invalid params: " + err.Error()}
@@ -150,7 +139,7 @@ func zapGetBalance(c *gin.Context, params json.RawMessage) (interface{}, *zapErr
 	}
 
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	cur := currency.Type(strings.ToLower(p.Currency))
 	if cur == "" {
@@ -173,7 +162,7 @@ func zapGetBalance(c *gin.Context, params json.RawMessage) (interface{}, *zapErr
 		available = 0
 	}
 
-	return gin.H{
+	return map[string]any{
 		"user":      p.User,
 		"currency":  cur,
 		"balance":   balance,
@@ -182,7 +171,7 @@ func zapGetBalance(c *gin.Context, params json.RawMessage) (interface{}, *zapErr
 	}, nil
 }
 
-func zapGetBalanceAll(c *gin.Context, params json.RawMessage) (interface{}, *zapError) {
+func zapGetBalanceAll(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var p struct {
 		User string `json:"user"`
 	}
@@ -194,20 +183,20 @@ func zapGetBalanceAll(c *gin.Context, params json.RawMessage) (interface{}, *zap
 	}
 
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 
 	datas, err := util.GetTransactions(ctx, p.User, "iam-user", org.TestMode())
 	if err != nil {
 		return nil, &zapError{Code: -32000, Message: "balance query failed: " + err.Error()}
 	}
 
-	balances := make([]gin.H, 0, len(datas.Data))
+	balances := make([]map[string]any, 0, len(datas.Data))
 	for cur, data := range datas.Data {
 		available := data.Balance - data.Holds
 		if available < 0 {
 			available = 0
 		}
-		balances = append(balances, gin.H{
+		balances = append(balances, map[string]any{
 			"currency":  cur,
 			"balance":   data.Balance,
 			"holds":     data.Holds,
@@ -215,13 +204,13 @@ func zapGetBalanceAll(c *gin.Context, params json.RawMessage) (interface{}, *zap
 		})
 	}
 
-	return gin.H{
+	return map[string]any{
 		"user":     p.User,
 		"balances": balances,
 	}, nil
 }
 
-func zapGetUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError) {
+func zapGetUsage(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var p zapBalanceParams
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, &zapError{Code: -32602, Message: "invalid params: " + err.Error()}
@@ -231,7 +220,7 @@ func zapGetUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError
 	}
 
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespaced(c)
+	ctx := org.Namespaced(c.Context())
 	db := datastore.New(ctx)
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -252,9 +241,9 @@ func zapGetUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError
 		return nil, &zapError{Code: -32000, Message: "usage query failed: " + err.Error()}
 	}
 
-	items := make([]gin.H, 0, len(transs))
+	items := make([]map[string]any, 0, len(transs))
 	for _, t := range transs {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"transactionId": t.Id(),
 			"amount":        t.Amount,
 			"currency":      t.Currency,
@@ -264,14 +253,14 @@ func zapGetUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError
 		})
 	}
 
-	return gin.H{
+	return map[string]any{
 		"user":  p.User,
 		"count": len(items),
 		"usage": items,
 	}, nil
 }
 
-func zapRecordUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapError) {
+func zapRecordUsage(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var req usageRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, &zapError{Code: -32602, Message: "invalid params: " + err.Error()}
@@ -282,11 +271,11 @@ func zapRecordUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapEr
 	}
 
 	if req.Amount <= 0 {
-		return gin.H{"user": req.User, "amount": 0, "status": "skipped"}, nil
+		return map[string]any{"user": req.User, "amount": 0, "status": "skipped"}, nil
 	}
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	cur := currency.Type(strings.ToLower(req.Currency))
 	if cur == "" {
@@ -325,7 +314,7 @@ func zapRecordUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapEr
 		return nil, &zapError{Code: -32000, Message: "failed to record usage: " + err.Error()}
 	}
 
-	return gin.H{
+	return map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        req.Amount,
@@ -334,7 +323,7 @@ func zapRecordUsage(c *gin.Context, params json.RawMessage) (interface{}, *zapEr
 	}, nil
 }
 
-func zapDeposit(c *gin.Context, params json.RawMessage) (interface{}, *zapError) {
+func zapDeposit(c *zip.Ctx, params json.RawMessage) (interface{}, *zapError) {
 	var req depositRequest
 	if err := json.Unmarshal(params, &req); err != nil {
 		return nil, &zapError{Code: -32602, Message: "invalid params: " + err.Error()}
@@ -349,7 +338,7 @@ func zapDeposit(c *gin.Context, params json.RawMessage) (interface{}, *zapError)
 	}
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	cur := currency.Type(strings.ToLower(req.Currency))
 	if cur == "" {
@@ -383,7 +372,7 @@ func zapDeposit(c *gin.Context, params json.RawMessage) (interface{}, *zapError)
 		return nil, &zapError{Code: -32000, Message: "failed to create deposit: " + err.Error()}
 	}
 
-	resp := gin.H{
+	resp := map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        req.Amount,

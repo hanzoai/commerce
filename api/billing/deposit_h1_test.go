@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"io"
 	"net/http"
 	"testing"
 
@@ -17,9 +18,9 @@ func TestDeposit_OverCeiling_400(t *testing.T) {
 	org := moneyOrg("h1d-ceiling")
 
 	body := `{"user":"h1d-ceiling/alice","amount":2000}` // over the 1000 ceiling
-	w := invokeMoneyHandler(org, ctx, Deposit, body, nil)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("over-ceiling deposit: status=%d body=%s, want 400", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Deposit, body, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("over-ceiling deposit: status=%d body=%s, want 400", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -31,9 +32,9 @@ func TestDeposit_UnderCeiling_201(t *testing.T) {
 	org := moneyOrg("h1d-under")
 
 	body := `{"user":"h1d-under/alice","amount":1000}`
-	w := invokeMoneyHandler(org, ctx, Deposit, body, nil)
-	if w.Code != http.StatusCreated {
-		t.Fatalf("at-ceiling deposit: status=%d body=%s, want 201", w.Code, w.Body.String())
+	resp := invokeMoneyHandler(org, ctx, Deposit, body, nil)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("at-ceiling deposit: status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
 	}
 }
 
@@ -49,8 +50,8 @@ func TestDeposit_IdempotencyKey_SingleEffect(t *testing.T) {
 	hdr := map[string]string{"X-Idempotency-Key": "dep-key-1"}
 
 	w1 := invokeMoneyHandler(org, ctx, Deposit, body, hdr)
-	if w1.Code != http.StatusCreated {
-		t.Fatalf("first deposit: status=%d body=%s, want 201", w1.Code, w1.Body.String())
+	if w1.StatusCode != http.StatusCreated {
+		t.Fatalf("first deposit: status=%d body=%s, want 201", w1.StatusCode, func() string { b, _ := io.ReadAll(w1.Body); return string(b) }())
 	}
 	tid1 := txID(t, w1)
 	if tid1 == "" {
@@ -58,8 +59,8 @@ func TestDeposit_IdempotencyKey_SingleEffect(t *testing.T) {
 	}
 
 	w2 := invokeMoneyHandler(org, ctx, Deposit, body, hdr)
-	if w2.Code != http.StatusOK {
-		t.Fatalf("replay deposit: status=%d body=%s, want 200 (idempotent replay)", w2.Code, w2.Body.String())
+	if w2.StatusCode != http.StatusOK {
+		t.Fatalf("replay deposit: status=%d body=%s, want 200 (idempotent replay)", w2.StatusCode, func() string { b, _ := io.ReadAll(w2.Body); return string(b) }())
 	}
 	if tid2 := txID(t, w2); tid2 != tid1 {
 		t.Fatalf("replay minted a NEW transaction %q (first was %q) — double credit", tid2, tid1)
@@ -77,8 +78,8 @@ func TestDeposit_NoKey_DistinctDeposits(t *testing.T) {
 	body := `{"user":"h1d-nokey/alice","amount":500}`
 	w1 := invokeMoneyHandler(org, ctx, Deposit, body, nil)
 	w2 := invokeMoneyHandler(org, ctx, Deposit, body, nil)
-	if w1.Code != http.StatusCreated || w2.Code != http.StatusCreated {
-		t.Fatalf("two keyless deposits: statuses=%d,%d, want 201,201", w1.Code, w2.Code)
+	if w1.StatusCode != http.StatusCreated || w2.StatusCode != http.StatusCreated {
+		t.Fatalf("two keyless deposits: statuses=%d,%d, want 201,201", w1.StatusCode, w2.StatusCode)
 	}
 	if txID(t, w1) == txID(t, w2) {
 		t.Fatal("two keyless deposits collapsed to one transaction — over-deduped")

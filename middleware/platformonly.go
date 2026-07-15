@@ -5,7 +5,7 @@ package middleware
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/mintauth"
@@ -17,13 +17,19 @@ import (
 // Organization.Namespaced-derived datastore) passes mintauth.Enforce. It is the
 // ONE way an HTTP handler grants the mint capability the ledger sink demands —
 // call it AFTER establishing a proven mint authority (MayMintMoney, a settled
-// payment, or a server-fixed grant). It re-stores the gin "context" key, which
+// payment, or a server-fixed grant). It re-stores the "context" key, which
 // Organization.Namespaced reads, so any datastore the handler builds afterward
 // is authorized. Writes that build their datastore BEFORE the authority is known
 // (top-up after the charge, webhook after signature) instead authorize the
 // specific write via mintauth.WithAuthorized on that write's context.
-func AuthorizeMint(c *gin.Context) {
-	c.Set("context", mintauth.WithAuthorized(GetContext(c)))
+func AuthorizeMint(c *zip.Ctx) {
+	// SetContext, not a locals key: c.Context() IS the request context under
+	// the one-context model, so the mint authorization must land THERE for
+	// the ledger sink (and every datastore built from c.Context()) to see it.
+	// SetContext, not a locals key: c.Context() IS the request context under
+	// the one-context model, so the mint authorization must land THERE for
+	// the ledger sink (and every datastore built from c.Context()) to see it.
+	c.SetContext(mintauth.WithAuthorized(c.Context()))
 }
 
 // PlatformOnly restricts a route to the ONLY two principals allowed to MINT
@@ -53,18 +59,17 @@ func AuthorizeMint(c *gin.Context) {
 // reaches here.
 //
 // Fail-closed: neither signal present → 403, handler not reached.
-func PlatformOnly() gin.HandlerFunc {
-	return func(c *gin.Context) {
+func PlatformOnly() zip.Handler {
+	return func(c *zip.Ctx) error {
 		if MayMintMoney(c) {
 			// Proven mint principal → authorize the ledger sink for this request,
 			// so the PlatformOnly-gated mint handlers (deposit, refund,
 			// credit-grants, payouts, cycle, auto-recharge, …) all mint without
 			// per-handler changes while org-admins are still 403'd above.
 			AuthorizeMint(c)
-			c.Next()
-			return
+			return c.Next()
 		}
-		http.Fail(c, 403,
+		return http.Fail(c, 403,
 			"This operation requires platform-administrator or internal-service credentials.",
 			errors.New("money-mint route: caller is neither the internal service token nor a platform global admin"))
 	}
@@ -84,6 +89,6 @@ func PlatformOnly() gin.HandlerFunc {
 // a client plan override on it — so there is ONE expression of the mint principal,
 // shared by the route gate (PlatformOnly) and every in-handler gate. Fail-closed:
 // neither signal present → false.
-func MayMintMoney(c *gin.Context) bool {
+func MayMintMoney(c *zip.Ctx) bool {
 	return IsServiceToken(c) || iammiddleware.GetIAMClaims(c).IsSuperAdmin()
 }
