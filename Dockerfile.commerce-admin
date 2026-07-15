@@ -1,0 +1,35 @@
+# commerce-admin — the Medusa-lineage admin SPA (app/admin, @hanzo/commerce-dashboard,
+# Next.js `output: 'export'`) served via hanzoai/static (NOT nginx, NOT a node server).
+#
+# Ships the last-known-good static export at app/admin/out. A fresh from-source
+# `pnpm build` is currently blocked UPSTREAM (its own task), not by this image:
+#   1. @hanzo/commerce-ui is neither buildable (build script points at nonexistent
+#      tsconfig.{cjs,esm}.json, invokes yarn under a pnpm workspace, no tsc-alias)
+#      nor source-consumable (169 unresolved internal `@/` aliases) — and every
+#      admin page imports Button/Heading/Text from it.
+#   2. app/admin/src/app/(dashboard)/billing/page.tsx imports a phantom
+#      `@hanzo/commerce-client` package that is not declared anywhere.
+# Once (1)+(2) land, restore a node builder stage here:
+#   FROM node:22-alpine AS builder ... pnpm -r build && pnpm --filter admin build
+#   COPY --from=builder /app/admin/out /out
+# and bake NEXT_PUBLIC_* (IAM_CLIENT_ID=hanzo-commerce, COMMERCE_API_URL, IAM_SERVER_URL).
+#
+# The committed export bakes prod defaults (hanzo.id, client_id `hanzo-commerce`,
+# commerce-api.hanzo.ai) so it runs at commerce.hanzo.ai unchanged. It was built
+# with assetPrefix=/admin (the legacy /admin mount): pages are root-relative
+# (out/login, out/overview, …) but JS/CSS chunks load from /admin/_next/*. Serving
+# at ROOT therefore requires _next reachable at BOTH /_next and /admin/_next.
+
+# ── Arrange the served tree (hanzoai/static has no shell) ─────────────────────
+FROM busybox:1.36 AS arrange
+COPY app/admin/out /out
+RUN mkdir -p /srv \
+ && cp -a /out/. /srv/ \
+ && mkdir -p /srv/admin \
+ && cp -a /out/_next /srv/admin/_next
+
+# ── Serve via the canonical Hanzo static plugin on :3000, SPA fallback ────────
+FROM ghcr.io/hanzoai/static:0.4.1
+COPY --from=arrange /srv /srv
+EXPOSE 3000
+ENTRYPOINT ["/static", "--root=/srv", "--spa", "--port=3000"]
