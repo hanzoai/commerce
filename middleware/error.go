@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
 
+	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
@@ -90,6 +92,17 @@ func errorHandler(displayError ErrorDisplayer) zip.Handler {
 
 		// When a downstream handler returns an error (the c.Fail(500) analog).
 		if err := c.Next(); err != nil {
+			// A downstream handler that RETURNS a typed HTTP error (zip.HTTPError
+			// or fiber.Error) already carries its own status — re-return it so
+			// zip's faithful default handler renders THAT status. Commerce's
+			// generic 500 envelope is reserved for UNTYPED failures (and panics),
+			// so this middleware never clobbers another subsystem's 401/403/404
+			// into a 500 when it shares the /v1 prefix (co-residence).
+			var he *zip.HTTPError
+			var fe *fiber.Error
+			if errors.As(err, &he) || errors.As(err, &fe) {
+				return err
+			}
 			displayError(c, err.Error(), err)
 			return nil
 		}
