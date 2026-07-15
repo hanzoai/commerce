@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/util/bit"
@@ -22,34 +22,34 @@ import (
 // sentinel was reached. seed pre-sets context state exactly as the real upstream
 // middleware would (EdgeAuth/IAMTokenRequired mint iam_authenticated + permissions
 // + iam_claims); the service-token branch is exercised via a real Bearer + env.
-func runMintGate(t *testing.T, seed func(*gin.Context), reqSetup func(*http.Request)) (int, bool) {
+func runMintGate(t *testing.T, seed func(*zip.Ctx), reqSetup func(*http.Request)) (int, bool) {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
 
 	reached := false
-	eng := gin.New()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
 	if seed != nil {
-		eng.Use(func(c *gin.Context) { seed(c); c.Next() })
+		app.Use(func(c *zip.Ctx) error { seed(c); return c.Next() })
 	}
-	eng.POST("/x", TokenRequired(permission.Admin), PlatformOnly(), func(c *gin.Context) {
-		reached = true
-		c.Status(http.StatusOK)
-	})
+	app.Use(TokenRequired(permission.Admin))
+	app.Use(PlatformOnly())
+	app.Post("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
 	req := httptest.NewRequest(http.MethodPost, "/x", nil)
 	if reqSetup != nil {
 		reqSetup(req)
 	}
-	w := httptest.NewRecorder()
-	eng.ServeHTTP(w, req)
-	return w.Code, reached
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	return resp.StatusCode, reached
 }
 
-func iamIdentity(perms bit.Field, claims *auth.IAMClaims) func(*gin.Context) {
-	return func(c *gin.Context) {
-		c.Set("iam_authenticated", true)
-		c.Set("permissions", perms)
-		c.Set("iam_claims", claims)
+func iamIdentity(perms bit.Field, claims *auth.IAMClaims) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		c.Locals("iam_authenticated", true)
+		c.Locals("permissions", perms)
+		c.Locals("iam_claims", claims)
 	}
 }
 
@@ -93,8 +93,8 @@ func TestPlatformOnly_ServiceTokenMints(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	// The service-token branch resolves the caller-named org via GetContext(c).
-	seed := func(c *gin.Context) { c.Set("context", ctx) }
+	// The service-token branch resolves the caller-named org via c.Context().
+	seed := func(c *zip.Ctx) { c.SetContext(ctx) }
 	status, reached := runMintGate(t, seed, func(r *http.Request) {
 		r.Header.Set("Authorization", "Bearer "+tok)
 		r.Header.Set("X-Org-Id", "svc-org")
@@ -110,32 +110,36 @@ func TestPlatformOnly_ServiceTokenMints(t *testing.T) {
 // This is the anti-conflation that closes C1: a legacy per-org access token and an
 // org owner, both of which carry Admin, are refused. Fail-closed on empty context.
 func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
-	gin.SetMode(gin.TestMode)
 	cases := []struct {
 		name string
-		seed func(*gin.Context)
+		seed func(*zip.Ctx)
 	}{
-		{"nothing set (fail-closed)", func(c *gin.Context) {}},
-		{"org-level Admin permission bit only (legacy access token)", func(c *gin.Context) {
-			c.Set("permissions", bit.Field(permission.Admin|permission.Live))
+		{"nothing set (fail-closed)", func(c *zip.Ctx) {}},
+		{"org-level Admin permission bit only (legacy access token)", func(c *zip.Ctx) {
+			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 		}},
-		{"iam org-admin, not global", func(c *gin.Context) {
-			c.Set("iam_authenticated", true)
-			c.Set("permissions", bit.Field(permission.Admin|permission.Live))
-			c.Set("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
+		{"iam org-admin, not global", func(c *zip.Ctx) {
+			c.Locals("iam_authenticated", true)
+			c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
+			c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true})
 		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			reached := false
-			eng := gin.New()
-			eng.Use(func(c *gin.Context) { tc.seed(c); c.Next() })
-			eng.POST("/x", PlatformOnly(), func(c *gin.Context) { reached = true; c.Status(http.StatusOK) })
-			req := httptest.NewRequest(http.MethodPost, "/x", nil)
-			w := httptest.NewRecorder()
-			eng.ServeHTTP(w, req)
-			if w.Code != http.StatusForbidden || reached {
-				t.Fatalf("%s: status=%d reached=%v, want 403 & not-reached", tc.name, w.Code, reached)
+			app := zip.New(zip.Config{DisableStartupMessage: true})
+			app.Use(func(c *zip.Ctx) error { tc.seed(c); return c.Next() })
+			app.Use(PlatformOnly())
+			app.Post("/x", func(c *zip.Ctx) error {
+				reached = true
+				return c.NoContent(http.StatusOK)
+			})
+			resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodPost, "/x", nil))
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			if resp.StatusCode != http.StatusForbidden || reached {
+				t.Fatalf("%s: status=%d reached=%v, want 403 & not-reached", tc.name, resp.StatusCode, reached)
 			}
 		})
 	}
@@ -144,16 +148,16 @@ func TestPlatformOnly_AdminBitAloneDenied(t *testing.T) {
 // TestIsServiceToken_FailClosed proves the marker predicate never reads a
 // non-service request as a service caller: absent or non-bool value → false.
 func TestIsServiceToken_FailClosed(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	c := app.TestCtx(http.MethodPost, "/x")
 	if IsServiceToken(c) {
 		t.Fatal("empty context: IsServiceToken must be false (fail-closed)")
 	}
-	c.Set(ctxKeyServiceToken, "true") // wrong type, not bool
+	c.Locals(ctxKeyServiceToken, "true") // wrong type, not bool
 	if IsServiceToken(c) {
 		t.Fatal("non-bool marker: IsServiceToken must be false (fail-closed)")
 	}
-	c.Set(ctxKeyServiceToken, true)
+	c.Locals(ctxKeyServiceToken, true)
 	if !IsServiceToken(c) {
 		t.Fatal("bool true marker: IsServiceToken must be true")
 	}

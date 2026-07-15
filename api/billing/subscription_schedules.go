@@ -3,7 +3,7 @@ package billing
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -42,19 +42,17 @@ type updateSubscriptionScheduleRequest struct {
 // CreateSubscriptionSchedule creates a new subscription schedule.
 //
 //	POST /v1/billing/subscription-schedules
-func CreateSubscriptionSchedule(c *gin.Context) {
+func CreateSubscriptionSchedule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createSubscriptionScheduleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.CustomerId == "" {
-		http.Fail(c, 400, "customerId is required", nil)
-		return
+		return http.Fail(c, 400, "customerId is required", nil)
 	}
 
 	s := subscriptionschedule.New(db)
@@ -91,35 +89,33 @@ func CreateSubscriptionSchedule(c *gin.Context) {
 
 	if err := s.Create(); err != nil {
 		log.Error("Failed to create subscription schedule: %v", err, c)
-		http.Fail(c, 500, "failed to create subscription schedule", err)
-		return
+		return http.Fail(c, 500, "failed to create subscription schedule", err)
 	}
 
-	c.JSON(201, scheduleResponse(s))
+	return c.JSON(201, scheduleResponse(s))
 }
 
 // GetSubscriptionSchedule retrieves a subscription schedule by ID.
 //
 //	GET /v1/billing/subscription-schedules/:id
-func GetSubscriptionSchedule(c *gin.Context) {
+func GetSubscriptionSchedule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	s := subscriptionschedule.New(db)
 	if err := s.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription schedule not found", err)
-		return
+		return http.Fail(c, 404, "subscription schedule not found", err)
 	}
 
-	c.JSON(200, scheduleResponse(s))
+	return c.JSON(200, scheduleResponse(s))
 }
 
 // ListSubscriptionSchedules lists subscription schedules.
 //
 //	GET /v1/billing/subscription-schedules?customerId=...&status=...
-func ListSubscriptionSchedules(c *gin.Context) {
+func ListSubscriptionSchedules(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	schedules := make([]*subscriptionschedule.SubscriptionSchedule, 0)
@@ -145,26 +141,24 @@ func ListSubscriptionSchedules(c *gin.Context) {
 	for i, s := range schedules {
 		results[i] = scheduleResponse(s)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 // UpdateSubscriptionSchedule updates phases or end behavior.
 //
 //	PATCH /v1/billing/subscription-schedules/:id
-func UpdateSubscriptionSchedule(c *gin.Context) {
+func UpdateSubscriptionSchedule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	s := subscriptionschedule.New(db)
 	if err := s.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription schedule not found", err)
-		return
+		return http.Fail(c, 404, "subscription schedule not found", err)
 	}
 
 	var req updateSubscriptionScheduleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.EndBehavior != "" {
@@ -195,65 +189,58 @@ func UpdateSubscriptionSchedule(c *gin.Context) {
 
 	if err := s.Update(); err != nil {
 		log.Error("Failed to update subscription schedule: %v", err, c)
-		http.Fail(c, 500, "failed to update subscription schedule", err)
-		return
+		return http.Fail(c, 500, "failed to update subscription schedule", err)
 	}
 
-	c.JSON(200, scheduleResponse(s))
+	return c.JSON(200, scheduleResponse(s))
 }
 
 // CancelSubscriptionSchedule cancels a subscription schedule.
 //
 //	POST /v1/billing/subscription-schedules/:id/cancel
-func CancelSubscriptionSchedule(c *gin.Context) {
+func CancelSubscriptionSchedule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	s := subscriptionschedule.New(db)
 	if err := s.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription schedule not found", err)
-		return
+		return http.Fail(c, 404, "subscription schedule not found", err)
 	}
 
 	if err := s.Cancel(); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if err := s.Update(); err != nil {
 		log.Error("Failed to cancel subscription schedule: %v", err, c)
-		http.Fail(c, 500, "failed to cancel subscription schedule", err)
-		return
+		return http.Fail(c, 500, "failed to cancel subscription schedule", err)
 	}
 
-	c.JSON(200, scheduleResponse(s))
+	return c.JSON(200, scheduleResponse(s))
 }
 
 // ReleaseSubscriptionSchedule releases a subscription schedule.
 //
 //	POST /v1/billing/subscription-schedules/:id/release
-func ReleaseSubscriptionSchedule(c *gin.Context) {
+func ReleaseSubscriptionSchedule(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	s := subscriptionschedule.New(db)
 	if err := s.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "subscription schedule not found", err)
-		return
+		return http.Fail(c, 404, "subscription schedule not found", err)
 	}
 
 	if err := s.Release(); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if err := s.Update(); err != nil {
 		log.Error("Failed to release subscription schedule: %v", err, c)
-		http.Fail(c, 500, "failed to release subscription schedule", err)
-		return
+		return http.Fail(c, 500, "failed to release subscription schedule", err)
 	}
 
-	c.JSON(200, scheduleResponse(s))
+	return c.JSON(200, scheduleResponse(s))
 }
 
 func scheduleResponse(s *subscriptionschedule.SubscriptionSchedule) map[string]interface{} {

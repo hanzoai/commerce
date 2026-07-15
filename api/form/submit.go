@@ -1,7 +1,7 @@
 package form
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/form"
@@ -12,16 +12,15 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organization, f *form.Form) {
+func submit(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, f *form.Form) error {
 	ctx := db.Context
 
 	// Make sure Subscriber is created with the right context
 	s := submission.New(db)
 
 	// Decode response body for subscriber
-	if err := json.Decode(c.Request.Body, s); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), s); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Store metadata about client
@@ -31,5 +30,5 @@ func submit(c *gin.Context, db *datastore.Datastore, org *organization.Organizat
 	forward(ctx, org, f, s)
 
 	// Success!
-	http.Render(c, 200, s)
+	return http.Render(c, 200, s)
 }

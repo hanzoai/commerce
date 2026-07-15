@@ -1,30 +1,29 @@
 package form
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	cdn "github.com/hanzoai/commerce/api/cdn/form"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/form"
 	"github.com/hanzoai/commerce/util/rest"
-	"github.com/hanzoai/commerce/util/router"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func Route(router zip.Router, args ...zip.Handler) {
 	rest.New(form.Form{}).Route(router, args...)
 
 	f := router.Group("form")
 	f.Use(middleware.AccessControl("*"))
 
-	f.POST("/:formid/submit", handleForm)
-	f.POST("/:formid/subscribe", handleForm)
-	f.GET("/:formid/js", cdn.Js)
+	f.Post("/:formid/submit", handleForm)
+	f.Post("/:formid/subscribe", handleForm)
+	f.Get("/:formid/js", cdn.Js)
 
 	// DEPRECATED
 	m := router.Group("mailinglist")
 	m.Use(middleware.AccessControl("*"))
 
-	m.POST("/:formid/submit", handleForm)
-	m.POST("/:formid/subscribe", handleForm)
-	m.GET("/:formid/js", cdn.Js)
+	m.Post("/:formid/submit", handleForm)
+	m.Post("/:formid/subscribe", handleForm)
+	m.Get("/:formid/js", cdn.Js)
 }

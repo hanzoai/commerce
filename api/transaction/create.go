@@ -3,7 +3,7 @@ package transaction
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -16,20 +16,19 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func Create(c *gin.Context) {
+func Create(c *zip.Ctx) error {
 	// Money move (deposit/withdraw/transfer on the ledger): admin-only, enforced
 	// inside the handler (route middleware no-ops on the IAM path — Red HIGH-4).
 	if !middleware.RequireAdmin(c) {
-		return
+		return nil
 	}
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 	trans := transaction.New(db)
 
 	// Decode response body to create new transaction
-	if err := json.Decode(c.Request.Body, trans); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
+	if err := json.DecodeBytes(c.Body(), trans); err != nil {
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
 	if trans.Id_ != "" {
@@ -39,32 +38,27 @@ func Create(c *gin.Context) {
 
 	if trans.Type == transaction.Hold || trans.Type == transaction.HoldRemoved {
 		log.Error("Transaction type should not be a hold: '%v'", trans.Type, c)
-		http.Fail(c, 500, ErrorUseHoldApi.Error(), ErrorUseHoldApi)
-		return
+		return http.Fail(c, 500, ErrorUseHoldApi.Error(), ErrorUseHoldApi)
 	}
 
 	if trans.Type != transaction.Deposit && trans.Type != transaction.Withdraw && trans.Type != transaction.Transfer {
 		log.Error("Transaction type is invalid: '%v'", trans.Type, c)
-		http.Fail(c, 500, ErrorInvalidType.Error(), ErrorInvalidType)
-		return
+		return http.Fail(c, 500, ErrorInvalidType.Error(), ErrorInvalidType)
 	}
 
 	if trans.SourceId == trans.DestinationId && trans.SourceKind == trans.DestinationKind {
 		log.Error("SourceId, SourceKind should not equal DestinationID, DestinationKind, set to '%v','%v'", trans.SourceId, trans.SourceKind, c)
-		http.Fail(c, 500, ErrorCircularTransaction.Error(), ErrorCircularTransaction)
-		return
+		return http.Fail(c, 500, ErrorCircularTransaction.Error(), ErrorCircularTransaction)
 	}
 
 	if trans.Amount == currency.Cents(0) {
 		log.Error(ErrorPointlessTransaction.Error(), c)
-		http.Fail(c, 500, ErrorPointlessTransaction.Error(), ErrorPointlessTransaction)
-		return
+		return http.Fail(c, 500, ErrorPointlessTransaction.Error(), ErrorPointlessTransaction)
 	}
 
 	if trans.Currency == "" {
 		log.Error(ErrorCurrencyRequired.Error(), c)
-		http.Fail(c, 500, ErrorCurrencyRequired.Error(), ErrorCurrencyRequired)
-		return
+		return http.Fail(c, 500, ErrorCurrencyRequired.Error(), ErrorCurrencyRequired)
 	}
 
 	// C1-b: this generic ledger endpoint reaches the SAME mint sink as
@@ -77,10 +71,9 @@ func Create(c *gin.Context) {
 	// backstop; this gate returns a clean 403 and authorizes the legitimate write.
 	if trans.MintRequiresAuthorization() {
 		if !middleware.MayMintMoney(c) {
-			http.Fail(c, 403,
+			return http.Fail(c, 403,
 				"minting spendable balance requires platform-administrator or internal-service credentials",
 				errors.New("transaction mint: caller is neither the internal service token nor a platform global admin"))
-			return
 		}
 		trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	}
@@ -135,10 +128,9 @@ func Create(c *gin.Context) {
 	}, nil)
 
 	if err != nil {
-		http.Fail(c, 500, err.Error(), err)
-		return
+		return http.Fail(c, 500, err.Error(), err)
 	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+trans.Id())
-		http.Render(c, 201, trans)
+		c.SetHeader("Location", c.Path()+"/"+trans.Id())
+		return http.Render(c, 201, trans)
 	}
 }

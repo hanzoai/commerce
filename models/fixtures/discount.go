@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/discount"
 	"github.com/hanzoai/commerce/models/discount/rule"
@@ -11,7 +11,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-var Discount = New("discount", func(c *gin.Context) *discount.Discount {
+var Discount = New("discount", func(c *zip.Ctx) *discount.Discount {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 

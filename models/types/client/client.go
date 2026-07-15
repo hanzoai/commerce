@@ -3,7 +3,7 @@ package client
 import (
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 type GeoPoint struct {
@@ -22,28 +22,26 @@ type Client struct {
 	GeoPoint  GeoPoint `json:"geoPoint,omitempty"`
 }
 
-func New(c *gin.Context) Client {
-	req := c.Request
-
+func New(c *zip.Ctx) Client {
 	client := Client{
-		UserAgent: req.UserAgent(),
-		Referer:   req.Referer(),
-		Language:  req.Header.Get("Accept-Language"),
+		UserAgent: c.Header("User-Agent"),
+		Referer:   c.Header("Referer"),
+		Language:  c.Header("Accept-Language"),
 	}
 
 	// Check for proxied values from Cloudflare
-	client.Ip = req.Header.Get("CF-Connecting-IP")
-	client.Country = req.Header.Get("CF-IPCountry")
+	client.Ip = c.Header("CF-Connecting-IP")
+	client.Country = c.Header("CF-IPCountry")
 
 	// Not behind a proxy
 	if client.Ip == "" {
-		client.Ip = req.RemoteAddr
-		client.Country = req.Header.Get("X-AppEngine-Country")
-		client.Region = req.Header.Get("X-AppEngine-Region")
-		client.City = req.Header.Get("X-AppEngine-City")
+		client.Ip = c.Fiber().IP()
+		client.Country = c.Header("X-AppEngine-Country")
+		client.Region = c.Header("X-AppEngine-Region")
+		client.City = c.Header("X-AppEngine-City")
 
 		// Parse latitude and longitude into geopoint
-		geo := c.Request.Header.Get("X-AppEngine-CitLatLong")
+		geo := c.Header("X-AppEngine-CitLatLong")
 		lat, _ := strconv.ParseFloat(geo, 64)
 		long, _ := strconv.ParseFloat(geo, 64)
 		client.GeoPoint = GeoPoint{Lat: lat, Lng: long}

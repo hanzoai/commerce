@@ -3,7 +3,7 @@ package billing
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
@@ -27,10 +27,10 @@ type billingAccountMember struct {
 // org is returned as the single account for the current token.
 //
 //	GET /v1/billing/accounts
-func ListBillingAccounts(c *gin.Context) {
+func ListBillingAccounts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
-	account := gin.H{
+	account := map[string]any{
 		"id":        org.Id(),
 		"name":      org.FullName,
 		"orgId":     org.Id(),
@@ -53,7 +53,7 @@ func ListBillingAccounts(c *gin.Context) {
 		account["role"] = role
 	}
 
-	c.JSON(200, []gin.H{account})
+	return c.JSON(200, []map[string]any{account})
 }
 
 // CreateBillingAccount is a no-op stub. Billing accounts are provisioned via
@@ -61,8 +61,8 @@ func ListBillingAccounts(c *gin.Context) {
 // Returns 501 to signal the caller to redirect to the org provisioning flow.
 //
 //	POST /v1/billing/accounts
-func CreateBillingAccount(c *gin.Context) {
-	http.Fail(c, 501, "billing account creation must be done via the Hanzo console", nil)
+func CreateBillingAccount(c *zip.Ctx) error {
+	return http.Fail(c, 501, "billing account creation must be done via the Hanzo console", nil)
 }
 
 // ListAccountMembers returns the members of a billing account (org).
@@ -70,16 +70,15 @@ func CreateBillingAccount(c *gin.Context) {
 // Commerce does not store a full membership roster (that lives in IAM).
 //
 //	GET /v1/billing/accounts/:id/members
-func ListAccountMembers(c *gin.Context) {
+func ListAccountMembers(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	// Verify the requested account belongs to the authenticated org.
 	if id := c.Param("id"); id != org.Id() {
-		http.Fail(c, 403, "access denied to billing account", nil)
-		return
+		return http.Fail(c, 403, "access denied to billing account", nil)
 	}
 
-	members := make([]gin.H, 0)
+	members := make([]map[string]any, 0)
 
 	// claims is always non-nil; an empty Subject means anonymous and
 	// the response stays an empty members list rather than synthesizing
@@ -92,7 +91,7 @@ func ListAccountMembers(c *gin.Context) {
 				break
 			}
 		}
-		members = append(members, gin.H{
+		members = append(members, map[string]any{
 			"id":      claims.Subject,
 			"userId":  claims.Subject,
 			"email":   claims.Email,
@@ -101,26 +100,26 @@ func ListAccountMembers(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, members)
+	return c.JSON(200, members)
 }
 
 // AddAccountMember is a stub. Member management is done via IAM.
 //
 //	POST /v1/billing/accounts/:id/members
-func AddAccountMember(c *gin.Context) {
-	http.Fail(c, 501, "member management must be done via the Hanzo console", nil)
+func AddAccountMember(c *zip.Ctx) error {
+	return http.Fail(c, 501, "member management must be done via the Hanzo console", nil)
 }
 
 // UpdateMemberRole is a stub. Role updates are done via IAM.
 //
 //	PATCH /v1/billing/accounts/:id/members/:memberId
-func UpdateMemberRole(c *gin.Context) {
-	http.Fail(c, 501, "role updates must be done via the Hanzo console", nil)
+func UpdateMemberRole(c *zip.Ctx) error {
+	return http.Fail(c, 501, "role updates must be done via the Hanzo console", nil)
 }
 
 // RemoveAccountMember is a stub. Member removal is done via IAM.
 //
 //	DELETE /v1/billing/accounts/:id/members/:memberId
-func RemoveAccountMember(c *gin.Context) {
-	http.Fail(c, 501, "member removal must be done via the Hanzo console", nil)
+func RemoveAccountMember(c *zip.Ctx) error {
+	return http.Fail(c, 501, "member removal must be done via the Hanzo console", nil)
 }

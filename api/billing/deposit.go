@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
@@ -48,39 +48,35 @@ type depositRequest struct {
 //
 // Used by internal services to add funds to a user's account (payment
 // processor settlement, manual credit, promotional grants, etc.).
-func Deposit(c *gin.Context) {
+func Deposit(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	// ONE central commerce ledger, org-scoped by the namespace column (New binds
-	// the namespace from org.Namespaced(c) — the same store+scoping the LLM
+	// the namespace from org.Namespaced(c.Context()) — the same store+scoping the LLM
 	// gateway prepaid gate and every balance read use: tier.go/zap.go/usage.go and
 	// models/transaction/util). NOT NewNamespaced: that split deposits into
 	// per-org SQLite FILES (/app/data/orgs/<org>/data.db) while the gate read the
 	// central store → every balance read $0 → 402 on all AI. Tenancy is a value
 	// (the row's org namespace + destinationId), not a place (a physical file).
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req depositRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	if req.Amount <= 0 {
-		http.Fail(c, 400, "amount must be positive", nil)
-		return
+		return http.Fail(c, 400, "amount must be positive", nil)
 	}
 
 	// Server-authoritative ceiling (H1). Bounds a single mint even for a trusted
 	// caller — no unbounded credit in one request.
 	if maxCents := depositMaxCents(); req.Amount > maxCents {
-		http.Fail(c, 400, fmt.Sprintf("amount %d exceeds maximum deposit of %d cents", req.Amount, maxCents), nil)
-		return
+		return http.Fail(c, 400, fmt.Sprintf("amount %d exceeds maximum deposit of %d cents", req.Amount, maxCents), nil)
 	}
 
 	cur := currency.Type(strings.ToLower(req.Currency))
@@ -95,7 +91,7 @@ func Deposit(c *gin.Context) {
 	// distinct deposits are legitimately additive (a fresh key each call).
 	if chainCreditEnabled() {
 		mintKey := randomIdemKey("deposit:" + req.User + ":")
-		if hdr := strings.TrimSpace(c.GetHeader("X-Idempotency-Key")); hdr != "" {
+		if hdr := strings.TrimSpace(c.Header("X-Idempotency-Key")); hdr != "" {
 			mintKey = "deposit:" + req.User + ":" + hdr
 		}
 		reason := req.Notes
@@ -105,10 +101,9 @@ func Deposit(c *gin.Context) {
 		rc, err := chainMintCredit(c, org, req.User, req.Amount, bucketForTags(req.Tags), reason, mintKey)
 		if err != nil {
 			log.Error("chain deposit mint failed for %s: %v", req.User, err, c)
-			http.Fail(c, 502, "on-chain credit mint failed", err)
-			return
+			return http.Fail(c, 502, "on-chain credit mint failed", err)
 		}
-		c.JSON(201, gin.H{
+		return c.JSON(201, map[string]any{
 			"transactionId": rc.TxHash,
 			"user":          req.User,
 			"amount":        req.Amount,
@@ -119,7 +114,6 @@ func Deposit(c *gin.Context) {
 			"txHash":        rc.TxHash,
 			"replayed":      rc.Replayed,
 		})
-		return
 	}
 
 	// Optional idempotency (H1). A caller-supplied X-Idempotency-Key makes a
@@ -128,7 +122,7 @@ func Deposit(c *gin.Context) {
 	// distinct deposits to the same user (repeated settlements) are legitimately
 	// additive, so we never dedupe by amount. Scoped to the subject so keys never
 	// collide across users; the datastore is already org-namespaced.
-	idemKey := strings.TrimSpace(c.GetHeader("X-Idempotency-Key"))
+	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	var idemRec *idempotencykey.IdempotencyKey
 	if idemKey != "" {
 		rec, replay, gerr := idempotencykey.Begin(db, "billing-deposit:"+req.User, idemKey)
@@ -136,11 +130,10 @@ func Deposit(c *gin.Context) {
 			log.Error("deposit idempotency Begin failed (user=%s): %v", req.User, gerr, c)
 		} else if replay {
 			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-				c.Data(200, "application/json", []byte(rec.Response))
-				return
+				c.SetHeader("Content-Type", "application/json")
+				return c.Bytes(200, []byte(rec.Response))
 			}
-			http.Fail(c, 409, "deposit already in progress", nil)
-			return
+			return http.Fail(c, 409, "deposit already in progress", nil)
 		} else {
 			idemRec = rec
 		}
@@ -174,11 +167,10 @@ func Deposit(c *gin.Context) {
 			_ = idemRec.Delete()
 		}
 		log.Error("Failed to create deposit transaction: %v", err, c)
-		http.Fail(c, 500, "failed to create deposit", err)
-		return
+		return http.Fail(c, 500, "failed to create deposit", err)
 	}
 
-	resp := gin.H{
+	resp := map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        req.Amount,
@@ -198,7 +190,7 @@ func Deposit(c *gin.Context) {
 		}
 	}
 
-	c.JSON(201, resp)
+	return c.JSON(201, resp)
 }
 
 // GrantStarterCredit creates a $100 USD starter credit for a new org.
@@ -211,23 +203,21 @@ func Deposit(c *gin.Context) {
 // Idempotent: deduped by the starter-credit tag.
 //
 //	POST /v1/billing/credit
-func GrantStarterCredit(c *gin.Context) {
+func GrantStarterCredit(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	// Central ledger, org-scoped by namespace (see Deposit above).
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req struct {
 		User string `json:"user"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	// Step 4: chain-backed path mints the welcome credit on-chain (idempotent by
@@ -239,14 +229,13 @@ func GrantStarterCredit(c *gin.Context) {
 			"welcome-credit", welcomeMintKey(org, req.User))
 		if err != nil {
 			log.Error("chain welcome credit mint failed for %s: %v", req.User, err, c)
-			http.Fail(c, 502, "on-chain welcome credit mint failed", err)
-			return
+			return http.Fail(c, 502, "on-chain welcome credit mint failed", err)
 		}
 		status := 201
 		if rc.Replayed {
 			status = 200 // already granted — matches the DB path's idempotent shape
 		}
-		c.JSON(status, gin.H{
+		return c.JSON(status, map[string]any{
 			"user":     req.User,
 			"granted":  !rc.Replayed,
 			"amount":   credit.StarterCreditCents,
@@ -254,7 +243,6 @@ func GrantStarterCredit(c *gin.Context) {
 			"onChain":  true,
 			"txHash":   rc.TxHash,
 		})
-		return
 	}
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
@@ -275,12 +263,11 @@ func GrantStarterCredit(c *gin.Context) {
 		// PostMyWelcome's already-granted shape) instead of 409 so the billing
 		// UI's on-load claim doesn't surface a red error in the browser console
 		// for users who already have their credit.
-		c.JSON(200, gin.H{
+		return c.JSON(200, map[string]any{
 			"user":    req.User,
 			"granted": false,
 			"reason":  "already_granted",
 		})
-		return
 	}
 
 	trans := transaction.New(db)
@@ -307,11 +294,10 @@ func GrantStarterCredit(c *gin.Context) {
 	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
 	if err := trans.Create(); err != nil {
 		log.Error("Failed to grant starter credit: %v", err, c)
-		http.Fail(c, 500, "failed to grant starter credit", err)
-		return
+		return http.Fail(c, 500, "failed to grant starter credit", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"transactionId": trans.Id(),
 		"user":          req.User,
 		"amount":        credit.StarterCreditCents,

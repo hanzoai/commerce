@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -24,24 +24,21 @@ type createMeterRequest struct {
 // CreateMeter creates a new usage meter definition.
 //
 //	POST /v1/billing/meters
-func CreateMeter(c *gin.Context) {
+func CreateMeter(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createMeterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Name == "" {
-		http.Fail(c, 400, "name is required", nil)
-		return
+		return http.Fail(c, 400, "name is required", nil)
 	}
 
 	if req.EventName == "" {
-		http.Fail(c, 400, "eventName is required", nil)
-		return
+		return http.Fail(c, 400, "eventName is required", nil)
 	}
 
 	aggType := meter.AggregationType(strings.ToLower(req.AggregationType))
@@ -63,11 +60,10 @@ func CreateMeter(c *gin.Context) {
 
 	if err := m.Create(); err != nil {
 		log.Error("Failed to create meter: %v", err, c)
-		http.Fail(c, 500, "failed to create meter", err)
-		return
+		return http.Fail(c, 500, "failed to create meter", err)
 	}
 
-	c.JSON(201, gin.H{
+	return c.JSON(201, map[string]any{
 		"id":              m.Id(),
 		"name":            m.Name,
 		"eventName":       m.EventName,
@@ -81,9 +77,9 @@ func CreateMeter(c *gin.Context) {
 // ListMeters returns all meters for the organization.
 //
 //	GET /v1/billing/meters
-func ListMeters(c *gin.Context) {
+func ListMeters(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -92,13 +88,12 @@ func ListMeters(c *gin.Context) {
 
 	if _, err := q.GetAll(&meters); err != nil {
 		log.Error("Failed to list meters: %v", err, c)
-		http.Fail(c, 500, "failed to list meters", err)
-		return
+		return http.Fail(c, 500, "failed to list meters", err)
 	}
 
-	items := make([]gin.H, 0, len(meters))
+	items := make([]map[string]any, 0, len(meters))
 	for _, m := range meters {
-		items = append(items, gin.H{
+		items = append(items, map[string]any{
 			"id":              m.Id(),
 			"name":            m.Name,
 			"eventName":       m.EventName,
@@ -109,7 +104,7 @@ func ListMeters(c *gin.Context) {
 		})
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"meters": items,
 		"count":  len(items),
 	})
@@ -118,23 +113,21 @@ func ListMeters(c *gin.Context) {
 // GetMeter returns a single meter by ID.
 //
 //	GET /v1/billing/meters/:id
-func GetMeter(c *gin.Context) {
+func GetMeter(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	if id == "" {
-		http.Fail(c, 400, "meter id is required", nil)
-		return
+		return http.Fail(c, 400, "meter id is required", nil)
 	}
 
 	m := meter.New(db)
 	if err := m.GetById(id); err != nil {
-		http.Fail(c, 404, "meter not found", err)
-		return
+		return http.Fail(c, 404, "meter not found", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"id":              m.Id(),
 		"name":            m.Name,
 		"eventName":       m.EventName,

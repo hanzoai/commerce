@@ -79,7 +79,7 @@ func TestBucketedSplit_GpuChargeBarredFromCredits(t *testing.T) {
 	const user = "gpu-user"
 	seedCredit(db, user, 10000, "starter-credit", time.Now().AddDate(1, 0, 0)) // $100 grant
 	seedCredit(db, user, 5000, "topup", time.Time{})                           // $50 prepaid
-	spend(db, user, 4000, "gpu-h100")                                      // $40 GPU charge
+	spend(db, user, 4000, "gpu-h100")                                          // $40 GPU charge
 
 	s, err := bucketedSplit(ctx, user, currency.USD, false)
 	if err != nil {

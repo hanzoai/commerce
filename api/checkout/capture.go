@@ -3,7 +3,7 @@ package checkout
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout/authorizenet"
 	"github.com/hanzoai/commerce/api/checkout/balance"
@@ -23,7 +23,7 @@ import (
 )
 
 // Make the context less ambiguous, saveReferral needs org context for example
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
+func capture(c *zip.Ctx, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
 
@@ -82,16 +82,18 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) e
 	webhook.Emit(ctx, org.Name, "order.paid", ord)
 
 	// Publish order.completed to NATS/JetStream with GA4 + Facebook CAPI (fire and forget)
-	if pub, ok := c.Get("publisher"); ok {
+	if pub := c.Locals("publisher"); pub != nil {
 		if p, ok := pub.(*events.Publisher); ok {
 			orderItems := orderLineItemInfos(ord)
 			// Detach from the request (survive client disconnect) but keep trace
 			// values — WithoutCancel, not Background. Captured before the goroutine.
-			ctx := context.WithoutCancel(c.Request.Context())
+			ctx := context.WithoutCancel(c.Context())
 			go func() {
+				// The request ctx is pooled/released after the handler returns,
+				// so the fire-and-forget goroutine must not reference c.
 				if pubErr := p.PublishOrderCompleted(ctx, ord.Id(), org.Name, usr.Id(), usr.Email,
 					int64(ord.Total), string(ord.Currency), events.ToOrderItems(orderItems)); pubErr != nil {
-					log.Error("PublishOrderCompleted: %v", pubErr, c)
+					log.Error("PublishOrderCompleted: %v", pubErr)
 				}
 			}()
 		}

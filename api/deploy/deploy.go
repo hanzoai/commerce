@@ -3,7 +3,7 @@ package site
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -13,10 +13,10 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
-func createDeploy(c *gin.Context) {
-	ctx := middleware.GetContext(c)
+func createDeploy(c *zip.Ctx) error {
+	ctx := c.Context()
 	org := middleware.GetOrganization(c)
-	siteid := c.Params.ByName("siteid")
+	siteid := c.Param("siteid")
 
 	// Get associated site
 	db := datastore.New(ctx)
@@ -24,16 +24,15 @@ func createDeploy(c *gin.Context) {
 	err := ste.GetById(siteid)
 	if err != nil {
 		err := errors.New("Failed to get site")
-		http.Fail(c, 500, err.Error(), err)
-		return
+		return http.Fail(c, 500, err.Error(), err)
 	}
 
 	// Decode digest
 	digest := &netlify.Digest{}
-	err = json.Decode(c.Request.Body, digest)
+	err = json.DecodeBytes(c.Body(), digest)
 	if err != nil {
 		err := errors.New("Failed to decode digest")
-		http.Fail(c, 500, err.Error(), err)
+		return http.Fail(c, 500, err.Error(), err)
 	}
 
 	// Get access token for organization
@@ -46,18 +45,20 @@ func createDeploy(c *gin.Context) {
 	deploy.SiteId = siteid // Override netlify's site id with ours
 
 	if err != nil {
-		http.Fail(c, 500, "Failed to create deploy", err)
-		return
+		return http.Fail(c, 500, "Failed to create deploy", err)
 	}
 
-	http.Render(c, 201, deploy)
+	return http.Render(c, 201, deploy)
 }
 
-func getDeploy(c *gin.Context) {
+func getDeploy(c *zip.Ctx) error {
+	return nil
 }
 
-func listDeploys(c *gin.Context) {
+func listDeploys(c *zip.Ctx) error {
+	return nil
 }
 
-func restoreDeploy(c *gin.Context) {
+func restoreDeploy(c *zip.Ctx) error {
+	return nil
 }

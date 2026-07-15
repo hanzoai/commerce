@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
@@ -18,66 +19,62 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// capCtx builds a gin context scoped to org `org` (name == namespace) — the exact
-// plumbing the gateway/middleware injects, so the handlers resolve the ae SQLite
-// datastore in that org's namespace.
-func capCtx(w http.ResponseWriter, org *organization.Organization) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Set("context", nscontext.WithNamespace(context.Background(), org.Name))
-	return c
+// capSeed scopes a request to org `org` (name == namespace) — the exact plumbing
+// the gateway/middleware injects, so the handlers resolve the ae SQLite datastore
+// in that org's namespace.
+func capSeed(org *organization.Organization) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(nscontext.WithNamespace(context.Background(), org.Name))
+	}
 }
 
-// userCtx is capCtx as a VALIDATED IAM user with the given subject — the identity
+// userSeed is capSeed as a VALIDATED IAM user with the given subject — the identity
 // ownership derives from (never ?user=). subject "" means an unauthenticated
 // caller (no validated claim).
-func userCtx(w http.ResponseWriter, org *organization.Organization, subject string) *gin.Context {
-	c := capCtx(w, org)
-	claims := &auth.IAMClaims{}
-	claims.Subject = subject // promoted from the embedded StandardClaims.
-	c.Set("iam_claims", claims)
-	return c
+func userSeed(org *organization.Organization, subject string) func(*zip.Ctx) {
+	base := capSeed(org)
+	return func(c *zip.Ctx) {
+		base(c)
+		claims := &auth.IAMClaims{}
+		claims.Subject = subject // promoted from the embedded StandardClaims.
+		c.Locals("iam_claims", claims)
+	}
 }
 
 // createCap drives CreateSpendAlert as IAM user "owner" (so the row has a
 // deterministic owner) and returns the status.
 func createCap(t *testing.T, org *organization.Organization, body string) int {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := userCtx(w, org, "owner")
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
-	c.Request.Header.Set("Content-Type", "application/json")
-	CreateSpendAlert(c)
-	if w.Code != 201 {
-		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.Code, w.Body.String())
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := driveSeeded(userSeed(org, "owner"), "/v1/billing/spend-alerts", req, CreateSpendAlert)
+	if w.StatusCode != 201 {
+		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
-	return w.Code
+	return w.StatusCode
 }
 
 // recordUsage drives RecordUsage with a JSON body and returns the status.
 func recordUsage(t *testing.T, org *organization.Organization, body string) int {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := capCtx(w, org)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/billing/usage", bytes.NewReader([]byte(body)))
-	c.Request.Header.Set("Content-Type", "application/json")
-	RecordUsage(c)
-	return w.Code
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/usage", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := driveSeeded(capSeed(org), "/v1/billing/usage", req, RecordUsage)
+	return w.StatusCode
 }
 
 // authorize drives AuthorizeSpendCap and returns the parsed verdict.
 func authorize(t *testing.T, org *organization.Organization, query string) authorizeResult {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := capCtx(w, org)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts/authorize?"+query, nil)
-	AuthorizeSpendCap(c)
-	if w.Code != 200 {
-		t.Fatalf("AuthorizeSpendCap status = %d, body=%s", w.Code, w.Body.String())
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts/authorize?"+query, nil)
+	w := driveSeeded(capSeed(org), "/v1/billing/spend-alerts/authorize", req, AuthorizeSpendCap)
+	if w.StatusCode != 200 {
+		t.Fatalf("AuthorizeSpendCap status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 	var res authorizeResult
-	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
-		t.Fatalf("decode authorize: %v (body=%s)", err, w.Body.String())
+	if err := json.Unmarshal(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), &res); err != nil {
+		t.Fatalf("decode authorize: %v (body=%s)", err, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
 	return res
 }
@@ -87,7 +84,6 @@ func authorize(t *testing.T, org *organization.Organization, query string) autho
 func TestSpendCap_HardEnforce_DeniesAtCap(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "cap-hard"
@@ -124,7 +120,6 @@ func TestSpendCap_HardEnforce_DeniesAtCap(t *testing.T) {
 func TestSpendCap_SoftWarn_ReportsWarnPct(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "cap-warn"
@@ -151,7 +146,6 @@ func TestSpendCap_SoftWarn_ReportsWarnPct(t *testing.T) {
 func TestSpendCap_TenantIsolation(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	orgA := &organization.Organization{}
 	orgA.Name = "iso-a"
@@ -182,19 +176,18 @@ func TestSpendCap_TenantIsolation(t *testing.T) {
 // createCapAs drives CreateSpendAlert as IAM user `subject` and returns the row id.
 func createCapAs(t *testing.T, org *organization.Organization, subject, body string) string {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := userCtx(w, org, subject)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
-	c.Request.Header.Set("Content-Type", "application/json")
-	CreateSpendAlert(c)
-	if w.Code != 201 {
-		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.Code, w.Body.String())
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := driveSeeded(userSeed(org, subject), "/v1/billing/spend-alerts", req, CreateSpendAlert)
+	raw, _ := io.ReadAll(w.Body)
+	if w.StatusCode != 201 {
+		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.StatusCode, string(raw))
 	}
 	var r struct {
 		Id string `json:"id"`
 	}
-	if err := json.Unmarshal(w.Body.Bytes(), &r); err != nil || r.Id == "" {
-		t.Fatalf("create id decode: %v (body=%s)", err, w.Body.String())
+	if err := json.Unmarshal(raw, &r); err != nil || r.Id == "" {
+		t.Fatalf("create id decode: %v (body=%s)", err, string(raw))
 	}
 	return r.Id
 }
@@ -203,39 +196,32 @@ func createCapAs(t *testing.T, org *organization.Organization, subject, body str
 // attacker-chosen ?user= query that MUST be ignored for ownership.
 func patchCapAs(t *testing.T, org *organization.Organization, id, caller, userQuery, body string) int {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := userCtx(w, org, caller)
-	c.Params = gin.Params{{Key: "id", Value: id}}
-	c.Request = httptest.NewRequest(http.MethodPatch, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, bytes.NewReader([]byte(body)))
-	c.Request.Header.Set("Content-Type", "application/json")
-	UpdateSpendAlert(c)
-	return w.Code
+	req := httptest.NewRequest(http.MethodPatch, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, bytes.NewReader([]byte(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := driveSeeded(userSeed(org, caller), "/v1/billing/spend-alerts/:id", req, UpdateSpendAlert)
+	return w.StatusCode
 }
 
 func deleteCapAs(t *testing.T, org *organization.Organization, id, caller, userQuery string) int {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := userCtx(w, org, caller)
-	c.Params = gin.Params{{Key: "id", Value: id}}
-	c.Request = httptest.NewRequest(http.MethodDelete, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, nil)
-	DeleteSpendAlert(c)
-	return w.Code
+	req := httptest.NewRequest(http.MethodDelete, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, nil)
+	w := driveSeeded(userSeed(org, caller), "/v1/billing/spend-alerts/:id", req, DeleteSpendAlert)
+	return w.StatusCode
 }
 
 // listCaps drives ListSpendAlerts for the org and returns the parsed rows — the
 // reader path ScopeRules and the console Budgets page both use.
 func listCaps(t *testing.T, org *organization.Organization) []map[string]any {
 	t.Helper()
-	w := httptest.NewRecorder()
-	c := capCtx(w, org)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts", nil)
-	ListSpendAlerts(c)
-	if w.Code != 200 {
-		t.Fatalf("ListSpendAlerts = %d, body=%s", w.Code, w.Body.String())
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts", nil)
+	w := driveSeeded(capSeed(org), "/v1/billing/spend-alerts", req, ListSpendAlerts)
+	raw, _ := io.ReadAll(w.Body)
+	if w.StatusCode != 200 {
+		t.Fatalf("ListSpendAlerts = %d, body=%s", w.StatusCode, string(raw))
 	}
 	var rows []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &rows); err != nil {
-		t.Fatalf("decode list: %v (body=%s)", err, w.Body.String())
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		t.Fatalf("decode list: %v (body=%s)", err, string(raw))
 	}
 	return rows
 }
@@ -247,7 +233,6 @@ func listCaps(t *testing.T, org *organization.Organization) []map[string]any {
 func TestSpendCap_MutateOrgScoped_CrossOrgRefused(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	orgA := &organization.Organization{}
 	orgA.Name = "own-a"
@@ -283,7 +268,6 @@ func TestSpendCap_MutateOrgScoped_CrossOrgRefused(t *testing.T) {
 func TestSpendCap_WriterReaderKeyMatch(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "hanzo"
@@ -338,7 +322,6 @@ func TestSpendCap_WriterReaderKeyMatch(t *testing.T) {
 func TestSpendCap_ProjectDegradesToSoftWhenUnvalidated(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "pv-org"
@@ -370,7 +353,6 @@ func TestSpendCap_ProjectDegradesToSoftWhenUnvalidated(t *testing.T) {
 func TestSpendCap_Idempotent_NoDoubleCount(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "cap-idem"

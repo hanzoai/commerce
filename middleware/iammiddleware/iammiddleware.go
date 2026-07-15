@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/billing/trial"
@@ -97,11 +97,11 @@ func orgCacheKey(owner string) string {
 	return "iam:org_by_name:" + owner
 }
 
-// IAMTokenRequired returns a Gin middleware that:
+// IAMTokenRequired returns a zip middleware that:
 //  1. Reads the gateway-supplied X-Org-Id / X-User-Id / X-User-Email
 //     headers (already JWT-validated upstream).
 //  2. Resolves the Organization via pkg/org.Resolve (KV-cached).
-//  3. Sets the legacy gin context keys downstream handlers expect:
+//  3. Sets the legacy context keys downstream handlers expect:
 //     iam_authenticated, iam_org, iam_user_id, iam_email,
 //     organization, active-organization, permissions.
 //
@@ -109,29 +109,28 @@ func orgCacheKey(owner string) string {
 // org-token instead). The gateway is the trust boundary; commerced is
 // only reachable via the gateway in production, where COMMERCED_REQUIRE_IDENTITY
 // rejects header-less requests at the edge of the binary.
-func IAMTokenRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// pkg/auth.Gin has already attached headers to ctx; read from there.
-		// If pkg/auth.Gin wasn't installed, fall back to direct header reads
+func IAMTokenRequired() zip.Handler {
+	return func(c *zip.Ctx) error {
+		// pkg/auth has already attached headers to ctx; read from there.
+		// If pkg/auth wasn't installed, fall back to direct header reads
 		// so this middleware still works in legacy mounts.
-		ctx := c.Request.Context()
+		ctx := c.Context()
 		ownerID := pkgAuth.OrgID(ctx)
 		userID := pkgAuth.UserID(ctx)
 		email := pkgAuth.UserEmail(ctx)
 		if ownerID == "" {
-			ownerID = c.GetHeader(pkgAuth.HeaderOrgID)
+			ownerID = c.Header(pkgAuth.HeaderOrgID)
 		}
 		if userID == "" {
-			userID = c.GetHeader(pkgAuth.HeaderUserID)
+			userID = c.Header(pkgAuth.HeaderUserID)
 		}
 		if email == "" {
-			email = c.GetHeader(pkgAuth.HeaderUserEmail)
+			email = c.Header(pkgAuth.HeaderUserEmail)
 		}
 
 		if ownerID == "" {
 			// No identity headers — fall through to legacy auth.
-			c.Next()
-			return
+			return c.Next()
 		}
 
 		// Bound DB context — request ctx may be canceled by a navigation.
@@ -141,9 +140,8 @@ func IAMTokenRequired() gin.HandlerFunc {
 		o, err := org.Resolve(dbCtx, ownerID)
 		if err != nil {
 			log.Warn("iammiddleware: org resolve failed for %q: %v", ownerID, err)
-			jsonhttp.Fail(c, http.StatusServiceUnavailable,
+			return jsonhttp.Fail(c, http.StatusServiceUnavailable,
 				"Unable to resolve organization: "+err.Error(), err)
-			return
 		}
 
 		// Best-effort new-signup on-ramp on first encounter: a 7-day trial of
@@ -177,18 +175,18 @@ func IAMTokenRequired() gin.HandlerFunc {
 		// header is absent we fail closed: zero permissions, no Admin,
 		// no Live. The gateway is the trust boundary; this binary
 		// trusts the bits it provides and nothing else.
-		perms := parsePermissionsHeader(c.GetHeader(HeaderUserPermissions))
+		perms := parsePermissionsHeader(c.Header(HeaderUserPermissions))
 
-		// Mirror onto Gin keys for legacy handlers.
-		c.Set("iam_authenticated", true)
-		c.Set("iam_user_id", userID)
-		c.Set("iam_email", email)
-		c.Set("iam_org", ownerID)
-		c.Set("organization", o)
-		c.Set("active-organization", o.Id())
-		c.Set("permissions", perms)
+		// Mirror onto request locals for legacy handlers.
+		c.Locals("iam_authenticated", true)
+		c.Locals("iam_user_id", userID)
+		c.Locals("iam_email", email)
+		c.Locals("iam_org", ownerID)
+		c.Locals("organization", o)
+		c.Locals("active-organization", o.Id())
+		c.Locals("permissions", perms)
 
-		c.Next()
+		return c.Next()
 	}
 }
 
@@ -206,8 +204,8 @@ const HeaderTest = "X-Hanzo-Test"
 // org.Live authority that payment.ProcessorsForOrg keys sandbox-vs-
 // production off of (see payment/orgsetup.go SquareConfig(!org.Live)).
 // Forwards-only: never widen test → live based on identity presence.
-func liveFromHeaders(c *gin.Context) bool {
-	return !strings.EqualFold(strings.TrimSpace(c.GetHeader(HeaderTest)), "true")
+func liveFromHeaders(c *zip.Ctx) bool {
+	return !strings.EqualFold(strings.TrimSpace(c.Header(HeaderTest)), "true")
 }
 
 // HeaderUserPermissions is the canonical gateway-minted permission
@@ -241,11 +239,11 @@ func parsePermissionsHeader(v string) bit.Field {
 // fall back to the raw X-Org-Id header: trusting mere header presence let an
 // unvalidated opaque bearer + a client X-Org-Id impersonate any org (the checkout
 // money-surface bypass). IAMTokenRequired runs on every /v1, /v1/commerce and
-// /_/commerce group, so the gin-key check covers every legitimate IAM caller; an
+// /_/commerce group, so the local-key check covers every legitimate IAM caller; an
 // opaque service token authorizes through TokenRequired's service-token branch
 // instead, never here.
-func IsIAMAuthenticated(c *gin.Context) bool {
-	if v, ok := c.Get("iam_authenticated"); ok {
+func IsIAMAuthenticated(c *zip.Ctx) bool {
+	if v := c.Locals("iam_authenticated"); v != nil {
 		if b, ok := v.(bool); ok && b {
 			return true
 		}
@@ -265,21 +263,21 @@ func IsIAMAuthenticated(c *gin.Context) bool {
 // Call sites MUST NOT nil-guard the return — it is always non-nil.
 //
 // The legacy in-test path stores a *auth.IAMClaims under the
-// "iam_claims" gin key; that wins when present so tests can inject
+// "iam_claims" local; that wins when present so tests can inject
 // arbitrary claim shapes without going through HTTP.
-func GetIAMClaims(c *gin.Context) *auth.IAMClaims {
+func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
 	if c == nil {
 		return &auth.IAMClaims{}
 	}
-	if v, ok := c.Get("iam_claims"); ok {
+	if v := c.Locals("iam_claims"); v != nil {
 		if claims, ok := v.(*auth.IAMClaims); ok && claims != nil {
 			return claims
 		}
 	}
-	owner := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderOrgID))
-	user := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderUserID))
-	email := strings.TrimSpace(c.GetHeader(pkgAuth.HeaderUserEmail))
-	isAdmin := strings.EqualFold(strings.TrimSpace(c.GetHeader(HeaderUserIsAdmin)), "true")
+	owner := strings.TrimSpace(c.Header(pkgAuth.HeaderOrgID))
+	user := strings.TrimSpace(c.Header(pkgAuth.HeaderUserID))
+	email := strings.TrimSpace(c.Header(pkgAuth.HeaderUserEmail))
+	isAdmin := strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
 	// HOME org — the identity + platform-sudo anchor (the gateway/EdgeAuth
 	// X-User-Owner header, the validated JWT `owner`). DISTINCT from Owner (==
 	// X-Org-Id, the EFFECTIVE org a SuperAdmin may switch to another tenant):
@@ -287,8 +285,8 @@ func GetIAMClaims(c *gin.Context) *auth.IAMClaims {
 	// (pre-rollout) → homeOrg() falls back to Owner, which equals home for a
 	// non-switching caller. No spoofable isGlobalAdmin boolean is read — the org
 	// IS the signal.
-	homeOrg := strings.TrimSpace(c.GetHeader(HeaderUserOwner))
-	roles := parseRolesHeader(c.GetHeader(HeaderRoles))
+	homeOrg := strings.TrimSpace(c.Header(HeaderUserOwner))
+	roles := parseRolesHeader(c.Header(HeaderRoles))
 
 	claims := &auth.IAMClaims{
 		Owner:   owner,
@@ -344,12 +342,12 @@ func parseRolesHeader(v string) auth.FlexRoles {
 
 // GetIAMTier returns "" — tier is no longer derived in-binary. The
 // gateway can attach an X-Tier header in a future iteration if needed.
-func GetIAMTier(_ *gin.Context) string { return "" }
+func GetIAMTier(_ *zip.Ctx) string { return "" }
 
 // orgFromContext is exported for tests that want to assert the legacy
-// gin "organization" key was populated correctly.
-func orgFromContext(c *gin.Context) *organization.Organization {
-	if v, ok := c.Get("organization"); ok {
+// "organization" local was populated correctly.
+func orgFromContext(c *zip.Ctx) *organization.Organization {
+	if v := c.Locals("organization"); v != nil {
 		if o, ok := v.(*organization.Organization); ok {
 			return o
 		}

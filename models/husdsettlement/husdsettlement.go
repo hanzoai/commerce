@@ -20,17 +20,17 @@ func init() {
 type HUSDSettlement struct {
 	mixin.Model[HUSDSettlement]
 
-	OrgID       string    `json:"orgId"`
-	OrgAddress  string    `json:"orgAddress"`
-	AmountCents int64     `json:"amountCents"`
-	Test        bool      `json:"test"`
-	ChainID     int64     `json:"chainId"`
+	OrgID       string `json:"orgId"`
+	OrgAddress  string `json:"orgAddress"`
+	AmountCents int64  `json:"amountCents"`
+	Test        bool   `json:"test"`
+	ChainID     int64  `json:"chainId"`
 	// TxHash is INDEXED (audit lookup) — the on-chain org→treasury transfer.
 	TxHash    string    `json:"txHash"`
 	SettledAt time.Time `json:"settledAt"`
 }
 
-func (s *HUSDSettlement) Load(ps []datastore.Property) error { return datastore.LoadStruct(s, ps) }
+func (s *HUSDSettlement) Load(ps []datastore.Property) error  { return datastore.LoadStruct(s, ps) }
 func (s *HUSDSettlement) Save() ([]datastore.Property, error) { return datastore.SaveStruct(s) }
 
 // New returns an initialized HUSDSettlement bound to db.

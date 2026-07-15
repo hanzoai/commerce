@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -10,10 +10,10 @@ import (
 )
 
 // This wallet stores special platform level Addresses
-var PlatformWallet = New("platform-wallet", func(c *gin.Context) *wallet.Wallet {
+var PlatformWallet = New("platform-wallet", func(c *zip.Ctx) *wallet.Wallet {
 	BlockchainNamespace(c)
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	w := wallet.New(db)
 	w.Id_ = "platform-wallet"

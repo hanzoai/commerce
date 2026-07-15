@@ -1,16 +1,18 @@
 package main
 
 import (
-	"net/http"
+	"log"
 	"os"
+
+	"github.com/zap-proto/zip"
 
 	a "github.com/hanzoai/commerce/api"
 	"github.com/hanzoai/commerce/util/router"
 )
 
 func main() {
-	api := router.New("api")
-	a.Route(api)
+	app := zip.New(zip.Config{AppName: "commerce-api", DisableStartupMessage: true})
+	a.Route(router.New(app, "api"))
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
@@ -18,6 +20,5 @@ func main() {
 		port = "8080"
 	}
 
-	// Start standard HTTP server
-	http.ListenAndServe(":"+port, nil)
+	log.Fatal(app.Listen("http://:" + port))
 }

@@ -53,9 +53,9 @@ type TasksTLSConfig struct {
 
 // TasksClient wraps the Temporal client
 type TasksClient struct {
-	config   *TasksConfig
-	client   client.Client
-	workers  map[string]worker.Worker
+	config  *TasksConfig
+	client  client.Client
+	workers map[string]worker.Worker
 }
 
 // NewTasksClient creates a new Temporal tasks client
@@ -320,13 +320,13 @@ func (r *WorkflowRun) GetWithOptions(ctx context.Context, result interface{}, op
 
 // WorkerOptions configures a worker
 type WorkerOptions struct {
-	MaxConcurrentActivities        int
-	MaxConcurrentWorkflows         int
-	MaxConcurrentLocalActivities   int
-	ActivitiesPerSecond            float64
-	LocalActivitiesPerSecond       float64
-	TaskQueueActivitiesPerSecond   float64
-	EnableSessionWorker            bool
+	MaxConcurrentActivities      int
+	MaxConcurrentWorkflows       int
+	MaxConcurrentLocalActivities int
+	ActivitiesPerSecond          float64
+	LocalActivitiesPerSecond     float64
+	TaskQueueActivitiesPerSecond float64
+	EnableSessionWorker          bool
 }
 
 // Workflow utilities for workflow implementations

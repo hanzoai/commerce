@@ -3,7 +3,7 @@ package form
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -13,9 +13,9 @@ import (
 )
 
 // handle form submissions
-func handleForm(c *gin.Context) {
-	db := datastore.New(c)
-	id := c.Params.ByName("formid")
+func handleForm(c *zip.Ctx) error {
+	db := datastore.New(c.Context())
+	id := c.Param("formid")
 	org := organization.New(db)
 	f := form.New(db)
 
@@ -28,8 +28,7 @@ func handleForm(c *gin.Context) {
 	// Get organization for form
 	if err := org.GetById(ns); err != nil {
 		log.Error("Organization not found: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", ns, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", ns, err), err)
 	}
 	log.Info("Organization: %v ?= %v,  %v", ns, org.Name, org.Id_, c)
 
@@ -38,8 +37,7 @@ func handleForm(c *gin.Context) {
 
 	// Mailing list doesn't exist
 	if err := f.Get(nil); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve form '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve form '%v': %v", id, err), err)
 	}
 
 	// Get namespaced db
@@ -47,9 +45,9 @@ func handleForm(c *gin.Context) {
 
 	switch f.Type {
 	case form.Submit:
-		submit(c, db, org, f)
+		return submit(c, db, org, f)
 	default:
 		//case form.Subscribe:
-		subscribe(c, db, org, f)
+		return subscribe(c, db, org, f)
 	}
 }

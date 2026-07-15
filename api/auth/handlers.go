@@ -1,11 +1,9 @@
 package auth
 
 import (
-	"github.com/gin-gonic/gin"
-
-	"github.com/hanzoai/commerce/util/router"
+	"github.com/zap-proto/zip"
 )
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
-	router.POST("/auth", credentials)
+func Route(router zip.Router, args ...zip.Handler) {
+	router.Post("/auth", credentials)
 }

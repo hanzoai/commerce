@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -59,7 +59,7 @@ const maxScopeRowsPerOrg = 200
 // a client ?user=/body field — so this is IDOR-safe and cannot cross tenants (a
 // different org resolves to a different namespace AND a different subject). Empty
 // only when no org is resolvable (unauthenticated).
-func billingSubject(c *gin.Context) string {
+func billingSubject(c *zip.Ctx) string {
 	return strings.TrimSpace(middleware.GetOrganization(c).Name)
 }
 
@@ -67,7 +67,7 @@ func billingSubject(c *gin.Context) string {
 // must equal the caller's validated org. Cross-org is blocked twice over — the
 // datastore is org-namespaced (a foreign row is unreachable by id) AND this check
 // re-confirms the org. Org comes from the validated X-Org-Id, never a client field.
-func ownsAlert(c *gin.Context, a *spendalert.SpendAlert) bool {
+func ownsAlert(c *zip.Ctx, a *spendalert.SpendAlert) bool {
 	sub := billingSubject(c)
 	return sub != "" && a.UserId == sub
 }
@@ -75,9 +75,9 @@ func ownsAlert(c *gin.Context, a *spendalert.SpendAlert) bool {
 // spendAlertView is the wire shape of one row plus the DERIVED period spend for
 // its scope (periodSpentCents/over/warn) — never stored, always computed from the
 // deduped usage ledger for the current UTC month.
-func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert) gin.H {
+func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert) map[string]any {
 	soft := a.EffectiveSoftPct()
-	view := gin.H{
+	view := map[string]any{
 		"id":           a.Id(),
 		"userId":       a.UserId,
 		"title":        a.Title,
@@ -111,15 +111,14 @@ func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert
 // the rate-limit config, so it MUST key on the same org the writer stored under.
 //
 //	GET /v1/billing/spend-alerts
-func ListSpendAlerts(c *gin.Context) {
+func ListSpendAlerts(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	test := org.TestMode()
 
 	sub := billingSubject(c)
 	if sub == "" {
-		c.JSON(200, []gin.H{}) // no resolvable org — nothing to read.
-		return
+		return c.JSON(200, []map[string]any{}) // no resolvable org — nothing to read.
 	}
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	q := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg).Filter("UserId=", sub)
@@ -127,16 +126,15 @@ func ListSpendAlerts(c *gin.Context) {
 	alerts := make([]*spendalert.SpendAlert, 0)
 	if _, err := q.GetAll(&alerts); err != nil {
 		log.Error("Failed to list spend alerts: %v", err, c)
-		http.Fail(c, 500, "failed to list spend alerts", err)
-		return
+		return http.Fail(c, 500, "failed to list spend alerts", err)
 	}
 
-	items := make([]gin.H, 0, len(alerts))
+	items := make([]map[string]any, 0, len(alerts))
 	for _, a := range alerts {
 		items = append(items, spendAlertView(db, test, a))
 	}
 
-	c.JSON(200, items)
+	return c.JSON(200, items)
 }
 
 // CreateSpendAlert creates a spend alert / cap. UserId is optional (an org-wide
@@ -144,14 +142,13 @@ func ListSpendAlerts(c *gin.Context) {
 // a Threshold>0 (spend cap) or a RateLimitRpm>0 (rate limit).
 //
 //	POST /v1/billing/spend-alerts
-func CreateSpendAlert(c *gin.Context) {
+func CreateSpendAlert(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createSpendAlertRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	// Key the cap on the ORG (billingSubject) — the SAME subject the gate reads by —
@@ -160,8 +157,7 @@ func CreateSpendAlert(c *gin.Context) {
 	// `X-Org-Id=<org>` lookup, so enforcement binds.
 	subject := billingSubject(c)
 	if subject == "" {
-		http.Fail(c, 401, "authentication required", nil)
-		return
+		return http.Fail(c, 401, "authentication required", nil)
 	}
 	req.UserId = subject
 
@@ -169,25 +165,20 @@ func CreateSpendAlert(c *gin.Context) {
 	// fail-closed path from being drowned by an attacker-inflated row list).
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	if n, cerr := spendalert.Query(db).Ancestor(rootKey).Limit(maxScopeRowsPerOrg + 1).Count(); cerr == nil && n >= maxScopeRowsPerOrg {
-		http.Fail(c, 400, "spend-alert limit reached for this organization", nil)
-		return
+		return http.Fail(c, 400, "spend-alert limit reached for this organization", nil)
 	}
 
 	if req.Threshold < 0 {
-		http.Fail(c, 400, "threshold must be >= 0", nil)
-		return
+		return http.Fail(c, 400, "threshold must be >= 0", nil)
 	}
 	if req.RateLimitRpm < 0 {
-		http.Fail(c, 400, "rateLimitRpm must be >= 0", nil)
-		return
+		return http.Fail(c, 400, "rateLimitRpm must be >= 0", nil)
 	}
 	if req.Threshold <= 0 && req.RateLimitRpm <= 0 {
-		http.Fail(c, 400, "a spend cap (threshold) or a rate limit (rateLimitRpm) is required", nil)
-		return
+		return http.Fail(c, 400, "a spend cap (threshold) or a rate limit (rateLimitRpm) is required", nil)
 	}
 	if req.SoftPct < 0 || req.SoftPct > 100 {
-		http.Fail(c, 400, "softPct must be between 0 and 100", nil)
-		return
+		return http.Fail(c, 400, "softPct must be between 0 and 100", nil)
 	}
 
 	cur := strings.ToLower(strings.TrimSpace(req.Currency))
@@ -208,38 +199,34 @@ func CreateSpendAlert(c *gin.Context) {
 
 	if err := a.Create(); err != nil {
 		log.Error("Failed to create spend alert: %v", err, c)
-		http.Fail(c, 500, "failed to create spend alert", err)
-		return
+		return http.Fail(c, 500, "failed to create spend alert", err)
 	}
 
-	c.JSON(201, spendAlertView(db, org.TestMode(), a))
+	return c.JSON(201, spendAlertView(db, org.TestMode(), a))
 }
 
 // UpdateSpendAlert patches an existing spend alert / cap. Only the fields present
 // in the body change; the rest are preserved.
 //
 //	PATCH /v1/billing/spend-alerts/:id
-func UpdateSpendAlert(c *gin.Context) {
+func UpdateSpendAlert(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	a := spendalert.New(db)
 	if err := a.GetById(id); err != nil {
-		http.Fail(c, 404, "spend alert not found", err)
-		return
+		return http.Fail(c, 404, "spend alert not found", err)
 	}
 	// Per-row ownership: refuse (as 404, not leaking existence) a row the caller
 	// does not own — closes the guess-the-id IDOR on this mutating verb.
 	if !ownsAlert(c, a) {
-		http.Fail(c, 404, "spend alert not found", nil)
-		return
+		return http.Fail(c, 404, "spend alert not found", nil)
 	}
 
 	var req updateSpendAlertRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	if req.Title != nil {
@@ -247,8 +234,7 @@ func UpdateSpendAlert(c *gin.Context) {
 	}
 	if req.Threshold != nil {
 		if *req.Threshold < 0 {
-			http.Fail(c, 400, "threshold must be >= 0", nil)
-			return
+			return http.Fail(c, 400, "threshold must be >= 0", nil)
 		}
 		a.Threshold = *req.Threshold
 	}
@@ -263,52 +249,46 @@ func UpdateSpendAlert(c *gin.Context) {
 	}
 	if req.SoftPct != nil {
 		if *req.SoftPct < 0 || *req.SoftPct > 100 {
-			http.Fail(c, 400, "softPct must be between 0 and 100", nil)
-			return
+			return http.Fail(c, 400, "softPct must be between 0 and 100", nil)
 		}
 		a.SoftPct = *req.SoftPct
 	}
 	if req.RateLimitRpm != nil {
 		if *req.RateLimitRpm < 0 {
-			http.Fail(c, 400, "rateLimitRpm must be >= 0", nil)
-			return
+			return http.Fail(c, 400, "rateLimitRpm must be >= 0", nil)
 		}
 		a.RateLimitRpm = *req.RateLimitRpm
 	}
 
 	if err := a.Update(); err != nil {
 		log.Error("Failed to update spend alert: %v", err, c)
-		http.Fail(c, 500, "failed to update spend alert", err)
-		return
+		return http.Fail(c, 500, "failed to update spend alert", err)
 	}
 
-	c.JSON(200, spendAlertView(db, org.TestMode(), a))
+	return c.JSON(200, spendAlertView(db, org.TestMode(), a))
 }
 
 // DeleteSpendAlert deletes a spend alert by ID.
 //
 //	DELETE /v1/billing/spend-alerts/:id
-func DeleteSpendAlert(c *gin.Context) {
+func DeleteSpendAlert(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
 	a := spendalert.New(db)
 	if err := a.GetById(id); err != nil {
-		http.Fail(c, 404, "spend alert not found", err)
-		return
+		return http.Fail(c, 404, "spend alert not found", err)
 	}
 	// Per-row ownership: refuse a row the caller does not own (guess-the-id IDOR).
 	if !ownsAlert(c, a) {
-		http.Fail(c, 404, "spend alert not found", nil)
-		return
+		return http.Fail(c, 404, "spend alert not found", nil)
 	}
 
 	if err := a.Delete(); err != nil {
 		log.Error("Failed to delete spend alert: %v", err, c)
-		http.Fail(c, 500, "failed to delete spend alert", err)
-		return
+		return http.Fail(c, 500, "failed to delete spend alert", err)
 	}
 
-	c.JSON(204, nil)
+	return c.JSON(204, nil)
 }

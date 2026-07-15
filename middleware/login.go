@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/config"
@@ -9,41 +9,39 @@ import (
 )
 
 // Updates session with login information, does not require it
-func CheckLogin() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		loggedIn := auth.IsLoggedIn(c)
-		if loggedIn {
+func CheckLogin() zip.Handler {
+	return func(c *zip.Ctx) error {
+		if auth.IsLoggedIn(c) {
 			u, err := auth.GetCurrentUser(c)
 			if err != nil {
-				return
+				return c.Next()
 			}
 			auth.Login(c, u)
 		}
+		return c.Next()
 	}
 }
 
 // Require login to view route
-func LoginRequired(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func LoginRequired(moduleName string) zip.Handler {
+	return func(c *zip.Ctx) error {
 		if auth.IsLoggedIn(c) {
-			return
+			return c.Next()
 		}
 
 		log.Warn("Access denied, redirecting to login page", c)
-		c.Redirect(302, config.UrlFor(moduleName, "/login"))
-		c.AbortWithStatus(302)
+		return c.Redirect(302, config.UrlFor(moduleName, "/login"))
 	}
 }
 
 // Required to be logged out to view
-func LogoutRequired(moduleName string) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func LogoutRequired(moduleName string) zip.Handler {
+	return func(c *zip.Ctx) error {
 		if !auth.IsLoggedIn(c) {
-			return
+			return c.Next()
 		}
 
 		log.Warn("Already logged in, redirecting to module", c)
-		c.Redirect(302, config.UrlFor(moduleName))
-		c.AbortWithStatus(302)
+		return c.Redirect(302, config.UrlFor(moduleName))
 	}
 }

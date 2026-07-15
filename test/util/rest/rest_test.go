@@ -10,7 +10,7 @@ import (
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/rest"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -51,7 +51,7 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("New", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
-		client := ginclient.New(ctx)
+		client := zipclient.New(ctx)
 
 		// Create routes for Model
 		r := rest.New(Model{})

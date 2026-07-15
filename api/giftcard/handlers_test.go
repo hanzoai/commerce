@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
 	"github.com/hanzoai/commerce/datastore"
@@ -19,26 +20,35 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// ctxFor builds a gin test context wired so middleware.GetOrganization(c) +
-// org.Namespaced(c) resolve to the ae SQLite datastore in org `ns`'s namespace
-// — the exact production plumbing (org name IS the namespace). The caller is an
-// ADMIN, since redeem/void are admin-gated money moves.
-func ctxFor(w http.ResponseWriter, ns string) *gin.Context {
-	return ctxForAs(w, ns, true)
-}
+// callGiftcard drives money handler h over a real request wired so
+// middleware.GetOrganization(c) + org.Namespaced(c.Context()) resolve to the ae SQLite
+// datastore in org `ns`'s namespace — the exact production plumbing (org name IS
+// the namespace). admin selects whether the injected IAM claim (the one the
+// gateway/EdgeAuth would mint) authorizes the admin-gated money action. Returns
+// the response status and body.
+func callGiftcard(t *testing.T, ns string, admin bool, cardID string, body []byte, h zip.Handler) (int, []byte) {
+	t.Helper()
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	seed := func(c *zip.Ctx) error {
+		org := &organization.Organization{}
+		org.Name = ns
+		c.Locals("organization", org)
+		c.SetContext(nscontext.WithNamespace(context.Background(), ns))
+		c.Locals("iam_authenticated", true)
+		c.Locals("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
+		return c.Next()
+	}
+	app.Post("/giftcard/:giftcardid", seed, h)
 
-// ctxForAs is ctxFor with an explicit admin flag. It injects the verified IAM
-// claim the gateway/EdgeAuth would mint so middleware.RequireAdmin authorizes
-// (admin=true) or rejects (admin=false) the money action.
-func ctxForAs(w http.ResponseWriter, ns string, admin bool) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	org := &organization.Organization{}
-	org.Name = ns
-	c.Set("organization", org)
-	c.Set("context", nscontext.WithNamespace(context.Background(), ns))
-	c.Set("iam_authenticated", true)
-	c.Set("iam_claims", &auth.IAMClaims{Owner: ns, IsAdmin: admin})
-	return c
+	req := httptest.NewRequest(http.MethodPost, "/giftcard/"+cardID, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("test request: %v", err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, b
 }
 
 // issueCard seeds a gift card in org `ns`.
@@ -60,22 +70,16 @@ func issueCard(t *testing.T, base context.Context, ns, code string, cents int64)
 func TestRedeem_HTTP_IdempotentReplay(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	g := issueCard(t, context.Background(), "acme", "GIFT-HTTP", 5000)
 
 	body, _ := json.Marshal(redeemRequest{AmountCents: 1500, Currency: "usd", IdempotencyKey: "http_idem_1"})
 
 	do := func() (int, redeemResponse) {
-		w := httptest.NewRecorder()
-		c := ctxFor(w, "acme")
-		c.Params = gin.Params{{Key: "giftcardid", Value: g.Id()}}
-		c.Request = httptest.NewRequest(http.MethodPost, "/v1/giftcard/"+g.Id()+"/redeem", bytes.NewReader(body))
-		c.Request.Header.Set("Content-Type", "application/json")
-		Redeem(c)
+		code, b := callGiftcard(t, "acme", true, g.Id(), body, Redeem)
 		var resp redeemResponse
-		_ = json.Unmarshal(w.Body.Bytes(), &resp)
-		return w.Code, resp
+		_ = json.Unmarshal(b, &resp)
+		return code, resp
 	}
 
 	code1, resp1 := do()
@@ -102,20 +106,14 @@ func TestRedeem_HTTP_IdempotentReplay(t *testing.T) {
 func TestRedeem_HTTP_InsufficientFunds(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	g := issueCard(t, context.Background(), "acme", "GIFT-HTTP-OVER", 1000)
 
 	body, _ := json.Marshal(redeemRequest{AmountCents: 5000, Currency: "usd", IdempotencyKey: "http_over"})
-	w := httptest.NewRecorder()
-	c := ctxFor(w, "acme")
-	c.Params = gin.Params{{Key: "giftcardid", Value: g.Id()}}
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/giftcard/"+g.Id()+"/redeem", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	Redeem(c)
+	code, b := callGiftcard(t, "acme", true, g.Id(), body, Redeem)
 
-	if w.Code != 402 {
-		t.Fatalf("over-redeem status = %d, want 402; body=%s", w.Code, w.Body.String())
+	if code != 402 {
+		t.Fatalf("over-redeem status = %d, want 402; body=%s", code, b)
 	}
 }
 
@@ -127,13 +125,12 @@ func TestRedeem_HTTP_InsufficientFunds(t *testing.T) {
 func TestRedeem_Void_NonAdmin_403(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	g := issueCard(t, context.Background(), "acme", "GIFT-NOADMIN", 5000)
 
 	cases := []struct {
 		name    string
-		handler func(*gin.Context)
+		handler zip.Handler
 		body    []byte
 	}{
 		{"redeem", Redeem, mustJSON(redeemRequest{AmountCents: 100, Currency: "usd", IdempotencyKey: "na"})},
@@ -141,14 +138,9 @@ func TestRedeem_Void_NonAdmin_403(t *testing.T) {
 	}
 	for _, tcase := range cases {
 		t.Run(tcase.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			c := ctxForAs(w, "acme", false) // authenticated, NOT admin
-			c.Params = gin.Params{{Key: "giftcardid", Value: g.Id()}}
-			c.Request = httptest.NewRequest(http.MethodPost, "/v1/commerce/giftcard/"+g.Id()+"/"+tcase.name, bytes.NewReader(tcase.body))
-			c.Request.Header.Set("Content-Type", "application/json")
-			tcase.handler(c)
-			if w.Code != 403 {
-				t.Fatalf("%s as non-admin = %d, want 403 (money subroute must gate admin); body=%s", tcase.name, w.Code, w.Body.String())
+			code, b := callGiftcard(t, "acme", false, g.Id(), tcase.body, tcase.handler) // authenticated, NOT admin
+			if code != 403 {
+				t.Fatalf("%s as non-admin = %d, want 403 (money subroute must gate admin); body=%s", tcase.name, code, b)
 			}
 		})
 	}
@@ -180,19 +172,13 @@ func mustJSON(v any) []byte {
 func TestRedeem_HTTP_CrossTenant404(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	g := issueCard(t, context.Background(), "acme", "GIFT-HTTP-ISO", 5000)
 
 	body, _ := json.Marshal(redeemRequest{AmountCents: 100, Currency: "usd", IdempotencyKey: "http_iso"})
-	w := httptest.NewRecorder()
-	c := ctxFor(w, "beta") // caller is org beta, card belongs to acme
-	c.Params = gin.Params{{Key: "giftcardid", Value: g.Id()}}
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/giftcard/"+g.Id()+"/redeem", bytes.NewReader(body))
-	c.Request.Header.Set("Content-Type", "application/json")
-	Redeem(c)
+	code, b := callGiftcard(t, "beta", true, g.Id(), body, Redeem) // caller is org beta, card belongs to acme
 
-	if w.Code != 404 {
-		t.Fatalf("cross-tenant redeem status = %d, want 404 (tenant isolation); body=%s", w.Code, w.Body.String())
+	if code != 404 {
+		t.Fatalf("cross-tenant redeem status = %d, want 404 (tenant isolation); body=%s", code, b)
 	}
 }

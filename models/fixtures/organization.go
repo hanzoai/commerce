@@ -1,11 +1,10 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/blockchains"
-	"github.com/hanzoai/commerce/util/hashid"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/shippingrates"
 	"github.com/hanzoai/commerce/models/store"
@@ -13,14 +12,15 @@ import (
 	"github.com/hanzoai/commerce/models/types/georate"
 	"github.com/hanzoai/commerce/models/user"
 	"github.com/hanzoai/commerce/types/website"
+	"github.com/hanzoai/commerce/util/hashid"
 
 	. "github.com/hanzoai/commerce/models/types/analytics"
 )
 
-var Organization = New("organization", func(c *gin.Context) *organization.Organization {
+var Organization = New("organization", func(c *zip.Ctx) *organization.Organization {
 	BlockchainNamespace(c)
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	// Such tees owner &operator
 	usr := User(c).(*user.User)

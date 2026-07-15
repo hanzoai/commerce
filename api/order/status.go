@@ -1,8 +1,10 @@
 package order
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
+
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/order"
 	"github.com/hanzoai/commerce/models/payment"
@@ -10,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/models/wallet"
 	// "github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/log"
 )
 
 type StatusResponse struct {
@@ -23,18 +24,17 @@ type StatusResponse struct {
 	Wallet        *wallet.Wallet `json:"wallet,omitempty"`
 }
 
-func Status(c *gin.Context) {
-	id := c.Params.ByName("orderid")
+func Status(c *zip.Ctx) error {
+	id := c.Param("orderid")
 	// Per-org store (Red MED-1): read the order from the caller org's store, not
 	// the shared systemDB (datastore.New drops the namespace + binds systemDB).
 	org := middleware.GetOrganization(c)
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 	ord := order.New(db)
 
 	// Ensure order exists
 	if err := ord.GetById(id); err != nil {
-		http.Fail(c, 404, "No order found with id: "+id, err)
-		return
+		return http.Fail(c, 404, "No order found with id: "+id, err)
 	}
 
 	wal, err := ord.GetOrCreateWallet(db)
@@ -52,5 +52,5 @@ func Status(c *gin.Context) {
 		Wallet:        wal,
 	}
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

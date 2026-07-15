@@ -3,11 +3,12 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
@@ -26,25 +27,23 @@ type tierBalanceResp struct {
 	} `json:"balance"`
 }
 
-// tierCtx builds a gin context scoped to org `ns` (org name == namespace), the
-// exact plumbing the gateway/middleware injects, so GetTier resolves the ae
-// SQLite datastore in that namespace.
-func tierCtx(w http.ResponseWriter, org *organization.Organization) *gin.Context {
-	c, _ := gin.CreateTestContext(w)
-	c.Set("organization", org)
-	c.Set("context", nscontext.WithNamespace(context.Background(), org.Name))
-	return c
+// tierSeed scopes a request to org `ns` (org name == namespace), the exact
+// plumbing the gateway/middleware injects, so GetTier resolves the ae SQLite
+// datastore in that namespace.
+func tierSeed(org *organization.Organization) func(*zip.Ctx) {
+	return func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(nscontext.WithNamespace(context.Background(), org.Name))
+	}
 }
 
 // callGetTier drives the GetTier handler and returns status + parsed balance.
 func callGetTier(org *organization.Organization, user string) (int, tierBalanceResp) {
-	w := httptest.NewRecorder()
-	c := tierCtx(w, org)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/billing/tier?user="+user, nil)
-	GetTier(c)
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/tier?user="+user, nil)
+	w := driveSeeded(tierSeed(org), "/v1/billing/tier", req, GetTier)
 	var resp tierBalanceResp
-	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	return w.Code, resp
+	_ = json.Unmarshal(func() []byte { b, _ := io.ReadAll(w.Body); return b }(), &resp)
+	return w.StatusCode, resp
 }
 
 // seedTierDeposit writes a Deposit into org `ns`'s ledger, tagged `tag`, with
@@ -69,7 +68,6 @@ func seedTierDeposit(t *testing.T, ns string, testMode bool, user, tag string, c
 func TestGetTier_FreeZeroBalance_Gated(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "tiergate-zero"
@@ -93,7 +91,6 @@ func TestGetTier_FreeZeroBalance_Gated(t *testing.T) {
 func TestGetTier_StarterCreditFunds(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "tiergate-grant"
@@ -119,7 +116,6 @@ func TestGetTier_StarterCreditFunds(t *testing.T) {
 func TestGetTier_StarterCreditSpent_Gates(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
-	gin.SetMode(gin.TestMode)
 
 	org := &organization.Organization{}
 	org.Name = "tiergate-spent"

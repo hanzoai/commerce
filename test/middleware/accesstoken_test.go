@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -13,7 +13,7 @@ import (
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
 
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )
@@ -70,12 +70,16 @@ var _ = Describe("middleware/accesstoken", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Make request using access token
-			client := ginclient.New(ctx)
+			client := zipclient.New(ctx)
 			// Setup client router to check for token required
 			client.Use(middleware.TokenRequired())
-			// Return ok if token is valid
-			client.Handle("GET", "/", func(c *gin.Context) {
-				c.String(200, "ok")
+			// TokenRequired (above) resolves the org into the request locals; the
+			// *Ctx is pooled and reset once the request returns, so capture the
+			// resolved org INSIDE the handler where it is still live.
+			var org *organization.Organization
+			client.Handle("GET", "/", func(c *zip.Ctx) error {
+				org = middleware.GetOrganization(c)
+				return c.String(200, "ok")
 			})
 			// Set access token on client
 			client.Defaults(func(r *http.Request) {
@@ -83,9 +87,6 @@ var _ = Describe("middleware/accesstoken", func() {
 			})
 			// Make request
 			client.Get("/", nil)
-
-			// middleware generates namespaced context
-			org := middleware.GetOrganization(client.Context)
 
 			ctx2 := org.Namespaced(ctx)
 			Expect(ctx2).ToNot(Equal(ctx))

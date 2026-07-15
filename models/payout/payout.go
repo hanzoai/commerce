@@ -1,8 +1,8 @@
 package payout
 
 import (
-	"github.com/hanzoai/orm"
 	"fmt"
+	"github.com/hanzoai/orm"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -48,8 +48,6 @@ type Payout struct {
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
-
-
 
 func (p *Payout) Defaults() {
 	p.Parent = p.Datastore().NewKey("synckey", "", 1, nil)

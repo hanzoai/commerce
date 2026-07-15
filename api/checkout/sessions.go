@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	square "github.com/square/square-go-sdk/v3"
 	sqcheckout "github.com/square/square-go-sdk/v3/checkout"
 	sqpaymentlinks "github.com/square/square-go-sdk/v3/checkout/paymentlinks"
 	"github.com/square/square-go-sdk/v3/core"
 	"github.com/square/square-go-sdk/v3/option"
+	"github.com/zap-proto/zip"
 
 	hostedcheckout "github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
@@ -58,9 +58,9 @@ type checkoutSessionHat struct {
 }
 
 type checkoutSessionItem struct {
-	ID        string             `json:"id"`
-	Quantity  int                `json:"quantity"`
-	UnitPrice float64            `json:"unitPrice"` // ignored; server computes price
+	ID        string  `json:"id"`
+	Quantity  int     `json:"quantity"`
+	UnitPrice float64 `json:"unitPrice"` // ignored; server computes price
 	// Catalog references. When any is set, the server prices the item from the
 	// org's real per-org store listing (never from client input) — this is the
 	// generic per-org storefront path. The legacy custom-hat path (Hat below) is
@@ -73,20 +73,20 @@ type checkoutSessionItem struct {
 }
 
 type checkoutSessionRequest struct {
-	Company      string                  `json:"company"`
-	ProviderHint string                  `json:"providerHint"`
-	Currency     string                  `json:"currency"`
+	Company      string `json:"company"`
+	ProviderHint string `json:"providerHint"`
+	Currency     string `json:"currency"`
 	// NOTE: there is deliberately NO org/tenant field. The org is SOLELY the
 	// authenticated principal's (middleware.GetOrganization) — a client can only
 	// ever mint checkout for its OWN tenant, never one it names in the body.
-	Project      string                  `json:"project"`
-	Customer     checkoutSessionCustomer `json:"customer"`
-	Items        []checkoutSessionItem   `json:"items"`
-	SuccessURL   string                  `json:"successUrl"`
-	CancelURL    string                  `json:"cancelUrl"`
-	CouponCode   string                  `json:"couponCode,omitempty"`
-	ReferrerId   string                  `json:"referrerId,omitempty"`
-	AffiliateId  string                  `json:"affiliateId,omitempty"`
+	Project     string                  `json:"project"`
+	Customer    checkoutSessionCustomer `json:"customer"`
+	Items       []checkoutSessionItem   `json:"items"`
+	SuccessURL  string                  `json:"successUrl"`
+	CancelURL   string                  `json:"cancelUrl"`
+	CouponCode  string                  `json:"couponCode,omitempty"`
+	ReferrerId  string                  `json:"referrerId,omitempty"`
+	AffiliateId string                  `json:"affiliateId,omitempty"`
 }
 
 // couponDiscount holds the resolved discount for a checkout session.
@@ -107,7 +107,7 @@ type checkoutSessionResponse struct {
 
 // resolveCoupon looks up a coupon by code in the datastore and returns it
 // if valid. Returns nil (no error) when couponCode is empty.
-func resolveCoupon(c *gin.Context, org *organization.Organization, couponCode string) (*coupon.Coupon, error) {
+func resolveCoupon(c *zip.Ctx, org *organization.Organization, couponCode string) (*coupon.Coupon, error) {
 	if couponCode == "" {
 		return nil, nil
 	}
@@ -115,7 +115,7 @@ func resolveCoupon(c *gin.Context, org *organization.Organization, couponCode st
 	// the org's own store. datastore.New(c) binds the shared systemDB (and drops
 	// the namespace), so with the resolver installed it would never find the
 	// caller's coupon → every hosted-checkout coupon silently "not found".
-	db := datastore.NewNamespaced(org.Namespaced(c))
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 	cpn := coupon.New(db)
 	ok, err := cpn.Query().Filter("Code_=", strings.ToUpper(strings.TrimSpace(couponCode))).Get()
 	if err != nil || !ok {
@@ -211,8 +211,8 @@ func itemRef(it checkoutSessionItem) string {
 // loadOrgCatalog loads the org's default (first) store listings from its own
 // per-org datastore (Red MED-1: NewNamespaced, not the shared systemDB). Returns
 // nil when the org has no store — callers then treat every item as a legacy hat.
-func loadOrgCatalog(c *gin.Context, org *organization.Organization) store.Listings {
-	db := datastore.NewNamespaced(org.Namespaced(c))
+func loadOrgCatalog(c *zip.Ctx, org *organization.Organization) store.Listings {
+	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 	s := store.New(db)
 	var stores []store.Store
 	if _, err := s.Query().All().Limit(1).GetAll(&stores); err != nil || len(stores) == 0 {
@@ -343,16 +343,14 @@ func squareCheckoutClientForOrg(org *organization.Organization) (*sqpaymentlinks
 //
 // Currently implemented using Square Payment Links (hosted checkout URL).
 // When providerHint is "wire", returns wire transfer instructions instead.
-func Sessions(c *gin.Context) {
+func Sessions(c *zip.Ctx) error {
 	var req checkoutSessionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "Invalid request", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "Invalid request", err)
 	}
 
 	if len(req.Items) == 0 {
-		http.Fail(c, 400, "No items", errors.New("items is required"))
-		return
+		return http.Fail(c, 400, "No items", errors.New("items is required"))
 	}
 
 	currency := strings.ToUpper(strings.TrimSpace(req.Currency))
@@ -360,8 +358,7 @@ func Sessions(c *gin.Context) {
 		currency = "USD"
 	}
 	if currency != "USD" {
-		http.Fail(c, 400, "Unsupported currency", errors.New("only USD is supported"))
-		return
+		return http.Fail(c, 400, "Unsupported currency", errors.New("only USD is supported"))
 	}
 
 	// Wire transfer: return instructions URL instead of creating a payment link.
@@ -373,11 +370,10 @@ func Sessions(c *gin.Context) {
 		}
 		wireURL := baseURL + "/v1/checkout/wire/instructions"
 
-		http.Render(c, 200, checkoutSessionResponse{
+		return http.Render(c, 200, checkoutSessionResponse{
 			CheckoutURL: wireURL,
 			SessionID:   sessionID,
 		})
-		return
 	}
 
 	// Org is SOLELY the authenticated principal's — the route's
@@ -387,32 +383,28 @@ func Sessions(c *gin.Context) {
 	// a caller can only ever mint checkout for its OWN tenant. Fail closed.
 	org, ok := authedOrg(c)
 	if !ok {
-		http.Fail(c, 401, "Authentication required",
+		return http.Fail(c, 401, "Authentication required",
 			errors.New("no authenticated organization for checkout"))
-		return
 	}
 
 	// The minted payment link's post-payment redirect MUST target one of the
 	// org's OWN domains — otherwise a link carrying the org's brand and a real
 	// charge becomes an open-redirect / phishing pivot.
 	sites := websiteURLs(org)
-	if !hostedcheckout.AllowedCheckoutRedirect(req.SuccessURL, org.Name, sites, c.Request.Host) {
-		http.Fail(c, 400, "Invalid successUrl",
+	if !hostedcheckout.AllowedCheckoutRedirect(req.SuccessURL, org.Name, sites, c.Fiber().Host()) {
+		return http.Fail(c, 400, "Invalid successUrl",
 			errors.New("successUrl must be one of the organization's own domains"))
-		return
 	}
 	if strings.TrimSpace(req.CancelURL) != "" &&
-		!hostedcheckout.AllowedCheckoutRedirect(req.CancelURL, org.Name, sites, c.Request.Host) {
-		http.Fail(c, 400, "Invalid cancelUrl",
+		!hostedcheckout.AllowedCheckoutRedirect(req.CancelURL, org.Name, sites, c.Fiber().Host()) {
+		return http.Fail(c, 400, "Invalid cancelUrl",
 			errors.New("cancelUrl must be one of the organization's own domains"))
-		return
 	}
 
 	// Resolve coupon before any external calls so we can fail fast.
 	cpn, err := resolveCoupon(c, org, req.CouponCode)
 	if err != nil {
-		http.Fail(c, 400, "Invalid coupon", err)
-		return
+		return http.Fail(c, 400, "Invalid coupon", err)
 	}
 
 	// Load the org's real per-org catalog once. Items that reference a catalog
@@ -427,16 +419,14 @@ func Sessions(c *gin.Context) {
 	var subtotalCents int64
 	for _, it := range req.Items {
 		if it.Quantity <= 0 {
-			http.Fail(c, 400, "Invalid quantity", fmt.Errorf("quantity must be > 0 for item '%s'", it.ID))
-			return
+			return http.Fail(c, 400, "Invalid quantity", fmt.Errorf("quantity must be > 0 for item '%s'", it.ID))
 		}
 		var name string
 		var amount int64
 		if hasCatalogRef(it) {
 			n, a, ok := catalogPrice(catalog, it)
 			if !ok {
-				http.Fail(c, 400, "Unknown product", fmt.Errorf("no priced listing for item '%s'", itemRef(it)))
-				return
+				return http.Fail(c, 400, "Unknown product", fmt.Errorf("no priced listing for item '%s'", itemRef(it)))
 			}
 			name, amount = n, a
 		} else {
@@ -470,8 +460,7 @@ func Sessions(c *gin.Context) {
 	}
 
 	if err != nil {
-		http.Fail(c, 500, "Failed to create checkout session", err)
-		return
+		return http.Fail(c, 500, "Failed to create checkout session", err)
 	}
 
 	if cpn != nil {
@@ -485,12 +474,12 @@ func Sessions(c *gin.Context) {
 		}
 	}
 	// Publish checkout.started to NATS/JetStream (fire and forget)
-	if pub, ok := c.Get("publisher"); ok {
+	if pub := c.Locals("publisher"); pub != nil {
 		if p, ok := pub.(*events.Publisher); ok {
 			// Detach from the request (survive client disconnect) but keep trace
 			// values — WithoutCancel, not Background. Captured before the goroutine
-			// because gin recycles c after the handler returns.
-			ctx := context.WithoutCancel(c.Request.Context())
+			// because fiber recycles the request context after the handler returns.
+			ctx := context.WithoutCancel(c.Context())
 			go func() {
 				if pubErr := p.PublishCheckoutStarted(ctx, sessionResp.SessionID, org.Name, finalCents, currency); pubErr != nil {
 					log.Error("PublishCheckoutStarted: %v", pubErr, c)
@@ -499,11 +488,11 @@ func Sessions(c *gin.Context) {
 		}
 	}
 
-	http.Render(c, 200, sessionResp)
+	return http.Render(c, 200, sessionResp)
 }
 
 // createStripeCheckout creates a Stripe Checkout Session using the org's Stripe credentials.
-func createStripeCheckout(c *gin.Context, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
+func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
 	sk := org.StripeToken()
 	if sk == "" {
 		return checkoutSessionResponse{}, errors.New("stripe is not configured for this organization")
@@ -549,7 +538,7 @@ func createStripeCheckout(c *gin.Context, org *organization.Organization, items 
 		params.Set("metadata[affiliate_id]", req.AffiliateId)
 	}
 
-	stripeReq, err := nethttp.NewRequestWithContext(c.Request.Context(), nethttp.MethodPost,
+	stripeReq, err := nethttp.NewRequestWithContext(c.Context(), nethttp.MethodPost,
 		"https://api.stripe.com/v1/checkout/sessions",
 		strings.NewReader(params.Encode()))
 	if err != nil {
@@ -588,7 +577,7 @@ func createStripeCheckout(c *gin.Context, org *organization.Organization, items 
 }
 
 // createSquareCheckout creates a Square Payment Link using the org's Square credentials.
-func createSquareCheckout(c *gin.Context, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
+func createSquareCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
 	client, locationID, err := squareCheckoutClientForOrg(org)
 	if err != nil {
 		return checkoutSessionResponse{}, err
@@ -678,7 +667,7 @@ func createSquareCheckout(c *gin.Context, org *organization.Organization, items 
 		PrePopulatedData: prePop,
 	}
 
-	sqResp, err := client.Create(c.Request.Context(), createReq)
+	sqResp, err := client.Create(c.Context(), createReq)
 	if err != nil {
 		return checkoutSessionResponse{}, fmt.Errorf("square API: %w", err)
 	}

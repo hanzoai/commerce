@@ -3,7 +3,7 @@ package migrations
 import (
 	"context"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	ds "github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -45,8 +45,8 @@ func deletePayment(ctx context.Context, pay *payment.Payment) error {
 }
 
 var _ = New("update-old-payments",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "bellabeat")
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {

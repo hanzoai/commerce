@@ -3,7 +3,7 @@ package counter
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -39,13 +39,12 @@ type dailyRes struct {
 	Counts []dailyCount `json:"counts"`
 }
 
-func daily(c *gin.Context) {
+func daily(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
 	req := dailyReq{}
-	if err := json.Decode(c.Request.Body, &req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &req); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	if req.Before.IsZero() {
@@ -57,7 +56,7 @@ func daily(c *gin.Context) {
 	}
 
 	// Get Dailies
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	db := datastore.New(ctx)
 
 	res := dailyRes{
@@ -114,5 +113,5 @@ func daily(c *gin.Context) {
 
 	// Get Top Lines
 
-	http.Render(c, 200, res)
+	return http.Render(c, 200, res)
 }

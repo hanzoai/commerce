@@ -3,7 +3,7 @@ package billing
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
@@ -34,24 +34,21 @@ type grantStarterRequest struct {
 // same user opening several chats at once) never double-grant — no bleed.
 //
 //	POST /v1/billing/grant-starter   {"user":"hanzo/alice","trigger":"chat_first_use"}
-func GrantStarter(c *gin.Context) {
+func GrantStarter(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	if org == nil {
-		http.Fail(c, 401, "missing organization", nil)
-		return
+		return http.Fail(c, 401, "missing organization", nil)
 	}
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req grantStarterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	user := strings.ToLower(strings.TrimSpace(req.User))
 	if user == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	trigger := strings.TrimSpace(req.Trigger)
@@ -65,10 +62,9 @@ func GrantStarter(c *gin.Context) {
 		rc, mErr := chainMintCredit(c, org, user, int64(credit.StarterCreditCents), treasury.BucketCredit,
 			"starter-credit:"+trigger, welcomeMintKey(org, user))
 		if mErr != nil {
-			http.Fail(c, 502, "on-chain starter credit mint failed", mErr)
-			return
+			return http.Fail(c, 502, "on-chain starter credit mint failed", mErr)
 		}
-		c.JSON(200, gin.H{
+		return c.JSON(200, map[string]any{
 			"user":     user,
 			"amount":   credit.StarterCreditCents,
 			"currency": "usd",
@@ -76,16 +72,14 @@ func GrantStarter(c *gin.Context) {
 			"onChain":  true,
 			"txHash":   rc.TxHash,
 		})
-		return
 	}
 
 	granted, err := credit.GrantIfEligibleNow(db, user, trigger)
 	if err != nil {
-		http.Fail(c, 500, "failed to grant starter credit", err)
-		return
+		return http.Fail(c, 500, "failed to grant starter credit", err)
 	}
 
-	c.JSON(200, gin.H{
+	return c.JSON(200, map[string]any{
 		"user":     user,
 		"amount":   credit.StarterCreditCents,
 		"currency": "usd",

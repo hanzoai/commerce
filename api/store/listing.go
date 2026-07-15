@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
@@ -16,7 +16,7 @@ import (
 // orgNamespacedDB returns a datastore scoped to the authenticated org's namespace.
 // All listing handlers MUST use this instead of raw datastore.New(c) to ensure
 // tenant isolation.
-func orgNamespacedDB(c *gin.Context) *datastore.Datastore {
+func orgNamespacedDB(c *zip.Ctx) *datastore.Datastore {
 	org := middleware.GetOrganization(c)
 	// Red MED-1: datastore.New binds the shared systemDB regardless of the ctx
 	// namespace, so the listing sub-routes (create/update/patch/delete/get/list)
@@ -24,34 +24,32 @@ func orgNamespacedDB(c *gin.Context) *datastore.Datastore {
 	// NewNamespaced (rest.newEntity) — a mismatch that 404s every listing op on a
 	// real per-org store. NewNamespaced routes to the caller org's own SQLite,
 	// matching where the store lives.
-	return datastore.NewNamespaced(org.Namespaced(c))
+	return datastore.NewNamespaced(org.Namespaced(c.Context()))
 }
 
 // Return all listings
-func listListing(c *gin.Context) {
-	id := c.Params.ByName("storeid")
+func listListing(c *zip.Ctx) error {
+	id := c.Param("storeid")
 	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 	}
 
-	http.Render(c, 200, stor.Listings)
+	return http.Render(c, 200, stor.Listings)
 }
 
 // Get single store listing for given product/variant
-func getListing(c *gin.Context) {
+func getListing(c *zip.Ctx) error {
 	db := orgNamespacedDB(c)
-	id := c.Params.ByName("storeid")
-	key := c.Params.ByName("key")
+	id := c.Param("storeid")
+	key := c.Param("key")
 
 	// Get store
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 	}
 
 	// Try and grab listing
@@ -70,23 +68,21 @@ func getListing(c *gin.Context) {
 	// Do not override on create, user should explicitly update instead
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		http.Fail(c, 404, msg, errors.New(msg))
-		return
+		return http.Fail(c, 404, msg, errors.New(msg))
 	}
 
-	http.Render(c, 200, listing)
+	return http.Render(c, 200, listing)
 }
 
-func createListing(c *gin.Context) {
-	id := c.Params.ByName("storeid")
-	key := c.Params.ByName("key")
+func createListing(c *zip.Ctx) error {
+	id := c.Param("storeid")
+	key := c.Param("key")
 	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
 		msg := fmt.Sprintf("Failed to retrieve store '%v'", id)
-		http.Fail(c, 404, msg, err)
-		return
+		return http.Fail(c, 404, msg, err)
 	}
 
 	// Try and grab listing
@@ -95,14 +91,12 @@ func createListing(c *gin.Context) {
 	// Do not override on create, user should explicitly update instead
 	if ok {
 		msg := fmt.Sprintf("'%v' already exists in store '%v' listing", key, id)
-		http.Fail(c, 400, msg, errors.New(msg))
-		return
+		return http.Fail(c, 400, msg, errors.New(msg))
 	}
 
 	// Decode response body for listing
-	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &listing); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Update include listing in listings
@@ -110,30 +104,28 @@ func createListing(c *gin.Context) {
 
 	// Save store
 	if err := stor.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save store listings", err)
+		return http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		http.Render(c, 201, stor.Listings)
+		c.SetHeader("Location", c.Path())
+		return http.Render(c, 201, stor.Listings)
 	}
 }
 
-func updateListing(c *gin.Context) {
-	id := c.Params.ByName("storeid")
-	key := c.Params.ByName("key")
+func updateListing(c *zip.Ctx) error {
+	id := c.Param("storeid")
+	key := c.Param("key")
 	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 	}
 
 	listing, ok := stor.Listings[key]
 
 	// Decode response body to create new listings
-	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &listing); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Override listing potentially
@@ -141,67 +133,62 @@ func updateListing(c *gin.Context) {
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save store listings", err)
+		return http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
 		if ok {
-			http.Render(c, 200, stor.Listings)
+			return http.Render(c, 200, stor.Listings)
 		} else {
-			c.Writer.Header().Add("Location", c.Request.URL.Path)
-			http.Render(c, 201, stor.Listings)
+			c.SetHeader("Location", c.Path())
+			return http.Render(c, 201, stor.Listings)
 		}
 	}
 }
 
-func patchListing(c *gin.Context) {
-	id := c.Params.ByName("storeid")
-	key := c.Params.ByName("key")
+func patchListing(c *zip.Ctx) error {
+	id := c.Param("storeid")
+	key := c.Param("key")
 	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 	}
 
 	listing, ok := stor.Listings[key]
 	// Can't patch an object that doesn't exist!
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		http.Fail(c, 404, msg, errors.New(msg))
-		return
+		return http.Fail(c, 404, msg, errors.New(msg))
 	}
 
 	// Decode response body to update listings
-	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
+	if err := json.DecodeBytes(c.Body(), &listing); err != nil {
+		return http.Fail(c, 400, "Failed decode request body", err)
 	}
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save store listings", err)
+		return http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
-		http.Render(c, 200, stor.Listings)
+		return http.Render(c, 200, stor.Listings)
 	}
 }
 
-func deleteListing(c *gin.Context) {
-	id := c.Params.ByName("storeid")
-	key := c.Params.ByName("key")
+func deleteListing(c *zip.Ctx) error {
+	id := c.Param("storeid")
+	key := c.Param("key")
 	db := orgNamespacedDB(c)
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 	}
 
 	// Check if file even exists
 	_, ok := stor.Listings[key]
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		http.Fail(c, 404, msg, errors.New(msg))
-		return
+		return http.Fail(c, 404, msg, errors.New(msg))
 	}
 
 	// Delete key from map
@@ -209,8 +196,9 @@ func deleteListing(c *gin.Context) {
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		http.Fail(c, 500, "Failed to save store listings", err)
+		return http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
-		c.Data(204, "application/json", make([]byte, 0))
+		c.SetHeader("Content-Type", "application/json")
+		return c.Bytes(204, make([]byte, 0))
 	}
 }

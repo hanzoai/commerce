@@ -1,12 +1,12 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/models/token"
 )
 
-var Token = New("token", func(c *gin.Context) *token.Token {
+var Token = New("token", func(c *zip.Ctx) *token.Token {
 	db := getNamespaceDb(c)
 
 	token := token.New(db)

@@ -19,7 +19,6 @@ const (
 	Algorithm = "HS256"
 )
 
-
 func init() { orm.Register[Token]("oauthtoken") }
 
 type Token struct {

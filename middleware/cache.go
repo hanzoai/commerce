@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // CachePublic returns middleware that sets public cache headers with the given TTL.
@@ -32,7 +32,7 @@ import (
 // allows CF to serve stale content while fetching fresh in background.
 //
 // Mutations (POST/PUT/PATCH/DELETE) are always no-store regardless.
-func CachePublic(ttl int) gin.HandlerFunc {
+func CachePublic(ttl int) zip.Handler {
 	browserTTL := ttl / 2
 	if browserTTL < 30 {
 		browserTTL = 30
@@ -40,41 +40,41 @@ func CachePublic(ttl int) gin.HandlerFunc {
 	cc := fmt.Sprintf("public, max-age=%d, s-maxage=%d, stale-while-revalidate=60", browserTTL, ttl)
 	cdnCC := fmt.Sprintf("max-age=%d", ttl)
 
-	return func(c *gin.Context) {
-		switch c.Request.Method {
+	return func(c *zip.Ctx) error {
+		switch c.Method() {
 		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
-			c.Header("Cache-Control", "no-store")
+			c.SetHeader("Cache-Control", "no-store")
 		default:
-			c.Header("Cache-Control", cc)
-			c.Header("CDN-Cache-Control", cdnCC)
-			c.Header("Vary", "Accept-Encoding")
+			c.SetHeader("Cache-Control", cc)
+			c.SetHeader("CDN-Cache-Control", cdnCC)
+			c.SetHeader("Vary", "Accept-Encoding")
 		}
-		c.Next()
+		return c.Next()
 	}
 }
 
 // CachePublicTTL is CachePublic accepting a time.Duration.
-func CachePublicTTL(ttl time.Duration) gin.HandlerFunc {
+func CachePublicTTL(ttl time.Duration) zip.Handler {
 	return CachePublic(int(ttl.Seconds()))
 }
 
 // CachePrivate sets Cache-Control: private, no-store.
 // Use on all authenticated per-user or per-org routes.
 // CF will not cache these responses.
-func CachePrivate() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Cache-Control", "private, no-store")
-		c.Next()
+func CachePrivate() zip.Handler {
+	return func(c *zip.Ctx) error {
+		c.SetHeader("Cache-Control", "private, no-store")
+		return c.Next()
 	}
 }
 
 // CacheNoStore disables all caching unconditionally.
 // Use on auth flows, checkout, and payment callbacks.
-func CacheNoStore() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
-		c.Header("Pragma", "no-cache")
-		c.Next()
+func CacheNoStore() zip.Handler {
+	return func(c *zip.Ctx) error {
+		c.SetHeader("Cache-Control", "no-store, no-cache, must-revalidate")
+		c.SetHeader("Pragma", "no-cache")
+		return c.Next()
 	}
 }
 
@@ -83,27 +83,27 @@ func CacheNoStore() gin.HandlerFunc {
 // Multiple calls accumulate; tags are comma-joined as CF requires.
 //
 // Example: SetCFCacheTags(c, "plans", "org:hanzo")
-func SetCFCacheTags(c *gin.Context, tags ...string) {
+func SetCFCacheTags(c *zip.Ctx, tags ...string) {
 	if len(tags) == 0 {
 		return
 	}
-	if existing := c.Writer.Header().Get("Cache-Tag"); existing != "" {
+	if existing := string(c.Fiber().Response().Header.Peek("Cache-Tag")); existing != "" {
 		tags = append([]string{existing}, tags...)
 	}
-	c.Header("Cache-Tag", strings.Join(tags, ","))
+	c.SetHeader("Cache-Tag", strings.Join(tags, ","))
 }
 
 // CFCacheTags returns middleware that sets Cache-Tag header(s).
 // Use on route groups whose entries should be purgeable as a unit.
-func CFCacheTags(tags ...string) gin.HandlerFunc {
+func CFCacheTags(tags ...string) zip.Handler {
 	header := strings.Join(tags, ",")
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Accumulate with any previously set tags
-		if existing := c.Writer.Header().Get("Cache-Tag"); existing != "" {
-			c.Header("Cache-Tag", existing+","+header)
+		if existing := string(c.Fiber().Response().Header.Peek("Cache-Tag")); existing != "" {
+			c.SetHeader("Cache-Tag", existing+","+header)
 		} else {
-			c.Header("Cache-Tag", header)
+			c.SetHeader("Cache-Tag", header)
 		}
-		c.Next()
+		return c.Next()
 	}
 }

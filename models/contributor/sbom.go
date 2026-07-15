@@ -33,7 +33,7 @@ type SBOMEntry struct {
 	Authors_ string       `json:"-" datastore:",noindex"`
 
 	// Revenue attribution
-	UsageCount     int64 `json:"usageCount"`     // Times used in billing period
+	UsageCount     int64   `json:"usageCount"`     // Times used in billing period
 	RevenuePercent float64 `json:"revenuePercent"` // % of total platform revenue attributed
 
 	// Scan metadata

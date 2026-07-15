@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -12,8 +12,8 @@ import (
 )
 
 var _ = New("damon-order-projected-refund-counters",
-	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "damon")
+	func(c *zip.Ctx) []interface{} {
+		c.Locals("namespace", "damon")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {

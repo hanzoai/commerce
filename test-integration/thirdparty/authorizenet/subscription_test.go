@@ -2,8 +2,8 @@ package test
 
 import (
 	"github.com/hanzoai/commerce/log"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/order"
+	"github.com/hanzoai/commerce/models/types/currency"
 	//"github.com/hanzoai/commerce/thirdparty/authorizenet"
 	. "github.com/hanzoai/commerce/util/test/ginkgo"
 )

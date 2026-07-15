@@ -3,7 +3,7 @@ package auth
 import (
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth/password"
 	"github.com/hanzoai/commerce/util/form"
@@ -22,7 +22,7 @@ func (f LoginForm) PasswordHash() ([]byte, error) {
 	return password.Hash(f.Password)
 }
 
-func (f *LoginForm) Parse(c *gin.Context) error {
+func (f *LoginForm) Parse(c *zip.Ctx) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}

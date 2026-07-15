@@ -12,10 +12,10 @@ import (
 	"github.com/hanzoai/commerce/models/referrer"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/user"
-	"github.com/hanzoai/commerce/util/gincontext"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
-	"github.com/hanzoai/commerce/util/test/ginclient"
+	"github.com/hanzoai/commerce/util/test/zipclient"
+	"github.com/hanzoai/commerce/util/zipctx"
 
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 	orderApi "github.com/hanzoai/commerce/api/order"
@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 
 var (
 	accessToken string
-	cl          *ginclient.Client
+	cl          *zipclient.Client
 	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
@@ -47,7 +47,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := zipctx.New(ctx)
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
 	refIn = fixtures.Referrer(c).(*referrer.Referrer)
@@ -57,7 +57,7 @@ var _ = BeforeSuite(func() {
 	stor = fixtures.Store(c).(*store.Store)
 
 	// Setup client and add routes for payment API tests.
-	cl = ginclient.New(ctx)
+	cl = zipclient.New(ctx)
 	checkoutApi.Route(cl.Router, adminRequired)
 	orderApi.Route(cl.Router, adminRequired)
 	storeApi.Route(cl.Router, adminRequired)

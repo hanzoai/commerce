@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -39,20 +39,18 @@ func accessTokenFromHeader(fieldValue string) string {
 	return accessToken
 }
 
-func ParseToken(c *gin.Context) {
-	query := c.Request.URL.Query()
-
+func ParseToken(c *zip.Ctx) {
 	// Check for `key` query param by default
-	accessToken := query.Get("key")
+	accessToken := c.Query("key")
 
 	// Fallback to `token` query param
 	if accessToken == "" {
-		accessToken = query.Get("token")
+		accessToken = c.Query("token")
 	}
 
 	// Try to grab key from Authorization header (basic auth)
 	if accessToken == "" {
-		accessToken = accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+		accessToken = accessTokenFromHeader(c.Header("Authorization"))
 	}
 
 	// If it's still not set and dev server is running, grab from session
@@ -63,11 +61,11 @@ func ParseToken(c *gin.Context) {
 		}
 	}
 
-	c.Set("access-token", accessToken)
+	c.Locals("access-token", accessToken)
 }
 
 // Permissions required to access route
-func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
+func TokenPermits(masks ...bit.Mask) zip.Handler {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.All
 
@@ -79,34 +77,35 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// Verify permissions
 		if !GetPermissions(c).Has(permissions) {
-			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
+			return http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
 		}
+		return c.Next()
 	}
 }
 
-func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.Claims) error) (*organization.Organization, *app.App, *oauthtoken.Claims, bool) {
+func DecodeToken(c *zip.Ctx, tokString string, validationFn func(oauthtoken.Claims) error) (*organization.Organization, *app.App, *oauthtoken.Claims, bool) {
 	// Peek at claims to get the org so we can use secret to verify the key
 	claims := oauthtoken.Claims{}
 	if err := jwt.Peek(tokString, &claims); err != nil {
-		http.Fail(c, 403, "Unable to decode oauthtoken.", err)
+		_ = http.Fail(c, 403, "Unable to decode oauthtoken.", err)
 		return nil, nil, nil, false
 	}
 
 	if validationFn != nil {
 		if err := validationFn(claims); err != nil {
-			http.Fail(c, 401, "Validation failed", err)
+			_ = http.Fail(c, 401, "Validation failed", err)
 			return nil, nil, nil, false
 		}
 	}
 
-	ctx := middleware.GetContext(c)
+	ctx := c.Context()
 	db := datastore.New(ctx)
 	org := organization.New(db)
 	if err := org.GetById(claims.OrganizationName); err != nil {
-		http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
+		_ = http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 		return org, nil, nil, false
 	}
 
@@ -114,7 +113,7 @@ func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.
 	if claims.Type == oauthtoken.Refresh || claims.Type == oauthtoken.Access {
 		// Verify token signature
 		if err := jwt.Decode(tokString, org.SecretKey, oauthtoken.Algorithm, &claims); err != nil {
-			http.Fail(c, 403, "Unable to verify oauthtoken.", err)
+			_ = http.Fail(c, 403, "Unable to verify oauthtoken.", err)
 			return org, nil, nil, false
 		}
 
@@ -122,67 +121,67 @@ func DecodeToken(c *gin.Context, tokString string, validationFn func(oauthtoken.
 	}
 
 	// Customer Tokens and API Keys need to get the App
-	nsDb := datastore.New(org.Namespaced(c))
+	nsDb := datastore.New(org.Namespaced(c.Context()))
 	ap := app.New(nsDb)
 
 	if err := ap.GetById(claims.AppId); err != nil {
-		http.Fail(c, 500, "App does not exist", err)
+		_ = http.Fail(c, 500, "App does not exist", err)
 		return org, nil, nil, false
 	}
 
 	// Verify token signature
 	if err := jwt.Decode(tokString, ap.SecretKey, oauthtoken.Algorithm, &claims); err != nil {
-		http.Fail(c, 403, "Unable to verify oauthtoken.", err)
+		_ = http.Fail(c, 403, "Unable to verify oauthtoken.", err)
 		return org, ap, nil, false
 	}
 
 	return org, ap, &claims, true
 }
 
-func IsAccessIssuerRevoked(c *gin.Context, claims *oauthtoken.Claims) bool {
+func IsAccessIssuerRevoked(c *zip.Ctx, claims *oauthtoken.Claims) bool {
 	// No issuer
 	if claims.Type != oauthtoken.Access {
 		return false
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	tok := oauthtoken.New(db)
 	if err := tok.GetById(claims.Issuer); err != nil {
-		http.Fail(c, 401, "Access Denied", err)
+		_ = http.Fail(c, 401, "Access Denied", err)
 		return true
 	}
 
 	if tok.Revoked {
-		http.Fail(c, 401, "Issuer has been revoked", nil)
+		_ = http.Fail(c, 401, "Issuer has been revoked", nil)
 		return true
 	}
 	return false
 }
 
-func IsCustomerIssuerRevoked(c *gin.Context, org *organization.Organization, claims *oauthtoken.Claims) bool {
+func IsCustomerIssuerRevoked(c *zip.Ctx, org *organization.Organization, claims *oauthtoken.Claims) bool {
 	// No issuer
 	if claims.Type != oauthtoken.Customer {
 		return false
 	}
 
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	tok := oauthtoken.New(db)
 	if err := tok.GetById(claims.Issuer); err != nil {
-		http.Fail(c, 401, "Access Denied", err)
+		_ = http.Fail(c, 401, "Access Denied", err)
 		return true
 	}
 
 	if tok.Revoked {
-		http.Fail(c, 401, "Issuer has been revoked", nil)
+		_ = http.Fail(c, 401, "Issuer has been revoked", nil)
 		return true
 	}
 	return false
 }
 
 // Parses token, default permissions check
-func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
+func TokenRequired(masks ...bit.Mask) zip.Handler {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.All
 
@@ -194,7 +193,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
+	return func(c *zip.Ctx) error {
 		// IAM tokens represent authenticated Hanzo users (hanzo.id). The IAM
 		// permission model differs from legacy bit-mask org keys, but a masked
 		// gate must STILL enforce its masks against the gateway-minted perms —
@@ -205,12 +204,10 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// reintroduce the bypass if mounted.)
 		if iammiddleware.IsIAMAuthenticated(c) {
 			if len(masks) == 0 || hasScope(c, permissions) {
-				c.Next()
-				return
+				return c.Next()
 			}
-			http.Fail(c, 403, "Token doesn't support this scope",
+			return http.Fail(c, 403, "Token doesn't support this scope",
 				errors.New("IAM principal lacks required permission scope"))
-			return
 		}
 
 		// Parse token
@@ -220,137 +217,134 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
-			http.Fail(c, 401, "No access token provided.", nil)
-			return
+			return http.Fail(c, 401, "No access token provided.", nil)
 		}
 
 		org, ap, claims, ok := DecodeToken(c, accessToken, nil)
 		if !ok {
-			return
+			return nil
 		}
 
 		// Set Stuff
 		switch claims.Type {
 		case oauthtoken.Access, oauthtoken.Customer, oauthtoken.Api, oauthtoken.Refresh:
-			c.Set("claims", claims)
+			c.Locals("claims", claims)
 		default:
-			http.Fail(c, 403, "Unknown token type", nil)
-			return
+			return http.Fail(c, 403, "Unknown token type", nil)
 		}
 
 		switch claims.Type {
 		case oauthtoken.Customer:
 			// Customer Token Issuer Revokation Check
 			if IsCustomerIssuerRevoked(c, org, claims) {
-				return
+				return nil
 			}
 		case oauthtoken.Access:
 			// Access Token Issuer Revokation Check
 			if IsAccessIssuerRevoked(c, claims) {
-				return
+				return nil
 			}
 		}
 
 		// Verify permissions
 		if !claims.HasPermission(permissions) {
-			http.Fail(c, 403, "Token does not support this scope", nil)
-			return
+			return http.Fail(c, 403, "Token does not support this scope", nil)
 		}
 
 		// Whether or not we can make live calls
 		org.Live = claims.HasPermission(permission.Live)
 
 		// Save permissions in context
-		c.Set("permissions", claims.Permissions)
+		c.Locals("permissions", claims.Permissions)
 		// Save organization in context
-		c.Set("organization", org)
+		c.Locals("organization", org)
 		// Save app in context
 		if ap != nil {
-			c.Set("app", ap)
+			c.Locals("app", ap)
 		}
+		return c.Next()
 	}
 }
 
-func GetClaims(c *gin.Context) *oauthtoken.Claims {
-	return c.MustGet("claims").(*oauthtoken.Claims)
+func GetClaims(c *zip.Ctx) *oauthtoken.Claims {
+	return c.Locals("claims").(*oauthtoken.Claims)
 }
 
-func GetAccessToken(c *gin.Context) string {
-	tok, ok := c.Get("access-token")
-	if !ok {
+func GetAccessToken(c *zip.Ctx) string {
+	tok := c.Locals("access-token")
+	if tok == nil {
 		return ""
 	}
 
 	return tok.(string)
 }
 
-func GetPermissions(c *gin.Context) bit.Field {
-	return c.MustGet("permissions").(bit.Field)
+func GetPermissions(c *zip.Ctx) bit.Field {
+	return c.Locals("permissions").(bit.Field)
 }
 
 // hasScope reports whether the request's resolved permissions include the
 // required mask, read defensively (no MustGet) so a gate mounted without a
 // permission-setting middleware fails CLOSED. Mirrors middleware.hasScope so
 // both auth stacks enforce IAM scope identically.
-func hasScope(c *gin.Context, need bit.Mask) bool {
-	v, ok := c.Get("permissions")
-	if !ok {
+func hasScope(c *zip.Ctx, need bit.Mask) bool {
+	v := c.Locals("permissions")
+	if v == nil {
 		return false
 	}
 	f, ok := v.(bit.Field)
 	return ok && f.Has(need)
 }
 
-func GetStore(c *gin.Context) *app.App {
-	return c.MustGet("app").(*app.App)
+func GetStore(c *zip.Ctx) *app.App {
+	return c.Locals("app").(*app.App)
 }
 
 // Site Tokens require no user id and a organization name and app name with Claims
-func ApiKeyOrAccessTokenOnly(c *gin.Context) {
+func ApiKeyOrAccessTokenOnly(c *zip.Ctx) error {
 	claims := GetClaims(c)
 	if !oauthtoken.IsApi(*claims) && !oauthtoken.IsAccess(*claims) {
-		http.Fail(c, 401, "Access Denied", nil)
-		return
+		return http.Fail(c, 401, "Access Denied", nil)
 	}
+	return c.Next()
 }
 
-func AccessTokenOnly(c *gin.Context) {
+func AccessTokenOnly(c *zip.Ctx) error {
 	claims := GetClaims(c)
 	if !oauthtoken.IsAccess(*claims) {
-		http.Fail(c, 401, "Access Denied", nil)
-		return
+		return http.Fail(c, 401, "Access Denied", nil)
 	}
+	return c.Next()
 }
 
 // Site Tokens require no user id and a organization name and app name with Claims
-func ApiKeyOnly(c *gin.Context) {
+func ApiKeyOnly(c *zip.Ctx) error {
 	claims := GetClaims(c)
 	if !oauthtoken.IsApi(*claims) {
-		http.Fail(c, 401, "Access Denied", nil)
-		return
+		return http.Fail(c, 401, "Access Denied", nil)
 	}
+	return c.Next()
 }
 
 // Customer Tokens require a user id and a organization name and app name with AccessClaims
-func CustomerTokenOnly(c *gin.Context) {
+func CustomerTokenOnly(c *zip.Ctx) error {
 	claims := GetClaims(c)
 	if !oauthtoken.IsCustomer(*claims) {
-		http.Fail(c, 401, "Access Denied", nil)
-		return
+		return http.Fail(c, 401, "Access Denied", nil)
 	}
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 	u := user.New(db)
 
 	if err := u.GetById(claims.UserId); err != nil {
-		http.Fail(c, 401, "Access Denied", err)
-		return
+		return http.Fail(c, 401, "Access Denied", err)
 	}
 
-	c.Set("user", u)
+	c.Locals("user", u)
+	return c.Next()
 }
 
-func GetUser(c *gin.Context) *user.User {
-	return c.MustGet("user").(*user.User)
+func GetUser(c *zip.Ctx) *user.User {
+	return c.Locals("user").(*user.User)
 }

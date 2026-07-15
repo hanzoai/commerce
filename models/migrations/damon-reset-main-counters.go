@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore/iface"
 	"github.com/hanzoai/commerce/log"
@@ -29,18 +29,18 @@ func MustNukeCounter2(db *ds.Datastore, tag string) {
 }
 
 var _ = New("damon-reset-main-counters",
-	func(c *gin.Context) []interface{} {
+	func(c *zip.Ctx) []interface{} {
 		orgName := "damon"
 
-		c.Set("namespace", orgName)
+		c.Locals("namespace", orgName)
 
-		db := ds.New(c)
+		db := ds.New(c.Context())
 		org := organization.New(db)
 		if _, err := org.Query().Filter("Name=", orgName).Get(); err != nil {
 			panic(err)
 		}
 
-		nsDb := ds.New(org.Namespaced(c))
+		nsDb := ds.New(org.Namespaced(c.Context()))
 		MustNukeCounter2(nsDb, "order.projected.revenue")
 		MustNukeCounter2(nsDb, "order.refunded.count")
 		MustNukeCounter2(nsDb, "order.refunded.amount")

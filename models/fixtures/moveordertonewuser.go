@@ -1,7 +1,7 @@
 package fixtures
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -11,11 +11,11 @@ import (
 	"github.com/hanzoai/commerce/models/user"
 )
 
-var _ = New("move-order-to-new-user", func(c *gin.Context) {
+var _ = New("move-order-to-new-user", func(c *zip.Ctx) {
 	oldEmail := "marktwellsa@mac.com"
 	newEmail := "marktwells@mac.com"
 
-	db := datastore.New(c)
+	db := datastore.New(c.Context())
 
 	org := organization.New(db)
 	org.MustGetById("stoned")

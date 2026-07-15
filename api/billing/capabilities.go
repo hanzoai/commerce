@@ -1,15 +1,15 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 )
 
 // GetCapabilities returns the billing platform's supported features,
 // payment methods, and currencies.
 //
 //	GET /v1/billing/capabilities
-func GetCapabilities(c *gin.Context) {
-	c.JSON(200, gin.H{
+func GetCapabilities(c *zip.Ctx) error {
+	return c.JSON(200, map[string]any{
 		"paymentMethods": []string{
 			"card",
 			"bank_account",
@@ -47,7 +47,7 @@ func GetCapabilities(c *gin.Context) {
 			"threshold",
 			"hybrid",
 		},
-		"taxCalculation":            true,
+		"taxCalculation":             true,
 		"bankTransferReconciliation": false, // future
 	})
 }

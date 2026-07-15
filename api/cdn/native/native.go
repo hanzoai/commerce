@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/datastore"
@@ -15,14 +15,13 @@ import (
 
 var jsTemplate string
 
-func Js(c *gin.Context) {
-	db := datastore.New(c)
+func Js(c *zip.Ctx) error {
+	db := datastore.New(c.Context())
 
-	id := c.Params.ByName("organizationid")
+	id := c.Param("organizationid")
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
-		http.Fail(c, 400, "Failed to get organization", err)
-		return
+		return http.Fail(c, 400, "Failed to get organization", err)
 	}
 
 	if jsTemplate == "" {
@@ -30,9 +29,9 @@ func Js(c *gin.Context) {
 		jsTemplate = string(fs.ReadFile(cwd + "/js/native.js"))
 	}
 
-	c.Writer.Header().Add("Content-Type", "application/javascript")
+	c.SetHeader("Content-Type", "application/javascript")
 
 	script := strings.Replace(jsTemplate, "%%%%%url%%%%%", config.UrlFor("analytics", "/"+org.Id()+"/"), -1)
 
-	c.String(200, script)
+	return c.String(200, script)
 }

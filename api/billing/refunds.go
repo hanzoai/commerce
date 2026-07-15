@@ -1,7 +1,7 @@
 package billing
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
@@ -21,17 +21,16 @@ type createRefundRequest struct {
 // CreateRefund creates a full or partial refund.
 //
 //	POST /v1/billing/refunds
-func CreateRefund(c *gin.Context) {
+func CreateRefund(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createRefundRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
-	r, err := engine.CreateRefund(c.Request.Context(), db, engine.CreateRefundParams{
+	r, err := engine.CreateRefund(c.Context(), db, engine.CreateRefundParams{
 		PaymentIntentId: req.PaymentIntentId,
 		InvoiceId:       req.InvoiceId,
 		Amount:          req.Amount,
@@ -39,35 +38,33 @@ func CreateRefund(c *gin.Context) {
 	}, nil) // no external processor for now
 	if err != nil {
 		log.Error("Failed to create refund: %v", err, c)
-		http.Fail(c, 400, err.Error(), err)
-		return
+		return http.Fail(c, 400, err.Error(), err)
 	}
 
-	c.JSON(201, refundResponse(r))
+	return c.JSON(201, refundResponse(r))
 }
 
 // GetRefund retrieves a refund by ID.
 //
 //	GET /v1/billing/refunds/:id
-func GetRefund(c *gin.Context) {
+func GetRefund(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	r := refund.New(db)
 	if err := r.GetById(c.Param("id")); err != nil {
-		http.Fail(c, 404, "refund not found", err)
-		return
+		return http.Fail(c, 404, "refund not found", err)
 	}
 
-	c.JSON(200, refundResponse(r))
+	return c.JSON(200, refundResponse(r))
 }
 
 // ListRefunds lists refunds, optionally filtered by paymentIntentId or invoiceId.
 //
 //	GET /v1/billing/refunds?paymentIntentId=...&invoiceId=...
-func ListRefunds(c *gin.Context) {
+func ListRefunds(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	refunds := make([]*refund.Refund, 0)
@@ -93,7 +90,7 @@ func ListRefunds(c *gin.Context) {
 	for i, r := range refunds {
 		results[i] = refundResponse(r)
 	}
-	c.JSON(200, results)
+	return c.JSON(200, results)
 }
 
 func refundResponse(r *refund.Refund) map[string]interface{} {

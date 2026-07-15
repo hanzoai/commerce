@@ -3,20 +3,22 @@ package store
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/util/json/http"
 
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
 )
 
-func setStore(c *gin.Context) error {
-	ctx := middleware.GetContext(c)
+// setStore loads the store into the request locals and returns a non-nil error
+// (having ALREADY rendered the failure via http.Fail) when it can't — the
+// payment wrappers below gate their checkout delegation on that error.
+func setStore(c *zip.Ctx) error {
+	ctx := c.Context()
 	db := datastore.New(ctx)
-	id := c.Params.ByName("storeid")
+	id := c.Param("storeid")
 
 	// Get store
 	stor := store.New(db)
@@ -26,36 +28,41 @@ func setStore(c *gin.Context) error {
 	}
 
 	// Set store and do authorize
-	c.Set("store", stor)
+	c.Locals("store", stor)
 	return nil
 }
 
-func authorize(c *gin.Context) {
+func authorize(c *zip.Ctx) error {
 	if err := setStore(c); err == nil {
-		checkoutApi.Authorize(c)
+		return checkoutApi.Authorize(c)
 	}
+	return nil
 }
 
-func capture(c *gin.Context) {
+func capture(c *zip.Ctx) error {
 	if err := setStore(c); err == nil {
-		checkoutApi.Capture(c)
+		return checkoutApi.Capture(c)
 	}
+	return nil
 }
 
-func charge(c *gin.Context) {
+func charge(c *zip.Ctx) error {
 	if err := setStore(c); err == nil {
-		checkoutApi.Charge(c)
+		return checkoutApi.Charge(c)
 	}
+	return nil
 }
 
-func confirm(c *gin.Context) {
+func confirm(c *zip.Ctx) error {
 	if err := setStore(c); err == nil {
-		checkoutApi.Confirm(c)
+		return checkoutApi.Confirm(c)
 	}
+	return nil
 }
 
-func cancel(c *gin.Context) {
+func cancel(c *zip.Ctx) error {
 	if err := setStore(c); err == nil {
-		checkoutApi.Cancel(c)
+		return checkoutApi.Cancel(c)
 	}
+	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
@@ -40,60 +40,51 @@ type refundRequest struct {
 // throughout.
 //
 //	POST /v1/billing/refund
-func Refund(c *gin.Context) {
+func Refund(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
+	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req refundRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		http.Fail(c, 400, "invalid request body", err)
-		return
+	if err := c.Bind(&req); err != nil {
+		return http.Fail(c, 400, "invalid request body", err)
 	}
 
 	req.User = strings.ToLower(strings.TrimSpace(req.User))
 	if req.User == "" {
-		http.Fail(c, 400, "user is required", nil)
-		return
+		return http.Fail(c, 400, "user is required", nil)
 	}
 
 	if req.Amount <= 0 {
-		http.Fail(c, 400, "amount must be positive", nil)
-		return
+		return http.Fail(c, 400, "amount must be positive", nil)
 	}
 	// Server-authoritative ceiling (shared with Deposit) — defense in depth.
 	if maxCents := depositMaxCents(); req.Amount > maxCents {
-		http.Fail(c, 400, fmt.Sprintf("amount %d exceeds maximum refund of %d cents", req.Amount, maxCents), nil)
-		return
+		return http.Fail(c, 400, fmt.Sprintf("amount %d exceeds maximum refund of %d cents", req.Amount, maxCents), nil)
 	}
 
 	req.OriginalTransactionID = strings.TrimSpace(req.OriginalTransactionID)
 	if req.OriginalTransactionID == "" {
-		http.Fail(c, 400, "originalTransactionId is required", nil)
-		return
+		return http.Fail(c, 400, "originalTransactionId is required", nil)
 	}
 
 	// The original MUST exist in this org's namespaced ledger. GetById returns
 	// datastore.ErrNoSuchEntity for an unknown id → 404 (never a silent mint).
 	orig := transaction.New(db)
 	if err := orig.GetById(req.OriginalTransactionID); err != nil {
-		http.Fail(c, 404, "original transaction not found", err)
-		return
+		return http.Fail(c, 404, "original transaction not found", err)
 	}
 	// Only a CHARGE is refundable. Refunding a Deposit/credit would double it.
 	if orig.Type != transaction.Withdraw {
-		http.Fail(c, 400, "original transaction is not a refundable charge", nil)
-		return
+		return http.Fail(c, 400, "original transaction is not a refundable charge", nil)
 	}
 	// The refund must return money to the party that was charged — never route
 	// one subject's charge to another subject's balance.
 	if !strings.EqualFold(strings.TrimSpace(orig.DestinationId), req.User) {
-		http.Fail(c, 400, "refund subject does not match the original transaction", nil)
-		return
+		return http.Fail(c, 400, "refund subject does not match the original transaction", nil)
 	}
 	// Bound: never refund more than was charged.
 	if req.Amount > int64(orig.Amount) {
-		http.Fail(c, 400, fmt.Sprintf("refund %d exceeds original charge of %d cents", req.Amount, int64(orig.Amount)), nil)
-		return
+		return http.Fail(c, 400, fmt.Sprintf("refund %d exceeds original charge of %d cents", req.Amount, int64(orig.Amount)), nil)
 	}
 
 	// Currency defaults to (and must match) the original charge.
@@ -105,8 +96,7 @@ func Refund(c *gin.Context) {
 		cur = "usd"
 	}
 	if orig.Currency != "" && cur != orig.Currency {
-		http.Fail(c, 400, "refund currency does not match the original transaction", nil)
-		return
+		return http.Fail(c, 400, "refund currency does not match the original transaction", nil)
 	}
 
 	// Idempotency (H1): AT MOST ONE refund per original transaction. Keyed on the
@@ -118,16 +108,14 @@ func Refund(c *gin.Context) {
 	rec, replay, gerr := idempotencykey.Begin(db, "billing-refund:"+req.User, req.OriginalTransactionID)
 	if gerr != nil {
 		log.Error("refund idempotency Begin failed (user=%s, orig=%s): %v", req.User, req.OriginalTransactionID, gerr, c)
-		http.Fail(c, 503, "refund temporarily unavailable; retry", gerr)
-		return
+		return http.Fail(c, 503, "refund temporarily unavailable; retry", gerr)
 	}
 	if replay {
 		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
-			c.Data(200, "application/json", []byte(rec.Response))
-			return
+			c.SetHeader("Content-Type", "application/json")
+			return c.Bytes(200, []byte(rec.Response))
 		}
-		http.Fail(c, 409, "a refund for this transaction is already in progress", nil)
-		return
+		return http.Fail(c, 409, "a refund for this transaction is already in progress", nil)
 	}
 
 	notes := req.Notes
@@ -156,11 +144,10 @@ func Refund(c *gin.Context) {
 		// No money moved — release the guard so a later retry is not wedged.
 		_ = rec.Delete()
 		log.Error("Failed to create refund transaction: %v", err, c)
-		http.Fail(c, 500, "failed to create refund", err)
-		return
+		return http.Fail(c, 500, "failed to create refund", err)
 	}
 
-	resp := gin.H{
+	resp := map[string]any{
 		"transactionId":         trans.Id(),
 		"user":                  req.User,
 		"amount":                req.Amount,
@@ -174,5 +161,5 @@ func Refund(c *gin.Context) {
 		_ = idempotencykey.Complete(rec, string(body))
 	}
 
-	c.JSON(201, resp)
+	return c.JSON(201, resp)
 }
