@@ -12,7 +12,6 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/transaction"
-	txutil "github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -48,22 +47,24 @@ func GetTier(c *zip.Ctx) error {
 
 	cfg := tier.Get(tierName)
 
-	// Fetch the user's prepaid balance.
+	// Spendable balance from the SAME three-bucket split the balance endpoint
+	// serves — prepaid real money AND still-active granted credits both spend
+	// (credits-first). The previous bespoke prepaid-only read silently zeroed
+	// accounts funded purely by a starter/promo grant, 402-gating orgs that
+	// hold real spendable credit.
 	cur := currency.Type("usd")
-	datas, err := txutil.GetTransactionsByCurrency(ctx, user, "iam-user", cur, org.TestMode())
+	split, err := bucketedSplit(ctx, user, cur, org.TestMode())
 	if err != nil {
 		return http.Fail(c, 500, "failed to query balance", err)
 	}
 
-	var prepaidBalance, holds currency.Cents
-	if data, ok := datas.Data[cur]; ok {
-		prepaidBalance = data.Balance
-		holds = data.Holds
-	}
-
-	prepaidAvailable := prepaidBalance - holds
+	prepaidAvailable := split.PrepaidAvailable
 	if prepaidAvailable < 0 {
 		prepaidAvailable = 0
+	}
+	spendable := split.Available
+	if spendable < 0 {
+		spendable = 0
 	}
 
 	// Daily replenishing credit. This is 0 for every tier (there is no free
@@ -80,7 +81,7 @@ func GetTier(c *zip.Ctx) error {
 		}
 	}
 
-	effectiveAvailable := int64(prepaidAvailable) + dailyRemaining
+	effectiveAvailable := int64(spendable) + dailyRemaining
 
 	return c.JSON(200, map[string]any{
 		"user": user,
@@ -95,6 +96,7 @@ func GetTier(c *zip.Ctx) error {
 		"balance": map[string]any{
 			"currency":           cur,
 			"prepaidAvailable":   prepaidAvailable,
+			"creditsRemaining":   split.CreditsRemaining,
 			"dailyRemaining":     dailyRemaining,
 			"effectiveAvailable": effectiveAvailable,
 		},
