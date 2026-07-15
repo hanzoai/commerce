@@ -17,10 +17,12 @@ images:
     context: .
     dockerfile: Dockerfile.production
     repo: ghcr.io/hanzoai/commerce
-  # Admin console (deployed as commerce-admin).
+  # Admin console (deployed as commerce-admin). From-source build (v0.2.0+):
+  # Dockerfile.commerce-admin builds app/admin (@hanzo/commerce-dashboard) and serves
+  # the export via hanzoai/static — the same Dockerfile the in-cluster buildkit uses.
   - name: commerce-admin
     context: .
-    dockerfile: Dockerfile.admin
+    dockerfile: Dockerfile.commerce-admin
     repo: ghcr.io/hanzoai/commerce-admin
   # Marketing/storefront site (deployed as commerce-site, hanzoai/static plugin).
   - name: commerce-site
