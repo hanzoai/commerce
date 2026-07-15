@@ -19,7 +19,7 @@ ENV GOPRIVATE=github.com/hanzoai/*
 COPY . .
 
 # Remove local replace directives and use pseudo-version for production build.
-# --mount=type=secret,id=gh_token authenticates `go mod tidy` to private
+# --mount=type=secret,id=gh_token authenticates `go mod download` to private
 # hanzoai/* repos. The credential is written to an in-layer GIT_CONFIG_GLOBAL
 # that is deleted within the SAME RUN, so no token is ever baked into any layer.
 RUN --mount=type=secret,id=gh_token \
@@ -27,12 +27,7 @@ RUN --mount=type=secret,id=gh_token \
     if [ -s /run/secrets/gh_token ]; then \
       git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
     fi && \
-    sed -i '/replace.*\.\.\/datastore-go/d' go.mod && \
-    sed -i '/replace.*\.\/replace/d' go.mod && \
-    sed -i 's|github.com/hanzoai/datastore-go v0.0.0|github.com/hanzoai/datastore-go v0.0.0-20260120034535-2235a0b544a2|g' go.mod && \
-    cat go.mod && \
-    rm -f go.sum && \
-    go mod tidy && \
+    go mod download && \
     rm -f /tmp/gitconfig
 
 # Hydrate @hanzo/plans (public npm, no auth) — api/billing/plans.go go:embed's
