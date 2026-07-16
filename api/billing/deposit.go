@@ -8,18 +8,13 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/mintauth"
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	. "github.com/hanzoai/commerce/types"
 )
 
 // depositMaxCents is the server-authoritative ceiling on a SINGLE Deposit/Refund,
@@ -191,119 +186,4 @@ func Deposit(c *zip.Ctx) error {
 	}
 
 	return c.JSON(201, resp)
-}
-
-// GrantStarterCredit creates a $100 USD starter credit for a new org.
-// The credit expires after 365 days if unused. Tagged "starter-credit"
-// so it can be identified in transaction history.
-//
-// No payment method is required — the starter credit is the on-signup grant
-// that lets a new org evaluate the platform before adding a card. A verified
-// payment method is required only to top up BEYOND the starter credit.
-// Idempotent: deduped by the starter-credit tag.
-//
-//	POST /v1/billing/credit
-func GrantStarterCredit(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
-	// Central ledger, org-scoped by namespace (see Deposit above).
-	db := datastore.New(org.Namespaced(c.Context()))
-
-	var req struct {
-		User string `json:"user"`
-	}
-	if err := c.Bind(&req); err != nil {
-		return http.Fail(c, 400, "invalid request body", err)
-	}
-
-	req.User = strings.ToLower(strings.TrimSpace(req.User))
-	if req.User == "" {
-		return http.Fail(c, 400, "user is required", nil)
-	}
-
-	// Step 4: chain-backed path mints the welcome credit on-chain (idempotent by
-	// the deterministic welcome key → one grant per subject, ever), replacing the
-	// tag-dedupe DB write. The SAME key is shared by /me/welcome and /grant-starter
-	// so no subject can be double-granted across the three welcome endpoints.
-	if chainCreditEnabled() {
-		rc, err := chainMintCredit(c, org, req.User, int64(credit.StarterCreditCents), treasury.BucketCredit,
-			"welcome-credit", welcomeMintKey(org, req.User))
-		if err != nil {
-			log.Error("chain welcome credit mint failed for %s: %v", req.User, err, c)
-			return http.Fail(c, 502, "on-chain welcome credit mint failed", err)
-		}
-		status := 201
-		if rc.Replayed {
-			status = 200 // already granted — matches the DB path's idempotent shape
-		}
-		return c.JSON(status, map[string]any{
-			"user":     req.User,
-			"granted":  !rc.Replayed,
-			"amount":   credit.StarterCreditCents,
-			"currency": "usd",
-			"onChain":  true,
-			"txHash":   rc.TxHash,
-		})
-	}
-
-	rootKey := db.NewKey("synckey", "", 1, nil)
-
-	// No payment-method gate: the starter credit is grantable WITHOUT a card.
-	// A verified payment method is required only for top-up beyond the starter
-	// credit (see TopupWithToken/Topup). The tag dedupe below still prevents
-	// double-dipping.
-
-	// Check if starter credit was already granted (prevent double-dipping).
-	existingTrans := make([]*transaction.Transaction, 0)
-	tq := transaction.Query(db).Ancestor(rootKey).
-		Filter("DestinationId=", req.User).
-		Filter("Tags=", credit.StarterCreditTag)
-	if _, err := tq.Limit(1).GetAll(&existingTrans); err == nil && len(existingTrans) > 0 {
-		// Idempotent no-op: the starter credit is one-per-user, so a repeat
-		// claim is an expected outcome, not a failure. Return 200 (matching
-		// PostMyWelcome's already-granted shape) instead of 409 so the billing
-		// UI's on-load claim doesn't surface a red error in the browser console
-		// for users who already have their credit.
-		return c.JSON(200, map[string]any{
-			"user":    req.User,
-			"granted": false,
-			"reason":  "already_granted",
-		})
-	}
-
-	trans := transaction.New(db)
-	trans.Type = transaction.Deposit
-	trans.DestinationId = req.User
-	trans.DestinationKind = "iam-user"
-	trans.Currency = "usd"
-	trans.Amount = currency.Cents(credit.StarterCreditCents)
-	trans.Notes = "Welcome credit: $100.00 USD (expires in 365 days)"
-	trans.Tags = credit.StarterCreditTag
-	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
-	trans.Metadata = Map{
-		"creditType": "starter",
-		"expiryDays": credit.StarterCreditDays,
-	}
-
-	if org.TestMode() {
-		trans.Test = true
-	}
-
-	// Server-FIXED (StarterCreditCents), tag-idempotent welcome credit to the
-	// caller's OWN subject — amount not attacker-controlled — so authorize this
-	// write at the ledger sink.
-	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
-	if err := trans.Create(); err != nil {
-		log.Error("Failed to grant starter credit: %v", err, c)
-		return http.Fail(c, 500, "failed to grant starter credit", err)
-	}
-
-	return c.JSON(201, map[string]any{
-		"transactionId": trans.Id(),
-		"user":          req.User,
-		"amount":        credit.StarterCreditCents,
-		"currency":      "usd",
-		"type":          "deposit",
-		"tags":          credit.StarterCreditTag,
-		"expiresAt":     trans.ExpiresAt,
-	})
 }
