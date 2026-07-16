@@ -366,13 +366,49 @@ Code: `db/encryption.go` (key posture + per-tenant DEK), `db/migrate.go` (migrat
 | `/api/v1/billing/balance` | GET | Balance by user+currency (cents) |
 | `/api/v1/billing/balance/all` | GET | All currency balances |
 | `/api/v1/billing/usage` | POST | Record API usage (withdraw) |
-| `/api/v1/billing/deposit` | POST | Create deposit transaction |
-| `/api/v1/billing/credit` | POST | Grant starter credit ($100, 365-day expiry, no card required) |
+| `/api/v1/billing/deposit` | POST | Create deposit transaction (per-subject money-in / settlement) |
+| `/api/v1/billing/credit` | POST | THE ONE mint-gated, org-keyed credit grant (see below) |
 | `/api/v1/billing/zap` | POST | Clear balance |
 
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
 
 **Current org**: `hanzo` (ID: `gzh2BOBnV6gKZQ0CP`)
+
+## One way to grant credit — POST /v1/billing/credit (2026-07-16)
+
+`POST /v1/billing/credit` is the ONLY way credit enters an org ledger. It is
+**mint-gated** (`middleware.PlatformOnly` / `mintRequired`): only the internal
+service token OR a global admin (`owner=="admin"`) reaches it — every
+self-service / org-owner / no-auth caller is 403/401. A client-supplied mint
+amount must never be self-service; that is the money-critical core (a user cannot
+credit itself). Body: `{org, amountCents, reason, tag?, currency?, expiresAt?, idempotencyKey?}`,
+org-keyed (the org POOL account, not a per-human subject), idempotent on
+`idempotencyKey`.
+
+Consolidated three prior handlers into this one: deleted self-service
+`GrantStarterCredit` (old `/credit`), `PostMyWelcome` (`/me/welcome`), and
+`GrantStarter` (`/grant-starter`). "Starter credit" is now a PARAMETERIZED call
+(`tag=starter-credit`, `amountCents=500`, `expiry=+365d`) driven by the
+`billing/credit` constants (reduced to data-only). The mint-surface guard
+(`api/billing/mint_surface_test.go`) proves `/credit` is the sole gated credit
+entry point.
+
+**Backing = injected double-entry ledger (`billing/creditledger`).** Commerce runs
+embedded in the cloud binary, where the AI spend-gate reads cloud's native
+ledgercore. Commerce must NOT import cloud, so the host injects a
+`creditledger.CreditLedger` via `EmbedConfig.Ledger` (`embed.go` →
+`creditledger.Set`). When set, `Credit` and `GetBalance` route to it — a credit
+lands in the SAME per-org account the gate reads (one ledger, no split). When nil
+(standalone), both fall back to commerce's own datastore (tagged `Deposit`). The
+interface is compiler-enforced; cloud implements a ~40-line ledgercore adapter.
+
+```go
+type CreditLedger interface {
+    Credit(ctx, CreditInput) (txID string, balanceCents int64, err error)
+    Balance(ctx, org, currency string) (availableCents int64, err error)
+}
+type CreditInput struct { Org, Currency, Reason, Tag, IdempotencyKey string; AmountCents int64; ExpiresAt *time.Time }
+```
 
 ## Cross-Compilation (2026-02-23)
 
