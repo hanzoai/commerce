@@ -54,15 +54,6 @@ func chainMintCredit(c *zip.Ctx, org *organization.Organization, subject string,
 	})
 }
 
-// welcomeMintKey is the DETERMINISTIC idempotency key for a subject's one-time
-// welcome/starter credit. It is shared by GrantStarterCredit (/credit),
-// PostMyWelcome (/me/welcome), and GrantStarter (/grant-starter) so the welcome
-// is minted AT MOST ONCE per subject across ALL three endpoints, regardless of
-// which fires first — the on-chain analogue of the starter-credit tag dedupe.
-func welcomeMintKey(org *organization.Organization, subject string) string {
-	return "welcome:" + org.Namespace() + ":" + subject
-}
-
 // randomIdemKey returns a fresh idempotency key for a mint that carries no
 // caller-supplied key, so distinct deposits (e.g. repeated settlements to the
 // same user) each mint exactly once and never collapse onto one on-chain tx.
