@@ -61,7 +61,7 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// middleware.GetOrganization(c) needs the "organization" gin key
 	// populated. The store-backed setupRoutes path only wires
 	// IAMTokenRequired() on /v1/commerce/* (commerce.go:823); when the
-	// gateway hits /v1/billing/me/welcome (or any other /v1/billing/*
+	// gateway hits /v1/billing/me/balance (or any other /v1/billing/*
 	// path) with X-Org-Id headers, accesstoken middleware skips
 	// (gateway-trusted, no DB token), the organization key never gets
 	// set, and middleware.GetOrganization panics with "key organization
