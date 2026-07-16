@@ -7,9 +7,12 @@
 // transfer — and verifies the resulting transaction on-chain.
 //
 // It is gated behind the `onchain` build tag so it never runs in normal CI;
-// it needs a funded treasury and a reachable RPC. The blank import below
-// registers the EVM ERC-20 transfer implementation (the same wiring the
-// commerced daemon needs in production).
+// it needs a funded treasury and a reachable RPC. It also needs an ERC-20
+// transfer implementation registered via blockchain.RegisterTokenTransfer —
+// the same link-time wiring cmd/commerced needs in production. No such
+// implementation lives in this module yet (the planned luxfi/cevm sub-module
+// was never landed), so until one is registered the test compiles and SKIPS
+// with ErrNoTokenTransfer rather than lying about on-chain proof.
 //
 // Run:
 //
@@ -23,6 +26,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/big"
 	"net/http"
@@ -32,12 +36,7 @@ import (
 	"time"
 
 	contribModel "github.com/hanzoai/commerce/models/contributor"
-
-	// Register the EVM ERC-20 transfer implementation into util/blockchain.
-	// Without this blank import, blockchain.TransferToken returns
-	// ErrNoTokenTransfer — this is exactly what cmd/commerced must import in
-	// production to execute on-chain HUSD payouts.
-	_ "github.com/hanzoai/commerce/luxfi/cevm"
+	"github.com/hanzoai/commerce/util/blockchain"
 )
 
 func TestOnChainHUSDPayout_Testnet(t *testing.T) {
@@ -78,6 +77,9 @@ func TestOnChainHUSDPayout_Testnet(t *testing.T) {
 	t.Logf("recipient HUSD before: %s", balBefore)
 
 	txHash, err := executeCryptoPayout(context.Background(), c, alloc, cfg)
+	if errors.Is(err, blockchain.ErrNoTokenTransfer) {
+		t.Skipf("no ERC-20 transfer implementation registered (blockchain.RegisterTokenTransfer) — cannot prove on-chain: %v", err)
+	}
 	if err != nil {
 		t.Fatalf("executeCryptoPayout: %v", err)
 	}
