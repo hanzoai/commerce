@@ -300,6 +300,11 @@ type Plan struct {
 	PriceMonth  int64
 	PriceYear   int64
 	Currency    string
+	// Limited-time promo carried on the plan: percent off through PromoUntil
+	// (RFC3339). The pricing UI derives the effective price from these — the plan
+	// is the single source of truth, no separate discount lookup.
+	PromoPercent float64
+	PromoUntil   string
 }
 
 // StaticPlans returns a snapshot of the embedded plan catalog as the
@@ -332,12 +337,14 @@ func LookupStaticPlan(slug string) *Plan {
 // StaticPlans and LookupStaticPlan.
 func toPlan(p *staticPlan) Plan {
 	return Plan{
-		Slug:        p.Slug,
-		Name:        p.Name,
-		Description: p.Description,
-		Category:    p.Category,
-		PriceMonth:  p.Price,
-		PriceYear:   p.PriceAnnual,
-		Currency:    p.Currency,
+		Slug:         p.Slug,
+		Name:         p.Name,
+		Description:  p.Description,
+		Category:     p.Category,
+		PriceMonth:   p.Price,
+		PriceYear:    p.PriceAnnual,
+		Currency:     p.Currency,
+		PromoPercent: p.PromoPercent,
+		PromoUntil:   p.PromoUntil,
 	}
 }
