@@ -851,14 +851,6 @@ func (app *App) Bootstrap() error {
 		app.runCatalogSeed()
 	}
 
-	// Billing-account backfill — ensure every org has a first-class BillingAccount
-	// + org→account Binding (idempotent, boot-safe, mirrors IAM's default-project
-	// backfill). Cheap no-op once every org is seeded. Set
-	// COMMERCE_BILLING_BACKFILL=false to skip.
-	if getEnv("COMMERCE_BILLING_BACKFILL", "true") != "false" {
-		app.runBillingAccountBackfill()
-	}
-
 	// Anti-spoofing boundary — MUST be installed before any route group so it
 	// wraps EVERY route. zip applies Use() middleware only to routes
 	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
@@ -901,20 +893,6 @@ func (app *App) runCatalogSeed() {
 	}
 }
 
-// runBillingAccountBackfill seeds a BillingAccount + org→account Binding for
-// every existing org (idempotent, boot-safe). Failures are logged, never fatal —
-// resolveBilling falls back to the anchor subject until an org is backfilled, so
-// money keeps flowing regardless.
-func (app *App) runBillingAccountBackfill() {
-	created, err := billingPkg.BackfillBillingAccounts(context.Background())
-	if err != nil {
-		slog.Error("billing account backfill failed", "err", err)
-		return
-	}
-	if created > 0 {
-		slog.Info("billing accounts backfilled", "created", created)
-	}
-}
 
 // logged but do not abort bootstrap — the service remains usable without
 // Stripe catalog parity in degraded environments.
