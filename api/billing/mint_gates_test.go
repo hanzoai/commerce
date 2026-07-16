@@ -9,19 +9,17 @@ package billing
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"github.com/hanzoai/commerce/models/organization"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
+
+	"github.com/hanzoai/commerce/models/organization"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
-	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/util/bit"
@@ -273,114 +271,8 @@ func TestAllotment_ServiceTokenMayNameAnyPlan(t *testing.T) {
 	}
 }
 
-// ── /me/welcome TOCTOU ──────────────────────────────────────────────────────
-
-// TestWelcome_ConcurrentGrantsCreditOnce proves the [LOW] TOCTOU is closed: N
-// concurrent first-time welcome grants credit the subject AT MOST ONCE. The
-// deterministic key collapses concurrent creates onto one row (ON CONFLICT), so
-// the final balance is exactly one $100 credit, never 2×.
-func TestWelcome_ConcurrentGrantsCreditOnce(t *testing.T) {
-	const tok = "svc-welcome"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
-	ctx := ae.NewContext()
-	defer ctx.Close()
-
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
-
-	// The welcome credit now requires a chargeable card on file (it is real money;
-	// without the card, open signup turns it into a faucet). Seed one for the
-	// subject so this test still exercises the TOCTOU invariant it is about.
-	seedCardOnFile(t, eng, tok, "welcomeorg")
-
-	const n = 8
-	var wg sync.WaitGroup
-	wg.Add(n)
-	for i := 0; i < n; i++ {
-		go func() {
-			defer wg.Done()
-			req := httptest.NewRequest(http.MethodPost, "/v1/billing/me/welcome", bytes.NewBufferString(`{}`))
-			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set("Authorization", "Bearer "+tok)
-			req.Header.Set("X-Org-Id", "welcomeorg")
-			_, _ = eng.Fiber().Test(req)
-		}()
-	}
-	wg.Wait()
-
-	// The money invariant: balance == exactly one starter credit, never doubled.
-	req := httptest.NewRequest(http.MethodGet, "/v1/billing/me/balance?currency=usd", nil)
-	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("X-Org-Id", "welcomeorg")
-	resp, terr := eng.Fiber().Test(req)
-	if terr != nil {
-		t.Fatalf("Test: %v", terr)
-	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("me/balance: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
-	}
-	var out map[string]any
-	raw := respBodyStr(resp)
-	if err := json.Unmarshal([]byte(raw), &out); err != nil {
-		t.Fatalf("bad balance response: %v (%s)", err, raw)
-	}
-	balance, _ := out["balance"].(float64)
-	if int64(balance) != credit.StarterCreditCents {
-		t.Fatalf("after %d concurrent welcomes, balance=%d cents, want exactly %d (one credit, no double-mint)",
-			n, int64(balance), credit.StarterCreditCents)
-	}
-}
-
-// seedCardOnFile vaults a chargeable card through the SAME HTTP surface the
-// welcome handler reads, so the card lands on whatever subject/namespace the
-// middleware resolves — no guessing at org namespacing in the fixture.
-func seedCardOnFile(t *testing.T, eng *zip.App, tok, org string) {
-	t.Helper()
-	body := fmt.Sprintf(`{"customerId":%q,"type":"card","isDefault":true,"providerRef":"sq-card-test","card":{"brand":"visa","last4":"4242","expMonth":12,"expYear":2032}}`, org)
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/payment-methods", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("X-Org-Id", org)
-	resp, terr := eng.Fiber().Test(req)
-	if terr != nil {
-		t.Fatalf("Test: %v", terr)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		t.Fatalf("seed payment method: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
-	}
-}
-
-// TestWelcome_RequiresPaymentMethod locks the offering: no card on file => no
-// starter credit (200 granted=false), so a bot farm cannot mint accounts and
-// drain the credit pool. Free tier = run the OSS bot with your own keys.
-func TestWelcome_RequiresPaymentMethod(t *testing.T) {
-	const tok = "svc-welcome-nopm"
-	t.Setenv("COMMERCE_SERVICE_TOKEN", tok)
-	ctx := ae.NewContext()
-	defer ctx.Close()
-
-	eng := engineWithSeed(func(c *zip.Ctx) { c.SetContext(ctx) })
-
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/me/welcome", bytes.NewBufferString(`{}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("X-Org-Id", "nocardorg")
-	resp, terr := eng.Fiber().Test(req)
-	if terr != nil {
-		t.Fatalf("Test: %v", terr)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("welcome without a card: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
-	}
-	var out map[string]any
-	raw := respBodyStr(resp)
-	if err := json.Unmarshal([]byte(raw), &out); err != nil {
-		t.Fatalf("bad welcome response: %v (%s)", err, raw)
-	}
-	if granted, _ := out["granted"].(bool); granted {
-		t.Fatal("welcome credit granted with NO payment method on file — the credit is a faucet")
-	}
-	if reason, _ := out["reason"].(string); reason != "payment_method_required" {
-		t.Fatalf("reason = %q, want payment_method_required", reason)
-	}
-}
+// The former /me/welcome mint surface (self-service welcome credit) was DELETED
+// in the "one way to grant credit" consolidation: credit now enters an org ledger
+// ONLY via the mint-gated POST /v1/billing/credit (see credit_test.go), so a user
+// can no longer self-mint even the fixed starter amount. The TOCTOU / faucet
+// invariants those tests protected are obsolete — the route is gone.
