@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hanzoai/account"
 	"github.com/hanzoai/commerce/metering"
 )
 
@@ -93,8 +94,17 @@ func TestMiddleware_GatesAndRecords(t *testing.T) {
 	if n != 1 || amt != 7 {
 		t.Fatalf("recorded (count=%d amount=%d), want (1, 7)", n, amt)
 	}
-	if usr != "hanzo" {
-		t.Errorf("recorded user = %q, want hanzo (per-org billing key, not org/sub)", usr)
+	// gatewayReq is a person in the SHARED SIGNUP org, who holds their own account:
+	// its members are strangers, not a team, so a shared org is not a shared wallet.
+	// This asserted "hanzo" — the org pool — while ai's gate debited "hanzo/alice",
+	// which is the funded-pool-then-402 split. The account is whatever the one rule
+	// says, so assert against the rule rather than restating a premise it disproved.
+	want := account.Payer(account.Credential{Owner: "hanzo", Name: "alice"}).Subject()
+	if usr != want {
+		t.Errorf("recorded user = %q, want %q (the account the shared rule resolves)", usr, want)
+	}
+	if usr == "hanzo" {
+		t.Errorf("recorded user = %q — the org pool, but this caller's usage is debited from their own account", usr)
 	}
 }
 
@@ -203,22 +213,51 @@ func TestMiddleware_OnlyChargesSuccess(t *testing.T) {
 	}
 }
 
-func TestIdentityFromGatewayHeaders_PerOrgBillingKey(t *testing.T) {
-	// Prepaid billing is per-org: the billing key (User) is the ORG slug, the
-	// full org/sub is recorded as Actor for audit. Keying per-user would gate
-	// an empty per-user ledger and deny a funded org (the bug this guards).
+func TestIdentityFromGatewayHeaders_RealOrgPools(t *testing.T) {
+	// A real tenant pools: every member spends the one org balance, so the billing
+	// key (User) is the org slug and the full org/sub is Actor, for audit only.
+	// Keying THIS caller per-user would gate an empty per-user ledger and deny a
+	// funded org — the bug this guards, and the reason the rule is not "always the
+	// person" either. Which of the two applies is not this middleware's opinion.
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set(metering.HeaderOrgID, "zoo")
 	r.Header.Set(metering.HeaderUserID, "bob")
 	in := metering.IdentityFromGatewayHeaders(r)
 	if in.User != "zoo" {
-		t.Errorf("User (billing key) = %q, want zoo (org slug, per-org billing)", in.User)
+		t.Errorf("User (billing key) = %q, want zoo (a real org pools)", in.User)
 	}
 	if in.Actor != "zoo/bob" {
 		t.Errorf("Actor (audit) = %q, want zoo/bob", in.Actor)
 	}
 	if in.Org != "zoo" {
 		t.Errorf("Org = %q, want zoo", in.Org)
+	}
+}
+
+// TestIdentityFromGatewayHeaders_AgreesWithTheGate is the anti-regression proof:
+// whatever this middleware keys, the gate that authorizes the request and the
+// ledger that records it must key the SAME account. They agree because there is
+// one function, not because two copies were kept in step.
+func TestIdentityFromGatewayHeaders_AgreesWithTheGate(t *testing.T) {
+	for _, tc := range []struct{ org, sub, claim string }{
+		{"zoo", "bob", ""},                      // a real org pools
+		{"hanzo", "alice", ""},                  // a signup-org person holds their own
+		{"acme", "bob", "person:acme/bob"},      // the claim names a person
+		{"hanzo", "alice", "org:hanzo"},         // the claim names the pool
+		{"acme", "bob", "project:acme/website"}, // the claim names a project
+	} {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Set(metering.HeaderOrgID, tc.org)
+		r.Header.Set(metering.HeaderUserID, tc.sub)
+		if tc.claim != "" {
+			r.Header.Set(metering.HeaderAccount, tc.claim)
+		}
+		got := metering.IdentityFromGatewayHeaders(r).User
+		want := account.Payer(account.Credential{Owner: tc.org, Name: tc.sub, Account: tc.claim}).Subject()
+		if got != want {
+			t.Errorf("org=%q sub=%q claim=%q: metering keys %q, the gate keys %q — fund one, 402 off the other",
+				tc.org, tc.sub, tc.claim, got, want)
+		}
 	}
 }
 

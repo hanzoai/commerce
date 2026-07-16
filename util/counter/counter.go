@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -207,23 +206,6 @@ func IncreaseShards(c context.Context, name string, n int) error {
 	}, nil)
 }
 
-// fatalUnlessDBClosing reports whether err was the database closing under an
-// async task. database/sql returns exactly "database is closed" after Close()
-// — the process is shutting down (pod stop, test teardown) and the delayed
-// increment raced the close; dropping one counter tick is correct, panicking
-// the whole process is not. Any other error keeps the existing fail-fast panic.
-func fatalUnlessDBClosing(c context.Context, err error) bool {
-	if err == nil {
-		return false
-	}
-	if strings.Contains(err.Error(), "database is closed") {
-		log.Warn("IncrementByTask dropped, db closing: %v", err, c)
-		return true
-	}
-	log.Panic("IncrementByTask Error %v", err, c)
-	return true
-}
-
 var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
@@ -244,8 +226,8 @@ func init() {
 			return err
 		}, nil)
 		err = datastore.IgnoreFieldMismatch(err)
-		if fatalUnlessDBClosing(c, err) {
-			return
+		if err != nil {
+			log.Panic("IncrementByTask Error %v", err, c)
 		}
 		var s Shard
 		err = datastore.RunInTransaction(c, func(txDb *datastore.Datastore) error {
@@ -277,8 +259,8 @@ func init() {
 			return
 		}
 		err = datastore.IgnoreFieldMismatch(err)
-		if fatalUnlessDBClosing(c, err) {
-			return
+		if err != nil {
+			log.Panic("IncrementByTask Error %v", err, c)
 		}
 		cache.IncrementExisting(c, memcacheKey(name), int64(amount))
 	})
