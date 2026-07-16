@@ -662,39 +662,34 @@ var _ = Describe("billing", Ordered, func() {
 			Expect((*res)["type"]).To(Equal("deposit"))
 		})
 
-		It("Should grant starter credit without a payment method", func() {
-			// The starter credit is the on-signup welcome grant — grantable
-			// WITHOUT a card (a verified payment method gates top-up BEYOND it,
-			// never the grant itself). First claim for a fresh user -> 201.
+		It("Should append an org credit grant (the ONE mint-gated primitive)", func() {
+			// POST /billing/credit is the ONLY way credit enters an org ledger.
+			// It is org-keyed (credit the ACCOUNT/pool, not a per-human subject)
+			// and mint-gated; the suite calls it as the internal service token —
+			// the production caller (cloud-api). "starter" is just these params.
 			w := cl.PostJSON("/billing/credit", map[string]interface{}{
-				"user": "hanzo/charlie",
+				"org":         org.Name,
+				"amountCents": 500,
+				"reason":      "welcome",
+				"tag":         "starter-credit",
 			})
 			Expect(w.Code).To(Equal(201))
 		})
 
-		It("Should be idempotent — a repeat claim returns already-granted", func() {
-			// A payment method is orthogonal to the starter grant (the card
-			// gates top-up, not the welcome credit). charlie was already
-			// credited above, so a repeat claim — even right after adding a
-			// card — is an idempotent no-op (200), never a double-grant.
-			pmReq := map[string]interface{}{
-				"customerId": "hanzo/charlie",
-				"type":       "card",
-				"card": map[string]interface{}{
-					"brand":    "visa",
-					"last4":    "4242",
-					"expMonth": 12,
-					"expYear":  2028,
-				},
+		It("Should be idempotent on idempotencyKey — a repeat is one grant", func() {
+			// Same idempotencyKey twice ⇒ AT MOST ONE grant; the second call
+			// replays the first grant verbatim (200), never a double-mint.
+			body := map[string]interface{}{
+				"org":            org.Name,
+				"amountCents":    250,
+				"reason":         "promo",
+				"idempotencyKey": "promo-2026-once",
 			}
-			pmRes := &map[string]interface{}{}
-			cl.Post("/billing/payment-methods", pmReq, pmRes)
-			Expect((*pmRes)["id"]).NotTo(BeEmpty())
+			first := cl.PostJSON("/billing/credit", body)
+			Expect(first.Code).To(Equal(201))
 
-			w := cl.PostJSON("/billing/credit", map[string]interface{}{
-				"user": "hanzo/charlie",
-			})
-			Expect(w.Code).To(Equal(200)) // already granted -> idempotent no-op
+			second := cl.PostJSON("/billing/credit", body)
+			Expect(second.Code).To(Equal(200)) // replayed existing grant, no second credit
 		})
 
 		It("Should create a refund", func() {
