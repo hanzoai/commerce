@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.2.0
+	github.com/zap-proto/zip v1.8.3
 )
 
 require (
@@ -135,6 +135,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.70.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/zap-proto/fiber/v3 v3.2.1 // indirect
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.2.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
