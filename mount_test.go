@@ -105,6 +105,67 @@ func TestMount_GinSurfaceReachable(t *testing.T) {
 	}
 }
 
+// TestMount_NoUngatedTypedOpSurface is a TRIPWIRE, not a feature test.
+//
+// zip auto-derives an MCP tool surface from the typed-op registry and mounts it
+// at /mcp — "enabled by default", installed by prepare() whenever len(app.ops)
+// > 0 (zip/mcp.go). Every typed op becomes a tool whose tools/call runs the op's
+// invoke core DIRECTLY. That path does not traverse the Fiber route chain, so
+// NO transport middleware runs on it — including the money-mint gate.
+//
+// Concretely: registering Deposit as a zip.Post[In,Out] would publish
+// billing.deposit as an MCP tool that any caller can invoke with no credential,
+// while middleware.PlatformOnly (mounted as route middleware) never fires. That
+// mints unbounded spendable balance — the exact real-money-GA hole PlatformOnly
+// exists to close.
+//
+// The only seam that gates the invoke core is App.Authorize (zip/authorize.go),
+// which runs over REST and MCP alike. It landed in zip v1.8.3; NO earlier
+// version — including the v1.8.2 the cloud binary pins — can gate a typed op at
+// all. Authorize is also a single app-level slot (a setter, not an appender), so
+// on a shared App the LAST subsystem to call it silently wins.
+//
+// Commerce therefore contributes ZERO typed ops today: its surface is the gin
+// engine behind AdaptNetHTTP, whose middleware chain is intact. This test pins
+// that. It fails the moment commerce registers a typed op — at which point the
+// author MUST prove the money ops are gated at the invoke seam (App.Authorize on
+// zip >= v1.8.3, or MCP disabled) before deleting this guard.
+func TestMount_NoUngatedTypedOpSurface(t *testing.T) {
+	app := zip.New(zip.Config{Logger: luxlog.New("test")})
+	deps := cloud.Deps{
+		Logger:  luxlog.New("test"),
+		Brand:   "hanzo",
+		Domain:  "api.hanzo.ai",
+		DataDir: t.TempDir(),
+	}
+	if err := Mount(app, deps); err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+
+	// Install the deferred projections (OpenAPI + MCP) exactly as a served app
+	// does. zip mounts /mcp here iff at least one typed op is registered.
+	app.Prepare()
+
+	req := httptest.NewRequest("POST", "/mcp",
+		strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatalf("Fiber Test: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 404 {
+		raw, _ := io.ReadAll(resp.Body)
+		t.Fatalf("commerce.Mount now registers typed zip ops: /mcp answered %d (%s).\n"+
+			"Every typed op is an MCP tool whose tools/call BYPASSES route middleware —\n"+
+			"so middleware.PlatformOnly does NOT gate it. Before removing this guard,\n"+
+			"gate the money ops at the invoke seam via app.Authorize (zip >= v1.8.3)\n"+
+			"and prove an unauthenticated tools/call of a mint op is refused.",
+			resp.StatusCode, strings.TrimSpace(string(raw)))
+	}
+}
+
 func registryContains(name string) bool {
 	for _, s := range cloud.Registry {
 		if s.Name == name {
