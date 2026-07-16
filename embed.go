@@ -18,6 +18,8 @@ import (
 	"log/slog"
 
 	"github.com/zap-proto/zip"
+
+	"github.com/hanzoai/commerce/billing/creditledger"
 )
 
 // EmbedConfig configures the in-process Commerce server. Empty values
@@ -38,6 +40,13 @@ type EmbedConfig struct {
 	// SPA root catch-all, Listen). nil → commerce builds its own app and
 	// serves standalone.
 	App *zip.App
+
+	// Ledger is the host-injected double-entry credit ledger. When the cloud
+	// binary embeds commerce it passes a ledgercore-backed impl here, so
+	// POST /v1/billing/credit and GET /v1/billing/balance route to the SAME
+	// per-org account the AI spend-gate reads (one ledger, no split). nil →
+	// commerce falls back to its own datastore (standalone-safe).
+	Ledger creditledger.CreditLedger
 }
 
 // Embedded is the handle to a running in-process Commerce server. The
@@ -79,6 +88,11 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 		appCfg.RequireIdentity = true
 	}
 	appCfg.SharedApp = cfg.App
+
+	// Install the host-injected credit ledger (process-wide) BEFORE routes are
+	// registered, so the billing credit + balance handlers resolve it. nil is a
+	// no-op: commerce keeps its datastore path (standalone-safe).
+	creditledger.Set(cfg.Ledger)
 
 	app := NewWithConfig(appCfg)
 
