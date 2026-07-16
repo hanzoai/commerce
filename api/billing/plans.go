@@ -31,6 +31,9 @@ type canonicalPlan struct {
 	Description  string   `json:"description"`
 	PriceMonthly *float64 `json:"priceMonthly"` // dollars per month (null for custom)
 	PriceAnnual  *float64 `json:"priceAnnual"`  // dollars per month billed annually (null for custom)
+	// Limited-time promo: PromoPercent off the list price through PromoUntil (RFC3339).
+	PromoPercent *float64 `json:"promoPercent,omitempty"`
+	PromoUntil   *string  `json:"promoUntil,omitempty"`
 	Category     string   `json:"category"`
 	Popular      bool     `json:"popular,omitempty"`
 	ContactSales bool     `json:"contactSales,omitempty"`
@@ -76,12 +79,15 @@ type canonicalPlan struct {
 // staticPlan is the wire type returned by GET /billing/plans.
 // Fields match the Plan type in the billing frontend's commerce-client.ts.
 type staticPlan struct {
-	Slug            string   `json:"slug"`
-	Name            string   `json:"name"`
-	Description     string   `json:"description"`
-	Category        string   `json:"category"`
-	Price           int64    `json:"price"`       // monthly price in cents (0 = free)
-	PriceAnnual     int64    `json:"priceAnnual"` // annual price in cents per month
+	Slug        string `json:"slug"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	Price       int64  `json:"price"`       // monthly price in cents (0 = free)
+	PriceAnnual int64  `json:"priceAnnual"` // annual price in cents per month
+	// Limited-time promo (surfaced to the pricing UI): percent off through PromoUntil.
+	PromoPercent    float64  `json:"promoPercent,omitempty"`
+	PromoUntil      string   `json:"promoUntil,omitempty"`
 	Currency        string   `json:"currency"`
 	Interval        string   `json:"interval"`
 	IntervalCount   int      `json:"intervalCount"`
@@ -163,6 +169,12 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		}
 		if cp.PriceAnnual != nil {
 			sp.PriceAnnual = int64(math.Round(*cp.PriceAnnual * 100))
+		}
+		if cp.PromoPercent != nil {
+			sp.PromoPercent = *cp.PromoPercent
+		}
+		if cp.PromoUntil != nil {
+			sp.PromoUntil = *cp.PromoUntil
 		}
 		if cp.TrialPeriodDays != nil {
 			sp.TrialPeriodDays = *cp.TrialPeriodDays
