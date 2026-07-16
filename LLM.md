@@ -774,6 +774,94 @@ Config: `HUSD_TOKEN_ADDRESS`, `HUSD_CHAIN_ID`, `HUSD_RPC_URL`, `HUSD_TOKEN_DECIM
 (default 1), `HUSD_SETTLE_THRESHOLD_CENTS` (default 1). Testnet proof env: token
 `0xe7f1725e…0512`, chainId 36962, RPC `…/v1/bc/C/rpc`, treasury `0xe6dad4…a51a`.
 
+## zip / ZAP native — what is real, and why billing is NOT typed yet
+
+zip is the ZAP-native framework: a typed op (`zip.Get/Post[In,Out]`) is ONE value
+with THREE projections — REST, OpenAPI, MCP. Only typed ops populate `app.ops`;
+untyped `app.Get(path, func(c *zip.Ctx) error)` projects to REST and nothing else.
+Commerce has exactly one zip route (`/_/commerce/healthz`) and it is untyped.
+
+**zip is pinned at v1.8.3** (was v1.2.0). The climb v1.2.0 → v1.8.3 has exactly
+ONE breaking change: **v1.6.0 removed `App.Mount`**. It was a one-liner
+(`a.All(prefix+"/*", AdaptNetHTTP(h))`), so `mount.go` now calls that directly —
+same route set. v1.3.0 swapped `gofiber/fiber/v3` → `zap-proto/fiber/v3`
+(transparent; commerce never imports fiber). v1.8.3 alone adds `App.Authorize`
+and `App.Prepare` — v1.8.2 and earlier have NEITHER.
+
+### Why the /v1/billing surface is still gin (four independent blockers)
+
+1. **Typed ops bind the BODY ONLY.** `registerTyped` passes `c.Body()` and
+   nothing else; for GET/HEAD it does not even read that, so `In` is the zero
+   value. There is no path-param, query-param or header binding at ANY version
+   through v1.8.3. `GET /billing/invoices/:id`, `?customerId=`, and Deposit's
+   `X-Idempotency-Key` (which makes the mint exactly-once) are all unexpressible
+   without a wire change. Changing the money wire to satisfy a framework is
+   backwards.
+2. **The MCP projection bypasses route middleware.** `mcpCall` invokes the op
+   core directly, so `middleware.PlatformOnly` never runs. On v1.8.2 (what cloud
+   pins) there is NO authorizer, so this is ungateable: a typed `billing.deposit`
+   would be an unauthenticated mint tool. `App.Authorize` (v1.8.3) closes it and
+   gates REST + MCP with one decision — but it is a single app-level SETTER, so
+   on cloud's shared App the last subsystem to call it silently wins.
+3. **The mint gate is keyed on the CONCRETE TYPE `*gin.Context`.**
+   `Organization.Namespaced` type-switches: a `*gin.Context` gets
+   `mintauth.WithGate`; anything else is treated as an internal cron and is
+   **NOT gated** (`mintauth.Require` returns nil when `!Gated`). A typed op holds
+   a plain `context.Context`, so moving a ledger handler off gin silently
+   disarms the mint invariant — no compile error, no test failure. Pinned by
+   `models/organization/namespaced_ctx_test.go:TestNamespaced_InternalCallerUngated`.
+4. **The tenant key is only in the gin context.** `GetOrganization(c)` is
+   `c.MustGet("organization")`. A typed op has no org ⇒ no tenant scoping.
+
+Blockers 3 and 4 are the real work, and it is NOT a billing change: identity +
+datastore ctx must flow through `context.Context` (set once at the boundary)
+before ANY handler can be typed. That is the actual phase 1.
+
+`mount_test.go:TestMount_NoUngatedTypedOpSurface` is the tripwire: it asserts
+`/mcp` 404s after `Mount`+`Prepare` (commerce registers zero typed ops), and
+fails the moment one appears. Verified to fire.
+
+### /v1/billing is DEAD through the cloud mount
+
+`mount.go` calls `api.Route(apiGroup)` on the `/v1` gin group, registering ~140
+`/v1/billing/*` routes — but the zip mount only exposes `/v1/commerce/*` and
+`/_/commerce/*`. Measured through `Mount`: `/v1/billing/balance` and
+`/v1/billing/deposit` return **404 with fiber's body** (`{"status":404,...}`, not
+gin's NoRoute `{"error":"not found"}`) — the request never enters the gin engine.
+The comment at `mount.go` claiming it wires "the full Commerce API surface
+(/v1/billing, …)" is false for every prefix except `/v1/commerce`. In cloud,
+`/v1/billing/*` is served by cloud's own `clients/billing` + `clients/account`
+wildcard, NOT by commerce. Do not "fix" the prefix casually: exposing 140 routes
+into cloud's fiber tree collides with those (byte-identical patterns MERGE
+silently, first wins; equal-specificity params with different names PANIC at
+registration).
+
+### schema/commerce.zap — dialect and the real compiler
+
+`schema/commerce.zap` was proto-ish fiction (`//` comments, `service`/`message`,
+`= 1` field numbers) that no tool could read. It now COMPILES, and is the only
+`.zap` in the fleet that does — `ai`, `kms`, `vfs`, `iam`, `o11y` and
+`api/billing/billing.zap` all fail with `expected 'package' declaration`.
+
+- The compiler is **`zapgen`** (`hanzo/zap/go/cmd/zapgen`, Go-only:
+  `-out/-single/-type-suffix`), NOT `zapc`. `zapc` is the Cap'n-Proto-lineage
+  RUST codegen PLUGIN that reads a `code_generator_request` on stdin; it has no
+  `generate --lang go|ts|py|rust` verb. That command, documented in every `.zap`
+  header in the fleet, does not exist.
+- Dialect: `#` comments; `package` REQUIRED first; only `struct` / `interface` /
+  `type` (**no enum**); lowercase primitives (`text i64 i32 bool bytes list<T>`);
+  methods are `name(param: Type) returns (out: Type)`. The braceless
+  whitespace form is sugar — `Desugar` adds the braces and auto-assigns each
+  field's `@byteOffset`.
+- Verify: `GOWORK=off go build ./cmd/zapgen && zapgen -out /tmp/gen schema/commerce.zap`
+  emits a `BillingClient` + `BillingHandler` + `DispatchBilling` ordinal router
+  that builds clean.
+- The generated client is **not committed**: nothing consumes it, and the
+  hand-rolled `ZapDispatch` (api/billing/zap.go) already serves that surface.
+  Committing it would create a second, competing billing client. `interface
+  Billing` mirrors exactly the five methods `ZapDispatch` really routes —
+  method ordinals are wire identity, so APPEND only.
+
 ## Gotchas
 
 - New ORM kinds MUST be registered in `util/hashid/kind.go` (monotonic, never
