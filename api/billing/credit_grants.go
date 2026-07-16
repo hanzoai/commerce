@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/creditgrant"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -51,6 +53,31 @@ func CreateCreditGrant(c *zip.Ctx) error {
 		cur = "usd"
 	}
 
+	// Idempotency (money-safe retries): a caller-supplied X-Idempotency-Key makes
+	// a retry / double-submit grant AT MOST ONCE — a completed key replays the
+	// stored body, an in-flight key 409s. Absent a key there is no guard: distinct
+	// grants to the same subject are legitimately additive (an admin may comp the
+	// same user twice on purpose), so we never dedupe by amount. Scoped to the
+	// subject; the datastore is already org-namespaced. This is the SAME primitive
+	// /deposit uses — one way to make a money mint exactly-once, so every program
+	// composing this endpoint gets retry-safety for free.
+	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
+	var idemRec *idempotencykey.IdempotencyKey
+	if idemKey != "" {
+		rec, replay, gerr := idempotencykey.Begin(db, "billing-credit-grant:"+req.UserId, idemKey)
+		if gerr != nil {
+			log.Error("credit-grant idempotency Begin failed (user=%s): %v", req.UserId, gerr, c)
+		} else if replay {
+			if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+				c.SetHeader("Content-Type", "application/json")
+				return c.Bytes(200, []byte(rec.Response))
+			}
+			return http.Fail(c, 409, "credit grant already in progress", nil)
+		} else {
+			idemRec = rec
+		}
+	}
+
 	grant := creditgrant.New(db)
 	grant.UserId = req.UserId
 	grant.Name = req.Name
@@ -64,12 +91,20 @@ func CreateCreditGrant(c *zip.Ctx) error {
 	if req.ExpiresIn != "" {
 		dur, err := time.ParseDuration(req.ExpiresIn)
 		if err != nil {
+			// No grant created — release the guard so a later retry is not wedged.
+			if idemRec != nil {
+				_ = idemRec.Delete()
+			}
 			return http.Fail(c, 400, "invalid expiresIn duration", err)
 		}
 		grant.ExpiresAt = time.Now().Add(dur)
 	}
 
 	if err := grant.Create(); err != nil {
+		// No balance moved — release the guard so a later retry is not wedged.
+		if idemRec != nil {
+			_ = idemRec.Delete()
+		}
 		log.Error("Failed to create credit grant: %v", err, c)
 		return http.Fail(c, 500, "failed to create credit grant", err)
 	}
@@ -88,6 +123,14 @@ func CreateCreditGrant(c *zip.Ctx) error {
 	}
 	if !grant.ExpiresAt.IsZero() {
 		resp["expiresAt"] = grant.ExpiresAt
+	}
+
+	// Seal the guard with the exact success body so a same-key retry replays it
+	// verbatim (no second grant).
+	if idemRec != nil {
+		if body, mErr := json.Marshal(resp); mErr == nil {
+			_ = idempotencykey.Complete(idemRec, string(body))
+		}
 	}
 
 	return c.JSON(201, resp)
