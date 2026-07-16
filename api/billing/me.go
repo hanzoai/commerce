@@ -1,40 +1,15 @@
 package billing
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"strings"
-	"time"
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/credit"
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
-	"github.com/hanzoai/commerce/mintauth"
-	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/treasury"
 	"github.com/hanzoai/commerce/util/json/http"
-
-	. "github.com/hanzoai/commerce/types"
 )
-
-// welcomeDepositKey derives the DETERMINISTIC storage key for a user's one-time
-// welcome credit. Making the welcome deposit's id a pure function of the subject
-// means two concurrent first-time grants (the check-then-create TOCTOU) collapse
-// onto the SAME row via the storage ON CONFLICT(id,kind,namespace) upsert — so
-// the welcome credits AT MOST ONCE even under an exact race, the same money-safe
-// primitive giftcard redemptions use. The key is parented under the synckey root
-// so the ancestor-scoped balance query still finds it, and the datastore is
-// org-namespaced, so the id need only be unique per subject. hashid.EncodeKey
-// returns a string-id verbatim, so trans.Id() stays a clean, stable string.
-func welcomeDepositKey(db *datastore.Datastore, user string) datastore.Key {
-	sum := sha256.Sum256([]byte("welcome-credit\x00" + user))
-	rootKey := db.NewKey("synckey", "", 1, nil)
-	return db.NewKey("transaction", "welcome_"+hex.EncodeToString(sum[:16]), 0, rootKey)
-}
 
 // orgBillingKey returns the canonical per-org billing key: the org slug.
 //
@@ -108,121 +83,4 @@ func GetMyBalance(c *zip.Ctx) error {
 		resp[k] = v
 	}
 	return c.JSON(200, resp)
-}
-
-// PostMyWelcome grants the welcome credit (idempotent, tag-deduped) to
-// the calling user. Unlike POST /billing/credit — which requires an admin
-// token and an explicit user — this endpoint is callable with just an IAM
-// bearer token (user inferred from headers), designed to be invoked by the
-// playground SPA on first successful login.
-//
-// Idempotent: if the credit was already granted (or zapped), returns
-// 200 with `granted: false` instead of failing.
-//
-//	POST /v1/billing/me/welcome
-func PostMyWelcome(c *zip.Ctx) error {
-	// Grant into the SAME wallet the gate spends from — a credit minted to the org pool
-	// while the person's wallet is what gates their requests buys them nothing.
-	user := userBillingKey(c)
-	if user == "" {
-		return http.Fail(c, 401, "missing identity headers", nil)
-	}
-
-	org := middleware.GetOrganization(c)
-
-	// Step 4: chain-backed path mints the welcome credit on-chain (idempotent by
-	// the shared deterministic welcome key), replacing the DB deposit write.
-	if chainCreditEnabled() {
-		rc, err := chainMintCredit(c, org, user, int64(credit.StarterCreditCents), treasury.BucketCredit,
-			"welcome-credit:iam_first_login", welcomeMintKey(org, user))
-		if err != nil {
-			log.Error("chain welcome credit mint failed for %s: %v", user, err, c)
-			return http.Fail(c, 502, "on-chain welcome credit mint failed", err)
-		}
-		return c.JSON(200, map[string]any{
-			"user":     user,
-			"granted":  !rc.Replayed,
-			"amount":   int64(credit.StarterCreditCents),
-			"currency": "usd",
-			"onChain":  true,
-			"txHash":   rc.TxHash,
-		})
-	}
-
-	db := datastore.New(org.Namespaced(c.Context()))
-	rootKey := db.NewKey("synckey", "", 1, nil)
-
-	// Already granted? — return 200 with granted=false. The tag query covers
-	// EVERY historical grant (this endpoint, /credit, and pre-deterministic-key
-	// rows), so sequential retries stay idempotent regardless of how the credit
-	// was first minted.
-	existing := make([]*transaction.Transaction, 0)
-	q := transaction.Query(db).Ancestor(rootKey).
-		Filter("DestinationId=", user).
-		Filter("Tags=", credit.StarterCreditTag)
-	if _, err := q.Limit(1).GetAll(&existing); err == nil && len(existing) > 0 {
-		return c.JSON(200, map[string]any{
-			"user":    user,
-			"granted": false,
-			"reason":  "already_granted",
-		})
-	}
-
-	// The welcome credit is REAL MONEY. Granting it to anyone who can POST a signup
-	// form makes it a faucet: a bot farm mints accounts and drains the credit pool.
-	// Require a payment method on file first — the card is the cost of abuse, and it
-	// is also what the free tier is NOT: run the OSS bot with your own keys for free,
-	// or attach a payment method and get $5 to try the hosted models.
-	// getCardOnFile is the SAME primitive that gates real-money GPU debits — one
-	// definition of "this subject can be charged", not a second ad-hoc query.
-	if !getCardOnFile(db, user).OnFile {
-		return c.JSON(200, map[string]any{
-			"user":    user,
-			"granted": false,
-			"reason":  "payment_method_required",
-			"message": "Add a payment method to claim your $5 starter credit.",
-		})
-	}
-
-	trans := transaction.New(db)
-	// DETERMINISTIC key: two concurrent first-time grants that both pass the tag
-	// check above collapse onto ONE row (ON CONFLICT upsert), so the welcome
-	// credits at most once even in the TOCTOU race the tag query alone leaves open.
-	if err := trans.SetKey(welcomeDepositKey(db, user)); err != nil {
-		log.Error("welcome credit key set failed for %s: %v", user, err, c)
-		return http.Fail(c, 500, "failed to grant welcome credit", err)
-	}
-	trans.Type = transaction.Deposit
-	trans.DestinationId = user
-	trans.DestinationKind = "iam-user"
-	trans.Currency = "usd"
-	trans.Amount = currency.Cents(credit.StarterCreditCents)
-	trans.Notes = "Welcome credit: $5.00 USD (expires in 365 days)"
-	trans.Tags = credit.StarterCreditTag
-	trans.ExpiresAt = time.Now().AddDate(0, 0, credit.StarterCreditDays)
-	trans.Metadata = Map{
-		"creditType": "starter",
-		"expiryDays": credit.StarterCreditDays,
-		"trigger":    "iam_first_login",
-	}
-	if org.TestMode() {
-		trans.Test = true
-	}
-
-	// A server-FIXED (StarterCreditCents), tag-idempotent welcome credit to the
-	// caller's OWN subject — the amount is not attacker-controlled — so authorize
-	// this write at the ledger sink.
-	trans.SetContext(mintauth.WithAuthorized(trans.Context()))
-	if err := trans.Create(); err != nil {
-		log.Error("welcome credit create failed for %s: %v", user, err, c)
-		return http.Fail(c, 500, "failed to grant welcome credit", err)
-	}
-
-	return c.JSON(201, map[string]any{
-		"user":      user,
-		"granted":   true,
-		"amount":    int64(credit.StarterCreditCents),
-		"currency":  "usd",
-		"expiresAt": trans.ExpiresAt,
-	})
 }
