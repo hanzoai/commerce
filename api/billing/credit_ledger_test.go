@@ -13,7 +13,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/zap-proto/zip"
+
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 // fakeLedger is an in-memory CreditLedger: org|currency → balance, idempotent on
@@ -68,6 +71,29 @@ func injectLedger(t *testing.T, l creditledger.CreditLedger) {
 	t.Cleanup(func() { creditledger.Set(nil) })
 }
 
+// ledgerEngine builds the test engine holding a reference to the shared test
+// datastore for the life of the test.
+//
+// These tests exercise the INJECTED-ledger path, but a request still resolves its
+// org THROUGH the datastore before the handler ever reaches the ledger — so the
+// store must be open, or the org lookup fails and the route 503s. ae.NewContext is
+// REFERENCE-COUNTED and closes the store when the last holder Closes it, so a test
+// that never opens one is not "not using the store": it is free-riding on whichever
+// other test file happens to be holding it open, and it breaks the day that file
+// changes. Holding the reference here makes each test self-sufficient and
+// order-independent.
+func ledgerEngine(t *testing.T, seed func(*zip.Ctx)) *zip.App {
+	t.Helper()
+	ctx := ae.NewContext()
+	t.Cleanup(ctx.Close)
+	return engineWithSeed(func(c *zip.Ctx) {
+		c.SetContext(ctx)
+		if seed != nil {
+			seed(c)
+		}
+	})
+}
+
 // TestCredit_InjectedLedger_RoutesAndReflects is the account-consistency proof:
 // the endpoint calls CreditLedger.Credit with the exact CreditInput, and
 // GET /billing/balance?user=<org> reflects it via the SAME org account.
@@ -77,7 +103,7 @@ func TestCredit_InjectedLedger_RoutesAndReflects(t *testing.T) {
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := engineWithSeed(nil)
+	eng := ledgerEngine(t, nil)
 	resp := postCredit(eng, tok, "acme", `{"org":"acme","amountCents":500,"reason":"welcome","tag":"starter-credit","currency":"usd"}`)
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("service-token credit (ledger): status=%d body=%s, want 201", resp.StatusCode, respBodyStr(resp))
@@ -114,7 +140,7 @@ func TestCredit_InjectedLedger_OrgAdminStill403(t *testing.T) {
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := engineWithSeed(orgAdminSeed)
+	eng := ledgerEngine(t, orgAdminSeed)
 	resp := postCredit(eng, "", "", `{"org":"acme","amountCents":100000,"reason":"self-credit"}`)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("org-admin credit (ledger injected): status=%d, want 403", resp.StatusCode)
@@ -132,7 +158,7 @@ func TestCredit_InjectedLedger_Idempotent(t *testing.T) {
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := engineWithSeed(nil)
+	eng := ledgerEngine(t, nil)
 	body := `{"org":"idem","amountCents":250,"reason":"promo","idempotencyKey":"once"}`
 
 	first := decodeJSON(t, postCredit(eng, tok, "idem", body))
@@ -153,7 +179,7 @@ func TestCredit_InjectedLedger_MultiCurrency(t *testing.T) {
 	fake := newFakeLedger()
 	injectLedger(t, fake)
 
-	eng := engineWithSeed(nil)
+	eng := ledgerEngine(t, nil)
 	if resp := postCredit(eng, tok, "fx", `{"org":"fx","amountCents":900,"reason":"eur grant","currency":"eur"}`); resp.StatusCode != http.StatusCreated {
 		t.Fatalf("eur credit: status=%d body=%s", resp.StatusCode, respBodyStr(resp))
 	}
