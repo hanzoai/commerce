@@ -49,23 +49,27 @@ func welcomeDepositKey(db *datastore.Datastore, user string) datastore.Key {
 //
 // Returns "" when no org is resolved (or the privileged "platform" org,
 // which has no namespace) — callers should 401.
+//
+// It reads the org with GetOrganizationOK, which reports absence, rather than
+// GetOrganization, which MustGet-PANICS on it. The nil check below only ever meant
+// anything with the OK form: reached without a resolved org — a handler mounted
+// outside the auth-token group, the case GetOrganizationOK exists for — the panic
+// form 500s where this must fail closed and let the caller 401. Money never bills
+// a guess, and a missing org is the emptiest guess there is.
 func orgBillingKey(c *gin.Context) string {
-	org := middleware.GetOrganization(c)
-	if org == nil {
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(org.Name))
 }
 
-// userBillingKey is the wallet the caller pays from: the person on a personal
-// org, the org's pool otherwise (BillingSubjectFor, resolve.go). "" when no org
-// is resolved.
+// userBillingKey is the wallet the caller pays from — the account the credential
+// names, resolved by the one shared rule (payer, resolve.go). "" when no org is
+// resolved, or when the credential names nobody: unattributable is refused by the
+// caller, never billed free.
 func userBillingKey(c *gin.Context) string {
-	org := orgBillingKey(c)
-	if org == "" {
-		return ""
-	}
-	return BillingSubjectFor(org, c.GetHeader("X-User-Id"))
+	return payer(c).Subject()
 }
 
 // GetMyBalance returns the calling user's balance for a given currency.
