@@ -42,7 +42,7 @@ type EmbedConfig struct {
 	App *zip.App
 
 	// Ledger is the host-injected double-entry credit ledger. When the cloud
-	// binary embeds commerce it passes a ledgercore-backed impl here, so
+	// binary embeds commerce it passes a ledger-backed impl here, so
 	// POST /v1/billing/credit and GET /v1/billing/balance route to the SAME
 	// per-org account the AI spend-gate reads (one ledger, no split). nil →
 	// commerce falls back to its own datastore (standalone-safe).
