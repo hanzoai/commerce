@@ -395,12 +395,12 @@ entry point.
 
 **Backing = injected double-entry ledger (`billing/creditledger`).** Commerce runs
 embedded in the cloud binary, where the AI spend-gate reads cloud's native
-ledgercore. Commerce must NOT import cloud, so the host injects a
+the ledger. Commerce must NOT import cloud, so the host injects a
 `creditledger.CreditLedger` via `EmbedConfig.Ledger` (`embed.go` →
 `creditledger.Set`). When set, `Credit` and `GetBalance` route to it — a credit
 lands in the SAME per-org account the gate reads (one ledger, no split). When nil
 (standalone), both fall back to commerce's own datastore (tagged `Deposit`). The
-interface is compiler-enforced; cloud implements a ~40-line ledgercore adapter.
+interface is compiler-enforced; cloud implements a ~40-line ledger adapter.
 
 ```go
 type CreditLedger interface {
