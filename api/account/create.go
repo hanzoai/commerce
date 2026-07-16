@@ -259,9 +259,10 @@ func create(c *zip.Ctx) error {
 		}
 	}
 
-	// Starter credit is granted by Commerce when a payment method is added
-	// (see api/billing/payment_methods.go:grantStarterCreditIfEligible),
-	// not at signup. This prevents abuse from mass-created accounts.
+	// Credit is NEVER minted at signup, and there is no automatic/self-service
+	// grant. The one and only way to grant comped credit is the mint-gated
+	// POST /v1/billing/credit-grants (admin/service). This keeps mass-created
+	// accounts from minting free credit.
 
 	tokStr := ""
 
