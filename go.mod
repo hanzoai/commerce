@@ -105,6 +105,7 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.2.0 // indirect
 	github.com/hanzo-ds/native v0.71.0 // indirect
+	github.com/hanzoai/account v0.2.0 // indirect
 	github.com/luxfi/accel v1.2.2 // indirect
 	github.com/luxfi/compress v0.0.5 // indirect
 	github.com/luxfi/concurrent v0.0.3 // indirect
