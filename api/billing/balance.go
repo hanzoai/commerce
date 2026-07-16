@@ -5,6 +5,7 @@ import (
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/creditledger"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/transaction/util"
@@ -29,6 +30,24 @@ func GetBalance(c *zip.Ctx) error {
 	cur := currency.Type(strings.ToLower(c.Query("currency")))
 	if cur == "" {
 		cur = "usd"
+	}
+
+	// Injected double-entry ledger (embedded-in-cloud path): the balance is
+	// authoritative from the SAME org account POST /billing/credit writes and the
+	// AI gate reads — one ledger by construction. Org-keyed: the `user` param is the
+	// org-pool account key.
+	if led := creditledger.Get(); led != nil {
+		avail, err := led.Balance(c.Context(), user, string(cur))
+		if err != nil {
+			return http.Fail(c, 500, "failed to query balance", err)
+		}
+		return c.JSON(200, map[string]any{
+			"user":      user,
+			"currency":  cur,
+			"balance":   avail,
+			"holds":     int64(0),
+			"available": avail,
+		})
 	}
 
 	// The three-bucket split (credits granted/remaining vs prepaid real money) is
