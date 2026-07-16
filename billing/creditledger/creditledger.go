@@ -2,9 +2,9 @@
 // ledger commerce's billing writes to.
 //
 // Commerce runs BOTH standalone and EMBEDDED in the cloud binary. When embedded,
-// the AI spend-gate reads cloud's native ledgercore (a per-org finance ledger);
+// the AI spend-gate reads cloud's native ledger (a per-org finance ledger);
 // commerce is a SEPARATE Go module and must NOT import cloud. So the host injects
-// a ledgercore-backed CreditLedger through commerce.EmbedConfig.Ledger, and
+// a ledger-backed CreditLedger through commerce.EmbedConfig.Ledger, and
 // commerce's credit + balance handlers route to it — a credit then lands in the
 // SAME per-org account the gate reads (one ledger, no split). When no ledger is
 // injected (standalone dev/test), commerce falls back to its own datastore.
