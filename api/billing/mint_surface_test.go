@@ -304,8 +304,6 @@ func isPayoutExecutorCall(call *ast.CallExpr, imports map[string]string) bool {
 // is flagged by the guard, and a NEW mint handler NOT listed here (and not
 // route-gated) FAILS the guard.
 var userSafeMintHandlers = map[string]string{
-	"GrantStarterCredit":    "fixed StarterCreditCents to the caller's OWN org key (orgBillingKey); tag-idempotent one-per-subject",
-	"PostMyWelcome":         "fixed StarterCreditCents to the caller's OWN org key; deterministic-key idempotent (TestWelcome_ConcurrentGrantsCreditOnce)",
 	"Topup":                 "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
 	"TopupWithToken":        "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
 	"GrantAllotment":        "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
@@ -334,7 +332,7 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 	// ledger-create sink (decodes request input INTO a transaction.New var and
 	// .Create()s it), which the literal `Type=Deposit` detector alone misses; if it
 	// is not flagged the generic-sink detector is broken.
-	for _, must := range []string{"Deposit", "Refund", "GrantAllotment", "zapDeposit", "ZapDispatch", "PostMyWelcome", "executePayouts", "Create"} {
+	for _, must := range []string{"Deposit", "Refund", "GrantAllotment", "zapDeposit", "ZapDispatch", "executePayouts", "Create"} {
 		if !reaches[must] {
 			t.Fatalf("mint-sink detector did NOT flag %q — the source enumeration is broken; fix the detector before trusting this guard", must)
 		}

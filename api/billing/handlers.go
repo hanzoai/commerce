@@ -73,20 +73,18 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Tier check (lightweight model-access gate for Chat / white-label)
 	api.Get("/tier-check", TierCheck)
 
-	// Credit grants (money-MINT: service-token / global-admin ONLY). Reads moved
-	// to the user group below. Void is a grant mutation in the same resource
-	// family — same platform-only bar, so an org owner can neither create nor
-	// alter a grant.
+	// Credit grants — THE single canonical way to grant comped credit. Every
+	// program (admin.hanzo.ai cockpit, CLI, any authorized service) composes THIS
+	// one primitive: POST {userId, amountCents, currency, name, tags, expiresIn?,
+	// priority?, eligibility?}; pass X-Idempotency-Key to make it exactly-once. No
+	// payment method required (a comp grant). Money-MINT: service-token /
+	// global-admin ONLY — an org owner can neither create nor void a grant. There
+	// is NO bespoke or self-service grant route: the "$5 starter" is just this call
+	// with amountCents=credit.StarterCreditCents + tags=credit.StarterCreditTag,
+	// composed by the caller. Reads are in the user group below; void is a grant
+	// mutation in the same resource family, same platform-only bar.
 	api.Post("/credit-grants", mintRequired, CreateCreditGrant)
 	api.Post("/credit-grants/:id/void", mintRequired, VoidCreditGrant)
-
-	// Starter credit grant (service-to-service, idempotent, no payment method
-	// required). The on-signup welcome deposit invoked by chat / cloud-api on
-	// a user's first use, keyed by an explicit per-user (or per-org) subject.
-	// Money-MINT: service-token / global-admin ONLY. (The user-facing,
-	// fixed-amount, idempotent welcome credit is the SEPARATE user-group
-	// POST /billing/credit → GrantStarterCredit, which stays self-service.)
-	api.Post("/grant-starter", mintRequired, GrantStarter)
 
 	// Pricing rules
 	api.Post("/pricing-rules", CreatePricingRule)
@@ -305,20 +303,17 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Billing status — hasPaymentMethod + creditBalance in one call (used by bot gateway)
 	user.Get("/status", GetBillingStatus)
 
-	// Self-service balance + welcome credit. Identity comes from the
-	// gateway-injected X-Org-Id / X-User-Id headers; the caller never
-	// needs an admin token (unlike POST /billing/credit) — it's the
-	// on-signup grant that the playground SPA invokes from FundingGate on
-	// first login. Idempotent (tag-deduped); no payment method required
-	// (the card gates top-up, not the welcome credit).
+	// Self-service balance read. Identity comes from the gateway-injected
+	// X-Org-Id / X-User-Id headers; no admin token required. There is NO
+	// self-service credit grant: credit is minted only by an admin/service
+	// action (POST /billing/grant-starter, mint-gated), never by a user
+	// crediting their own account.
 	user.Get("/me/balance", GetMyBalance)
-	user.Post("/me/welcome", PostMyWelcome)
 
 	// Credit grants & balance (read-only, user-scoped)
 	user.Get("/credit-grants", ListCreditGrants)
 	user.Get("/credit-balance", GetCreditBalance)
 	user.Get("/credit-balance/breakdown", GetCreditBalanceBreakdown)
-	user.Post("/credit", GrantStarterCredit)
 
 	// Transaction history / ledger (read-only, user-scoped). Derives identity
 	// from the IAM org/user in context like the sibling reads above. Called by
