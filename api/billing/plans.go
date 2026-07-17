@@ -273,6 +273,18 @@ func IncludedMonthlyCents(slug string) int64 {
 	return int64(*usd) * 100
 }
 
+// paidTier reports whether the plan identified by slug charges money — a monthly
+// price above zero. This, NOT the included allotment, is what makes a subscription
+// a paid tier: a free ($0) plan may still carry a small included credit as a perk
+// (e.g. developer's $5/mo) yet stays self-serve. The price is read from the catalog
+// by slug so a stored subscription's spoofable plan copy can never inflate it.
+// Unknown slugs are not paid. The self-subscribe gate and the entitlement-anchor
+// clamp gate on this; the allotment AMOUNT stays IncludedMonthlyCents.
+func paidTier(slug string) bool {
+	p := lookupPlan(slug)
+	return p != nil && p.Price > 0
+}
+
 // Plan is the exported snapshot used by external seeders (e.g. the
 // Stripe parity seed in commerce.go). It mirrors the subset of fields
 // the seed populates onto seed.Plan, with field names that match the
