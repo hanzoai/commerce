@@ -8,12 +8,15 @@ package billing
 // mint route is either gated (org-admin → 403) or provably user-safe.
 //
 // How it works:
-//  1. AST-scan the api/billing and api/affiliate packages for every function
-//     that REACHES a money-mint SINK — a `x.Type = transaction.Deposit` write, a
-//     call to allotment.Grant, or a call to the contributor payout executor —
-//     following same-package calls transitively. This set is derived from the
-//     code, so a NEW handler that mints is detected automatically.
-//  2. Register the REAL Route() for both packages and enumerate registered routes.
+//  1. AST-scan the /v1 ledger route packages AND the money-engine packages they
+//     call for every function that REACHES a money SINK — a mint-authority
+//     assertion (mintauth.WithAuthorized), an on-chain token movement, a ledger
+//     credit projection, a `x.Type = transaction.Deposit` write, an
+//     allotment.Grant, the contributor payout executor, or the creation of a
+//     money model (a credit grant, a payout) — following calls transitively and
+//     ACROSS packages. This set is derived from the code, so a new handler that
+//     mints is detected automatically.
+//  2. Register the REAL Route() for those packages and enumerate registered routes.
 //  3. For every registered route whose handler reaches a sink, assert it is
 //     route-gated (probe as an org admin → 403), or method-gated inside the
 //     handler (ZapDispatch), or on the explicit userSafe allowlist WITH a reason.
@@ -21,6 +24,22 @@ package billing
 // A new ungated mint route makes this test FAIL — the guard the C1 miss proved we
 // need. The allowlist is checked back against the source set, so a stale entry
 // (a handler that no longer mints) also fails.
+//
+// Cross-package resolution is the whole ballgame, and its absence was a real
+// hole: a handler that mints by CALLING a service (husdledger.Default().Settle)
+// rather than by writing a ledger row itself was invisible, because the call
+// graph followed only same-package calls by bare identifier and the engine
+// packages were never even parsed. /husd/sync, /husd/settle and /husd/migrate
+// were all mint-gated in production and completely unseen by this guard — their
+// gates could have been deleted with the whole suite staying green.
+//
+// This guard is deliberately INDEPENDENT of middleware.MintRoutes(): it sees a
+// route by what its handler DOES, never by how it was registered. Deriving it
+// from the registry would be self-referential — un-gating a route would remove it
+// from the registry and a registry-derived check would simply stop looking at it,
+// which is exactly the blindness this exists to catch. mint_registry_test.go
+// reconciles the two derivations; agreement is evidence only while they stay
+// independent.
 
 import (
 	"bytes"
@@ -30,6 +49,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"testing"
 
@@ -67,110 +87,456 @@ func routeMintSurface(v1 zip.Router) {
 
 // ── mint-sink source analysis ───────────────────────────────────────────────
 
-// pkgDirs are the packages whose route handlers can mint, spanning the FULL
-// api.Route(/v1) ledger surface (not just billing) so a mint that moves to a
-// sibling package is still caught. Relative to this test file's directory
-// (api/billing) at `go test` runtime.
-var mintPkgDirs = []string{".", "../affiliate", "../transaction", "../../demo/tokentransaction", "../account"}
+// modulePath is this module's import path and analysisPkg is THIS package's path
+// within it — the anchor mintPkgDirs are written relative to. Together they are
+// the ONE mapping between "a directory this test parses" and "the import path
+// other packages name it by", so the scan set and the call resolver cannot drift.
+const (
+	modulePath  = "github.com/hanzoai/commerce"
+	analysisPkg = "api/billing"
+)
 
-// mintReachingFuncs returns the set of function short-names (across the analyzed
-// packages) whose bodies reach a money-mint sink, following same-package calls
-// transitively. Derived from source so a new mint handler is auto-detected.
+// mintPkgDirs are the packages a route handler can reach a money sink through,
+// relative to this test file's directory (api/billing) at `go test` runtime.
+// Two layers, and BOTH are needed:
+//
+//   - the /v1 ledger ROUTE surface (billing + affiliate + the generic transaction
+//     router + the demo/account routers), so a mint that moves to a sibling
+//     package is still caught; and
+//   - the money ENGINE packages behind it. A handler mints by CALLING a service
+//     (husdledger.Default().Settle(...)) at least as often as by writing a ledger
+//     row itself. With the engine unscanned such a call just ends at a name the
+//     graph has never heard of, and the mint is invisible — which is exactly how
+//     /husd/sync, /husd/settle and /husd/migrate stayed unseen.
+var mintPkgDirs = []string{
+	".", "../affiliate", "../transaction", "../../demo/tokentransaction", "../account",
+	"../../billing/husdledger", // chain-backed credit ledger: mint / settle / migrate
+	"../../billing/husdindex",  // on-chain transfer → ledger credit projection
+	"../../treasury",           // the treasury-signed on-chain mint
+	"../../billing/engine",     // customer-balance adjustment (the credit-direction write)
+}
+
+// pkgPath maps a scan dir to the module-relative import path other packages name
+// it by (mintPkgDirs are written relative to analysisPkg).
+func pkgPath(dir string) string { return path.Clean(path.Join(analysisPkg, dir)) }
+
+// inModule reports importPath's module-relative path, or "" when the import is
+// outside this module (nothing outside it is ever a node in the graph).
+func inModule(importPath string) string {
+	if s := strings.TrimPrefix(importPath, modulePath+"/"); s != importPath {
+		return s
+	}
+	return ""
+}
+
+// qualify names a func by the package that declares it — the node key of the
+// call graph. Short names alone are NOT a safe key across packages: `Create`
+// means api/transaction.Create (a mint) in one package and `x.Create()` (a plain
+// datastore persist) in a dozen others, and merging them by name would smear
+// mint-ness across the whole repo.
+func qualify(pkg, name string) string { return pkg + "." + name }
+
+// typeRef names a type by the package that declares it. The zero value means
+// "unresolved", which is always safe: it yields no edge.
+type typeRef struct{ pkg, name string }
+
+// pkgSyms is one scanned package's symbol table — the minimum needed to answer
+// "what package does the receiver of x.M(...) live in".
+type pkgSyms struct {
+	types   map[string]bool               // type names declared here
+	fields  map[string]map[string]typeRef // struct → field → field's type
+	returns map[string]typeRef            // func/method name → its first result type
+}
+
+// analyzer resolves selector calls across the scanned package set and collects
+// the money-sink call graph.
+type analyzer struct {
+	syms    map[string]*pkgSyms        // pkg → symbols
+	rawSink map[string]bool            // qualified func → contains a sink outright
+	calls   map[string]map[string]bool // qualified func → qualified funcs it calls
+}
+
+// fileCtx is the resolution scope of one file: which package it is in and what
+// its import aliases mean.
+type fileCtx struct {
+	a       *analyzer
+	pkg     string
+	imports map[string]string // local name → import path
+}
+
+// importPkg reports the scanned/module package an import alias refers to, or "".
+func (f *fileCtx) importPkg(alias string) string { return inModule(f.imports[alias]) }
+
+// typeOf resolves a TYPE expression (a field's or result's declared type) to a
+// typeRef: `*Service` → this package's Service, `*husdindex.Indexer` → that
+// package's Indexer. Anything else (interfaces, maps, funcs, out-of-module
+// types) is deliberately unresolved.
+func (f *fileCtx) typeOf(e ast.Expr) typeRef {
+	switch x := e.(type) {
+	case *ast.StarExpr:
+		return f.typeOf(x.X)
+	case *ast.Ident:
+		if syms := f.a.syms[f.pkg]; syms != nil && syms.types[x.Name] {
+			return typeRef{f.pkg, x.Name}
+		}
+	case *ast.SelectorExpr:
+		if id, ok := x.X.(*ast.Ident); ok {
+			if p := f.importPkg(id.Name); p != "" {
+				return typeRef{p, x.Sel.Name}
+			}
+		}
+	}
+	return typeRef{}
+}
+
+// fnCtx is the resolution scope inside one function body: its file's scope plus
+// the receiver and the local variables whose type we could infer.
+type fnCtx struct {
+	*fileCtx
+	recv   string             // receiver identifier ("" for a plain func)
+	recvT  typeRef            // receiver's type
+	locals map[string]typeRef // local var → inferred type
+}
+
+// valueType resolves a VALUE expression to the type of the value it denotes.
+// This is the whole point of the resolver: it is what turns `svc.Settle(...)`
+// into "husdledger.Settle" instead of a dead end.
+func (f *fnCtx) valueType(e ast.Expr) typeRef {
+	switch x := e.(type) {
+	case *ast.Ident:
+		if x.Name == f.recv {
+			return f.recvT
+		}
+		return f.locals[x.Name] // zero value when unknown — no edge, no guess
+	case *ast.SelectorExpr:
+		// A struct field access: s.indexer → the Service struct's indexer field.
+		base := f.valueType(x.X)
+		if syms := f.a.syms[base.pkg]; syms != nil {
+			return syms.fields[base.name][x.Sel.Name]
+		}
+	case *ast.CallExpr:
+		return f.resultType(x)
+	case *ast.UnaryExpr: // &T{...}
+		return f.valueType(x.X)
+	case *ast.CompositeLit: // T{...}
+		return f.typeOf(x.Type)
+	}
+	return typeRef{}
+}
+
+// resultType reports the type a call evaluates to, so a chained/assigned call
+// (`svc := husdledger.Default()`, `husdledger.Default().SyncOnce(ctx)`) resolves.
+func (f *fnCtx) resultType(call *ast.CallExpr) typeRef {
+	if p, name := f.callee(call); p != "" {
+		if syms := f.a.syms[p]; syms != nil {
+			return syms.returns[name]
+		}
+	}
+	return typeRef{}
+}
+
+// callee reports the package and name of the function a call invokes, resolving
+// all three shapes a money sink is reached through:
+//
+//	foo(...)            same-package call
+//	husdledger.Foo(...) import-qualified call
+//	svc.Foo(...)        a method on a value whose type we resolved
+//
+// It returns "" for anything it cannot resolve — an unresolved callee yields no
+// edge, so the graph never invents reachability it did not prove.
+func (f *fnCtx) callee(call *ast.CallExpr) (pkg, name string) {
+	switch fun := call.Fun.(type) {
+	case *ast.Ident:
+		return f.pkg, fun.Name
+	case *ast.SelectorExpr:
+		// A bare identifier that is an import alias (and is not shadowed by the
+		// receiver or a local) qualifies a package-level func.
+		if id, ok := fun.X.(*ast.Ident); ok && id.Name != f.recv {
+			if _, shadowed := f.locals[id.Name]; !shadowed {
+				if p := f.importPkg(id.Name); p != "" {
+					return p, fun.Sel.Name
+				}
+			}
+		}
+		// Otherwise it is a method on a value: resolve the value's type.
+		return f.valueType(fun.X).pkg, fun.Sel.Name
+	}
+	return "", ""
+}
+
+// ── the money sinks ─────────────────────────────────────────────────────────
+//
+// A sink is a MONEY PRIMITIVE recognized by the shape of the code that performs
+// it — never by a route or handler name, which is the hand-list this guard
+// exists to kill. Each is independently sufficient: reaching ANY of them means a
+// function moves or creates money.
+
+// sinkLits are the value types whose CONSTRUCTION is itself a money act — you do
+// not build one except to move money with it.
+var sinkLits = map[typeRef]string{
+	{"util/blockchain", "TokenTransfer"}: "signs an on-chain token movement (treasury mint, org→treasury settle, contributor payout)",
+	{"billing/husdindex", "Credit"}:      "projects an on-chain transfer into the commerce ledger as spendable credit",
+}
+
+// mintModels are the money MODELS whose CREATION is itself the money act: one of
+// these rows coming into existence is spendable balance created or treasury
+// disbursed, whatever its field values. Contrast models/transaction, where the
+// same row is a Deposit (a mint) or a Withdraw (a debit) depending on its Type —
+// so that model is a sink only under the narrower rules above.
+//
+// The sink is specifically `v := <model>.New(...)` … `v.Create()`. A void
+// (New + GetById + Update) never creates the row and is correctly NOT a mint.
+var mintModels = map[string]string{
+	"models/creditgrant": "a credit grant IS spendable balance; creating one from a client-supplied amount is the C1 mint shape",
+	"models/payout":      "a payout disburses the treasury to a client-named destination",
+}
+
+// mintModelNew reports whether e constructs a money model (`creditgrant.New(db)`).
+func (f *fnCtx) mintModelNew(e ast.Expr) bool {
+	for m := range mintModels {
+		if isSelectorCall2(e, f.imports, m, "New") {
+			return true
+		}
+	}
+	return false
+}
+
+// litSink reports whether n constructs a money value type.
+func (f *fnCtx) litSink(n ast.Node) bool {
+	lit, ok := n.(*ast.CompositeLit)
+	if !ok {
+		return false
+	}
+	_, isSink := sinkLits[f.typeOf(lit.Type)]
+	return isSink
+}
+
+// callSink reports whether n is a call that is itself a money act.
+func (f *fnCtx) callSink(n ast.Node) bool {
+	call, ok := n.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	// mintauth.WithAuthorized(ctx) — the codebase's OWN assertion of mint
+	// authority, and the same capability treasury.Mint and the datastore write
+	// sink enforce (mintauth.Require / mintauth.Enforce). Code that elevates a
+	// context to mint-authorized is, by its own declaration, on the money path.
+	if isSelectorCall(call, f.imports, "mintauth", "WithAuthorized") {
+		return true
+	}
+	// allotment.Grant(...) — mints included monthly credit.
+	if isSelectorCall(call, f.imports, "billing/allotment", "Grant") {
+		return true
+	}
+	// <payout cron>.Payout(...) — disburses treasury.
+	return isPayoutExecutorCall(call, f.imports)
+}
+
+// assignSink reports whether n is an assignment that writes money into a ledger row.
+func (f *fnCtx) assignSink(n ast.Node) bool {
+	as, ok := n.(*ast.AssignStmt)
+	if !ok {
+		return false
+	}
+	// x.Type = transaction.Deposit — a deposit WRITE, not a `== Deposit` read
+	// comparison (that is a BinaryExpr, never an AssignStmt RHS).
+	for _, rhs := range as.Rhs {
+		if isSelector(rhs, f.imports, "models/transaction", "Deposit") {
+			return true
+		}
+	}
+	// x.DestinationKind = "iam-user" — mints spendable balance to an IAM user.
+	// Precisely the DESTINATION field, so a Withdraw's SourceKind="iam-user" (a
+	// debit) is NOT flagged.
+	for i, lhs := range as.Lhs {
+		if sel, ok := lhs.(*ast.SelectorExpr); ok && sel.Sel.Name == "DestinationKind" &&
+			i < len(as.Rhs) && isStringLit(as.Rhs[i], "iam-user") {
+			return true
+		}
+	}
+	// x.Balance += n — a stored balance is INCREASED, which is money created.
+	// Precisely the credit direction: engine.ApplyBalanceToInvoice's `-=` (a
+	// debit) is not a mint, and a plain `=` initialisation of a fresh row is not
+	// either. This is what engine.AdjustCustomerBalance does with a caller-supplied
+	// signed amount, so every route reaching it can mint.
+	if as.Tok == token.ADD_ASSIGN {
+		for _, lhs := range as.Lhs {
+			if sel, ok := lhs.(*ast.SelectorExpr); ok && sel.Sel.Name == "Balance" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// mintReachingFuncs returns the set of package-qualified functions whose bodies
+// reach a money sink, following resolved calls across the scanned packages
+// transitively. Derived from source, so a new handler that mints — directly or
+// through a service — is detected automatically.
 func mintReachingFuncs(t *testing.T) map[string]bool {
 	t.Helper()
 
-	rawSink := map[string]bool{}          // func → directly contains a sink
-	calls := map[string]map[string]bool{} // func → same-package funcs it calls
+	a := &analyzer{
+		syms:    map[string]*pkgSyms{},
+		rawSink: map[string]bool{},
+		calls:   map[string]map[string]bool{},
+	}
+	files := map[string][]*ast.File{} // pkg → its parsed files
 
+	// Parse every scanned package once.
 	for _, dir := range mintPkgDirs {
 		fset := token.NewFileSet()
-		pkgs, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
+		parsed, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
 			return !strings.HasSuffix(fi.Name(), "_test.go")
 		}, 0)
 		if err != nil {
 			t.Fatalf("parse %s: %v", dir, err)
 		}
-		for _, pkg := range pkgs {
+		p := pkgPath(dir)
+		a.syms[p] = &pkgSyms{
+			types:   map[string]bool{},
+			fields:  map[string]map[string]typeRef{},
+			returns: map[string]typeRef{},
+		}
+		for _, pkg := range parsed {
 			for _, file := range pkg.Files {
-				imports := importAliases(file)
-				for _, decl := range file.Decls {
-					fn, ok := decl.(*ast.FuncDecl)
-					if !ok || fn.Body == nil {
+				files[p] = append(files[p], file)
+			}
+		}
+	}
+
+	// Pass 1 — type declarations, so a local type name resolves.
+	for pkg, fs := range files {
+		for _, file := range fs {
+			for _, decl := range file.Decls {
+				gd, ok := decl.(*ast.GenDecl)
+				if !ok || gd.Tok != token.TYPE {
+					continue
+				}
+				for _, spec := range gd.Specs {
+					if ts, ok := spec.(*ast.TypeSpec); ok {
+						a.syms[pkg].types[ts.Name.Name] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Pass 2 — struct fields and function results, the facts the resolver reads.
+	for pkg, fs := range files {
+		for _, file := range fs {
+			f := &fileCtx{a: a, pkg: pkg, imports: importAliases(file)}
+			for _, decl := range file.Decls {
+				switch d := decl.(type) {
+				case *ast.GenDecl:
+					if d.Tok != token.TYPE {
 						continue
 					}
-					name := fn.Name.Name
-					if _, seen := calls[name]; !seen {
-						calls[name] = map[string]bool{}
-					}
-					// Per-func state for the GENERIC ledger-create sink: a handler
-					// that decodes request input INTO a transaction.Transaction and
-					// .Create()s it (so its Type is attacker-controlled, e.g. a
-					// Deposit) — the shape the literal `x.Type = Deposit` detector
-					// misses. This is exactly api/transaction.Create.
-					txVars := map[string]bool{}        // vars assigned from transaction.New(...)
-					decodeTargets := map[string]bool{} // vars a request body was decoded INTO
-					hasCreate := false                 // a .Create() call is present
-					ast.Inspect(fn.Body, func(n ast.Node) bool {
-						switch x := n.(type) {
-						case *ast.AssignStmt:
-							// x.Type = transaction.Deposit  (a deposit-WRITE, not a
-							// `== transaction.Deposit` read comparison — that is a
-							// BinaryExpr, never an AssignStmt RHS).
-							for _, rhs := range x.Rhs {
-								if isSelector(rhs, imports, "models/transaction", "Deposit") {
-									rawSink[name] = true
-								}
-							}
-							// x.DestinationKind = "iam-user"  (RED's exact criterion) —
-							// mints spendable balance to an IAM user. Precisely the
-							// DESTINATION field, so a Withdraw's SourceKind="iam-user"
-							// (a debit) is NOT flagged.
-							for i, lhs := range x.Lhs {
-								if sel, ok := lhs.(*ast.SelectorExpr); ok && sel.Sel.Name == "DestinationKind" &&
-									i < len(x.Rhs) && isStringLit(x.Rhs[i], "iam-user") {
-									rawSink[name] = true
-								}
-							}
-							// v := transaction.New(...) → v is a ledger transaction var.
-							for i, lhs := range x.Lhs {
-								if id, ok := lhs.(*ast.Ident); ok && i < len(x.Rhs) &&
-									isSelectorCall2(x.Rhs[i], imports, "models/transaction", "New") {
-									txVars[id.Name] = true
-								}
-							}
-						case *ast.CallExpr:
-							// allotment.Grant(...) — mints included monthly credit.
-							if isSelectorCall(x, imports, "billing/allotment", "Grant") {
-								rawSink[name] = true
-							}
-							// <payout cron>.Payout(...) — disburses treasury.
-							if isPayoutExecutorCall(x, imports) {
-								rawSink[name] = true
-							}
-							// .Create() present (persists whatever was built).
-							if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Create" {
-								hasCreate = true
-							}
-							// A decode of the request body INTO some var → record the
-							// target so we can see if it is a ledger transaction.
-							if tgt := decodeTargetIdent(x); tgt != "" {
-								decodeTargets[tgt] = true
-							}
-							// same-package call by bare identifier → call-graph edge.
-							if id, ok := x.Fun.(*ast.Ident); ok {
-								calls[name][id.Name] = true
+					for _, spec := range d.Specs {
+						ts, ok := spec.(*ast.TypeSpec)
+						if !ok {
+							continue
+						}
+						st, ok := ts.Type.(*ast.StructType)
+						if !ok {
+							continue
+						}
+						fields := map[string]typeRef{}
+						for _, fld := range st.Fields.List {
+							for _, nm := range fld.Names {
+								fields[nm.Name] = f.typeOf(fld.Type)
 							}
 						}
-						return true
-					})
-					// Generic ledger-create sink: request body decoded INTO a
-					// transaction.New(...) var that is then .Create()d.
-					if hasCreate {
-						for v := range decodeTargets {
-							if txVars[v] {
-								rawSink[name] = true
-								break
+						a.syms[pkg].fields[ts.Name.Name] = fields
+					}
+				case *ast.FuncDecl:
+					if d.Type.Results != nil && len(d.Type.Results.List) > 0 {
+						a.syms[pkg].returns[d.Name.Name] = f.typeOf(d.Type.Results.List[0].Type)
+					}
+				}
+			}
+		}
+	}
+
+	// Pass 3 — sinks and call edges.
+	for pkg, fs := range files {
+		for _, file := range fs {
+			fc := &fileCtx{a: a, pkg: pkg, imports: importAliases(file)}
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil {
+					continue
+				}
+				f := &fnCtx{fileCtx: fc, locals: map[string]typeRef{}}
+				if fn.Recv != nil && len(fn.Recv.List) > 0 {
+					if names := fn.Recv.List[0].Names; len(names) > 0 {
+						f.recv = names[0].Name
+					}
+					f.recvT = fc.typeOf(fn.Recv.List[0].Type)
+				}
+				name := qualify(pkg, fn.Name.Name)
+				if _, seen := a.calls[name]; !seen {
+					a.calls[name] = map[string]bool{}
+				}
+				// Per-func state for the GENERIC ledger-create sink: a handler that
+				// decodes request input INTO a transaction.Transaction and .Create()s
+				// it (so its Type is attacker-controlled, e.g. a Deposit) — the shape
+				// the literal `x.Type = Deposit` detector misses. This is exactly
+				// api/transaction.Create.
+				txVars := map[string]bool{}        // vars assigned from transaction.New(...)
+				mintVars := map[string]bool{}      // vars assigned from a mintModel New(...)
+				decodeTargets := map[string]bool{} // vars a request body was decoded INTO
+				hasCreate := false                 // a .Create() call is present
+
+				ast.Inspect(fn.Body, func(n ast.Node) bool {
+					if f.assignSink(n) || f.callSink(n) || f.litSink(n) {
+						a.rawSink[name] = true
+					}
+					switch x := n.(type) {
+					case *ast.AssignStmt:
+						for i, lhs := range x.Lhs {
+							id, ok := lhs.(*ast.Ident)
+							if !ok || i >= len(x.Rhs) {
+								continue
 							}
+							// Learn the local's type so a later svc.Method() resolves.
+							if tr := f.valueType(x.Rhs[i]); tr.pkg != "" {
+								f.locals[id.Name] = tr
+							}
+							if isSelectorCall2(x.Rhs[i], f.imports, "models/transaction", "New") {
+								txVars[id.Name] = true
+							}
+							if f.mintModelNew(x.Rhs[i]) {
+								mintVars[id.Name] = true
+							}
+						}
+					case *ast.CallExpr:
+						if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Create" {
+							hasCreate = true
+							// v.Create() where v is a money-model row — the money act.
+							if id, ok := sel.X.(*ast.Ident); ok && mintVars[id.Name] {
+								a.rawSink[name] = true
+							}
+						}
+						if tgt := decodeTargetIdent(x); tgt != "" {
+							decodeTargets[tgt] = true
+						}
+						// A resolved callee inside the scanned set → a graph edge.
+						if p, callee := f.callee(x); p != "" {
+							if _, scanned := a.syms[p]; scanned {
+								a.calls[name][qualify(p, callee)] = true
+							}
+						}
+					}
+					return true
+				})
+				// Generic ledger-create sink: request body decoded INTO a
+				// transaction.New(...) var that is then .Create()d.
+				if hasCreate {
+					for v := range decodeTargets {
+						if txVars[v] {
+							a.rawSink[name] = true
+							break
 						}
 					}
 				}
@@ -179,14 +545,14 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 	}
 
 	// Transitive closure: a func reaches a sink if it is a raw sink or calls a
-	// same-package func that reaches a sink.
+	// func that reaches one.
 	reaches := map[string]bool{}
-	for f := range rawSink {
+	for f := range a.rawSink {
 		reaches[f] = true
 	}
 	for changed := true; changed; {
 		changed = false
-		for f, callees := range calls {
+		for f, callees := range a.calls {
 			if reaches[f] {
 				continue
 			}
@@ -304,18 +670,18 @@ func isPayoutExecutorCall(call *ast.CallExpr, imports map[string]string) bool {
 // is flagged by the guard, and a NEW mint handler NOT listed here (and not
 // route-gated) FAILS the guard.
 var userSafeMintHandlers = map[string]string{
-	"Topup":                 "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
-	"TopupWithToken":        "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
-	"GrantAllotment":        "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
-	"RunAllotments":         "per-user amount is subscription-derived in grantOrgAllotments; NO client-supplied amount or plan",
-	"HandleProviderWebhook": "unauthenticated by design — trust anchor is the per-provider signature, not a commerce token; not an org-admin surface",
+	"api/billing.Topup":                 "credits ONLY the amount the caller's own saved card was charged (money-in == credit); own subject",
+	"api/billing.TopupWithToken":        "credits ONLY the amount the caller's own card nonce was charged (money-in == credit); own subject",
+	"api/billing.GrantAllotment":        "amount is clamped to the caller's REAL subscription via planForGrant unless MayMintMoney (TestAllotment_OrgAdminCannotInflatePlan)",
+	"api/billing.RunAllotments":         "per-user amount is subscription-derived in grantOrgAllotments; NO client-supplied amount or plan",
+	"api/billing.HandleProviderWebhook": "unauthenticated by design — trust anchor is the per-provider signature, not a commerce token; not an org-admin surface",
 }
 
 // methodGatedMintHandlers reach a sink but gate it INSIDE the handler per-method
 // (not via route middleware), each verified by a named companion test.
 var methodGatedMintHandlers = map[string]string{
-	"ZapDispatch": "mint methods (billing.deposit) gated per-method on middleware.MayMintMoney (TestZapDeposit_OrgAdminDenied / TestZapReads_OrgAdminNotBlocked)",
-	"Create":      "api/transaction.Create gates the MINT case (Deposit / credit-to-iam-user) on middleware.MayMintMoney inside the handler — org-admin deposit→403 (api/transaction TestCreate_OrgAdminDepositToIAMUser_Denied); non-mint Withdraw/Transfer stay org-admin. mintauth.Enforce at the sink is the fail-closed backstop.",
+	"api/billing.ZapDispatch": "mint methods (billing.deposit) gated per-method on middleware.MayMintMoney (TestZapDeposit_OrgAdminDenied / TestZapReads_OrgAdminNotBlocked)",
+	"api/transaction.Create":  "api/transaction.Create gates the MINT case (Deposit / credit-to-iam-user) on middleware.MayMintMoney inside the handler — org-admin deposit→403 (api/transaction TestCreate_OrgAdminDepositToIAMUser_Denied); non-mint Withdraw/Transfer stay org-admin. mintauth.Enforce at the sink is the fail-closed backstop.",
 }
 
 type mintRoute struct{ method, path, handler string }
@@ -332,9 +698,37 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 	// ledger-create sink (decodes request input INTO a transaction.New var and
 	// .Create()s it), which the literal `Type=Deposit` detector alone misses; if it
 	// is not flagged the generic-sink detector is broken.
-	for _, must := range []string{"Deposit", "Refund", "GrantAllotment", "zapDeposit", "ZapDispatch", "Credit", "executePayouts", "Create"} {
+	// The husdledger/husdindex/treasury entries are the cross-package half: each
+	// is reached ONLY by resolving a call onto a service value, which is exactly
+	// what the same-package-only call graph could not do.
+	for _, must := range []string{
+		"api/billing.Deposit", "api/billing.Refund", "api/billing.GrantAllotment",
+		"api/billing.zapDeposit", "api/billing.ZapDispatch", "api/billing.Credit",
+		"api/affiliate.executePayouts", "api/transaction.Create",
+		"api/billing.SyncHUSD", "api/billing.SettleHUSD", "api/billing.MigrateHUSD",
+		"billing/husdledger.SyncOnce", "billing/husdledger.Settle", "billing/husdledger.Migrate",
+		"billing/husdledger.MintCredit", "billing/husdindex.Sync", "treasury.Mint",
+		"api/billing.CreateCreditGrant", "api/billing.CreatePayout",
+		"api/billing.AdjustCustomerBalance", "api/billing.ReconcileInboundTransfer",
+		"billing/engine.AdjustCustomerBalance",
+	} {
 		if !reaches[must] {
 			t.Fatalf("mint-sink detector did NOT flag %q — the source enumeration is broken; fix the detector before trusting this guard", must)
+		}
+	}
+	// Negative self-check: the read-only husd surface must NOT be flagged, or the
+	// detector is over-approximating (flagging a whole package instead of the
+	// funcs that actually mint) and every "GATED" line below is worthless.
+	// billing/engine.ApplyBalanceToInvoice is the direction check: it writes the
+	// SAME Balance field as AdjustCustomerBalance but decreases it (`-=`), so a
+	// detector that flagged it would be reading "touches money" as "mints money"
+	// and would drag every invoice-collection route into the mint surface.
+	for _, mustNot := range []string{
+		"api/billing.StatusHUSD", "billing/husdledger.Config", "billing/husdledger.Enabled",
+		"billing/engine.ApplyBalanceToInvoice", "api/billing.VoidCreditGrant",
+	} {
+		if reaches[mustNot] {
+			t.Fatalf("mint-sink detector flagged read-only %q — the enumeration is over-approximating; a guard that flags everything proves nothing", mustNot)
 		}
 	}
 
@@ -389,9 +783,11 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 
 	var out []mintRoute
 	for _, ri := range *rr.rec {
-		short := ri.handler[strings.LastIndex(ri.handler, ".")+1:]
-		if reaches[short] {
-			out = append(out, mintRoute{ri.method, ri.path, short})
+		// ri.handler is the runtime's fully-qualified name
+		// (github.com/hanzoai/commerce/api/billing.SyncHUSD); the graph is keyed by
+		// the module-relative form, so the two meet with no name guessing.
+		if qual := strings.TrimPrefix(ri.handler, modulePath+"/"); reaches[qual] {
+			out = append(out, mintRoute{ri.method, ri.path, qual})
 		}
 	}
 	return out
