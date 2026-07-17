@@ -13,7 +13,7 @@ package billing
 //     call to allotment.Grant, or a call to the contributor payout executor —
 //     following same-package calls transitively. This set is derived from the
 //     code, so a NEW handler that mints is detected automatically.
-//  2. Mount the REAL Route() for both packages and enumerate registered routes.
+//  2. Register the REAL Route() for both packages and enumerate registered routes.
 //  3. For every registered route whose handler reaches a sink, assert it is
 //     route-gated (probe as an org admin → 403), or method-gated inside the
 //     handler (ZapDispatch), or on the explicit userSafe allowlist WITH a reason.
@@ -46,15 +46,15 @@ import (
 	"github.com/hanzoai/commerce/util/rest"
 )
 
-// mountMintSurface mounts the FULL /v1 ledger surface a mint could reach —
-// billing + affiliate + the generic transaction router (POST /v1/transaction is
-// C1-b) + the wallet and demo-tokentransaction REST routers — onto v1. It is the
-// ONE mount point shared by the enumeration and the org-admin probe engine, so the
-// guard sees the same routes api.Route(/v1) registers (minus the full-bootstrap
-// bundle). Adding a mint route anywhere here brings it under the guard
-// automatically. The per-router auth (tokenRequired/adminRequired) matches
+// routeMintSurface registers on v1 the FULL /v1 ledger surface a mint could
+// reach — billing + affiliate + the generic transaction router (POST
+// /v1/transaction is C1-b) + the wallet and demo-tokentransaction REST routers.
+// It is the ONE registration shared by the enumeration and the org-admin probe
+// engine, so the guard sees the same routes api.Route(/v1) registers (minus the
+// full-bootstrap bundle). Adding a mint route anywhere here brings it under the
+// guard automatically. The per-router auth (tokenRequired/adminRequired) matches
 // api.Route so an org-admin probe reproduces production reachability.
-func mountMintSurface(v1 zip.Router) {
+func routeMintSurface(v1 zip.Router) {
 	tokenRequired := middleware.TokenRequired(permission.Admin)
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
@@ -379,13 +379,13 @@ func TestMintSurface_EveryMintRouteGatedOrProvablyUserSafe(t *testing.T) {
 	}
 }
 
-// registeredMintRoutes mounts the real billing + affiliate Route()s and returns
+// registeredMintRoutes registers the real billing + affiliate Route()s and returns
 // every registered route whose terminal handler reaches a mint sink.
 func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 	t.Helper()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	rr := newRecordingRouter(app)
-	mountMintSurface(rr.Group("/v1"))
+	routeMintSurface(rr.Group("/v1"))
 
 	var out []mintRoute
 	for _, ri := range *rr.rec {
@@ -397,7 +397,7 @@ func registeredMintRoutes(t *testing.T, reaches map[string]bool) []mintRoute {
 	return out
 }
 
-// orgAdminEngine mounts billing + affiliate behind a seed that mints an ORG-admin
+// orgAdminEngine registers billing + affiliate behind a seed that mints an ORG-admin
 // identity (org-level isAdmin, NOT a SuperAdmin) — the exact C1 adversary.
 func orgAdminEngine(t *testing.T) *zip.App {
 	t.Helper()
@@ -409,7 +409,7 @@ func orgAdminEngine(t *testing.T) *zip.App {
 		return c.Next()
 	})
 	v1 := eng.Group("/v1")
-	mountMintSurface(v1)
+	routeMintSurface(v1)
 	return eng
 }
 
