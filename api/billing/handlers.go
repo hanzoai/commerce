@@ -206,7 +206,15 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Post("/bank-transfer-instructions", CreateBankTransferInstruction)
 	api.Get("/bank-transfer-instructions", ListBankTransferInstructions)
 	api.Get("/bank-transfer-instructions/:id", GetBankTransferInstruction)
-	api.Post("/reconciliation/match", ReconcileInboundTransfer)
+	// Reconciling an inbound transfer asserts "this money arrived" and credits the
+	// customer's balance by a CLIENT-SUPPLIED amount, through the very same
+	// engine.AdjustCustomerBalance that /customer-balance/adjustments is
+	// mint-gated for. Only the platform can attest that a wire landed: an org
+	// owner reaching this could declare an arbitrary transfer against a reference
+	// it also controls and mint itself unlimited balance — C1 exactly. The
+	// reconciliation job is service-token driven, so the gate is transparent to
+	// the legitimate caller. Found by the mint-surface guard, not by hand.
+	mint.Post("/reconciliation/match", ReconcileInboundTransfer)
 
 	// Invoice sub-resources
 	api.Post("/invoices/:id/line-items", AddInvoiceLineItem)
