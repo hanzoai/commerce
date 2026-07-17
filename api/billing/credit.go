@@ -40,7 +40,8 @@ type creditRequest struct {
 //	{"org":"acme","amountCents":500,"reason":"welcome","tag":"starter-credit",
 //	 "currency":"usd","expiresAt":"2027-01-01T00:00:00Z","idempotencyKey":"signup:acme"}
 //
-// MINT-GATED. The route is mounted behind middleware.PlatformOnly (mintRequired),
+// MINT-GATED. The route is registered through middleware.Mint, which puts it
+// behind middleware.PlatformOnly and records it in middleware.MintRoutes(),
 // so ONLY the internal service token (cloud-api → commerce, COMMERCE_SERVICE_TOKEN)
 // or a platform global admin (auth.IAMClaims.IsSuperAdmin, owner=="admin") reaches
 // it; every self-service / org-owner / no-auth caller is refused (403/401) BEFORE
