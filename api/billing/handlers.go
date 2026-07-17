@@ -12,18 +12,24 @@ import (
 func Route(r zip.Router, args ...zip.Handler) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	// mintRequired gates the money-MINT routes (those that credit spendable
-	// balance from a client-supplied amount) on the internal service token OR a
-	// platform global admin ONLY — NEVER the org-level Admin bit. Without it,
-	// TokenRequired(permission.Admin) admitted any org OWNER (org-level IAM
-	// isAdmin → Admin|Live), who could then self-credit unlimited balance →
-	// unlimited free inference (the real-money-GA blocker). cloud-api's
-	// service-token money path is UNAFFECTED (the service-token branch grants the
-	// marker mintRequired checks). See middleware/platformonly.go.
-	mintRequired := middleware.PlatformOnly()
-
 	api := r.Group("billing")
 	api.Use(adminRequired)
+
+	// mint is the money-MINT surface: every route registered through it (those
+	// that credit spendable balance from a client-supplied amount) is gated on
+	// the internal service token OR a platform global admin ONLY — NEVER the
+	// org-level Admin bit. Without that gate, TokenRequired(permission.Admin)
+	// admitted any org OWNER (org-level IAM isAdmin → Admin|Live), who could then
+	// self-credit unlimited balance → unlimited free inference (the
+	// real-money-GA blocker). cloud-api's service-token money path is UNAFFECTED
+	// (the service-token branch grants the marker the gate checks).
+	//
+	// Registering here IS the declaration: middleware.Mint applies the gate and
+	// records the route in middleware.MintRoutes(), so the mint surface is
+	// derived from these registrations instead of hand-listed by each consumer
+	// (cloud's billing-bridge allowlist must stay disjoint from it). See
+	// middleware/platformonly.go and middleware/mint.go.
+	mint := middleware.Mint(api)
 
 	// Tier (tier-aware billing)
 	api.Get("/tier", GetTier)
@@ -39,16 +45,16 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Get("/balance/all", GetBalanceAll)
 	api.Get("/usage", GetUsage)
 	api.Post("/usage", RecordUsage)
-	// Money-MINT routes: service-token / global-admin ONLY (mintRequired).
-	api.Post("/deposit", mintRequired, Deposit)
-	api.Post("/refund", mintRequired, Refund)
+	// Money-MINT routes: service-token / global-admin ONLY.
+	mint.Post("/deposit", Deposit)
+	mint.Post("/refund", Refund)
 
 	// Chain-backed credit ledger (HUSD): the indexer backfill/reconcile pass and
 	// the metered-usage settlement sweep are platform-only (they move on-chain
 	// money / write the money ledger); status is a read-only observability surface.
-	api.Post("/husd/sync", mintRequired, SyncHUSD)
-	api.Post("/husd/settle", mintRequired, SettleHUSD)
-	api.Post("/husd/migrate", mintRequired, MigrateHUSD)
+	mint.Post("/husd/sync", SyncHUSD)
+	mint.Post("/husd/settle", SettleHUSD)
+	mint.Post("/husd/migrate", MigrateHUSD)
 	api.Get("/husd/status", StatusHUSD)
 
 	// SBOM-driven OSS-developer payout.
@@ -78,14 +84,14 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// self-service, so this is mint-gated; the on-signup "starter" credit is just a
 	// parameterized call (tag=starter-credit, amountCents=500, expiry=+365d) from
 	// cloud-api / chat, not a separate route. Idempotent on idempotencyKey.
-	api.Post("/credit", mintRequired, Credit)
+	mint.Post("/credit", Credit)
 
 	// Credit grants (money-MINT: service-token / global-admin ONLY). Reads moved
 	// to the user group below. Void is a grant mutation in the same resource
 	// family — same platform-only bar, so an org owner can neither create nor
 	// alter a grant.
-	api.Post("/credit-grants", mintRequired, CreateCreditGrant)
-	api.Post("/credit-grants/:id/void", mintRequired, VoidCreditGrant)
+	mint.Post("/credit-grants", CreateCreditGrant)
+	mint.Post("/credit-grants/:id/void", VoidCreditGrant)
 
 	// Pricing rules
 	api.Post("/pricing-rules", CreatePricingRule)
@@ -156,15 +162,15 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Customer balance (reads stay admin; the adjustment MINTS balance →
 	// service-token / global-admin ONLY).
 	api.Get("/customer-balance", GetCustomerBalance)
-	api.Post("/customer-balance/adjustments", mintRequired, AdjustCustomerBalance)
+	mint.Post("/customer-balance/adjustments", AdjustCustomerBalance)
 	api.Get("/balance-transactions", ListBalanceTransactions)
 
 	// Payouts. Creating/cancelling a payout MOVES money out — money-MINT bar
 	// (service-token / global-admin ONLY). Reads stay admin-scoped.
-	api.Post("/payouts", mintRequired, CreatePayout)
+	mint.Post("/payouts", CreatePayout)
 	api.Get("/payouts", ListPayouts)
 	api.Get("/payouts/:id", GetPayout)
-	api.Post("/payouts/:id/cancel", mintRequired, CancelPayout)
+	mint.Post("/payouts/:id/cancel", CancelPayout)
 
 	// Billing events
 	api.Get("/events", ListBillingEvents)
@@ -233,21 +239,21 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// cycle charges cards across orgs — money-MINT bar (service-token /
 	// global-admin ONLY), never an org owner's Admin bit. run-all sweeps EVERY
 	// org, so it is emphatically platform-only.
-	api.Post("/cycle/run", mintRequired, RunBillingCycle)
-	api.Post("/cycle/run-user", mintRequired, RunBillingCycleUser)
-	api.Post("/cycle/run-all", mintRequired, RunBillingCycleAllOrgs)
+	mint.Post("/cycle/run", RunBillingCycle)
+	mint.Post("/cycle/run-user", RunBillingCycleUser)
+	mint.Post("/cycle/run-all", RunBillingCycleAllOrgs)
 
 	// Auto-recharge sweep (called by the platform scheduler / CronJob): charge
 	// the default card for orgs whose balance dropped below their threshold.
 	// Platform-wide card charging — money-MINT bar (service-token / global-admin
 	// ONLY). An org owner reaching this could sweep-charge saved cards across
 	// every org.
-	api.Post("/auto-recharge/run-all", mintRequired, RunAutoRechargeAllOrgs)
+	mint.Post("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
 
 	// Test mode toggle: move an org between Square sandbox and production. This
 	// flips whether charges hit real cards, so it is a money-mode change —
 	// service-token / global-admin ONLY, never an org owner.
-	api.Post("/test-mode", mintRequired, SetOrgTestMode)
+	mint.Post("/test-mode", SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK

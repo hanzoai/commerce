@@ -377,13 +377,26 @@ All require `permission.Admin` token (org live/test JWT). Cloud-api connects via
 ## One way to grant credit — POST /v1/billing/credit (2026-07-16)
 
 `POST /v1/billing/credit` is the ONLY way credit enters an org ledger. It is
-**mint-gated** (`middleware.PlatformOnly` / `mintRequired`): only the internal
+**mint-gated** (registered through `middleware.Mint`, which applies
+`middleware.PlatformOnly`): only the internal
 service token OR a global admin (`owner=="admin"`) reaches it — every
 self-service / org-owner / no-auth caller is 403/401. A client-supplied mint
 amount must never be self-service; that is the money-critical core (a user cannot
 credit itself). Body: `{org, amountCents, reason, tag?, currency?, expiresAt?, idempotencyKey?}`,
 org-keyed (the org POOL account, not a per-human subject), idempotent on
 `idempotencyKey`.
+
+**The mint gate declares itself.** A mint route is registered through
+`middleware.Mint(api)` — `mint.Post("/deposit", Deposit)` — which BOTH applies
+`PlatformOnly()` and records the route's method + full path in the package-level
+registry. Registration is the single declaration, so the gate and the record
+cannot drift. `middleware.MintRoutes() []MintRoute` exports that surface (after
+mounting) for cross-service checks: cloud's `/v1/billing` bridge forwards with
+the admin `COMMERCE_SERVICE_TOKEN`, which satisfies `MayMintMoney`, so its
+`billingForwardable` allowlist must stay DISJOINT from `MintRoutes()` — an
+assertion cloud can now make against this API instead of hand-copying the list.
+Routes registered through `util/rest`'s deferred table (`api/affiliate`) carry
+the same `PlatformOnly` chain explicitly but are not self-declaring.
 
 Consolidated three prior handlers into this one: deleted self-service
 `GrantStarterCredit` (old `/credit`), `PostMyWelcome` (`/me/welcome`), and
