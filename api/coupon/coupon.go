@@ -163,6 +163,23 @@ func redeemCoupon(c *zip.Ctx) error {
 		return http.Fail(c, 400, "Invalid request body", err)
 	}
 
+	// ┌─ DO NOT "FIX" THIS TO datastore.NewNamespaced ─────────────────────────┐
+	// This lookup runs in the ROOT namespace while coupon CRUD (rest.New below in
+	// Route) writes ORG-namespaced rows. So an org's own coupon is invisible here
+	// and redeem 404s. That asymmetry looks exactly like a namespacing bug, and
+	// making it "consistent" is a one-word change that opens a self-mint:
+	//
+	//	coupon CRUD is org-admin reachable → an org admin POSTs a coupon with
+	//	Amount = 100000000 → redeem finds it → the generic branch below mints
+	//	creditgrant.AmountCents = cpn.Amount → and credit grants ARE spendable
+	//	(getActiveGrants → BurnCredits) → unlimited free inference.
+	//
+	// The namespace mismatch is the ONLY thing preventing that today: this route
+	// fails closed BY ACCIDENT, not by control. Before touching it, put the amount
+	// under platform authority (mint-gate coupon CRUD, or derive the reward
+	// server-side from a fixed table the way api/referral derives from
+	// tier.Rewards). See the mint surface guard: api/billing/mint_surface_test.go.
+	// └────────────────────────────────────────────────────────────────────────┘
 	db := datastore.New(c.Context())
 	cpn := coupon.New(db)
 	if ok, err := cpn.Query().Filter("Code_=", req.Code).Get(); err != nil || !ok {
