@@ -209,11 +209,20 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Reconciling an inbound transfer asserts "this money arrived" and credits the
 	// customer's balance by a CLIENT-SUPPLIED amount, through the very same
 	// engine.AdjustCustomerBalance that /customer-balance/adjustments is
-	// mint-gated for. Only the platform can attest that a wire landed: an org
-	// owner reaching this could declare an arbitrary transfer against a reference
-	// it also controls and mint itself unlimited balance — C1 exactly. The
-	// reconciliation job is service-token driven, so the gate is transparent to
-	// the legitimate caller. Found by the mint-surface guard, not by hand.
+	// mint-gated for. Only the platform can attest that a wire landed, so it sits
+	// at the platform bar — an org owner must not be able to declare an arbitrary
+	// transfer against a reference it also controls.
+	//
+	// Impact today is LEDGER INTEGRITY, not free inference: nothing spends a
+	// customer balance. engine.ApplyBalanceToInvoice is the only function that
+	// would, and it has no callers; models/customerbalance is imported by exactly
+	// one file. So the reachable damage is fabricated "bank transfer received"
+	// balance-transaction rows and an inflated balance — and a landmine for
+	// whoever wires ApplyBalanceToInvoice up, at which point this becomes a live
+	// mint. Gated now, while it is cheap.
+	//
+	// The gate cannot regress a caller: this route has none, in commerce or in
+	// cloud. Found by the mint-surface guard, not by hand.
 	mint.Post("/reconciliation/match", ReconcileInboundTransfer)
 
 	// Invoice sub-resources
