@@ -65,13 +65,22 @@ func TestMintRegistry_DeclarationImpliesEnforcement(t *testing.T) {
 //
 // The declared set is deliberately BROADER than the AST set (assertion 2 is a
 // superset, not an equality). That is not sloppiness on either side: the AST
-// detector's sinks are ledger-transaction shaped (`Type = transaction.Deposit`,
-// DestinationKind="iam-user", allotment.Grant, the payout executor, the generic
-// decode-into-transaction.New+Create), so a route that mints through a DIFFERENT
-// model — a CreditGrant row, a customer-balance adjustment, a Square payout, an
-// HUSD chain sync — is gated by declaration but invisible to the sink analysis.
-// The registry is what protects those, which is precisely why the two checks are
-// worth keeping independent.
+// derives its set from money SINKS — code that creates or moves money — while
+// the registry declares the platform MONEY-AUTHORITY bar, which is deliberately
+// wider than minting. Two kinds of route are declared but invisible to the sink
+// analysis, and both are correct:
+//
+//   - routes that MUTATE money state without creating it: /cycle/run-user drives
+//     an invoice collection (engine.CollectInvoice burns credits and writes a
+//     Withdraw — a DEBIT), and /credit-grants/:id/void flips Voided on an
+//     existing grant. Neither mints, so no mint sink exists to find.
+//   - routes that change money POLICY rather than money: /test-mode flips
+//     org.Live, which decides whether charges are real or sandboxed.
+//
+// Those are gated by declaration because forcing a charge on a named user, or
+// moving an org to sandbox, is platform authority — not because they mint. The
+// registry is what protects them, which is precisely why the two checks are
+// worth keeping independent: neither derivation can see everything the other does.
 func TestMintRegistry_AgreesWithASTSurface(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
 
@@ -122,7 +131,7 @@ func TestMintRegistry_AgreesWithASTSurface(t *testing.T) {
 	}
 	for r := range declared {
 		if !inAST[r] {
-			t.Logf("DECLARED-ONLY %-6s %s — gated by declaration; mints through a model the AST sink analysis does not track", r.Method, r.Path)
+			t.Logf("DECLARED-ONLY %-6s %s — gated by declaration: it exercises platform money authority without minting, so no mint sink exists for the analysis to find", r.Method, r.Path)
 		}
 	}
 }
