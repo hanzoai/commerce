@@ -131,7 +131,7 @@ func TestMintRegistry_AgreesWithASTSurface(t *testing.T) {
 	}
 	for r := range declared {
 		if !inAST[r] {
-			t.Logf("DECLARED-ONLY %-6s %s — gated by declaration; mints through a model the AST sink analysis does not track", r.Method, r.Path)
+			t.Logf("DECLARED-ONLY %-6s %s — gated by declaration: it exercises platform money authority without minting, so no mint sink exists for the analysis to find", r.Method, r.Path)
 		}
 	}
 }
