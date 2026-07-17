@@ -11,16 +11,32 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
+	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// mintRoutes are the money-mint / money-out billing routes that MUST be gated to
-// the internal service token / platform global admin ONLY (C1). Table-driving them
-// proves the gate is mounted on EVERY one — dropping it from any single route
-// reopens the unlimited-self-credit hole.
+// mintRoutes is the HAND-WRITTEN money-route table: the third derivation of the
+// mint surface, independent of both middleware.MintRoutes() (the declaration) and
+// the AST sink analysis (mint_surface_test.go). Its value is precisely that a
+// human asserted these routes must deny an org admin — so it covers what the
+// other two cannot.
+//
+// It is deliberately NOT the whole registry, and does not claim to be: the
+// registry is the complete declaration, and the AST guard independently
+// re-derives the minting subset from source. This table is the SOLE cover for
+// the routes neither of those pins down — the ones that exercise platform money
+// authority WITHOUT reaching a mint sink, which the AST therefore cannot see:
+//
+//	credit-grants/:id/void, payouts/:id/cancel  — mutate an existing money row
+//	cycle/run-user                              — forces an invoice collection (a debit)
+//	                                              against a client-named user
+//	test-mode                                   — flips org.Live: real charges become
+//	                                              Square-sandbox charges, i.e. free usage
+//
+// Dropping the gate from any route below fails here and nowhere else.
 var mintRoutes = []struct{ method, path, body string }{
 	{http.MethodPost, "/v1/billing/deposit", `{"user":"acme/alice","amount":100}`},
 	{http.MethodPost, "/v1/billing/refund", `{"user":"acme/alice","amount":100,"originalTransactionId":"x"}`},
@@ -30,6 +46,9 @@ var mintRoutes = []struct{ method, path, body string }{
 	{http.MethodPost, "/v1/billing/customer-balance/adjustments", `{"customerId":"acme/alice","amount":100}`},
 	{http.MethodPost, "/v1/billing/payouts", `{"amount":100}`},
 	{http.MethodPost, "/v1/billing/payouts/abc/cancel", `{}`},
+	{http.MethodPost, "/v1/billing/reconciliation/match", `{"reference":"x","amount":100}`},
+	{http.MethodPost, "/v1/billing/cycle/run-user", `{"userId":"acme/alice"}`},
+	{http.MethodPost, "/v1/billing/test-mode", `{"testMode":true}`},
 }
 
 // engineWithSeed mounts the REAL billing Route() behind a pre-group middleware
@@ -51,10 +70,24 @@ func engineWithSeed(seed func(*zip.Ctx)) *zip.App {
 // self-credit-unlimited-balance hole.
 func TestC1_OrgAdminDeniedOnEveryMintRoute(t *testing.T) {
 	t.Setenv("COMMERCE_SERVICE_TOKEN", "")
+	ctx := ae.NewContext()
+	defer ctx.Close()
+
+	// Seed the request organization too, exactly as the upstream chain does. The
+	// gate denies before any handler runs, so this changes nothing about what the
+	// test proves — but WITHOUT it an ungated route reaches a handler whose
+	// GetOrganization panics on the nil local, and a panic kills the whole test
+	// binary before any assertion prints. The failure must be readable ("returned
+	// 400, want 403"), not a stack trace that also hides every other test's result.
+	org := organization.New(datastore.New(ctx))
+	org.Name = "acme"
+	org.Live = true
 	orgAdmin := func(c *zip.Ctx) {
 		c.Locals("iam_authenticated", true)
 		c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 		c.Locals("iam_claims", &auth.IAMClaims{Owner: "acme", IsAdmin: true}) // org owner, NOT global
+		c.Locals("organization", org)
+		c.SetContext(ctx)
 	}
 	eng := engineWithSeed(orgAdmin)
 	for _, r := range mintRoutes {
