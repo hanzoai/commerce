@@ -70,12 +70,16 @@ func ErrorHTMLDev(c *zip.Ctx, stack string, err error) {
 	log.Error(stack)
 }
 
-// Handle errors with appropriate ErrorDisplayer. Recovers panics and renders
-// any error a downstream handler returns — the commerce envelope, not zip's
-// default {error,code,status}. Returning nil after rendering ends the request.
+// Recovers panics. A panic is unhandled by definition, so 500 is the honest
+// status and the stack is all we know.
+//
+// A returned error is NOT a panic: the handler chose it and encoded what it
+// means, e.g. zip.ErrForbidden -> 403. Rendering that here would discard the
+// status (there is no status to read off a bare `error`) and flatten every
+// refusal into a 500. So returned errors pass through to zip's handler, which
+// reads *zip.HTTPError and honors it. One error path, one envelope.
 func errorHandler(displayError ErrorDisplayer) zip.Handler {
 	return func(c *zip.Ctx) (result error) {
-		// On panic
 		defer func() {
 			if r := recover(); r != nil {
 				errstr := fmt.Sprint(r)
@@ -88,12 +92,7 @@ func errorHandler(displayError ErrorDisplayer) zip.Handler {
 			}
 		}()
 
-		// When a downstream handler returns an error (the c.Fail(500) analog).
-		if err := c.Next(); err != nil {
-			displayError(c, err.Error(), err)
-			return nil
-		}
-		return nil
+		return c.Next()
 	}
 }
 
