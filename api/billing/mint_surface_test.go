@@ -146,6 +146,9 @@ type pkgSyms struct {
 	types   map[string]bool               // type names declared here
 	fields  map[string]map[string]typeRef // struct → field → field's type
 	returns map[string]typeRef            // func/method name → its first result type
+	funcs   map[string]bool               // func/method names declared here
+	embeds  map[string][]typeRef          // struct → the types it EMBEDS, for promotion
+	globals map[string]typeRef            // package-level var → its type
 }
 
 // analyzer resolves selector calls across the scanned package set and collects
@@ -190,12 +193,74 @@ func (f *fileCtx) typeOf(e ast.Expr) typeRef {
 }
 
 // fnCtx is the resolution scope inside one function body: its file's scope plus
-// the receiver and the local variables whose type we could infer.
+// the receiver, the parameters, and the local variables whose type we inferred.
 type fnCtx struct {
 	*fileCtx
-	recv   string             // receiver identifier ("" for a plain func)
-	recvT  typeRef            // receiver's type
-	locals map[string]typeRef // local var → inferred type
+	recv    string             // receiver identifier ("" for a plain func)
+	recvT   typeRef            // receiver's type
+	locals  map[string]typeRef // local var / parameter → its type
+	funcVal map[string]qualRef // local bound to a METHOD VALUE (m := svc.Settle)
+}
+
+// qualRef names a function by the package that declares it.
+type qualRef struct{ pkg, name string }
+
+// bindParams seeds the parameters into scope. A service arrives as an argument
+// at least as often as it is constructed locally (`func h(svc *husdledger.Service)`),
+// and the declared type is right there — not inferring it made every such call a
+// dead end.
+func (f *fnCtx) bindParams(ft *ast.FuncType) {
+	if ft == nil || ft.Params == nil {
+		return
+	}
+	for _, p := range ft.Params.List {
+		t := f.typeOf(p.Type)
+		if t.pkg == "" {
+			continue // unresolved (out-of-module, interface, map…) — no guess
+		}
+		for _, nm := range p.Names {
+			f.locals[nm.Name] = t
+		}
+	}
+}
+
+// specTypes resolves one `var`/`const` spec to name → type, for both the typed
+// (`var s *husdledger.Service`) and inferred (`var s = husdledger.Default()`) forms.
+func (f *fnCtx) specTypes(vs *ast.ValueSpec) map[string]typeRef {
+	out := map[string]typeRef{}
+	for i, nm := range vs.Names {
+		var t typeRef
+		switch {
+		case vs.Type != nil:
+			t = f.typeOf(vs.Type)
+		case i < len(vs.Values):
+			t = f.valueType(vs.Values[i])
+		}
+		if t.pkg != "" {
+			out[nm.Name] = t
+		}
+	}
+	return out
+}
+
+// methodOwner reports the package whose func set owns method m on type t,
+// following EMBEDDED types so a promoted method resolves to the type that
+// actually declares it. Bounded depth: an embed cycle cannot compile, but the
+// analyzer must not hang on malformed input either.
+func (f *fnCtx) methodOwner(t typeRef, m string, depth int) string {
+	syms := f.a.syms[t.pkg]
+	if syms == nil || depth > 8 {
+		return ""
+	}
+	if syms.funcs[m] {
+		return t.pkg
+	}
+	for _, e := range syms.embeds[t.name] {
+		if p := f.methodOwner(e, m, depth+1); p != "" {
+			return p
+		}
+	}
+	return ""
 }
 
 // valueType resolves a VALUE expression to the type of the value it denotes.
@@ -207,9 +272,15 @@ func (f *fnCtx) valueType(e ast.Expr) typeRef {
 		if x.Name == f.recv {
 			return f.recvT
 		}
-		return f.locals[x.Name] // zero value when unknown — no edge, no guess
+		if t, ok := f.locals[x.Name]; ok {
+			return t
+		}
+		if syms := f.a.syms[f.pkg]; syms != nil {
+			return syms.globals[x.Name] // package-level var
+		}
 	case *ast.SelectorExpr:
 		// A struct field access: s.indexer → the Service struct's indexer field.
+		// Embedded fields are keyed by their type name, so w.Service resolves too.
 		base := f.valueType(x.X)
 		if syms := f.a.syms[base.pkg]; syms != nil {
 			return syms.fields[base.name][x.Sel.Name]
@@ -247,6 +318,11 @@ func (f *fnCtx) resultType(call *ast.CallExpr) typeRef {
 func (f *fnCtx) callee(call *ast.CallExpr) (pkg, name string) {
 	switch fun := call.Fun.(type) {
 	case *ast.Ident:
+		// A local holding a method VALUE (m := svc.Settle; m(ctx)) calls through
+		// to the method it was bound to, not to a func in this package.
+		if q, ok := f.funcVal[fun.Name]; ok {
+			return q.pkg, q.name
+		}
 		return f.pkg, fun.Name
 	case *ast.SelectorExpr:
 		// A bare identifier that is an import alias (and is not shadowed by the
@@ -258,10 +334,32 @@ func (f *fnCtx) callee(call *ast.CallExpr) (pkg, name string) {
 				}
 			}
 		}
-		// Otherwise it is a method on a value: resolve the value's type.
-		return f.valueType(fun.X).pkg, fun.Sel.Name
+		// Otherwise it is a method on a value: resolve the value's type, then find
+		// which package's func set owns the method — which may be an EMBEDDED
+		// type's, since embedding promotes methods onto the outer struct.
+		return f.methodOwner(f.valueType(fun.X), fun.Sel.Name, 0), fun.Sel.Name
 	}
 	return "", ""
+}
+
+// methodValue reports the function a method-value expression (`svc.Settle`, with
+// no call) binds to, so a later `m(ctx)` resolves to it.
+func (f *fnCtx) methodValue(e ast.Expr) (qualRef, bool) {
+	sel, ok := e.(*ast.SelectorExpr)
+	if !ok {
+		return qualRef{}, false
+	}
+	if id, ok := sel.X.(*ast.Ident); ok && id.Name != f.recv {
+		if _, shadowed := f.locals[id.Name]; !shadowed {
+			if p := f.importPkg(id.Name); p != "" {
+				return qualRef{p, sel.Sel.Name}, true // pkg.Func as a value
+			}
+		}
+	}
+	if p := f.methodOwner(f.valueType(sel.X), sel.Sel.Name, 0); p != "" {
+		return qualRef{p, sel.Sel.Name}, true
+	}
+	return qualRef{}, false
 }
 
 // ── the money sinks ─────────────────────────────────────────────────────────
@@ -290,6 +388,10 @@ var mintModels = map[string]string{
 	"models/creditgrant": "a credit grant IS spendable balance; creating one from a client-supplied amount is the C1 mint shape",
 	"models/payout":      "a payout disburses the treasury to a client-named destination",
 }
+
+// persistVerbs are the datastore methods that WRITE a row. Creating a money
+// model through any of them is the same money act; only the verb differs.
+var persistVerbs = map[string]bool{"Create": true, "Put": true, "MustPut": true}
 
 // mintModelNew reports whether e constructs a money model (`creditgrant.New(db)`).
 func (f *fnCtx) mintModelNew(e ast.Expr) bool {
@@ -375,15 +477,15 @@ func (f *fnCtx) assignSink(n ast.Node) bool {
 // through a service — is detected automatically.
 func mintReachingFuncs(t *testing.T) map[string]bool {
 	t.Helper()
+	return analyzeFiles(t, parseMintPkgs(t))
+}
 
-	a := &analyzer{
-		syms:    map[string]*pkgSyms{},
-		rawSink: map[string]bool{},
-		calls:   map[string]map[string]bool{},
-	}
-	files := map[string][]*ast.File{} // pkg → its parsed files
-
-	// Parse every scanned package once.
+// parseMintPkgs parses the scanned packages into pkg → files. It is the ONLY
+// place source comes from disk, so analyzeFiles below can be exercised against
+// synthetic source (TestResolver_CallShapes) without a package on disk.
+func parseMintPkgs(t *testing.T) map[string][]*ast.File {
+	t.Helper()
+	files := map[string][]*ast.File{}
 	for _, dir := range mintPkgDirs {
 		fset := token.NewFileSet()
 		parsed, err := parser.ParseDir(fset, dir, func(fi fs.FileInfo) bool {
@@ -393,15 +495,33 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 			t.Fatalf("parse %s: %v", dir, err)
 		}
 		p := pkgPath(dir)
-		a.syms[p] = &pkgSyms{
-			types:   map[string]bool{},
-			fields:  map[string]map[string]typeRef{},
-			returns: map[string]typeRef{},
-		}
 		for _, pkg := range parsed {
 			for _, file := range pkg.Files {
 				files[p] = append(files[p], file)
 			}
+		}
+	}
+	return files
+}
+
+// analyzeFiles runs the sink analysis over pkg → files and returns the set of
+// package-qualified functions that reach a money sink.
+func analyzeFiles(t *testing.T, files map[string][]*ast.File) map[string]bool {
+	t.Helper()
+
+	a := &analyzer{
+		syms:    map[string]*pkgSyms{},
+		rawSink: map[string]bool{},
+		calls:   map[string]map[string]bool{},
+	}
+	for p := range files {
+		a.syms[p] = &pkgSyms{
+			types:   map[string]bool{},
+			fields:  map[string]map[string]typeRef{},
+			returns: map[string]typeRef{},
+			funcs:   map[string]bool{},
+			embeds:  map[string][]typeRef{},
+			globals: map[string]typeRef{},
 		}
 	}
 
@@ -429,29 +549,66 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 			for _, decl := range file.Decls {
 				switch d := decl.(type) {
 				case *ast.GenDecl:
-					if d.Tok != token.TYPE {
-						continue
-					}
-					for _, spec := range d.Specs {
-						ts, ok := spec.(*ast.TypeSpec)
-						if !ok {
-							continue
-						}
-						st, ok := ts.Type.(*ast.StructType)
-						if !ok {
-							continue
-						}
-						fields := map[string]typeRef{}
-						for _, fld := range st.Fields.List {
-							for _, nm := range fld.Names {
-								fields[nm.Name] = f.typeOf(fld.Type)
+					switch d.Tok {
+					case token.TYPE:
+						for _, spec := range d.Specs {
+							ts, ok := spec.(*ast.TypeSpec)
+							if !ok {
+								continue
 							}
+							st, ok := ts.Type.(*ast.StructType)
+							if !ok {
+								continue
+							}
+							fields := map[string]typeRef{}
+							for _, fld := range st.Fields.List {
+								t := f.typeOf(fld.Type)
+								if len(fld.Names) == 0 {
+									// An EMBEDDED field has no name: its type IS the field
+									// name, and its methods are PROMOTED onto this struct.
+									// Record both so w.Service and the promoted w.Settle()
+									// each resolve.
+									if t.name != "" {
+										fields[t.name] = t
+										a.syms[pkg].embeds[ts.Name.Name] = append(a.syms[pkg].embeds[ts.Name.Name], t)
+									}
+									continue
+								}
+								for _, nm := range fld.Names {
+									fields[nm.Name] = t
+								}
+							}
+							a.syms[pkg].fields[ts.Name.Name] = fields
 						}
-						a.syms[pkg].fields[ts.Name.Name] = fields
 					}
 				case *ast.FuncDecl:
+					a.syms[pkg].funcs[d.Name.Name] = true
 					if d.Type.Results != nil && len(d.Type.Results.List) > 0 {
 						a.syms[pkg].returns[d.Name.Name] = f.typeOf(d.Type.Results.List[0].Type)
+					}
+				}
+			}
+		}
+	}
+
+	// Pass 2b — package-level vars. Separate from pass 2 because resolving
+	// `var svc = husdledger.Default()` reads the `returns` table pass 2 builds,
+	// so it can only run once every package's results are known.
+	for pkg, fs := range files {
+		for _, file := range fs {
+			f := &fnCtx{fileCtx: &fileCtx{a: a, pkg: pkg, imports: importAliases(file)}, locals: map[string]typeRef{}}
+			for _, decl := range file.Decls {
+				gd, ok := decl.(*ast.GenDecl)
+				if !ok || gd.Tok != token.VAR {
+					continue
+				}
+				for _, spec := range gd.Specs {
+					vs, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					for name, t := range f.specTypes(vs) {
+						a.syms[pkg].globals[name] = t
 					}
 				}
 			}
@@ -467,13 +624,14 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 				if !ok || fn.Body == nil {
 					continue
 				}
-				f := &fnCtx{fileCtx: fc, locals: map[string]typeRef{}}
+				f := &fnCtx{fileCtx: fc, locals: map[string]typeRef{}, funcVal: map[string]qualRef{}}
 				if fn.Recv != nil && len(fn.Recv.List) > 0 {
 					if names := fn.Recv.List[0].Names; len(names) > 0 {
 						f.recv = names[0].Name
 					}
 					f.recvT = fc.typeOf(fn.Recv.List[0].Type)
 				}
+				f.bindParams(fn.Type)
 				name := qualify(pkg, fn.Name.Name)
 				if _, seen := a.calls[name]; !seen {
 					a.calls[name] = map[string]bool{}
@@ -493,6 +651,18 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 						a.rawSink[name] = true
 					}
 					switch x := n.(type) {
+					case *ast.DeclStmt:
+						// `var svc = husdledger.Default()` binds a local exactly as `:=`
+						// does; only the syntax differs.
+						if gd, ok := x.Decl.(*ast.GenDecl); ok && gd.Tok == token.VAR {
+							for _, spec := range gd.Specs {
+								if vs, ok := spec.(*ast.ValueSpec); ok {
+									for name, t := range f.specTypes(vs) {
+										f.locals[name] = t
+									}
+								}
+							}
+						}
 					case *ast.AssignStmt:
 						for i, lhs := range x.Lhs {
 							id, ok := lhs.(*ast.Ident)
@@ -503,6 +673,11 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 							if tr := f.valueType(x.Rhs[i]); tr.pkg != "" {
 								f.locals[id.Name] = tr
 							}
+							// A method taken as a VALUE (m := svc.Settle) — the call
+							// comes later, through m.
+							if q, ok := f.methodValue(x.Rhs[i]); ok {
+								f.funcVal[id.Name] = q
+							}
 							if isSelectorCall2(x.Rhs[i], f.imports, "models/transaction", "New") {
 								txVars[id.Name] = true
 							}
@@ -511,11 +686,18 @@ func mintReachingFuncs(t *testing.T) map[string]bool {
 							}
 						}
 					case *ast.CallExpr:
-						if sel, ok := x.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "Create" {
-							hasCreate = true
-							// v.Create() where v is a money-model row — the money act.
-							if id, ok := sel.X.(*ast.Ident); ok && mintVars[id.Name] {
-								a.rawSink[name] = true
+						if sel, ok := x.Fun.(*ast.SelectorExpr); ok {
+							if sel.Sel.Name == "Create" {
+								hasCreate = true
+							}
+							// v.<persist>() where v is a money-model row — the money act.
+							// Every verb that writes the row counts: api/coupon mints a
+							// credit grant with MustPut, not Create, so keying on Create
+							// alone would miss a real mint the day one moves in here.
+							if persistVerbs[sel.Sel.Name] {
+								if id, ok := sel.X.(*ast.Ident); ok && mintVars[id.Name] {
+									a.rawSink[name] = true
+								}
 							}
 						}
 						if tgt := decodeTargetIdent(x); tgt != "" {
