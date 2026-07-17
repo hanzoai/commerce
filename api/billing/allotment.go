@@ -45,13 +45,14 @@ func subscriptionPlanSlug(db *datastore.Datastore, user string) string {
 		}
 		// C1-a: a PAID tier's included allotment may anchor ONLY on a
 		// payment-backed subscription — never a zero-payment self-created internal
-		// Active sub (CreateBillingSubscription starts one instantly). A free tier
-		// (no included allotment) confers nothing to mint, so it is fine self-serve.
+		// Active sub (CreateBillingSubscription starts one instantly). A free ($0)
+		// tier is self-serve even when it carries a small included credit (a perk),
+		// so it anchors as-is; price, not the allotment, is the paid-tier gate.
 		slug := s.Plan.Slug
 		if slug == "" {
 			slug = s.PlanId
 		}
-		if IncludedMonthlyCents(slug) > 0 && !subscriptionPaymentBacked(s) {
+		if paidTier(slug) && !subscriptionPaymentBacked(s) {
 			continue
 		}
 		if best == nil || s.PeriodStart.After(best.PeriodStart) {

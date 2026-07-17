@@ -86,13 +86,10 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// able to self-mint a paid tier ("max" → $100/mo, recurring) by naming it
 	// here; only a proven mint principal (internal service token / platform global
 	// admin — e.g. cloud-api after a real payment) may create a paid-tier
-	// subscription. A FREE tier (no price and no included allotment) stays
-	// self-serve. Pairs with the payment-backed clamp in subscriptionPlanSlug.
-	planSlug := p.Slug
-	if planSlug == "" {
-		planSlug = req.PlanId
-	}
-	if (p.Price > 0 || IncludedMonthlyCents(planSlug) > 0) && !middleware.MayMintMoney(c) {
+	// subscription. A FREE ($0) tier stays self-serve even when it carries a small
+	// included credit as a perk (developer's $5/mo) — price is the paid-tier gate,
+	// not the allotment. Pairs with the payment-backed clamp in subscriptionPlanSlug.
+	if p.Price > 0 && !middleware.MayMintMoney(c) {
 		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
 	}
