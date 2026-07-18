@@ -17,8 +17,10 @@ package billing
 // the cap still bounds sustained spend to the ceiling.
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -30,8 +32,37 @@ import (
 	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/json/http"
 )
+
+// PeriodSpendFunc reports a scope's cumulative spend (cents) in the CURRENT UTC
+// period for an org — the value scopeExhausted/warn compare a cap against. The HOST
+// injects it (SetPeriodSpendReader) so the cap reads the SAME ledger the host
+// records usage in. In the co-resident cloud binary usage is recorded on the FINANCE
+// ledger (fin.RecordUsage), NOT commerce's own transaction store — which the unified
+// binary leaves empty — so without this the cap would sum 0 and never enforce. nil
+// (standalone commerce) → the append-only transaction-ledger query below, unchanged.
+type PeriodSpendFunc func(ctx context.Context, org string, test bool, project, service string) (int64, error)
+
+var periodSpendReaderVal atomic.Pointer[PeriodSpendFunc]
+
+// SetPeriodSpendReader installs the host's period-spend source. Pass nil to clear
+// (standalone commerce). Set once at boot, read per request; safe for concurrent use.
+func SetPeriodSpendReader(f PeriodSpendFunc) {
+	if f == nil {
+		periodSpendReaderVal.Store(nil)
+		return
+	}
+	periodSpendReaderVal.Store(&f)
+}
+
+func periodSpendReader() PeriodSpendFunc {
+	if p := periodSpendReaderVal.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
 
 // currentPeriod is the UTC calendar month, e.g. "2026-07". A cap resets at the
 // first of each UTC month.
@@ -73,6 +104,14 @@ func parseCents(s string) int64 {
 // alongside the equality filters. Idempotent recording (usage.go dedups on
 // requestId) guarantees a retried debit is counted at most once.
 func scopeSpentCents(db *datastore.Datastore, test bool, project, service string) (int64, error) {
+	// Host-injected source (co-resident cloud binary): the org's period spend from
+	// the finance ledger, where the unified binary actually records usage. The org
+	// is the datastore namespace; the window (current UTC month) is the reader's own
+	// concern, matching periodStartUTC. Standalone commerce (nil reader) falls
+	// through to the transaction query below.
+	if r := periodSpendReader(); r != nil {
+		return r(db.Context, nscontext.GetNamespace(db.Context), test, project, service)
+	}
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	q := transaction.Query(db).Ancestor(rootKey).
 		Filter("Test=", test).
