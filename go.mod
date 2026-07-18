@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.7.5
+	github.com/zap-proto/zip v1.8.3
 )
 
 require (
@@ -106,6 +106,7 @@ require (
 	github.com/gtank/ristretto255 v0.2.0 // indirect
 	github.com/hanzo-ds/native v0.71.0 // indirect
 	github.com/hanzoai/account v0.2.0 // indirect
+	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.2.2 // indirect
 	github.com/luxfi/compress v0.0.5 // indirect
 	github.com/luxfi/concurrent v0.0.3 // indirect
@@ -131,6 +132,7 @@ require (
 	github.com/supranational/blst v0.3.16 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/zap-proto/fiber/v3 v3.2.1 // indirect
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.2.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
