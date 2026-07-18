@@ -18,6 +18,21 @@ import (
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
+// userSubscriptions loads every subscription keyed to `user`. Subscriptions are
+// registered ancestor-less and keyed by UserId (the canonical create path,
+// billing/grant.Grant + billing/trial), so they are queried by a bare UserId
+// filter — NOT under the synckey ancestor, which matches nothing. Shared by the
+// money-path plan resolver and the tier derivation; each applies its own
+// fail-safe policy to the returned error (the mint path denies on error; the
+// tier read must not downgrade a paid subscriber on a transient error).
+func userSubscriptions(db *datastore.Datastore, user string) ([]*subscription.Subscription, error) {
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", user).GetAll(&subs); err != nil {
+		return nil, err
+	}
+	return subs, nil
+}
+
 // subscriptionPlanSlug returns the plan slug of `user`'s newest active/trialing
 // subscription, or "" when none. This is the user's REAL, un-spoofable
 // entitlement — the SOLE authority for how much included allotment may be minted
@@ -30,9 +45,8 @@ import (
 // the old resolvePlanSlug) matched NOTHING, which would make the grant clamp
 // reject even a legitimate self-service grant for the user's actual plan.
 func subscriptionPlanSlug(db *datastore.Datastore, user string) string {
-	subs := make([]*subscription.Subscription, 0)
-	q := subscription.Query(db).Filter("UserId=", user)
-	if _, err := q.GetAll(&subs); err != nil {
+	subs, err := userSubscriptions(db, user)
+	if err != nil {
 		return ""
 	}
 
