@@ -12,8 +12,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/hanzoai/storage-go"
-	"github.com/hanzoai/storage-go/pkg/credentials"
+	"github.com/hanzoai/s3-go"
+	"github.com/hanzoai/s3-go/pkg/credentials"
 )
 
 // StorageConfig holds MinIO configuration
