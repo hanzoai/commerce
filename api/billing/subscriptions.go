@@ -168,6 +168,8 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
+	emitSubscriptionCreated(c, org.Name, sub)
+
 	return c.JSON(201, subscriptionResponse(sub))
 }
 
@@ -256,7 +258,8 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		return http.Fail(c, 400, "invalid request body", err)
 	}
 
-	if req.PlanId != "" && req.PlanId != sub.PlanId {
+	planChanged := req.PlanId != "" && req.PlanId != sub.PlanId
+	if planChanged {
 		// Fetch new plan
 		newPlan := plan.New(db)
 		if err := newPlan.GetById(req.PlanId); err != nil {
@@ -276,6 +279,10 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to update subscription", err)
+	}
+
+	if planChanged {
+		emitSubscriptionPlanChanged(c, org.Name, sub)
 	}
 
 	return c.JSON(200, subscriptionResponse(sub))
@@ -308,6 +315,8 @@ func CancelBillingSubscription(c *zip.Ctx) error {
 		log.Error("Failed to cancel subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to cancel subscription", err)
 	}
+
+	emitSubscriptionCanceled(c, org.Name, sub)
 
 	return c.JSON(200, subscriptionResponse(sub))
 }
@@ -362,6 +371,8 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 		log.Error("Failed to update subscription after renewal: %v", err, c)
 		return http.Fail(c, 500, "failed to update subscription", err)
 	}
+
+	emitSubscriptionRenewed(c, org.Name, sub)
 
 	return c.JSON(200, map[string]any{
 		"subscription": subscriptionResponse(sub),

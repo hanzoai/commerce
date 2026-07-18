@@ -44,6 +44,14 @@ func periodStartUTC() time.Time {
 	return time.Date(n.Year(), n.Month(), 1, 0, 0, 0, 0, time.UTC)
 }
 
+// periodResetsAtUTC is midnight on the first of the NEXT UTC month — the instant
+// the current spend window rolls over and every cap's period spend resets to zero.
+func periodResetsAtUTC() time.Time { return periodStartUTC().AddDate(0, 1, 0) }
+
+// currentPeriodResetsAt renders periodResetsAtUTC as an RFC3339 UTC string — the
+// canonical SpendAlert.resetsAt the self-service UI shows ("resets on <date>").
+func currentPeriodResetsAt() string { return periodResetsAtUTC().Format(time.RFC3339) }
+
 // parseCents parses a non-negative cents amount; any invalid/negative value is 0
 // (a pure "am I already over the cap" check).
 func parseCents(s string) int64 {

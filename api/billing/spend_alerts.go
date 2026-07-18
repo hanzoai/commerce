@@ -89,8 +89,14 @@ func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert
 		"softPct":      soft,
 		"rateLimitRpm": a.RateLimitRpm,
 		"triggeredAt":  a.TriggeredAt,
-		"createdAt":    a.CreatedAt,
-		"updatedAt":    a.UpdatedAt,
+		// The UTC-month spend window this row is measured over (the Schedule the cap
+		// resets on): `period` = "2006-01" and `resetsAt` = first of next UTC month.
+		// Derived, never stored — so the self-service UI can show "resets on <date>"
+		// straight from the canonical window without a second call.
+		"period":    currentPeriod(),
+		"resetsAt":  currentPeriodResetsAt(),
+		"createdAt": a.CreatedAt,
+		"updatedAt": a.UpdatedAt,
 	}
 	spent, err := scopeSpentCents(db, test, a.Project, a.Service)
 	if err != nil {
@@ -104,6 +110,24 @@ func spendAlertView(db *datastore.Datastore, test bool, a *spendalert.SpendAlert
 	view["over"] = scopeExhausted(spent, a.Threshold)
 	view["warn"] = a.Threshold > 0 && spent >= a.Threshold*int64(soft)/100
 	return view
+}
+
+// saveAlert persists a modified spend-alert WITHOUT re-homing it off its synckey
+// ancestor. GetById reconstructs a ROOT key (the lookup drops the ancestor), so a
+// bare Update would Put the row at the root and the ancestor-scoped ListSpendAlerts
+// (and loadOrgScopes, and ScopeRules) would LOSE it — the budget would vanish from
+// the customer's list on any edit AND on every alert fire, silently disabling
+// enforcement. Re-anchoring the key under the row's own Parent before the write
+// keeps create/list/update/fire consistent. On a backend whose GetById already
+// returns an ancestor-qualified key (k.Parent() != nil) this is a no-op, so it is
+// safe regardless of datastore implementation.
+func saveAlert(db *datastore.Datastore, a *spendalert.SpendAlert) error {
+	if k := a.Key(); k != nil && a.Parent != nil && k.Parent() == nil {
+		if err := a.SetKey(db.NewKey(k.Kind(), k.StringID(), k.IntID(), a.Parent)); err != nil {
+			return err
+		}
+	}
+	return a.Update()
 }
 
 // ListSpendAlerts returns the ORG's spend alerts (budgets/caps) plus derived
@@ -260,7 +284,7 @@ func UpdateSpendAlert(c *zip.Ctx) error {
 		a.RateLimitRpm = *req.RateLimitRpm
 	}
 
-	if err := a.Update(); err != nil {
+	if err := saveAlert(db, a); err != nil {
 		log.Error("Failed to update spend alert: %v", err, c)
 		return http.Fail(c, 500, "failed to update spend alert", err)
 	}
