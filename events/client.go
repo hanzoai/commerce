@@ -201,6 +201,175 @@ func (c *Client) EmitContributorPayoutSent(ctx context.Context, orgID, userID, p
 	})
 }
 
+// ── billing / subscription / usage customer-activity spine ───────────────────
+//
+// These mirror EmitOrderCompleted EXACTLY: each posts the same
+// {event, distinct_id, organization_id, revenue, properties} envelope the
+// collector lands in commerce.events. The money that MOVES in the event is the
+// top-level revenue (USD, mirroring order.Total); the exact integer cents plus
+// the structured billing fields ride in properties so the fleet read side
+// (admin.hanzo.ai) can aggregate them precisely with ClickHouse JSON functions.
+// All best-effort: EmitRaw no-ops when no collector is configured, and callers
+// fire them fire-and-forget so analytics can never block the money path.
+
+// Subscription is a subscription-lifecycle event for the collector. Money is USD
+// cents (exact). MRRCents is the monthly-normalized recurring revenue so annual
+// and monthly plans are comparable in one fleet sum.
+type Subscription struct {
+	ID          string
+	OrgID       string
+	UserID      string
+	Plan        string // plan slug / id — the byPlan / byCategory key
+	PlanName    string // human plan name
+	Category    string // plan category — the byCategory bucket
+	Status      string // active | trialing | canceled | past_due | ...
+	Interval    string // month | year | ...
+	PriceCents  int64  // raw plan price (USD cents)
+	MRRCents    int64  // monthly-normalized recurring revenue (USD cents)
+	Seats       int
+	Trial       bool
+	PeriodStart string // RFC3339
+	PeriodEnd   string // RFC3339
+}
+
+// EmitSubscriptionCreated sends a subscription_created event to the collector.
+func (c *Client) EmitSubscriptionCreated(ctx context.Context, s *Subscription) error {
+	return c.emitSubscription(ctx, "subscription_created", s)
+}
+
+// EmitSubscriptionRenewed sends a subscription_renewed event to the collector.
+func (c *Client) EmitSubscriptionRenewed(ctx context.Context, s *Subscription) error {
+	return c.emitSubscription(ctx, "subscription_renewed", s)
+}
+
+// EmitSubscriptionPlanChanged sends a subscription_plan_changed event to the collector.
+func (c *Client) EmitSubscriptionPlanChanged(ctx context.Context, s *Subscription) error {
+	return c.emitSubscription(ctx, "subscription_plan_changed", s)
+}
+
+// EmitSubscriptionCanceled sends a subscription_canceled event to the collector.
+func (c *Client) EmitSubscriptionCanceled(ctx context.Context, s *Subscription) error {
+	return c.emitSubscription(ctx, "subscription_canceled", s)
+}
+
+// emitSubscription builds the one subscription envelope shared by every
+// lifecycle event. revenue is 0 — a subscription state change moves no cash at
+// this instant (the charge is realized on its invoice); the MRR rides in
+// properties as exact cents.
+func (c *Client) emitSubscription(ctx context.Context, event string, s *Subscription) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           event,
+		"distinct_id":     s.UserID,
+		"organization_id": s.OrgID,
+		"revenue":         0,
+		"properties": map[string]interface{}{
+			"subscription_id": s.ID,
+			"plan":            s.Plan,
+			"plan_name":       s.PlanName,
+			"category":        s.Category,
+			"status":          s.Status,
+			"interval":        s.Interval,
+			"price_cents":     s.PriceCents,
+			"mrr_cents":       s.MRRCents,
+			"seats":           s.Seats,
+			"trial":           s.Trial,
+			"period_start":    s.PeriodStart,
+			"period_end":      s.PeriodEnd,
+		},
+	})
+}
+
+// Invoice is an invoice-lifecycle event for the collector. AmountCents is the
+// amount due, AmountPaidCents what was actually collected; money is USD cents.
+type Invoice struct {
+	ID              string
+	Number          string
+	OrgID           string
+	UserID          string
+	Status          string
+	AmountCents     int64
+	AmountPaidCents int64
+	Currency        string
+	SubscriptionID  string
+	Issued          string // RFC3339
+	Due             string // RFC3339
+}
+
+// EmitInvoiceFinalized sends an invoice_finalized event to the collector.
+func (c *Client) EmitInvoiceFinalized(ctx context.Context, in *Invoice) error {
+	return c.emitInvoice(ctx, "invoice_finalized", 0, in)
+}
+
+// EmitInvoicePaid sends an invoice_paid event to the collector. revenue is the
+// amount actually paid (USD) — realized cash, mirroring order.Total.
+func (c *Client) EmitInvoicePaid(ctx context.Context, in *Invoice) error {
+	return c.emitInvoice(ctx, "invoice_paid", float64(in.AmountPaidCents)/100.0, in)
+}
+
+// EmitInvoiceVoid sends an invoice_void event to the collector.
+func (c *Client) EmitInvoiceVoid(ctx context.Context, in *Invoice) error {
+	return c.emitInvoice(ctx, "invoice_void", 0, in)
+}
+
+// emitInvoice builds the one invoice envelope shared by every lifecycle event.
+func (c *Client) emitInvoice(ctx context.Context, event string, revenue float64, in *Invoice) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           event,
+		"distinct_id":     in.UserID,
+		"organization_id": in.OrgID,
+		"revenue":         revenue,
+		"properties": map[string]interface{}{
+			"invoice_id":        in.ID,
+			"number":            in.Number,
+			"status":            in.Status,
+			"amount_cents":      in.AmountCents,
+			"amount_paid_cents": in.AmountPaidCents,
+			"currency":          in.Currency,
+			"subscription_id":   in.SubscriptionID,
+			"issued":            in.Issued,
+			"due":               in.Due,
+		},
+	})
+}
+
+// APIUsage is a metered API-usage debit event for the collector. AmountCents is
+// the debited spend (USD cents); AmountMicros carries the exact sub-cent debit.
+type APIUsage struct {
+	OrgID        string
+	UserID       string
+	AmountCents  int64
+	AmountMicros int64
+	Model        string
+	Provider     string
+	Project      string
+	Service      string
+	RequestID    string
+	TotalTokens  int
+	Status       string
+}
+
+// EmitAPIUsageDebit sends an api_usage_debit event to the collector. revenue is
+// the debited spend (USD) — realized consumption, mirroring order.Total.
+func (c *Client) EmitAPIUsageDebit(ctx context.Context, u *APIUsage) error {
+	return c.EmitRaw(ctx, map[string]interface{}{
+		"event":           "api_usage_debit",
+		"distinct_id":     u.UserID,
+		"organization_id": u.OrgID,
+		"revenue":         float64(u.AmountCents) / 100.0,
+		"properties": map[string]interface{}{
+			"amount_cents":  u.AmountCents,
+			"amount_micros": u.AmountMicros,
+			"model":         u.Model,
+			"provider":      u.Provider,
+			"project":       u.Project,
+			"service":       u.Service,
+			"request_id":    u.RequestID,
+			"total_tokens":  u.TotalTokens,
+			"status":        u.Status,
+		},
+	})
+}
+
 // EmitRaw sends a raw event to the collector.
 func (c *Client) EmitRaw(ctx context.Context, event map[string]interface{}) error {
 	if c.endpoint == "" {
