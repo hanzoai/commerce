@@ -58,6 +58,10 @@ func squareSignBodyOnly(secret string, body []byte) string {
 // to read/write. Signature-rejection tests short-circuit before touching it;
 // the validated-path test needs it.
 func TestMain(m *testing.M) {
+	// The spend-cap tests validate ENFORCEMENT (a cap denies), so the package runs
+	// with SPEND_CAP_ENFORCE on. The shadow-mode test (flag OFF) overrides it per-test.
+	os.Setenv("SPEND_CAP_ENFORCE", "true")
+
 	tempDir, err := os.MkdirTemp("", "billing-webhooks-test-*")
 	if err != nil {
 		panic(err)
