@@ -65,6 +65,7 @@ import (
 	organizationApi "github.com/hanzoai/commerce/api/organization"
 	pricingApi "github.com/hanzoai/commerce/api/pricing"
 	producttaxonomyApi "github.com/hanzoai/commerce/api/producttaxonomy"
+	promoApi "github.com/hanzoai/commerce/api/promo"
 	promotionApi "github.com/hanzoai/commerce/api/promotion"
 	referralApi "github.com/hanzoai/commerce/api/referral"
 	regionApi "github.com/hanzoai/commerce/api/region"
@@ -169,6 +170,7 @@ func Route(api zip.Router) {
 	userApi.Route(api, tokenRequired)
 	pricingApi.Route(api, tokenRequired)
 	promotionApi.Route(api, tokenRequired)
+	promoApi.Route(api) // SuperAdmin plan-promo config (/v1/platform/promo) — RequirePlatformAdmin inside
 
 	// Medusa-parity admin domains. These sub-routers were fully implemented
 	// (models orm.Register'd, tenant-scoped via middleware.Namespace) but never
