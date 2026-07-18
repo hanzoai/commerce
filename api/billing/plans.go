@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/api/promo"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -88,9 +90,15 @@ type staticPlan struct {
 	TrialPeriodDays int      `json:"trialPeriodDays"`
 	ContactSales    bool     `json:"contactSales,omitempty"`
 	Popular         bool     `json:"popular,omitempty"`
-	Features        []string `json:"features,omitempty"`
-	Bundles         []string `json:"bundles,omitempty"`    // see canonicalPlan.Bundles
-	IncludedIn      []string `json:"includedIn,omitempty"` // see canonicalPlan.IncludedIn
+	// PromoPercent / PromoUntil surface the ACTIVE, admin-configured platform plan
+	// promo for this plan (percent off + when it ends) — sourced from the promo
+	// package (a Promotion), never hardcoded in the catalog. Zero/empty when no promo
+	// covers this plan, so the client shows a discount only while one is live.
+	PromoPercent int      `json:"promoPercent,omitempty"`
+	PromoUntil   string   `json:"promoUntil,omitempty"`
+	Features     []string `json:"features,omitempty"`
+	Bundles      []string `json:"bundles,omitempty"`    // see canonicalPlan.Bundles
+	IncludedIn   []string `json:"includedIn,omitempty"` // see canonicalPlan.IncludedIn
 	Limits          *struct {
 		// Subscription (API) limits
 		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
@@ -200,15 +208,42 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 	return plans
 }
 
-// ListPlans returns the list of available plans, optionally filtered by category.
-// Data is loaded at startup from embedded JSON plan definitions.
+// withPromo returns a COPY of the catalog (never the shared hanzoPlans var) with
+// each paid plan annotated by the ACTIVE, admin-configured platform promo. Applying
+// it here — at the read edge — is what makes the discount admin-controlled: the
+// catalog JSON carries no promo, the promo package (a Promotion) is the single
+// source, and a plan shows a discount only while a promo is live and covers it.
+func withPromo(c *zip.Ctx, plans []staticPlan) []staticPlan {
+	pr := promo.Active(c)
+	out := make([]staticPlan, len(plans))
+	copy(out, plans)
+	if pr == nil {
+		return out
+	}
+	until := ""
+	if pr.End != nil {
+		until = pr.End.UTC().Format(time.RFC3339)
+	}
+	for i := range out {
+		// Only PAID plans carry a percent-off promo (a $0 plan has nothing to discount).
+		if out[i].Price > 0 && pr.AppliesTo(out[i].Slug) {
+			out[i].PromoPercent = pr.PercentOff
+			out[i].PromoUntil = until
+		}
+	}
+	return out
+}
+
+// ListPlans returns the list of available plans, optionally filtered by category,
+// annotated with the active platform promo. Catalog data is embedded; the promo is
+// admin-configured and resolved per request.
 //
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
 func ListPlans(c *zip.Ctx) error {
 	category := c.Query("category")
 	if category == "" {
-		return c.JSON(200, hanzoPlans)
+		return c.JSON(200, withPromo(c, hanzoPlans))
 	}
 
 	filtered := make([]staticPlan, 0)
@@ -217,17 +252,17 @@ func ListPlans(c *zip.Ctx) error {
 			filtered = append(filtered, p)
 		}
 	}
-	return c.JSON(200, filtered)
+	return c.JSON(200, withPromo(c, filtered))
 }
 
-// GetPlan returns a single plan by slug.
+// GetPlan returns a single plan by slug, annotated with the active platform promo.
 //
 //	GET /v1/billing/plans/:id
 func GetPlan(c *zip.Ctx) error {
 	id := c.Param("id")
 	for _, p := range hanzoPlans {
 		if p.Slug == id {
-			return c.JSON(200, p)
+			return c.JSON(200, withPromo(c, []staticPlan{p})[0])
 		}
 	}
 	return http.Fail(c, 404, "plan not found", nil)
