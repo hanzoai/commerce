@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/idempotencykey"
@@ -270,6 +272,22 @@ func RecordUsage(c *zip.Ctx) error {
 	// the SBOMs emitted on deploy) into the per-package accrual ledger.
 	// Fire-and-forget, same posture as revenue share.
 	go engine.AccrueOSSPayout(db, org.Name, req.User, currency.Cents(amountCents), cur, trans.Id(), !org.Live)
+
+	// Emit the api-usage debit to the analytics collector (commerce.events) so the
+	// fleet usage view (admin.hanzo.ai) can aggregate metered spend — best-effort,
+	// fire-and-forget, never blocks the money path.
+	emitAPIUsageDebit(c, org.Name, &req, amountCents, effMicros)
+
+	// Fire any spend-alert this debit pushed over its soft-warn threshold or cap —
+	// the "alert" half of a spend-alert (the "cap" half is the metering gate). This
+	// is the ONLY write path where period spend accrues, so the crossing is detected
+	// here, once, off the money path (detached goroutine, like the debits above) and
+	// debounced per (period, level) so it re-arms only at the monthly window reset.
+	ev, _ := c.Locals("events").(*events.Client)
+	fireProject := spendalert.NormalizeProject(req.Project)
+	fireService := strings.TrimSpace(req.Service)
+	fireCtx := context.WithoutCancel(c.Context())
+	go checkAndFireSpendAlerts(fireCtx, db, org.Name, org.TestMode(), fireProject, fireService, ev)
 
 	resp := map[string]any{
 		"transactionId": trans.Id(),

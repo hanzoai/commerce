@@ -145,6 +145,8 @@ func FinalizeInvoice(c *zip.Ctx) error {
 		return http.Fail(c, 500, "failed to finalize invoice", err)
 	}
 
+	emitInvoiceFinalized(c, org.Name, inv)
+
 	return c.JSON(200, invoiceResponse(inv))
 }
 
@@ -171,6 +173,8 @@ func PayInvoice(c *zip.Ctx) error {
 		log.Error("Failed to update invoice after payment: %v", err, c)
 		return http.Fail(c, 500, "failed to update invoice", err)
 	}
+
+	emitInvoicePaid(c, org.Name, inv)
 
 	return c.JSON(200, map[string]any{
 		"invoice":    invoiceResponse(inv),
@@ -199,6 +203,8 @@ func VoidInvoice(c *zip.Ctx) error {
 		log.Error("Failed to void invoice: %v", err, c)
 		return http.Fail(c, 500, "failed to void invoice", err)
 	}
+
+	emitInvoiceVoid(c, org.Name, inv)
 
 	return c.JSON(200, invoiceResponse(inv))
 }
