@@ -38,6 +38,29 @@ func installEdgeAuth(app *App) {
 	app.Router.Use(middleware.EdgeAuth())
 }
 
+// installEventsLocal binds the analytics events client into every request's
+// locals so handlers on ANY route group can fire best-effort analytics without
+// each mount site re-wiring it. It MUST be a root-level Use during Bootstrap:
+// the /v1 api.Route bundle (billing, checkout, usage) is registered AFTER
+// Bootstrap returns, and zip/fiber applies earlier-registered middleware to
+// later-registered routes — so this is what actually delivers the events client
+// to /v1/billing/* and /v1/checkout/* (the per-group injection in setupRoutes
+// only covers /v1/commerce/*). No-op when no collector is configured
+// (app.Events nil), so it never blocks or fails the money path. This is the ONE
+// place the events local is bound root-wide; the setupRoutes per-group injection
+// predates it and stays a harmless superset for /v1/commerce.
+func installEventsLocal(app *App) {
+	if app == nil || app.Router == nil {
+		return
+	}
+	app.Router.Use(func(c *zip.Ctx) error {
+		if app.Events != nil {
+			c.Locals("events", app.Events)
+		}
+		return c.Next()
+	})
+}
+
 // installRequireGate registers the binary-edge require-identity gate that
 // binds the EdgeAuth-cleaned headers into request context and, when
 // require=true, 401s a request carrying NO identity. It is mounted AFTER
