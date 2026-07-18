@@ -11,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
+	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
@@ -37,14 +38,13 @@ func GetTier(c *zip.Ctx) error {
 		return http.Fail(c, 400, "user query parameter is required", nil)
 	}
 
-	// Resolve tier: prefer IAM claim, fall back to query param, default to free.
-	tierName := tier.Free
-	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
-		tierName = tier.Parse(iamTier)
-	} else if qTier := c.Query("tier"); qTier != "" {
-		tierName = tier.Parse(qTier)
+	tierName, err := resolveTierName(c, user)
+	if err != nil {
+		// Fail-safe: a subscription-store hiccup must NOT downgrade a paid
+		// subscriber to Free. Surface the error so the caller retries or holds
+		// the last-known tier instead of asserting a wrong Free.
+		return http.Fail(c, 500, "failed to resolve tier", err)
 	}
-
 	cfg := tier.Get(tierName)
 
 	// Spendable balance from the SAME three-bucket split the balance endpoint
@@ -116,14 +116,10 @@ func TierCheck(c *zip.Ctx) error {
 
 	model := strings.TrimSpace(c.Query("model"))
 
-	// Resolve tier: prefer IAM claim, fall back to query param, default to free.
-	tierName := tier.Free
-	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
-		tierName = tier.Parse(iamTier)
-	} else if qTier := c.Query("tier"); qTier != "" {
-		tierName = tier.Parse(qTier)
+	tierName, err := resolveTierName(c, user)
+	if err != nil {
+		return http.Fail(c, 500, "failed to resolve tier", err)
 	}
-
 	cfg := tier.Get(tierName)
 
 	resp := map[string]any{
@@ -173,4 +169,105 @@ func dailyUsageCents(ctx context.Context, user string, isTest bool) int64 {
 	}
 
 	return total
+}
+
+// resolveTierName resolves the caller's REAL billing tier for `user`. An upstream
+// X-Tier claim or an explicit ?tier= override wins (the service-to-service
+// contract); otherwise the tier is DERIVED from the user's active/trialing
+// subscription in the org's store. Both /v1/billing/tier and
+// /v1/billing/tier-check route through here, so tier resolution lives in exactly
+// one place.
+//
+// Fail-safe: a subscription lookup error is RETURNED (not swallowed to Free) so a
+// transient store error can never strip a paid subscriber's tier — the handler
+// surfaces it as a 5xx and the caller holds its last-known tier.
+func resolveTierName(c *zip.Ctx, user string) (tier.Name, error) {
+	if iamTier := iammiddleware.GetIAMTier(c); iamTier != "" {
+		return tier.Parse(iamTier), nil
+	}
+	if qTier := strings.TrimSpace(c.Query("tier")); qTier != "" {
+		return tier.Parse(qTier), nil
+	}
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok {
+		// No org on the request (should not happen under the billing group): with
+		// no store to reach there is genuinely no subscription in view — Free.
+		return tier.Free, nil
+	}
+	return deriveTier(datastore.New(org.Namespaced(c.Context())), user)
+}
+
+// deriveTier resolves a subject's REAL billing tier from their subscriptions: the
+// HIGHEST tier any active/trialing subscription confers.
+//
+//   - a trialing subscription → Starter (the entry on-ramp)
+//   - an active PAID plan → Enterprise (enterprise-category plan) else Pro
+//   - no active/trialing sub, a $0 / unknown plan, or a canceled/past_due/unpaid
+//     subscription → Free
+//
+// A plan's paid-ness and tier are read from the embedded catalog by slug
+// (paidTier/lookupPlan), never the subscription's spoofable stored plan copy, so a
+// forged plan name cannot inflate a tier. The paid-tier CREATION gate
+// (CreateBillingSubscription rejects an org admin self-creating a paid sub) is the
+// anti-forgery boundary, so — unlike the money-mint path (subscriptionPlanSlug) —
+// NO payment-backed clamp is applied here: a legitimate comped/gifted paid
+// subscription (ProviderType "manual_gift", no invoice) MUST still confer its
+// tier. The highest qualifying tier wins so a subscriber holding several
+// subscriptions is never under-granted.
+//
+// Fail-safe: the query error is returned, not collapsed to Free.
+func deriveTier(db *datastore.Datastore, user string) (tier.Name, error) {
+	subs, err := userSubscriptions(db, user)
+	if err != nil {
+		return tier.Free, err
+	}
+	best := tier.Free
+	for _, s := range subs {
+		var t tier.Name
+		switch s.Status {
+		case subscription.Trialing:
+			t = tier.Starter
+		case subscription.Active:
+			slug := s.Plan.Slug
+			if slug == "" {
+				slug = s.PlanId
+			}
+			t = tierForActivePaidSlug(slug)
+		default:
+			continue // past_due / unpaid / canceled confer no tier
+		}
+		if tierRank(t) > tierRank(best) {
+			best = t
+		}
+	}
+	return best, nil
+}
+
+// tierForActivePaidSlug maps an ACTIVE subscription's plan slug to its tier,
+// reading price + category from the embedded catalog (never the stored copy): an
+// enterprise-category paid plan → Enterprise, any other paid plan → Pro, and a
+// $0 / unknown plan → Free (a $0 plan such as "developer" is self-serve and
+// confers no paid tier).
+func tierForActivePaidSlug(slug string) tier.Name {
+	if !paidTier(slug) {
+		return tier.Free
+	}
+	if p := lookupPlan(slug); p != nil && p.Category == "enterprise" {
+		return tier.Enterprise
+	}
+	return tier.Pro
+}
+
+// tierRank orders tiers so deriveTier keeps the highest one a subject holds.
+func tierRank(n tier.Name) int {
+	switch n {
+	case tier.Enterprise:
+		return 3
+	case tier.Pro:
+		return 2
+	case tier.Starter:
+		return 1
+	default:
+		return 0 // Free / unknown
+	}
 }
