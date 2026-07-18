@@ -96,6 +96,17 @@ func parseTriggerStamp(s string) (period string, level alertLevel) {
 	return s[:i], parseLevel(s[i+1:])
 }
 
+// FireSpendAlerts is the exported trigger the co-resident HOST calls right after it
+// records a usage debit on the finance path. Commerce's own RecordUsage — where the
+// internal fire runs — is NOT on the unified binary's usage path (usage goes to the
+// finance ledger), so the host invokes this to fire the alert on the SAME crossing,
+// reading the host-injected period spend (SetPeriodSpendReader). Standalone commerce
+// keeps firing from RecordUsage directly; this is a no-op-safe additional entry
+// point (idempotent per (period,level) debounce), never blocking the money path.
+func FireSpendAlerts(ctx context.Context, db *datastore.Datastore, orgName string, test bool, project, service string, ev *events.Client) {
+	checkAndFireSpendAlerts(ctx, db, orgName, test, project, service, ev)
+}
+
 // checkAndFireSpendAlerts is the fire-and-forget alert pass RecordUsage runs after
 // a debit. For every row COVERING the debit's (project, service) scope it computes
 // the scope's fresh period spend (the same append-only ledger the gate reads) and,
