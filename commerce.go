@@ -859,6 +859,13 @@ func (app *App) Bootstrap() error {
 	// from a verified IAM JWT. See server.go installEdgeAuth.
 	installEdgeAuth(app)
 
+	// Bind the analytics events client into every request's locals ROOT-WIDE, so
+	// the post-Bootstrap /v1 api.Route bundle (billing, checkout, usage) inherits
+	// it — not just the /v1/commerce group. This is what lets the
+	// customer-activity spine (subscription/invoice/usage) actually reach the
+	// collector (commerce.events). Best-effort; no-op without a collector.
+	installEventsLocal(app)
+
 	// Setup routes (registers /healthz + the /v1/commerce, /_/commerce groups).
 	app.setupRoutes()
 
