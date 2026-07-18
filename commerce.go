@@ -933,10 +933,6 @@ func (app *App) runStripeSeed() {
 	seed.LogResult(os.Stdout, res, err, started)
 }
 
-// canonicalPathHandler used to rewrite /v1/commerce/* → /v1/* internally.
-// Deprecated: routes now live at /v1/commerce/* directly. Kept as identity
-// for any caller still wrapping with it.
-
 // setupRoutes configures HTTP routes
 func (app *App) setupRoutes() {
 	// Health check
