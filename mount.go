@@ -107,8 +107,13 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 	// engine retains its full middleware chain (RequestContext, IAM,
 	// AccessControl, CachePrivate, OnRouteSetup hooks). Cost is ~5%
 	// per request vs native fiber — acceptable for the migration.
-	app.Mount("/v1/commerce", handler)
-	app.Mount("/_/commerce", handler)
+	//
+	// A wildcard All + AdaptNetHTTP is the supported way to front a foreign
+	// subtree (zip/adapt.go). It is what the removed App.Mount helper did
+	// verbatim — `a.All(prefix+"/*", AdaptNetHTTP(h))` — so the served route
+	// set is unchanged.
+	app.All("/v1/commerce/*", zip.AdaptNetHTTP(handler))
+	app.All("/_/commerce/*", zip.AdaptNetHTTP(handler))
 
 	// The embedded admin Next.js bundle still lives at /admin behind
 	// the same gin engine; cloud may not be the right surface for /admin
