@@ -183,7 +183,7 @@ captured nowhere in the stack; per-model error rate is in ClickHouse
 ## Dependencies
 
 **Core**: cobra, go-sqlite3, gin, hanzoai/datastore-go
-**Infra**: go-redis/v9, minio-go/v7, meilisearch-go, nats.go, temporal SDK
+**Infra**: go-redis/v9, hanzoai/s3-go (the house S3 client — package `minio`, republishes storage-go under the s3-go import path), meilisearch-go, nats.go, temporal SDK
 **Vector**: Qdrant via REST/HTTP (port 6333). No gRPC, no vector-go SDK -- plain net/http + encoding/json.
 
 ## Security Audit (2026-02-14)
