@@ -43,6 +43,36 @@ func TestSpendCap_InjectedReader_EnforcesOnFinanceSpend(t *testing.T) {
 	}
 }
 
+// SPEND_CAP_ENFORCE gates whether a spend_cap verdict DENIES. Default OFF (fail-open,
+// shadow): the same over-cap scope ALLOWS (so an auto-deployed cap never blocks a real
+// customer before the canary proof); ON: it denies. This is the auto-ship safety net.
+func TestSpendCap_EnforceFlag_ShadowWhenOff(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	org := &organization.Organization{}
+	org.Name = "enforce-flag"
+	warmNamespace(org)
+
+	// $1 hard cap already exhausted (via the injected reader).
+	SetPeriodSpendReader(func(_ context.Context, _ string, _ bool, _, _ string) (int64, error) {
+		return 100, nil
+	})
+	defer SetPeriodSpendReader(nil)
+	createCap(t, org, `{"title":"cap","threshold":100,"enforce":true}`)
+
+	// Flag ON (the package default) → DENY.
+	if v := authorize(t, org, "user=enforce-flag&amount=1"); v.Allow || v.Reason != "spend_cap" {
+		t.Fatalf("flag ON: authorize = %+v, want deny spend_cap", v)
+	}
+
+	// Flag OFF → SHADOW: the scope is still over cap, but the verdict ALLOWS (no block).
+	t.Setenv("SPEND_CAP_ENFORCE", "false")
+	if v := authorize(t, org, "user=enforce-flag&amount=1"); !v.Allow || v.Reason != "" {
+		t.Fatalf("flag OFF: authorize = %+v, want ALLOW (shadow, no deny)", v)
+	}
+}
+
 // The alert fires off the INJECTED spend too (the host calls FireSpendAlerts after
 // fin.RecordUsage), so the "alert" half also works on the finance path with no
 // commerce transactions.
