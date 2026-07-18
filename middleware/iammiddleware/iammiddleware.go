@@ -340,9 +340,22 @@ func parseRolesHeader(v string) auth.FlexRoles {
 	return out
 }
 
-// GetIAMTier returns "" — tier is no longer derived in-binary. The
-// gateway can attach an X-Tier header in a future iteration if needed.
-func GetIAMTier(_ *zip.Ctx) string { return "" }
+// HeaderTier is the optional gateway-minted tier override. When the gateway
+// resolves a caller's tier from the validated JWT it MAY stamp X-Tier; commerced
+// honors it as authoritative. Absent (the norm today) → "" so the tier is derived
+// server-side from the caller's subscription (api/billing.deriveTier).
+const HeaderTier = "X-Tier"
+
+// GetIAMTier returns the gateway-minted X-Tier override, or "" when absent. Empty
+// is the normal case: the tier is then derived from the subscription store, so a
+// direct GET /v1/billing/tier?user=<subject> resolves the caller's REAL tier with
+// no upstream header. Fail-open to "" on a nil ctx.
+func GetIAMTier(c *zip.Ctx) string {
+	if c == nil {
+		return ""
+	}
+	return strings.TrimSpace(c.Header(HeaderTier))
+}
 
 // orgFromContext is exported for tests that want to assert the legacy
 // "organization" local was populated correctly.
