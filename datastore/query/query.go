@@ -227,6 +227,15 @@ func (q *Query) IdExists(id string) (iface.Key, bool, error) {
 func (q *Query) First(dst interface{}) (iface.Key, bool, error) {
 	// Run query with iterator
 	iter := q.Limit(1).Run()
+	// A Limit(1) query that FINDS a row is read with a single Next() and never
+	// exhausted, so database/sql never auto-closes the underlying *sql.Rows —
+	// leaking the pooled connection. Under load this starves the co-resident
+	// commerce Postgres pool (MaxOpenConns), so org.Resolve (on every balance +
+	// per-tier read) blocks in (*DB).conn until the 10s ctx deadline and the
+	// gate fails open. Close the iterator explicitly on every return path.
+	if c, ok := iter.(interface{ Close() error }); ok {
+		defer c.Close()
+	}
 	k, err := iter.Next(dst)
 
 	// Nothing found
@@ -451,6 +460,16 @@ func (w *iteratorWrapper) Cursor() (iface.Cursor, error) {
 	return &cursorWrapperDB{cursor}, nil
 }
 
+// Close releases the wrapped db.Iterator when the caller stops iterating before
+// exhaustion (Query.First). db.Iterator has no Close in its interface, so probe
+// for the optional Closer the concrete iterators (postgres/sqlite) implement.
+func (w *iteratorWrapper) Close() error {
+	if c, ok := w.iter.(interface{ Close() error }); ok {
+		return c.Close()
+	}
+	return nil
+}
+
 // cursorWrapper wraps iface.Cursor to implement db.Cursor
 type cursorWrapper struct {
 	cursor iface.Cursor
@@ -479,6 +498,8 @@ func (e *emptyIterator) Next(dst interface{}) (iface.Key, error) {
 func (e *emptyIterator) Cursor() (iface.Cursor, error) {
 	return &emptyCursor{}, nil
 }
+
+func (e *emptyIterator) Close() error { return nil }
 
 type emptyCursor struct{}
 
