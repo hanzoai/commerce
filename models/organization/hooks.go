@@ -16,6 +16,18 @@ const (
 
 // Hooks
 func (o *Organization) BeforeCreate() error {
+	// Last line of defense against persisting a credential as a tenant.
+	// Callers are expected to reject a bearer-shaped selector before they ever
+	// reach provisioning (pkg/org.Resolve, api/billing.webhooks), but this is
+	// the one chokepoint EVERY create passes through — orm.Model.CreateCtx
+	// aborts the write on a BeforeCreate error — so no present or future caller
+	// can mint an org named from an API key, whatever it does upstream. A token
+	// persisted as an org name is both a credential leak (incident 2026-07-02)
+	// and unbounded tenant cardinality: one 5.25KB org per distinct bearer.
+	if IsSecretLikeName(o.Name) {
+		return ErrSecretLikeName
+	}
+
 	o.Fees.Id = o.Id()
 	if o.SecretKey == nil {
 		o.SecretKey = []byte(rand.SecretKey())
@@ -23,6 +35,25 @@ func (o *Organization) BeforeCreate() error {
 	// Generate Tokens
 	o.AddDefaultTokens()
 
+	return nil
+}
+
+// OnSaved runs after an org is persisted, with the org's name. pkg/org
+// registers cache invalidation here so a mutation is not masked by the resolve
+// TTL. It is a seam rather than a direct call because pkg/org depends on this
+// package, so this package cannot import it back.
+var OnSaved = func(name string) {}
+
+// AfterUpdate is the one place every full-entity org write passes through
+// (orm.Model.UpdateCtx dispatches it), so invalidating here covers Update and
+// MustUpdate from any handler without each call site having to remember.
+func (o *Organization) AfterUpdate(prev *Organization) error {
+	OnSaved(o.Name)
+	// A rename must also drop the OLD name, or it keeps resolving from cache
+	// to an org that no longer answers to it.
+	if prev != nil && prev.Name != o.Name {
+		OnSaved(prev.Name)
+	}
 	return nil
 }
 
