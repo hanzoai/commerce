@@ -25,7 +25,7 @@ var bearerNames = []string{
 // TestBeforeCreate_RefusesBearerShapedName pins the chokepoint. Every create
 // path — Create, MustCreate, GetOrCreate, and anything added later — runs
 // BeforeCreate, and orm.Model.CreateCtx aborts the write when it errors. The
-// guard therefore holds for callers that never consulted IsSecretLikeName
+// guard therefore holds for callers that never consulted secret.Like
 // themselves, which is the point: upstream guards are defense in depth, this is
 // the invariant.
 func TestBeforeCreate_RefusesBearerShapedName(t *testing.T) {
