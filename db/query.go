@@ -595,6 +595,16 @@ func (it *sqliteIterator) Cursor() (Cursor, error) {
 	}, nil
 }
 
+// Close releases the underlying *sql.Rows (see postgresIterator.Close): a
+// partially-consumed iterator (Query.First) must be closed or the pooled
+// connection leaks.
+func (it *sqliteIterator) Close() error {
+	if it.rows != nil {
+		return it.rows.Close()
+	}
+	return nil
+}
+
 // sqliteCursor implements Cursor
 type sqliteCursor struct {
 	id     string
