@@ -16,6 +16,18 @@ const (
 
 // Hooks
 func (o *Organization) BeforeCreate() error {
+	// Last line of defense against persisting a credential as a tenant.
+	// Callers are expected to reject a bearer-shaped selector before they ever
+	// reach provisioning (pkg/org.Resolve, api/billing.webhooks), but this is
+	// the one chokepoint EVERY create passes through — orm.Model.CreateCtx
+	// aborts the write on a BeforeCreate error — so no present or future caller
+	// can mint an org named from an API key, whatever it does upstream. A token
+	// persisted as an org name is both a credential leak (incident 2026-07-02)
+	// and unbounded tenant cardinality: one 5.25KB org per distinct bearer.
+	if IsSecretLikeName(o.Name) {
+		return ErrSecretLikeName
+	}
+
 	o.Fees.Id = o.Id()
 	if o.SecretKey == nil {
 		o.SecretKey = []byte(rand.SecretKey())
