@@ -179,13 +179,14 @@ func TestResolve_RejectsSecretLikeName(t *testing.T) {
 	}
 }
 
-// TestResolve_HitDoesOneAllocationPerCall quantifies the steady state. A hit
-// must build exactly one Organization — the caller's own copy — and reach the
-// store zero times. Before the cache, every request allocated that struct AND
-// issued a query whose result the request held live while it waited; under pool
-// starvation that is what filled the heap with tens of thousands of
-// simultaneously-live orgs.
-func TestResolve_HitDoesOneAllocationPerCall(t *testing.T) {
+// TestResolve_HitBuildsAFreshOrgAndTouchesNoStore quantifies the steady state.
+// A hit must hand back a caller-owned Organization — never a recycled pointer —
+// and reach the store zero times. Before the cache, every request allocated that
+// struct AND issued a query whose result the request held live while it waited;
+// under pool starvation that is what filled the heap with tens of thousands of
+// simultaneously-live orgs. (The per-call allocation COUNT is reported by
+// BenchmarkResolveCacheHit, not asserted here — it is a cost, not a contract.)
+func TestResolve_HitBuildsAFreshOrgAndTouchesNoStore(t *testing.T) {
 	cdb := setup(t)
 	ctx := context.Background()
 
