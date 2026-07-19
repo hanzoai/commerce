@@ -68,6 +68,20 @@ func (b *Model[T]) Init(db *datastore.Datastore) {
 	orm.ApplyDefaults(b.self())
 }
 
+// Rebind points an ALREADY-POPULATED entity at a different datastore, touching
+// no entity data. Init cannot be used for this: it ends in orm.ApplyDefaults,
+// whose Defaulter tail calls the entity's Defaults() unconditionally, so on a
+// loaded entity it overwrites stored values with platform defaults. That is
+// harmless in New (defaults run on a zero struct, then the load fills it) and
+// destructive afterwards. Use Init to construct, Rebind to re-home.
+//
+// SetContext is not a substitute: when the entity was shallow-copied it shares
+// the ds pointer with its source, and SetContext mutates that shared datastore.
+func (b *Model[T]) Rebind(db *datastore.Datastore) {
+	b.ds = db
+	b.Model.Init(NewDatastoreAdapter(db))
+}
+
 // --- Context / Namespace ---
 
 func (b *Model[T]) Context() context.Context {
