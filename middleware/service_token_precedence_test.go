@@ -11,15 +11,15 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/db"
-	"github.com/hanzoai/commerce/middleware/svcorg"
+	orgpkg "github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 )
 
 // seedInMemDatastore installs a fresh in-memory default datastore so the
-// service-token branch's svcorg.Resolve (GetOrCreate on the org table) succeeds
+// service-token branch's orgpkg.Resolve (GetOrCreate on the org table) succeeds
 // and the request reaches the handler — the funded path — rather than 503ing on a
-// resolve failure. Mirrors svcorg/resolver_test.go's setup.
+// resolve failure. Mirrors pkg/org/lookup_test.go's setup.
 func seedInMemDatastore(t *testing.T) {
 	t.Helper()
 	mgr, err := db.NewManager(&db.Config{DataDir: t.TempDir(), EnableVectorSearch: false, IsDev: true})
@@ -60,7 +60,7 @@ func TestTokenRequired_ServiceTokenBeatsIAMScopeGate(t *testing.T) {
 	const svc = "svc-token-precedence-abc123"
 	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
 	seedInMemDatastore(t)
-	svcorg.Invalidate("acme")
+	orgpkg.Invalidate("acme")
 
 	var sawServiceToken bool
 	reached := false
