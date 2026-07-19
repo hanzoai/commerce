@@ -4,7 +4,6 @@ package org
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -14,10 +13,24 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
+// The 2026-07-18 SEV1 (api.hanzo.ai default model down) came from resolving an
+// org through a by-ID lookup seeded by IAM's shared Valkey cache: that cache
+// still held a pre-hashid GAE numeric id for "hanzo", which could never match
+// the org's real key, so every lookup missed and — stacked on the pooled-
+// connection leak — blocked to the 10s deadline.
+//
+// Resolve no longer reads any external id cache and never issues a by-id
+// lookup: it resolves by NAME only, memoized in-process. The failure mode is
+// therefore structurally absent rather than guarded, so the guard predicate
+// (isLegacyNumericID) and its fake-KV tests are gone with the path they
+// protected.
+//
+// What remains here are the two PRIMITIVE regressions the post-mortem fingered.
+// They hold regardless of how org resolution is layered above them: a legacy
+// numeric id must decode and look up gracefully, never hot-loop.
+
 // legacyNumericID is a real-world artifact: a pre-hashid GAE datastore numeric
-// id that the IAM Valkey cache (iam:org_by_name:hanzo) can still hold for the
-// "hanzo" org. Resolving it must never loop or peg CPU — a regression here hangs
-// EVERY completion (SEV1 2026-07-18: api.hanzo.ai default model down).
+// id that IAM's cache still held for the "hanzo" org.
 const legacyNumericID = "1772587477"
 
 // within fails the test if fn does not return inside d. A hot-loop / hang (the
@@ -33,31 +46,7 @@ func within(t *testing.T, d time.Duration, name string, fn func()) {
 	}
 }
 
-// TestIsLegacyNumericID pins the guard predicate: only an all-digit string is a
-// legacy id; a real commerce hashid (letters + digits) must NOT be misrouted to
-// name-based resolution.
-func TestIsLegacyNumericID(t *testing.T) {
-	cases := []struct {
-		id   string
-		want bool
-	}{
-		{"1772587477", true}, // the SEV1 legacy id
-		{"42", true},
-		{"", false},             // no cached id
-		{"BPuzGP7v8SY", false},  // a real hashid org id (has letters)
-		{"o2Qt6nlXJVHZ", false}, // another real hashid
-		{"123abc", false},       // mixed
-		{"hanzo", false},        // a name
-		{" 123", false},         // whitespace is not a digit
-	}
-	for _, c := range cases {
-		if got := isLegacyNumericID(c.id); got != c.want {
-			t.Errorf("isLegacyNumericID(%q) = %v, want %v", c.id, got, c.want)
-		}
-	}
-}
-
-// TestDecode_LegacyNumericID_Graceful pins the primitive neo's post-mortem
+// TestDecode_LegacyNumericID_Graceful pins the primitive the post-mortem
 // fingered: key.Decode of a non-hashid numeric id must fall back to a numeric
 // key with NO error and NO loop (it logs "Failed to decode hashid" once at DEBUG
 // then ParseInt-succeeds — it must not retry).
@@ -98,64 +87,4 @@ func TestById_LegacyNumericID_Graceful(t *testing.T) {
 			_ = err
 		}
 	})
-}
-
-// fakeKV mimics the IAM Valkey cache: it hands back the STALE legacy numeric id
-// for iam:org_by_name:hanzo, reproducing the exact production trigger.
-type fakeKV struct {
-	m    map[string]string
-	gets int
-}
-
-func (f *fakeKV) Get(_ context.Context, k string) (string, error) {
-	f.gets++
-	if v, ok := f.m[k]; ok {
-		return v, nil
-	}
-	return "", errors.New("miss")
-}
-func (f *fakeKV) Set(_ context.Context, k, v string, _ time.Duration) error {
-	f.m[k] = v
-	return nil
-}
-func (f *fakeKV) Delete(_ context.Context, keys ...string) error {
-	for _, k := range keys {
-		delete(f.m, k)
-	}
-	return nil
-}
-
-// TestResolve_CachedLegacyNumericID_NoHang is the full production path: the KV
-// cache holds the legacy numeric id for "hanzo"; Resolve must skip the doomed
-// GetById, degrade to GetOrCreate("Name=") and return a real "hanzo" org — never
-// hang — AND self-heal the cache by re-writing a proper (non-numeric) hashid id.
-// This is the exact call the IAM middleware makes on EVERY completion.
-func TestResolve_CachedLegacyNumericID_NoHang(t *testing.T) {
-	ctx := ae.NewContext()
-	defer ctx.Close()
-
-	kv := &fakeKV{m: map[string]string{cacheKey("hanzo"): legacyNumericID}}
-	Bind(kv)
-	defer Bind(nil)
-
-	var got *organization.Organization
-	var gotErr error
-	within(t, 5*time.Second, "Resolve(hanzo) with cached legacy id", func() {
-		got, gotErr = Resolve(context.Background(), "hanzo")
-	})
-	if gotErr != nil {
-		t.Fatalf("Resolve(hanzo) errored: %v", gotErr)
-	}
-	if got == nil || got.Name != "hanzo" {
-		t.Fatalf("Resolve(hanzo) = %+v, want org named hanzo", got)
-	}
-	// Self-heal: the stale numeric entry must be replaced with a real hashid id
-	// so subsequent requests take the fast by-id path.
-	healed := kv.m[cacheKey("hanzo")]
-	if healed == legacyNumericID {
-		t.Fatalf("cache not self-healed: still %q", healed)
-	}
-	if isLegacyNumericID(healed) {
-		t.Fatalf("cache re-cached another legacy numeric id %q, want a hashid", healed)
-	}
 }
