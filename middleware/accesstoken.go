@@ -12,8 +12,8 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
-	"github.com/hanzoai/commerce/middleware/svcorg"
 	"github.com/hanzoai/commerce/models/organization"
+	orgpkg "github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
@@ -110,16 +110,16 @@ func ensureIAMOrg(c *zip.Ctx) {
 	if orgName == "" || organization.IsSecretLikeName(orgName) {
 		return
 	}
-	org, err := svcorg.Resolve(orgName)
+	org, err := orgpkg.Resolve(c.Context(), orgName)
 	if err != nil {
 		log.Warn("TokenRequired: IAM org resolve for '%s' failed: %v", orgName, err)
 		return
 	}
-	// Per-request Live view on a COPY (the resolver returns a shared cached org).
-	reqOrg := *org
-	reqOrg.Live = !strings.EqualFold(strings.TrimSpace(c.Header("X-Hanzo-Test")), "true")
-	c.Locals("organization", &reqOrg)
-	c.Locals("active-organization", reqOrg.Id())
+	// Resolve hands back a request-owned org, so the per-request Live view is
+	// set directly — no copy can leak into the shared cache.
+	org.Live = !strings.EqualFold(strings.TrimSpace(c.Header("X-Hanzo-Test")), "true")
+	c.Locals("organization", org)
+	c.Locals("active-organization", org.Id())
 }
 
 // Parses token, default permissions check
@@ -189,7 +189,7 @@ func TokenRequired(masks ...bit.Mask) zip.Handler {
 				// the money-critical fix for the 2026-07-04 wedge: the create-on-every-
 				// request read/write that piled behind the single writer under load and
 				// cascaded to a bogus 401 → cloud-api 402 outage.
-				org, err := svcorg.Resolve(orgName)
+				org, err := orgpkg.Resolve(c.Context(), orgName)
 				if err != nil {
 					// The service token WAS verified — this is a transient backing-store
 					// failure, NOT a bad credential. Fail CLOSED but RETRYABLE (503), and
@@ -216,20 +216,18 @@ func TokenRequired(masks ...bit.Mask) zip.Handler {
 				// so an org owner can never reach them. Set in BOTH the test and
 				// live sub-branches (once here, before the split).
 				c.Locals(ctxKeyServiceToken, true)
-				// Live/Test is a per-REQUEST view. The resolver returns a SHARED,
-				// cached *Organization, so never mutate its Live in place — copy it
-				// per request and set Live on the copy. This keeps steady-state
-				// datastore-free while guaranteeing a concurrent test call can't flip
-				// the cached org's Live for live callers (or vice-versa).
-				reqOrg := *org
+				// Live/Test is a per-REQUEST view. Resolve hands back an org owned
+				// by this request (copied from the immutable cache entry), so Live
+				// is set directly: steady state stays datastore-free while a
+				// concurrent test call can never flip Live for live callers.
 				test := strings.EqualFold(strings.TrimSpace(c.Header("X-Hanzo-Test")), "true")
-				reqOrg.Live = !test
+				org.Live = !test
 				if test {
 					c.Locals("permissions", bit.Field(permission.Admin|permission.Test))
 				} else {
 					c.Locals("permissions", bit.Field(permission.Admin|permission.Live))
 				}
-				c.Locals("organization", &reqOrg)
+				c.Locals("organization", org)
 				return c.Next()
 			}
 		}
