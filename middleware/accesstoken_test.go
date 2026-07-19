@@ -10,7 +10,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/middleware/svcorg"
+	orgpkg "github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/permission"
 )
@@ -117,16 +117,16 @@ func TestTokenRequired_BareOrgHeaderIsNotAuthenticated(t *testing.T) {
 // (503) — NOT fall through to the legacy per-org-token path (which Peeks the
 // 64-hex service token as a JWT → "Invalid Segments" → a misleading 401 that made
 // cloud-api treat a transient DB hiccup as a bad credential and 402 customers).
-// A nil default datastore forces svcorg.Resolve to error deterministically.
+// A nil default datastore forces orgpkg.Resolve to error deterministically.
 func TestTokenRequired_ServiceTokenResolveFailsFast(t *testing.T) {
 	const svc = "svc-token-abc123"
 	t.Setenv("COMMERCE_SERVICE_TOKEN", svc)
 
-	// No default DB installed → GetOrCreate inside svcorg.Resolve errors, so we
+	// No default DB installed → GetOrCreate inside orgpkg.Resolve errors, so we
 	// exercise the resolve-failure branch. Use a distinct org slug so this test's
 	// failure is never masked by another test's cached success.
 	datastore.SetDefaultDB(nil)
-	svcorg.Invalidate("failorg")
+	orgpkg.Invalidate("failorg")
 
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
