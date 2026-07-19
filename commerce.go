@@ -813,11 +813,6 @@ func (app *App) Bootstrap() error {
 		}
 	}
 
-	// Wire KV client into IAM middleware for org-lookup caching (if KV is enabled).
-	if kv, err := app.Infra.KV(); err == nil {
-		iammiddleware.InitKV(kv)
-	}
-
 	// Initialize IAM middleware for hanzo.id JWT validation
 	if app.config.IAM.Enabled && app.config.IAM.Issuer != "" && app.config.IAM.ClientID != "" {
 		iamCfg := &auth.IAMConfig{
