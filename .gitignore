@@ -69,3 +69,4 @@ billing/ui/dist/*
 api/billing/plans/*
 !api/billing/plans/dns.json
 !api/billing/plans/subscription.json
+/backfill-events
