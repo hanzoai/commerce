@@ -63,7 +63,13 @@ func Resolve(ctx context.Context, name string) (*organization.Organization, erro
 	o.Enabled = true
 
 	if kv != nil {
-		if id, err := kv.Get(ctx, cacheKey(name)); err == nil && id != "" {
+		// A legacy pre-hashid GAE numeric id (e.g. IAM's Valkey still holds
+		// "1772587477" for org "hanzo") can never match the org's real hashid
+		// key, so GetById is a guaranteed miss — and on Postgres an intID-keyed
+		// lookup no schema expects. Skip it and resolve by name instead, which
+		// re-caches the correct hashid below (self-heal). This hardens the exact
+		// path behind the 2026-07-18 SEV1 (api.hanzo.ai default model down).
+		if id, err := kv.Get(ctx, cacheKey(name)); err == nil && id != "" && !isLegacyNumericID(id) {
 			if err := o.GetById(id); err == nil {
 				return o, nil
 			}
@@ -77,4 +83,21 @@ func Resolve(ctx context.Context, name string) (*organization.Organization, erro
 		_ = kv.Set(ctx, cacheKey(name), o.Id(), ttl)
 	}
 	return o, nil
+}
+
+// isLegacyNumericID reports whether id is an all-ASCII-digit string. Commerce
+// hashid ids are alphanumeric and effectively always contain letters, so a
+// purely numeric cached id is a stale legacy (pre-hashid) id that by-id lookup
+// can never resolve. Callers use this to route such ids to name-based
+// resolution instead of a doomed GetById.
+func isLegacyNumericID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, r := range id {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
