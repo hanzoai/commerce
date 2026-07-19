@@ -62,6 +62,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
+	"github.com/hanzoai/commerce/secret"
 )
 
 const (
@@ -135,7 +136,7 @@ func Resolve(ctx context.Context, name string) (*organization.Organization, erro
 	// org name and tenant id, leaking the secret (incident 2026-07-02). This
 	// runs before any cache read or store write, so a secret-shaped name can
 	// neither be looked up nor ever enter the cache.
-	if organization.IsSecretLikeName(name) {
+	if secret.Like(name) {
 		return nil, organization.ErrSecretLikeName
 	}
 
