@@ -1209,6 +1209,19 @@ func (it *postgresIterator) Cursor() (Cursor, error) {
 	}, nil
 }
 
+// Close releases the underlying *sql.Rows and returns its pooled connection to
+// the pool. A caller that stops iterating before exhaustion (e.g. Query.First
+// reads a single row on a Limit(1) query and never drains the iterator) MUST
+// Close, or database/sql keeps the connection checked out until ConnMaxLifetime
+// — a leak that starves MaxOpenConns and makes every subsequent query block in
+// (*DB).conn until its context deadline.
+func (it *postgresIterator) Close() error {
+	if it.rows != nil {
+		return it.rows.Close()
+	}
+	return nil
+}
+
 // floatsToString converts a float slice to comma-separated string
 func floatsToString(v []float32) string {
 	strs := make([]string, len(v))
