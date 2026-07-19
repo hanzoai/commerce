@@ -19,6 +19,8 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
+	"github.com/hanzoai/commerce/secret"
+
 	// Blank-import the provider barrel so every provider's init() registers
 	// with processor.Global() before HandleProviderWebhook runs. Without this
 	// the global registry is empty and tryValidateWebhook can never reach any
@@ -144,7 +146,7 @@ func resolveWebhookOrg(c *zip.Ctx) *organization.Organization {
 	// A webhook caller must not be able to provision an org named after a raw
 	// API key: reject a bearer-shaped selector before GetOrCreate (incident
 	// 2026-07-02).
-	if organization.IsSecretLikeName(orgName) {
+	if secret.Like(orgName) {
 		log.Warn("webhook org resolve: bearer-shaped org selector; refusing to provision")
 		return nil
 	}
