@@ -212,6 +212,20 @@ func (c *Client) EmitContributorPayoutSent(ctx context.Context, orgID, userID, p
 // All best-effort: EmitRaw no-ops when no collector is configured, and callers
 // fire them fire-and-forget so analytics can never block the money path.
 
+// Canonical billing lifecycle event names. This is the ONE place each name is
+// defined, so the live emitters AND the one-time backfill (which replays existing
+// rows) post byte-identical event strings — the read side keys on these.
+const (
+	EventSubscriptionCreated     = "subscription_created"
+	EventSubscriptionRenewed     = "subscription_renewed"
+	EventSubscriptionPlanChanged = "subscription_plan_changed"
+	EventSubscriptionCanceled    = "subscription_canceled"
+	EventInvoiceFinalized        = "invoice_finalized"
+	EventInvoicePaid             = "invoice_paid"
+	EventInvoiceVoid             = "invoice_void"
+	EventAPIUsageDebit           = "api_usage_debit"
+)
+
 // Subscription is a subscription-lifecycle event for the collector. Money is USD
 // cents (exact). MRRCents is the monthly-normalized recurring revenue so annual
 // and monthly plans are comparable in one fleet sum.
@@ -234,30 +248,34 @@ type Subscription struct {
 
 // EmitSubscriptionCreated sends a subscription_created event to the collector.
 func (c *Client) EmitSubscriptionCreated(ctx context.Context, s *Subscription) error {
-	return c.emitSubscription(ctx, "subscription_created", s)
+	return c.emitSubscription(ctx, EventSubscriptionCreated, s)
 }
 
 // EmitSubscriptionRenewed sends a subscription_renewed event to the collector.
 func (c *Client) EmitSubscriptionRenewed(ctx context.Context, s *Subscription) error {
-	return c.emitSubscription(ctx, "subscription_renewed", s)
+	return c.emitSubscription(ctx, EventSubscriptionRenewed, s)
 }
 
 // EmitSubscriptionPlanChanged sends a subscription_plan_changed event to the collector.
 func (c *Client) EmitSubscriptionPlanChanged(ctx context.Context, s *Subscription) error {
-	return c.emitSubscription(ctx, "subscription_plan_changed", s)
+	return c.emitSubscription(ctx, EventSubscriptionPlanChanged, s)
 }
 
 // EmitSubscriptionCanceled sends a subscription_canceled event to the collector.
 func (c *Client) EmitSubscriptionCanceled(ctx context.Context, s *Subscription) error {
-	return c.emitSubscription(ctx, "subscription_canceled", s)
+	return c.emitSubscription(ctx, EventSubscriptionCanceled, s)
 }
 
-// emitSubscription builds the one subscription envelope shared by every
-// lifecycle event. revenue is 0 — a subscription state change moves no cash at
-// this instant (the charge is realized on its invoice); the MRR rides in
-// properties as exact cents.
 func (c *Client) emitSubscription(ctx context.Context, event string, s *Subscription) error {
-	return c.EmitRaw(ctx, map[string]interface{}{
+	return c.EmitRaw(ctx, subscriptionEnvelope(event, s))
+}
+
+// subscriptionEnvelope builds the one subscription envelope shared by every
+// lifecycle event (live emit AND backfill). revenue is 0 — a subscription state
+// change moves no cash at this instant (the charge is realized on its invoice);
+// the MRR rides in properties as exact cents.
+func subscriptionEnvelope(event string, s *Subscription) map[string]interface{} {
+	return map[string]interface{}{
 		"event":           event,
 		"distinct_id":     s.UserID,
 		"organization_id": s.OrgID,
@@ -276,7 +294,7 @@ func (c *Client) emitSubscription(ctx context.Context, event string, s *Subscrip
 			"period_start":    s.PeriodStart,
 			"period_end":      s.PeriodEnd,
 		},
-	})
+	}
 }
 
 // Invoice is an invoice-lifecycle event for the collector. AmountCents is the
@@ -297,27 +315,42 @@ type Invoice struct {
 
 // EmitInvoiceFinalized sends an invoice_finalized event to the collector.
 func (c *Client) EmitInvoiceFinalized(ctx context.Context, in *Invoice) error {
-	return c.emitInvoice(ctx, "invoice_finalized", 0, in)
+	return c.emitInvoice(ctx, EventInvoiceFinalized, in)
 }
 
 // EmitInvoicePaid sends an invoice_paid event to the collector. revenue is the
 // amount actually paid (USD) — realized cash, mirroring order.Total.
 func (c *Client) EmitInvoicePaid(ctx context.Context, in *Invoice) error {
-	return c.emitInvoice(ctx, "invoice_paid", float64(in.AmountPaidCents)/100.0, in)
+	return c.emitInvoice(ctx, EventInvoicePaid, in)
 }
 
 // EmitInvoiceVoid sends an invoice_void event to the collector.
 func (c *Client) EmitInvoiceVoid(ctx context.Context, in *Invoice) error {
-	return c.emitInvoice(ctx, "invoice_void", 0, in)
+	return c.emitInvoice(ctx, EventInvoiceVoid, in)
 }
 
-// emitInvoice builds the one invoice envelope shared by every lifecycle event.
-func (c *Client) emitInvoice(ctx context.Context, event string, revenue float64, in *Invoice) error {
-	return c.EmitRaw(ctx, map[string]interface{}{
+func (c *Client) emitInvoice(ctx context.Context, event string, in *Invoice) error {
+	return c.EmitRaw(ctx, invoiceEnvelope(event, in))
+}
+
+// invoiceRevenue is the realized cash an invoice event moves: the amount actually
+// paid on invoice_paid, 0 otherwise (finalize/void move no cash). ONE rule, shared
+// by the live emit and the backfill so revenue is computed identically.
+func invoiceRevenue(event string, in *Invoice) float64 {
+	if event == EventInvoicePaid {
+		return float64(in.AmountPaidCents) / 100.0
+	}
+	return 0
+}
+
+// invoiceEnvelope builds the one invoice envelope shared by every lifecycle event
+// (live emit AND backfill).
+func invoiceEnvelope(event string, in *Invoice) map[string]interface{} {
+	return map[string]interface{}{
 		"event":           event,
 		"distinct_id":     in.UserID,
 		"organization_id": in.OrgID,
-		"revenue":         revenue,
+		"revenue":         invoiceRevenue(event, in),
 		"properties": map[string]interface{}{
 			"invoice_id":        in.ID,
 			"number":            in.Number,
@@ -329,7 +362,7 @@ func (c *Client) emitInvoice(ctx context.Context, event string, revenue float64,
 			"issued":            in.Issued,
 			"due":               in.Due,
 		},
-	})
+	}
 }
 
 // APIUsage is a metered API-usage debit event for the collector. AmountCents is
@@ -351,8 +384,14 @@ type APIUsage struct {
 // EmitAPIUsageDebit sends an api_usage_debit event to the collector. revenue is
 // the debited spend (USD) — realized consumption, mirroring order.Total.
 func (c *Client) EmitAPIUsageDebit(ctx context.Context, u *APIUsage) error {
-	return c.EmitRaw(ctx, map[string]interface{}{
-		"event":           "api_usage_debit",
+	return c.EmitRaw(ctx, apiUsageEnvelope(u))
+}
+
+// apiUsageEnvelope builds the one metered-debit envelope shared by the live emit
+// AND the backfill.
+func apiUsageEnvelope(u *APIUsage) map[string]interface{} {
+	return map[string]interface{}{
+		"event":           EventAPIUsageDebit,
 		"distinct_id":     u.UserID,
 		"organization_id": u.OrgID,
 		"revenue":         float64(u.AmountCents) / 100.0,
@@ -367,7 +406,7 @@ func (c *Client) EmitAPIUsageDebit(ctx context.Context, u *APIUsage) error {
 			"total_tokens":  u.TotalTokens,
 			"status":        u.Status,
 		},
-	})
+	}
 }
 
 // EmitRaw sends a raw event to the collector.
@@ -397,6 +436,51 @@ func (c *Client) EmitRaw(ctx context.Context, event map[string]interface{}) erro
 		return fmt.Errorf("collector error: status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// ── one-time backfill: replay EXISTING rows through the SAME envelopes ────────
+//
+// Backfill posts the identical shaped envelope a live emit would, but stamps two
+// extra fields so a historical replay is both correctly-dated AND idempotent:
+//
+//   - timestamp — the historical transition time (RFC3339). The collector honors
+//     an incoming timestamp, so the row lands in its TRUE hour partition, not now.
+//   - event_id  — a deterministic id for THIS (entity, lifecycle-transition),
+//     carried BOTH at the top level (the commerce.events ORDER BY key, honored
+//     once the collector persists an incoming id) and mirrored into
+//     properties.event_id (serialized verbatim today, so a re-run is dedupable now
+//     via  LIMIT 1 BY (organization_id, JSONExtractString(properties,'event_id')) ).
+//
+// A second run recomputes the SAME event_id from the same immutable record, so it
+// never double-counts. Best-effort, exactly like the live emitters.
+func (c *Client) emitBackfill(ctx context.Context, eventID string, ts time.Time, env map[string]interface{}) error {
+	env["event_id"] = eventID
+	env["timestamp"] = ts.UTC().Format(time.RFC3339)
+	if p, ok := env["properties"].(map[string]interface{}); ok {
+		p["event_id"] = eventID
+		p["backfill"] = true
+	}
+	return c.EmitRaw(ctx, env)
+}
+
+// BackfillSubscription replays one subscription-lifecycle transition with a
+// deterministic id at its historical time. event is one of the EventSubscription*
+// names.
+func (c *Client) BackfillSubscription(ctx context.Context, event, eventID string, ts time.Time, s *Subscription) error {
+	return c.emitBackfill(ctx, eventID, ts, subscriptionEnvelope(event, s))
+}
+
+// BackfillInvoice replays one invoice-lifecycle transition with a deterministic
+// id at its historical time. event is one of the EventInvoice* names (revenue is
+// derived from the event + invoice, identical to the live path).
+func (c *Client) BackfillInvoice(ctx context.Context, event, eventID string, ts time.Time, in *Invoice) error {
+	return c.emitBackfill(ctx, eventID, ts, invoiceEnvelope(event, in))
+}
+
+// BackfillAPIUsage replays one metered-usage debit with a deterministic id at its
+// historical time.
+func (c *Client) BackfillAPIUsage(ctx context.Context, eventID string, ts time.Time, u *APIUsage) error {
+	return c.emitBackfill(ctx, eventID, ts, apiUsageEnvelope(u))
 }
 
 // Flush is a no-op for the HTTP client (collector handles batching).
