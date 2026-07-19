@@ -38,6 +38,25 @@ func (o *Organization) BeforeCreate() error {
 	return nil
 }
 
+// OnSaved runs after an org is persisted, with the org's name. pkg/org
+// registers cache invalidation here so a mutation is not masked by the resolve
+// TTL. It is a seam rather than a direct call because pkg/org depends on this
+// package, so this package cannot import it back.
+var OnSaved = func(name string) {}
+
+// AfterUpdate is the one place every full-entity org write passes through
+// (orm.Model.UpdateCtx dispatches it), so invalidating here covers Update and
+// MustUpdate from any handler without each call site having to remember.
+func (o *Organization) AfterUpdate(prev *Organization) error {
+	OnSaved(o.Name)
+	// A rename must also drop the OLD name, or it keeps resolving from cache
+	// to an org that no longer answers to it.
+	if prev != nil && prev.Name != o.Name {
+		OnSaved(prev.Name)
+	}
+	return nil
+}
+
 func (o *Organization) AfterCreate() error {
 	// Save namespace so we can decode keys for this organization later
 	db := datastore.New(o.Context())
