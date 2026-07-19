@@ -1,6 +1,6 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 
-package svcorg
+package org
 
 import (
 	"context"
@@ -43,7 +43,7 @@ func (c *countingDB) Query(kind string) db.Query {
 
 // setup installs a fresh counting default datastore and resets package state so
 // each test starts with an empty cache/singleflight group.
-func setup(t *testing.T) *countingDB {
+func setup(t testing.TB) *countingDB {
 	t.Helper()
 
 	mgr, err := db.NewManager(&db.Config{
@@ -80,7 +80,7 @@ func setup(t *testing.T) *countingDB {
 func TestResolve_CacheHitDoesNoDatastoreWork(t *testing.T) {
 	cdb := setup(t)
 
-	if _, err := Resolve("hanzo"); err != nil {
+	if _, err := Resolve(context.Background(), "hanzo"); err != nil {
 		t.Fatalf("first Resolve: %v", err)
 	}
 	readsAfterFirst := atomic.LoadInt64(&cdb.query)
@@ -90,7 +90,7 @@ func TestResolve_CacheHitDoesNoDatastoreWork(t *testing.T) {
 
 	// Subsequent resolves within the TTL must hit the cache and NOT touch the store.
 	for i := 0; i < 50; i++ {
-		if _, err := Resolve("hanzo"); err != nil {
+		if _, err := Resolve(context.Background(), "hanzo"); err != nil {
 			t.Fatalf("cached Resolve %d: %v", i, err)
 		}
 	}
@@ -115,7 +115,7 @@ func TestResolve_SingleflightCollapsesCreateStorm(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func() {
 			defer wg.Done()
-			if _, err := Resolve("zz402test"); err != nil {
+			if _, err := Resolve(context.Background(), "zz402test"); err != nil {
 				t.Errorf("concurrent Resolve: %v", err)
 			}
 		}()
@@ -133,7 +133,7 @@ func TestResolve_SingleflightCollapsesCreateStorm(t *testing.T) {
 	// Warm: every subsequent resolve is a cache hit → ZERO further writes/reads.
 	readsWarm := atomic.LoadInt64(&cdb.query)
 	for i := 0; i < 100; i++ {
-		if _, err := Resolve("zz402test"); err != nil {
+		if _, err := Resolve(context.Background(), "zz402test"); err != nil {
 			t.Fatalf("warm Resolve %d: %v", i, err)
 		}
 	}
@@ -183,14 +183,14 @@ func TestResolve_TTLExpiryReReads(t *testing.T) {
 	base := time.Now()
 	now = func() time.Time { return base }
 
-	if _, err := Resolve("lux"); err != nil {
+	if _, err := Resolve(context.Background(), "lux"); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	reads1 := atomic.LoadInt64(&cdb.query)
 
 	// Still within TTL → no new read.
 	now = func() time.Time { return base.Add(ttl - time.Second) }
-	if _, err := Resolve("lux"); err != nil {
+	if _, err := Resolve(context.Background(), "lux"); err != nil {
 		t.Fatalf("Resolve within TTL: %v", err)
 	}
 	if got := atomic.LoadInt64(&cdb.query); got != reads1 {
@@ -199,7 +199,7 @@ func TestResolve_TTLExpiryReReads(t *testing.T) {
 
 	// Past TTL → at least one re-read.
 	now = func() time.Time { return base.Add(ttl + time.Second) }
-	if _, err := Resolve("lux"); err != nil {
+	if _, err := Resolve(context.Background(), "lux"); err != nil {
 		t.Fatalf("Resolve past TTL: %v", err)
 	}
 	if got := atomic.LoadInt64(&cdb.query); got <= reads1 {
@@ -209,7 +209,7 @@ func TestResolve_TTLExpiryReReads(t *testing.T) {
 
 func TestResolve_ReturnedOrgHasSlug(t *testing.T) {
 	setup(t)
-	org, err := Resolve("adnexus")
+	org, err := Resolve(context.Background(), "adnexus")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -224,14 +224,14 @@ func TestResolve_ReturnedOrgHasSlug(t *testing.T) {
 func TestInvalidate_ForcesReRead(t *testing.T) {
 	cdb := setup(t)
 
-	if _, err := Resolve("pars"); err != nil {
+	if _, err := Resolve(context.Background(), "pars"); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	reads1 := atomic.LoadInt64(&cdb.query)
 
 	Invalidate("pars")
 
-	if _, err := Resolve("pars"); err != nil {
+	if _, err := Resolve(context.Background(), "pars"); err != nil {
 		t.Fatalf("Resolve after invalidate: %v", err)
 	}
 	if got := atomic.LoadInt64(&cdb.query); got <= reads1 {
