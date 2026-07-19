@@ -7,11 +7,8 @@
 // instance (github.com/hanzoai/kv-go — brand-correct, NOT raw go-redis), selected
 // at construction. The method set the rest of commerce consumes (Get/Set/Delete/
 // Exists/Health/Close plus the SetNX-family the distributed lock builds on) is
-// identical either way, so nothing downstream — including pkg/org's KVCache —
-// knows or cares which backend is live.
-//
-// The KVCache interface (string-valued Get/Set, variadic Delete) is what
-// pkg/org binds to. KVClient satisfies it so org-id caching is unchanged.
+// identical either way, so nothing downstream knows or cares which backend is
+// live.
 package infra
 
 import (
