@@ -7,7 +7,7 @@
 // gateway-routed traffic reaches commerced.
 //
 // This file preserves the public API the rest of commerce depends on
-// (Init, InitKV, Client, IAMTokenRequired, IsIAMAuthenticated,
+// (Init, Client, IAMTokenRequired, IsIAMAuthenticated,
 // GetIAMClaims, GetIAMTier) so the 13 call sites compile, but every
 // function reads identity from the gateway-supplied headers via
 // pkg/auth.
@@ -37,15 +37,21 @@ import (
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
-// KVCache mirrors the pkg/org KVCache interface so existing wiring
-// (commerce.go: iammiddleware.InitKV(kv)) keeps working unchanged.
-type KVCache = org.KVCache
-
 var (
 	mu          sync.RWMutex
 	initialized bool
 	iamClient   *auth.IAMClient
 )
+
+// trialTimeout bounds the detached new-signup on-ramp below.
+const trialTimeout = 10 * time.Second
+
+// trialSlots caps how many on-ramps run at once. trial.Start is fired for every
+// authenticated request but early-returns "not_new" for all but a brand-new
+// org, so a trickle of concurrency is ample. The cap is what keeps a slow store
+// from turning one goroutine per request into an unbounded pile, each pinning a
+// datastore and its context.
+var trialSlots = make(chan struct{}, 8)
 
 // Init builds the IAM client used by the directly-exposed commerce-api
 // edge — the surfaces that face a raw user Bearer JWT instead of
@@ -73,9 +79,6 @@ func Init(cfg *auth.IAMConfig) error {
 	return nil
 }
 
-// InitKV wires the KV cache used by org-id resolution.
-func InitKV(kv KVCache) { org.Bind(kv) }
-
 // Client returns the initialized IAM client, or nil if IAM is disabled or
 // Init() has not been called. Consumers outside the middleware chain (e.g.
 // SPA handlers with their own auth gate) use this to validate bearer tokens
@@ -92,15 +95,10 @@ func Client() *auth.IAMClient {
 	return iamClient
 }
 
-// orgCacheKey returns the KV key for an IAM owner → org ID mapping.
-func orgCacheKey(owner string) string {
-	return "iam:org_by_name:" + owner
-}
-
 // IAMTokenRequired returns a zip middleware that:
 //  1. Reads the gateway-supplied X-Org-Id / X-User-Id / X-User-Email
 //     headers (already JWT-validated upstream).
-//  2. Resolves the Organization via pkg/org.Resolve (KV-cached).
+//  2. Resolves the Organization via pkg/org.Resolve (cached).
 //  3. Sets the legacy context keys downstream handlers expect:
 //     iam_authenticated, iam_org, iam_user_id, iam_email,
 //     organization, active-organization, permissions.
@@ -154,9 +152,23 @@ func IAMTokenRequired() zip.Handler {
 		orgSlug := strings.ToLower(strings.TrimSpace(ownerID))
 		signupIsTest := !liveFromHeaders(c)
 		nsCtx := o.Namespaced(context.Background())
-		go func() {
-			_, _ = trial.Start(datastore.New(nsCtx), orgSlug, false, signupIsTest)
-		}()
+		select {
+		case trialSlots <- struct{}{}:
+			go func() {
+				defer func() { <-trialSlots }()
+				// Bound the detached work. Without a deadline a trial that
+				// blocks on a busy writer pins its datastore and context
+				// forever, and one goroutine per request accumulates without
+				// limit — the on-ramp must never outlive the request it
+				// followed by more than this.
+				ctx, cancel := context.WithTimeout(nsCtx, trialTimeout)
+				defer cancel()
+				_, _ = trial.Start(datastore.New(ctx), orgSlug, false, signupIsTest)
+			}()
+		default:
+			// Saturated: skip this best-effort on-ramp rather than queue it.
+			// trial.Start is idempotent, so a later request re-attempts it.
+		}
 
 		// Gateway-trusted identity counts as live by default. An explicit
 		// gateway-propagated X-Hanzo-Test: true opts the request into TEST
