@@ -16,7 +16,10 @@
 // fail-secured to 402 and real customers could not run paid inference.
 //
 //   - CACHE: an LRU keyed by org name with a short TTL. A hit does ZERO
-//     datastore work — the steady-state path touches no SQL at all.
+//     datastore work, so ORG RESOLUTION touches no SQL in the steady state.
+//     That is a claim about this package only — the IAM middleware still fires
+//     its trial on-ramp per authenticated request, which does query; what bounds
+//     the store there is that path's own concurrency cap, not this cache.
 //   - SINGLEFLIGHT: concurrent misses for one name collapse into ONE
 //     GetOrCreate, so a burst of first requests for a brand-new org performs
 //     exactly one create, not N contending writes.
@@ -50,6 +53,7 @@ package org
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -111,6 +115,10 @@ func init() {
 		panic("org: LRU init: " + err.Error())
 	}
 	cache = c
+
+	// Drop a cached org as soon as it is persisted, so an identity change
+	// (Name/Enabled/Live/fees) is not masked for up to a full TTL.
+	organization.OnSaved = Invalidate
 }
 
 // Resolve returns the organization named name, creating it if it does not yet
@@ -170,13 +178,42 @@ func Resolve(ctx context.Context, name string) (*organization.Organization, erro
 }
 
 // bind returns a request-owned copy of an immutable cached org, wired to ctx's
-// datastore. Init rebinds both the datastore handle and the AccessTokens
-// back-reference onto the copy, so the returned value shares no mutable state
-// with the cache and carries no other request's context.
+// datastore and sharing no mutable state with the cache.
+//
+// Rebind, NOT Init: Init ends in orm.ApplyDefaults, whose Defaulter tail calls
+// Organization.Defaults() unconditionally. On a zero struct (New) that is the
+// point; on an entity already loaded from the store it silently replaces stored
+// values with platform defaults — Enabled=true over a suspended org, Fees.Card
+// back to 5%/50c, Admins/Moderators/Partners emptied. Handlers persist the org
+// they are handed with full-entity writes, so binding through Init would write
+// those defaults back permanently.
+//
+// The struct copy above is shallow, so every reference-typed field must be
+// cloned or the cache and each request would share one backing array — a
+// concurrent AddToken append or an Owners edit would be visible to the cached
+// entry and to other in-flight requests for the same org. bind_test.go walks
+// the struct by reflection and fails if a new reference field is added without
+// being cloned here.
 func bind(cached *organization.Organization, ctx context.Context) *organization.Organization {
 	o := new(organization.Organization)
 	*o = *cached
-	o.Init(datastore.New(ctx))
+
+	o.Owners = slices.Clone(cached.Owners)
+	o.Admins = slices.Clone(cached.Admins)
+	o.Moderators = slices.Clone(cached.Moderators)
+	o.Websites = slices.Clone(cached.Websites)
+	o.Partners = slices.Clone(cached.Partners)
+	o.SecretKey = slices.Clone(cached.SecretKey)
+	o.Tokens = slices.Clone(cached.Tokens)
+	o.Integrations = slices.Clone(cached.Integrations)
+
+	// Wallet is a lazily-loaded, non-persisted (datastore:"-") handle. Sharing
+	// the pointer would hand two requests the same mutable wallet; each loads
+	// its own via GetOrCreateWallet.
+	o.Wallet = nil
+
+	o.Rebind(datastore.New(ctx))
+	o.AccessTokens.Init(o)
 	return o
 }
 
