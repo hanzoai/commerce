@@ -3,7 +3,9 @@ package engine
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -13,6 +15,30 @@ import (
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/types"
 )
+
+// periodLockStripes bounds the memory of the per-(subscription, period) renewal
+// lock to a fixed set of mutexes (no unbounded per-period growth). Same key → same
+// stripe → serialized; a rare hash collision only briefly serializes two unrelated
+// renewals, which is harmless.
+const periodLockStripes = 256
+
+var periodLockMu [periodLockStripes]sync.Mutex
+
+// lockPeriod serializes concurrent collection of the SAME (subscription, period)
+// WITHIN a process, returning the unlock func. Commerce is single-writer per tenant
+// (ReadWriteOnce PVC, Recreate), so this fully serializes real concurrent renewals
+// (the cron sweep + a manual renew) — one invoice row, one collection — closing the
+// non-atomic findInvoiceForPeriod → buildPeriodInvoice window. The idempotencykey
+// guard + the per-(sub, period, attempt) gateway idempotency key remain the
+// money backstops (a cross-process racer still cannot double-charge).
+func lockPeriod(sub *subscription.Subscription) func() {
+	key := sub.Id() + "|" + strconv.FormatInt(sub.PeriodStart.Unix(), 10)
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(key))
+	mu := &periodLockMu[h.Sum32()%periodLockStripes]
+	mu.Lock()
+	return mu.Unlock
+}
 
 // StartSubscription initializes a new subscription: sets the initial state,
 // computes period dates, and handles trial logic.
@@ -45,6 +71,10 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // duplicate, no re-charge); retrying collection on an unpaid invoice is the
 // dunning workflow's job (billing/workflows/dunning.go), not this generator's.
 func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, burnCredits CreditBurner, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
+	// Serialize concurrent collection of this (subscription, period) in-process so
+	// exactly ONE invoice row is built + collected for the period (books integrity).
+	defer lockPeriod(sub)()
+
 	// Idempotency (period): if this period already has an invoice, return it as-is
 	// and NEVER re-charge here. Dunning retries collection via PayInvoice, not this
 	// generator, so a repeated renew on an already-invoiced period is a no-op.
@@ -79,6 +109,16 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		// Concurrent in-flight; its invoice is not yet visible. Do NOT run a second
 		// collection alongside it.
 		return nil, &CollectionResult{Error: "renewal already in progress for this period"}, nil
+	}
+
+	// Re-check after winning the guard: a racer in the concurrent-first window may
+	// have persisted this period's invoice between our findInvoiceForPeriod above and
+	// here. If so, use it — never build a second row for the same period.
+	if again, e := findInvoiceForPeriod(db, sub); e == nil && again != nil {
+		if rec != nil {
+			_ = idempotencykey.Complete(rec, again.Id())
+		}
+		return again, resultFromInvoice(again), nil
 	}
 
 	// Generate a fresh, sequentially-numbered invoice for this period.
