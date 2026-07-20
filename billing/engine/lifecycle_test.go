@@ -47,7 +47,7 @@ func TestRenewSubscription_IdempotentPerPeriod(t *testing.T) {
 
 	// No balance and no credits (burnCredits=nil) → collection fails → the sub
 	// goes PastDue and the period stays fixed.
-	inv1, res1, err := RenewSubscription(context.Background(), db, sub, nil)
+	inv1, res1, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 	if err != nil {
 		t.Fatalf("first renew: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestRenewSubscription_IdempotentPerPeriod(t *testing.T) {
 	}
 
 	// Re-run the SAME period. Must reuse inv1 — never mint a second invoice.
-	inv2, res2, err := RenewSubscription(context.Background(), db, sub, nil)
+	inv2, res2, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 	if err != nil {
 		t.Fatalf("second renew: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestRenewSubscription_NumbersDistinctPeriods(t *testing.T) {
 		t.Fatalf("create sub: %v", err)
 	}
 
-	inv1, res1, err := RenewSubscription(context.Background(), db, sub, nil)
+	inv1, res1, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 	if err != nil {
 		t.Fatalf("first renew: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestRenewSubscription_NumbersDistinctPeriods(t *testing.T) {
 	}
 
 	// Period advanced on success; a second renewal is a NEW period → invoice #2.
-	inv2, _, err := RenewSubscription(context.Background(), db, sub, nil)
+	inv2, _, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 	if err != nil {
 		t.Fatalf("second renew: %v", err)
 	}
