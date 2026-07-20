@@ -354,6 +354,13 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Top-up with a Square Web Payments SDK nonce (no saved PM required)
 	user.Post("/topup/token", TopupWithToken)
 
+	// TRUE card-on-file monthly subscription: vault a Square nonce as a reusable
+	// card, charge the first period at the SERVER-AUTHORITATIVE plan price, and
+	// create the subscription — all server-side, authorized by the settled charge
+	// (not the paid-tier mint gate). Same user group as topup/token: any
+	// authenticated org member may subscribe by paying with a card.
+	user.Post("/subscribe/card", SubscribeWithCard)
+
 	// Payment methods (user-scoped CRUD)
 	user.Post("/payment-methods", CreatePaymentMethod)
 	user.Get("/payment-methods", ListPaymentMethods)

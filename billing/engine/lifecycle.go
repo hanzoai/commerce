@@ -42,8 +42,10 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // invoice for this exact period already exists it is returned as-is (no
 // duplicate, no re-charge); retrying collection on an unpaid invoice is the
 // dunning workflow's job (billing/workflows/dunning.go), not this generator's.
-func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, burnCredits CreditBurner) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	// Idempotency guard: one invoice per (subscription, period).
+func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, burnCredits CreditBurner, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
+	// Idempotency guard: one invoice per (subscription, period). A PastDue
+	// re-run returns the SAME open invoice WITHOUT re-charging (dunning, not this
+	// generator, retries collection) — so a repeated renew never double-charges.
 	existing, err := findInvoiceForPeriod(db, sub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
@@ -58,8 +60,8 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		return inv, nil, err
 	}
 
-	// Attempt collection
-	result, err := CollectInvoice(ctx, db, inv, burnCredits)
+	// Attempt collection: credits -> balance -> the vaulted card (chargeProvider).
+	result, err := CollectInvoice(ctx, db, inv, burnCredits, chargeProvider)
 	if err != nil {
 		return inv, result, fmt.Errorf("collection error: %w", err)
 	}
@@ -79,6 +81,40 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 	}
 
 	return inv, result, nil
+}
+
+// CreatePaidFirstInvoice builds the subscription's FIRST-period invoice, marks it
+// PAID by an already-settled external charge (method + providerRef), persists it,
+// and advances the subscription to the next period. It is the upfront-collection
+// analogue of RenewSubscription's success path: the caller (subscribe/card) has
+// already charged the customer's card for this period synchronously, so this only
+// records the invoice as paid — it does NOT charge again. Idempotent per period:
+// if an invoice for the current period already exists it is returned as-is (no
+// duplicate, no state change), so a retried subscribe never double-invoices.
+func CreatePaidFirstInvoice(db *datastore.Datastore, sub *subscription.Subscription, method, providerRef string) (*billinginvoice.BillingInvoice, error) {
+	if existing, err := findInvoiceForPeriod(db, sub); err != nil {
+		return nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
+	} else if existing != nil {
+		return existing, nil
+	}
+
+	inv, err := buildPeriodInvoice(db, sub)
+	if err != nil {
+		return inv, err
+	}
+	if err := inv.MarkPaid(method, providerRef); err != nil {
+		return inv, fmt.Errorf("failed to mark first invoice paid: %w", err)
+	}
+	if err := inv.Update(); err != nil {
+		return inv, fmt.Errorf("failed to persist paid first invoice: %w", err)
+	}
+
+	// The first period is prepaid, so the next charge falls at the start of
+	// period 2 — advance exactly as RenewSubscription does on a successful collect.
+	sub.CurrentInvoiceId = inv.Id()
+	sub.PeriodStart = sub.PeriodEnd
+	sub.PeriodEnd = advancePeriod(sub.PeriodEnd, &sub.Plan)
+	return inv, nil
 }
 
 // buildPeriodInvoice constructs, numbers, finalizes and persists a new invoice

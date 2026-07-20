@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
+	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -63,30 +65,9 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		return http.Fail(c, 400, "planId is required", nil)
 	}
 
-	// Fetch plan — first try DB, then fall back to static catalog.
-	p := plan.New(db)
-	if err := p.GetById(req.PlanId); err != nil {
-		// Look up in static hanzoPlans by slug.
-		var staticP *staticPlan
-		for i := range hanzoPlans {
-			if hanzoPlans[i].Slug == req.PlanId {
-				staticP = &hanzoPlans[i]
-				break
-			}
-		}
-		if staticP == nil {
-			return http.Fail(c, 404, "plan not found", err)
-		}
-		// Populate plan from static catalog and seed into DB.
-		p.Slug = staticP.Slug
-		p.Name = staticP.Name
-		p.Description = staticP.Description
-		p.Price = currency.Cents(staticP.Price)
-		p.Currency = currency.Type(staticP.Currency)
-		p.Interval = types.Interval(staticP.Interval)
-		p.IntervalCount = staticP.IntervalCount
-		p.TrialPeriodDays = staticP.TrialPeriodDays
-		_ = p.Create() // best-effort; ignore dup-key errors
+	p, err := resolveSubscriptionPlan(db, req.PlanId)
+	if err != nil {
+		return http.Fail(c, 404, "plan not found", err)
 	}
 
 	// C1-a: a PAID-tier subscription confers a spendable entitlement — its
@@ -99,11 +80,81 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	// subscription. A FREE ($0) tier stays self-serve even when it carries a small
 	// included credit as a perk (developer's $5/mo) — price is the paid-tier gate,
 	// not the allotment. Pairs with the payment-backed clamp in subscriptionPlanSlug.
+	//
+	// The card path (POST /v1/billing/subscribe/card) bypasses THIS gate legitimately:
+	// it calls createSubscription directly AFTER a real card charge settles — the
+	// settled payment IS the mint authority (mirrors topup_token's
+	// mintauth.WithAuthorized rationale). So the gate lives HERE, in the
+	// zero-payment HTTP entrypoint, not in the shared core.
 	if p.Price > 0 && !middleware.MayMintMoney(c) {
 		return http.Fail(c, 403,
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
 	}
 
+	sub, err := createSubscription(c, db, org, p, &req)
+	if err != nil {
+		return subscriptionCreateError(c, err)
+	}
+
+	return c.JSON(201, subscriptionResponse(sub))
+}
+
+// subValidationError marks a client-side (HTTP 400) subscription-creation failure
+// — a seat-floor or members>seats violation — as distinct from an internal (500)
+// failure, so the shared core can be reused by both HTTP entrypoints without
+// smearing the status codes.
+type subValidationError struct{ msg string }
+
+func (e subValidationError) Error() string { return e.msg }
+
+// subscriptionCreateError maps a createSubscription error to the right HTTP status:
+// a seat/members validation error is a 400, anything else (persist failure) a 500.
+func subscriptionCreateError(c *zip.Ctx, err error) error {
+	var ve subValidationError
+	if errors.As(err, &ve) {
+		return http.Fail(c, 400, ve.msg, nil)
+	}
+	return http.Fail(c, 500, "failed to create subscription", err)
+}
+
+// resolveSubscriptionPlan resolves a plan by slug — the DB row when present, else
+// the static catalog (seeded into the DB best-effort). The returned plan carries
+// the SERVER-AUTHORITATIVE price; a client-supplied amount is never consulted. It
+// is the single plan-resolution path shared by CreateBillingSubscription and the
+// card subscribe endpoint.
+func resolveSubscriptionPlan(db *datastore.Datastore, planId string) (*plan.Plan, error) {
+	p := plan.New(db)
+	if err := p.GetById(planId); err != nil {
+		var staticP *staticPlan
+		for i := range hanzoPlans {
+			if hanzoPlans[i].Slug == planId {
+				staticP = &hanzoPlans[i]
+				break
+			}
+		}
+		if staticP == nil {
+			return nil, err
+		}
+		p.Slug = staticP.Slug
+		p.Name = staticP.Name
+		p.Description = staticP.Description
+		p.Price = currency.Cents(staticP.Price)
+		p.Currency = currency.Type(staticP.Currency)
+		p.Interval = types.Interval(staticP.Interval)
+		p.IntervalCount = staticP.IntervalCount
+		p.TrialPeriodDays = staticP.TrialPeriodDays
+		_ = p.Create() // best-effort; ignore dup-key errors
+	}
+	return p, nil
+}
+
+// createSubscription is the reusable CORE of subscription creation: seat gate →
+// create the row → expand bundles → provision member seats → emit. It does NOT
+// enforce the C1-a paid-tier mint gate — that is the caller's job (the HTTP
+// CreateBillingSubscription gates it; the card path is authorized by its settled
+// charge). p carries the server-authoritative price; req.DefaultPaymentMethod is
+// set on the row (the card path passes the vaulted payment-method id).
+func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.Organization, p *plan.Plan, req *createSubscriptionRequest) (*subscription.Subscription, error) {
 	// Seat gate: the catalog is the sole authority for per-seat-ness and the
 	// seat floor. A per-seat plan bills Price × quantity, never below
 	// limits.minSeats, and member rows (each minting a per-user allotment) can
@@ -115,12 +166,10 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if perSeat(req.PlanId) {
 		p.PerSeat = true
 		if min := minSeats(req.PlanId); quantity < min {
-			return http.Fail(c, 400,
-				fmt.Sprintf("plan %q requires at least %d seats (got %d)", req.PlanId, min, quantity), nil)
+			return nil, subValidationError{fmt.Sprintf("plan %q requires at least %d seats (got %d)", req.PlanId, min, quantity)}
 		}
 		if len(req.Members) > quantity {
-			return http.Fail(c, 400,
-				fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity), nil)
+			return nil, subValidationError{fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity)}
 		}
 	}
 
@@ -140,7 +189,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 
 	if err := sub.Create(); err != nil {
 		log.Error("Failed to create subscription: %v", err, c)
-		return http.Fail(c, 500, "failed to create subscription", err)
+		return nil, err
 	}
 
 	// Bundle expansion. Plans declare their bundle list in the
@@ -207,7 +256,7 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 
 	emitSubscriptionCreated(c, org.Name, sub)
 
-	return c.JSON(201, subscriptionResponse(sub))
+	return sub, nil
 }
 
 // bundledPlansForSlug returns the slugs of plans that ride along with
@@ -482,6 +531,9 @@ func ReactivateBillingSubscription(c *zip.Ctx) error {
 //	POST /v1/billing/subscriptions/:id/renew
 func RenewBillingSubscription(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
+	// Hydrate the org's payment credentials so the renewal can re-charge the
+	// subscription's vaulted card via the per-org Square processor.
+	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
@@ -490,7 +542,7 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 		return http.Fail(c, 404, "subscription not found", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits)
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits, chargeProviderForOrg(org))
 	if err != nil {
 		log.Error("Failed to renew subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to renew subscription", err)
