@@ -92,15 +92,18 @@ func buildPeriodInvoice(db *datastore.Datastore, sub *subscription.Subscription)
 	inv.PeriodEnd = sub.PeriodEnd
 	inv.Currency = sub.Plan.Currency
 
-	// Add subscription line item (flat plan fee)
+	// Add subscription line item: plan fee × billable seats (1 for flat plans).
 	if sub.Plan.Price > 0 {
+		n := seats(&sub.Plan, sub.Quantity)
 		inv.LineItems = append(inv.LineItems, billinginvoice.LineItem{
 			Id:          "li_plan_" + sub.PlanId,
 			Type:        billinginvoice.LineSubscription,
 			Description: sub.Plan.Name + " subscription",
 			PlanId:      sub.PlanId,
 			PlanName:    sub.Plan.Name,
-			Amount:      int64(sub.Plan.Price),
+			Quantity:    n,
+			UnitPrice:   int64(sub.Plan.Price),
+			Amount:      int64(sub.Plan.Price) * n,
 			Currency:    sub.Plan.Currency,
 			PeriodStart: sub.PeriodStart,
 			PeriodEnd:   sub.PeriodEnd,
@@ -247,10 +250,10 @@ func ChangePlan(sub *subscription.Subscription, newPlan *plan.Plan, prorate bool
 
 	fraction := remainingDays / totalDays
 
-	// Credit for unused portion of old plan
-	oldCredit := int64(float64(oldPlan.Price) * fraction)
-	// Charge for remaining portion of new plan
-	newCharge := int64(float64(newPlan.Price) * fraction)
+	// Credit for unused portion of old plan (× its billable seats)
+	oldCredit := int64(float64(oldPlan.Price) * float64(seats(&oldPlan, sub.Quantity)) * fraction)
+	// Charge for remaining portion of new plan (× its billable seats)
+	newCharge := int64(float64(newPlan.Price) * float64(seats(newPlan, sub.Quantity)) * fraction)
 
 	net := newCharge - oldCredit
 
@@ -267,6 +270,15 @@ func ChangePlan(sub *subscription.Subscription, newPlan *plan.Plan, prorate bool
 	}
 
 	return item, nil
+}
+
+// seats returns the billable multiplier for a plan on a subscription: the
+// subscription quantity (floored at 1) when the plan bills per seat, else 1.
+func seats(p *plan.Plan, quantity int) int64 {
+	if !p.PerSeat || quantity < 1 {
+		return 1
+	}
+	return int64(quantity)
 }
 
 // advancePeriod computes the next period end date based on the plan interval.
