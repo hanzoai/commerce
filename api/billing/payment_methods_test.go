@@ -3,6 +3,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/types/currency"
@@ -38,12 +39,18 @@ type mockSquareProcessor struct {
 
 	// Charge (saved-card) behavior + call capture — used by the subscribe/card
 	// + renewal tests. Unset chargeErr => success with chargeRef (or a default).
+	// mu guards the counters so the concurrency tests can drive Charge in parallel;
+	// chargedKeys makes Charge idempotent on req.IdempotencyKey (mirrors real Square:
+	// a repeat key returns the first SUCCESS with no new charge), which is exactly
+	// the double-charge backstop the stable-key fix relies on.
+	mu                 sync.Mutex
 	chargeErr          error
 	chargeRef          string
 	chargeCalls        int
 	lastChargeToken    string
 	lastChargeCustomer string
 	lastChargeAmount   int64
+	chargedKeys        map[string]*processor.PaymentResult
 }
 
 func newMockSquare(authorizeErr error, authorizeID string, cancelErr error) *mockSquareProcessor {
@@ -60,6 +67,18 @@ func newMockSquare(authorizeErr error, authorizeID string, cancelErr error) *moc
 func (m *mockSquareProcessor) Type() processor.ProcessorType { return processor.Square }
 
 func (m *mockSquareProcessor) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Square de-dups the money move on the idempotency key: a repeat key returns the
+	// first SUCCESS with NO new charge. (Declines are not cached — a failed attempt
+	// moved no money and may be retried.)
+	if req.IdempotencyKey != "" {
+		if prev, ok := m.chargedKeys[req.IdempotencyKey]; ok {
+			return prev, nil
+		}
+	}
+
 	m.chargeCalls++
 	m.lastChargeToken = req.Token
 	m.lastChargeCustomer = req.CustomerID
@@ -71,7 +90,14 @@ func (m *mockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 	if ref == "" {
 		ref = "sqpay_test"
 	}
-	return &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}, nil
+	res := &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}
+	if req.IdempotencyKey != "" {
+		if m.chargedKeys == nil {
+			m.chargedKeys = map[string]*processor.PaymentResult{}
+		}
+		m.chargedKeys[req.IdempotencyKey] = res
+	}
+	return res, nil
 }
 
 func (m *mockSquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
