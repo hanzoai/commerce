@@ -62,6 +62,11 @@ type MarkUncollectibleParams struct {
 type BillingActivities struct {
 	// BurnCredits is injected from the billing package to avoid circular imports.
 	BurnCredits engine.CreditBurner
+	// ChargeProvider charges the subscription's vaulted card for whatever credits +
+	// balance did not cover (injected like BurnCredits to avoid import cycles). nil
+	// keeps the credits+balance-only waterfall — the workflow driver leaves it unset
+	// unless it can build a KMS-hydrated per-org charger.
+	ChargeProvider engine.ProviderCharger
 }
 
 // TransitionSubscriptionActivity updates a subscription's status.
@@ -124,7 +129,7 @@ func (a *BillingActivities) RenewSubscriptionActivity(ctx context.Context, param
 		return nil, fmt.Errorf("subscription not found: %w", err)
 	}
 
-	inv, result, err := engine.RenewSubscription(ctx, db, sub, a.BurnCredits)
+	inv, result, err := engine.RenewSubscription(ctx, db, sub, a.BurnCredits, a.ChargeProvider)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +154,7 @@ func (a *BillingActivities) CollectInvoiceActivity(ctx context.Context, params C
 		return nil, fmt.Errorf("invoice not found: %w", err)
 	}
 
-	result, err := engine.CollectInvoice(ctx, db, inv, a.BurnCredits)
+	result, err := engine.CollectInvoice(ctx, db, inv, a.BurnCredits, a.ChargeProvider)
 	if err != nil {
 		return nil, err
 	}

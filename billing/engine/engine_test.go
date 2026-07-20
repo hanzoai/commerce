@@ -2770,7 +2770,7 @@ func TestCollectInvoice_NonOpenInvoice(t *testing.T) {
 		inv := &billinginvoice.BillingInvoice{}
 		inv.Status = status
 
-		_, err := CollectInvoice(nil, nil, inv, nil)
+		_, err := CollectInvoice(nil, nil, inv, nil, nil)
 		if err == nil {
 			t.Fatalf("expected error for status=%s", status)
 		}
@@ -2785,7 +2785,7 @@ func TestCollectInvoice_ZeroAmountDue(t *testing.T) {
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 0
 
-	result, err := CollectInvoice(nil, nil, inv, nil)
+	result, err := CollectInvoice(nil, nil, inv, nil, nil)
 	if err != nil {
 		t.Fatalf("zero amount should succeed: %v", err)
 	}
@@ -2814,7 +2814,7 @@ func TestCollectInvoice_WithCreditBurner_FullCoverage(t *testing.T) {
 		return 0, nil // fully covered by credits
 	})
 
-	result, err := CollectInvoice(nil, nil, inv, burner)
+	result, err := CollectInvoice(nil, nil, inv, burner, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2849,7 +2849,7 @@ func TestCollectInvoice_CreditBurnerError(t *testing.T) {
 	})
 
 	// Credit burner error is non-fatal; should still try balance
-	result, err := CollectInvoice(nil, nil, inv, burner)
+	result, err := CollectInvoice(nil, nil, inv, burner, nil)
 	if err != nil {
 		t.Fatalf("credit error should be non-fatal: %v", err)
 	}
@@ -2876,7 +2876,7 @@ func TestCollectInvoice_PartialCredit(t *testing.T) {
 		return 400, nil
 	})
 
-	result, err := CollectInvoice(nil, nil, inv, burner)
+	result, err := CollectInvoice(nil, nil, inv, burner, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2897,7 +2897,7 @@ func TestCollectInvoice_NilBurner(t *testing.T) {
 	inv.Status = billinginvoice.Open
 	inv.AmountDue = 500
 
-	result, err := CollectInvoice(nil, nil, inv, nil)
+	result, err := CollectInvoice(nil, nil, inv, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2923,7 +2923,7 @@ func TestCollectInvoice_PaymentMethod_CreditOnly(t *testing.T) {
 		return 0, nil
 	})
 
-	result, err := CollectInvoice(nil, nil, inv, burner)
+	result, err := CollectInvoice(nil, nil, inv, burner, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
