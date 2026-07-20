@@ -553,13 +553,17 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 		return http.Fail(c, 500, "failed to update subscription", err)
 	}
 
-	emitSubscriptionRenewed(c, org.Name, sub)
-
-	return c.JSON(200, map[string]any{
+	resp := map[string]any{
 		"subscription": subscriptionResponse(sub),
-		"invoice":      invoiceResponse(inv),
 		"collection":   result,
-	})
+	}
+	// inv is nil when the period was not due (or a concurrent renewal is already in
+	// flight): no invoice was generated and nothing was charged.
+	if inv != nil {
+		emitSubscriptionRenewed(c, org.Name, sub)
+		resp["invoice"] = invoiceResponse(inv)
+	}
+	return c.JSON(200, resp)
 }
 
 func subscriptionResponse(sub *subscription.Subscription) map[string]any {
