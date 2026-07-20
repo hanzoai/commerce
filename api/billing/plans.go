@@ -19,6 +19,37 @@ var subscriptionJSON embed.FS
 //go:embed plans/dns.json
 var dnsJSON embed.FS
 
+// planLimits is the catalog `limits` block, shared verbatim by the canonical
+// JSON shape and the wire type — the catalog publishes it and the API serves it.
+type planLimits struct {
+	// Subscription (API) limits
+	RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
+	TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
+	FreeCredit        *int `json:"freeCredit,omitempty"`
+	MaxMembers        *int `json:"maxMembers,omitempty"`
+
+	// MinSeats is the minimum billable seat count for per-seat plans
+	// (price_ref.recurring.per_seat) — the ONE canonical home for seat minimums.
+	// Billing charges at least this many seats.
+	MinSeats *int `json:"minSeats,omitempty"`
+
+	// TeamGuests is the back-compat source for the team.guests entitlement:
+	// max invited guests on the holder's hanzo.team workspace (-1 = unlimited).
+	TeamGuests *int `json:"teamGuests,omitempty"`
+
+	// IncludedCreditUsd is a legacy alias (entitlements["commerce.included_credit_usd"]).
+	// IncludedCloudCredits(+PerUser) is the cloud allowance the monthly allotment
+	// grants (the canonical cloud.included_credits_usd entitlement).
+	IncludedCreditUsd           *int `json:"includedCreditUsd,omitempty"`
+	IncludedCloudCredits        *int `json:"includedCloudCredits,omitempty"`
+	IncludedCloudCreditsPerUser *int `json:"includedCloudCreditsPerUser,omitempty"`
+
+	// DNS limits
+	Zones          *int `json:"zones,omitempty"`
+	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
+	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
+}
+
 // canonicalPlan is the JSON shape from @hanzo/plans/*.json.
 //
 // Bundles: a plan can grant entitlement to other plans without
@@ -41,34 +72,17 @@ type canonicalPlan struct {
 	// (7 days without a card, 30 with one) — this only surfaces the base offer
 	// on GET /v1/billing/plans.
 	TrialPeriodDays *int     `json:"trialPeriodDays,omitempty"`
-	Features        []string `json:"features"`
-	Bundles         []string `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
-	IncludedIn      []string `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
-	Limits          *struct {
-		// Subscription (API) limits
-		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
-		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
-		FreeCredit        *int `json:"freeCredit,omitempty"`
-		MaxMembers        *int `json:"maxMembers,omitempty"`
-
-		// IncludedCreditUsd is a legacy alias (entitlements["commerce.included_credit_usd"]);
-		// no published @hanzo/plans plan sets it. The credit plans ACTUALLY declare is
-		// the cloud allowance below.
-		IncludedCreditUsd *int `json:"includedCreditUsd,omitempty"`
-
-		// IncludedCloudCredits is the recurring monthly cloud-credit allowance in
-		// whole USD — the canonical entitlement cloud.included_credits_usd, published
-		// by @hanzo/plans as limits.includedCloudCredits (flat) or
-		// includedCloudCreditsPerUser (per seat). This is what the monthly allotment
-		// grants (e.g. the $200 tier's sold $100/mo).
-		IncludedCloudCredits        *int `json:"includedCloudCredits,omitempty"`
-		IncludedCloudCreditsPerUser *int `json:"includedCloudCreditsPerUser,omitempty"`
-
-		// DNS limits
-		Zones          *int `json:"zones,omitempty"`
-		RecordsPerZone *int `json:"recordsPerZone,omitempty"`
-		QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
-	} `json:"limits,omitempty"`
+	Features        []string    `json:"features"`
+	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
+	IncludedIn      []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
+	Limits          *planLimits `json:"limits,omitempty"`
+	// PriceRef carries the catalog's billing reference; recurring.per_seat marks
+	// the plan as billed per seat (price × quantity, floored at limits.minSeats).
+	PriceRef *struct {
+		Recurring *struct {
+			PerSeat bool `json:"per_seat"`
+		} `json:"recurring,omitempty"`
+	} `json:"price_ref,omitempty"`
 	Payouts *struct {
 		IdleResalePercent int    `json:"idleResalePercent"`
 		Description       string `json:"description"`
@@ -99,24 +113,10 @@ type staticPlan struct {
 	Features     []string `json:"features,omitempty"`
 	Bundles      []string `json:"bundles,omitempty"`    // see canonicalPlan.Bundles
 	IncludedIn   []string `json:"includedIn,omitempty"` // see canonicalPlan.IncludedIn
-	Limits          *struct {
-		// Subscription (API) limits
-		RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
-		TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
-		FreeCredit        *int `json:"freeCredit,omitempty"`
-		MaxMembers        *int `json:"maxMembers,omitempty"`
-
-		// IncludedCreditUsd: legacy alias; IncludedCloudCredits(+PerUser) is what
-		// @hanzo/plans publishes and the monthly allotment grants.
-		IncludedCreditUsd           *int `json:"includedCreditUsd,omitempty"`
-		IncludedCloudCredits        *int `json:"includedCloudCredits,omitempty"`
-		IncludedCloudCreditsPerUser *int `json:"includedCloudCreditsPerUser,omitempty"`
-
-		// DNS limits
-		Zones          *int `json:"zones,omitempty"`
-		RecordsPerZone *int `json:"recordsPerZone,omitempty"`
-		QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
-	} `json:"limits,omitempty"`
+	// PerSeat marks a plan billed per seat (catalog price_ref.recurring.per_seat):
+	// invoices charge Price × subscription quantity, floored at Limits.MinSeats.
+	PerSeat bool        `json:"perSeat,omitempty"`
+	Limits  *planLimits `json:"limits,omitempty"`
 }
 
 // hanzoPlans contains all plans loaded at init from embedded JSON files.
@@ -175,32 +175,10 @@ func loadPlansFromEmbed(fs embed.FS, path string) []staticPlan {
 		if cp.TrialPeriodDays != nil {
 			sp.TrialPeriodDays = *cp.TrialPeriodDays
 		}
-
-		if cp.Limits != nil {
-			sp.Limits = &struct {
-				RequestsPerMinute           *int `json:"requestsPerMinute,omitempty"`
-				TokensPerMinute             *int `json:"tokensPerMinute,omitempty"`
-				FreeCredit                  *int `json:"freeCredit,omitempty"`
-				MaxMembers                  *int `json:"maxMembers,omitempty"`
-				IncludedCreditUsd           *int `json:"includedCreditUsd,omitempty"`
-				IncludedCloudCredits        *int `json:"includedCloudCredits,omitempty"`
-				IncludedCloudCreditsPerUser *int `json:"includedCloudCreditsPerUser,omitempty"`
-				Zones                       *int `json:"zones,omitempty"`
-				RecordsPerZone              *int `json:"recordsPerZone,omitempty"`
-				QueriesPerDay               *int `json:"queriesPerDay,omitempty"`
-			}{
-				RequestsPerMinute:           cp.Limits.RequestsPerMinute,
-				TokensPerMinute:             cp.Limits.TokensPerMinute,
-				FreeCredit:                  cp.Limits.FreeCredit,
-				MaxMembers:                  cp.Limits.MaxMembers,
-				IncludedCreditUsd:           cp.Limits.IncludedCreditUsd,
-				IncludedCloudCredits:        cp.Limits.IncludedCloudCredits,
-				IncludedCloudCreditsPerUser: cp.Limits.IncludedCloudCreditsPerUser,
-				Zones:                       cp.Limits.Zones,
-				RecordsPerZone:              cp.Limits.RecordsPerZone,
-				QueriesPerDay:               cp.Limits.QueriesPerDay,
-			}
+		if cp.PriceRef != nil && cp.PriceRef.Recurring != nil {
+			sp.PerSeat = cp.PriceRef.Recurring.PerSeat
 		}
+		sp.Limits = cp.Limits
 
 		plans[i] = sp
 	}
@@ -318,6 +296,24 @@ func IncludedMonthlyCents(slug string) int64 {
 func paidTier(slug string) bool {
 	p := lookupPlan(slug)
 	return p != nil && p.Price > 0
+}
+
+// perSeat reports whether the catalog bills the plan per seat
+// (price_ref.recurring.per_seat). Unknown slugs are flat.
+func perSeat(slug string) bool {
+	p := lookupPlan(slug)
+	return p != nil && p.PerSeat
+}
+
+// minSeats returns the catalog's minimum billable seats for a plan
+// (limits.minSeats, the ONE canonical home for seat minimums). 1 when the
+// plan is unknown or declares no minimum.
+func minSeats(slug string) int {
+	p := lookupPlan(slug)
+	if p == nil || p.Limits == nil || p.Limits.MinSeats == nil || *p.Limits.MinSeats < 1 {
+		return 1
+	}
+	return *p.Limits.MinSeats
 }
 
 // Plan is the exported snapshot used by external seeders (e.g. the
