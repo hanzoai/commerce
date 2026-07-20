@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -20,13 +21,22 @@ type createSubscriptionRequest struct {
 	UserId               string                 `json:"userId"`
 	PlanId               string                 `json:"planId"`
 	DefaultPaymentMethod string                 `json:"defaultPaymentMethod"`
-	Metadata             map[string]interface{} `json:"metadata"`
+	// Quantity is the billable seat count for per-seat plans (catalog
+	// price_ref.recurring.per_seat); defaults to 1 and must meet the catalog's
+	// limits.minSeats. Ignored as a multiplier on flat plans.
+	Quantity int `json:"quantity"`
+	// Members are the seat holders of a per-seat subscription. Each gets a
+	// zero-price bundle-child subscription row so the monthly allotment run
+	// grants their own per-user included credit. Never more than Quantity.
+	Members  []string               `json:"members"`
+	Metadata map[string]interface{} `json:"metadata"`
 }
 
 type updateSubscriptionRequest struct {
-	PlanId   string `json:"planId"`
-	Prorate  bool   `json:"prorate"`
-	Quantity int    `json:"quantity"`
+	PlanId   string   `json:"planId"`
+	Prorate  bool     `json:"prorate"`
+	Quantity int      `json:"quantity"`
+	Members  []string `json:"members"` // see createSubscriptionRequest.Members
 }
 
 type cancelSubscriptionRequest struct {
@@ -94,12 +104,32 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 			"creating a paid-tier subscription requires platform-administrator or internal-service credentials", nil)
 	}
 
+	// Seat gate: the catalog is the sole authority for per-seat-ness and the
+	// seat floor. A per-seat plan bills Price × quantity, never below
+	// limits.minSeats, and member rows (each minting a per-user allotment) can
+	// never exceed the seats paid for.
+	quantity := req.Quantity
+	if quantity < 1 {
+		quantity = 1
+	}
+	if perSeat(req.PlanId) {
+		p.PerSeat = true
+		if min := minSeats(req.PlanId); quantity < min {
+			return http.Fail(c, 400,
+				fmt.Sprintf("plan %q requires at least %d seats (got %d)", req.PlanId, min, quantity), nil)
+		}
+		if len(req.Members) > quantity {
+			return http.Fail(c, 400,
+				fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity), nil)
+		}
+	}
+
 	// Create subscription
 	sub := subscription.New(db)
 	sub.UserId = req.UserId
 	sub.DefaultPaymentMethod = req.DefaultPaymentMethod
 	sub.ProviderType = "internal"
-	sub.Quantity = 1
+	sub.Quantity = quantity
 
 	if req.Metadata != nil {
 		sub.Metadata = req.Metadata
@@ -168,6 +198,13 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 		}
 	}
 
+	// Seat → credits: one zero-price bundle-child row per member, so the
+	// monthly allotment run grants each member their own per-user included
+	// credit (never a multiplied org wallet).
+	if perSeat(req.PlanId) {
+		provisionMembers(c, db, sub, req.PlanId, p, req.Members)
+	}
+
 	emitSubscriptionCreated(c, org.Name, sub)
 
 	return c.JSON(201, subscriptionResponse(sub))
@@ -185,6 +222,63 @@ func bundledPlansForSlug(slug string) []string {
 		}
 	}
 	return nil
+}
+
+// provisionMembers mints one zero-price bundle-child subscription row per
+// member of a per-seat subscription — the SAME machinery as plan bundles, so
+// the monthly allotment run (grantOrgAllotments) grants each member their own
+// per-user included credit off their own row. Idempotent per (parent, member):
+// a live child row is never duplicated. The child plan is an in-memory
+// zero-price copy of the parent's plan — the customer pays once, on the
+// parent's per-seat invoice.
+func provisionMembers(c *zip.Ctx, db *datastore.Datastore, parent *subscription.Subscription, planSlug string, base *plan.Plan, members []string) {
+	seen := map[string]bool{parent.UserId: true}
+	for _, m := range members {
+		m = strings.ToLower(strings.TrimSpace(m))
+		if m == "" || seen[m] {
+			continue
+		}
+		seen[m] = true
+		if hasMemberSub(db, planSlug, m) {
+			continue
+		}
+		childPlan := *base
+		childPlan.Price = 0 // the member rides the parent's per-seat charge
+		childSub := subscription.New(db)
+		childSub.UserId = m
+		childSub.DefaultPaymentMethod = parent.DefaultPaymentMethod
+		childSub.ProviderType = "bundle"
+		childSub.Quantity = 1
+		childSub.Metadata = map[string]interface{}{
+			"bundleParent":     parent.Id(),
+			"bundleParentPlan": planSlug,
+		}
+		engine.StartSubscription(childSub, &childPlan)
+		if err := childSub.Create(); err != nil {
+			log.Error("Failed to create member subscription for %q (parent %q): %v", m, parent.Id(), err, c)
+		}
+	}
+}
+
+// hasMemberSub reports whether member already holds a live bundle-child row
+// for the plan — the persisted match key (subscription Metadata does not
+// survive the datastore round-trip). One per-user grant anchor per plan per
+// org is exactly the allotment semantics.
+func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", member).GetAll(&subs); err != nil {
+		return false
+	}
+	for _, s := range subs {
+		if s.ProviderType != "bundle" || s.Plan.Slug != planSlug {
+			continue
+		}
+		switch s.Status {
+		case subscription.Active, subscription.Trialing:
+			return true
+		}
+	}
+	return false
 }
 
 // ListBillingSubscriptions lists subscriptions for a user.
@@ -259,11 +353,41 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	}
 
 	planChanged := req.PlanId != "" && req.PlanId != sub.PlanId
+
+	// Seat gate: the EFFECTIVE plan + quantity after this update must satisfy
+	// the catalog's per-seat floor, and member rows never exceed seats paid for.
+	slug := req.PlanId
+	if !planChanged {
+		if slug = sub.Plan.Slug; slug == "" {
+			slug = sub.PlanId
+		}
+	}
+	quantity := sub.Quantity
+	if req.Quantity > 0 {
+		quantity = req.Quantity
+	}
+	if quantity < 1 {
+		quantity = 1
+	}
+	if perSeat(slug) {
+		if min := minSeats(slug); quantity < min {
+			return http.Fail(c, 400,
+				fmt.Sprintf("plan %q requires at least %d seats (got %d)", slug, min, quantity), nil)
+		}
+		if len(req.Members) > quantity {
+			return http.Fail(c, 400,
+				fmt.Sprintf("members (%d) exceed seats (%d)", len(req.Members), quantity), nil)
+		}
+	}
+
 	if planChanged {
 		// Fetch new plan
 		newPlan := plan.New(db)
 		if err := newPlan.GetById(req.PlanId); err != nil {
 			return http.Fail(c, 404, "new plan not found", err)
+		}
+		if perSeat(slug) {
+			newPlan.PerSeat = true
 		}
 
 		_, err := engine.ChangePlan(sub, newPlan, req.Prorate)
@@ -279,6 +403,11 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 	if err := sub.Update(); err != nil {
 		log.Error("Failed to update subscription: %v", err, c)
 		return http.Fail(c, 500, "failed to update subscription", err)
+	}
+
+	// Seat → credits on seat changes: same per-member machinery as create.
+	if perSeat(slug) && len(req.Members) > 0 {
+		provisionMembers(c, db, sub, slug, &sub.Plan, req.Members)
 	}
 
 	if planChanged {

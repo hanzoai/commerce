@@ -51,6 +51,10 @@ type Plan struct {
 	IntervalCount   int            `json:"intervalCount"`
 	TrialPeriodDays int            `json:"trialPeriodDays"`
 
+	// PerSeat marks a plan billed per seat (catalog price_ref.recurring.per_seat):
+	// invoices charge Price × subscription quantity, floored at 1.
+	PerSeat bool `json:"perSeat"`
+
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
 
