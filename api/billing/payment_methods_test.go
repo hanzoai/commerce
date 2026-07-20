@@ -70,12 +70,12 @@ func (m *mockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Square de-dups the money move on the idempotency key: a repeat key returns the
-	// first SUCCESS with NO new charge. (Declines are not cached — a failed attempt
-	// moved no money and may be retried.)
+	// Square de-dups on the idempotency key: a repeat key returns the FIRST result
+	// (success OR decline) with no new charge. So a dunning retry that must actually
+	// re-charge REQUIRES a fresh key — which the (invoice, attempt) scoping provides.
 	if req.IdempotencyKey != "" {
 		if prev, ok := m.chargedKeys[req.IdempotencyKey]; ok {
-			return prev, nil
+			return prev, prev.Error
 		}
 	}
 
@@ -83,21 +83,24 @@ func (m *mockSquareProcessor) Charge(ctx context.Context, req processor.PaymentR
 	m.lastChargeToken = req.Token
 	m.lastChargeCustomer = req.CustomerID
 	m.lastChargeAmount = int64(req.Amount)
+
+	var res *processor.PaymentResult
 	if m.chargeErr != nil {
-		return &processor.PaymentResult{Success: false, ErrorMessage: m.chargeErr.Error(), Error: m.chargeErr}, m.chargeErr
+		res = &processor.PaymentResult{Success: false, ErrorMessage: m.chargeErr.Error(), Error: m.chargeErr}
+	} else {
+		ref := m.chargeRef
+		if ref == "" {
+			ref = "sqpay_test"
+		}
+		res = &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}
 	}
-	ref := m.chargeRef
-	if ref == "" {
-		ref = "sqpay_test"
-	}
-	res := &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}
 	if req.IdempotencyKey != "" {
 		if m.chargedKeys == nil {
 			m.chargedKeys = map[string]*processor.PaymentResult{}
 		}
 		m.chargedKeys[req.IdempotencyKey] = res
 	}
-	return res, nil
+	return res, res.Error
 }
 
 func (m *mockSquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
