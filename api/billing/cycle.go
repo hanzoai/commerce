@@ -149,7 +149,7 @@ func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore, chargeProvider e
 
 	results := make([]cycleResult, 0)
 	for _, sub := range subs {
-		if !isDueForRenewal(sub, now) {
+		if !engine.IsDue(sub, now) {
 			continue
 		}
 		results = append(results, renewOne(c, db, sub, chargeProvider))
@@ -174,24 +174,13 @@ func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId st
 
 	results := make([]cycleResult, 0)
 	for _, sub := range subs {
-		if !isDueForRenewal(sub, now) {
+		if !engine.IsDue(sub, now) {
 			continue
 		}
 		results = append(results, renewOne(c, db, sub, chargeProvider))
 	}
 
 	return results
-}
-
-// isDueForRenewal returns true when a subscription's current billing period
-// has elapsed and the subscription is eligible for renewal.
-func isDueForRenewal(sub *subscription.Subscription, now time.Time) bool {
-	switch sub.Status {
-	case subscription.Active, subscription.PastDue:
-		return !sub.PeriodEnd.IsZero() && now.After(sub.PeriodEnd)
-	default:
-		return false
-	}
 }
 
 // renewOne generates an invoice and attempts collection for a single
