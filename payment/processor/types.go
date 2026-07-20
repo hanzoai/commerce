@@ -39,6 +39,13 @@ type PaymentRequest struct {
 	// Processor-specific options
 	Options map[string]interface{} `json:"options,omitempty"`
 
+	// IdempotencyKey, when set, is forwarded to the gateway as ITS idempotency key
+	// so a retried/concurrent charge with the same key is de-duplicated at the
+	// PROCESSOR — the money move is idempotent regardless of pods/mutexes/in-flight
+	// guards (the definitive double-charge backstop). Empty ⇒ the processor mints a
+	// random key (legacy, non-idempotent), matching RefundRequest.IdempotencyKey.
+	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+
 	// For card payments
 	Token string `json:"token,omitempty"`
 
