@@ -392,6 +392,38 @@ func invokeRenew(org *organization.Organization, ctx context.Context, subID stri
 	}, "/v1/billing/subscriptions/:id/renew", req, RenewBillingSubscription)
 }
 
+func invokePay(org *organization.Organization, ctx context.Context, invID string) *http.Response {
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/invoices/"+invID+"/pay", nil)
+	return driveSeeded(func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(ctx)
+	}, "/v1/billing/invoices/:id/pay", req, PayInvoice)
+}
+
+// seedOpenInvoice persists one OPEN invoice (a single subscription line item) for
+// the subscription's period — what a PayInvoice / dunning retry collects against.
+func seedOpenInvoice(t *testing.T, db *datastore.Datastore, sub *subscription.Subscription, amountCents int64) *billinginvoice.BillingInvoice {
+	t.Helper()
+	inv := billinginvoice.New(db)
+	inv.UserId = sub.UserId
+	inv.SubscriptionId = sub.Id()
+	inv.PeriodStart = sub.PeriodStart
+	inv.PeriodEnd = sub.PeriodEnd
+	inv.Currency = currency.USD
+	inv.LineItems = []billinginvoice.LineItem{{
+		Id: "li_plan", Type: billinginvoice.LineSubscription, Amount: amountCents, Currency: currency.USD,
+	}}
+	inv.RecalculateSubtotal()
+	inv.SetNumber(1)
+	if err := inv.Finalize(); err != nil {
+		t.Fatalf("finalize invoice: %v", err)
+	}
+	if err := inv.Create(); err != nil {
+		t.Fatalf("create invoice: %v", err)
+	}
+	return inv
+}
+
 // TestRenewSubscription_ChargesVaultedCard proves a manual renewal collects the
 // period fee from the subscription's SAVED card and marks the invoice paid.
 func TestRenewSubscription_ChargesVaultedCard(t *testing.T) {
@@ -515,6 +547,12 @@ func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
 	if m.chargeCalls != 1 {
 		t.Fatalf("parallel renew charged the card %d times, want exactly 1 (double-charge under concurrency)", m.chargeCalls)
 	}
+	// Books integrity: exactly ONE invoice row for the period — the deterministic
+	// per-period id collapses concurrent builds, so the invoice ledger / MRR can't
+	// over-count by (N-1)×Price even though several racers passed the local guard.
+	if invs := invoicesForSub(t, db, sub.Id()); len(invs) != 1 {
+		t.Fatalf("parallel renew created %d invoice rows for the period, want exactly 1 (ledger over-count)", len(invs))
+	}
 }
 
 // TestPayInvoice_ConcurrentCollect_OneCharge seeds an OPEN invoice for a
@@ -529,25 +567,7 @@ func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
 
 	db := datastore.New(org.Namespaced(ctx))
 	sub := seedCardBackedSub(t, db, "sc-par-pay", "pro", "ccof_pp", "cust_pp")
-
-	// Seed one OPEN invoice ($20) for the sub's period (what a pay collects against).
-	inv := billinginvoice.New(db)
-	inv.UserId = sub.UserId
-	inv.SubscriptionId = sub.Id()
-	inv.PeriodStart = sub.PeriodStart
-	inv.PeriodEnd = sub.PeriodEnd
-	inv.Currency = currency.USD
-	inv.LineItems = []billinginvoice.LineItem{{
-		Id: "li_plan", Type: billinginvoice.LineSubscription, Amount: 2000, Currency: currency.USD,
-	}}
-	inv.RecalculateSubtotal()
-	inv.SetNumber(1)
-	if err := inv.Finalize(); err != nil {
-		t.Fatalf("finalize invoice: %v", err)
-	}
-	if err := inv.Create(); err != nil {
-		t.Fatalf("create invoice: %v", err)
-	}
+	inv := seedOpenInvoice(t, db, sub, 2000)
 
 	charger := chargeProviderForOrg(org)
 	const N = 8
@@ -648,5 +668,96 @@ func TestSubscribeWithCard_PerSeatQuantity(t *testing.T) {
 	}
 	if invs[0].AmountDue != 5000 || invs[0].AmountPaid != 5000 {
 		t.Fatalf("invoice amountDue=%d amountPaid=%d, want 5000/5000 (charge must equal the recorded paid amount)", invs[0].AmountDue, invs[0].AmountPaid)
+	}
+}
+
+// TestPayInvoice_DeclineThenRetryReCollects proves fix A: a declined PayInvoice
+// leaves the invoice OPEN, does NOT seal the guard, and a later PayInvoice (once the
+// card works) actually RE-COLLECTS — dunning is not wedged by a sealed decline. The
+// re-collection runs at a higher AttemptCount → a FRESH gateway key → the processor
+// lets it through instead of replaying the first decline.
+func TestPayInvoice_DeclineThenRetryReCollects(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-pay-dun")
+	m := squareMock("", "", "sqpay_dun")
+	m.chargeErr = errors.New("CARD_DECLINED")
+	withFakeSquare(t, m)
+
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, "sc-pay-dun", "pro", "ccof_dun", "cust_dun")
+	inv := seedOpenInvoice(t, db, sub, 2000)
+
+	// First pay: declines → invoice stays OPEN, guard released (not sealed).
+	r1 := invokePay(org, ctx, inv.Id())
+	if r1.StatusCode != http.StatusOK {
+		t.Fatalf("declined pay status=%d, want 200 (a decline is a handled outcome)", r1.StatusCode)
+	}
+	if m.chargeCalls != 1 {
+		t.Fatalf("charge calls after decline=%d, want 1", m.chargeCalls)
+	}
+	got := billinginvoice.New(db)
+	if err := got.GetById(inv.Id()); err != nil {
+		t.Fatalf("reload invoice: %v", err)
+	}
+	if got.Status != billinginvoice.Open {
+		t.Fatalf("invoice status after decline=%s, want OPEN (a declined pay must not close the invoice)", got.Status)
+	}
+
+	// Card now works: a subsequent pay must actually RE-COLLECT (not replay the sealed
+	// decline) and mark the invoice paid.
+	m.chargeErr = nil
+	r2 := invokePay(org, ctx, inv.Id())
+	if r2.StatusCode != http.StatusOK {
+		t.Fatalf("retry pay status=%d, want 200", r2.StatusCode)
+	}
+	if m.chargeCalls != 2 {
+		t.Fatalf("charge calls after retry=%d, want 2 — the retry did NOT re-collect (dunning wedged by a sealed decline)", m.chargeCalls)
+	}
+	paid := billinginvoice.New(db)
+	if err := paid.GetById(inv.Id()); err != nil {
+		t.Fatalf("reload invoice: %v", err)
+	}
+	if paid.Status != billinginvoice.Paid || paid.PaymentMethod != "card" {
+		t.Fatalf("invoice after retry status=%s method=%q, want paid/card", paid.Status, paid.PaymentMethod)
+	}
+}
+
+// TestSubscribeWithCard_DistinctKeyReSubscribes proves fix B: a genuine second
+// purchase with a DIFFERENT idempotency key is NOT replayed as the first — it creates
+// a new subscription and charges again (the guard is not a permanent per-plan lock).
+// The SPA reaches this by clearing its per-attempt sessionStorage key on success.
+func TestSubscribeWithCard_DistinctKeyReSubscribes(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-resub")
+	m := squareMock("cust_rs", "ccof_rs", "sqpay_rs")
+	withFakeSquare(t, m)
+
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-1"})
+	if r1.StatusCode != http.StatusCreated {
+		t.Fatalf("first subscribe status=%d, want 201", r1.StatusCode)
+	}
+	// New checkout attempt (fresh key) → a NEW subscription, not a replay.
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"pro"}`, map[string]string{"X-Idempotency-Key": "attempt-2"})
+	if r2.StatusCode != http.StatusCreated {
+		t.Fatalf("re-subscribe status=%d, want 201 (a fresh key must NOT replay the first purchase)", r2.StatusCode)
+	}
+	if m.chargeCalls != 2 {
+		t.Fatalf("charge calls=%d across two distinct-key subscribes, want 2", m.chargeCalls)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", "sc-resub").GetAll(&subs); err != nil {
+		t.Fatalf("query subs: %v", err)
+	}
+	parents := 0
+	for _, s := range subs {
+		if s.ProviderType != "bundle" {
+			parents++
+		}
+	}
+	if parents != 2 {
+		t.Fatalf("distinct-key re-subscribe created %d parent subscriptions, want 2 (guard wrongly blocked the second)", parents)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -31,6 +32,14 @@ import (
 // production is payment.ProcessorsForOrg (built from the org's KMS-hydrated
 // credentials). Callers MUST hydrate the org's creds first (hydratePaymentCreds).
 var processorsForOrg = payment.ProcessorsForOrg
+
+// subscribeIdemWindowSec is the fallback idempotency WINDOW for a header-less
+// subscribe: within this window a repeated (subject, planId) subscribe de-dups (a
+// lost-response retry), but after it a genuine later re-subscribe to the same plan
+// proceeds — the guard is not a permanent per-plan lock. Clients that need exact
+// idempotency send an X-Idempotency-Key (the SPA does), which is used verbatim and
+// is never windowed.
+const subscribeIdemWindowSec = 900 // 15 minutes
 
 // hydratePaymentCreds loads the org's payment-provider credentials from KMS (via
 // the request-scoped cached client in c.Locals) so processorsForOrg sees real
@@ -168,7 +177,10 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// double-charge to avoid. Scoped to the subject so keys never collide across tenants.
 	guardKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
 	if guardKey == "" {
-		guardKey = "plan:" + req.PlanID
+		// No client key: fall back to (subject, planId) bucketed by a coarse time
+		// WINDOW so a lost-response retry (seconds apart) de-dups but a genuine later
+		// re-subscribe is not blocked forever (see subscribeIdemWindowSec).
+		guardKey = "plan:" + req.PlanID + ":w" + strconv.FormatInt(time.Now().Unix()/subscribeIdemWindowSec, 10)
 	}
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
@@ -370,10 +382,15 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		if cur == "" {
 			cur = currency.USD
 		}
-		// Stable per-(subscription, period) Square idempotency key so a retried or
-		// concurrent collection of the SAME period charges the card exactly once —
-		// even if two invoices were somehow built for the period.
-		squareKey := "collect:sub:" + inv.SubscriptionId + ":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10)
+		// Square idempotency key scoped to (subscription, period, attempt). The PERIOD
+		// (not the invoice id) is the shared axis: concurrent renewals each build their
+		// OWN invoice row for the same period, so an invoice-id key would NOT de-dup them
+		// — the period does. AttemptCount makes each dunning RETRY a FRESH key so the
+		// processor lets the re-collection through (a period-only key would make the
+		// gateway replay the first decline forever and wedge dunning).
+		squareKey := "collect:sub:" + inv.SubscriptionId +
+			":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10) +
+			":attempt:" + strconv.Itoa(inv.AttemptCount)
 		reg := processorsForOrg(org)
 		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))

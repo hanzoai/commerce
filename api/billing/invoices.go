@@ -195,18 +195,26 @@ func PayInvoice(c *zip.Ctx) error {
 		return http.Fail(c, 500, "failed to update invoice", err)
 	}
 
-	emitInvoicePaid(c, org.Name, inv)
-
 	resp := map[string]any{
 		"invoice":    invoiceResponse(inv),
 		"collection": result,
 	}
-	// Seal the guard with the exact success body so a concurrent/retry pay replays
-	// it verbatim instead of re-collecting.
-	if rec != nil {
-		if body, mErr := json.Marshal(resp); mErr == nil {
-			_ = idempotencykey.Complete(rec, string(body))
+
+	if result.Success {
+		// Only a SUCCESSFUL collection is a paid invoice: emit invoicePaid and SEAL the
+		// guard so a concurrent/retry pay replays the paid result instead of re-charging.
+		emitInvoicePaid(c, org.Name, inv)
+		if rec != nil {
+			if body, mErr := json.Marshal(resp); mErr == nil {
+				_ = idempotencykey.Complete(rec, string(body))
+			}
 		}
+	} else if rec != nil {
+		// Declined / partial: the invoice stays OPEN. RELEASE the guard (never seal a
+		// decline) and emit NO invoicePaid — so the dunning workflow / a later PayInvoice
+		// actually RE-COLLECTS (at a higher AttemptCount → fresh gateway key) instead of
+		// replaying a sealed failure. Sealing a decline would wedge dunning + fire phantom MRR.
+		_ = rec.Delete()
 	}
 	return c.JSON(200, resp)
 }
