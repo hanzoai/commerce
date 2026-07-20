@@ -120,7 +120,13 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 		return nil, err
 	}
 
-	idempotencyKey := uuid.New().String()
+	// Honor the caller's idempotency key so a retried/concurrent charge with the
+	// same key is de-duplicated AT SQUARE (the definitive double-charge backstop);
+	// fall back to a random key only when the caller supplies none.
+	idempotencyKey := req.IdempotencyKey
+	if idempotencyKey == "" {
+		idempotencyKey = uuid.New().String()
+	}
 
 	paymentReq := &square.CreatePaymentRequest{
 		SourceID:       req.Token,
@@ -165,12 +171,24 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 		paymentStatus = *payment.Status
 	}
 
+	// Only a COMPLETED capture is a real success. Autocomplete=true (above)
+	// requests immediate capture, so a healthy charge returns COMPLETED; APPROVED
+	// (authorized, not captured) or PENDING (risk hold / delayed capture) is a 200
+	// with NO money captured. Treating those as success would confer a paid
+	// subscription + mint included credits against an uncaptured charge — so the
+	// collect/subscribe path must see them as a decline (Success=false).
+	completed := paymentStatus == "COMPLETED"
+	errMsg := ""
+	if !completed {
+		errMsg = "payment not completed (status: " + paymentStatus + ")"
+	}
 	return &processor.PaymentResult{
-		Success:       true,
+		Success:       completed,
 		TransactionID: *payment.ID,
 		ProcessorRef:  *payment.ID,
 		Fee:           fee,
 		Status:        paymentStatus,
+		ErrorMessage:  errMsg,
 		Metadata: map[string]interface{}{
 			"receipt_url": payment.ReceiptURL,
 			"order_id":    payment.OrderID,

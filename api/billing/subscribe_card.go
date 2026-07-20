@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/zap-proto/zip"
@@ -125,37 +126,61 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	}
 
 	// Server-authoritative plan + price. A client amount is NEVER consulted — the
-	// charge is the plan's catalog price, so a scripted request cannot underpay.
+	// charge is the plan's catalog price × billable seats, so a scripted request
+	// cannot underpay.
 	p, err := resolveSubscriptionPlan(db, req.PlanID)
 	if err != nil {
 		return http.Fail(c, 404, "plan not found", err)
 	}
-	price := int64(p.Price)
-	if price <= 0 {
+	if int64(p.Price) <= 0 {
 		// A $0 plan needs no card — the free tier is self-serve via POST
 		// /v1/billing/subscriptions. This endpoint's contract is a PAID card sub.
 		return http.Fail(c, 400,
 			fmt.Sprintf("plan %q is free — no card charge required; use POST /v1/billing/subscriptions", req.PlanID), nil)
 	}
+	// Billable seats: a per-seat plan charges Price × quantity (floored at the
+	// catalog's minSeats); a flat plan is always ×1. This MUST match
+	// buildPeriodInvoice's seat math so the first charge equals the invoice's
+	// AmountDue — never under-collect a per-seat plan yet record it paid in full.
+	qty := req.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	seatMult := int64(1)
+	if perSeat(req.PlanID) {
+		if min := minSeats(req.PlanID); qty < min {
+			return http.Fail(c, 400,
+				fmt.Sprintf("plan %q requires at least %d seats (got %d)", req.PlanID, min, qty), nil)
+		}
+		seatMult = int64(qty)
+	}
+	chargeCents := int64(p.Price) * seatMult
 	cur := currency.Type(strings.ToLower(strings.TrimSpace(req.Currency)))
 	if cur == "" {
 		cur = currency.USD
 	}
 
-	// Idempotency guard (money-critical): a retry / double-submit vaults + charges +
-	// subscribes AT MOST once. Key on X-Idempotency-Key when supplied, else the
-	// single-use Square nonce (Square spends a nonce on first use, so it is a
-	// natural per-attempt key). Scoped to the subject so keys never collide across
-	// tenants.
-	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
-	if idemKey == "" {
-		idemKey = "nonce:" + req.SourceID
+	// Idempotency (money-critical). The client SHOULD send a STABLE X-Idempotency-Key
+	// per checkout attempt (the SPA does), so a lost-response retry — even with a
+	// FRESH single-use nonce — replays instead of vaulting + charging again. Absent a
+	// header, fall back to the STABLE (subject, planId): the single-use nonce is NOT a
+	// stable key (a re-tokenized retry mints a new nonce), which is exactly the
+	// double-charge to avoid. Scoped to the subject so keys never collide across tenants.
+	guardKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
+	if guardKey == "" {
+		guardKey = "plan:" + req.PlanID
 	}
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject, idemKey)
+	// The Square idempotency key is derived from the SAME stable guard key (never the
+	// single-use nonce), so Square itself de-dups the money move even if the local
+	// guard store is unavailable OR two submits race — the definitive backstop.
+	squareKey := "subscribe:" + subject + ":" + guardKey
+
+	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject, guardKey)
 	if gerr != nil {
-		// Guard store unavailable; the single-use nonce remains the double-charge
-		// backstop (vaulting a spent nonce fails). Proceed without the replay guard
-		// rather than block a legitimate first subscribe.
+		// Guard store unavailable. Proceed WITHOUT the local guard: the stable Square
+		// idempotency key above still makes the CHARGE exactly-once at the processor,
+		// so a retry can't double-charge (at worst a duplicate sub row, far less
+		// severe than a double charge) rather than block a legitimate first subscribe.
 		log.Error("subscribe idempotency Begin failed (subject=%s): %v", subject, gerr, c)
 		rec = nil
 	} else if replay {
@@ -166,7 +191,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		return http.Fail(c, 409, "subscription already in progress", nil)
 	}
 	// abandon releases the guard on pre-charge failures where no money moved, so a
-	// later attempt (with a fresh nonce) is not wedged.
+	// later attempt is not wedged.
 	abandon := func() {
 		if rec != nil {
 			_ = rec.Delete()
@@ -191,11 +216,14 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	}
 
 	// Charge the SAVED card (card-on-file id + Square customer id) for the first
-	// period at the server-authoritative price. All-or-nothing: on a decline no
-	// subscription is created.
-	res, err := chargeSavedCard(c.Context(), reg, cof.CardID, cof.CustomerID, price, cur,
+	// period at the server-authoritative price × seats, with the stable Square
+	// idempotency key. All-or-nothing: on a decline no subscription is created.
+	res, err := chargeSavedCard(c.Context(), reg, cof.CardID, cof.CustomerID, chargeCents, cur, squareKey,
 		fmt.Sprintf("Subscription %s — first period", p.Name))
 	if err != nil || res == nil || !res.Success {
+		// The charge failed AFTER vaulting — delete the just-vaulted card-on-file so
+		// a declined attempt leaves NO orphaned Square card (best-effort).
+		_ = cp.RemovePaymentMethod(c.Context(), cof.CustomerID, cof.CardID)
 		abandon()
 		log.Error("saved-card charge failed for subscribe (subject=%s): %v", subject, err, c)
 		return http.Fail(c, 402, parseCardDeclineReason(res, err), nil)
@@ -234,7 +262,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		UserId:               subject,
 		PlanId:               req.PlanID,
 		DefaultPaymentMethod: pm.Id(),
-		Quantity:             req.Quantity,
+		Quantity:             qty,
 		Metadata:             map[string]interface{}{"source": "subscribe/card"},
 	})
 	if err != nil {
@@ -272,7 +300,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		"subscriptionId": sub.Id(),
 		"invoiceId":      invoiceID,
 		"planId":         req.PlanID,
-		"amountCents":    price,
+		"amountCents":    chargeCents,
 		"currency":       cur,
 		"status":         "ok",
 	}
@@ -291,13 +319,14 @@ func SubscribeWithCard(c *zip.Ctx) error {
 // ONE saved-card charge path — shared by SubscribeWithCard's first charge and the
 // renewal ProviderCharger. reg MUST be a per-org registry (processorsForOrg(org))
 // whose org has hydrated Square credentials.
-func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, customerID string, amountCents int64, cur currency.Type, desc string) (*processor.PaymentResult, error) {
+func chargeSavedCard(ctx context.Context, reg *processor.Registry, cardID, customerID string, amountCents int64, cur currency.Type, idempotencyKey, desc string) (*processor.PaymentResult, error) {
 	req := processor.PaymentRequest{
-		Token:       cardID,     // Square card-on-file id as the SourceID
-		CustomerID:  customerID, // the Square customer that owns the card (required for card-on-file)
-		Amount:      currency.Cents(amountCents),
-		Currency:    cur,
-		Description: desc,
+		Token:          cardID,     // Square card-on-file id as the SourceID
+		CustomerID:     customerID, // the Square customer that owns the card (required for card-on-file)
+		Amount:         currency.Cents(amountCents),
+		Currency:       cur,
+		IdempotencyKey: idempotencyKey, // Square de-dups the money move on this key
+		Description:    desc,
 	}
 	proc, err := reg.SelectProcessor(ctx, req)
 	if err != nil {
@@ -341,8 +370,12 @@ func chargeProviderForOrg(org *organization.Organization) engine.ProviderCharger
 		if cur == "" {
 			cur = currency.USD
 		}
+		// Stable per-(subscription, period) Square idempotency key so a retried or
+		// concurrent collection of the SAME period charges the card exactly once —
+		// even if two invoices were somehow built for the period.
+		squareKey := "collect:sub:" + inv.SubscriptionId + ":period:" + strconv.FormatInt(inv.PeriodStart.Unix(), 10)
 		reg := processorsForOrg(org)
-		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur,
+		res, err := chargeSavedCard(ctx, reg, cardID, squareCustomerIDOf(pm), amountCents, cur, squareKey,
 			fmt.Sprintf("Subscription renewal invoice %s", inv.NumberStr))
 		if err != nil || res == nil || !res.Success {
 			return "", fmt.Errorf("%s", parseCardDeclineReason(res, err))
