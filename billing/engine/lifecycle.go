@@ -3,10 +3,12 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/types"
@@ -43,9 +45,9 @@ func StartSubscription(sub *subscription.Subscription, p *plan.Plan) {
 // duplicate, no re-charge); retrying collection on an unpaid invoice is the
 // dunning workflow's job (billing/workflows/dunning.go), not this generator's.
 func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscription.Subscription, burnCredits CreditBurner, chargeProvider ProviderCharger) (*billinginvoice.BillingInvoice, *CollectionResult, error) {
-	// Idempotency guard: one invoice per (subscription, period). A PastDue
-	// re-run returns the SAME open invoice WITHOUT re-charging (dunning, not this
-	// generator, retries collection) — so a repeated renew never double-charges.
+	// Idempotency (period): if this period already has an invoice, return it as-is
+	// and NEVER re-charge here. Dunning retries collection via PayInvoice, not this
+	// generator, so a repeated renew on an already-invoiced period is a no-op.
 	existing, err := findInvoiceForPeriod(db, sub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to look up existing invoice for period: %w", err)
@@ -54,9 +56,37 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		return existing, resultFromInvoice(existing), nil
 	}
 
+	// Only CREATE (and charge) a new period invoice when the period is actually due
+	// (its end has passed) or the subscription is already PastDue. This stops a
+	// MANUAL renew from pre-billing a not-yet-elapsed FUTURE period — N manual
+	// renews must never bill N periods. The cycle already filters on IsDue; this is
+	// the authoritative gate for every caller.
+	if !IsDue(sub, time.Now()) {
+		return nil, &CollectionResult{Error: "subscription period is not due for renewal"}, nil
+	}
+
+	// Atomic per-(subscription, period) guard: two concurrent renews collapse onto
+	// ONE deterministic-id row (storage ON CONFLICT), so only the winner builds +
+	// collects; the loser re-reads the now-existing invoice. The card charge (via
+	// chargeProvider) ALSO carries a stable per-period Square idempotency key, so
+	// even the narrow concurrent-first window can never double-charge.
+	guardKey := "period:" + strconv.FormatInt(sub.PeriodStart.Unix(), 10)
+	rec, replay, gerr := idempotencykey.Begin(db, "billing-renew:"+sub.Id(), guardKey)
+	if gerr == nil && replay {
+		if again, e := findInvoiceForPeriod(db, sub); e == nil && again != nil {
+			return again, resultFromInvoice(again), nil
+		}
+		// Concurrent in-flight; its invoice is not yet visible. Do NOT run a second
+		// collection alongside it.
+		return nil, &CollectionResult{Error: "renewal already in progress for this period"}, nil
+	}
+
 	// Generate a fresh, sequentially-numbered invoice for this period.
 	inv, err := buildPeriodInvoice(db, sub)
 	if err != nil {
+		if rec != nil {
+			_ = rec.Delete() // release the guard so a later attempt can rebuild
+		}
 		return inv, nil, err
 	}
 
@@ -80,7 +110,26 @@ func RenewSubscription(ctx context.Context, db *datastore.Datastore, sub *subscr
 		sub.Status = subscription.PastDue
 	}
 
+	// The invoice now exists, so findInvoiceForPeriod short-circuits every future
+	// renew BEFORE this guard — seal it (best-effort; it has done its job).
+	if rec != nil {
+		_ = idempotencykey.Complete(rec, inv.Id())
+	}
+
 	return inv, result, nil
+}
+
+// IsDue reports whether a subscription's current period has elapsed and it is
+// eligible to be (re)invoiced: Active or PastDue with a PeriodEnd in the past.
+// The single definition of "due", shared by the billing-cycle filter and
+// RenewSubscription's new-period gate.
+func IsDue(sub *subscription.Subscription, now time.Time) bool {
+	switch sub.Status {
+	case subscription.Active, subscription.PastDue:
+		return !sub.PeriodEnd.IsZero() && now.After(sub.PeriodEnd)
+	default:
+		return false
+	}
 }
 
 // CreatePaidFirstInvoice builds the subscription's FIRST-period invoice, marks it
