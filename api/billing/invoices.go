@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/billinginvoice"
+	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json/http"
 )
@@ -166,8 +168,24 @@ func PayInvoice(c *zip.Ctx) error {
 		return http.Fail(c, 404, "invoice not found", err)
 	}
 
+	// Atomic per-invoice guard: two concurrent pays of the SAME invoice collapse
+	// onto ONE collection (deterministic-id ON CONFLICT). The card charge (via
+	// chargeProviderForOrg) ALSO carries a stable per-period Square idempotency key,
+	// so even the narrow concurrent-first window cannot double-charge.
+	rec, replay, gerr := idempotencykey.Begin(db, "billing-pay", "invoice:"+inv.Id())
+	if gerr == nil && replay {
+		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
+			c.SetHeader("Content-Type", "application/json")
+			return c.Bytes(200, []byte(rec.Response))
+		}
+		return http.Fail(c, 409, "invoice payment already in progress", nil)
+	}
+
 	result, err := engine.CollectInvoice(c.Context(), db, inv, BurnCredits, chargeProviderForOrg(org))
 	if err != nil {
+		if rec != nil {
+			_ = rec.Delete()
+		}
 		log.Error("Failed to collect invoice: %v", err, c)
 		return http.Fail(c, 500, "failed to collect invoice payment", err)
 	}
@@ -179,10 +197,18 @@ func PayInvoice(c *zip.Ctx) error {
 
 	emitInvoicePaid(c, org.Name, inv)
 
-	return c.JSON(200, map[string]any{
+	resp := map[string]any{
 		"invoice":    invoiceResponse(inv),
 		"collection": result,
-	})
+	}
+	// Seal the guard with the exact success body so a concurrent/retry pay replays
+	// it verbatim instead of re-collecting.
+	if rec != nil {
+		if body, mErr := json.Marshal(resp); mErr == nil {
+			_ = idempotencykey.Complete(rec, string(body))
+		}
+	}
+	return c.JSON(200, resp)
 }
 
 // VoidInvoice voids a draft or open invoice.
