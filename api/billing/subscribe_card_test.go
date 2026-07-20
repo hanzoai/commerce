@@ -8,7 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -18,6 +20,7 @@ import (
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
 	"github.com/hanzoai/commerce/models/subscription"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -371,6 +374,10 @@ func seedCardBackedSub(t *testing.T, db *datastore.Datastore, subject, planSlug,
 	s.ProviderType = string(processor.Square)
 	s.Quantity = 1
 	engine.StartSubscription(s, p) // sets s.Plan, s.PlanId, Status=Active, current period
+	// Make the current period DUE (already ended) so a renewal actually collects —
+	// the is-due gate only bills an elapsed period (never a future one).
+	s.PeriodStart = time.Now().AddDate(0, -2, 0)
+	s.PeriodEnd = time.Now().AddDate(0, -1, 0)
 	if err := s.Create(); err != nil {
 		t.Fatalf("seed subscription: %v", err)
 	}
@@ -471,5 +478,175 @@ func TestRenewSubscription_DeclineLeavesOpenNoDoubleCharge(t *testing.T) {
 	}
 	if invs := invoicesForSub(t, db, got.Id()); len(invs) != 1 {
 		t.Fatalf("invoices after second renew=%d, want 1 (no duplicate)", len(invs))
+	}
+}
+
+// TestRenewSubscription_ParallelExactlyOneCharge drives N concurrent renewals of
+// the SAME due subscription and proves the vaulted card is charged EXACTLY once —
+// the per-period guard + the stable per-period Square idempotency key together
+// defeat the TOCTOU double-charge.
+func TestRenewSubscription_ParallelExactlyOneCharge(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-par-renew")
+	m := squareMock("", "", "sqpay_parren")
+	withFakeSquare(t, m)
+
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, "sc-par-renew", "pro", "ccof_pr", "cust_pr")
+	charger := chargeProviderForOrg(org)
+
+	const N = 8
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			// Each goroutine renews its OWN loaded instance (no shared struct races).
+			s := subscription.New(db)
+			if err := s.GetById(sub.Id()); err != nil {
+				return
+			}
+			_, _, _ = engine.RenewSubscription(ctx, db, s, BurnCredits, charger)
+		}()
+	}
+	wg.Wait()
+
+	if m.chargeCalls != 1 {
+		t.Fatalf("parallel renew charged the card %d times, want exactly 1 (double-charge under concurrency)", m.chargeCalls)
+	}
+}
+
+// TestPayInvoice_ConcurrentCollect_OneCharge seeds an OPEN invoice for a
+// card-backed subscription and runs N concurrent collections; the stable
+// per-period Square idempotency key makes the vaulted-card charge exactly once.
+func TestPayInvoice_ConcurrentCollect_OneCharge(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-par-pay")
+	m := squareMock("", "", "sqpay_parpay")
+	withFakeSquare(t, m)
+
+	db := datastore.New(org.Namespaced(ctx))
+	sub := seedCardBackedSub(t, db, "sc-par-pay", "pro", "ccof_pp", "cust_pp")
+
+	// Seed one OPEN invoice ($20) for the sub's period (what a pay collects against).
+	inv := billinginvoice.New(db)
+	inv.UserId = sub.UserId
+	inv.SubscriptionId = sub.Id()
+	inv.PeriodStart = sub.PeriodStart
+	inv.PeriodEnd = sub.PeriodEnd
+	inv.Currency = currency.USD
+	inv.LineItems = []billinginvoice.LineItem{{
+		Id: "li_plan", Type: billinginvoice.LineSubscription, Amount: 2000, Currency: currency.USD,
+	}}
+	inv.RecalculateSubtotal()
+	inv.SetNumber(1)
+	if err := inv.Finalize(); err != nil {
+		t.Fatalf("finalize invoice: %v", err)
+	}
+	if err := inv.Create(); err != nil {
+		t.Fatalf("create invoice: %v", err)
+	}
+
+	charger := chargeProviderForOrg(org)
+	const N = 8
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			i2 := billinginvoice.New(db)
+			if err := i2.GetById(inv.Id()); err != nil {
+				return
+			}
+			if i2.Status != billinginvoice.Open {
+				return
+			}
+			_, _ = engine.CollectInvoice(ctx, db, i2, BurnCredits, charger)
+		}()
+	}
+	wg.Wait()
+
+	if m.chargeCalls != 1 {
+		t.Fatalf("concurrent invoice collection charged the card %d times, want exactly 1", m.chargeCalls)
+	}
+}
+
+// TestSubscribeWithCard_NewNonceRetry_OneCharge proves the server-side (subject,
+// planId) fallback guard: a retry with a DIFFERENT single-use nonce and NO
+// X-Idempotency-Key (the exact SPA "Start over → re-tokenize" shape) charges +
+// subscribes exactly once, not twice.
+func TestSubscribeWithCard_NewNonceRetry_OneCharge(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-newnonce")
+	m := squareMock("cust_nn", "ccof_nn", "sqpay_nn")
+	withFakeSquare(t, m)
+
+	// First attempt (nonce A), no X-Idempotency-Key → guard falls back to (subject, plan).
+	r1 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:A","planId":"pro"}`, nil)
+	if r1.StatusCode != http.StatusCreated {
+		t.Fatalf("first status=%d, want 201", r1.StatusCode)
+	}
+	// Retry with a FRESH nonce B (re-tokenized), still no header.
+	r2 := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:B","planId":"pro"}`, nil)
+	if r2.StatusCode != http.StatusOK {
+		t.Fatalf("new-nonce retry status=%d, want 200 (idempotent replay on (subject,planId))", r2.StatusCode)
+	}
+
+	if m.chargeCalls != 1 {
+		t.Fatalf("new-nonce retry charged %d times, want 1 — a re-tokenized retry double-charged", m.chargeCalls)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", "sc-newnonce").GetAll(&subs); err != nil {
+		t.Fatalf("query subs: %v", err)
+	}
+	parents := 0
+	for _, s := range subs {
+		if s.ProviderType != "bundle" {
+			parents++
+		}
+	}
+	if parents != 1 {
+		t.Fatalf("new-nonce retry created %d subscriptions, want 1", parents)
+	}
+}
+
+// TestSubscribeWithCard_PerSeatQuantity proves per-seat first-period collection is
+// exact: a per-seat plan charges Price × quantity and the recorded invoice's
+// AmountDue == AmountPaid == that amount (never charge one seat yet record N).
+func TestSubscribeWithCard_PerSeatQuantity(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-seats")
+	m := squareMock("cust_s", "ccof_s", "sqpay_s")
+	withFakeSquare(t, m)
+
+	// team = $25/mo (2500c) per seat, minSeats 2. quantity 2 → charge 5000c.
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"team","quantity":2}`, nil)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status=%d body=%s, want 201", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+	}
+	out := jsonBody(t, resp)
+	if out["amountCents"].(float64) != 5000 {
+		t.Fatalf("response amountCents=%v, want 5000 (2500 x 2 seats)", out["amountCents"])
+	}
+	if m.lastChargeAmount != 5000 {
+		t.Fatalf("charged amount=%d, want 5000 (Price x quantity)", m.lastChargeAmount)
+	}
+
+	db := datastore.New(org.Namespaced(ctx))
+	sub := parentSub(t, db, "sc-seats", "team")
+	if sub == nil {
+		t.Fatal("no team subscription created")
+	}
+	invs := invoicesForSub(t, db, sub.Id())
+	if len(invs) != 1 {
+		t.Fatalf("invoices=%d, want 1", len(invs))
+	}
+	if invs[0].AmountDue != 5000 || invs[0].AmountPaid != 5000 {
+		t.Fatalf("invoice amountDue=%d amountPaid=%d, want 5000/5000 (charge must equal the recorded paid amount)", invs[0].AmountDue, invs[0].AmountPaid)
 	}
 }
