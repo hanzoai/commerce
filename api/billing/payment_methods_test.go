@@ -35,6 +35,15 @@ type mockSquareProcessor struct {
 	removeCalled        bool
 	removeCustomerID    string
 	removeCardID        string
+
+	// Charge (saved-card) behavior + call capture — used by the subscribe/card
+	// + renewal tests. Unset chargeErr => success with chargeRef (or a default).
+	chargeErr          error
+	chargeRef          string
+	chargeCalls        int
+	lastChargeToken    string
+	lastChargeCustomer string
+	lastChargeAmount   int64
 }
 
 func newMockSquare(authorizeErr error, authorizeID string, cancelErr error) *mockSquareProcessor {
@@ -51,7 +60,18 @@ func newMockSquare(authorizeErr error, authorizeID string, cancelErr error) *moc
 func (m *mockSquareProcessor) Type() processor.ProcessorType { return processor.Square }
 
 func (m *mockSquareProcessor) Charge(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {
-	return nil, errors.New("not implemented")
+	m.chargeCalls++
+	m.lastChargeToken = req.Token
+	m.lastChargeCustomer = req.CustomerID
+	m.lastChargeAmount = int64(req.Amount)
+	if m.chargeErr != nil {
+		return &processor.PaymentResult{Success: false, ErrorMessage: m.chargeErr.Error(), Error: m.chargeErr}, m.chargeErr
+	}
+	ref := m.chargeRef
+	if ref == "" {
+		ref = "sqpay_test"
+	}
+	return &processor.PaymentResult{Success: true, TransactionID: ref, ProcessorRef: ref, Status: "COMPLETED"}, nil
 }
 
 func (m *mockSquareProcessor) Authorize(ctx context.Context, req processor.PaymentRequest) (*processor.PaymentResult, error) {

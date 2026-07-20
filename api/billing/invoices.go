@@ -155,6 +155,9 @@ func FinalizeInvoice(c *zip.Ctx) error {
 //	POST /v1/billing/invoices/:id/pay
 func PayInvoice(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
+	// Hydrate payment creds so an invoice unpaid by credits+balance can be settled
+	// on the subscription's vaulted card via the per-org Square processor.
+	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
@@ -163,7 +166,7 @@ func PayInvoice(c *zip.Ctx) error {
 		return http.Fail(c, 404, "invoice not found", err)
 	}
 
-	result, err := engine.CollectInvoice(c.Context(), db, inv, BurnCredits)
+	result, err := engine.CollectInvoice(c.Context(), db, inv, BurnCredits, chargeProviderForOrg(org))
 	if err != nil {
 		log.Error("Failed to collect invoice: %v", err, c)
 		return http.Fail(c, 500, "failed to collect invoice payment", err)

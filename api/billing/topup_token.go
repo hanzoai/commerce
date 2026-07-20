@@ -70,11 +70,7 @@ func topupDestination(c *zip.Ctx) string {
 	if org == "" {
 		return ""
 	}
-	s := strings.ToLower(strings.TrimSpace(c.Query("user")))
-	if s == org || strings.HasPrefix(s, org+"/") {
-		return s
-	}
-	return org
+	return inOrgSubject(org, c.Query("user"))
 }
 
 // TopupWithToken charges a Square Web Payments SDK nonce and credits the org's
