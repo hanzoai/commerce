@@ -28,10 +28,30 @@ type CollectionResult struct {
 // This matches the existing BurnCredits function in api/billing/credit_grants.go.
 type CreditBurner func(db *datastore.Datastore, userId string, amount int64, meterId string) (int64, error)
 
+// ProviderCharger charges amountCents (the invoice remainder left unpaid after
+// credits + balance) on the external payment provider — the subscription's
+// vaulted card-on-file — and returns the processor reference on success.
+//
+// It is injected exactly like CreditBurner so the engine never imports
+// api/billing / payment / the Square SDK: no import cycle, and the collector
+// stays provider-agnostic (it knows "charge the remainder", not "which
+// provider"). Resolving the card is the callback's job (invoice -> subscription
+// -> DefaultPaymentMethod -> providerRef + Square customer id). A nil charger
+// means "no external provider" — credits + balance only (the prior Phase-5
+// stub), so an unpaid remainder leaves the invoice OPEN.
+//
+// Fail-closed contract: on a decline / missing card / provider error the
+// callback returns a non-nil error and MUST NOT have moved money — the provider
+// leg is all-or-nothing, so the collector records nothing and leaves the invoice
+// open for the dunning workflow to retry. Exactly ONE charge is attempted per
+// CollectInvoice call (no double-charge within a call).
+type ProviderCharger func(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, amountCents int64) (providerRef string, err error)
+
 // CollectInvoice attempts to collect payment for an invoice using the
 // provider-agnostic waterfall: credits -> balance -> external provider.
-// The burnCredits parameter is injected to avoid circular imports.
-func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, burnCredits CreditBurner) (*CollectionResult, error) {
+// burnCredits and chargeProvider are injected to avoid circular imports; either
+// may be nil (that leg is skipped).
+func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billinginvoice.BillingInvoice, burnCredits CreditBurner, chargeProvider ProviderCharger) (*CollectionResult, error) {
 	if inv.Status != billinginvoice.Open {
 		return nil, fmt.Errorf("invoice must be open to collect, current status: %s", inv.Status)
 	}
@@ -63,15 +83,32 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 		}
 	}
 
-	// Step 3: External provider (Square, etc.)
-	// For now, balance-only. External provider integration can be added
-	// by passing a ProviderCharger callback similar to CreditBurner.
+	// Step 3: External provider — charge the subscription's vaulted card-on-file
+	// for whatever credits + balance did not cover. Injected (ProviderCharger),
+	// like burnCredits, so the engine never imports the payment/Square layer.
+	if remaining > 0 && chargeProvider != nil {
+		ref, err := chargeProvider(ctx, db, inv, remaining)
+		if err != nil {
+			// Declined / no card on file / provider error. Non-fatal here: the
+			// remainder stays unpaid and the invoice is left OPEN below (the
+			// dunning workflow retries it). The provider leg is all-or-nothing —
+			// no partial charge is recorded, so a later retry never double-charges.
+			result.Error = err.Error()
+		} else {
+			result.ProviderUsed = remaining
+			result.ProviderRef = ref
+			remaining = 0
+		}
+	}
+
 	if remaining > 0 {
-		// If there's still remaining amount after credits + balance,
-		// mark as partial failure. External provider charging will be
-		// added in Phase 5 (webhook integration).
+		// Still unpaid after credits + balance (+ any provider attempt): partial
+		// failure — the invoice stays open. Preserve a provider decline message
+		// when there was one, else report the shortfall.
 		result.Success = false
-		result.Error = fmt.Sprintf("insufficient funds: %d cents remaining after credits and balance", remaining)
+		if result.Error == "" {
+			result.Error = fmt.Sprintf("insufficient funds: %d cents remaining after credits and balance", remaining)
+		}
 	} else {
 		result.Success = true
 	}
@@ -85,8 +122,14 @@ func CollectInvoice(ctx context.Context, db *datastore.Datastore, inv *billingin
 	inv.LastAttemptAt = time.Now()
 
 	if result.Success {
+		// The settling instrument, most-specific first: a card charge (the
+		// provider leg) settled the remainder → "card"; a pure credit burn →
+		// "credit"; otherwise the transaction balance → "balance".
 		method := "balance"
-		if result.CreditUsed > 0 && result.BalanceUsed == 0 {
+		switch {
+		case result.ProviderUsed > 0:
+			method = "card"
+		case result.CreditUsed > 0 && result.BalanceUsed == 0:
 			method = "credit"
 		}
 		if err := inv.MarkPaid(method, result.ProviderRef); err != nil {

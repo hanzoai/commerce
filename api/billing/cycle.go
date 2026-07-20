@@ -33,9 +33,10 @@ type cycleResult struct {
 //	POST /v1/billing/cycle/run
 func RunBillingCycle(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
+	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
-	results := renewDueSubscriptions(c, db)
+	results := renewDueSubscriptions(c, db, chargeProviderForOrg(org))
 
 	// Top up each active subscriber's included monthly allotment for the
 	// current period (idempotent per user+month).
@@ -57,6 +58,7 @@ func RunBillingCycle(c *zip.Ctx) error {
 //	POST /v1/billing/cycle/run-user
 func RunBillingCycleUser(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
+	hydratePaymentCreds(c, org)
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req cycleUserRequest
@@ -68,7 +70,7 @@ func RunBillingCycleUser(c *zip.Ctx) error {
 		return http.Fail(c, 400, "userId is required", nil)
 	}
 
-	results := renewDueSubscriptionsForUser(c, db, req.UserId)
+	results := renewDueSubscriptionsForUser(c, db, req.UserId, chargeProviderForOrg(org))
 
 	return c.JSON(200, map[string]any{
 		"user":      req.UserId,
@@ -103,8 +105,11 @@ func RunBillingCycleAllOrgs(c *zip.Ctx) error {
 
 	now := time.Now()
 	for _, org := range orgs {
+		// Hydrate each org's payment creds so a due renewal can re-charge its
+		// subscribers' vaulted cards via that org's own Square processor.
+		hydratePaymentCreds(c, org)
 		db := datastore.New(org.Namespaced(c.Context()))
-		results := renewDueSubscriptions(c, db)
+		results := renewDueSubscriptions(c, db, chargeProviderForOrg(org))
 		totalProcessed += len(results)
 
 		// Grant included monthly allotment for active subscribers (idempotent).
@@ -130,7 +135,7 @@ func RunBillingCycleAllOrgs(c *zip.Ctx) error {
 // renewDueSubscriptions finds all active or past-due subscriptions whose
 // current period has ended and renews each one. Returns a result per
 // subscription processed.
-func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore) []cycleResult {
+func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore, chargeProvider engine.ProviderCharger) []cycleResult {
 	now := time.Now()
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -147,7 +152,7 @@ func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore) []cycleResult {
 		if !isDueForRenewal(sub, now) {
 			continue
 		}
-		results = append(results, renewOne(c, db, sub))
+		results = append(results, renewOne(c, db, sub, chargeProvider))
 	}
 
 	return results
@@ -155,7 +160,7 @@ func renewDueSubscriptions(c *zip.Ctx, db *datastore.Datastore) []cycleResult {
 
 // renewDueSubscriptionsForUser is the same as renewDueSubscriptions but
 // scoped to a single user.
-func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId string) []cycleResult {
+func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId string, chargeProvider engine.ProviderCharger) []cycleResult {
 	now := time.Now()
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -172,7 +177,7 @@ func renewDueSubscriptionsForUser(c *zip.Ctx, db *datastore.Datastore, userId st
 		if !isDueForRenewal(sub, now) {
 			continue
 		}
-		results = append(results, renewOne(c, db, sub))
+		results = append(results, renewOne(c, db, sub, chargeProvider))
 	}
 
 	return results
@@ -191,8 +196,8 @@ func isDueForRenewal(sub *subscription.Subscription, now time.Time) bool {
 
 // renewOne generates an invoice and attempts collection for a single
 // subscription, then persists the updated subscription state.
-func renewOne(c *zip.Ctx, db *datastore.Datastore, sub *subscription.Subscription) cycleResult {
-	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits)
+func renewOne(c *zip.Ctx, db *datastore.Datastore, sub *subscription.Subscription, chargeProvider engine.ProviderCharger) cycleResult {
+	inv, result, err := engine.RenewSubscription(c.Context(), db, sub, BurnCredits, chargeProvider)
 	if err != nil {
 		log.Error("Billing cycle: failed to renew subscription %s: %v", sub.Id(), err, c)
 		return cycleResult{

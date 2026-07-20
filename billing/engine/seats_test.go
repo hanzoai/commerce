@@ -58,7 +58,7 @@ func TestBuildPeriodInvoice_Seats(t *testing.T) {
 				t.Fatalf("create sub: %v", err)
 			}
 
-			inv, _, err := RenewSubscription(context.Background(), db, sub, nil)
+			inv, _, err := RenewSubscription(context.Background(), db, sub, nil, nil)
 			if err != nil {
 				t.Fatalf("renew: %v", err)
 			}
