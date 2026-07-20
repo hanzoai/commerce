@@ -783,19 +783,20 @@ var _ = Describe("billing", Ordered, func() {
 		It("Should grant nothing for a plan with no included allotment", func() {
 			// A zero-allotment plan mints nothing. Don't ASSUME which slug is free:
 			// @hanzo/plans is fetched at build and drifts (pro was creditless here,
-			// then declared $20/mo via includedCreditUsd), so read the plan's
-			// DECLARED amount and assert it's zero before asserting the no-op — the
-			// same catalog-driven check the credited case above makes. "team" is the
-			// paid tier that includes no usage credit; if it ever gains one this
-			// pre-check fails loudly here rather than as a mystery 201 below.
+			// then declared $20/mo via includedCreditUsd; team gained $100/user via
+			// includedCloudCreditsPerUser), so read the plan's DECLARED amount and
+			// assert it's zero before asserting the no-op — the same catalog-driven
+			// check the credited case above makes. "world-pro" is the paid tier that
+			// includes no usage credit; if it ever gains one this pre-check fails
+			// loudly here rather than as a mystery 201 below.
 			roll := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user=hanzo/allotnone&plan=team", roll)
+			cl.Get("/billing/usage-rollup?user=hanzo/allotnone&plan=world-pro", roll)
 			included := (*roll)["included"].(map[string]interface{})
 			Expect(included["monthlyCents"]).To(BeEquivalentTo(0))
 
 			w := cl.PostJSON("/billing/allotment/grant", map[string]interface{}{
 				"user": "hanzo/allotnone",
-				"plan": "team",
+				"plan": "world-pro",
 			})
 			Expect(w.Code).To(Equal(200)) // no_included_allotment -> not granted
 		})
