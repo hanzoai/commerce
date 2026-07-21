@@ -53,8 +53,8 @@ func TestProject_ConformsToContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project: %v", err)
 	}
-	if cat.Brand != "hanzo" || len(cat.Categories) != 13 {
-		t.Fatalf("hanzo: brand=%s cats=%d, want hanzo/13", cat.Brand, len(cat.Categories))
+	if cat.Brand != "hanzo" || len(cat.Categories) != 10 {
+		t.Fatalf("hanzo: brand=%s cats=%d, want hanzo/10", cat.Brand, len(cat.Categories))
 	}
 	if cat.Categories[0].Label != "AI" || cat.Categories[0].ID != "ai" {
 		t.Fatalf("first category = %+v, want {ai, AI, 0}", cat.Categories[0])
@@ -93,13 +93,25 @@ func TestProject_ConformsToContract(t *testing.T) {
 	if m.Route != "/models" || m.DocsUrl != "https://docs.hanzo.ai/docs/services/models" {
 		t.Fatalf("models route/docs = %q / %q", m.Route, m.DocsUrl)
 	}
-	if m.PricingId != nil {
-		t.Fatalf("models.pricingId = %v, want null", *m.PricingId)
+	// Every capability carries the enriched taxonomy fields.
+	if m.ApiRoute != "api.hanzo.ai/v1/models" {
+		t.Fatalf("models.apiRoute = %q, want api.hanzo.ai/v1/models", m.ApiRoute)
+	}
+	if m.GithubUrl == "" {
+		t.Fatalf("models.githubUrl empty")
+	}
+	// models has a real public price sourced from the pricing table.
+	if m.Pricing == nil || m.Pricing.PublicPrice == "" || m.Pricing.PublicPrice == "TODO" {
+		t.Fatalf("models.pricing missing a real public price: %+v", m.Pricing)
 	}
 
-	if g, ok := byID["gateway"]; ok {
-		if g.PricingId == nil || *g.PricingId != "gateway" {
-			t.Fatalf("gateway.pricingId = %v, want \"gateway\"", g.PricingId)
+	// machines carries a fully-real private economics block (cost + margin).
+	// The public projection must NEVER expose it: Item has no Private field, so
+	// this is a compile-time guarantee — assert the raw entry instead.
+	mach := New(db)
+	if ok, _ := mach.Query().Filter("Slug=", "machines").Get(); ok {
+		if mach.Private == nil || mach.Private.MarginPct == nil {
+			t.Fatalf("machines private economics missing: %+v", mach.Private)
 		}
 	}
 }
@@ -119,10 +131,10 @@ func TestProject_CategoryScopedByBrand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("project lux: %v", err)
 	}
-	if len(lux.Categories) != 5 {
-		t.Fatalf("lux categories = %d, want 5", len(lux.Categories))
+	if len(lux.Categories) != 4 {
+		t.Fatalf("lux categories = %d, want 4", len(lux.Categories))
 	}
-	allowed := map[string]bool{"Web3": true, "Network": true, "Security": true, "Dev": true, "Settings": true}
+	allowed := map[string]bool{"Web3": true, "Network": true, "Security": true, "Dev": true}
 	for _, p := range lux.Products {
 		if !allowed[p.Category] {
 			t.Fatalf("lux projection leaked %q in non-lux category %q", p.ID, p.Category)
