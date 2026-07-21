@@ -118,7 +118,7 @@ func TestProject_ConformsToContract(t *testing.T) {
 
 // TestProject_CategoryScopedByBrand proves scoping is by CATEGORY (matching
 // @hanzo/products catalogForBrand): a sovereign brand (lux) sees only entries in
-// its 5 categories, never an AI/Compute/etc. entry.
+// its 4 categories, never an AI/Compute/etc. entry.
 func TestProject_CategoryScopedByBrand(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
