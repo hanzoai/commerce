@@ -1,3 +1,5 @@
+"use client"
+
 import { CheckMini, EllipseMiniSolid, XMark, XMarkMini, MagnifyingGlass } from "@hanzo/commerce-icons"
 import * as React from "react"
 
