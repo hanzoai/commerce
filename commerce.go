@@ -1000,6 +1000,11 @@ func (app *App) setupRoutes() {
 
 		// Trigger OnRouteSetup hooks to let extensions add routes
 		app.Hooks.TriggerRouteSetup(api)
+
+		// Owner=="admin" margin projection: GET /v1/commerce/admin/catalog. On the
+		// IAM-gated api group so claims are present; the handler ALSO enforces
+		// IsSuperAdmin(), so cost + margin never reach an org-level admin.
+		catalogapi.AdminCatalogRoute(api)
 	}
 
 	// Hosted multi-tenant checkout. Mounts:
