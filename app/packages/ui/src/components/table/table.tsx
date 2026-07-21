@@ -1,3 +1,5 @@
+"use client"
+
 import { Minus } from "@hanzo/commerce-icons"
 import * as React from "react"
 
