@@ -188,10 +188,12 @@ type authorizeResult struct {
 // project-scoped enforce row whose project axis is NOT validated (pv=0) — never
 // block; they only raise the warn utilization.
 //
-// FAIL CLOSED, not open: if a HARD-enforceable enforce row's spend sum cannot be
-// computed, the verdict DENIES (spend_cap) — an attacker must not disable a cap by
-// inducing a compute error. Per-scope sums are memoized so covering rows sharing a
-// scope cost one query. The row scan is bounded (loadOrgScopes).
+// FAIL OPEN on UNKNOWN spend: if an enforce row's spend sum cannot be read (a transient
+// finance-ledger error), the verdict does NOT block — a backend blip must not 402 an
+// under-cap customer, nor storm every capped org at once. A row DENIES only when spend is
+// KNOWN and over the cap, so this never fails open on a real overage. Per-scope sums are
+// memoized so covering rows sharing a scope cost one query. The row scan is bounded
+// (loadOrgScopes).
 //
 //	GET /v1/billing/spend-alerts/authorize?user=&project=&service=&amount=&pv=
 func AuthorizeSpendCap(c *zip.Ctx) error {
@@ -224,12 +226,16 @@ func AuthorizeSpendCap(c *zip.Ctx) error {
 		if !ok {
 			v, serr := scopeSpentCents(db, test, s.Project, s.Service)
 			if serr != nil {
-				// FAIL CLOSED for a hard-enforceable row whose spend is unknown.
-				if hard {
-					log.Error("spend-cap: agg failed, failing CLOSED for enforce scope: %v", serr, c)
-					return c.JSON(200, authorizeResult{Allow: false, Reason: "spend_cap", CapCents: s.Threshold})
-				}
-				continue // soft/degraded row: cannot warn, do not block.
+				// FAIL OPEN on UNKNOWN spend. A transient finance-ledger read error must NOT
+				// 402 an under-cap customer — and a co-resident SQLite blip under load would
+				// otherwise storm EVERY capped org at once (self-amplifying: load → store
+				// contention → read errors → 402s → retries → more load). We cannot PROVE a
+				// scope is over its cap without its spend, so we do NOT block: the balance
+				// gate still bounds spend and the next request re-reads. A genuine over-cap
+				// still denies below, where spend IS known — so this fails open ONLY on the
+				// unknown, never on a real overage. Logged for observability.
+				log.Error("spend-cap: spend read failed for scope (cap=%d) — failing OPEN, not blocking: %v", s.Threshold, serr, c)
+				continue
 			}
 			spent = v
 			spentBy[key] = v
