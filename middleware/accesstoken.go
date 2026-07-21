@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/organization"
 	orgpkg "github.com/hanzoai/commerce/pkg/org"
+	"github.com/hanzoai/commerce/secret"
 	"github.com/hanzoai/commerce/util/bit"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
@@ -107,7 +108,7 @@ func ensureIAMOrg(c *zip.Ctx) {
 		return
 	}
 	orgName := strings.TrimSpace(c.Header("X-Org-Id"))
-	if orgName == "" || organization.IsSecretLikeName(orgName) {
+	if orgName == "" || secret.Like(orgName) {
 		return
 	}
 	org, err := orgpkg.Resolve(c.Context(), orgName)
@@ -176,7 +177,7 @@ func TokenRequired(masks ...bit.Mask) zip.Handler {
 				// X-Org-Id). Never let a bearer-shaped selector become an org: a
 				// caller forwarding a raw API key here would otherwise seed an
 				// org named after the key (incident 2026-07-02). Reject, don't create.
-				if organization.IsSecretLikeName(orgName) {
+				if secret.Like(orgName) {
 					log.Warn("TokenRequired: service-token org selector is bearer-shaped; refusing to provision")
 					return http.Fail(c, 400, "Invalid organization identifier.", errors.New("bearer-shaped org selector"))
 				}
