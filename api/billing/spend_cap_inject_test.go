@@ -2,6 +2,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
@@ -70,6 +71,30 @@ func TestSpendCap_EnforceFlag_ShadowWhenOff(t *testing.T) {
 	t.Setenv("SPEND_CAP_ENFORCE", "false")
 	if v := authorize(t, org, "user=enforce-flag&amount=1"); !v.Allow || v.Reason != "" {
 		t.Fatalf("flag OFF: authorize = %+v, want ALLOW (shadow, no deny)", v)
+	}
+}
+
+// TestSpendCap_ReaderError_FailsOpen pins F2-2: a finance-ledger read ERROR must NOT 402
+// an under-cap customer. An enforce row whose spend can't be summed fails OPEN (allow) —
+// a transient backend blip (e.g. a busy co-resident SQLite store under load) can't storm
+// every capped org. A genuine over-cap, where spend IS known, still denies (tests above).
+func TestSpendCap_ReaderError_FailsOpen(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	org := &organization.Organization{}
+	org.Name = "reader-error"
+	warmNamespace(org)
+
+	SetPeriodSpendReader(func(_ context.Context, _ string, _ bool, _, _ string) (int64, error) {
+		return 0, errors.New("finance store busy")
+	})
+	defer SetPeriodSpendReader(nil)
+	createCap(t, org, `{"title":"cap","threshold":100,"enforce":true}`)
+
+	// Flag ON (package default), hard enforce cap, spend UNKNOWN → FAIL OPEN, never 402.
+	if v := authorize(t, org, "user=reader-error&amount=1"); !v.Allow || v.Reason != "" {
+		t.Fatalf("reader error must FAIL OPEN: authorize = %+v, want ALLOW (not spend_cap)", v)
 	}
 }
 
