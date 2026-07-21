@@ -573,6 +573,9 @@ importers:
       '@hanzo/commerce-ui':
         specifier: workspace:*
         version: link:../packages/ui
+      '@hanzo/event':
+        specifier: ^0.2.0
+        version: 0.2.0(react@19.0.4)
       '@headlessui/react':
         specifier: ^2.2.0
         version: 2.2.10(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
@@ -1380,6 +1383,14 @@ packages:
 
   '@formatjs/intl-localematcher@0.6.2':
     resolution: {integrity: sha512-XOMO2Hupl0wdd172Y06h6kLpBz6Dv+J4okPLl4LPtzbr8f66WbIoy4ev98EBuZ6ZK4h5ydTN6XneT4QVpD7cdA==}
+
+  '@hanzo/event@0.2.0':
+    resolution: {integrity: sha512-jx+xlT5no88PYg/k465/pQ7a+oQcfImB5X0dJ4/ZSSF5bwqPCItvN/9Znt4SQpq18EQeMuR5GiLmxo1wSP5uqw==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      react:
+        optional: true
 
   '@hanzo/iam@0.13.2':
     resolution: {integrity: sha512-BYywnIznlcA3sQK4VQzKM+InvyCsdP67F5e4eO3muGjBotF1Zo3hqBRD7VIc9159plrlWzPJqPT4rN/1GuZmuA==}
@@ -7515,6 +7526,10 @@ snapshots:
   '@formatjs/intl-localematcher@0.6.2':
     dependencies:
       tslib: 2.8.1
+
+  '@hanzo/event@0.2.0(react@19.0.4)':
+    optionalDependencies:
+      react: 19.0.4
 
   '@hanzo/iam@0.13.2(react@18.3.1)':
     dependencies:
