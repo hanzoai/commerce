@@ -7,11 +7,12 @@ import (
 	"github.com/hanzoai/commerce/util/json"
 )
 
-// hanzoCatalogSeed is the initial platform catalog, taken verbatim from the
-// @hanzo/products snapshot (hanzoai/ui/pkgs/products/snapshot/catalog.json) —
-// the schema owner. It is the STARTING state / offline fallback; once seeded,
-// the CMS (admin FE editing this catalog) is authoritative. Re-baseline by
-// re-copying the @hanzo/products snapshot.
+// hanzoCatalogSeed is the initial platform catalog: the ten cloud-primitive
+// categories and their capabilities, aligned to the single source of truth in
+// hanzo.ai lib/data/cloud-primitives.ts, enriched with per-capability
+// route/docs/github and public pricing + admin-only economics. It is the
+// STARTING state / offline fallback; once seeded, the CMS (admin FE editing this
+// catalog) is authoritative. Re-baseline by re-aligning to cloud-primitives.ts.
 //
 //go:embed seed/hanzo-catalog.json
 var hanzoCatalogSeed []byte
@@ -19,21 +20,26 @@ var hanzoCatalogSeed []byte
 // SeedRow is the @hanzo/products snapshot shape (the exact CatalogEntry
 // contract). `id` == `slug`; `pricingId` may be JSON null (→ "").
 type SeedRow struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Category   string   `json:"category"`
-	BrandColor string   `json:"brandColor"`
-	IconKey    string   `json:"iconKey"`
-	Slug       string   `json:"slug"`
-	Route      string   `json:"route"`
-	DocsUrl    string   `json:"docsUrl"`
-	ApiPath    string   `json:"apiPath"`
-	PricingId  string   `json:"pricingId"` // null → ""
-	Brands     []string `json:"brands"`
-	Repo       string   `json:"repo"`
-	Admin      bool     `json:"admin"`
-	Status     string   `json:"status"`
-	Gcp        string   `json:"gcp"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Category   string     `json:"category"`
+	BrandColor string     `json:"brandColor"`
+	IconKey    string     `json:"iconKey"`
+	Slug       string     `json:"slug"`
+	Route      string     `json:"route"`
+	DocsUrl    string     `json:"docsUrl"`
+	ApiPath    string     `json:"apiPath"`
+	ApiRoute   string     `json:"apiRoute"`
+	GithubUrl  string     `json:"githubUrl"`
+	External   bool       `json:"external"`
+	PricingId  string     `json:"pricingId"` // null → ""
+	Pricing    *Pricing   `json:"pricing"`
+	Private    *Economics `json:"private"`
+	Brands     []string   `json:"brands"`
+	Repo       string     `json:"repo"`
+	Admin      bool       `json:"admin"`
+	Status     string     `json:"status"`
+	Gcp        string     `json:"gcp"`
 }
 
 // HanzoSeedRows returns the parsed embedded snapshot.
@@ -95,7 +101,12 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		e.Route = r.Route
 		e.DocsUrl = r.DocsUrl
 		e.ApiPath = r.ApiPath
+		e.ApiRoute = r.ApiRoute
+		e.GithubUrl = r.GithubUrl
+		e.External = r.External
 		e.PricingId = r.PricingId
+		e.Pricing = r.Pricing
+		e.Private = r.Private
 		e.Brands = r.Brands
 		e.Repo = r.Repo
 		e.Admin = r.Admin
