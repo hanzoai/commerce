@@ -71,6 +71,58 @@ func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 	}
 }
 
+// TestAdminCatalog_GatesAndCarriesMargin proves the owner=="admin" boundary: an
+// org-level admin is refused, the public projection NEVER carries cost/margin, and
+// only the admin projection surfaces costCents + a derived marginPct.
+func TestAdminCatalog_GatesAndCarriesMargin(t *testing.T) {
+	tc := ae.NewContext()
+	defer tc.Close()
+
+	admin := &auth.IAMClaims{Owner: "admin"}
+	// A priced product with an upstream cost: public price $1.00, cost $0.40 →
+	// derived margin 60%.
+	body, _ := json.Marshal(map[string]any{
+		"slug": "margined", "brand": "hanzo", "name": "Margined", "category": "AI",
+		"iconKey": "Box", "priceCents": 100, "costCents": 40,
+	})
+	if code, b := callCatalog(t, admin, http.MethodPost, "/v1/catalog/entries", body, CreateEntry); code != 201 {
+		t.Fatalf("create status = %d, want 201; body=%s", code, b)
+	}
+
+	// PUBLIC projection must NEVER leak cost or margin — check the raw bytes.
+	_, pubBody := callCatalog(t, nil, http.MethodGet, "/v1/commerce/catalog?brand=hanzo", nil, Public)
+	if bytes.Contains(pubBody, []byte("costCents")) || bytes.Contains(pubBody, []byte("marginPct")) {
+		t.Fatalf("public projection leaked cost/margin: %s", pubBody)
+	}
+
+	// Admin catalog: org-level admin (NOT owner=="admin") is refused 403.
+	if code, b := callCatalog(t, &auth.IAMClaims{Owner: "acme", IsAdmin: true}, http.MethodGet, "/v1/commerce/admin/catalog?brand=hanzo", nil, AdminCatalog); code != 403 {
+		t.Fatalf("org-admin admin-catalog status = %d, want 403; body=%s", code, b)
+	}
+
+	// owner=="admin" gets the margin projection.
+	code, adminBody := callCatalog(t, admin, http.MethodGet, "/v1/commerce/admin/catalog?brand=hanzo", nil, AdminCatalog)
+	if code != 200 {
+		t.Fatalf("admin catalog status = %d, want 200; body=%s", code, adminBody)
+	}
+	var ac catalogentry.AdminCatalog
+	if err := json.Unmarshal(adminBody, &ac); err != nil {
+		t.Fatalf("admin projection not JSON: %s", adminBody)
+	}
+	var found bool
+	for _, p := range ac.Products {
+		if p.Slug == "margined" {
+			found = true
+			if p.CostCents != 40 || p.MarginPct != 60 {
+				t.Fatalf("admin item cost/margin = %d/%v, want 40/60", p.CostCents, p.MarginPct)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("admin projection missing the margined entry")
+	}
+}
+
 func TestCreateEntry_RequiresSuperAdmin(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()

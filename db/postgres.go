@@ -244,6 +244,13 @@ func (db *PostgresDB) initSchema() error {
 		return err
 	}
 
+	// The credential guard travels with the table it protects — see guard.go.
+	for _, stmt := range postgresGuardDDL() {
+		if _, err := db.db.Exec(stmt); err != nil {
+			return fmt.Errorf("credential guard: %w", err)
+		}
+	}
+
 	return nil
 }
 
