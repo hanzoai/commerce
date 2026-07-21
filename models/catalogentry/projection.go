@@ -9,23 +9,23 @@ import (
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
-// canonicalCategories is the ordered "Open AI Cloud" taxonomy — the exact
-// labels and order @hanzo/products CATEGORY_ORDER renders. A catalog entry's
-// Category must be one of these.
+// canonicalCategories is the ordered "Open AI Cloud" taxonomy — the exact ten
+// categories and order the cloud-primitives single source of truth
+// (hanzo.ai lib/data/cloud-primitives.ts) renders. A catalog entry's Category
+// must be one of these.
 var canonicalCategories = []string{
-	"AI", "Compute", "Training", "Data", "Network", "Security",
-	"Observe", "Platform", "Dev", "Web3", "Apps", "Commerce", "Settings",
+	"AI", "Compute", "Data", "Network", "Security",
+	"Dev", "Platform", "Observe", "Web3", "Apps",
 }
 
 // brandCategories restricts which categories a brand's console surfaces, in
-// display order. nil = all categories (hanzo). Mirrors @hanzo/products
-// BRAND_CATEGORIES exactly — the server scopes by CATEGORY (matching
-// catalogForBrand), NOT by a per-entry brands list.
+// display order. nil = all categories (hanzo). The server scopes by CATEGORY
+// (matching cloud-primitives catalogForBrand), NOT by a per-entry brands list.
 var brandCategories = map[string][]string{
 	"hanzo": nil,
-	"lux":   {"Web3", "Network", "Security", "Dev", "Settings"},
-	"zoo":   {"Web3", "Network", "Security", "Dev", "Settings"},
-	"pars":  {"Web3", "Network", "Security", "Dev", "Settings"},
+	"lux":   {"Web3", "Network", "Security", "Dev"},
+	"zoo":   {"Web3", "Network", "Security", "Dev"},
+	"pars":  {"Web3", "Network", "Security", "Dev"},
 }
 
 // Category is one taxonomy entry in the projection.
@@ -50,19 +50,27 @@ type Item struct {
 	Route      string   `json:"route"`
 	DocsUrl    string   `json:"docsUrl"`
 	ApiPath    string   `json:"apiPath"`
-	PricingId  *string  `json:"pricingId"`        // string OR null
-	Brands     []string `json:"brands,omitempty"` // category-derived convenience
+	ApiRoute   string   `json:"apiRoute,omitempty"`  // host-qualified api.hanzo.ai/v1/<slug>
+	GithubUrl  string   `json:"githubUrl,omitempty"` // source runtime repo URL
+	PricingId  *string  `json:"pricingId"`           // string OR null
+	Brands     []string `json:"brands,omitempty"`    // category-derived convenience
 
 	// Additive (client ignores unknowns).
 	Description string         `json:"description,omitempty"`
 	Gcp         string         `json:"gcp,omitempty"`
 	Status      string         `json:"status,omitempty"`
 	Repo        string         `json:"repo,omitempty"`
+	External    bool           `json:"external,omitempty"`
 	Admin       bool           `json:"admin,omitempty"`
 	PriceCents  currency.Cents `json:"priceCents,omitempty"`
 	Currency    currency.Type  `json:"currency,omitempty"`
 	Order       int            `json:"order,omitempty"`
 	ProductId   string         `json:"productId,omitempty"`
+
+	// Pricing is the PUBLIC pricing block. Private economics (cost/margin) are
+	// deliberately absent here — they ride only the super-admin ListEntries
+	// surface, never this public projection.
+	Pricing *Pricing `json:"pricing,omitempty"`
 }
 
 // Catalog is the full projection returned by GET /v1/commerce/catalog.
@@ -138,17 +146,22 @@ func Project(db *datastore.Datastore, brand string) (Catalog, error) {
 			Route:       e.Route,
 			DocsUrl:     e.DocsUrl,
 			ApiPath:     e.ApiPath,
+			ApiRoute:    e.ApiRoute,
+			GithubUrl:   e.GithubUrl,
 			PricingId:   pricingId,
 			Brands:      e.Brands,
 			Description: e.Description,
 			Gcp:         e.Gcp,
 			Status:      e.Status,
 			Repo:        e.Repo,
+			External:    e.External,
 			Admin:       e.Admin,
 			PriceCents:  e.PriceCents,
 			Currency:    e.Currency,
 			Order:       e.Order,
 			ProductId:   e.ProductId,
+			// Public pricing only — Private (cost/margin) is never projected here.
+			Pricing: e.Pricing,
 		})
 	}
 
