@@ -57,6 +57,13 @@ func PublicRoute(r zip.Router) {
 	r.Get("/catalog", Public)
 }
 
+// AdminCatalogRoute wires the owner=="admin" margin projection. Mount on an
+// IAM-gated commerce group so it serves GET /v1/commerce/admin/catalog; the
+// handler ALSO enforces IsSuperAdmin() (defense in depth).
+func AdminCatalogRoute(r zip.Router) {
+	r.Get("/admin/catalog", AdminCatalog)
+}
+
 // AdminRoute wires the platform-admin catalog CRUD + seed on the /v1 bundle.
 func AdminRoute(r zip.Router, args ...zip.Handler) {
 	g := r.Group("/catalog")
@@ -80,6 +87,26 @@ func Public(c *zip.Ctx) error {
 	cat, err := catalogentry.Project(catalogDB(c), brand)
 	if err != nil {
 		return http.Fail(c, 500, "failed to project catalog", err)
+	}
+	return http.Render(c, 200, cat)
+}
+
+// AdminCatalog returns the brand-scoped catalog projection WITH the administrative
+// economics (costCents + marginPct) the public projection withholds — the margin
+// surface admin.hanzo.ai administrates. owner=="admin" only (IsSuperAdmin); an
+// org-level admin is refused 403, so upstream cost and margin never leak to a
+// tenant. Brand from ?brand (default hanzo).
+func AdminCatalog(c *zip.Ctx) error {
+	if !requireSuperAdmin(c) {
+		return nil
+	}
+	brand := c.Query("brand")
+	if brand == "" {
+		brand = "hanzo"
+	}
+	cat, err := catalogentry.ProjectAdmin(catalogDB(c), brand)
+	if err != nil {
+		return http.Fail(c, 500, "failed to project admin catalog", err)
 	}
 	return http.Render(c, 200, cat)
 }
