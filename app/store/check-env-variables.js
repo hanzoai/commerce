@@ -9,6 +9,12 @@ const requiredEnvs = [
 ]
 
 function checkEnvVariables() {
+  // Build-time skip: the storefront's publishable key is resolved PER-TENANT at
+  // runtime (store config keyed by space_id, resolved per-request), so it is not
+  // a build-time constant. CI/Docker `next build` sets SKIP_ENV_VALIDATION=1 to
+  // pass; the key is validated where it actually matters — at request time.
+  if (process.env.SKIP_ENV_VALIDATION) return
+
   const missingEnvs = requiredEnvs.filter(function (env) {
     return !process.env[env.key] && !(env.fallback && process.env[env.fallback])
   })
