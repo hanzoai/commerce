@@ -90,10 +90,20 @@ type CatalogEntry struct {
 
 	// PricingId references a pricing plan by key (plans/<key>.json); empty ⇒
 	// projected as JSON null. PriceCents is an optional native fixed-price
-	// override (additive to the contract).
+	// override (additive to the contract) — the PUBLIC price a customer pays.
 	PricingId  string         `json:"pricingId"`
 	PriceCents currency.Cents `json:"priceCents,omitempty"`
 	Currency   currency.Type  `json:"currency,omitempty"`
+
+	// CostCents is the platform's own unit cost for this product (what Hanzo
+	// pays upstream) and MarginPct is the target gross margin over it. Both are
+	// administrative economics — the margin surface admin.hanzo.ai edits (HIP-0106)
+	// — and are projected ONLY by the owner=="admin" admin catalog, NEVER by the
+	// public projection. When MarginPct is unset the admin projection derives it
+	// from (PriceCents-CostCents)/PriceCents so a stored override and a computed
+	// value read the same way.
+	CostCents currency.Cents `json:"costCents,omitempty"`
+	MarginPct float64        `json:"marginPct,omitempty"`
 
 	Status string `json:"status" orm:"default:enabled"` // enabled|external|soon
 	Repo   string `json:"repo,omitempty"`               // source repo, e.g. "hanzoai/ai"
