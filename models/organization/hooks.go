@@ -6,6 +6,7 @@ import (
 	"github.com/hanzoai/commerce/models/app"
 	"github.com/hanzoai/commerce/models/namespace"
 	"github.com/hanzoai/commerce/models/store"
+	"github.com/hanzoai/commerce/secret"
 	"github.com/hanzoai/commerce/util/rand"
 )
 
@@ -24,7 +25,7 @@ func (o *Organization) BeforeCreate() error {
 	// can mint an org named from an API key, whatever it does upstream. A token
 	// persisted as an org name is both a credential leak (incident 2026-07-02)
 	// and unbounded tenant cardinality: one 5.25KB org per distinct bearer.
-	if IsSecretLikeName(o.Name) {
+	if secret.Like(o.Name) {
 		return ErrSecretLikeName
 	}
 
