@@ -66,7 +66,7 @@ func TestPublic_ReturnsProjection_NoAuth(t *testing.T) {
 	if err := json.Unmarshal(body, &cat); err != nil {
 		t.Fatalf("projection not JSON: %s", body)
 	}
-	if cat.Brand != "hanzo" || len(cat.Categories) != 13 || len(cat.Products) == 0 {
+	if cat.Brand != "hanzo" || len(cat.Categories) != 10 || len(cat.Products) == 0 {
 		t.Fatalf("bad projection: brand=%s cats=%d products=%d", cat.Brand, len(cat.Categories), len(cat.Products))
 	}
 }

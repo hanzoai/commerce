@@ -14,8 +14,8 @@ import (
 // labels and order @hanzo/products CATEGORY_ORDER renders. A catalog entry's
 // Category must be one of these.
 var canonicalCategories = []string{
-	"AI", "Compute", "Training", "Data", "Network", "Security",
-	"Observe", "Platform", "Dev", "Web3", "Apps", "Commerce", "Settings",
+	"AI", "Compute", "Data", "Network", "Security",
+	"Dev", "Platform", "Observe", "Web3", "Apps",
 }
 
 // brandCategories restricts which categories a brand's console surfaces, in
@@ -24,9 +24,9 @@ var canonicalCategories = []string{
 // catalogForBrand), NOT by a per-entry brands list.
 var brandCategories = map[string][]string{
 	"hanzo": nil,
-	"lux":   {"Web3", "Network", "Security", "Dev", "Settings"},
-	"zoo":   {"Web3", "Network", "Security", "Dev", "Settings"},
-	"pars":  {"Web3", "Network", "Security", "Dev", "Settings"},
+	"lux":   {"Web3", "Network", "Security", "Dev"},
+	"zoo":   {"Web3", "Network", "Security", "Dev"},
+	"pars":  {"Web3", "Network", "Security", "Dev"},
 }
 
 // Category is one taxonomy entry in the projection.
