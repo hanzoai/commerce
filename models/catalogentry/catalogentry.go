@@ -8,7 +8,7 @@
 // Conformance (GET /v1/commerce/catalog → the @hanzo/products CatalogEntry):
 //   - iconKey  is a @hanzogui/lucide-icons-2 export NAME ("Brain") — never a component.
 //   - brandColor is a swatch KEY ("violet") — never hex. @hanzo/products maps key→css.
-//   - category is EXACTLY one of the 13 canonical labels (others are dropped by scope).
+//   - category is EXACTLY one of the 10 canonical categories (others are dropped by scope).
 //   - route is "/<slug>", apiPath is /v1-prefixed, docsUrl is /docs/services/<slug>.
 //   - pricingId is a pricing plans/<key>.json key, or null.
 //   - brands is a category-derived convenience — NOT a hand-authored filter; the
@@ -37,6 +37,27 @@ const (
 	StatusSoon     = "soon"     // primitive shipped, no console surface yet
 )
 
+// Pricing is the PUBLIC pricing block for a capability — projected to everyone.
+// PublicPrice is a human display string ("From $0.10 / 1M input tokens"), or the
+// literal "TODO" when a real number is not yet sourced (never a fabricated one).
+// PlanTiers are subscription plan keys (api/billing/plans/<key>.json) the
+// capability is included in; UsageMeter is the metering unit ("per_mtok").
+type Pricing struct {
+	PublicPrice string   `json:"publicPrice"`
+	PlanTiers   []string `json:"planTiers,omitempty"`
+	UsageMeter  string   `json:"usageMeter,omitempty"`
+}
+
+// Economics is the PRIVATE, admin-only unit economics for a capability. It is
+// NEVER included in the public projection — only the super-admin ListEntries
+// surface returns it. Cost is a display string ("$0.00893 / hour …") or "TODO";
+// MarginPct is the gross margin percent, nil when not yet computed (so an unknown
+// margin is an absent field, never a fabricated 0).
+type Economics struct {
+	Cost      string   `json:"cost"`
+	MarginPct *float64 `json:"marginPct,omitempty"`
+}
+
 // CatalogEntry is one product in the platform catalog. Slug (== id) is the
 // stable, globally-unique key the entry is addressed by.
 type CatalogEntry struct {
@@ -44,7 +65,7 @@ type CatalogEntry struct {
 
 	Slug        string `json:"slug"`                             // stable id / path segment, e.g. "gateway"
 	Name        string `json:"name"`                             // "Gateway"
-	Category    string `json:"category"`                         // one of the 13 canonical labels
+	Category    string `json:"category"`                         // one of the 10 canonical categories
 	Description string `json:"description" datastore:",noindex"` // one-line (additive; not in the core contract)
 	Gcp         string `json:"gcp,omitempty"`                    // GCP product it stands in for
 
@@ -52,9 +73,20 @@ type CatalogEntry struct {
 	IconKey    string `json:"iconKey"`    // lucide export name, e.g. "Network"
 	BrandColor string `json:"brandColor"` // swatch key, e.g. "blue"
 
-	Route   string `json:"route"`   // "/<slug>"
-	DocsUrl string `json:"docsUrl"` // https://docs.hanzo.ai/docs/services/<slug>
-	ApiPath string `json:"apiPath"` // /v1-prefixed
+	Route     string `json:"route"`               // marketing "/<slug>"
+	DocsUrl   string `json:"docsUrl"`             // https://docs.hanzo.ai/docs/services/<slug>
+	ApiPath   string `json:"apiPath"`             // /v1-prefixed path, "/v1/<slug>"
+	ApiRoute  string `json:"apiRoute,omitempty"`  // host-qualified "api.hanzo.ai/v1/<slug>"
+	GithubUrl string `json:"githubUrl,omitempty"` // source runtime repo URL
+	External  bool   `json:"external,omitempty"`  // leaf that links out to another brand surface
+
+	// Pricing is the public pricing block; Private is the admin-only unit
+	// economics (cost + margin) — stored as noindex blobs, projected apart:
+	// Pricing rides the public projection, Private only the super-admin list.
+	Pricing  *Pricing   `json:"pricing,omitempty" datastore:"-"`
+	Pricing_ string     `json:"-" datastore:",noindex"`
+	Private  *Economics `json:"private,omitempty" datastore:"-"`
+	Private_ string     `json:"-" datastore:",noindex"`
 
 	// PricingId references a pricing plan by key (plans/<key>.json); empty ⇒
 	// projected as JSON null. PriceCents is an optional native fixed-price
@@ -92,6 +124,16 @@ func (e *CatalogEntry) Load(ps []datastore.Property) (err error) {
 			return err
 		}
 	}
+	if len(e.Pricing_) > 0 {
+		if err = json.DecodeBytes([]byte(e.Pricing_), &e.Pricing); err != nil {
+			return err
+		}
+	}
+	if len(e.Private_) > 0 {
+		if err = json.DecodeBytes([]byte(e.Private_), &e.Private); err != nil {
+			return err
+		}
+	}
 	if len(e.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(e.Metadata_), &e.Metadata)
 	}
@@ -101,6 +143,14 @@ func (e *CatalogEntry) Load(ps []datastore.Property) (err error) {
 func (e *CatalogEntry) Save() ([]datastore.Property, error) {
 	e.Brands_ = string(json.EncodeBytes(&e.Brands))
 	e.Metadata_ = string(json.EncodeBytes(&e.Metadata))
+	e.Pricing_ = ""
+	if e.Pricing != nil {
+		e.Pricing_ = string(json.EncodeBytes(e.Pricing))
+	}
+	e.Private_ = ""
+	if e.Private != nil {
+		e.Private_ = string(json.EncodeBytes(e.Private))
+	}
 	return datastore.SaveStruct(e)
 }
 
