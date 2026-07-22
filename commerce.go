@@ -69,7 +69,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.49.7"
+	Version   = "1.49.10"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
