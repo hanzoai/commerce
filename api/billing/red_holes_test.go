@@ -81,7 +81,7 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 	org := moneyOrg("acme")
 
 	// Seed the authority, then SuperAdmin-edit "max" DB Price → 0.
-	if _, err := SeedPlansIfEmpty(ctx); err != nil {
+	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	adb := plan.AuthorityDB(ctx)
@@ -117,7 +117,7 @@ func TestF2_DBPriceZero_StillGatedByEmbedPaidTier(t *testing.T) {
 // slug-only gate predicates (IncludedMonthlyCents/paidTier) do NOT match.
 func seedAndMaxHashid(t *testing.T, ctx context.Context) string {
 	t.Helper()
-	if _, err := SeedPlansIfEmpty(ctx); err != nil {
+	if _, _, err := SeedPlans(ctx); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	mx := plan.New(plan.AuthorityDB(ctx))
