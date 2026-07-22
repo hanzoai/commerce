@@ -63,6 +63,7 @@ import (
 	notificationApi "github.com/hanzoai/commerce/api/notification"
 	orderApi "github.com/hanzoai/commerce/api/order"
 	organizationApi "github.com/hanzoai/commerce/api/organization"
+	planApi "github.com/hanzoai/commerce/api/plan"
 	pricingApi "github.com/hanzoai/commerce/api/pricing"
 	producttaxonomyApi "github.com/hanzoai/commerce/api/producttaxonomy"
 	promoApi "github.com/hanzoai/commerce/api/promo"
@@ -189,6 +190,11 @@ func Route(api zip.Router) {
 	catalogApi.AdminRoute(api, adminRequired)    // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
+
+	// Platform subscription/DNS plan authority CRUD (global-admin gated inside).
+	// Public read stays GET /v1/billing/plans; the embed seed source is injected
+	// here (the composition root) so api/plan stays free of an api/billing import.
+	planApi.AdminRoute(api, billingApi.SeedRows, adminRequired)
 
 	// Hanzo APIs, using default namespace (internal use only)
 	organizationApi.Route(api, tokenRequired)
