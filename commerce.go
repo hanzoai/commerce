@@ -847,11 +847,13 @@ func (app *App) Bootstrap() error {
 		app.runInfraCatalogSeed()
 	}
 
-	// Subscription/DNS plan authority seed — populate models/plan (the editable
+	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
 	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
-	// read) on first boot from the SAME embedded @hanzo/plans catalog. Cheap
-	// count-gated no-op once populated; seed values EQUAL the embed, so it changes
-	// NO charge — it only makes prices admin-editable. COMMERCE_PLANS_SEED=false to skip.
+	// read) to the embedded @hanzo/plans catalog on EVERY boot. Creates missing
+	// plans and force-corrects any unmanaged partial row (a subscription-flow path
+	// wrote it) while leaving admin edits authoritative. Seed values EQUAL the
+	// embed, so it changes NO charge — it makes prices editable + repairs bad rows.
+	// COMMERCE_PLANS_SEED=false to skip.
 	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
 		app.runPlansSeed()
 	}
@@ -922,20 +924,21 @@ func (app *App) runInfraCatalogSeed() {
 	}
 }
 
-// runPlansSeed populates the subscription/DNS plan authority (models/plan,
-// "system" ns) on first boot from the embedded @hanzo/plans catalog — the SAME
-// embed SyncStripe/StaticPlans read. Cheap count-gated no-op once populated;
-// failures are logged, never fatal — GET /v1/billing/plans and
-// resolveSubscriptionPlan fall back to the embed until seeded. Seed values equal
-// the embed, so this changes NO charge; it only makes plan pricing admin-editable.
+// runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
+// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot — the SAME
+// embed SyncStripe/StaticPlans read. Cheap (one point query per plan; writes only
+// to create missing rows or force-correct an unmanaged partial). Failures are
+// logged, never fatal — GET /v1/billing/plans and resolveSubscriptionPlan fall
+// back to the embed. Seed values equal the embed, so this changes NO charge; it
+// makes pricing admin-editable and repairs bad rows.
 func (app *App) runPlansSeed() {
-	created, err := billingPkg.SeedPlansIfEmpty(context.Background())
+	created, corrected, err := billingPkg.SeedPlans(context.Background())
 	if err != nil {
 		slog.Error("plan authority seed failed", "err", err)
 		return
 	}
-	if created > 0 {
-		slog.Info("plan authority seeded", "plans", created)
+	if created > 0 || corrected > 0 {
+		slog.Info("plan authority seeded", "created", created, "corrected", corrected)
 	}
 }
 
