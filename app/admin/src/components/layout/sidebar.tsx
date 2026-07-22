@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   SquaresPlus,
+  AiAssistent,
   ShoppingBag,
   ReceiptPercent,
   Users,
@@ -17,6 +18,7 @@ import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
 
 const navItems = [
   { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
+  { label: 'Models', href: '/models', icon: AiAssistent },
   { label: 'Products', href: '/products', icon: ShoppingBag },
   { label: 'Orders', href: '/orders', icon: ReceiptPercent },
   { label: 'Customers', href: '/customers', icon: Users },
