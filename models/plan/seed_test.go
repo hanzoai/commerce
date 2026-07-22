@@ -16,9 +16,6 @@ func sysDB(c context.Context) *datastore.Datastore {
 	return datastore.New(nscontext.WithNamespace(c, Namespace))
 }
 
-// sampleRows spans four distinct categories with one plan each, plus a
-// null-priced (contactSales) custom plan, so the tests exercise the free($0)
-// vs custom(null) distinction and the per-category seed gate.
 func sampleRows() []*Plan {
 	return []*Plan{
 		{Slug: "pro", Category: "personal", Name: "Pro", Price: 2000, PriceAnnual: 1600, Currency: currency.USD},
@@ -28,102 +25,113 @@ func sampleRows() []*Plan {
 	}
 }
 
-// TestSeed_IdempotentAndNonDestructive proves a re-seed creates nothing AND never
-// clobbers an admin edit — the money-safety property (a re-seed must not reset a
-// price an admin lowered/raised).
-func TestSeed_IdempotentAndNonDestructive(t *testing.T) {
+// TestSeed_CreatesMarkedAndIdempotent: a fresh seed creates every row, marks it
+// Managed, and a re-run writes nothing (managed rows are authoritative).
+func TestSeed_CreatesMarkedAndIdempotent(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
 
-	created, err := Seed(db, sampleRows())
+	created, corrected, err := Seed(db, sampleRows())
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	if created != 4 {
-		t.Fatalf("first seed created %d, want 4", created)
+	if created != 4 || corrected != 0 {
+		t.Fatalf("first seed created=%d corrected=%d, want 4/0", created, corrected)
+	}
+	for _, r := range sampleRows() {
+		p := New(db)
+		if ok, _ := p.Query().Filter("Slug=", r.Slug).Get(); !ok {
+			t.Fatalf("%s not created", r.Slug)
+		}
+		if !p.Managed {
+			t.Fatalf("%s not marked Managed", r.Slug)
+		}
 	}
 
-	// Admin edits a seeded plan's price.
-	p := New(db)
-	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
-		t.Fatal("pro not found after seed")
-	}
-	p.Price = 9900
-	if err := p.Update(); err != nil {
-		t.Fatalf("edit: %v", err)
-	}
-
-	// Re-seed: no-op (idempotent) AND preserves the edit (non-destructive).
-	created2, err := Seed(db, sampleRows())
+	created2, corrected2, err := Seed(db, sampleRows())
 	if err != nil {
 		t.Fatalf("re-seed: %v", err)
 	}
-	if created2 != 0 {
-		t.Fatalf("re-seed created %d, want 0 (idempotent)", created2)
-	}
-	got := New(db)
-	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
-		t.Fatal("pro gone after re-seed")
-	}
-	if got.Price != 9900 {
-		t.Fatalf("re-seed CLOBBERED edit: pro price = %d, want 9900 preserved", got.Price)
-	}
-
-	// The null-priced custom plan kept its distinction (0 + ContactSales), never
-	// coerced to a chargeable $0.
-	cust := New(db)
-	if ok, _ := cust.Query().Filter("Slug=", "custom").Get(); !ok {
-		t.Fatal("custom missing")
-	}
-	if cust.Price != 0 || !cust.ContactSales {
-		t.Fatalf("custom = price %d contactSales %v, want 0/true (null preserved)", cust.Price, cust.ContactSales)
+	if created2 != 0 || corrected2 != 0 {
+		t.Fatalf("re-seed created=%d corrected=%d, want 0/0 (idempotent)", created2, corrected2)
 	}
 }
 
-// TestSeedIfEmpty_GatedAndRespectsDelete proves the count-gate: it seeds once,
-// then never re-runs while any seeded category has rows — so an admin DELETE of a
-// plan is not resurrected on the next boot.
-func TestSeedIfEmpty_GatedAndRespectsDelete(t *testing.T) {
+// TestSeed_CorrectsUnmanagedPartialRow is the prod-bug repair proven at the model
+// level: a subscription-flow path wrote a partial, UNMANAGED "pro" (Price=0,
+// category-less) BEFORE the seed. The old count-gated seed skipped it (kept the
+// bad row); the corrective seed FORCE-CORRECTS it to the embed and marks it.
+func TestSeed_CorrectsUnmanagedPartialRow(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
 
-	created, err := SeedIfEmpty(db, sampleRows())
-	if err != nil {
-		t.Fatalf("seed-if-empty: %v", err)
-	}
-	if created != 4 {
-		t.Fatalf("first SeedIfEmpty created %d, want 4", created)
+	// A partial/wrong unmanaged row already on the (persistent) store.
+	bad := New(db)
+	bad.Slug = "pro"
+	bad.Price = 0 // WRONG (embed is 2000) — models the bundle Price=0 write
+	bad.Category = ""
+	bad.Managed = false
+	if err := bad.Create(); err != nil {
+		t.Fatalf("seed bad row: %v", err)
 	}
 
-	// Admin deletes one plan; other categories remain populated.
+	created, corrected, err := Seed(db, sampleRows())
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if corrected != 1 {
+		t.Fatalf("corrected=%d, want 1 (the unmanaged pro row)", corrected)
+	}
+	if created != 3 {
+		t.Fatalf("created=%d, want 3 (team/custom/dns-pro)", created)
+	}
+	fixed := New(db)
+	if ok, _ := fixed.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro missing")
+	}
+	if fixed.Price != 2000 || fixed.Category != "personal" || !fixed.Managed {
+		t.Fatalf("pro not corrected: price=%d category=%q managed=%v, want 2000/personal/true", fixed.Price, fixed.Category, fixed.Managed)
+	}
+}
+
+// TestSeed_PreservesManagedEdit: an admin price edit (Managed) survives a re-seed.
+func TestSeed_PreservesManagedEdit(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	p := New(db)
 	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
 		t.Fatal("pro missing")
 	}
-	if err := p.Delete(); err != nil {
-		t.Fatalf("delete: %v", err)
+	p.Price = 9900 // admin edit; row stays Managed
+	if err := p.Update(); err != nil {
+		t.Fatalf("edit: %v", err)
 	}
 
-	// Re-run: gate stays shut (team/enterprise/dns still populated) → delete respected.
-	created2, err := SeedIfEmpty(db, sampleRows())
+	_, corrected, err := Seed(db, sampleRows())
 	if err != nil {
-		t.Fatalf("re-run: %v", err)
+		t.Fatalf("re-seed: %v", err)
 	}
-	if created2 != 0 {
-		t.Fatalf("SeedIfEmpty re-run created %d, want 0 (must not resurrect a delete)", created2)
+	if corrected != 0 {
+		t.Fatalf("re-seed corrected=%d, want 0 (managed edit preserved)", corrected)
 	}
-	gone := New(db)
-	if ok, _ := gone.Query().Filter("Slug=", "pro").Get(); ok {
-		t.Fatal("deleted plan pro was resurrected by SeedIfEmpty")
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro gone")
+	}
+	if got.Price != 9900 {
+		t.Fatalf("re-seed CLOBBERED managed edit: pro price=%d, want 9900", got.Price)
 	}
 }
 
-// TestSeed_ConcurrentNoDuplicate proves the Red F3 fix: the seedMu mutex makes the
-// per-slug check-then-create atomic, so N concurrent Seed calls create each plan
-// exactly once (no duplicate-slug rows). Mirrors the giftcard 25-goroutine
-// same-key test.
+// TestSeed_ConcurrentNoDuplicate: seedMu makes the per-slug check-then-write
+// atomic, so N concurrent seeds create each plan exactly once (no dup slug).
 func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
@@ -137,7 +145,7 @@ func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			n, err := Seed(db, rows)
+			n, _, err := Seed(db, rows)
 			if err != nil {
 				t.Errorf("concurrent seed: %v", err)
 				return
@@ -147,11 +155,9 @@ func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Exactly one create-wave landed across all goroutines.
 	if totalCreated != int64(len(rows)) {
 		t.Fatalf("total created across %d concurrent seeds = %d, want %d (no double-create)", N, totalCreated, len(rows))
 	}
-	// And no slug has a duplicate row.
 	for _, r := range rows {
 		var got []*Plan
 		if _, err := Query(db).Filter("Slug=", r.Slug).GetAll(&got); err != nil {

@@ -224,31 +224,17 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 	// cancellation can cascade them.
 	bundled := bundledPlansForSlug(req.PlanId)
 	for _, childSlug := range bundled {
-		// Bundled plans are platform plans too — resolve them from the authority ns
-		// (same as the parent), not the per-org db.
-		childPlan := plan.New(plan.AuthorityDB(db.Context))
-		if err := childPlan.GetById(childSlug); err != nil {
-			var staticChild *staticPlan
-			for i := range hanzoPlans {
-				if hanzoPlans[i].Slug == childSlug {
-					staticChild = &hanzoPlans[i]
-					break
-				}
-			}
-			if staticChild == nil {
-				log.Error("bundled plan %q not found for parent %q (skipping)", childSlug, req.PlanId, nil, c)
-				continue
-			}
-			childPlan.Slug = staticChild.Slug
-			childPlan.Name = staticChild.Name
-			childPlan.Description = staticChild.Description
-			childPlan.Currency = currency.Type(staticChild.Currency)
-			childPlan.Interval = types.Interval(staticChild.Interval)
-			childPlan.IntervalCount = staticChild.IntervalCount
-			// Bundled price is forced to zero — the customer paid via
-			// the parent, the child must never trigger a second charge.
-			childPlan.Price = 0
-			_ = childPlan.Create()
+		// A bundle child is ALWAYS zero-cost (the parent's invoice carries the
+		// charge) and must NEVER touch the plan authority: persisting a Price=0,
+		// envelope-less partial row there under-charged a DIRECT sub to the child
+		// plan (prod: world-pro/world-team served $0), and on a HIT it would have
+		// snapshotted the child's FULL price and double-charged. Build a LOCAL
+		// zero-price snapshot from the embed — the authority is owned only by the
+		// seed + CRUD. Mirrors provisionMembers' in-memory child copy.
+		childPlan := childSnapshotPlan(db, childSlug)
+		if childPlan == nil {
+			log.Error("bundled plan %q not found for parent %q (skipping)", childSlug, req.PlanId, nil, c)
+			continue
 		}
 
 		childSub := subscription.New(db)
@@ -265,6 +251,7 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 		}
 		childSub.Metadata = childMeta
 		engine.StartSubscription(childSub, childPlan)
+		childSub.PlanId = childSlug // stable label; the child plan is a local snapshot, not an authority row
 		if err := childSub.Create(); err != nil {
 			log.Error("Failed to create bundled subscription %q for parent %q: %v", childSlug, req.PlanId, err, c)
 			continue
@@ -295,6 +282,38 @@ func bundledPlansForSlug(slug string) []string {
 		}
 	}
 	return nil
+}
+
+// childSnapshotPlan builds a ZERO-COST snapshot plan for a bundle child from the
+// embed. It NEVER reads or writes the plan authority: a bundle child must not
+// create a partial ($0, envelope-less) row there (Red: that under-charged a
+// DIRECT sub to the child plan). Price is ALWAYS 0 — the parent's invoice carries
+// the charge — so a child snapshot can never be invoiced. Returns nil if the slug
+// is unknown to the embed.
+func childSnapshotPlan(db *datastore.Datastore, childSlug string) *plan.Plan {
+	var sc *staticPlan
+	for i := range hanzoPlans {
+		if hanzoPlans[i].Slug == childSlug {
+			sc = &hanzoPlans[i]
+			break
+		}
+	}
+	if sc == nil {
+		return nil
+	}
+	// Bound to db (so StartSubscription's .Id() is safe) but NEVER Create()d — the
+	// child is an in-memory snapshot, exactly like provisionMembers' *base copy;
+	// the authority is never written from the subscription flow.
+	p := plan.New(db)
+	p.Slug = sc.Slug
+	p.Name = sc.Name
+	p.Description = sc.Description
+	p.Category = sc.Category
+	p.Currency = currency.Type(sc.Currency)
+	p.Interval = types.Interval(sc.Interval)
+	p.IntervalCount = sc.IntervalCount
+	p.Price = 0 // ALWAYS zero — a bundle child never charges
+	return p
 }
 
 // provisionMembers mints one zero-price bundle-child subscription row per

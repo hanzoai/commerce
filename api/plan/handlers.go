@@ -99,6 +99,7 @@ func CreateEntry(c *zip.Ctx) error {
 	if ok, _ := dup.Query().Filter("Slug=", p.Slug).Get(); ok {
 		return http.Fail(c, 409, "a plan with this slug already exists", errors.New("duplicate slug"))
 	}
+	p.Managed = true // admin-authored → authoritative; the corrective seed leaves it
 	if err := p.Create(); err != nil {
 		return http.Fail(c, 500, "failed to create plan", err)
 	}
@@ -140,7 +141,8 @@ func UpdateEntry(c *zip.Ctx) error {
 	if err := json.DecodeBytes(c.Body(), p); err != nil {
 		return http.Fail(c, 400, "failed to decode request body", err)
 	}
-	p.Slug = slug // identity is immutable — the path slug wins over any body value
+	p.Slug = slug    // identity is immutable — the path slug wins over any body value
+	p.Managed = true // an admin edit makes the row authoritative; the seed leaves it
 	if err := p.Update(); err != nil {
 		return http.Fail(c, 500, "failed to update plan", err)
 	}
@@ -179,10 +181,10 @@ func seedHandler(seed SeedSource) zip.Handler {
 		if seed == nil {
 			return http.Fail(c, 500, "no plan seed source wired", errors.New("nil seed source"))
 		}
-		created, err := plan.Seed(planDB(c), seed())
+		created, corrected, err := plan.Seed(planDB(c), seed())
 		if err != nil {
 			return http.Fail(c, 500, "failed to seed plans", err)
 		}
-		return http.Render(c, 200, map[string]any{"created": created})
+		return http.Render(c, 200, map[string]any{"created": created, "corrected": corrected})
 	}
 }
