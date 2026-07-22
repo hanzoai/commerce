@@ -132,13 +132,15 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 	}
 }
 
-// SeedPlansIfEmpty seeds the subscription + DNS plans into the plan authority on
-// first boot from the SAME embed SyncStripe/StaticPlans use. Count-gated,
-// idempotent, and NON-DESTRUCTIVE (never clobbers an admin edit/delete). Because
-// the seed values equal the embed, it changes NO charge — it only makes the
-// prices editable. Returns the number created.
-func SeedPlansIfEmpty(ctx context.Context) (int, error) {
-	return plan.SeedIfEmpty(plan.AuthorityDB(ctx), SeedRows())
+// SeedPlans reconciles the subscription + DNS plan authority to the embed
+// (SyncStripe/StaticPlans read the SAME source). Safe on every boot: it creates
+// missing plans and FORCE-CORRECTS any unmanaged partial row (Red: the bundle
+// expansion wrote Price=0 rows the old count-gated seed then skipped) while
+// leaving admin-edited (managed) rows authoritative. Seed values equal the embed,
+// so it changes NO charge — it only makes prices editable + repairs bad rows.
+// Returns (created, corrected).
+func SeedPlans(ctx context.Context) (created, corrected int, err error) {
+	return plan.Seed(plan.AuthorityDB(ctx), SeedRows())
 }
 
 // planAuthorityRows reads the plan authority for the read edge (ListPlans/
