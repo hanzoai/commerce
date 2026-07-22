@@ -60,7 +60,17 @@ const maxScopeRowsPerOrg = 200
 // different org resolves to a different namespace AND a different subject). Empty
 // only when no org is resolvable (unauthenticated).
 func billingSubject(c *zip.Ctx) string {
-	return strings.TrimSpace(middleware.GetOrganization(c).Name)
+	// Resolve the org SAFELY (#146). On the co-resident cloud embed path IAMTokenRequired
+	// no-ops (no gateway-injected X-Org-Id), so a validated caller can reach a billing
+	// handler with NO "organization" local. GetOrganization's unchecked type-assertion
+	// panics on a nil interface there — surfacing as a 502 at the edge (cloud installs no
+	// Recover, so fasthttp resets the conn) — so use the OK form and treat an absent org as
+	// "no resolvable subject" ("").
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return ""
+	}
+	return strings.TrimSpace(org.Name)
 }
 
 // ownsAlert reports whether the caller may mutate this row: its owner (the org)
@@ -136,7 +146,14 @@ func saveAlert(db *datastore.Datastore, a *spendalert.SpendAlert) error {
 //
 //	GET /v1/billing/spend-alerts
 func ListSpendAlerts(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146: never panic on a missing org. The co-resident embed path can reach this read
+	// with no "organization" local (IAMTokenRequired no-ops with no gateway X-Org-Id) —
+	// GetOrganization would panic → 502. No resolvable org ⇒ nothing to read: an honest
+	// empty list, the SAME result as an unresolvable subject below.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, []map[string]any{})
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 	test := org.TestMode()
 
@@ -167,7 +184,12 @@ func ListSpendAlerts(c *zip.Ctx) error {
 //
 //	POST /v1/billing/spend-alerts
 func CreateSpendAlert(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
+	// never a nil-deref panic (→ 502).
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "authentication required", nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	var req createSpendAlertRequest
@@ -234,7 +256,12 @@ func CreateSpendAlert(c *zip.Ctx) error {
 //
 //	PATCH /v1/billing/spend-alerts/:id
 func UpdateSpendAlert(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
+	// never a nil-deref panic (→ 502).
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "authentication required", nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
@@ -296,7 +323,12 @@ func UpdateSpendAlert(c *zip.Ctx) error {
 //
 //	DELETE /v1/billing/spend-alerts/:id
 func DeleteSpendAlert(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
+	// never a nil-deref panic (→ 502).
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "authentication required", nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
