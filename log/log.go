@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"sync"
 
 	"github.com/op/go-logging"
 
@@ -38,15 +39,34 @@ func New() *Logger {
 
 var std = New()
 
+// logMu serializes every package-level log call. parseArgs stashes per-request
+// state (backend.context, backend.requestURI, backend.error, verboseRequested)
+// on the shared std singleton, and the go-logging Backend reads that state back
+// during the emit — a window that races when two goroutines log concurrently
+// (e.g. a request goroutine and a fire-and-forget `go engine.…` worker both
+// calling log.Debug). The go-logging Backend interface can't receive per-call
+// context, so the state must live on the shared backend; making each stash→emit
+// atomic is the same approach the stdlib `log` package takes. The Backend's Log
+// writes only to os.Stdout/os.Stderr and never re-enters these funcs, so the
+// lock cannot self-deadlock. Guard the package entry points ONLY — never the
+// *Logger methods (parseArgs/Verbose/…), which run while this lock is held.
+var logMu sync.Mutex
+
 func SetVerbose(verbose bool) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	std.SetVerbose(verbose)
 }
 
 func Verbose() bool {
+	logMu.Lock()
+	defer logMu.Unlock()
 	return std.Verbose()
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -62,6 +82,8 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 }
 
 func Info(formatOrError interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -73,6 +95,8 @@ func Info(formatOrError interface{}, args ...interface{}) {
 }
 
 func Warn(formatOrError interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -84,6 +108,8 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 }
 
 func Error(formatOrError interface{}, args ...interface{}) error {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -100,6 +126,8 @@ func Error(formatOrError interface{}, args ...interface{}) error {
 }
 
 func Fatal(formatOrError interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -111,6 +139,8 @@ func Fatal(formatOrError interface{}, args ...interface{}) {
 }
 
 func Panic(formatOrError interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
@@ -122,6 +152,8 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 }
 
 func Dump(formatOrObject interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -141,6 +173,8 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 }
 
 func JSON(formatOrObject interface{}, args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -158,6 +192,8 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 }
 
 func Request(req *http.Request, args ...interface{}) error {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -174,6 +210,8 @@ func Request(req *http.Request, args ...interface{}) error {
 }
 
 func RequestOut(req *http.Request, args ...interface{}) error {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -190,6 +228,8 @@ func RequestOut(req *http.Request, args ...interface{}) error {
 }
 
 func Response(res *http.Response, args ...interface{}) error {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if !std.Verbose() {
@@ -206,6 +246,8 @@ func Response(res *http.Response, args ...interface{}) error {
 }
 
 func Stack(args ...interface{}) {
+	logMu.Lock()
+	defer logMu.Unlock()
 	args = std.parseArgs(args...)
 
 	if len(args) == 0 {
