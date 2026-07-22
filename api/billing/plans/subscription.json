@@ -26,17 +26,39 @@
       "ai.requests_per_min": 60,
       "ai.tokens_per_min": 100000,
       "ai.free_credit_usd": 5,
-      "ai.models": ["tier:starter"],
+      "ai.models": [
+        "tier:starter"
+      ],
+      "ai.rolling_window_hours": 3,
+      "ai.rolling_cap_usd": 0.75,
+      "sites.included": 1,
+      "base.included": 1,
+      "base.storage_gb": 1,
       "commerce.support_tier": "community",
       "commerce.included_credit_usd": 5,
       "commerce.idle_resale_percent": 20
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 0, "annual_usd": 0, "per_seat": false, "stripe_lookup_key": null },
+      "recurring": {
+        "monthly_usd": 0,
+        "annual_usd": 0,
+        "per_seat": false,
+        "stripe_lookup_key": null
+      },
       "metered": [
-        { "entitlement": "ai.tokens_per_min", "unit": "per_mtok", "source": "zen-gateway", "included": -1 },
-        { "entitlement": "commerce.included_credit_usd", "unit": "usd_month", "source": "static", "included": 5 }
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        },
+        {
+          "entitlement": "commerce.included_credit_usd",
+          "unit": "usd_month",
+          "source": "static",
+          "included": 5
+        }
       ]
     },
     "payouts": {
@@ -77,9 +99,19 @@
       "ai.requests_per_min": 500,
       "ai.tokens_per_min": 1000000,
       "ai.priority_inference": true,
-      "ai.models": ["tier:pro"],
+      "ai.models": [
+        "tier:pro"
+      ],
+      "ai.rolling_window_hours": 3,
+      "ai.rolling_cap_usd": 2.5,
+      "ai.spend_percent": 50,
+      "sites.included": 3,
+      "base.included": 3,
+      "base.storage_gb": 10,
       "cloud.included_credits_usd": 5,
-      "licensing.product_ids": ["team"],
+      "licensing.product_ids": [
+        "team"
+      ],
       "team.guests": 3,
       "commerce.support_tier": "email",
       "commerce.included_credit_usd": 20,
@@ -87,14 +119,36 @@
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 20, "annual_usd": 16, "per_seat": false, "stripe_lookup_key": "hanzo_pro_20" },
+      "recurring": {
+        "monthly_usd": 20,
+        "annual_usd": 16,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_pro_20"
+      },
       "metered": [
-        { "entitlement": "ai.tokens_per_min", "unit": "per_mtok", "source": "zen-gateway", "included": -1 },
-        { "entitlement": "commerce.included_credit_usd", "unit": "usd_month", "source": "static", "included": 20 },
-        { "entitlement": "cloud.included_credits_usd", "unit": "per_vm_hour", "source": "digitalocean", "included": 5 }
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        },
+        {
+          "entitlement": "commerce.included_credit_usd",
+          "unit": "usd_month",
+          "source": "static",
+          "included": 20
+        },
+        {
+          "entitlement": "cloud.included_credits_usd",
+          "unit": "per_vm_hour",
+          "source": "digitalocean",
+          "included": 5
+        }
       ]
     },
-    "bundles": ["world-pro"],
+    "bundles": [
+      "world-pro"
+    ],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -131,9 +185,19 @@
       "ai.requests_per_min": 2500,
       "ai.tokens_per_min": 5000000,
       "ai.priority_inference": true,
-      "ai.models": ["tier:max"],
+      "ai.models": [
+        "tier:max"
+      ],
+      "ai.rolling_window_hours": 3,
+      "ai.rolling_cap_usd": 12,
+      "ai.spend_percent": 50,
+      "sites.included": 10,
+      "base.included": 10,
+      "base.storage_gb": 50,
       "cloud.included_credits_usd": 25,
-      "licensing.product_ids": ["team"],
+      "licensing.product_ids": [
+        "team"
+      ],
       "team.guests": 3,
       "commerce.support_tier": "priority",
       "commerce.included_credit_usd": 100,
@@ -141,14 +205,36 @@
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 100, "annual_usd": 80, "per_seat": false, "stripe_lookup_key": "hanzo_plus" },
+      "recurring": {
+        "monthly_usd": 100,
+        "annual_usd": 80,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_plus"
+      },
       "metered": [
-        { "entitlement": "ai.tokens_per_min", "unit": "per_mtok", "source": "zen-gateway", "included": -1 },
-        { "entitlement": "commerce.included_credit_usd", "unit": "usd_month", "source": "static", "included": 100 },
-        { "entitlement": "cloud.included_credits_usd", "unit": "per_vm_hour", "source": "digitalocean", "included": 25 }
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        },
+        {
+          "entitlement": "commerce.included_credit_usd",
+          "unit": "usd_month",
+          "source": "static",
+          "included": 100
+        },
+        {
+          "entitlement": "cloud.included_credits_usd",
+          "unit": "per_vm_hour",
+          "source": "digitalocean",
+          "included": 25
+        }
       ]
     },
-    "bundles": ["world-pro"],
+    "bundles": [
+      "world-pro"
+    ],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -189,25 +275,60 @@
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
-      "ai.models": ["*"],
+      "ai.models": [
+        "*"
+      ],
+      "ai.rolling_window_hours": 3,
+      "ai.rolling_cap_usd": 25,
+      "ai.spend_percent": 50,
+      "sites.included": 25,
+      "base.included": 25,
+      "base.storage_gb": 200,
       "cloud.included_credits_usd": 100,
       "team.guests": 3,
-      "licensing.app_ids": ["hanzo"],
-      "licensing.product_ids": ["engine", "team"],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "engine",
+        "team"
+      ],
       "licensing.seats": 1,
-      "licensing.engine_features": ["inference", "embeddings", "vision", "audio"],
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio"
+      ],
       "commerce.support_tier": "dedicated",
       "commerce.idle_resale_percent": 20
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 200, "annual_usd": 160, "per_seat": true, "stripe_lookup_key": "hanzo_max" },
+      "recurring": {
+        "monthly_usd": 200,
+        "annual_usd": 160,
+        "per_seat": true,
+        "stripe_lookup_key": "hanzo_max"
+      },
       "metered": [
-        { "entitlement": "ai.tokens_per_min", "unit": "per_mtok", "source": "zen-gateway", "included": -1 },
-        { "entitlement": "cloud.included_credits_usd", "unit": "per_vm_hour", "source": "digitalocean", "included": 100 }
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        },
+        {
+          "entitlement": "cloud.included_credits_usd",
+          "unit": "per_vm_hour",
+          "source": "digitalocean",
+          "included": 100
+        }
       ]
     },
-    "bundles": ["world-pro"],
+    "bundles": [
+      "world-pro"
+    ],
     "addons": {
       "premiumModels": true,
       "customTraining": true
@@ -248,9 +369,13 @@
       "ai.requests_per_min": 2000,
       "ai.tokens_per_min": 5000000,
       "ai.priority_inference": true,
-      "ai.models": ["tier:pro"],
+      "ai.models": [
+        "tier:pro"
+      ],
       "cloud.included_credits_usd": 100,
-      "licensing.product_ids": ["team"],
+      "licensing.product_ids": [
+        "team"
+      ],
       "commerce.members": 100,
       "commerce.sso": true,
       "commerce.shared_billing": true,
@@ -260,13 +385,30 @@
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 25, "annual_usd": 20, "per_seat": true, "stripe_lookup_key": "hanzo_team_25" },
+      "recurring": {
+        "monthly_usd": 25,
+        "annual_usd": 20,
+        "per_seat": true,
+        "stripe_lookup_key": "hanzo_team_25"
+      },
       "metered": [
-        { "entitlement": "ai.tokens_per_min", "unit": "per_mtok", "source": "zen-gateway", "included": -1 },
-        { "entitlement": "cloud.included_credits_usd", "unit": "per_vm_hour", "source": "digitalocean", "included": 100 }
+        {
+          "entitlement": "ai.tokens_per_min",
+          "unit": "per_mtok",
+          "source": "zen-gateway",
+          "included": -1
+        },
+        {
+          "entitlement": "cloud.included_credits_usd",
+          "unit": "per_vm_hour",
+          "source": "digitalocean",
+          "included": 100
+        }
       ]
     },
-    "bundles": ["world-team"],
+    "bundles": [
+      "world-team"
+    ],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -298,7 +440,9 @@
       "tokensPerMinute": 10000000,
       "includedCloudCreditsPerUser": 100
     },
-    "bundles": ["world-team"],
+    "bundles": [
+      "world-team"
+    ],
     "addons": {
       "teamWorkspace": true,
       "sso": true,
@@ -309,6 +453,11 @@
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
+    },
+    "entitlements": {
+      "licensing.product_ids": [
+        "team"
+      ]
     }
   },
   {
@@ -343,11 +492,25 @@
       "ai.premium_models": true,
       "ai.priority_inference": true,
       "ai.custom_training": true,
-      "ai.models": ["*"],
-      "licensing.app_ids": ["hanzo"],
-      "licensing.product_ids": ["engine", "engine-rocm"],
+      "ai.models": [
+        "*"
+      ],
+      "licensing.app_ids": [
+        "hanzo"
+      ],
+      "licensing.product_ids": [
+        "engine",
+        "engine-rocm",
+        "team"
+      ],
       "licensing.seats": -1,
-      "licensing.engine_features": ["inference", "embeddings", "vision", "audio", "training"],
+      "licensing.engine_features": [
+        "inference",
+        "embeddings",
+        "vision",
+        "audio",
+        "training"
+      ],
       "commerce.members": -1,
       "commerce.sso": true,
       "commerce.shared_billing": true,
@@ -360,12 +523,24 @@
     },
     "price_ref": {
       "currency": "USD",
-      "recurring": { "monthly_usd": 9999, "annual_usd": 7999, "per_seat": false, "stripe_lookup_key": "hanzo_enterprise" },
+      "recurring": {
+        "monthly_usd": 9999,
+        "annual_usd": 7999,
+        "per_seat": false,
+        "stripe_lookup_key": "hanzo_enterprise"
+      },
       "metered": [
-        { "entitlement": "commerce.included_credit_usd", "unit": "usd_month", "source": "static", "included": 1000 }
+        {
+          "entitlement": "commerce.included_credit_usd",
+          "unit": "usd_month",
+          "source": "static",
+          "included": 1000
+        }
       ]
     },
-    "bundles": ["world-team"],
+    "bundles": [
+      "world-team"
+    ],
     "payouts": {
       "idleResalePercent": 20,
       "description": "Earn up to 20% on any resold compute or LLM usage when your account is idle"
@@ -444,7 +619,14 @@
       "mcpRateLimit": 3000,
       "modelApi": true
     },
-    "includedIn": ["pro", "plus", "max", "team", "team-max", "enterprise"]
+    "includedIn": [
+      "pro",
+      "plus",
+      "max",
+      "team",
+      "team-max",
+      "enterprise"
+    ]
   },
   {
     "id": "world-team",
@@ -468,7 +650,11 @@
       "mcpRateLimit": 15000,
       "modelApi": true
     },
-    "includedIn": ["team", "team-max", "enterprise"]
+    "includedIn": [
+      "team",
+      "team-max",
+      "enterprise"
+    ]
   },
   {
     "id": "world-enterprise",
