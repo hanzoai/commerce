@@ -71,7 +71,13 @@ func CreateInvoice(c *zip.Ctx) error {
 //
 //	GET /v1/billing/invoices?userId=...&status=...
 func ListInvoices(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146 class: never panic on a missing org. On the co-resident cloud embed path
+	// this read can run with no "organization" local (IAMTokenRequired no-ops with no
+	// gateway X-Org-Id) — GetOrganization would panic → 502. No org ⇒ honest empty.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, map[string]any{"invoices": []map[string]any{}, "count": 0})
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
