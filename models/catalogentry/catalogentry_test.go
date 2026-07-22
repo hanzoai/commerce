@@ -149,6 +149,147 @@ func TestProject_CategoryScopedByBrand(t *testing.T) {
 	}
 }
 
+// asFloat coerces a JSON-decoded Metadata value (numbers round-trip as float64
+// through the SQLite Metadata_ blob) to float64 for comparison.
+func asFloat(t *testing.T, v interface{}) float64 {
+	t.Helper()
+	f, ok := v.(float64)
+	if !ok {
+		t.Fatalf("metadata value %#v is not a number", v)
+	}
+	return f
+}
+
+// TestSeedInfra_IdempotentAndComplete proves the infra-tier seed creates exactly
+// the embedded rows (11 cloud + 3 gpu + 3 datastore), is idempotent, and that the
+// count-gated SeedInfraIfEmpty seeds once then no-ops.
+func TestSeedInfra_IdempotentAndComplete(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	rows, err := InfraSeedRows()
+	if err != nil {
+		t.Fatalf("infra seed rows: %v", err)
+	}
+	if len(rows) != 17 {
+		t.Fatalf("embedded infra snapshot has %d rows, want 17 (11 cloud + 3 gpu + 3 datastore)", len(rows))
+	}
+
+	// The gate seeds every row when the infra scope is empty (this test's db
+	// starts empty), independently of the hanzo product snapshot.
+	created, err := SeedInfraIfEmpty(db)
+	if err != nil {
+		t.Fatalf("seed infra: %v", err)
+	}
+	if created != len(rows) {
+		t.Fatalf("first infra seed created %d, want %d", created, len(rows))
+	}
+
+	// Idempotent: the gate no-ops once the tiers exist, and so does the
+	// per-row seed (never clobbers, never duplicates).
+	if n, err := SeedInfraIfEmpty(db); err != nil || n != 0 {
+		t.Fatalf("SeedInfraIfEmpty on populated db = (%d, %v), want (0, nil)", n, err)
+	}
+	if n, err := SeedInfra(db); err != nil || n != 0 {
+		t.Fatalf("SeedInfra re-run = (%d, %v), want (0, nil) (idempotent)", n, err)
+	}
+}
+
+// TestSeedInfra_ProjectionAndValues proves the infra tiers project under
+// ?brand=infra with their category, PriceCents, and structured Metadata intact —
+// and that they never leak into a per-brand (hanzo) catalog.
+func TestSeedInfra_ProjectionAndValues(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+	if _, err := SeedInfra(db); err != nil {
+		t.Fatalf("seed infra: %v", err)
+	}
+
+	cat, err := Project(db, "infra")
+	if err != nil {
+		t.Fatalf("project infra: %v", err)
+	}
+	if len(cat.Categories) != 3 {
+		t.Fatalf("infra categories = %d, want 3", len(cat.Categories))
+	}
+	if len(cat.Products) != 17 {
+		t.Fatalf("infra products = %d, want 17", len(cat.Products))
+	}
+
+	bySlug := map[string]Item{}
+	counts := map[string]int{}
+	for _, p := range cat.Products {
+		bySlug[p.Slug] = p
+		counts[p.Category]++
+		if p.PriceCents <= 0 {
+			t.Fatalf("%s: PriceCents must be a positive display price, got %d", p.Slug, p.PriceCents)
+		}
+		if p.Metadata == nil {
+			t.Fatalf("%s: Metadata must project the structured spec, got nil", p.Slug)
+		}
+	}
+	if counts["cloud"] != 11 || counts["gpu"] != 3 || counts["datastore"] != 3 {
+		t.Fatalf("category counts = %v, want cloud:11 gpu:3 datastore:3", counts)
+	}
+
+	// Cloud: display price = monthly * 100; Metadata carries the VM spec verbatim.
+	starter := bySlug["cloud-starter"]
+	if starter.Category != "cloud" || starter.PriceCents != 500 {
+		t.Fatalf("cloud-starter = {cat:%s cents:%d}, want {cloud 500}", starter.Category, starter.PriceCents)
+	}
+	if asFloat(t, starter.Metadata["priceMonthly"]) != 5 || asFloat(t, starter.Metadata["vcpus"]) != 1 ||
+		asFloat(t, starter.Metadata["maxVMs"]) != 1 || starter.Metadata["cpuType"] != "shared" {
+		t.Fatalf("cloud-starter metadata spec wrong: %#v", starter.Metadata)
+	}
+	if starter.Metadata["freeTier"] != true {
+		t.Fatalf("cloud-starter should carry freeTier=true, got %#v", starter.Metadata["freeTier"])
+	}
+
+	// GPU: display price = hourly * 100; Metadata carries gpu/vram/price.
+	gpu := bySlug["gpu-standard"]
+	if gpu.Category != "gpu" || gpu.PriceCents != 348 {
+		t.Fatalf("gpu-standard = {cat:%s cents:%d}, want {gpu 348}", gpu.Category, gpu.PriceCents)
+	}
+	if gpu.Metadata["gpu"] != "1x H100" || gpu.Metadata["vram"] != "80 GB" || asFloat(t, gpu.Metadata["price"]) != 3.48 {
+		t.Fatalf("gpu-standard metadata wrong: %#v", gpu.Metadata)
+	}
+
+	// Datastore: display price = monthly * 100; Metadata carries the tier spec
+	// AND the shared usage rates.
+	ds := bySlug["datastore-basic"]
+	if ds.Category != "datastore" || ds.PriceCents != 6652 {
+		t.Fatalf("datastore-basic = {cat:%s cents:%d}, want {datastore 6652}", ds.Category, ds.PriceCents)
+	}
+	if asFloat(t, ds.Metadata["replicas"]) != 1 || asFloat(t, ds.Metadata["priceHourly"]) != 0.0922 {
+		t.Fatalf("datastore-basic spec wrong: %#v", ds.Metadata)
+	}
+	usage, ok := ds.Metadata["usage"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("datastore-basic must carry the usage block, got %#v", ds.Metadata["usage"])
+	}
+	storage, ok := usage["storage"].(map[string]interface{})
+	if !ok || asFloat(t, storage["pricePerGBMonth"]) != 0.0247 {
+		t.Fatalf("datastore usage.storage rate wrong: %#v", usage["storage"])
+	}
+
+	// Isolation: the infra tiers must NOT leak into the per-brand hanzo catalog.
+	hanzo, err := Project(db, "hanzo")
+	if err != nil {
+		t.Fatalf("project hanzo: %v", err)
+	}
+	if len(hanzo.Categories) != 10 {
+		t.Fatalf("hanzo categories = %d, want 10 (infra scope must not widen it)", len(hanzo.Categories))
+	}
+	for _, p := range hanzo.Products {
+		switch p.Category {
+		case "cloud", "gpu", "datastore":
+			t.Fatalf("infra tier %q leaked into the hanzo catalog under %q", p.Slug, p.Category)
+		}
+	}
+}
+
 func TestProject_UnpublishedExcluded(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()

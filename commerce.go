@@ -844,6 +844,7 @@ func (app *App) Bootstrap() error {
 	// edits are authoritative thereafter. Set COMMERCE_CATALOG_SEED=false to skip.
 	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
 		app.runCatalogSeed()
+		app.runInfraCatalogSeed()
 	}
 
 	// Anti-spoofing boundary — MUST be installed before any route group so it
@@ -892,6 +893,23 @@ func (app *App) runCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("catalog seeded", "products", created)
+	}
+}
+
+// runInfraCatalogSeed populates the infra-tier catalog rows (cloud/gpu/datastore
+// pricing tiers) on first boot from the embedded snapshot. Gated SEPARATELY from
+// runCatalogSeed (SeedInfraIfEmpty counts only infra-category rows), so the tiers
+// seed independently of the hanzo product snapshot. Cheap count-gated no-op once
+// populated; failures are logged, never fatal.
+func (app *App) runInfraCatalogSeed() {
+	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	created, err := catalogentry.SeedInfraIfEmpty(db)
+	if err != nil {
+		slog.Error("infra catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("infra catalog seeded", "tiers", created)
 	}
 }
 
