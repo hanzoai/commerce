@@ -6,6 +6,11 @@ import type { NextConfig } from 'next'
 // `__`) and is unnecessary.
 const config: NextConfig = {
   output: 'export',
+  // Directory-style export (out/overview/index.html) so a deep-link / refresh on a
+  // route resolves via the static server's directory-index (hanzoai/static opens the
+  // dir -> serves index.html), instead of the flat overview.html that only `--spa`
+  // could serve (which returned the (public) landing for every deep link).
+  trailingSlash: true,
   images: { unoptimized: true },
   transpilePackages: [
     '@hanzo/commerce-ui',
