@@ -9,13 +9,13 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// TestSeedPlansIfEmpty_SeedsAndIdempotent: first boot seeds all embed plans; a
+// TestSeedPlans_SeedsAndIdempotent: first boot seeds all embed plans; a
 // second boot is a no-op (count-gated).
-func TestSeedPlansIfEmpty_SeedsAndIdempotent(t *testing.T) {
+func TestSeedPlans_SeedsAndIdempotent(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 
-	created, err := SeedPlansIfEmpty(c)
+	created, _, err := SeedPlans(c)
 	if err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -23,7 +23,7 @@ func TestSeedPlansIfEmpty_SeedsAndIdempotent(t *testing.T) {
 		t.Fatalf("first seed created %d, want %d (17 subscription + 3 dns)", created, len(hanzoPlans))
 	}
 
-	created2, err := SeedPlansIfEmpty(c)
+	created2, _, err := SeedPlans(c)
 	if err != nil {
 		t.Fatalf("re-seed: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestSeedPlansIfEmpty_SeedsAndIdempotent(t *testing.T) {
 func TestSeededPricesEqualEmbed(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	if _, err := SeedPlansIfEmpty(c); err != nil {
+	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func TestSeededPricesEqualEmbed(t *testing.T) {
 func TestEditPrice_ResolveReflects(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	if _, err := SeedPlansIfEmpty(c); err != nil {
+	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -111,7 +111,7 @@ func TestResolveSeededEqualsEmbed(t *testing.T) {
 	}
 
 	// After seed: resolve reads the DB row — SAME price (seed == embed).
-	if _, err := SeedPlansIfEmpty(c); err != nil {
+	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	after, err := resolveSubscriptionPlan(orgDB, "pro")
@@ -134,7 +134,7 @@ func TestPlanAuthorityRows_LoudFallbackThenAuthority(t *testing.T) {
 		t.Fatal("empty authority must signal fallback (ok=false) so ListPlans serves the embed")
 	}
 
-	if _, err := SeedPlansIfEmpty(c); err != nil {
+	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	rows, ok := planAuthorityRows(c)
@@ -163,7 +163,7 @@ func TestPlanAuthorityRows_LoudFallbackThenAuthority(t *testing.T) {
 func TestSyncStripeUntouchedByDBEdit(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
-	if _, err := SeedPlansIfEmpty(c); err != nil {
+	if _, _, err := SeedPlans(c); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 

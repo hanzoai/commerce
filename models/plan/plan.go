@@ -108,8 +108,22 @@ type Plan struct {
 	// Popular flags the highlighted tier within a category (display only).
 	Popular bool `json:"popular,omitempty"`
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:"-"`
+	// Managed marks a row OWNED by the seed or the SuperAdmin CRUD (authoritative).
+	// The corrective boot seed force-corrects UNMANAGED rows — accidental partials
+	// written by a subscription-flow path (Red: the bundle expansion wrote a
+	// Price=0, envelope-less row that under-charged a direct sub) — to the embed,
+	// and LEAVES managed rows so an admin price edit is preserved. One flag
+	// distinguishes "authoritative" from "accidental", closing the divergence.
+	Managed bool `json:"managed,omitempty"`
+
+	// Metadata is the display envelope (features/limits/bundles/includedIn) — the
+	// typed money fields above are authoritative, this is presentation. Metadata_
+	// MUST be datastore:",noindex" (persisted), NOT "-" (skipped): with "-" the
+	// whole envelope Save()s but never round-trips, so a DB read drops
+	// limits/minSeats/features (prod: team.minSeats served null). Mirrors
+	// catalogentry exactly — the persisted-blob pattern is the one way.
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Ref refs.EcommerceRef `json:"ref,omitempty"`
 }
@@ -154,13 +168,24 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("plan")
 }
 
-// Seed upserts the given plan rows into db (which MUST be namespaced to the
-// plan-authority Namespace). IDEMPOTENT + NON-DESTRUCTIVE: a plan whose slug
-// already exists is left UNTOUCHED, so an admin edit is never clobbered; only
-// missing slugs are created. The source is injected (the embed lives in
-// api/billing) so the write mechanism stays decoupled from the catalog source.
-// Returns the number created.
-func Seed(db *datastore.Datastore, rows []*Plan) (created int, err error) {
+// Seed reconciles the plan authority to the given embed rows. It is safe to run
+// on EVERY boot (cheap: one point query per row; writes only when needed) and is
+// the ONE seeder — the count-gated variant is gone, because a count gate makes a
+// fixed re-seed a no-op that keeps serving bad rows.
+//
+// Per embed row:
+//   - MISSING          → create it, Managed=true.
+//   - present, UNMANAGED → FORCE-CORRECT its typed money fields + envelope to the
+//     embed and mark Managed=true. An unmanaged row was written by a
+//     subscription-flow path (bundle expansion / lazy resolve) and may be partial
+//     or wrong (Red: bundle wrote Price=0) — this is the corrective repair.
+//   - present, MANAGED  → LEAVE. Seed/admin already own it, so an admin price edit
+//     is preserved (the whole point of the editable authority).
+//
+// Idempotent: after the first corrective pass every row is Managed, so later runs
+// write nothing. seedMu makes the per-slug check-then-write atomic in-process.
+// Returns (created, corrected).
+func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err error) {
 	seedMu.Lock()
 	defer seedMu.Unlock()
 	for _, r := range rows {
@@ -170,47 +195,29 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created int, err error) {
 		existing := New(db)
 		ok, qerr := existing.Query().Filter("Slug=", r.Slug).Get()
 		if qerr != nil {
-			return created, qerr
+			return created, corrected, qerr
 		}
 		if ok {
+			if existing.Managed {
+				continue
+			}
+			copyInto(existing, r)
+			existing.Managed = true
+			if uerr := existing.Update(); uerr != nil {
+				return created, corrected, uerr
+			}
+			corrected++
 			continue
 		}
 		e := New(db)
 		copyInto(e, r)
-		if err := e.Create(); err != nil {
-			return created, err
+		e.Managed = true
+		if cerr := e.Create(); cerr != nil {
+			return created, corrected, cerr
 		}
 		created++
 	}
-	return created, nil
-}
-
-// SeedIfEmpty seeds rows only when NONE of the categories they cover are present
-// yet — a cheap per-category count gates the full per-row create, so it is safe
-// to call on every bootstrap (mirrors catalogentry.SeedInfraIfEmpty). Once any
-// plan in a seeded category exists (seeded, admin-edited, or admin-deleted) the
-// gate stays shut, so admin state — including deletions of individual plans —
-// stays authoritative. A total wipe of every seeded category re-opens the gate;
-// Seed then only re-creates the missing slugs (still non-destructive).
-func SeedIfEmpty(db *datastore.Datastore, rows []*Plan) (created int, err error) {
-	cats := map[string]bool{}
-	for _, r := range rows {
-		if r != nil {
-			cats[r.Category] = true
-		}
-	}
-	total := 0
-	for cat := range cats {
-		n, cerr := Query(db).Filter("Category=", cat).Count()
-		if cerr != nil {
-			return 0, cerr
-		}
-		total += n
-	}
-	if total > 0 {
-		return 0, nil
-	}
-	return Seed(db, rows)
+	return created, corrected, nil
 }
 
 // copyInto copies the seed fields from src onto the fresh, db-bound dst so the
