@@ -16,6 +16,7 @@ type Props = {
 }
 
 export async function generateStaticParams() {
+  try {
   const product_categories = await listCategories()
 
   if (!product_categories) {
@@ -40,6 +41,10 @@ export async function generateStaticParams() {
     .flat()
 
   return staticParams
+  } catch {
+    // Catalog API unreachable at build (e.g. CI) — render on-demand instead.
+    return []
+  }
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
