@@ -143,3 +143,39 @@ export async function fetchCurrentStore(org?: string | null): Promise<CurrentSto
     return null
   }
 }
+
+// ── Models (the Hanzo catalog: our "products" are the models) ─────────────────
+// GET /v1/models (OpenAI-compatible) — org-scoped by the bearer/X-Org-Id — returns
+// every model with INLINE per-model pricing { input, output } in $ / 1M tokens.
+export interface ModelPricing {
+  input?: number
+  output?: number
+}
+export interface HanzoModel {
+  id: string
+  object?: string
+  created?: number
+  owned_by?: string
+  provider?: string
+  premium?: boolean
+  pricing?: ModelPricing
+}
+
+export async function fetchModels(org?: string | null): Promise<HanzoModel[]> {
+  try {
+    const res = await fetch(`${API_BASE}/v1/models`, { headers: headers(org) })
+    if (!res.ok) return []
+    const body = await res.json()
+    // OpenAI-style: `data` is the array; `models` may be a non-array alias — pick the array.
+    const arr = Array.isArray(body?.data)
+      ? body.data
+      : Array.isArray(body?.models)
+        ? body.models
+        : Array.isArray(body)
+          ? body
+          : []
+    return arr as HanzoModel[]
+  } catch {
+    return []
+  }
+}
