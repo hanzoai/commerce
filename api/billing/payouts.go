@@ -78,7 +78,12 @@ func GetPayout(c *zip.Ctx) error {
 //
 //	GET /v1/billing/payouts
 func ListPayouts(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146 class: never panic on a missing org (co-resident embed path — see ListInvoices).
+	// No org ⇒ honest empty list.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, []map[string]interface{}{})
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
