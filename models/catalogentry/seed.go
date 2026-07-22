@@ -4,6 +4,7 @@ import (
 	_ "embed"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
 )
 
@@ -16,6 +17,25 @@ import (
 //
 //go:embed seed/hanzo-catalog.json
 var hanzoCatalogSeed []byte
+
+// infraTiersSeed is the initial infra-tier catalog: the cloud VM plans, GPU
+// tiers, and managed-datastore tiers, categories "cloud" / "gpu" / "datastore".
+// It is a VERBATIM snapshot of the pricing source of truth
+// (hanzoai/pricing src/models.mjs cloudPlans + gpuTiers, and datastore.json) —
+// commerce is the CMS source-of-truth these tiers are read from; the pricing
+// service reads them back via GET /v1/commerce/catalog?brand=infra. The
+// structured per-tier spec rides Metadata (the JSON hatch), the monthly (cloud/
+// datastore) or hourly (gpu) display price rides PriceCents. Re-baseline by
+// re-running the pricing→commerce generator against the pricing source.
+//
+//go:embed seed/infra-tiers.json
+var infraTiersSeed []byte
+
+// infraCategories is the exact set of infra-tier categories. It is BOTH the
+// "infra" brand's category scope (see brandCategories in projection.go, which
+// surfaces these — and only these — under GET /v1/commerce/catalog?brand=infra)
+// and the seed gate. One definition, one way.
+var infraCategories = []string{"cloud", "gpu", "datastore"}
 
 // SeedRow is the @hanzo/products snapshot shape (the exact CatalogEntry
 // contract). `id` == `slug`; `pricingId` may be JSON null (→ "").
@@ -120,4 +140,88 @@ func Seed(db *datastore.Datastore) (created int, err error) {
 		created++
 	}
 	return created, nil
+}
+
+// InfraSeedRow is one infra-tier seed record: a catalog-entry addressed by a
+// globally-unique slug, carrying its display price (PriceCents) and the full
+// structured spec in the Metadata JSON hatch (vcpus/memoryGB/… for cloud,
+// gpu/vram/price for gpu, replicas/ramGiB/…/usage for datastore). It is a
+// deliberately SMALLER shape than SeedRow — infra tiers are pricing rows, not
+// console modules, so they carry no iconKey/brandColor/route/apiPath.
+type InfraSeedRow struct {
+	Slug        string                 `json:"slug"`
+	Name        string                 `json:"name"`
+	Category    string                 `json:"category"`
+	Description string                 `json:"description"`
+	PriceCents  currency.Cents         `json:"priceCents"`
+	Currency    currency.Type          `json:"currency"`
+	Order       int                    `json:"order"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// InfraSeedRows returns the parsed embedded infra-tier snapshot.
+func InfraSeedRows() ([]InfraSeedRow, error) {
+	var rows []InfraSeedRow
+	if err := json.DecodeBytes(infraTiersSeed, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// SeedInfra loads the embedded infra-tier snapshot into db (which MUST be
+// namespaced to the catalog-owning "system" org). IDEMPOTENT + NON-DESTRUCTIVE,
+// exactly like Seed: an entry whose slug already exists is left UNTOUCHED so CMS
+// edits are never clobbered; only missing slugs are created. Returns the number
+// created.
+func SeedInfra(db *datastore.Datastore) (created int, err error) {
+	rows, err := InfraSeedRows()
+	if err != nil {
+		return 0, err
+	}
+	for _, r := range rows {
+		existing := New(db)
+		ok, qerr := existing.Query().Filter("Slug=", r.Slug).Get()
+		if qerr != nil {
+			return created, qerr
+		}
+		if ok {
+			continue
+		}
+		e := New(db)
+		e.Slug = r.Slug
+		e.Name = r.Name
+		e.Category = r.Category
+		e.Description = r.Description
+		e.PriceCents = r.PriceCents
+		e.Currency = r.Currency
+		e.Metadata = r.Metadata
+		e.Order = r.Order
+		e.Published = true
+		if err := e.Create(); err != nil {
+			return created, err
+		}
+		created++
+	}
+	return created, nil
+}
+
+// SeedInfraIfEmpty seeds the infra tiers only when NONE are present yet — a
+// cheap per-category count gates the full per-row create, so it is safe to call
+// on every bootstrap (mirrors SeedIfEmpty). Once any infra tier exists (seeded
+// or CMS-edited) it never re-runs, so CMS state — including deletions — stays
+// authoritative. The gate is SEPARATE from the whole-catalog SeedIfEmpty gate,
+// so the infra tiers seed independently of the 95-row hanzo product snapshot.
+func SeedInfraIfEmpty(db *datastore.Datastore) (created int, err error) {
+	total := 0
+	for _, cat := range infraCategories {
+		n, cerr := Query(db).Filter("Category=", cat).Count()
+		if cerr != nil {
+			return 0, cerr
+		}
+		total += n
+	}
+	if total > 0 {
+		return 0, nil
+	}
+	return SeedInfra(db)
 }
