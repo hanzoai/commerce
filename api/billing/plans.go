@@ -219,13 +219,21 @@ func withPromo(c *zip.Ctx, plans []staticPlan) []staticPlan {
 //	GET /v1/billing/plans
 //	GET /v1/billing/plans?category=dns
 func ListPlans(c *zip.Ctx) error {
+	// The DB plan authority (admin-editable) is the source of truth; the embed is a
+	// LOUD-failing fallback (planAuthorityRows logs when it fires) so a failed seed
+	// or query serves the known catalog, never a silently blank list.
+	plans, ok := planAuthorityRows(c.Context())
+	if !ok {
+		plans = hanzoPlans
+	}
+
 	category := c.Query("category")
 	if category == "" {
-		return c.JSON(200, withPromo(c, hanzoPlans))
+		return c.JSON(200, withPromo(c, plans))
 	}
 
 	filtered := make([]staticPlan, 0)
-	for _, p := range hanzoPlans {
+	for _, p := range plans {
 		if p.Category == category {
 			filtered = append(filtered, p)
 		}
@@ -238,7 +246,12 @@ func ListPlans(c *zip.Ctx) error {
 //	GET /v1/billing/plans/:id
 func GetPlan(c *zip.Ctx) error {
 	id := c.Param("id")
-	for _, p := range hanzoPlans {
+	// DB authority first; embed is the loud-failing fallback (see ListPlans).
+	plans, ok := planAuthorityRows(c.Context())
+	if !ok {
+		plans = hanzoPlans
+	}
+	for _, p := range plans {
 		if p.Slug == id {
 			return c.JSON(200, withPromo(c, []staticPlan{p})[0])
 		}
