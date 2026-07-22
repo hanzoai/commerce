@@ -27,6 +27,15 @@ var brandCategories = map[string][]string{
 	"lux":   {"Web3", "Network", "Security", "Dev"},
 	"zoo":   {"Web3", "Network", "Security", "Dev"},
 	"pars":  {"Web3", "Network", "Security", "Dev"},
+
+	// "infra" is a brand-neutral SCOPE, not a customer brand: it surfaces the
+	// cloud/gpu/datastore pricing tiers (categories in infraCategories) and
+	// NOTHING else. These are platform infrastructure the pricing service reads
+	// via GET /v1/commerce/catalog?brand=infra; they are deliberately kept OUT
+	// of every per-brand console/docs catalog (hanzo/lux/zoo/pars) — their
+	// category sets exclude cloud/gpu/datastore — so a pricing tier never leaks
+	// into a product sidebar. infraCategories is defined once (seed.go).
+	"infra": infraCategories,
 }
 
 // Category is one taxonomy entry in the projection.
@@ -72,6 +81,14 @@ type Item struct {
 	// deliberately absent here — they ride only the owner=="admin" admin
 	// projection (AdminItem), never this public projection.
 	Pricing *Pricing `json:"pricing,omitempty"`
+
+	// Metadata is the structured-spec JSON hatch (the entry's Metadata map),
+	// projected verbatim. Empty for console products (omitted); for the infra
+	// tiers it carries the machine-readable spec (vcpus/memoryGB/… for cloud,
+	// gpu/vram/price for gpu, replicas/ramGiB/…/usage for datastore) that the
+	// pricing service maps back into its cloudPlans/gpuTiers/datastore shapes.
+	// It is public presentation/pricing data only — never cost or margin.
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // Catalog is the full PUBLIC projection returned by GET /v1/commerce/catalog.
@@ -169,7 +186,8 @@ func item(e *CatalogEntry) Item {
 		Order:       e.Order,
 		ProductId:   e.ProductId,
 		// Public pricing block only — Private (cost/margin) is never projected here.
-		Pricing: e.Pricing,
+		Pricing:  e.Pricing,
+		Metadata: e.Metadata,
 	}
 }
 
