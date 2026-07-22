@@ -20,9 +20,9 @@ import (
 )
 
 type createSubscriptionRequest struct {
-	UserId               string                 `json:"userId"`
-	PlanId               string                 `json:"planId"`
-	DefaultPaymentMethod string                 `json:"defaultPaymentMethod"`
+	UserId               string `json:"userId"`
+	PlanId               string `json:"planId"`
+	DefaultPaymentMethod string `json:"defaultPaymentMethod"`
 	// Quantity is the billable seat count for per-seat plans (catalog
 	// price_ref.recurring.per_seat); defaults to 1 and must meet the catalog's
 	// limits.minSeats. Ignored as a multiplier on flat plans.
@@ -334,7 +334,12 @@ func hasMemberSub(db *datastore.Datastore, planSlug, member string) bool {
 //
 //	GET /v1/billing/subscriptions?userId=...
 func ListBillingSubscriptions(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146 class: never panic on a missing org (co-resident embed path — see ListInvoices).
+	// No org ⇒ honest empty.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return c.JSON(200, map[string]any{"subscriptions": []map[string]any{}, "count": 0})
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	rootKey := db.NewKey("synckey", "", 1, nil)
