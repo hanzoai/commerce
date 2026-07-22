@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 type ErrorDisplayer func(c *zip.Ctx, message string, err error)
@@ -70,16 +72,12 @@ func ErrorHTMLDev(c *zip.Ctx, stack string, err error) {
 	log.Error(stack)
 }
 
-// Recovers panics. A panic is unhandled by definition, so 500 is the honest
-// status and the stack is all we know.
-//
-// A returned error is NOT a panic: the handler chose it and encoded what it
-// means, e.g. zip.ErrForbidden -> 403. Rendering that here would discard the
-// status (there is no status to read off a bare `error`) and flatten every
-// refusal into a 500. So returned errors pass through to zip's handler, which
-// reads *zip.HTTPError and honors it. One error path, one envelope.
+// Handle errors with appropriate ErrorDisplayer. Recovers panics and renders
+// any error a downstream handler returns — the commerce envelope, not zip's
+// default {error,code,status}. Returning nil after rendering ends the request.
 func errorHandler(displayError ErrorDisplayer) zip.Handler {
 	return func(c *zip.Ctx) (result error) {
+		// On panic
 		defer func() {
 			if r := recover(); r != nil {
 				errstr := fmt.Sprint(r)
@@ -92,7 +90,23 @@ func errorHandler(displayError ErrorDisplayer) zip.Handler {
 			}
 		}()
 
-		return c.Next()
+		// A downstream handler returned an error — the c.Fail analog. The error's
+		// KIND decides the status: a typed *zip.HTTPError carries its status as a
+		// VALUE (ErrForbidden→403, ErrUnauthorized→401, ErrNotFound→404,
+		// Errorf(status,…)), so it renders with THAT status through the canonical
+		// envelope. The status is derived here, in this ONE place, never re-guessed
+		// per handler. Anything else — a plain error or a typed 500 — is a genuine
+		// internal fault and falls through to the generic 500 renderer, which hides
+		// internals rather than leaking a real cause to the client.
+		if err := c.Next(); err != nil {
+			var he *zip.HTTPError
+			if errors.As(err, &he) && he.Status != 0 && he.Status != 500 {
+				return http.Fail(c, he.Status, he.Msg, he)
+			}
+			displayError(c, err.Error(), err)
+			return nil
+		}
+		return nil
 	}
 }
 
