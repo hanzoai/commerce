@@ -18,6 +18,7 @@ type Props = {
 export const PRODUCT_LIMIT = 12
 
 export async function generateStaticParams() {
+  try {
   const { collections } = await listCollections({
     fields: "*products",
   })
@@ -48,6 +49,11 @@ export async function generateStaticParams() {
     .flat()
 
   return staticParams
+  } catch {
+    // Catalog API unreachable at build (e.g. CI/Docker has no network to
+    // api.commerce.hanzo.ai) — skip pre-render; these render on-demand instead.
+    return []
+  }
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
