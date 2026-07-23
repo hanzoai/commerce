@@ -69,7 +69,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.49.7"
+	Version   = "1.49.11"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -847,6 +847,17 @@ func (app *App) Bootstrap() error {
 		app.runInfraCatalogSeed()
 	}
 
+	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
+	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
+	// read) to the embedded @hanzo/plans catalog on EVERY boot. Creates missing
+	// plans and force-corrects any unmanaged partial row (a subscription-flow path
+	// wrote it) while leaving admin edits authoritative. Seed values EQUAL the
+	// embed, so it changes NO charge — it makes prices editable + repairs bad rows.
+	// COMMERCE_PLANS_SEED=false to skip.
+	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
+		app.runPlansSeed()
+	}
+
 	// Anti-spoofing boundary — MUST be installed before any route group so it
 	// wraps EVERY route. zip applies Use() middleware only to routes
 	// registered AFTER the Use() call, so this runs ahead of setupRoutes (and
@@ -910,6 +921,24 @@ func (app *App) runInfraCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("infra catalog seeded", "tiers", created)
+	}
+}
+
+// runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
+// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot — the SAME
+// embed SyncStripe/StaticPlans read. Cheap (one point query per plan; writes only
+// to create missing rows or force-correct an unmanaged partial). Failures are
+// logged, never fatal — GET /v1/billing/plans and resolveSubscriptionPlan fall
+// back to the embed. Seed values equal the embed, so this changes NO charge; it
+// makes pricing admin-editable and repairs bad rows.
+func (app *App) runPlansSeed() {
+	created, corrected, err := billingPkg.SeedPlans(context.Background())
+	if err != nil {
+		slog.Error("plan authority seed failed", "err", err)
+		return
+	}
+	if created > 0 || corrected > 0 {
+		slog.Info("plan authority seeded", "created", created, "corrected", corrected)
 	}
 }
 

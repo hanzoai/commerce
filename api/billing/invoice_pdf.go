@@ -25,7 +25,12 @@ import (
 // the user group so a normal authenticated org member can download their own
 // invoice.
 func DownloadInvoicePDF(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146 class: never panic on a missing org (co-resident embed path — see ListInvoices).
+	// No validated org ⇒ a clean 401 (no namespace to resolve the invoice in), never a panic.
+	org, ok := middleware.GetOrganizationOK(c)
+	if !ok || org == nil {
+		return http.Fail(c, 401, "authentication required", nil)
+	}
 	db := datastore.New(org.Namespaced(c.Context()))
 
 	id := c.Param("id")
