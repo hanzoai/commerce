@@ -67,6 +67,16 @@ func (a *DatastoreAdapter) Put(ctx context.Context, k orm.Key, src interface{}) 
 	return dsKeyToOrm(resultKey), nil
 }
 
+// CreateIfAbsent is required by orm.DB. The interface promises first-writer-wins
+// via a single atomic conditional insert with no TOCTOU window. The legacy
+// datastore is a single-writer store with no atomic conditional-insert
+// primitive, so that contract cannot be honored here; callers that need
+// create-if-absent CAS use commerce/store (base-backed, SQLite/Postgres-aware),
+// consistent with GetForUpdate above.
+func (a *DatastoreAdapter) CreateIfAbsent(_ context.Context, _ orm.Key, _ interface{}) (bool, error) {
+	return false, errors.New("commerce: CreateIfAbsent is not supported on the legacy datastore adapter — use commerce/store for atomic conditional insert")
+}
+
 func (a *DatastoreAdapter) Delete(ctx context.Context, k orm.Key) error {
 	dsKey := ormKeyToDS(k)
 	return a.ds.Delete(dsKey)
