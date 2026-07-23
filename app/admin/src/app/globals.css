@@ -4,7 +4,7 @@
 
 /*
  * Hanzo dark token set (shadcn-compatible names).
- * Kept alongside the Medusa-style --bg-base/--fg-base tokens defined in
+ * Kept alongside the base --bg-base/--fg-base tokens defined in
  * @hanzo/commerce-ui-preset so both consumers resolve correctly.
  */
 @layer base {
@@ -23,7 +23,7 @@
     --ring: #94a3b8;
     --destructive: #ef4444;
 
-    /* Map Hanzo palette onto the Medusa-style tokens used by @hanzo/commerce-ui */
+    /* Map Hanzo palette onto the base tokens used by @hanzo/commerce-ui */
     --bg-base: #070b13;
     --bg-component: #0d121d;
     --bg-subtle: #0d121d;
