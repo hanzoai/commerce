@@ -15,4 +15,5 @@ export {
   useVariants,
   useStockLocations,
   useStore,
+  useModels,
 } from './use-resource'
