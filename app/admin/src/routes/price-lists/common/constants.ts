@@ -1,5 +1,5 @@
 /**
- * Re-implementation of enum from `@hanzo/commerce-medusa` as it cannot be imported
+ * Re-implementation of the enum (kept local to avoid a cross-package import)
  */
 export enum PriceListStatus {
   ACTIVE = "active",
@@ -12,7 +12,7 @@ export enum PriceListDateStatus {
 }
 
 /**
- * Re-implementation of enum from `@hanzo/commerce-medusa` as it cannot be imported
+ * Re-implementation of the enum (kept local to avoid a cross-package import)
  */
 export enum PriceListType {
   SALE = "sale",
