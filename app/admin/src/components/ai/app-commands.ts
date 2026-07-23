@@ -12,7 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const SECTIONS = [
-  'overview', 'products', 'orders', 'customers', 'collections', 'inventory', 'billing', 'settings',
+  'overview', 'models', 'products', 'orders', 'customers', 'collections', 'inventory', 'billing', 'settings',
 ] as const
 export type Section = (typeof SECTIONS)[number]
 
