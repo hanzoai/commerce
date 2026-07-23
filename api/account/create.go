@@ -259,10 +259,9 @@ func create(c *zip.Ctx) error {
 		}
 	}
 
-	// Starter credit is not minted here. The onboarding orchestrator grants it via
-	// the mint-gated POST /v1/billing/credit (billing.Credit) on the verified-identity
-	// trial claim, with a per-identity idempotency key against the identity's
-	// canonical org — one trial per verified identity, not per account created.
+	// No signup credit is minted: usage is pre-paid. A new account starts at a zero
+	// balance and the metering gate refuses a metered request until it pre-pays
+	// (POST /v1/billing/deposit / the console top-up), then debits that balance.
 
 	tokStr := ""
 
