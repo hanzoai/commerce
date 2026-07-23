@@ -52,7 +52,7 @@ export async function fetchList<T>(kind: string, params?: ListParams, org?: stri
     const res = await fetch(url.toString(), { headers: headers(org) })
     if (!res.ok) return emptyList<T>(params)
     const body = await res.json()
-    // Tolerate the envelope, a bare array, or a Medusa-style { <kind>s: [] } shape.
+    // Tolerate the envelope, a bare array, or a legacy { <kind>s: [] } shape.
     if (Array.isArray(body)) return { count: body.length, models: body, page: params?.page ?? 1, display: params?.display ?? body.length }
     if (Array.isArray(body?.models)) return body as ListResponse<T>
     return emptyList<T>(params)
@@ -126,7 +126,7 @@ export interface CurrentStore {
   listings?: Record<string, StoreListing>
   createdAt?: string
   updatedAt?: string
-  // Medusa-vestigial display fields some admin views still reference (absent from
+  // Legacy display fields some admin views still reference (absent from
   // the live /v1/store/current response — rendered with `||` fallbacks).
   defaultCurrency?: string
   region?: string
