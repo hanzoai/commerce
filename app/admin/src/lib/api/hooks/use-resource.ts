@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrganizations } from '@hanzo/iam/react'
-import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore } from '../data-provider'
-import type { ListParams, ListResponse, CurrentStore } from '../data-provider'
+import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels } from '../data-provider'
+import type { ListParams, ListResponse, CurrentStore, HanzoModel } from '../data-provider'
 
 /** Every query key is prefixed with the current org so switching orgs gives a clean cache. */
 function orgKey(org: string | null, kind: string, ...rest: unknown[]) {
@@ -79,5 +79,17 @@ export function useStore() {
   return useQuery<CurrentStore | null>({
     queryKey: orgKey(currentOrgId, 'store', 'current'),
     queryFn: () => fetchCurrentStore(currentOrgId),
+  })
+}
+
+/** The org's model catalog (GET /v1/models) with per-model pricing. Org-scoped.
+ *  Cached 5min — the catalog changes rarely, and this dedupes the overview + models
+ *  page reads into one request (avoids the gateway's per-window rate limit). */
+export function useModels() {
+  const { currentOrgId } = useOrganizations()
+  return useQuery<HanzoModel[]>({
+    queryKey: orgKey(currentOrgId, 'models', 'list'),
+    queryFn: () => fetchModels(currentOrgId),
+    staleTime: 5 * 60 * 1000,
   })
 }

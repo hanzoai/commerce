@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button, Heading, Text, Textarea, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
-import { fetchCount, fetchList, fetchCurrentStore } from '@/lib/api/data-provider'
+import { fetchCount, fetchList, fetchCurrentStore, fetchModels } from '@/lib/api/data-provider'
 import type { CurrentStore } from '@/lib/api/data-provider'
 import { requestSearch } from '@/lib/search-bus'
 import {
@@ -63,6 +63,13 @@ export function AiChatDock() {
         router.push(`/${section}`)
       },
       summarize: async (section) => {
+        if (section === 'models') {
+          const models = await fetchModels(currentOrgId)
+          const premium = models.filter((m) => m.premium).length
+          const top = [...models].sort((a, b) => (b.pricing?.input ?? 0) - (a.pricing?.input ?? 0)).slice(0, 3)
+          const list = top.map((m) => `${m.id} ($${(m.pricing?.input ?? 0).toFixed(2)}/$${(m.pricing?.output ?? 0).toFixed(2)} per 1M)`).join(', ')
+          return `${models.length} models (${premium} premium). Highest input price: ${list || '—'}.`
+        }
         if (SECTION_TO_KIND[section]) {
           const kind = SECTION_TO_KIND[section]
           const res = await fetchList<{ name?: string; email?: string; id: string }>(kind, { display: 5 }, currentOrgId)

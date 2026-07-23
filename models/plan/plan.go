@@ -1,16 +1,50 @@
 package plan
 
 import (
+	"context"
+	"sync"
+
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/models/types/refs"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/val"
 	"github.com/hanzoai/orm"
 
 	. "github.com/hanzoai/commerce/types"
 )
+
+// seedMu serializes concurrent Seed calls IN-PROCESS so the per-slug
+// check-then-create is atomic (Red F3: RunInTransaction is a no-op, plan rows are
+// hashid-keyed so two racing creates can't ON-CONFLICT-collapse). Commerce's data
+// PVC is ReadWriteOnce (single writer) and the boot seed runs BEFORE the HTTP
+// server accepts requests, so there is no cross-process concurrent writer; this
+// mutex closes the only real window — two concurrent in-process callers (e.g. the
+// admin POST /plans/seed racing itself). Keeping plan hashid-keyed (not
+// WithStringKey) avoids changing sub.PlanId across the money path.
+var seedMu sync.Mutex
+
+// Namespace is the platform-global namespace the plan authority lives in — the
+// SAME "system" namespace the product catalog uses. Subscription and DNS plan
+// pricing is platform-wide and governed centrally by admin.hanzo.ai, NOT per
+// tenant, so every authoritative touch of a plan (the boot seed, the SuperAdmin
+// CRUD, GET /v1/billing/plans, and resolveSubscriptionPlan → the internal-ledger
+// charge) resolves HERE. Kept identical to catalog's "system" so one platform
+// namespace holds all cross-tenant CMS/pricing data.
+const Namespace = "system"
+
+// AuthorityDB returns a datastore scoped (via context — the only namespacing the
+// SQL layer honors) to the platform plan-authority namespace. Pass the request
+// context so tracing/deadlines flow through; a nil context degrades to
+// Background (bootstrap/CLI callers).
+func AuthorityDB(ctx context.Context) *datastore.Datastore {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return datastore.New(nscontext.WithNamespace(ctx, Namespace))
+}
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
@@ -45,7 +79,16 @@ type Plan struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 
-	Price           currency.Cents `json:"price"`
+	// Category is the plan family ("personal"/"team"/"enterprise"/"world"/
+	// "social"/"dns"); GET /v1/billing/plans?category= filters on it.
+	Category string `json:"category"`
+
+	Price currency.Cents `json:"price"`
+	// PriceAnnual is the per-month price when billed annually, in cents — the
+	// authoritative annual price (previously derived at the read edge from the
+	// embed). Like Price it is a TYPED money field, never an untyped Metadata
+	// value, so a stored/spoofed plan copy can never inflate it.
+	PriceAnnual     currency.Cents `json:"priceAnnual"`
 	Currency        currency.Type  `json:"currency"`
 	Interval        Interval       `json:"interval"`
 	IntervalCount   int            `json:"intervalCount"`
@@ -55,8 +98,32 @@ type Plan struct {
 	// invoices charge Price × subscription quantity, floored at 1.
 	PerSeat bool `json:"perSeat"`
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:"-"`
+	// ContactSales marks a custom / "contact sales" plan whose price is NULL, not
+	// $0 — the ONE way to preserve the free($0)-vs-custom(null) distinction while
+	// keeping Price a typed, non-nullable Cents (mirrors the embed's staticPlan).
+	// A null-priced plan is stored Price=0 + ContactSales=true; a free plan is
+	// Price=0 + ContactSales=false. Never coerce null→0 WITHOUT this flag, or a
+	// custom plan spuriously reads as a $0 charge.
+	ContactSales bool `json:"contactSales,omitempty"`
+	// Popular flags the highlighted tier within a category (display only).
+	Popular bool `json:"popular,omitempty"`
+
+	// Managed marks a row OWNED by the seed or the SuperAdmin CRUD (authoritative).
+	// The corrective boot seed force-corrects UNMANAGED rows — accidental partials
+	// written by a subscription-flow path (Red: the bundle expansion wrote a
+	// Price=0, envelope-less row that under-charged a direct sub) — to the embed,
+	// and LEAVES managed rows so an admin price edit is preserved. One flag
+	// distinguishes "authoritative" from "accidental", closing the divergence.
+	Managed bool `json:"managed,omitempty"`
+
+	// Metadata is the display envelope (features/limits/bundles/includedIn) — the
+	// typed money fields above are authoritative, this is presentation. Metadata_
+	// MUST be datastore:",noindex" (persisted), NOT "-" (skipped): with "-" the
+	// whole envelope Save()s but never round-trips, so a DB read drops
+	// limits/minSeats/features (prod: team.minSeats served null). Mirrors
+	// catalogentry exactly — the persisted-blob pattern is the one way.
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Ref refs.EcommerceRef `json:"ref,omitempty"`
 }
@@ -99,4 +166,78 @@ func New(db *datastore.Datastore) *Plan {
 
 func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("plan")
+}
+
+// Seed reconciles the plan authority to the given embed rows. It is safe to run
+// on EVERY boot (cheap: one point query per row; writes only when needed) and is
+// the ONE seeder — the count-gated variant is gone, because a count gate makes a
+// fixed re-seed a no-op that keeps serving bad rows.
+//
+// Per embed row:
+//   - MISSING          → create it, Managed=true.
+//   - present, UNMANAGED → FORCE-CORRECT its typed money fields + envelope to the
+//     embed and mark Managed=true. An unmanaged row was written by a
+//     subscription-flow path (bundle expansion / lazy resolve) and may be partial
+//     or wrong (Red: bundle wrote Price=0) — this is the corrective repair.
+//   - present, MANAGED  → LEAVE. Seed/admin already own it, so an admin price edit
+//     is preserved (the whole point of the editable authority).
+//
+// Idempotent: after the first corrective pass every row is Managed, so later runs
+// write nothing. seedMu makes the per-slug check-then-write atomic in-process.
+// Returns (created, corrected).
+func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err error) {
+	seedMu.Lock()
+	defer seedMu.Unlock()
+	for _, r := range rows {
+		if r == nil || r.Slug == "" {
+			continue
+		}
+		existing := New(db)
+		ok, qerr := existing.Query().Filter("Slug=", r.Slug).Get()
+		if qerr != nil {
+			return created, corrected, qerr
+		}
+		if ok {
+			if existing.Managed {
+				continue
+			}
+			copyInto(existing, r)
+			existing.Managed = true
+			if uerr := existing.Update(); uerr != nil {
+				return created, corrected, uerr
+			}
+			corrected++
+			continue
+		}
+		e := New(db)
+		copyInto(e, r)
+		e.Managed = true
+		if cerr := e.Create(); cerr != nil {
+			return created, corrected, cerr
+		}
+		created++
+	}
+	return created, corrected, nil
+}
+
+// copyInto copies the seed fields from src onto the fresh, db-bound dst so the
+// created row keeps dst's datastore binding while taking src's values. The
+// authoritative money fields are the typed columns (Price/PriceAnnual/…); the
+// rich display envelope rides Metadata.
+func copyInto(dst, src *Plan) {
+	dst.Slug = src.Slug
+	dst.SKU = src.SKU
+	dst.Name = src.Name
+	dst.Description = src.Description
+	dst.Category = src.Category
+	dst.Price = src.Price
+	dst.PriceAnnual = src.PriceAnnual
+	dst.Currency = src.Currency
+	dst.Interval = src.Interval
+	dst.IntervalCount = src.IntervalCount
+	dst.TrialPeriodDays = src.TrialPeriodDays
+	dst.PerSeat = src.PerSeat
+	dst.ContactSales = src.ContactSales
+	dst.Popular = src.Popular
+	dst.Metadata = src.Metadata
 }
