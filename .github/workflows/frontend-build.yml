@@ -7,7 +7,8 @@ on:
       - 'app/**'
       - 'Dockerfile.site'
       - 'Dockerfile.store'
-      - 'Dockerfile.admin'
+      - 'Dockerfile.commerce-admin'
+      - '.github/workflows/frontend-build.yml'
   pull_request:
     branches: [main]
     paths:
