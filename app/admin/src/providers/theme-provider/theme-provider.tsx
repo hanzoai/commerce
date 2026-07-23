@@ -1,7 +1,7 @@
 import { PropsWithChildren, useEffect, useState } from "react"
 import { ThemeContext, ThemeOption, ThemeValue } from "./theme-context"
 
-const THEME_KEY = "medusa_admin_theme"
+const THEME_KEY = "hanzo_commerce_theme"
 
 function getDefaultValue(): ThemeOption {
   const persisted = localStorage?.getItem(THEME_KEY) as ThemeOption
