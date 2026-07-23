@@ -259,9 +259,10 @@ func create(c *zip.Ctx) error {
 		}
 	}
 
-	// Starter credit is granted by Commerce when a payment method is added
-	// (see api/billing/payment_methods.go:grantStarterCreditIfEligible),
-	// not at signup. This prevents abuse from mass-created accounts.
+	// Starter credit is not minted here. The onboarding orchestrator grants it via
+	// the mint-gated POST /v1/billing/credit (billing.Credit) on the verified-identity
+	// trial claim, with a per-identity idempotency key against the identity's
+	// canonical org — one trial per verified identity, not per account created.
 
 	tokStr := ""
 
