@@ -19,7 +19,10 @@ import (
 //
 //	GET /v1/billing/payment-config
 func GetPaymentConfig(c *zip.Ctx) error {
-	org := middleware.GetOrganization(c)
+	// #146 class: resolve the org nil-safely. On the co-resident embed path there may be
+	// no "organization" local; SquarePublicConfig handles a nil org (env-fallback public
+	// config), so a missing org yields the honest public config — never a nil-deref panic (502).
+	org, _ := middleware.GetOrganizationOK(c)
 
 	// NOTE: do NOT KMS-hydrate here. payment-config is called on dialog-open and
 	// gates the card field mount, so it must be fast; a KMS round-trip can hang

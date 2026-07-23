@@ -7,7 +7,8 @@ on:
       - 'app/**'
       - 'Dockerfile.site'
       - 'Dockerfile.store'
-      - 'Dockerfile.admin'
+      - 'Dockerfile.commerce-admin'
+      - '.github/workflows/frontend-build.yml'
   pull_request:
     branches: [main]
     paths:
@@ -104,10 +105,15 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.admin
+          # From-source static build (output:'export' → out/ served via hanzoai/static).
+          # Dockerfile.admin was a stale workaround that re-served commerce-admin:0.0.1
+          # (assumed a broken from-source build + output:'standalone'); the workspace
+          # chain is repaired and `next build` is green, so build the REAL current code.
+          file: Dockerfile.commerce-admin
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             ghcr.io/hanzoai/commerce-admin:latest
+            ghcr.io/hanzoai/commerce-admin:sha-${{ github.sha }}
             ghcr.io/hanzoai/commerce-admin:${{ github.sha }}
           cache-from: type=gha,scope=admin
           cache-to: type=gha,scope=admin,mode=max

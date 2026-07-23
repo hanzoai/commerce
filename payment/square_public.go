@@ -29,6 +29,12 @@ type SquarePublic struct {
 // (/v1/commerce/tenant) call it, so a card form and its charge can never drift
 // onto different Square applications.
 func SquarePublicConfig(org *organization.Organization) SquarePublic {
+	// A nil org (an unauthenticated / no-org caller on the co-resident billing path) means
+	// "no per-org Square creds" — resolve from the env fallback below rather than nil-deref.
+	// A zero Organization is env-fallback-safe (TestMode reads env/!Live; Square is a value).
+	if org == nil {
+		org = &organization.Organization{}
+	}
 	useSandbox := org.TestMode()
 	env := org.SquareEnvironment()
 
