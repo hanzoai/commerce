@@ -1,7 +1,8 @@
 'use client'
 
 import { createColumnHelper } from '@tanstack/react-table'
-import { Badge } from '@hanzo/commerce-ui'
+import { useRouter } from 'next/navigation'
+import { Badge, Button } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
 
 interface Order {
@@ -73,6 +74,7 @@ const columns = [
 ]
 
 export default function OrdersPage() {
+  const router = useRouter()
   return (
     <DataTableShell<Order>
       kind="order"
@@ -80,6 +82,11 @@ export default function OrdersPage() {
       description="View and manage customer orders"
       columns={columns}
       detailPath="/orders"
+      actions={
+        <Button size="small" onClick={() => router.push('/orders/create')}>
+          Create order
+        </Button>
+      }
     />
   )
 }
