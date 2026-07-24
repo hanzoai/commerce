@@ -177,6 +177,13 @@ var kinds = map[string]int{
 	// of ONE org→treasury settlement window (metered usage swept back on chain).
 	"husd-cursor":     282,
 	"husd-settlement": 283,
+
+	// commerce-invite: a platform-minted invite code that grants ONE org
+	// subscription-free access to the commerce admin (the paywall's third allow
+	// path, alongside an active/trialing subscription and live trial credit). A
+	// global (system-namespace) directory keyed by code; first-touch redeem binds
+	// the code to the redeeming org, idempotently.
+	"commerce-invite": 284,
 }
 
 var kindsReversed = make(map[int]string)

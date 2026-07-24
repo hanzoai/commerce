@@ -36,13 +36,19 @@ export function Access({ children }: { children: React.ReactNode }) {
 
   if (pathname.startsWith('/billing')) return children
 
-  if (storeLoading || access === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-ui-bg-base">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-ui-fg-base border-t-transparent" />
-      </div>
-    )
-  }
+  const spinner = (
+    <div className="flex min-h-screen items-center justify-center bg-ui-bg-base">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-ui-fg-base border-t-transparent" />
+    </div>
+  )
+
+  if (storeLoading) return spinner
+
+  // A storeless org (brand-new / onboarding) has no access gate to satisfy —
+  // fall through to children so the onboarding nudge renders instead of spinning.
+  if (!store?.id) return children
+
+  if (access === undefined) return spinner
 
   if (access?.allowed) return children
 

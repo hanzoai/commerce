@@ -1,11 +1,13 @@
 'use client'
 
-import { Heading, Text, Container, Badge } from '@hanzo/commerce-ui'
+import { Heading, Text, Container, Badge, Button } from '@hanzo/commerce-ui'
 import Link from 'next/link'
+import { useOrganizations } from '@hanzo/iam/react'
 import { useCount, useStore, useModels, useIntegrations } from '@/lib/api/hooks'
 import type { CurrentStore, StoreListing } from '@/lib/api/data-provider'
 import { StatCard } from '@/components/common/stat-card'
 import { PageHeader } from '@/components/common/page-header'
+import { OnboardingNudge } from '@/components/onboarding/nudge-banner'
 
 export default function DashboardPage() {
   const { data: models, isLoading: loadingModels } = useModels()
@@ -15,11 +17,28 @@ export default function DashboardPage() {
   const { data: collectionCount, isLoading: loadingCollections } = useCount('collection')
   const { data: store } = useStore()
   const { data: integrations = [] } = useIntegrations()
+  const { currentOrg } = useOrganizations()
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="Overview of your commerce operations" />
+      <PageHeader
+        title="Dashboard"
+        description={currentOrg?.displayName || currentOrg?.name
+          ? `${currentOrg.displayName || currentOrg.name} · overview of your commerce operations`
+          : 'Overview of your commerce operations'}
+        actions={
+          <>
+            <Link href="/products/create">
+              <Button size="small" variant="secondary">New product</Button>
+            </Link>
+            <Link href="/orders/create">
+              <Button size="small" variant="primary">New order</Button>
+            </Link>
+          </>
+        }
+      />
       <div className="p-8">
+        <OnboardingNudge />
         <Setup
           store={store}
           products={productCount ?? 0}
@@ -30,6 +49,7 @@ export default function DashboardPage() {
             label="Models"
             value={models?.length ?? 0}
             loading={loadingModels}
+            href="/models"
             icon={
               <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
@@ -40,6 +60,7 @@ export default function DashboardPage() {
             label="Products"
             value={productCount ?? 0}
             loading={loadingProducts}
+            href="/products"
             icon={
               <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
@@ -50,6 +71,7 @@ export default function DashboardPage() {
             label="Orders"
             value={orderCount ?? 0}
             loading={loadingOrders}
+            href="/orders"
             icon={
               <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
@@ -60,6 +82,7 @@ export default function DashboardPage() {
             label="Customers"
             value={customerCount ?? 0}
             loading={loadingCustomers}
+            href="/customers"
             icon={
               <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
@@ -70,6 +93,7 @@ export default function DashboardPage() {
             label="Collections"
             value={collectionCount ?? 0}
             loading={loadingCollections}
+            href="/collections"
             icon={
               <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
@@ -79,6 +103,8 @@ export default function DashboardPage() {
           />
         </div>
 
+        <ManageLinks />
+
         <StoreOverview />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -86,6 +112,30 @@ export default function DashboardPage() {
           <TopProducts />
         </div>
       </div>
+    </div>
+  )
+}
+
+const MANAGE_LINKS = [
+  { label: 'Discounts', description: 'Promotions & codes', href: '/discounts' },
+  { label: 'Gift cards', description: 'Prepaid balances', href: '/gift-cards' },
+  { label: 'Integrations', description: 'Payments & apps', href: '/integrations' },
+  { label: 'Inventory', description: 'Stock locations', href: '/inventory' },
+]
+
+function ManageLinks() {
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {MANAGE_LINKS.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="rounded-lg border border-ui-border-base bg-ui-bg-base p-4 transition-colors hover:border-ui-border-strong hover:bg-ui-bg-component"
+        >
+          <Text size="small" weight="plus" className="text-ui-fg-base">{link.label}</Text>
+          <Text size="xsmall" className="mt-0.5 text-ui-fg-muted">{link.description}</Text>
+        </Link>
+      ))}
     </div>
   )
 }
@@ -168,14 +218,21 @@ function StoreOverview() {
     <Container className="mb-6 p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <Heading level="h3">{store.name}</Heading>
+          <Link href="/settings" className="hover:text-ui-fg-interactive">
+            <Heading level="h3">{store.name}</Heading>
+          </Link>
           <Text size="small" className="text-ui-fg-muted">
             {store.domain ?? store.slug}
             {store.currency ? ` · ${store.currency.toUpperCase()}` : ''}
             {` · ${listings.length} listing${listings.length === 1 ? '' : 's'}`}
           </Text>
         </div>
-        <Badge color="green">Live</Badge>
+        <div className="flex items-center gap-2">
+          <Badge color="green">Live</Badge>
+          <Link href="/settings">
+            <Button size="small" variant="secondary">Manage store</Button>
+          </Link>
+        </div>
       </div>
 
       {listings.length === 0 ? (
@@ -218,7 +275,12 @@ function RecentOrders() {
   const { data, isLoading } = useCount('order')
   return (
     <Container className="p-6">
-      <Heading level="h3">Recent Orders</Heading>
+      <div className="flex items-center justify-between">
+        <Heading level="h3">Recent Orders</Heading>
+        <Link href="/orders" className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
+          <Text size="small">View all</Text>
+        </Link>
+      </div>
       {isLoading ? (
         <div className="mt-4 space-y-3">
           {[...Array(3)].map((_, i) => (
@@ -240,7 +302,12 @@ function TopProducts() {
   const { data, isLoading } = useCount('product')
   return (
     <Container className="p-6">
-      <Heading level="h3">Top Products</Heading>
+      <div className="flex items-center justify-between">
+        <Heading level="h3">Top Products</Heading>
+        <Link href="/products" className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
+          <Text size="small">View all</Text>
+        </Link>
+      </div>
       {isLoading ? (
         <div className="mt-4 space-y-3">
           {[...Array(3)].map((_, i) => (
