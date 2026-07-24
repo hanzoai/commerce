@@ -1,3 +1,5 @@
+import { HanzoMark } from '@/components/hanzo-mark'
+
 export function PublicFooter() {
   return (
     <footer className="border-t border-white/[0.06] px-6 py-12">
@@ -5,9 +7,7 @@ export function PublicFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="mb-4 flex items-center gap-2">
-              <svg viewBox="0 0 24 24" className="h-7 w-7 text-white" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 2 H7 V10 H17 V2 H21 V22 H17 V14 H7 V22 H3 Z" fill="currentColor"/>
-              </svg>
+              <HanzoMark className="h-7 w-7 text-white" />
               <span className="font-semibold text-white">Hanzo Commerce</span>
             </div>
             <p className="text-sm text-gray-500">AI-powered commerce infrastructure for modern businesses.</p>
