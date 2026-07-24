@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Button, Heading, Input, Text, Container } from '@hanzo/commerce-ui'
+import { Button, Heading, Input, Text, Container, toast } from '@hanzo/commerce-ui'
 import { useStore, useUpdate } from '@/lib/api/hooks'
 import type { CurrentStore } from '@/lib/api/data-provider'
 import { PageHeader } from '@/components/common/page-header'
+import { ToasterMount } from '@/components/common/toaster-mount'
+import { errorMessage } from '@/lib/forms/schema'
 
 export default function SettingsPage() {
   const { data: store, isLoading } = useStore()
@@ -21,14 +23,20 @@ export default function SettingsPage() {
   const save = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!store) return
-    await update.mutateAsync({
-      id: store.id,
-      data: { name: name.trim(), currency: currency.trim().toLowerCase() },
-    })
+    try {
+      await update.mutateAsync({
+        id: store.id,
+        data: { name: name.trim(), currency: currency.trim().toLowerCase() },
+      })
+      toast.success('Store settings saved')
+    } catch (e) {
+      toast.error(errorMessage(e, 'Could not save store settings'))
+    }
   }
 
   return (
     <div>
+      <ToasterMount />
       <PageHeader title="Settings" description="Store configuration and preferences" />
       <div className="p-8">
         <Container className="p-6">

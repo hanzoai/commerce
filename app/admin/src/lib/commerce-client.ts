@@ -55,6 +55,24 @@ export interface StoreAccess {
   status: 'active' | 'trial' | 'payment_required' | 'store_required' | 'unavailable'
 }
 
+export interface Subscription {
+  status?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'unpaid' | string
+  planSlug?: string
+  trialEndsAt?: string
+  currentPeriodEnd?: string
+  [k: string]: unknown
+}
+
+export interface SubscribeCardInput {
+  planSlug: string
+  sourceId: string
+  currency: string
+  // Collected by the paywall for display/validation only. The backend
+  // subscribeCardRequest does not persist them, so they never hit the wire.
+  legalName?: string
+  billingEmail?: string
+}
+
 export class Commerce {
   private token?: string | null
   private org?: string | null
@@ -147,6 +165,43 @@ export class Commerce {
       storeId,
       planId,
     }, { 'X-Idempotency-Key': idempotencyKey })
+  }
+
+  // ── Account paywall (Medusa-Cloud-style /subscribe) ────────────────────────
+  // The account-level subscription (not the per-store one `subscribe()` mints):
+  // tokenized Square card → the pro plan. The backend subscribeCardRequest reads
+  // { sourceId, planId, currency } — the selected plan SLUG is a valid planId
+  // (resolveSubscriptionPlan matches it against the plan catalog) — so map the
+  // client input to that contract here. legalName/billingEmail are paywall-only
+  // (not persisted server-side) and never hit the wire.
+  //
+  // Pass a STABLE idempotencyKey per checkout attempt so a double-submit replays
+  // the first charge instead of vaulting a second card / minting a second sub.
+  async subscribeCard(input: SubscribeCardInput, idempotencyKey = crypto.randomUUID()) {
+    return this.post<{ subscriptionId: string; status: string }>(
+      '/v1/billing/subscribe/card',
+      { sourceId: input.sourceId, planId: input.planSlug, currency: input.currency },
+      { 'X-Idempotency-Key': idempotencyKey },
+    )
+  }
+
+  // The current account subscription — the paywall reads it to surface a
+  // trialing / active state. Degrades to null so the paywall renders clean.
+  async getSubscription(): Promise<Subscription | null> {
+    return this.get<Subscription | null>('/v1/billing/subscription', null)
+  }
+
+  // Idempotent free-trial start (7-day). Backend is the idempotency authority.
+  async startTrial() {
+    return this.post<{ started: boolean; status?: string; trialEndsAt?: string }>('/v1/billing/trial', {})
+  }
+
+  // Redeem an invite code → org entitlement (shares the inviter's store access).
+  async redeemInvite(code: string) {
+    return this.post<{ redeemed: boolean; org?: string; status?: string }>(
+      '/v1/commerce/invite/redeem',
+      { code },
+    )
   }
 }
 
