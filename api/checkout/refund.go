@@ -9,6 +9,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/checkout/square"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/order"
@@ -343,6 +344,16 @@ func refund(c *zip.Ctx, org *organization.Organization, ord *order.Order) error 
 			}()
 		}
 	}
+
+	// Deliver order.refunded to subscribed billing webhook endpoints (fire and
+	// forget, off the money path — same lifecycle point as the bus publisher).
+	// Detach the request context (zip recycles c after the handler) before the
+	// goroutine, then namespace it to the org.
+	engine.Emit(org.Namespaced(context.WithoutCancel(c.Context())), "order.refunded", "order", ord.Id(), ord.UserId, map[string]interface{}{
+		"orderId":        ord.Id(),
+		"refundedAmount": float64(req.Amount) / 100.0,
+		"currency":       string(ord.Currency),
+	})
 
 	return nil
 }
