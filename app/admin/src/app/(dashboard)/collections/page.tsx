@@ -1,6 +1,8 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { createColumnHelper } from '@tanstack/react-table'
+import { Button } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
 
 interface Collection {
@@ -43,12 +45,19 @@ const columns = [
 ]
 
 export default function CollectionsPage() {
+  const router = useRouter()
   return (
     <DataTableShell<Collection>
       kind="collection"
       title="Collections"
       description="Organize products into collections"
       columns={columns}
+      detailPath="/collections"
+      actions={
+        <Button size="small" onClick={() => router.push('/collections/create')}>
+          Create collection
+        </Button>
+      }
     />
   )
 }
