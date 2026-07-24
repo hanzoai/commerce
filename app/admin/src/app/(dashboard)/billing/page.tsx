@@ -1,22 +1,39 @@
 'use client'
 
-import { Component, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Commerce } from '@/lib/commerce-client'
-import { Button, Heading, Text, Container, Badge } from '@hanzo/commerce-ui'
+import type {
+  BalanceDetail,
+  Balance,
+  BillingSubscription,
+  Invoice,
+  PaymentMethod,
+  AutoRecharge,
+  Plan,
+  Tier,
+} from '@/lib/commerce-client'
+import { Text } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { PageHeader } from '@/components/common/page-header'
 import { StatCard } from '@/components/common/stat-card'
-import { useStore } from '@/lib/api/hooks'
+import { ToasterMount } from '@/components/common/toaster-mount'
+import { formatMoney, formatDate } from '@/lib/format'
+import { SubscriptionPanel } from '@/components/billing/subscription-panel'
+import { PaymentMethodsPanel } from '@/components/billing/payment-methods-panel'
+import { InvoicesPanel } from '@/components/billing/invoices-panel'
+import { CreditPanel } from '@/components/billing/credit-panel'
 
-// Error boundary to catch useOrganizations or other render errors
+// Error boundary to catch useOrganizations or other render errors.
 class BillingErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
-  static getDerivedStateFromError(error: Error) { return { error } }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
   render() {
     if (this.state.error) {
       return (
         <div>
-          <PageHeader title="Billing" description="Account balance, credits, and invoices" />
+          <PageHeader title="Billing" description="Plan, balance, payment methods, and invoices" />
           <div className="p-8">
             <Text size="small" className="text-ui-fg-muted">
               Unable to load billing data. Please try refreshing the page.
@@ -32,207 +49,151 @@ class BillingErrorBoundary extends Component<{ children: ReactNode }, { error: E
 export default function BillingPage() {
   return (
     <BillingErrorBoundary>
+      <ToasterMount />
       <BillingContent />
     </BillingErrorBoundary>
   )
 }
 
+interface Snapshot {
+  balance: BalanceDetail | null
+  creditBalance: Balance | null
+  plans: Plan[]
+  subscriptions: BillingSubscription[]
+  methods: PaymentMethod[]
+  invoices: Invoice[]
+  autoRecharge: AutoRecharge | null
+  tier: Tier | null
+}
+
+const EMPTY: Snapshot = {
+  balance: null,
+  creditBalance: null,
+  plans: [],
+  subscriptions: [],
+  methods: [],
+  invoices: [],
+  autoRecharge: null,
+  tier: null,
+}
+
+// The primary account subscription: the non-bundle row (bundle children ride a
+// parent), preferring an active/trialing one.
+function primarySubscription(subs: BillingSubscription[]): BillingSubscription | null {
+  const real = subs.filter((s) => s.providerType !== 'bundle')
+  const live = real.find((s) => {
+    const st = String(s.status || '').toLowerCase()
+    return st === 'active' || st === 'trialing' || st === 'past_due'
+  })
+  return live || real[0] || null
+}
+
 function BillingContent() {
   const { accessToken: token, isAuthenticated } = useIam()
   const { currentOrgId } = useOrganizations()
-  const { data: store } = useStore()
-  const [balance, setBalance] = useState<any>(null)
-  const [creditBalance, setCreditBalance] = useState<any>(null)
-  const [invoices, setInvoices] = useState<any[]>([])
-  const [tier, setTier] = useState<any>(null)
-  const [plan, setPlan] = useState<any>(null)
+  const [snapshot, setSnapshot] = useState<Snapshot>(EMPTY)
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // The billing subject the backend keys per-org money to (orgBillingKey =
+  // org.Name = the X-Org-Id slug). Used as the payment-method customerId and the
+  // top-up subject so created cards land where the list + charges read them.
+  const subject = useMemo(() => String(currentOrgId ?? '').toLowerCase(), [currentOrgId])
+
+  const client = useMemo(
+    () => (token ? new Commerce({ token, org: currentOrgId ?? undefined }) : null),
+    [token, currentOrgId],
+  )
+
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   useEffect(() => {
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated || !client) {
       setLoading(false)
       return
     }
-
-    const client = new Commerce({ token, org: currentOrgId ?? undefined })
+    let alive = true
+    setLoading(true)
 
     Promise.allSettled([
       client.getBalance('me'),
       client.getCreditBalance('me'),
-      client.getInvoices('me', { limit: 10 }),
-      client.getTier(currentOrgId || 'me'),
       client.getPlans(),
-    ]).then(([balRes, creditRes, invRes, tierRes, plansRes]) => {
-      if (balRes.status === 'fulfilled') setBalance(balRes.value)
-      if (creditRes.status === 'fulfilled') setCreditBalance(creditRes.value)
-      if (invRes.status === 'fulfilled') setInvoices(invRes.value)
-      if (tierRes.status === 'fulfilled') setTier(tierRes.value)
-      if (plansRes.status === 'fulfilled') setPlan(plansRes.value.find((item) => item.slug === 'pro'))
+      client.listSubscriptions(),
+      subject ? client.listPaymentMethods(subject) : Promise.resolve([] as PaymentMethod[]),
+      client.getInvoices('me', { limit: 50 }),
+      client.getAutoRecharge(),
+      client.getTier(subject || 'me'),
+    ]).then((results) => {
+      if (!alive) return
+      const [bal, credit, plans, subs, methods, invoices, auto, tier] = results
+      setSnapshot({
+        balance: bal.status === 'fulfilled' ? (bal.value as BalanceDetail | null) : null,
+        creditBalance: credit.status === 'fulfilled' ? credit.value : null,
+        plans: plans.status === 'fulfilled' ? plans.value : [],
+        subscriptions: subs.status === 'fulfilled' ? subs.value : [],
+        methods: methods.status === 'fulfilled' ? methods.value : [],
+        invoices: invoices.status === 'fulfilled' ? invoices.value : [],
+        autoRecharge: auto.status === 'fulfilled' ? auto.value : null,
+        tier: tier.status === 'fulfilled' ? tier.value : null,
+      })
       setLoading(false)
     })
-  }, [token, isAuthenticated, currentOrgId])
+
+    return () => {
+      alive = false
+    }
+  }, [client, isAuthenticated, subject, refreshKey])
+
+  const subscription = useMemo(() => primarySubscription(snapshot.subscriptions), [snapshot.subscriptions])
+
+  const available = snapshot.balance?.available ?? 0
+  const credits = snapshot.balance?.creditsRemaining ?? snapshot.creditBalance?.available ?? 0
+  const planName =
+    subscription?.plan?.name ||
+    snapshot.tier?.tier?.displayName ||
+    snapshot.tier?.tier?.name ||
+    'No plan'
+  const renewal = subscription?.currentPeriodEnd
 
   return (
     <div>
-      <PageHeader title="Billing" description="Account balance, credits, and invoices" />
-      <div className="p-8">
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Account Balance"
-            value={
-              balance
-                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                    (balance.available ?? 0) / 100
-                  )
-                : '$0.00'
-            }
-            loading={loading}
-          />
-          <StatCard
-            label="Credit Balance"
-            value={
-              creditBalance
-                ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                    (creditBalance.available ?? 0) / 100
-                  )
-                : '$0.00'
-            }
-            loading={loading}
-          />
-          <StatCard label="Invoices" value={invoices.length} loading={loading} />
+      <PageHeader title="Billing" description="Plan, balance, payment methods, and invoices" />
+      <div className="flex flex-col gap-8 p-8">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Balance" value={formatMoney(available)} loading={loading} />
+          <StatCard label="Credit" value={formatMoney(credits)} loading={loading} />
+          <StatCard label="Plan" value={planName} loading={loading} />
+          <StatCard label="Next renewal" value={renewal ? formatDate(renewal) : '—'} loading={loading} />
         </div>
 
-        <Container className="mb-6 p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Heading level="h3">{plan?.name || 'Pro'}</Heading>
-                <Badge color={tier?.tier?.name === 'free' ? 'grey' : 'green'}>
-                  {tier?.tier?.displayName || tier?.tier?.name || 'Loading'}
-                </Badge>
-              </div>
-              <Text size="small" className="mt-2 max-w-xl text-ui-fg-muted">
-                {plan?.description || 'Everything you need to build and run one store.'}
-              </Text>
-              <Text size="small" weight="plus" className="mt-3 text-ui-fg-base">
-                ${((plan?.price ?? 2000) / 100).toFixed(0)} per store / month
-              </Text>
-              <Text size="xsmall" className="mt-1 text-ui-fg-muted">
-                New stores include a 7-day trial. Adding a card extends it to 30 days.
-              </Text>
+        {client && (
+          <>
+            <SubscriptionPanel
+              client={client}
+              subscription={subscription}
+              plans={snapshot.plans}
+              onChanged={refresh}
+            />
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              <PaymentMethodsPanel
+                client={client}
+                subject={subject}
+                methods={snapshot.methods}
+                onChanged={refresh}
+              />
+              <CreditPanel
+                client={client}
+                subject={subject}
+                methods={snapshot.methods}
+                autoRecharge={snapshot.autoRecharge}
+                onChanged={refresh}
+              />
             </div>
-            {token && currentOrgId && store && (
-              <Subscribe client={new Commerce({ token, org: currentOrgId })} storeId={store.id} />
-            )}
-          </div>
-        </Container>
-
-        <Container className="p-6">
-          <Heading level="h3" className="mb-4">Recent Invoices</Heading>
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-10 animate-pulse rounded bg-ui-bg-component" />
-              ))}
-            </div>
-          ) : invoices.length === 0 ? (
-            <Text size="small" className="py-8 text-center text-ui-fg-muted">No invoices yet</Text>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-ui-border-base text-left">
-                  <th className="pb-2"><Text as="span" size="xsmall" weight="plus" className="text-ui-fg-muted">Invoice</Text></th>
-                  <th className="pb-2"><Text as="span" size="xsmall" weight="plus" className="text-ui-fg-muted">Date</Text></th>
-                  <th className="pb-2"><Text as="span" size="xsmall" weight="plus" className="text-ui-fg-muted">Status</Text></th>
-                  <th className="pb-2 text-right"><Text as="span" size="xsmall" weight="plus" className="text-ui-fg-muted">Amount</Text></th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv: any) => (
-                  <tr key={inv.id} className="border-b border-ui-border-base last:border-0">
-                    <td className="py-3"><Text as="span" size="small">{inv.number || inv.id?.slice(-8)}</Text></td>
-                    <td className="py-3"><Text as="span" size="small" className="text-ui-fg-muted">{inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : '-'}</Text></td>
-                    <td className="py-3"><Text as="span" size="small" className="text-ui-fg-muted">{inv.status || '-'}</Text></td>
-                    <td className="py-3 text-right">
-                      <Text as="span" size="small">
-                        {inv.total != null
-                          ? new Intl.NumberFormat('en-US', {
-                              style: 'currency',
-                              currency: inv.currency || 'USD',
-                            }).format(inv.total / 100)
-                          : '-'}
-                      </Text>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Container>
+            <InvoicesPanel client={client} invoices={snapshot.invoices} onChanged={refresh} />
+          </>
+        )}
       </div>
-    </div>
-  )
-}
-
-function Subscribe({ client, storeId }: { client: Commerce; storeId: string }) {
-  const [card, setCard] = useState<any>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [done, setDone] = useState(false)
-  const attempt = useRef(crypto.randomUUID())
-
-  const load = async () => {
-    setBusy(true)
-    setError('')
-    try {
-      const config = await client.getPaymentConfig()
-      if (!config?.applicationId || !config.locationId) throw new Error('Card payments are not configured.')
-      if (!(window as any).Square) {
-        await new Promise<void>((resolve, reject) => {
-          const script = document.createElement('script')
-          script.src = config.environment === 'sandbox'
-            ? 'https://sandbox.web.squarecdn.com/v1/square.js'
-            : 'https://web.squarecdn.com/v1/square.js'
-          script.onload = () => resolve()
-          script.onerror = () => reject(new Error('Could not load card payments.'))
-          document.head.appendChild(script)
-        })
-      }
-      const payments = (window as any).Square.payments(config.applicationId, config.locationId)
-      const nextCard = await payments.card()
-      await nextCard.attach('#commerce-card')
-      setCard(nextCard)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not start checkout.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const pay = async () => {
-    setBusy(true)
-    setError('')
-    try {
-      const result = await card.tokenize()
-      if (result.status !== 'OK' || !result.token) throw new Error(result.errors?.[0]?.message || 'Card verification failed.')
-      await client.subscribe(result.token, storeId, 'pro', attempt.current)
-      setDone(true)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Subscription failed.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (done) return <Badge color="green">Subscribed</Badge>
-
-  return (
-    <div className="w-full max-w-sm">
-      <div id="commerce-card" className={card ? 'mb-3 min-h-24' : 'hidden'} />
-      <Button size="small" disabled={busy} onClick={card ? pay : load}>
-        {busy ? 'Working…' : card ? 'Pay $20 and subscribe' : 'Add card'}
-      </Button>
-      {error && <Text size="xsmall" className="mt-2 text-ui-fg-error">{error}</Text>}
     </div>
   )
 }
