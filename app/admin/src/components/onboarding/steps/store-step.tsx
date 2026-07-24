@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { Badge, Input, Label, Select, Text, toast } from '@hanzo/commerce-ui'
+import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useStores, useStore } from '@/lib/api/hooks'
+import { Commerce } from '@/lib/commerce-client'
 import { WizardStep, StepNav } from '../wizard-step'
 import type { StepProps } from './types'
 
@@ -11,8 +13,11 @@ const CURRENCIES = ['usd', 'eur', 'gbp', 'cad', 'aud', 'jpy']
 export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
   const { data: store } = useStore()
   const { create } = useStores()
+  const { accessToken } = useIam()
+  const { currentOrgId } = useOrganizations()
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('usd')
+  const [error, setError] = useState<string | null>(null)
 
   // Store already exists (returning merchant / came via ?onboarding=1): confirm
   // and move on rather than minting a second store.
@@ -39,12 +44,31 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
   const submit = async () => {
     const clean = name.trim()
     if (!clean) return
+    setError(null)
     try {
-      await create.mutateAsync({ name: clean, currency })
+      const created = await create.mutateAsync({ name: clean, currency })
+      // Start the funded trial IMMEDIATELY so the org has store access through the
+      // REST of onboarding: the next step reads/creates products, which are paywall-
+      // gated — without an active trial that call 402s and ejects the wizard to
+      // /subscribe before the merchant ever finishes. Idempotent (no-ops for a
+      // returning/comped org) and best-effort (a hiccup here must not block onboarding;
+      // the dashboard access gate re-attempts the trial on payment_required).
+      const newId =
+        (created as { id?: string; store?: { id?: string } })?.id ??
+        (created as { store?: { id?: string } })?.store?.id
+      if (newId && accessToken) {
+        try {
+          await new Commerce({ token: accessToken, org: currentOrgId ?? undefined }).startStoreTrial(newId)
+        } catch {
+          /* best-effort: the dashboard access gate retries on payment_required */
+        }
+      }
       toast.success('Store created', { description: clean })
       onNext()
-    } catch {
-      toast.error('Could not create store', { description: 'Please try again.' })
+    } catch (e) {
+      const message = e instanceof Error && e.message ? e.message : 'Please try again.'
+      setError(message)
+      toast.error('Could not create store', { description: message })
     }
   }
 
@@ -82,6 +106,11 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
           </Select>
         </div>
       </div>
+      {error && (
+        <div className="mt-5 rounded-lg border border-ui-tag-red-border bg-ui-tag-red-bg px-4 py-3">
+          <Text size="small" className="text-ui-tag-red-text">{error}</Text>
+        </div>
+      )}
       <StepNav
         onNext={submit}
         onSkip={onSkip}
