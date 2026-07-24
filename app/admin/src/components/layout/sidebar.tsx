@@ -12,12 +12,12 @@ import {
   Tag,
   ArchiveBox,
   CogSixTooth,
+  XMark,
 } from '@hanzo/commerce-icons'
 import { Button, Text, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
 import { HanzoMark } from '@/components/hanzo-mark'
-import { useStore } from '@/lib/api/hooks'
-import { StoreMenu } from './store-menu'
+import { AccountMenu } from './account-menu'
 
 const navItems = [
   { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
@@ -32,11 +32,16 @@ const navItems = [
   { label: 'Settings', href: '/settings', icon: CogSixTooth },
 ]
 
-export function Sidebar() {
+export function Sidebar({
+  open = false,
+  onClose = () => undefined,
+}: {
+  open?: boolean
+  onClose?: () => void
+}) {
   const pathname = usePathname()
-  const { isAuthenticated, user, login } = useIam()
+  const { isAuthenticated, login } = useIam()
   const orgState = useOrganizations()
-  const { data: store } = useStore()
 
   // Models is a Hanzo-internal surface (the AI model catalog), not a tenant
   // commerce feature — show it only when the active org is one of Hanzo's own.
@@ -45,25 +50,40 @@ export function Sidebar() {
   const items = navItems.filter((item) => item.href !== '/models' || isHanzoOrg)
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-ui-border-base bg-ui-bg-base">
-      <div className="flex h-16 items-center gap-3 border-b border-ui-border-base px-6">
-        <HanzoMark className="h-8 w-8 text-ui-fg-base" />
-        <div className="min-w-0">
+    <aside
+      aria-label="Main navigation"
+      className={clx(
+        'fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-ui-border-base bg-ui-bg-base transition-transform lg:translate-x-0',
+        open ? 'translate-x-0' : '-translate-x-full',
+      )}
+    >
+      <div className="flex h-16 items-center border-b border-ui-border-base px-4">
+        <Link href="/overview" onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1">
+          <HanzoMark className="h-8 w-8 shrink-0 text-ui-fg-base" />
           <Text size="small" weight="plus" className="truncate text-ui-fg-base">
-            {store?.name || 'Hanzo Commerce'}
+            Hanzo Commerce
           </Text>
-          <Text size="xsmall" className="text-ui-fg-muted">Commerce</Text>
-        </div>
+        </Link>
+        <button
+          type="button"
+          aria-label="Close navigation"
+          onClick={onClose}
+          className="rounded-md p-2 text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base lg:hidden"
+        >
+          <XMark className="h-5 w-5" />
+        </button>
       </div>
 
       {isAuthenticated && (
-        <div className="space-y-3 border-b border-ui-border-base px-4 py-3">
+        <div className="border-b border-ui-border-base px-4 py-3">
+          <Text size="xsmall" weight="plus" className="mb-1.5 block text-ui-fg-muted">
+            Organization
+          </Text>
           <OrgProjectSwitcher
             {...orgState}
             alwaysShow
-            className="w-full"
+            className="w-full [&>select]:h-9 [&>select]:w-full [&>select]:min-w-0 [&>select]:border-ui-border-base [&>select]:bg-ui-bg-field [&>select]:text-ui-fg-base"
           />
-          <StoreMenu />
         </div>
       )}
 
@@ -74,6 +94,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={clx(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
                 isActive
@@ -90,9 +111,7 @@ export function Sidebar() {
 
       <div className="border-t border-ui-border-base p-4">
         {isAuthenticated ? (
-          <Text size="xsmall" className="truncate px-3 text-ui-fg-muted">
-            {user?.email || user?.displayName}
-          </Text>
+          <AccountMenu />
         ) : (
           <Button
             variant="transparent"
