@@ -1,6 +1,6 @@
 {
   "name": "hanzo-commerce-storefront",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "author": "Hanzo AI <dev@hanzo.ai> (https://hanzo.ai)",
   "description": "Next.js Storefront for Hanzo Commerce",
@@ -53,14 +53,5 @@
     "prettier": "^2.8.8",
     "tailwindcss": "^3.0.23",
     "typescript": "^5.3.2"
-  },
-  "resolutions": {
-    "@types/react": "19.0.4",
-    "@types/react-dom": "19.0.4"
-  },
-  "overrides": {
-    "react": "19.0.4",
-    "react-dom": "19.0.4"
-  },
-  "packageManager": "yarn@4.12.0"
+  }
 }
