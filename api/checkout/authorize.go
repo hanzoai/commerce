@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/null"
 	"github.com/hanzoai/commerce/api/checkout/paypal"
 	"github.com/hanzoai/commerce/api/checkout/square"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/blockchains"
@@ -354,6 +355,17 @@ func authorize(c *zip.Ctx, org *organization.Organization, ord *order.Order) (*p
 			}()
 		}
 	}
+
+	// Deliver order.created to subscribed billing webhook endpoints (fire and
+	// forget, off the money path — same lifecycle point as the bus publisher).
+	// Detach the request context (zip recycles c after the handler) before the
+	// goroutine, then namespace it to the org.
+	engine.Emit(org.Namespaced(context.WithoutCancel(c.Context())), "order.created", "order", ord.Id(), usr.Id(), map[string]interface{}{
+		"orderId":  ord.Id(),
+		"revenue":  float64(ord.Total) / 100.0,
+		"currency": string(ord.Currency),
+		"email":    usr.Email,
+	})
 
 	return pay, nil
 }
