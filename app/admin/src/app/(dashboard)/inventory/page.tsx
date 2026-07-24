@@ -1,35 +1,29 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { createColumnHelper } from '@tanstack/react-table'
+import { Button } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
+import type { StockLocation } from '@/lib/inventory/stock-location'
 
-interface InventoryItem {
-  id: string
-  title: string
-  sku: string
-  material?: string
-  requiresShipping: boolean
-  createdAt: string
-}
-
-const col = createColumnHelper<InventoryItem>()
+const col = createColumnHelper<StockLocation>()
 
 const columns = [
-  col.accessor('title', {
-    header: 'Item',
+  col.accessor('name', {
+    header: 'Name',
     cell: (info) => <span className="font-medium text-ui-fg-base">{info.getValue() || '-'}</span>,
   }),
-  col.accessor('sku', {
-    header: 'SKU',
-    cell: (info) => <span className="font-mono text-sm text-ui-fg-muted">{info.getValue() || '-'}</span>,
-  }),
-  col.accessor('material', {
-    header: 'Material',
+  col.accessor('addressLine1', {
+    header: 'Address',
     cell: (info) => <span className="text-ui-fg-muted">{info.getValue() || '-'}</span>,
   }),
-  col.accessor('requiresShipping', {
-    header: 'Shipping',
-    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() ? 'Required' : 'Digital'}</span>,
+  col.accessor('city', {
+    header: 'City',
+    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() || '-'}</span>,
+  }),
+  col.accessor('country', {
+    header: 'Country',
+    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() || '-'}</span>,
   }),
   col.accessor('createdAt', {
     header: 'Added',
@@ -41,12 +35,19 @@ const columns = [
 ]
 
 export default function InventoryPage() {
+  const router = useRouter()
   return (
-    <DataTableShell<InventoryItem>
-      kind="inventoryitem"
+    <DataTableShell<StockLocation>
+      kind="stocklocation"
       title="Inventory"
-      description="Manage sellable inventory items"
+      description="Manage the stock locations that hold sellable inventory"
       columns={columns}
+      detailPath="/inventory"
+      actions={
+        <Button size="small" onClick={() => router.push('/inventory/create')}>
+          Add location
+        </Button>
+      }
     />
   )
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/zap-proto/fiber/v3/middleware/adaptor"
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/paywall"
 	"github.com/hanzoai/commerce/config"
 	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/demo/disclosure"
@@ -57,6 +58,7 @@ import (
 	fulfillmentApi "github.com/hanzoai/commerce/api/fulfillment"
 	giftcardApi "github.com/hanzoai/commerce/api/giftcard"
 	inventoryApi "github.com/hanzoai/commerce/api/inventory"
+	inviteApi "github.com/hanzoai/commerce/api/invite"
 	libraryApi "github.com/hanzoai/commerce/api/library"
 	metricsApi "github.com/hanzoai/commerce/api/metrics"
 	namespaceApi "github.com/hanzoai/commerce/api/namespace"
@@ -95,6 +97,15 @@ func Route(api zip.Router) {
 	tokenRequired := middleware.TokenRequired()
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
+	// Subscription paywall — the org-level admin gate ($20/mo pro plan OR live
+	// trial OR redeemed invite). Mounted as a sibling to tokenRequired, AFTER it
+	// so the org is resolved, on the merchant admin surface. It supersedes the
+	// store-bound requireAccess (a strict superset: same subscription
+	// check across both money stores, plus trial-credit and invite paths).
+	// billing/subscribe/trial/invite/catalog routes are NOT behind it — those are
+	// how an org acquires access, or are public reads.
+	requireAccess := paywall.Require
+
 	// Index
 	if config.IsDevelopment {
 		api.Get("/", middleware.ParseToken, rest.ListRoutes())
@@ -125,24 +136,24 @@ func Route(api zip.Router) {
 	subscriptionApi.Route(api)
 
 	// Models with public RESTful API
-	rest.New(collection.Collection{}).Route(api, tokenRequired, storeApi.RequireAccess)
-	rest.New(discount.Discount{}).Route(api, tokenRequired, storeApi.RequireAccess)
+	rest.New(collection.Collection{}).Route(api, tokenRequired, requireAccess)
+	rest.New(discount.Discount{}).Route(api, tokenRequired, requireAccess)
 	rest.New(movie.Movie{}).Route(api, tokenRequired)
 	rest.New(note.Note{}).Route(api, tokenRequired)
-	rest.New(product.Product{}).Route(api, tokenRequired, storeApi.RequireAccess, publishProductEvents)
+	rest.New(product.Product{}).Route(api, tokenRequired, requireAccess, publishProductEvents)
 	rest.New(return_.Return{}).Route(api, tokenRequired)
 	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	// rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
-	rest.New(variant.Variant{}).Route(api, tokenRequired, storeApi.RequireAccess)
+	rest.New(variant.Variant{}).Route(api, tokenRequired, requireAccess)
 	rest.New(wallet.Wallet{}).Route(api, adminRequired)
 	rest.New(watchlist.Watchlist{}).Route(api, tokenRequired)
 	rest.New(webhook.Webhook{}).Route(api, adminRequired)
 
-	rest.New(saleschannel.SalesChannel{}).Route(api, tokenRequired, storeApi.RequireAccess)
-	rest.New(stocklocation.StockLocation{}).Route(api, tokenRequired, storeApi.RequireAccess)
+	rest.New(saleschannel.SalesChannel{}).Route(api, tokenRequired, requireAccess)
+	rest.New(stocklocation.StockLocation{}).Route(api, tokenRequired, requireAccess)
 
 	rest.New(disclosure.Disclosure{}).Route(api, tokenRequired)
 	rest.New(tokentransaction.Transaction{}).Route(api, tokenRequired)
@@ -158,10 +169,14 @@ func Route(api zip.Router) {
 
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
+	// Subscription paywall invite surface: POST /v1/commerce/invite/redeem (org
+	// claims a code) + POST /v1/commerce/invite (platform-admin mint). NOT behind
+	// requireAccess — redeeming a code is how an org acquires access.
+	inviteApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
-	inventoryApi.Route(api, tokenRequired, storeApi.RequireAccess)
-	orderApi.Route(api, tokenRequired, storeApi.RequireAccess)
+	inventoryApi.Route(api, tokenRequired, requireAccess)
+	orderApi.Route(api, tokenRequired, requireAccess)
 	referralApi.Route(api, tokenRequired)
 	affiliateApi.Route(api, tokenRequired)
 	regionApi.Route(api, tokenRequired)
@@ -169,8 +184,8 @@ func Route(api zip.Router) {
 	storeApi.Route(api, tokenRequired)
 	transactionApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
-	pricingApi.Route(api, tokenRequired, storeApi.RequireAccess)
-	promotionApi.Route(api, tokenRequired, storeApi.RequireAccess)
+	pricingApi.Route(api, tokenRequired, requireAccess)
+	promotionApi.Route(api, tokenRequired, requireAccess)
 	promoApi.Route(api) // SuperAdmin plan-promo config (/v1/platform/promo) — RequirePlatformAdmin inside
 
 	// Medusa-parity admin domains. These sub-routers were fully implemented
@@ -178,13 +193,13 @@ func Route(api zip.Router) {
 	// wired into the /v1 bundle, so their routes 404'd in production. Wiring
 	// them here completes the fulfillment/shipping, tax, customer-group,
 	// publishable-api-key/RBAC, and notification admin domains.
-	fulfillmentApi.Route(api, tokenRequired, storeApi.RequireAccess) // fulfillment sets/providers, shipping options/profiles, service+geo zones, ship/cancel
-	taxApi.Route(api, tokenRequired, storeApi.RequireAccess)         // tax regions/rates/rules/providers + /tax/calculate
+	fulfillmentApi.Route(api, tokenRequired, requireAccess) // fulfillment sets/providers, shipping options/profiles, service+geo zones, ship/cancel
+	taxApi.Route(api, tokenRequired, requireAccess)         // tax regions/rates/rules/providers + /tax/calculate
 	customergroupApi.Route(api, tokenRequired)
 	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
 	notificationApi.Route(api, tokenRequired)
-	giftcardApi.Route(api, adminRequired, storeApi.RequireAccess) // gift cards + idempotent redeem/void (money — admin only)
-	b2bApi.Route(api, tokenRequired, storeApi.RequireAccess)      // B2B: companies, employees, quotes, approvals
+	giftcardApi.Route(api, adminRequired, requireAccess) // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired, requireAccess)      // B2B: companies, employees, quotes, approvals
 	exchangeApi.Route(api, tokenRequired)                         // order exchanges (return + replacement)
 	producttaxonomyApi.Route(api, tokenRequired)                  // product options/values, categories, tags, types, return/refund reasons
 	catalogApi.AdminRoute(api, adminRequired)                     // platform product catalog CMS (global-admin gated inside)

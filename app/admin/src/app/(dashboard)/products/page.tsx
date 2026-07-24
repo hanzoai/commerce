@@ -1,9 +1,9 @@
 'use client'
 
 import { createColumnHelper } from '@tanstack/react-table'
-import { Badge } from '@hanzo/commerce-ui'
+import { useRouter } from 'next/navigation'
+import { Badge, Button } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
-import { CreateProduct } from '@/components/products/create-product'
 
 interface Product {
   id: string
@@ -62,6 +62,7 @@ const columns = [
 ]
 
 export default function ProductsPage() {
+  const router = useRouter()
   return (
     <DataTableShell<Product>
       kind="product"
@@ -69,7 +70,11 @@ export default function ProductsPage() {
       description="Manage your product catalog"
       columns={columns}
       detailPath="/products"
-      actions={<CreateProduct />}
+      actions={
+        <Button size="small" onClick={() => router.push('/products/create')}>
+          Add product
+        </Button>
+      }
     />
   )
 }
