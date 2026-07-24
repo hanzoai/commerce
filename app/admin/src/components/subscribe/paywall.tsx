@@ -59,7 +59,9 @@ export function Paywall() {
     router.replace(AFTER_SUBSCRIBE)
   }
 
-  const onSubscribe = form.handleSubmit(async ({ legalName, billingEmail }) => {
+  // legalName + billingEmail are collected for display/validation only — the
+  // backend subscribeCardRequest never persists them, so they don't hit the wire.
+  const onSubscribe = form.handleSubmit(async () => {
     if (!paymentConfig) {
       toast.error('Card payments are not configured for this account.')
       return
@@ -70,8 +72,6 @@ export function Paywall() {
         planSlug: selectedSlug,
         sourceId,
         currency: selectedPlan?.currency ?? 'USD',
-        legalName,
-        billingEmail,
       })
       toast.success('Subscription active. Welcome aboard.')
       done()

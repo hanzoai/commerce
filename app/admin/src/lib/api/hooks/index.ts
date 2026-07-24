@@ -21,3 +21,6 @@ export {
   useModels,
   useIntegrations,
 } from './use-resource'
+
+export { useUsageAnalytics } from './use-usage'
+export type { UsageAnalytics } from './use-usage'

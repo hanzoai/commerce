@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   BookOpen,
   EllipsisHorizontal,
@@ -69,7 +70,7 @@ export function AccountMenu() {
           <MenuLink href="https://console.hanzo.ai/profile" icon={User}>
             Profile & security
           </MenuLink>
-          <MenuLink href="https://console.hanzo.ai/team" icon={Users}>
+          <MenuLink href="/team" icon={Users} internal onNavigate={() => setOpen(false)}>
             Organization & team
           </MenuLink>
           <MenuLink href="https://docs.hanzo.ai/commerce" icon={BookOpen} external>
@@ -113,20 +114,37 @@ function MenuLink({
   href,
   icon: Icon,
   external = false,
+  internal = false,
+  onNavigate,
   children,
 }: {
   href: string
   icon: typeof User
   external?: boolean
+  /** Route within the admin SPA — rendered as a client-side <Link>. */
+  internal?: boolean
+  onNavigate?: () => void
   children: React.ReactNode
 }) {
+  const className =
+    'flex items-center gap-2 rounded-md px-2 py-2 text-sm text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base'
+
+  if (internal) {
+    return (
+      <Link href={href} role="menuitem" className={className} onClick={onNavigate}>
+        <Icon className="h-4 w-4 text-ui-fg-subtle" />
+        {children}
+      </Link>
+    )
+  }
+
   return (
     <a
       href={href}
       role="menuitem"
       target={external ? '_blank' : undefined}
       rel={external ? 'noreferrer' : undefined}
-      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base"
+      className={className}
     >
       <Icon className="h-4 w-4 text-ui-fg-subtle" />
       {children}
