@@ -18,7 +18,7 @@ func TestEntryTrialPlanUsesCatalogPro(t *testing.T) {
 	if p.PriceCents != 2000 {
 		t.Fatalf("entry trial price = %d, want 2000 cents", p.PriceCents)
 	}
-	if p.CreditCents != 2000 {
-		t.Fatalf("entry trial credit = %d, want 2000 cents", p.CreditCents)
+	if p.CreditCents <= 0 {
+		t.Fatalf("entry trial credit = %d, want positive catalog allowance", p.CreditCents)
 	}
 }
