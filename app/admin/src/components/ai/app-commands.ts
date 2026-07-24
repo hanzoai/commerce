@@ -35,6 +35,7 @@ export interface AppHost {
   filter(section: string, query: string): void
   /** Fetch real data for a section and return a short human summary. */
   summarize(section: string): Promise<string>
+  createProduct(input: { name: string; sku: string; description?: string }): Promise<{ id?: string; name: string }>
 }
 
 export interface CommandResult { ok: boolean; message: string }
@@ -92,6 +93,23 @@ export const COMMANDS: AppCommand[] = [
     run: (host, a) => {
       host.filter(a.resource, a.id)
       return { ok: true, message: `Locating ${a.resource} ${a.id}` }
+    },
+  },
+  {
+    name: 'create_product',
+    description: 'Create a draft product in the active store. Requires a name and SKU. Use only when the merchant explicitly asks to create it.',
+    params: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Product name' },
+        sku: { type: 'string', description: 'Unique merchant SKU' },
+        description: { type: 'string', description: 'Product description' },
+      },
+      required: ['name', 'sku'],
+    },
+    run: async (host, a) => {
+      const product = await host.createProduct({ name: a.name, sku: a.sku, description: a.description })
+      return { ok: true, message: `Created draft product "${product.name}"` }
     },
   },
   {
@@ -174,7 +192,7 @@ export function buildSystemPrompt(context: string): string {
     'Respond with ONE JSON object and nothing else:',
     '{"reply": string, "actions": Array<{"type": string, ...params}>}',
     '"reply" is your natural-language answer. Put commands in "actions" ONLY when the user',
-    'asks you to navigate/search/open/summarize; otherwise "actions" must be []. Use exact',
+    'asks you to navigate/search/open/summarize/create a product; otherwise "actions" must be []. Use exact',
     'command names and parameter names above. Never wrap the JSON in markdown fences.',
   ].join('\n')
 }

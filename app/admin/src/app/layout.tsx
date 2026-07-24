@@ -4,12 +4,12 @@ import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: 'Hanzo Commerce',
-  description: 'Hanzo Commerce Admin Dashboard',
+  description: 'Build and run your store with Hanzo Commerce',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
       </body>
