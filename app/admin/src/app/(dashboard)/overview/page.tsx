@@ -1,8 +1,9 @@
 'use client'
 
 import { Heading, Text, Container, Badge } from '@hanzo/commerce-ui'
-import { useCount, useStore, useModels } from '@/lib/api/hooks'
-import type { StoreListing } from '@/lib/api/data-provider'
+import Link from 'next/link'
+import { useCount, useStore, useModels, useIntegrations } from '@/lib/api/hooks'
+import type { CurrentStore, StoreListing } from '@/lib/api/data-provider'
 import { StatCard } from '@/components/common/stat-card'
 import { PageHeader } from '@/components/common/page-header'
 
@@ -12,11 +13,18 @@ export default function DashboardPage() {
   const { data: orderCount, isLoading: loadingOrders } = useCount('order')
   const { data: customerCount, isLoading: loadingCustomers } = useCount('c/user')
   const { data: collectionCount, isLoading: loadingCollections } = useCount('collection')
+  const { data: store } = useStore()
+  const { data: integrations = [] } = useIntegrations()
 
   return (
     <div>
       <PageHeader title="Dashboard" description="Overview of your commerce operations" />
       <div className="p-8">
+        <Setup
+          store={store}
+          products={productCount ?? 0}
+          integrations={integrations.filter((integration) => integration.enabled).length}
+        />
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Models"
@@ -79,6 +87,56 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function Setup({
+  store,
+  products,
+  integrations,
+}: {
+  store?: CurrentStore | null
+  products: number
+  integrations: number
+}) {
+  const listings = store?.listings ? Object.keys(store.listings).length : 0
+  const steps = [
+    { title: 'Name your store', done: !!store && store.name !== 'Default Store', href: '/settings' },
+    { title: 'Add your first product', done: products > 0, href: '/products' },
+    { title: 'Connect a provider', done: integrations > 0, href: '/integrations' },
+    { title: 'Publish your first listing', done: listings > 0, href: '/products' },
+  ]
+  const complete = steps.filter((step) => step.done).length
+  if (complete === steps.length) return null
+
+  return (
+    <Container className="mb-6 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Heading level="h2">Launch your store</Heading>
+          <Text size="small" className="mt-1 text-ui-fg-muted">
+            {complete} of {steps.length} steps complete
+          </Text>
+        </div>
+        <Badge color="orange">Setup</Badge>
+      </div>
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
+        {steps.map((step, index) => (
+          <Link
+            key={step.title}
+            href={step.href}
+            className="flex items-center gap-3 rounded-lg border border-ui-border-base bg-ui-bg-base p-3 hover:bg-ui-bg-component"
+          >
+            <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${step.done ? 'bg-ui-tag-green-bg text-ui-tag-green-text' : 'bg-ui-bg-component text-ui-fg-muted'}`}>
+              {step.done ? '✓' : index + 1}
+            </span>
+            <Text size="small" weight="plus" className={step.done ? 'text-ui-fg-muted line-through' : 'text-ui-fg-base'}>
+              {step.title}
+            </Text>
+          </Link>
+        ))}
+      </div>
+    </Container>
   )
 }
 
