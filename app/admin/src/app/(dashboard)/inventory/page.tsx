@@ -1,15 +1,14 @@
 'use client'
 
 import { createColumnHelper } from '@tanstack/react-table'
-import { Badge } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
 
 interface InventoryItem {
   id: string
   title: string
   sku: string
-  quantity: number
-  location: string
+  material?: string
+  requiresShipping: boolean
   createdAt: string
 }
 
@@ -24,20 +23,13 @@ const columns = [
     header: 'SKU',
     cell: (info) => <span className="font-mono text-sm text-ui-fg-muted">{info.getValue() || '-'}</span>,
   }),
-  col.accessor('quantity', {
-    header: 'Stock',
-    cell: (info) => {
-      const qty = info.getValue() ?? 0
-      return (
-        <Badge color={qty > 10 ? 'green' : qty > 0 ? 'orange' : 'red'}>
-          {qty}
-        </Badge>
-      )
-    },
-  }),
-  col.accessor('location', {
-    header: 'Location',
+  col.accessor('material', {
+    header: 'Material',
     cell: (info) => <span className="text-ui-fg-muted">{info.getValue() || '-'}</span>,
+  }),
+  col.accessor('requiresShipping', {
+    header: 'Shipping',
+    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() ? 'Required' : 'Digital'}</span>,
   }),
   col.accessor('createdAt', {
     header: 'Added',
@@ -51,9 +43,9 @@ const columns = [
 export default function InventoryPage() {
   return (
     <DataTableShell<InventoryItem>
-      kind="stocklocation"
+      kind="inventoryitem"
       title="Inventory"
-      description="Track stock levels across locations"
+      description="Manage sellable inventory items"
       columns={columns}
     />
   )

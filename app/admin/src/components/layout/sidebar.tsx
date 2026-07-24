@@ -16,6 +16,8 @@ import {
 import { Button, Text, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
 import { HanzoMark } from '@/components/hanzo-mark'
+import { useStore } from '@/lib/api/hooks'
+import { StoreMenu } from './store-menu'
 
 const navItems = [
   { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
@@ -25,14 +27,16 @@ const navItems = [
   { label: 'Customers', href: '/customers', icon: Users },
   { label: 'Collections', href: '/collections', icon: Tag },
   { label: 'Inventory', href: '/inventory', icon: ArchiveBox },
+  { label: 'Integrations', href: '/integrations', icon: SquaresPlus },
   { label: 'Billing', href: '/billing', icon: CurrencyDollar },
   { label: 'Settings', href: '/settings', icon: CogSixTooth },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { isAuthenticated, user, login, logout } = useIam()
+  const { isAuthenticated, user, login } = useIam()
   const orgState = useOrganizations()
+  const { data: store } = useStore()
 
   // Models is a Hanzo-internal surface (the AI model catalog), not a tenant
   // commerce feature — show it only when the active org is one of Hanzo's own.
@@ -44,19 +48,22 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-ui-border-base bg-ui-bg-base">
       <div className="flex h-16 items-center gap-3 border-b border-ui-border-base px-6">
         <HanzoMark className="h-8 w-8 text-ui-fg-base" />
-        <div>
-          <Text size="small" weight="plus" className="text-ui-fg-base">Hanzo Commerce</Text>
-          <Text size="xsmall" className="text-ui-fg-muted">Admin Dashboard</Text>
+        <div className="min-w-0">
+          <Text size="small" weight="plus" className="truncate text-ui-fg-base">
+            {store?.name || 'Hanzo Commerce'}
+          </Text>
+          <Text size="xsmall" className="text-ui-fg-muted">Commerce</Text>
         </div>
       </div>
 
       {isAuthenticated && (
-        <div className="border-b border-ui-border-base px-4 py-3">
+        <div className="space-y-3 border-b border-ui-border-base px-4 py-3">
           <OrgProjectSwitcher
             {...orgState}
             alwaysShow
             className="w-full"
           />
+          <StoreMenu />
         </div>
       )}
 
@@ -83,19 +90,9 @@ export function Sidebar() {
 
       <div className="border-t border-ui-border-base p-4">
         {isAuthenticated ? (
-          <div className="space-y-3">
-            <Text size="xsmall" className="truncate px-3 text-ui-fg-muted">
-              {user?.email || user?.displayName}
-            </Text>
-            <Button
-              variant="transparent"
-              size="small"
-              className="w-full justify-start"
-              onClick={logout}
-            >
-              Sign Out
-            </Button>
-          </div>
+          <Text size="xsmall" className="truncate px-3 text-ui-fg-muted">
+            {user?.email || user?.displayName}
+          </Text>
         ) : (
           <Button
             variant="transparent"

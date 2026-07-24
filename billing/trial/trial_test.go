@@ -143,6 +143,46 @@ func TestStart_NoCard_SevenDayTrial(t *testing.T) {
 	}
 }
 
+func TestStartForStore_IsolatesBillingUnit(t *testing.T) {
+	ctx, db, done := newDB(t)
+	defer done()
+
+	const subject = "hanzo/multi"
+	first, err := StartForStore(db, subject, "store-a", false, false)
+	if err != nil || !first.Started {
+		t.Fatalf("start store-a: result=%+v err=%v", first, err)
+	}
+	second, err := StartForStore(db, subject, "store-b", false, false)
+	if err != nil || !second.Started {
+		t.Fatalf("start store-b: result=%+v err=%v", second, err)
+	}
+	replay, err := StartForStore(db, subject, "store-a", false, false)
+	if err != nil {
+		t.Fatalf("replay store-a: %v", err)
+	}
+	if replay.Started || replay.Reason != "not_new" {
+		t.Fatalf("store-a replay = %+v, want idempotent not_new", replay)
+	}
+
+	subs := make([]*subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", subject).GetAll(&subs); err != nil {
+		t.Fatalf("query subscriptions: %v", err)
+	}
+	if len(subs) != 2 {
+		t.Fatalf("subscriptions = %d, want one per store", len(subs))
+	}
+	seen := map[string]bool{}
+	for _, sub := range subs {
+		seen[sub.StoreId] = true
+	}
+	if !seen["store-a"] || !seen["store-b"] {
+		t.Fatalf("store bindings = %v", seen)
+	}
+	if got := balanceCents(t, ctx, subject, false); got != 2*testCredit {
+		t.Fatalf("trial balance = %d, want %d", got, 2*testCredit)
+	}
+}
+
 // (c) New signup WITH a card -> 30-day trial.
 func TestStart_WithCard_ThirtyDayTrial(t *testing.T) {
 	ctx, db, done := newDB(t)

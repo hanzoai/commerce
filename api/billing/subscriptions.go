@@ -22,6 +22,7 @@ import (
 type createSubscriptionRequest struct {
 	UserId               string `json:"userId"`
 	PlanId               string `json:"planId"`
+	StoreId              string `json:"storeId,omitempty"`
 	DefaultPaymentMethod string `json:"defaultPaymentMethod"`
 	// Quantity is the billable seat count for per-seat plans (catalog
 	// price_ref.recurring.per_seat); defaults to 1 and must meet the catalog's
@@ -198,6 +199,7 @@ func createSubscription(c *zip.Ctx, db *datastore.Datastore, org *organization.O
 	// Create subscription
 	sub := subscription.New(db)
 	sub.UserId = req.UserId
+	sub.StoreId = req.StoreId
 	sub.DefaultPaymentMethod = req.DefaultPaymentMethod
 	sub.ProviderType = "internal"
 	sub.Quantity = quantity

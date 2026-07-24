@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +20,7 @@ import (
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
@@ -226,6 +228,31 @@ func TestSubscribeWithCard_VaultChargeCreateInvoice(t *testing.T) {
 	// a subscription is not a top-up. The wallet the LLM gate reads stays $0.
 	if bal := balanceOf(t, ctx, org, "subcard"); bal != 0 {
 		t.Fatalf("spendable wallet balance=%d, want 0 — the plan fee must NEVER credit the AI-credit wallet", bal)
+	}
+}
+
+func TestSubscribeWithCardBindsStore(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("substore")
+	db := datastore.New(org.Namespaced(ctx))
+	store := storemodel.New(db)
+	store.Name = "Store A"
+	store.Slug = "store-a"
+	if err := store.Create(); err != nil {
+		t.Fatalf("create store: %v", err)
+	}
+
+	m := squareMock("cust_store", "ccof_store", "sqpay_store")
+	withFakeSquare(t, m)
+	body := fmt.Sprintf(`{"sourceId":"cnon:store","planId":"pro","storeId":%q}`, store.Id())
+	resp := invokeSubscribeCard(org, ctx, body, map[string]string{"X-Idempotency-Key": "store-a-first-period"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+	}
+	sub := parentSub(t, db, "substore", "pro")
+	if sub == nil || sub.StoreId != store.Id() {
+		t.Fatalf("subscription store = %v, want %q", sub, store.Id())
 	}
 }
 

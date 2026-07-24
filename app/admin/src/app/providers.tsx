@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { IamProvider } from '@hanzo/iam/react'
 import { QueryProvider } from '@/lib/query-provider'
+import { ThemeProvider } from '@/providers/theme-provider'
 
 const IAM_CONFIG = {
   serverUrl: process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id',
@@ -23,7 +24,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryProvider>
       <IamProvider config={IAM_CONFIG}>
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </IamProvider>
     </QueryProvider>
   )
