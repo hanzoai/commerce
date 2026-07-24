@@ -1,9 +1,6 @@
 package engine
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"testing"
@@ -157,147 +154,6 @@ func TestIngestUsageEvent_MissingUserId(t *testing.T) {
 
 func TestIngestUsageEvent_ValidParams_RequiresDatastore(t *testing.T) {
 	t.Skip("requires datastore: meter.NewEvent(db) needs live db")
-}
-
-// ---------------------------------------------------------------------------
-// events.go — computeSignature (pure function)
-// ---------------------------------------------------------------------------
-
-func TestComputeSignature(t *testing.T) {
-	timestamp := "1700000000"
-	payload := []byte(`{"type":"invoice.paid"}`)
-	secret := "whsec_test_secret"
-
-	got := computeSignature(timestamp, payload, secret)
-
-	// Verify independently
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(timestamp))
-	mac.Write([]byte("."))
-	mac.Write(payload)
-	want := hex.EncodeToString(mac.Sum(nil))
-
-	if got != want {
-		t.Fatalf("computeSignature mismatch: got %s, want %s", got, want)
-	}
-}
-
-func TestComputeSignature_DifferentSecrets(t *testing.T) {
-	ts := "1700000000"
-	payload := []byte(`{"foo":"bar"}`)
-
-	sig1 := computeSignature(ts, payload, "secret_a")
-	sig2 := computeSignature(ts, payload, "secret_b")
-
-	if sig1 == sig2 {
-		t.Fatal("different secrets should produce different signatures")
-	}
-}
-
-func TestComputeSignature_DifferentTimestamps(t *testing.T) {
-	payload := []byte(`{"foo":"bar"}`)
-	secret := "shared"
-
-	sig1 := computeSignature("1000", payload, secret)
-	sig2 := computeSignature("2000", payload, secret)
-
-	if sig1 == sig2 {
-		t.Fatal("different timestamps should produce different signatures")
-	}
-}
-
-func TestComputeSignature_EmptyPayload(t *testing.T) {
-	sig := computeSignature("1234", []byte{}, "key")
-	if sig == "" {
-		t.Fatal("signature should not be empty even for empty payload")
-	}
-	if len(sig) != 64 { // SHA-256 hex = 32 bytes = 64 hex chars
-		t.Fatalf("expected 64 hex chars, got %d", len(sig))
-	}
-}
-
-// ---------------------------------------------------------------------------
-// events.go — VerifyWebhookSignature (pure function)
-// ---------------------------------------------------------------------------
-
-func TestVerifyWebhookSignature_Valid(t *testing.T) {
-	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	secret := "whsec_abc123"
-	timestamp := "1700000000"
-
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("valid signature rejected: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_InvalidSignature(t *testing.T) {
-	payload := []byte(`{"type":"payment_intent.succeeded"}`)
-	secret := "whsec_abc123"
-	header := "t=1700000000,v1=0000000000000000000000000000000000000000000000000000000000000000"
-
-	err := VerifyWebhookSignature(payload, header, secret)
-	if err == nil {
-		t.Fatal("expected error for invalid signature")
-	}
-	if !strings.Contains(err.Error(), "signature verification failed") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestVerifyWebhookSignature_MissingTimestamp(t *testing.T) {
-	err := VerifyWebhookSignature([]byte("{}"), "v1=abc123", "secret")
-	if err == nil {
-		t.Fatal("expected error for missing timestamp")
-	}
-	if !strings.Contains(err.Error(), "invalid signature header format") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestVerifyWebhookSignature_MissingSignature(t *testing.T) {
-	err := VerifyWebhookSignature([]byte("{}"), "t=1234567890", "secret")
-	if err == nil {
-		t.Fatal("expected error for missing v1 signature")
-	}
-	if !strings.Contains(err.Error(), "invalid signature header format") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestVerifyWebhookSignature_EmptyHeader(t *testing.T) {
-	err := VerifyWebhookSignature([]byte("{}"), "", "secret")
-	if err == nil {
-		t.Fatal("expected error for empty header")
-	}
-}
-
-func TestVerifyWebhookSignature_WrongSecret(t *testing.T) {
-	payload := []byte(`{"test":true}`)
-	timestamp := "1700000000"
-	correctSig := computeSignature(timestamp, payload, "correct_secret")
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, correctSig)
-
-	err := VerifyWebhookSignature(payload, header, "wrong_secret")
-	if err == nil {
-		t.Fatal("expected error when verifying with wrong secret")
-	}
-}
-
-func TestVerifyWebhookSignature_TamperedPayload(t *testing.T) {
-	original := []byte(`{"amount":1000}`)
-	secret := "whsec_test"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, original, secret)
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	tampered := []byte(`{"amount":9999}`)
-	err := VerifyWebhookSignature(tampered, header, secret)
-	if err == nil {
-		t.Fatal("expected error for tampered payload")
-	}
 }
 
 // ---------------------------------------------------------------------------
@@ -796,15 +652,11 @@ func TestCalculateInvoiceTax_WithAddress_RequiresDatastore(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// events.go — EmitBillingEvent / DispatchWebhooks require datastore
+// events.go — EmitBillingEvent requires datastore
 // ---------------------------------------------------------------------------
 
 func TestEmitBillingEvent_RequiresDatastore(t *testing.T) {
 	t.Skip("requires datastore: billingevent.New(db) needs live db")
-}
-
-func TestDispatchWebhooks_RequiresDatastore(t *testing.T) {
-	t.Skip("requires datastore: webhookendpoint.Query(db) needs live db")
 }
 
 // ---------------------------------------------------------------------------
@@ -1505,136 +1357,6 @@ func TestAdvancePeriod_LargeIntervalCount(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// events.go — VerifyWebhookSignature: additional edge cases
-// ---------------------------------------------------------------------------
-
-func TestVerifyWebhookSignature_ExtraFields(t *testing.T) {
-	// Header with extra unknown fields should still work
-	payload := []byte(`{"type":"test"}`)
-	secret := "whsec_extra"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("t=%s,v1=%s,extra=ignored", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("extra fields should be ignored: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_MalformedParts(t *testing.T) {
-	// Parts without '=' should be skipped
-	payload := []byte(`{"type":"test"}`)
-	secret := "whsec_malformed"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("garbage,t=%s,v1=%s,noequals", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("malformed parts should be skipped: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_DuplicateTimestamp(t *testing.T) {
-	// Multiple t= entries — last one should win
-	payload := []byte(`{"dup":"test"}`)
-	secret := "whsec_dup"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	// First t is wrong, second is correct
-	header := fmt.Sprintf("t=9999999999,t=%s,v1=%s", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("should use last timestamp: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_LargePayload(t *testing.T) {
-	// Test with a realistically large payload
-	payload := []byte(strings.Repeat(`{"key":"value",`, 1000) + `"end":true}`)
-	secret := "whsec_large"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("large payload should verify: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_EmptyPayload(t *testing.T) {
-	payload := []byte{}
-	secret := "whsec_empty"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("empty payload should verify: %v", err)
-	}
-}
-
-func TestVerifyWebhookSignature_UnicodePayload(t *testing.T) {
-	payload := []byte(`{"name":"日本語テスト","emoji":"🎉"}`)
-	secret := "whsec_unicode"
-	timestamp := "1700000000"
-	sig := computeSignature(timestamp, payload, secret)
-	header := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	if err := VerifyWebhookSignature(payload, header, secret); err != nil {
-		t.Fatalf("unicode payload should verify: %v", err)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// events.go — computeSignature: additional cases
-// ---------------------------------------------------------------------------
-
-func TestComputeSignature_Deterministic(t *testing.T) {
-	ts := "1700000000"
-	payload := []byte(`{"deterministic":"yes"}`)
-	secret := "whsec_det"
-
-	sig1 := computeSignature(ts, payload, secret)
-	sig2 := computeSignature(ts, payload, secret)
-
-	if sig1 != sig2 {
-		t.Fatal("computeSignature should be deterministic")
-	}
-}
-
-func TestComputeSignature_EmptySecret(t *testing.T) {
-	sig := computeSignature("1234", []byte("payload"), "")
-	if sig == "" {
-		t.Fatal("signature should not be empty even for empty secret")
-	}
-	if len(sig) != 64 {
-		t.Fatalf("expected 64 hex chars, got %d", len(sig))
-	}
-}
-
-func TestComputeSignature_EmptyTimestamp(t *testing.T) {
-	sig := computeSignature("", []byte("payload"), "secret")
-	if sig == "" {
-		t.Fatal("signature should not be empty even for empty timestamp")
-	}
-	if len(sig) != 64 {
-		t.Fatalf("expected 64 hex chars, got %d", len(sig))
-	}
-}
-
-func TestComputeSignature_DifferentPayloads(t *testing.T) {
-	ts := "1700000000"
-	secret := "shared_secret"
-
-	sig1 := computeSignature(ts, []byte(`{"a":1}`), secret)
-	sig2 := computeSignature(ts, []byte(`{"a":2}`), secret)
-
-	if sig1 == sig2 {
-		t.Fatal("different payloads should produce different signatures")
-	}
-}
-
-// ---------------------------------------------------------------------------
 // tax.go — TaxLine: additional struct tests
 // ---------------------------------------------------------------------------
 
@@ -2233,60 +1955,6 @@ func TestMakePlan_Fields(t *testing.T) {
 // ===========================================================================
 // HIGH-COVERAGE TESTS — target 95%+ coverage
 // ===========================================================================
-
-// ---------------------------------------------------------------------------
-// events.go — computeSignature roundtrip with VerifyWebhookSignature
-// ---------------------------------------------------------------------------
-
-func TestComputeSignature_RoundTrip(t *testing.T) {
-	payloads := []string{
-		`{}`,
-		`{"amount":42}`,
-		`{"nested":{"deep":"value"}}`,
-		``,
-	}
-	secrets := []string{"secret_a", "long_secret_with_many_characters_1234567890", ""}
-	timestamps := []string{"0", "1700000000", "9999999999"}
-
-	for _, payload := range payloads {
-		for _, secret := range secrets {
-			for _, ts := range timestamps {
-				sig := computeSignature(ts, []byte(payload), secret)
-				header := fmt.Sprintf("t=%s,v1=%s", ts, sig)
-				err := VerifyWebhookSignature([]byte(payload), header, secret)
-				if err != nil {
-					t.Fatalf("roundtrip failed for payload=%q secret=%q ts=%s: %v", payload, secret, ts, err)
-				}
-			}
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// events.go — VerifyWebhookSignature edge cases
-// ---------------------------------------------------------------------------
-
-func TestVerifyWebhookSignature_OnlyGarbage(t *testing.T) {
-	err := VerifyWebhookSignature([]byte("{}"), "foo,bar,baz", "secret")
-	if err == nil {
-		t.Fatal("expected error for all-garbage header")
-	}
-	if !strings.Contains(err.Error(), "invalid signature header format") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestVerifyWebhookSignature_EmptySecret(t *testing.T) {
-	payload := []byte(`{"test":true}`)
-	ts := "1700000000"
-	sig := computeSignature(ts, payload, "")
-	header := fmt.Sprintf("t=%s,v1=%s", ts, sig)
-
-	err := VerifyWebhookSignature(payload, header, "")
-	if err != nil {
-		t.Fatalf("empty secret should still verify: %v", err)
-	}
-}
 
 // ---------------------------------------------------------------------------
 // intents.go — CreatePaymentIntent boundary conditions
