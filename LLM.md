@@ -35,11 +35,13 @@ React Router tree under `app/admin/src/routes` is not the live shell.
   the browser or organization rows; providers become toggleable only after
   their credentials exist in KMS. Square is built in and resolves its public
   browser configuration through `/v1/billing/payment-config`.
-- Store access is $20/month on the `pro` plan. New orgs receive the
-  idempotent 7-day trial from `billing/trial`; adding a card extends it to 30
-  days. The UI gate reads the same tier and effective balance as the billing
-  service, so active trial credit, an invited member of a funded org, prepaid
-  balance, or a paid plan passes without a parallel entitlement.
+- Store access is $20/month on the `pro` plan. Each store has one store-bound
+  subscription and an idempotent 7-day trial from `billing/trial`; invited
+  members share that store entitlement. The UI and merchant API routes call the
+  same `api/store.HasAccess` rule, so another store cannot unlock it.
+- `Dockerfile.store` builds the storefront and its workspace packages through
+  the root pnpm/Turbo graph, then publishes the standalone server. Do not copy a
+  partial package set or introduce a second package manager.
 
 ## Multi-Tenancy
 
