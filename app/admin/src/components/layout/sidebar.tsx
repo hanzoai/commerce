@@ -15,6 +15,7 @@ import {
 } from '@hanzo/commerce-icons'
 import { Button, Text, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
+import { HanzoMark } from '@/components/hanzo-mark'
 
 const navItems = [
   { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
@@ -42,14 +43,7 @@ export function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-ui-border-base bg-ui-bg-base">
       <div className="flex h-16 items-center gap-3 border-b border-ui-border-base px-6">
-        {/* Canonical Hanzo mark (@hanzo/logo block-H), monochrome via currentColor. */}
-        <svg viewBox="0 0 67 67" className="h-8 w-8" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22.21 0H0V22.3184H22.21V0Z"/>
-          <path d="M66.7198 0H44.5098V22.3184H66.7198V0Z"/>
-          <path d="M66.7038 22.3184H22.2534L0.0878906 44.6367H44.4634L66.7038 22.3184Z"/>
-          <path d="M22.21 67V44.6369H0V67H22.21Z"/>
-          <path d="M66.7198 67V44.6369H44.5098V67H66.7198Z"/>
-        </svg>
+        <HanzoMark className="h-8 w-8 text-ui-fg-base" />
         <div>
           <Text size="small" weight="plus" className="text-ui-fg-base">Hanzo Commerce</Text>
           <Text size="xsmall" className="text-ui-fg-muted">Admin Dashboard</Text>
