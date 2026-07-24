@@ -31,6 +31,16 @@ func getCurrent(c *zip.Ctx) error {
 	// (listing.go orgNamespacedDB, rest.newEntity) persists into.
 	db := datastore.NewNamespaced(org.Namespaced(c.Context()))
 
+	// A selected store is explicit. Resolve it only inside this org's namespace;
+	// a foreign id therefore cannot cross the tenant boundary.
+	if c.Header("X-Store-Id") != "" {
+		s, err := resolveStore(c, db)
+		if err != nil || s == nil {
+			return c.JSON(http.StatusNotFound, map[string]string{"error": "store not found"})
+		}
+		return c.JSON(http.StatusOK, map[string]any{"store": s})
+	}
+
 	// Return the org's existing store if it already has one (any slug).
 	var stores []store.Store
 	if _, err := store.New(db).Query().All().Limit(1).GetAll(&stores); err == nil && len(stores) > 0 {

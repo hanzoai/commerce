@@ -36,7 +36,7 @@ export default function LoginPage() {
 
           <Heading level="h1">Hanzo Commerce</Heading>
           <Text size="small" className="mt-1 text-ui-fg-subtle">
-            Sign in to access the admin dashboard
+            Sign in to build and run your store
           </Text>
 
           <div className="mt-8 w-full space-y-3">

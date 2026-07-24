@@ -17,6 +17,30 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
   +-- ClickHouse via hanzo/datastore-go (analytics)
 ```
 
+## Commerce Admin
+
+The shipped admin is the Next static export in `app/admin/src/app`, built by
+`Dockerfile.commerce-admin` and served by `hanzoai/static`. The older
+React Router tree under `app/admin/src/routes` is not the live shell.
+
+- IAM is native PKCE through `@hanzo/iam`; the active organization scopes every
+  query and the org switcher is the sole tenant selector.
+- `ThemeProvider` owns light/dark/system state. Dark is the default, and the
+  live top-bar account menu is the sole theme control.
+- Products use the bare `/v1/product` resource. The Products form and the AI
+  `create_product` command both call the same `createOne("product", ...)` path.
+- The dashboard checklist derives completion from live store, product,
+  integration, and listing data.
+- Integrations read and toggle `/v1/c/:org/integrations`. Secrets never enter
+  the browser or organization rows; providers become toggleable only after
+  their credentials exist in KMS. Square is built in and resolves its public
+  browser configuration through `/v1/billing/payment-config`.
+- Store access is $20/month on the `pro` plan. New orgs receive the
+  idempotent 7-day trial from `billing/trial`; adding a card extends it to 30
+  days. The UI gate reads the same tier and effective balance as the billing
+  service, so active trial credit, an invited member of a funded org, prepaid
+  balance, or a paid plan passes without a parallel entitlement.
+
 ## Multi-Tenancy
 
 - Namespace-based: `Organization.Name` IS the namespace

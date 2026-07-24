@@ -2,18 +2,24 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useIam } from '@hanzo/iam/react'
+import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { Shell } from '@/components/layout/shell'
-import { setAccessToken } from '@/lib/api/data-provider'
+import { setAccessToken, setStoreId } from '@/lib/api/data-provider'
+import { Access } from '@/components/billing/access'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, accessToken } = useIam()
+  const { currentOrgId } = useOrganizations()
   const router = useRouter()
 
   // Sync IAM token into the data provider (org is passed per-call by hooks)
   useEffect(() => {
     setAccessToken(accessToken)
   }, [accessToken])
+
+  useEffect(() => {
+    setStoreId(null)
+  }, [currentOrgId])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -33,5 +39,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return null
   }
 
-  return <Shell>{children}</Shell>
+  return <Access><Shell>{children}</Shell></Access>
 }
