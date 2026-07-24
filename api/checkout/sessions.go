@@ -20,6 +20,7 @@ import (
 	"github.com/square/square-go-sdk/v3/option"
 	"github.com/zap-proto/zip"
 
+	"github.com/hanzoai/commerce/billing/engine"
 	hostedcheckout "github.com/hanzoai/commerce/checkout"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/events"
@@ -487,6 +488,16 @@ func Sessions(c *zip.Ctx) error {
 			}()
 		}
 	}
+
+	// Deliver checkout.started to subscribed billing webhook endpoints (fire and
+	// forget, off the money path — same lifecycle point as the bus publisher).
+	// Detach the request context (zip recycles c after the handler) before it
+	// enters the goroutine, then namespace it to the org.
+	engine.Emit(org.Namespaced(context.WithoutCancel(c.Context())), "checkout.started", "checkout_session", sessionResp.SessionID, "", map[string]interface{}{
+		"sessionId": sessionResp.SessionID,
+		"value":     float64(finalCents) / 100.0,
+		"currency":  currency,
+	})
 
 	return http.Render(c, 200, sessionResp)
 }

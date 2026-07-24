@@ -11,6 +11,7 @@ import (
 	"github.com/hanzoai/commerce/api/checkout/square"
 	"github.com/hanzoai/commerce/api/checkout/tasks"
 	"github.com/hanzoai/commerce/api/checkout/util"
+	"github.com/hanzoai/commerce/billing/engine"
 	"github.com/hanzoai/commerce/email"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/log"
@@ -98,6 +99,17 @@ func capture(c *zip.Ctx, org *organization.Organization, ord *order.Order) error
 			}()
 		}
 	}
+
+	// Deliver order.completed to subscribed billing webhook endpoints (fire and
+	// forget, off the money path — same lifecycle point as the bus publisher).
+	// Detach the request context (zip recycles c after the handler) before the
+	// goroutine, then namespace it to the org.
+	engine.Emit(org.Namespaced(context.WithoutCancel(c.Context())), "order.completed", "order", ord.Id(), usr.Id(), map[string]interface{}{
+		"orderId":  ord.Id(),
+		"revenue":  float64(ord.Total) / 100.0,
+		"currency": string(ord.Currency),
+		"email":    usr.Email,
+	})
 
 	return nil
 }
