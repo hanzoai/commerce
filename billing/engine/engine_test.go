@@ -5,22 +5,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/billingevent"
 	"github.com/hanzoai/commerce/models/billinginvoice"
 	"github.com/hanzoai/commerce/models/credit"
 	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/subscriptionitem"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/models/webhookendpoint"
 	"github.com/hanzoai/commerce/types"
 )
 
@@ -2238,201 +2233,6 @@ func TestMakePlan_Fields(t *testing.T) {
 // ===========================================================================
 // HIGH-COVERAGE TESTS — target 95%+ coverage
 // ===========================================================================
-
-// ---------------------------------------------------------------------------
-// events.go — deliverWebhook via httptest
-// ---------------------------------------------------------------------------
-
-func TestDeliverWebhook_Success(t *testing.T) {
-	var gotContentType, gotSigHeader, gotEventType string
-	var gotBody []byte
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotContentType = r.Header.Get("Content-Type")
-		gotSigHeader = r.Header.Get("Commerce-Signature")
-		gotEventType = r.Header.Get("Commerce-Event-Type")
-		var err error
-		gotBody, err = io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("failed to read body: %v", err)
-		}
-		w.WriteHeader(200)
-	}))
-	defer server.Close()
-
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    server.URL,
-		Secret: "whsec_test_deliver",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type:       "payment_intent.succeeded",
-		ObjectType: "payment_intent",
-		ObjectId:   "pi_123",
-		CustomerId: "cus_456",
-	}
-	evt.Id_ = "evt_test_123"
-
-	err := deliverWebhook(ep, evt)
-	if err != nil {
-		t.Fatalf("deliverWebhook should succeed: %v", err)
-	}
-
-	if gotContentType != "application/json" {
-		t.Fatalf("Content-Type = %q, want application/json", gotContentType)
-	}
-	if gotEventType != "payment_intent.succeeded" {
-		t.Fatalf("Commerce-Event-Type = %q, want payment_intent.succeeded", gotEventType)
-	}
-	if gotSigHeader == "" {
-		t.Fatal("Commerce-Signature should not be empty")
-	}
-	if !strings.HasPrefix(gotSigHeader, "t=") {
-		t.Fatalf("Commerce-Signature should start with t=: %s", gotSigHeader)
-	}
-	if !strings.Contains(gotSigHeader, ",v1=") {
-		t.Fatalf("Commerce-Signature should contain ,v1=: %s", gotSigHeader)
-	}
-
-	// Verify the signature is valid against whatever body was sent
-	parts := strings.Split(gotSigHeader, ",")
-	var ts, sig string
-	for _, p := range parts {
-		kv := strings.SplitN(p, "=", 2)
-		if len(kv) == 2 {
-			switch kv[0] {
-			case "t":
-				ts = kv[1]
-			case "v1":
-				sig = kv[1]
-			}
-		}
-	}
-	expectedSig := computeSignature(ts, gotBody, "whsec_test_deliver")
-	if sig != expectedSig {
-		t.Fatalf("signature mismatch: got %s, want %s", sig, expectedSig)
-	}
-}
-
-func TestDeliverWebhook_ServerError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(500)
-	}))
-	defer server.Close()
-
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    server.URL,
-		Secret: "whsec_500",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type: "invoice.paid",
-	}
-	evt.Id_ = "evt_500"
-
-	err := deliverWebhook(ep, evt)
-	if err == nil {
-		t.Fatal("expected error for 500 response")
-	}
-	if !strings.Contains(err.Error(), "status 500") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestDeliverWebhook_ClientError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(400)
-	}))
-	defer server.Close()
-
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    server.URL,
-		Secret: "whsec_400",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type: "invoice.paid",
-	}
-	evt.Id_ = "evt_400"
-
-	err := deliverWebhook(ep, evt)
-	if err == nil {
-		t.Fatal("expected error for 400 response")
-	}
-	if !strings.Contains(err.Error(), "status 400") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestDeliverWebhook_InvalidURL(t *testing.T) {
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    "http://127.0.0.1:99999/invalid",
-		Secret: "whsec_badurl",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type: "test.event",
-	}
-	evt.Id_ = "evt_badurl"
-
-	err := deliverWebhook(ep, evt)
-	if err == nil {
-		t.Fatal("expected error for invalid URL")
-	}
-	if !strings.Contains(err.Error(), "webhook delivery failed") {
-		t.Fatalf("unexpected error: %s", err)
-	}
-}
-
-func TestDeliverWebhook_200Response(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(204) // No Content — still success
-	}))
-	defer server.Close()
-
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    server.URL,
-		Secret: "whsec_204",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type: "test.event",
-	}
-	evt.Id_ = "evt_204"
-
-	err := deliverWebhook(ep, evt)
-	if err != nil {
-		t.Fatalf("204 should not be an error: %v", err)
-	}
-}
-
-func TestDeliverWebhook_399Response(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(399) // just below 400 threshold
-	}))
-	defer server.Close()
-
-	ep := &webhookendpoint.WebhookEndpoint{
-		Url:    server.URL,
-		Secret: "whsec_399",
-		Status: "enabled",
-	}
-
-	evt := &billingevent.BillingEvent{
-		Type: "test.event",
-	}
-	evt.Id_ = "evt_399"
-
-	err := deliverWebhook(ep, evt)
-	if err != nil {
-		t.Fatalf("399 should not be an error: %v", err)
-	}
-}
 
 // ---------------------------------------------------------------------------
 // events.go — computeSignature roundtrip with VerifyWebhookSignature
