@@ -12,6 +12,7 @@ const S3_PATHNAME = process.env.HANZO_COMMERCE_S3_PATHNAME
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   logging: {
     fetches: {
