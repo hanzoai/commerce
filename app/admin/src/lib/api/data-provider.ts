@@ -92,7 +92,7 @@ export async function fetchList<T>(kind: string, params?: ListParams, org?: stri
 
 export async function fetchOne<T>(kind: string, id: string, org?: string | null): Promise<T> {
   const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}`, { headers: headers(org) })
-  if (!res.ok) throw new Error(`Failed to fetch ${kind}/${id}: ${res.status}`)
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to fetch ${kind}/${id}: ${res.status}`))
   return res.json()
 }
 
@@ -102,8 +102,33 @@ export async function createOne<T>(kind: string, data: Partial<T>, org?: string 
     headers: headers(org),
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error(`Failed to create ${kind}: ${res.status}`)
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to create ${kind}: ${res.status}`))
   return res.json()
+}
+
+// Pull the human-readable reason out of a non-2xx commerce response. The API's
+// canonical envelope is NESTED — `{ "error": { "type", "message", "code" } }`
+// (util/json/http Fail) — so read `error.message` first; also tolerate a flat
+// `{ "message" }` or a string `{ "error" }`, then raw text, then the caller's
+// default, so a real reason (e.g. "Token lacks permission to create store")
+// always surfaces instead of a bare status code.
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const text = await res.text()
+    if (!text) return fallback
+    try {
+      const body = JSON.parse(text) as {
+        message?: string
+        error?: string | { message?: string }
+      }
+      const nested = typeof body.error === 'object' ? body.error?.message : body.error
+      return body.message || nested || text
+    } catch {
+      return text
+    }
+  } catch {
+    return fallback
+  }
 }
 
 export async function updateOne<T>(kind: string, id: string, data: Partial<T>, org?: string | null): Promise<T> {
@@ -112,7 +137,7 @@ export async function updateOne<T>(kind: string, id: string, data: Partial<T>, o
     headers: headers(org),
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error(`Failed to update ${kind}/${id}: ${res.status}`)
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to update ${kind}/${id}: ${res.status}`))
   return res.json()
 }
 
@@ -121,7 +146,7 @@ export async function deleteOne(kind: string, id: string, org?: string | null): 
     method: 'DELETE',
     headers: headers(org),
   })
-  if (!res.ok) throw new Error(`Failed to delete ${kind}/${id}: ${res.status}`)
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to delete ${kind}/${id}: ${res.status}`))
 }
 
 export async function fetchCount(kind: string, org?: string | null): Promise<number> {
@@ -163,16 +188,28 @@ export interface CurrentStore {
 }
 
 export async function fetchCurrentStore(org?: string | null): Promise<CurrentStore | null> {
-  try {
-    const res = await apiFetch(`${API_BASE}/v1/store/current`, { headers: headers(org) })
-    if (!res.ok) return null
-    const body = await res.json()
-    const store = (body?.store ?? body) as CurrentStore
-    _storeId = store?.id || null
-    return store
-  } catch {
+  const res = await apiFetch(`${API_BASE}/v1/store/current`, { headers: headers(org) })
+  // Distinguish "definitively no store" from "the fetch broke". Only a 404 (or an
+  // empty 2xx body) means the org has no store → null → the layout routes to
+  // onboarding. A 5xx / auth blip / network throw must NOT resolve to null: that
+  // would bounce an org that HAS a store into the onboarding wizard on a transient
+  // failure. Re-throw so React Query REJECTS and retries instead of caching a false
+  // "storeless". (401/403 also re-throw — an unauthenticated read is not "no store".)
+  if (res.status === 404) {
+    _storeId = null
     return null
   }
+  if (!res.ok) {
+    throw new Error(`store/current ${res.status}`)
+  }
+  const body = await res.json()
+  const store = (body?.store ?? body) as CurrentStore | null
+  if (!store || !store.id) {
+    _storeId = null
+    return null
+  }
+  _storeId = store.id
+  return store
 }
 
 // ── Models (the Hanzo catalog: our "products" are the models) ─────────────────
