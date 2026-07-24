@@ -77,7 +77,7 @@ jobs:
           file: Dockerfile.store
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ghcr.io/hanzoai/commerce-store:1.0.5
+            ghcr.io/hanzoai/commerce-store:v1.0.5
             ghcr.io/hanzoai/commerce-store:latest
             ghcr.io/hanzoai/commerce-store:${{ github.sha }}
           cache-from: type=gha,scope=store
