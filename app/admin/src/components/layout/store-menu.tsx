@@ -1,6 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  BuildingStorefront,
+  ChevronDownMini,
+  Plus,
+} from '@hanzo/commerce-icons'
 import { Button, Heading, Input, Text } from '@hanzo/commerce-ui'
 import { useStore, useStores } from '@/lib/api/hooks'
 
@@ -32,19 +37,25 @@ export function StoreMenu() {
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <label className="min-w-0 flex-1">
-          <Text size="xsmall" className="mb-1 block text-ui-fg-muted">Store</Text>
+      <div className="flex min-w-0 items-center gap-2">
+        <Text size="xsmall" weight="plus" className="hidden text-ui-fg-muted sm:block">
+          Store
+        </Text>
+        <label className="relative min-w-0">
+          <span className="sr-only">Switch store</span>
+          <BuildingStorefront className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-ui-fg-muted" />
           <select
             value={current?.id || ''}
             onChange={(event) => select(event.target.value)}
-            className="h-9 w-full rounded-md border border-ui-border-base bg-ui-bg-field px-2 text-sm text-ui-fg-base"
+            aria-label="Switch store"
+            className="h-9 max-w-48 appearance-none truncate rounded-md border border-ui-border-base bg-ui-bg-field py-0 pl-8 pr-8 text-sm text-ui-fg-base focus:outline-none focus:ring-1 focus:ring-ui-fg-interactive sm:max-w-64"
           >
             {stores.map((store) => <option key={store.id} value={store.id}>{store.name}</option>)}
           </select>
+          <ChevronDownMini className="pointer-events-none absolute right-2.5 top-3 h-3 w-3 text-ui-fg-muted" />
         </label>
-        <Button className="mt-5" size="small" variant="secondary" onClick={() => setOpen(true)} aria-label="Add store">
-          +
+        <Button size="small" variant="secondary" onClick={() => setOpen(true)} aria-label="Create store">
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
 
