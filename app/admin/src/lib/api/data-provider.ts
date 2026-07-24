@@ -302,6 +302,29 @@ export async function saveIntegration(
   return Array.isArray(body) ? body : []
 }
 
+// ── Team / invite codes ───────────────────────────────────────────────────────
+// The ONLY team/membership surface reachable by an org admin from the browser.
+// `POST /v1/commerce/invite/redeem { code }` claims a platform-minted invite code
+// for the caller's org (first-touch, idempotent) — the code-based path by which a
+// teammate's org unlocks SHARED store access. Org membership itself (the full
+// member roster, invite-by-email, role assignment) is owned by Hanzo IAM and is
+// NOT yet exposed to the browser (see team.ts for the documented gap).
+export interface RedeemInviteResult {
+  code?: string
+  org?: string
+  redeemed?: boolean
+}
+
+export async function redeemInvite(code: string, org?: string | null): Promise<RedeemInviteResult> {
+  const res = await apiFetch(`${API_BASE}/v1/commerce/invite/redeem`, {
+    method: 'POST',
+    headers: headers(org),
+    body: JSON.stringify({ code }),
+  })
+  if (!res.ok) throw new Error(await errorMessage(res, `Failed to redeem invite: ${res.status}`))
+  return res.json()
+}
+
 // ── Sub-resource actions ──────────────────────────────────────────────────────
 // Some resources expose action sub-routes beyond CRUD — e.g. a gift card's
 // POST /v1/gift-card/:id/redeem|void and GET /v1/gift-card/:id/balance|redemptions.

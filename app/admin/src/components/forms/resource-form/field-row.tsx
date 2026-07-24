@@ -3,11 +3,17 @@
 // ONE labeled field. Every form field in the admin renders through this, so the
 // label / control / error markup lives in exactly one place. Driven by a plain
 // `FieldSpec` data record (no per-field JSX), which is what makes the forms DRY.
-import { Input, Switch, Textarea } from '@hanzo/commerce-ui'
+import { Input, Select, Switch, Textarea } from '@hanzo/commerce-ui'
 import type { Control, FieldPath, FieldValues } from 'react-hook-form'
 import { Form } from '@/components/common/form'
 
-export type FieldKind = 'text' | 'email' | 'password' | 'tel' | 'textarea' | 'switch'
+export type FieldKind = 'text' | 'email' | 'password' | 'tel' | 'number' | 'textarea' | 'switch' | 'select'
+
+/** One option for a `select` field. */
+export interface SelectOption {
+  label: string
+  value: string
+}
 
 export interface FieldSpec<T extends FieldValues> {
   name: FieldPath<T>
@@ -17,6 +23,8 @@ export interface FieldSpec<T extends FieldValues> {
   optional?: boolean
   disabled?: boolean
   autoComplete?: string
+  /** Options for a `select` field (ignored by every other kind). */
+  options?: SelectOption[]
 }
 
 interface FieldRowProps<T extends FieldValues> {
@@ -25,7 +33,7 @@ interface FieldRowProps<T extends FieldValues> {
 }
 
 export function FieldRow<T extends FieldValues>({ control, spec }: FieldRowProps<T>) {
-  const { name, label, kind = 'text', placeholder, optional, disabled, autoComplete } = spec
+  const { name, label, kind = 'text', placeholder, optional, disabled, autoComplete, options } = spec
 
   return (
     <Form.Field
@@ -42,6 +50,23 @@ export function FieldRow<T extends FieldValues>({ control, spec }: FieldRowProps
                 onBlur={field.onBlur}
                 disabled={disabled}
               />
+            ) : kind === 'select' ? (
+              <Select
+                value={field.value ?? ''}
+                onValueChange={field.onChange}
+                disabled={disabled}
+              >
+                <Select.Trigger onBlur={field.onBlur}>
+                  <Select.Value placeholder={placeholder} />
+                </Select.Trigger>
+                <Select.Content>
+                  {(options ?? []).map((opt) => (
+                    <Select.Item key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
             ) : kind === 'textarea' ? (
               <Textarea
                 {...field}
@@ -55,6 +80,7 @@ export function FieldRow<T extends FieldValues>({ control, spec }: FieldRowProps
                 {...field}
                 value={field.value ?? ''}
                 type={kind === 'tel' ? 'tel' : kind}
+                inputMode={kind === 'number' ? 'decimal' : undefined}
                 placeholder={placeholder}
                 disabled={disabled}
                 autoComplete={autoComplete ?? 'off'}
