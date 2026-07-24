@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { createColumnHelper } from '@tanstack/react-table'
+import { Button } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
 
 interface Customer {
@@ -47,6 +49,17 @@ export default function CustomersPage() {
       title="Customers"
       description="View and manage customer accounts"
       columns={columns}
+      detailPath="/customers"
+      actions={
+        <>
+          <Link href="/customer-groups">
+            <Button size="small" variant="secondary">Groups</Button>
+          </Link>
+          <Link href="/customers/create">
+            <Button size="small" variant="primary">Create</Button>
+          </Link>
+        </>
+      }
     />
   )
 }

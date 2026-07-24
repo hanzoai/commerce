@@ -178,8 +178,38 @@ func TestStartForStore_IsolatesBillingUnit(t *testing.T) {
 	if !seen["store-a"] || !seen["store-b"] {
 		t.Fatalf("store bindings = %v", seen)
 	}
-	if got := balanceCents(t, ctx, subject, false); got != 2*testCredit {
-		t.Fatalf("trial balance = %d, want %d", got, 2*testCredit)
+	// Per-store trial SUBSCRIPTIONS are isolated (two above), but the trial
+	// CREDIT is capped to ONE per org subject: the 2nd store reuses the org's
+	// existing $20, it does not mint a fresh grant. Otherwise looping
+	// create-store -> trial would farm unlimited free credit.
+	if got := balanceCents(t, ctx, subject, false); got != testCredit {
+		t.Fatalf("trial balance = %d, want %d (one org-capped credit, not per-store)", got, testCredit)
+	}
+}
+
+// TestStartForStore_TrialCreditCappedPerOrg proves the money cap directly: a
+// second store's trial reuses the org's ONE trial credit and mints no new grant,
+// so looping create-store -> trial cannot farm free $20s.
+func TestStartForStore_TrialCreditCappedPerOrg(t *testing.T) {
+	ctx, db, done := newDB(t)
+	defer done()
+
+	const subject = "hanzo/farmer"
+	first, err := StartForStore(db, subject, "store-a", false, false)
+	if err != nil || !first.Started || first.TransactionID == "" {
+		t.Fatalf("start store-a: result=%+v err=%v", first, err)
+	}
+	second, err := StartForStore(db, subject, "store-b", false, false)
+	if err != nil {
+		t.Fatalf("start store-b: %v", err)
+	}
+	// The 2nd store still gets its own subscription, but the credit is the SAME
+	// row — no new money minted.
+	if second.TransactionID != first.TransactionID {
+		t.Fatalf("2nd store minted a NEW credit %q (want reuse of %q)", second.TransactionID, first.TransactionID)
+	}
+	if got := balanceCents(t, ctx, subject, false); got != testCredit {
+		t.Fatalf("org wallet = %d after two stores, want %d (one capped credit)", got, testCredit)
 	}
 }
 

@@ -2,8 +2,9 @@
 # Next.js `output: 'export'`) built FROM SOURCE and served via hanzoai/static
 # (NOT nginx, NOT a node server).
 #
-# v0.2.5: store onboarding, IAM account and org shell, theme control, merchant
-# actions, integrations, and per-store subscription access. `pnpm build`
+# v0.2.6: canonical product/org/store/person shell, account settings, and mobile
+# navigation; plus store onboarding, merchant actions, integrations, and per-store
+# subscription access. `pnpm build`
 # is green end-to-end — @hanzo/commerce-ui now builds via tsup (esbuild resolves the
 # `@/` aliases; cjs+esm+dts), and the ui-preset/admin-shared/types/sdk build-tooling
 # gaps were fixed (see app/packages/*). The phantom `@hanzo/commerce-client` import
