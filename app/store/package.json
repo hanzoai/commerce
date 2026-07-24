@@ -1,6 +1,6 @@
 {
   "name": "hanzo-commerce-storefront",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "author": "Hanzo AI <dev@hanzo.ai> (https://hanzo.ai)",
   "description": "Next.js Storefront for Hanzo Commerce",
