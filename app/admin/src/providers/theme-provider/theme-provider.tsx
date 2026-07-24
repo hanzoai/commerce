@@ -4,9 +4,13 @@ import { ThemeContext, ThemeOption, ThemeValue } from "./theme-context"
 const THEME_KEY = "hanzo_commerce_theme"
 
 function getDefaultValue(): ThemeOption {
-  const persisted = localStorage?.getItem(THEME_KEY) as ThemeOption
+  if (typeof window === "undefined") {
+    return "dark"
+  }
 
-  if (persisted) {
+  const persisted = window.localStorage.getItem(THEME_KEY) as ThemeOption
+
+  if (persisted === "light" || persisted === "dark" || persisted === "system") {
     return persisted
   }
 
@@ -16,7 +20,7 @@ function getDefaultValue(): ThemeOption {
 
 function getThemeValue(selected: ThemeOption): ThemeValue {
   if (selected === "system") {
-    if (window !== undefined) {
+    if (typeof window !== "undefined") {
       return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light"
@@ -34,7 +38,7 @@ export const ThemeProvider = ({ children }: PropsWithChildren) => {
   const [value, setValue] = useState<ThemeValue>(getThemeValue(state))
 
   const setTheme = (theme: ThemeOption) => {
-    localStorage.setItem(THEME_KEY, theme)
+    window.localStorage.setItem(THEME_KEY, theme)
 
     const themeValue = getThemeValue(theme)
 
@@ -76,6 +80,18 @@ export const ThemeProvider = ({ children }: PropsWithChildren) => {
       document.head.removeChild(css)
     }
   }, [value])
+
+  useEffect(() => {
+    if (state !== "system") {
+      return
+    }
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const sync = () => setValue(media.matches ? "dark" : "light")
+    media.addEventListener("change", sync)
+    sync()
+    return () => media.removeEventListener("change", sync)
+  }, [state])
 
   return (
     <ThemeContext.Provider value={{ theme: state, setTheme }}>

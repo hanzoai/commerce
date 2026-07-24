@@ -112,6 +112,7 @@ jobs:
           file: Dockerfile.commerce-admin
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
+            ghcr.io/hanzoai/commerce-admin:0.2.3
             ghcr.io/hanzoai/commerce-admin:latest
             ghcr.io/hanzoai/commerce-admin:sha-${{ github.sha }}
             ghcr.io/hanzoai/commerce-admin:${{ github.sha }}
