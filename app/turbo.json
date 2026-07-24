@@ -3,6 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": ["SKIP_ENV_VALIDATION"],
       "outputs": ["dist/**", "out/**", ".next/**"]
     },
     "dev": {
