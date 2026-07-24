@@ -75,8 +75,9 @@ type Subscription struct {
 
 	Type BillingType `json:"billing_type"`
 
-	PlanId string `json:"planId"`
-	UserId string `json:"userId"`
+	PlanId  string `json:"planId"`
+	UserId  string `json:"userId"`
+	StoreId string `json:"storeId,omitempty"`
 
 	FeePercent float64 `json:"application_fee_percent"`
 	EndCancel  bool    `json:"cancel_at_period_end"`

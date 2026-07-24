@@ -3,14 +3,16 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import { Badge } from '@hanzo/commerce-ui'
 import { DataTableShell } from '@/components/common/data-table-shell'
+import { CreateProduct } from '@/components/products/create-product'
 
 interface Product {
   id: string
   name: string
   slug: string
-  price: number
+  price?: number
   currency: string
-  status: string
+  available: boolean
+  hidden: boolean
   createdAt: string
 }
 
@@ -30,6 +32,7 @@ const columns = [
     cell: (info) => {
       const price = info.getValue()
       const currency = info.row.original.currency || 'USD'
+      if (price == null) return <span className="text-ui-fg-muted">Not priced</span>
       return (
         <span className="text-ui-fg-base">
           {new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price / 100)}
@@ -37,13 +40,14 @@ const columns = [
       )
     },
   }),
-  col.accessor('status', {
+  col.accessor((product) => product.hidden ? 'hidden' : product.available ? 'live' : 'draft', {
+    id: 'state',
     header: 'Status',
     cell: (info) => {
       const status = info.getValue()
       return (
-        <Badge color={status === 'active' ? 'green' : status === 'draft' ? 'grey' : 'orange'}>
-          {status || 'draft'}
+        <Badge color={status === 'live' ? 'green' : status === 'draft' ? 'grey' : 'orange'}>
+          {status}
         </Badge>
       )
     },
@@ -65,6 +69,7 @@ export default function ProductsPage() {
       description="Manage your product catalog"
       columns={columns}
       detailPath="/products"
+      actions={<CreateProduct />}
     />
   )
 }
