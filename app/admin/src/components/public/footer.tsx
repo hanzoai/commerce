@@ -18,7 +18,7 @@ export function PublicFooter() {
             <ul className="space-y-2 text-sm">
               <li><a href="https://docs.hanzo.ai" className="text-gray-500 transition-colors hover:text-gray-300">Documentation</a></li>
               <li><a href="https://docs.hanzo.ai/api" className="text-gray-500 transition-colors hover:text-gray-300">API Reference</a></li>
-              <li><a href="/login" className="text-gray-500 transition-colors hover:text-gray-300">Admin Dashboard</a></li>
+              <li><a href="/login" className="text-gray-500 transition-colors hover:text-gray-300">Store Workspace</a></li>
             </ul>
           </div>
 

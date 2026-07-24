@@ -3,7 +3,7 @@
 //
 // The model (settled 2026-07-02):
 //
-//   - Entry plan is the $20/mo "starter" plan (billing/tier.Starter): its
+//   - Entry plan is the $20/mo "pro" plan: its
 //     allowance is metered down across usage. After the trial the subscriber is
 //     on $20/mo, metered, with overage billed.
 //   - A brand-new signup with NO card gets a 7-day trial; adding a card extends
@@ -38,9 +38,8 @@ import (
 )
 
 const (
-	// PlanSlug is the entry ($20/mo) plan trials seed from. It aligns with the
-	// "starter" billing tier (billing/tier.Starter).
-	PlanSlug = "starter"
+	// PlanSlug is the catalog's $20/mo entry plan.
+	PlanSlug = "pro"
 
 	// CreditTag marks the one unified trial-credit deposit. Exactly one per
 	// subject; it is both the funding record and the idempotency anchor.
@@ -127,6 +126,13 @@ func resolveEntryPlan() (Plan, bool) {
 // no-op (Started=false, Reason="not_new"). This is what leaves existing users —
 // and Dave's real $10k ledger — untouched, and makes Start idempotent.
 func Start(db *datastore.Datastore, subject string, cardPresent bool, isTest bool) (Result, error) {
+	return StartForStore(db, subject, "", cardPresent, isTest)
+}
+
+// StartForStore begins the entry trial for one store. A store is the billing
+// unit, so prior activity on another store must neither unlock nor disqualify
+// this one.
+func StartForStore(db *datastore.Datastore, subject, storeID string, cardPresent bool, isTest bool) (Result, error) {
 	subject = normalizeSubject(subject)
 	if subject == "" {
 		return Result{}, ErrInvalidSubject
@@ -143,7 +149,7 @@ func Start(db *datastore.Datastore, subject string, cardPresent bool, isTest boo
 	}
 	res := Result{Plan: p.Slug, TrialDays: days, CreditCents: p.CreditCents}
 
-	has, err := subjectHasBillingHistory(db, subject)
+	has, err := subjectHasBillingHistory(db, subject, storeID)
 	if err != nil {
 		return res, err
 	}
@@ -152,14 +158,14 @@ func Start(db *datastore.Datastore, subject string, cardPresent bool, isTest boo
 		return res, nil
 	}
 
-	sub, err := createTrialSubscription(db, subject, p, days)
+	sub, err := createTrialSubscription(db, subject, storeID, p, days)
 	if err != nil {
 		return res, err
 	}
 	res.SubscriptionID = sub.Id()
 	res.TrialEnd = sub.TrialEnd
 
-	dep, err := grantTrialCredit(db, subject, p, sub.TrialEnd, isTest)
+	dep, err := grantTrialCredit(db, subject, storeID, p, sub.TrialEnd, isTest)
 	if err != nil {
 		return res, err
 	}
@@ -237,22 +243,30 @@ func ExtendForCard(db *datastore.Datastore, subject string, isTest bool) (Result
 
 // subjectHasBillingHistory reports whether the subject already has a
 // subscription or any deposit — i.e. is not a brand-new signup.
-func subjectHasBillingHistory(db *datastore.Datastore, subject string) (bool, error) {
+func subjectHasBillingHistory(db *datastore.Datastore, subject, storeID string) (bool, error) {
 	// Subscriptions are keyed by UserId without the synckey ancestor (the
 	// canonical create path, billing/grant.Grant, queries them ancestor-less);
 	// transactions live under the synckey ancestor. Query each accordingly.
 	subs := make([]*subscription.Subscription, 0, 1)
-	if _, err := subscription.Query(db).
-		Filter("UserId=", subject).Limit(1).GetAll(&subs); err != nil {
+	q := subscription.Query(db).Filter("UserId=", subject)
+	if storeID != "" {
+		q = q.Filter("StoreId=", storeID)
+	}
+	if _, err := q.Limit(1).GetAll(&subs); err != nil {
 		return false, err
 	}
 	if len(subs) > 0 {
 		return true, nil
 	}
 
-	// Any deposit credited to the subject — starter credit, prior trial, a
-	// manual comp (Dave's $10k), a top-up, an allotment … all count as "already
-	// funded", so Start leaves them untouched.
+	// An unbound account trial retains the prior subject-wide history rule. A
+	// store trial is keyed by its subscription instead: org balance is shared,
+	// so a deposit for another store must not disqualify this store.
+	if storeID != "" {
+		return false, nil
+	}
+
+	// Any deposit credited to an unbound subject counts as prior history.
 	rootKey := db.NewKey("synckey", "", 1, nil)
 	deps := make([]*transaction.Transaction, 0, 1)
 	if _, err := transaction.Query(db).Ancestor(rootKey).
@@ -262,7 +276,7 @@ func subjectHasBillingHistory(db *datastore.Datastore, subject string) (bool, er
 	return len(deps) > 0, nil
 }
 
-func createTrialSubscription(db *datastore.Datastore, subject string, p Plan, days int) (*subscription.Subscription, error) {
+func createTrialSubscription(db *datastore.Datastore, subject, storeID string, p Plan, days int) (*subscription.Subscription, error) {
 	planRec, err := seedPlan(db, p)
 	if err != nil {
 		return nil, err
@@ -275,6 +289,7 @@ func createTrialSubscription(db *datastore.Datastore, subject string, p Plan, da
 
 	sub := subscription.New(db)
 	sub.UserId = subject
+	sub.StoreId = storeID
 	sub.ProviderType = ProviderType
 	sub.Quantity = 1
 	sub.Metadata = types.Map{
@@ -320,8 +335,9 @@ func seedPlan(db *datastore.Datastore, p Plan) (*plan.Plan, error) {
 
 // grantTrialCredit funds the single unified trial credit as a tag-deduped,
 // expiring Deposit. One per subject: a second call returns the existing one.
-func grantTrialCredit(db *datastore.Datastore, subject string, p Plan, expiresAt time.Time, isTest bool) (*transaction.Transaction, error) {
-	if dep, ok, err := findTrialCredit(db, subject); err != nil {
+func grantTrialCredit(db *datastore.Datastore, subject, storeID string, p Plan, expiresAt time.Time, isTest bool) (*transaction.Transaction, error) {
+	tag := trialCreditTag(storeID)
+	if dep, ok, err := findTrialCreditByTag(db, subject, tag); err != nil {
 		return nil, err
 	} else if ok {
 		return dep, nil
@@ -337,11 +353,12 @@ func grantTrialCredit(db *datastore.Datastore, subject string, p Plan, expiresAt
 		"Trial credit: %s plan ($%.2f, one balance across compute & AI, expires %s)",
 		p.Slug, float64(p.CreditCents)/100, expiresAt.Format("2006-01-02"),
 	)
-	trans.Tags = CreditTag
+	trans.Tags = tag
 	trans.ExpiresAt = expiresAt
 	trans.Metadata = types.Map{
 		"creditType": "trial",
 		"plan":       p.Slug,
+		"storeId":    storeID,
 	}
 	trans.Test = isTest
 
@@ -349,6 +366,13 @@ func grantTrialCredit(db *datastore.Datastore, subject string, p Plan, expiresAt
 		return nil, fmt.Errorf("trial: fund trial credit: %w", err)
 	}
 	return trans, nil
+}
+
+func trialCreditTag(storeID string) string {
+	if storeID == "" {
+		return CreditTag
+	}
+	return CreditTag + ":" + storeID
 }
 
 // findTrialSubscription returns the newest trialing subscription of the given
@@ -384,6 +408,10 @@ func findTrialSubscription(db *datastore.Datastore, subject, slug string) (*subs
 }
 
 func findTrialCredit(db *datastore.Datastore, subject string) (*transaction.Transaction, bool, error) {
+	return findTrialCreditByTag(db, subject, CreditTag)
+}
+
+func findTrialCreditByTag(db *datastore.Datastore, subject, tag string) (*transaction.Transaction, bool, error) {
 	// Load straight into a New(db)-bound model via .Get() (grant.Grant's proven
 	// mutate pattern): the returned model carries both the datastore handle AND
 	// the full synckey-ancestor key, so a later Update() re-saves in place.
@@ -401,7 +429,7 @@ func findTrialCredit(db *datastore.Datastore, subject string) (*transaction.Tran
 		return nil, false, err
 	}
 	for i, t := range ts {
-		if t.Tags != CreditTag {
+		if t.Tags != tag {
 			continue
 		}
 		// Reload the row into a fresh New(db)-bound model under its FULL

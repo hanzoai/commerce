@@ -7,7 +7,6 @@ import (
 
 	"github.com/zap-proto/zip"
 
-	"github.com/hanzoai/commerce/billing/trial"
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
@@ -237,18 +236,6 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 		log.Error("Failed to create payment method: %v", err, c)
 		return http.Fail(c, 500, "failed to create payment method", err)
 	}
-
-	// Adding a card extends the new-signup trial from 7 to 30 days (or starts a
-	// 30-day trial if none exists yet). Keyed to the org billing subject — the
-	// same key signup used — and idempotent, so existing/comped orgs are
-	// untouched. Non-fatal + detached from the request context so it survives
-	// the response.
-	trialSubject := orgBillingKey(c)
-	trialIsTest := org.TestMode()
-	trialDB := datastore.New(org.Namespaced(context.Background()))
-	go func() {
-		_, _ = trial.ExtendForCard(trialDB, trialSubject, trialIsTest)
-	}()
 
 	return c.JSON(201, paymentMethodResponse(pm))
 }

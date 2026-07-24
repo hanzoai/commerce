@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrganizations } from '@hanzo/iam/react'
-import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels } from '../data-provider'
-import type { ListParams, ListResponse, CurrentStore, HanzoModel } from '../data-provider'
+import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels, fetchIntegrations, saveIntegration, setStoreId } from '../data-provider'
+import type { ListParams, ListResponse, CurrentStore, HanzoModel, CommerceIntegration } from '../data-provider'
 
 /** Every query key is prefixed with the current org so switching orgs gives a clean cache. */
 function orgKey(org: string | null, kind: string, ...rest: unknown[]) {
@@ -82,6 +82,28 @@ export function useStore() {
   })
 }
 
+export function useStores() {
+  const { currentOrgId } = useOrganizations()
+  const qc = useQueryClient()
+  const queryKey = orgKey(currentOrgId, 'store', 'list')
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchList<CurrentStore>('store', { display: 100 }, currentOrgId),
+  })
+  const create = useMutation({
+    mutationFn: (input: Partial<CurrentStore>) => createOne<CurrentStore>('store', input, currentOrgId),
+    onSuccess: async (store) => {
+      setStoreId(store.id)
+      await qc.invalidateQueries({ queryKey: [currentOrgId || 'no-org'] })
+    },
+  })
+  const select = async (storeId: string) => {
+    setStoreId(storeId)
+    await qc.invalidateQueries({ queryKey: [currentOrgId || 'no-org'] })
+  }
+  return { ...query, create, select }
+}
+
 /** The org's model catalog (GET /v1/models) with per-model pricing. Org-scoped.
  *  Cached 5min — the catalog changes rarely, and this dedupes the overview + models
  *  page reads into one request (avoids the gateway's per-window rate limit). */
@@ -92,4 +114,19 @@ export function useModels() {
     queryFn: () => fetchModels(currentOrgId),
     staleTime: 5 * 60 * 1000,
   })
+}
+
+export function useIntegrations() {
+  const { currentOrgId } = useOrganizations()
+  const qc = useQueryClient()
+  const queryKey = orgKey(currentOrgId, 'integrations', 'list')
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchIntegrations(currentOrgId),
+  })
+  const save = useMutation({
+    mutationFn: (input: CommerceIntegration) => saveIntegration(input, currentOrgId),
+    onSuccess: integrations => qc.setQueryData(queryKey, integrations),
+  })
+  return { ...query, save }
 }

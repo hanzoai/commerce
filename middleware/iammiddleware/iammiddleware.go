@@ -27,8 +27,6 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/auth"
-	"github.com/hanzoai/commerce/billing/trial"
-	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/models/organization"
 	pkgAuth "github.com/hanzoai/commerce/pkg/auth"
@@ -42,16 +40,6 @@ var (
 	initialized bool
 	iamClient   *auth.IAMClient
 )
-
-// trialTimeout bounds the detached new-signup on-ramp below.
-const trialTimeout = 10 * time.Second
-
-// trialSlots caps how many on-ramps run at once. trial.Start is fired for every
-// authenticated request but early-returns "not_new" for all but a brand-new
-// org, so a trickle of concurrency is ample. The cap is what keeps a slow store
-// from turning one goroutine per request into an unbounded pile, each pinning a
-// datastore and its context.
-var trialSlots = make(chan struct{}, 8)
 
 // Init builds the IAM client used by the directly-exposed commerce-api
 // edge — the surfaces that face a raw user Bearer JWT instead of
@@ -140,34 +128,6 @@ func IAMTokenRequired() zip.Handler {
 			log.Warn("iammiddleware: org resolve failed for %q: %v", ownerID, err)
 			return jsonhttp.Fail(c, http.StatusServiceUnavailable,
 				"Unable to resolve organization: "+err.Error(), err)
-		}
-
-		// Best-effort new-signup on-ramp on first encounter: a 7-day trial of
-		// the $20 plan funded with one unified credit (billing/trial). Billing
-		// is per-org, so it MUST be keyed to the org slug (the same key
-		// GetMyBalance reads and the gateway gate debits) inside the org's
-		// namespace. New-signup only + idempotent: existing/comped orgs (any
-		// prior subscription or deposit) are left untouched. A card added later
-		// extends the trial to 30 days (see api/billing.CreatePaymentMethod).
-		orgSlug := strings.ToLower(strings.TrimSpace(ownerID))
-		signupIsTest := !liveFromHeaders(c)
-		nsCtx := o.Namespaced(context.Background())
-		select {
-		case trialSlots <- struct{}{}:
-			go func() {
-				defer func() { <-trialSlots }()
-				// Bound the detached work. Without a deadline a trial that
-				// blocks on a busy writer pins its datastore and context
-				// forever, and one goroutine per request accumulates without
-				// limit — the on-ramp must never outlive the request it
-				// followed by more than this.
-				ctx, cancel := context.WithTimeout(nsCtx, trialTimeout)
-				defer cancel()
-				_, _ = trial.Start(datastore.New(ctx), orgSlug, false, signupIsTest)
-			}()
-		default:
-			// Saturated: skip this best-effort on-ramp rather than queue it.
-			// trial.Start is idempotent, so a later request re-attempts it.
 		}
 
 		// Gateway-trusted identity counts as live by default. An explicit
