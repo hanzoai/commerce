@@ -10,7 +10,8 @@ function getDefaultValue(): ThemeOption {
     return persisted
   }
 
-  return "system"
+  // Dark by default across all Hanzo surfaces (until the user explicitly picks otherwise).
+  return "dark"
 }
 
 function getThemeValue(selected: ThemeOption): ThemeValue {
@@ -21,8 +22,8 @@ function getThemeValue(selected: ThemeOption): ThemeValue {
         : "light"
     }
 
-    // Default to light theme if we can't detect the system preference
-    return "light"
+    // Default to dark theme if we can't detect the system preference
+    return "dark"
   }
 
   return selected
