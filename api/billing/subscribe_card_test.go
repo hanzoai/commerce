@@ -281,6 +281,33 @@ func TestSubscribeWithCard_ServerAuthoritativePrice(t *testing.T) {
 	}
 }
 
+// TestSubscribeWithCard_ForeignCurrencyRejected proves the currency is
+// SERVER-authoritative: a client that swaps the currency to a weaker unit
+// ("jpy" for the USD-priced $20 pro plan) is rejected 400 with NO charge and NO
+// subscription — otherwise 2000 JPY (~$13) would settle the $20 plan (underpay).
+func TestSubscribeWithCard_ForeignCurrencyRejected(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("sc-jpy")
+	m := squareMock("cust_j", "ccof_j", "sqpay_j")
+	withFakeSquare(t, m)
+
+	resp := invokeSubscribeCard(org, ctx, `{"sourceId":"cnon:ok","planId":"pro","currency":"jpy"}`, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s, want 400 (foreign currency rejected)", resp.StatusCode, func() string { b, _ := io.ReadAll(resp.Body); return string(b) }())
+	}
+	if m.chargeCalls != 0 {
+		t.Fatalf("charge calls=%d for a rejected currency, want 0 — no money must move", m.chargeCalls)
+	}
+	if m.createCustomerCalls != 0 {
+		t.Fatalf("CreateCustomer calls=%d for a rejected currency, want 0 (reject BEFORE vaulting)", m.createCustomerCalls)
+	}
+	db := datastore.New(org.Namespaced(ctx))
+	if sub := parentSub(t, db, "sc-jpy", "pro"); sub != nil {
+		t.Fatal("a rejected-currency request must NOT create a subscription")
+	}
+}
+
 // TestSubscribeWithCard_Idempotent proves a retry with the same idempotency key
 // charges + subscribes AT MOST once: the second call replays the first response and
 // the card is charged exactly once.

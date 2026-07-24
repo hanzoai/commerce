@@ -333,11 +333,14 @@ func seedPlan(db *datastore.Datastore, p Plan) (*plan.Plan, error) {
 	return pl, nil
 }
 
-// grantTrialCredit funds the single unified trial credit as a tag-deduped,
-// expiring Deposit. One per subject: a second call returns the existing one.
+// grantTrialCredit funds the single unified trial credit as an expiring Deposit.
+// The credit is capped at ONE per org subject: a second store's trial (the
+// subject is the shared org, the store only varies the subscription) reuses the
+// existing credit rather than minting a fresh $20 — otherwise looping
+// create-store -> trial would mint unlimited free credit. Per-store trial
+// SUBSCRIPTIONS are untouched; only the money grant is org-capped.
 func grantTrialCredit(db *datastore.Datastore, subject, storeID string, p Plan, expiresAt time.Time, isTest bool) (*transaction.Transaction, error) {
-	tag := trialCreditTag(storeID)
-	if dep, ok, err := findTrialCreditByTag(db, subject, tag); err != nil {
+	if dep, ok, err := findAnyTrialCredit(db, subject); err != nil {
 		return nil, err
 	} else if ok {
 		return dep, nil
@@ -353,7 +356,9 @@ func grantTrialCredit(db *datastore.Datastore, subject, storeID string, p Plan, 
 		"Trial credit: %s plan ($%.2f, one balance across compute & AI, expires %s)",
 		p.Slug, float64(p.CreditCents)/100, expiresAt.Format("2006-01-02"),
 	)
-	trans.Tags = tag
+	// Unified org tag (never per-store) so the single credit is capped to one per
+	// subject and ExtendForCard's findTrialCredit resolves it.
+	trans.Tags = CreditTag
 	trans.ExpiresAt = expiresAt
 	trans.Metadata = types.Map{
 		"creditType": "trial",
@@ -366,13 +371,6 @@ func grantTrialCredit(db *datastore.Datastore, subject, storeID string, p Plan, 
 		return nil, fmt.Errorf("trial: fund trial credit: %w", err)
 	}
 	return trans, nil
-}
-
-func trialCreditTag(storeID string) string {
-	if storeID == "" {
-		return CreditTag
-	}
-	return CreditTag + ":" + storeID
 }
 
 // findTrialSubscription returns the newest trialing subscription of the given
@@ -409,6 +407,37 @@ func findTrialSubscription(db *datastore.Datastore, subject, slug string) (*subs
 
 func findTrialCredit(db *datastore.Datastore, subject string) (*transaction.Transaction, bool, error) {
 	return findTrialCreditByTag(db, subject, CreditTag)
+}
+
+// findAnyTrialCredit returns the subject's single trial credit if one already
+// exists in ANY form — the unified org tag (CreditTag) or a legacy per-store tag
+// (CreditTag+":"+storeID) minted before the org-cap. This is the money cap: a
+// second store's trial must reuse the org's one credit, never mint a fresh grant.
+func findAnyTrialCredit(db *datastore.Datastore, subject string) (*transaction.Transaction, bool, error) {
+	rootKey := db.NewKey("synckey", "", 1, nil)
+	ts := make([]*transaction.Transaction, 0, 4)
+	keys, err := transaction.Query(db).Ancestor(rootKey).
+		Filter("DestinationId=", subject).GetAll(&ts)
+	if err != nil {
+		return nil, false, err
+	}
+	for i, t := range ts {
+		if t.Tags != CreditTag && !strings.HasPrefix(t.Tags, CreditTag+":") {
+			continue
+		}
+		if i >= len(keys) {
+			break
+		}
+		// Reload under the full synckey-parented key so a later Update persists
+		// (same rationale as findTrialCreditByTag).
+		fullKey := db.NewKey("transaction", keys[i].StringID(), keys[i].IntID(), rootKey)
+		bound := transaction.New(db)
+		if err := bound.Get(fullKey); err != nil {
+			return nil, false, err
+		}
+		return bound, true, nil
+	}
+	return nil, false, nil
 }
 
 func findTrialCreditByTag(db *datastore.Datastore, subject, tag string) (*transaction.Transaction, bool, error) {

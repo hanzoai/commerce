@@ -172,9 +172,18 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		seatMult = int64(qty)
 	}
 	chargeCents := int64(p.Price) * seatMult
-	cur := currency.Type(strings.ToLower(strings.TrimSpace(req.Currency)))
+	// Currency is SERVER-AUTHORITATIVE: the plan's own currency (default USD). A
+	// client currency is honored ONLY when it matches the plan's; a mismatched
+	// currency (e.g. "jpy" for a USD-priced plan) is rejected — otherwise the
+	// price's minor units would be charged in a weaker unit (2000 JPY ~ $13 for a
+	// $20 plan), an underpayment.
+	cur := p.Currency
 	if cur == "" {
 		cur = currency.USD
+	}
+	if reqCur := currency.Type(strings.ToLower(strings.TrimSpace(req.Currency))); reqCur != "" && reqCur != cur {
+		return http.Fail(c, 400,
+			fmt.Sprintf("plan priced in %s; currency %s not accepted", cur, reqCur), nil)
 	}
 
 	// Idempotency (money-critical). The client SHOULD send a STABLE X-Idempotency-Key

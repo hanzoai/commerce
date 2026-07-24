@@ -45,6 +45,29 @@ function emptyList<T>(params?: ListParams): ListResponse<T> {
   return { count: 0, models: [], page: params?.page ?? 1, display: params?.display ?? 20 }
 }
 
+// ── Subscription paywall interceptor ─────────────────────────────────────────
+// Any commerce fetch that returns 402 { code: "subscription_required" } means the
+// org has no active subscription: send the browser to the paywall. Every request
+// flows through `apiFetch`, so this is the ONE place the gate is enforced.
+async function guardSubscription(res: Response): Promise<void> {
+  if (res.status !== 402 || typeof window === 'undefined') return
+  if (window.location.pathname.startsWith('/subscribe')) return
+  try {
+    const body = await res.clone().json()
+    if (body?.code === 'subscription_required') {
+      window.location.assign('/subscribe')
+    }
+  } catch {
+    // Non-JSON 402 — leave it to the caller's own error handling.
+  }
+}
+
+async function apiFetch(input: string, init?: RequestInit): Promise<Response> {
+  const res = await globalThis.fetch(input, init)
+  await guardSubscription(res)
+  return res
+}
+
 // List reads degrade to a graceful empty envelope on any non-2xx (unfunded-org 402,
 // permission 403, not-found 404): the UI shows an empty table, never a crash/error toast.
 export async function fetchList<T>(kind: string, params?: ListParams, org?: string | null): Promise<ListResponse<T>> {
@@ -55,7 +78,7 @@ export async function fetchList<T>(kind: string, params?: ListParams, org?: stri
     })
   }
   try {
-    const res = await fetch(url.toString(), { headers: headers(org) })
+    const res = await apiFetch(url.toString(), { headers: headers(org) })
     if (!res.ok) return emptyList<T>(params)
     const body = await res.json()
     // Tolerate the envelope, a bare array, or a legacy { <kind>s: [] } shape.
@@ -68,13 +91,13 @@ export async function fetchList<T>(kind: string, params?: ListParams, org?: stri
 }
 
 export async function fetchOne<T>(kind: string, id: string, org?: string | null): Promise<T> {
-  const res = await fetch(`${API_BASE}/v1/${kind}/${id}`, { headers: headers(org) })
+  const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}`, { headers: headers(org) })
   if (!res.ok) throw new Error(`Failed to fetch ${kind}/${id}: ${res.status}`)
   return res.json()
 }
 
 export async function createOne<T>(kind: string, data: Partial<T>, org?: string | null): Promise<T> {
-  const res = await fetch(`${API_BASE}/v1/${kind}`, {
+  const res = await apiFetch(`${API_BASE}/v1/${kind}`, {
     method: 'POST',
     headers: headers(org),
     body: JSON.stringify(data),
@@ -84,7 +107,7 @@ export async function createOne<T>(kind: string, data: Partial<T>, org?: string 
 }
 
 export async function updateOne<T>(kind: string, id: string, data: Partial<T>, org?: string | null): Promise<T> {
-  const res = await fetch(`${API_BASE}/v1/${kind}/${id}`, {
+  const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}`, {
     method: 'PATCH',
     headers: headers(org),
     body: JSON.stringify(data),
@@ -94,7 +117,7 @@ export async function updateOne<T>(kind: string, id: string, data: Partial<T>, o
 }
 
 export async function deleteOne(kind: string, id: string, org?: string | null): Promise<void> {
-  const res = await fetch(`${API_BASE}/v1/${kind}/${id}`, {
+  const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}`, {
     method: 'DELETE',
     headers: headers(org),
   })
@@ -141,7 +164,7 @@ export interface CurrentStore {
 
 export async function fetchCurrentStore(org?: string | null): Promise<CurrentStore | null> {
   try {
-    const res = await fetch(`${API_BASE}/v1/store/current`, { headers: headers(org) })
+    const res = await apiFetch(`${API_BASE}/v1/store/current`, { headers: headers(org) })
     if (!res.ok) return null
     const body = await res.json()
     const store = (body?.store ?? body) as CurrentStore
@@ -171,7 +194,7 @@ export interface HanzoModel {
 
 export async function fetchModels(org?: string | null): Promise<HanzoModel[]> {
   try {
-    const res = await fetch(`${API_BASE}/v1/models`, { headers: headers(org) })
+    const res = await apiFetch(`${API_BASE}/v1/models`, { headers: headers(org) })
     if (!res.ok) return []
     const body = await res.json()
     // OpenAI-style: `data` is the array; `models` may be a non-array alias — pick the array.
@@ -194,15 +217,26 @@ export interface CommerceIntegration {
   type: string
   enabled: boolean
   show?: boolean
-  data?: unknown
+  data?: Record<string, unknown>
   createdAt?: string
   updatedAt?: string
+}
+
+// Upsert shape: `id` is absent for a first-time connect (the backend keys by
+// `type`), and `data` carries the provider credentials — which the commerce API
+// hydrates into Hanzo KMS at /tenants/{org}/{type}/* (never persisted in the row).
+export interface IntegrationInput {
+  id?: string
+  type: string
+  enabled: boolean
+  show?: boolean
+  data?: Record<string, unknown>
 }
 
 export async function fetchIntegrations(org?: string | null): Promise<CommerceIntegration[]> {
   if (!org) return []
   try {
-    const res = await fetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
+    const res = await apiFetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
       headers: headers(org),
     })
     if (!res.ok) return []
@@ -213,12 +247,15 @@ export async function fetchIntegrations(org?: string | null): Promise<CommerceIn
   }
 }
 
+// Upsert one integration by `type`. Enables/pauses the provider and, when `data`
+// is present, syncs its credentials into KMS. Returns the org's full, refreshed
+// integration list. One path for connect · configure · enable · pause.
 export async function saveIntegration(
-  integration: Pick<CommerceIntegration, 'id' | 'type' | 'enabled'> & Partial<CommerceIntegration>,
+  integration: IntegrationInput,
   org?: string | null,
 ): Promise<CommerceIntegration[]> {
   if (!org) throw new Error('Select an organization first')
-  const res = await fetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
+  const res = await apiFetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
     method: 'PATCH',
     headers: headers(org),
     body: JSON.stringify([{ ...integration, show: integration.show ?? true }]),
@@ -226,4 +263,42 @@ export async function saveIntegration(
   if (!res.ok) throw new Error(`Failed to update integration: ${res.status}`)
   const body = await res.json()
   return Array.isArray(body) ? body : []
+}
+
+// ── Sub-resource actions ──────────────────────────────────────────────────────
+// Some resources expose action sub-routes beyond CRUD — e.g. a gift card's
+// POST /v1/gift-card/:id/redeem|void and GET /v1/gift-card/:id/balance|redemptions.
+// These two helpers are the ONE way to reach any `/v1/{kind}/{id}/{action}`
+// endpoint, carrying the same bearer + org headers as the CRUD calls above.
+
+// The API renders errors as { error: { message, code } }. Surface that message
+// (e.g. "insufficient gift card balance") so callers can toast something useful,
+// and carry the HTTP status for callers that branch on it (402 = out of funds).
+async function actionError(res: Response, fallback: string): Promise<never> {
+  let message = fallback
+  try {
+    const body = await res.clone().json()
+    message = body?.error?.message || body?.message || fallback
+  } catch {
+    // Non-JSON body — keep the fallback.
+  }
+  const err = new Error(message) as Error & { status?: number }
+  err.status = res.status
+  throw err
+}
+
+export async function fetchAction<T>(kind: string, id: string, action: string, org?: string | null): Promise<T> {
+  const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}/${action}`, { headers: headers(org) })
+  if (!res.ok) return actionError(res, `Failed to load ${kind}/${id}/${action}: ${res.status}`)
+  return res.json()
+}
+
+export async function postAction<T>(kind: string, id: string, action: string, data: unknown, org?: string | null): Promise<T> {
+  const res = await apiFetch(`${API_BASE}/v1/${kind}/${id}/${action}`, {
+    method: 'POST',
+    headers: headers(org),
+    body: JSON.stringify(data ?? {}),
+  })
+  if (!res.ok) return actionError(res, `Failed to ${action} ${kind}/${id}: ${res.status}`)
+  return res.json()
 }
