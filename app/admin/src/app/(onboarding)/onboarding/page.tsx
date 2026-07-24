@@ -2,9 +2,11 @@
 
 import { useRouter } from 'next/navigation'
 import { Text } from '@hanzo/commerce-ui'
+import { useOrganizations } from '@hanzo/iam/react'
 import { HanzoMark } from '@/components/hanzo-mark'
 import { STEP_COUNT, STEPS } from '@/components/onboarding/steps'
 import { useOnboarding } from '@/components/onboarding/use-onboarding'
+import { dismissOnboarding } from '@/lib/onboarding-state'
 import { WizardProgress } from '@/components/onboarding/progress'
 import { StoreStep } from '@/components/onboarding/steps/store-step'
 import { ProductStep } from '@/components/onboarding/steps/product-step'
@@ -23,15 +25,23 @@ const STEP_COMPONENTS: Record<(typeof STEPS)[number]['key'], (props: StepProps) 
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { currentOrgId } = useOrganizations()
   const { step, ready, goTo, finish } = useOnboarding(STEP_COUNT)
 
   const isFirst = step === 0
   const isLast = step === STEP_COUNT - 1
 
+  // Leaving the wizard for the dashboard — whether by launching or opting out —
+  // marks this org's onboarding done so the dashboard stops routing it back here.
+  const leave = () => {
+    finish()
+    dismissOnboarding(currentOrgId)
+    router.push('/overview')
+  }
+
   const advance = () => {
     if (isLast) {
-      finish()
-      router.push('/overview')
+      leave()
       return
     }
     goTo(step + 1)
@@ -56,7 +66,7 @@ export default function OnboardingPage() {
         </div>
         <button
           type="button"
-          onClick={() => router.push('/overview')}
+          onClick={leave}
           className="text-sm text-ui-fg-muted underline-offset-2 hover:text-ui-fg-base hover:underline"
         >
           Skip for now
