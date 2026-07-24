@@ -33,11 +33,22 @@ export function Sidebar() {
   const { isAuthenticated, user, login, logout } = useIam()
   const orgState = useOrganizations()
 
+  // Models is a Hanzo-internal surface (the AI model catalog), not a tenant
+  // commerce feature — show it only when the active org is one of Hanzo's own.
+  const orgName = (orgState.currentOrg?.name || '').toLowerCase()
+  const isHanzoOrg = orgName === 'hanzo' || orgName === 'admin'
+  const items = navItems.filter((item) => item.href !== '/models' || isHanzoOrg)
+
   return (
     <aside className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-ui-border-base bg-ui-bg-base">
       <div className="flex h-16 items-center gap-3 border-b border-ui-border-base px-6">
-        <svg viewBox="0 0 24 24" className="h-8 w-8" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 2 H7 V10 H17 V2 H21 V22 H17 V14 H7 V22 H3 Z" fill="currentColor"/>
+        {/* Canonical Hanzo mark (@hanzo/logo block-H), monochrome via currentColor. */}
+        <svg viewBox="0 0 67 67" className="h-8 w-8" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.21 0H0V22.3184H22.21V0Z"/>
+          <path d="M66.7198 0H44.5098V22.3184H66.7198V0Z"/>
+          <path d="M66.7038 22.3184H22.2534L0.0878906 44.6367H44.4634L66.7038 22.3184Z"/>
+          <path d="M22.21 67V44.6369H0V67H22.21Z"/>
+          <path d="M66.7198 67V44.6369H44.5098V67H66.7198Z"/>
         </svg>
         <div>
           <Text size="small" weight="plus" className="text-ui-fg-base">Hanzo Commerce</Text>
@@ -56,7 +67,7 @@ export function Sidebar() {
       )}
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
