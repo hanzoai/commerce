@@ -176,12 +176,6 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Get("/events", ListBillingEvents)
 	api.Get("/events/:id", GetBillingEvent)
 
-	// Webhook endpoints (outbound: for creating and listing webhook subscriptions)
-	api.Post("/webhook-endpoints", CreateWebhookEndpoint)
-	api.Get("/webhook-endpoints", ListWebhookEndpoints)
-	api.Get("/webhook-endpoints/:id", GetWebhookEndpoint)
-	api.Patch("/webhook-endpoints/:id", UpdateWebhookEndpoint)
-	api.Delete("/webhook-endpoints/:id", DeleteWebhookEndpoint)
 
 	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
 	// Registered outside the admin-token group because providers do not carry
