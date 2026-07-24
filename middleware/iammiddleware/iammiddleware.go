@@ -33,7 +33,50 @@ import (
 	"github.com/hanzoai/commerce/pkg/org"
 	"github.com/hanzoai/commerce/util/bit"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
+	"github.com/hanzoai/commerce/util/permission"
 )
+
+// orgAdminGrant is the org-SCOPED merchant-management authority a gateway-verified
+// ORG admin (X-User-IsAdmin=="true") carries for its OWN org — the catalog
+// primitives self-serve onboarding needs (create a store, then its products,
+// collections and variants). IAMTokenRequired ORs it into the request permissions
+// ONLY for the caller's resolved namespace (X-Org-Id), so it never crosses tenants.
+//
+// It EXCLUDES permission.Admin by design: Admin is the money/platform authority
+// (credit-mint, card-charge and cross-org billing gates key on it — see
+// edgeauth.permsHeader), reserved for the service token and platform super-admins.
+// An org owner managing its own store must never gain it.
+var orgAdminGrant = bit.Field(
+	permission.Store | permission.ReadStore | permission.WriteStore |
+		permission.Product | permission.ReadProduct | permission.WriteProduct |
+		permission.Collection | permission.ReadCollection | permission.WriteCollection |
+		permission.Variant | permission.ReadVariant | permission.WriteVariant,
+)
+
+// isOrgAdmin reports whether the gateway/EdgeAuth marked this request's caller an
+// ORG-level admin via the trusted (stripped-then-reminted on ingress)
+// X-User-IsAdmin header. Only "true" (case-insensitive) counts; absent/any other
+// value fails closed to false. The gateway binds this flag to the EFFECTIVE org
+// (X-Org-Id), so a caller only ever carries it for an org it actually administers.
+func isOrgAdmin(c *zip.Ctx) bool {
+	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
+}
+
+// orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
+// the EFFECTIVE org this request acts in (effectiveOrg == the resolved X-Org-Id).
+// The org-admin grant is authority over one's OWN org; this is the tenant check that
+// keeps an org-switched principal (home != effective) from inheriting merchant
+// authority over a foreign org. Fail closed: a missing/blank home org never matches
+// a non-empty effective org. Both are gateway-minted + stripped-on-ingress, so
+// neither is client-forgeable; this enforces their coupling rather than assuming it.
+func orgAdminHomeMatches(c *zip.Ctx, effectiveOrg string) bool {
+	home := strings.TrimSpace(c.Header(HeaderUserOwner))
+	eff := strings.TrimSpace(effectiveOrg)
+	if home == "" || eff == "" {
+		return false
+	}
+	return strings.EqualFold(home, eff)
+}
 
 var (
 	mu          sync.RWMutex
@@ -148,6 +191,24 @@ func IAMTokenRequired() zip.Handler {
 		// no Live. The gateway is the trust boundary; this binary
 		// trusts the bits it provides and nothing else.
 		perms := parsePermissionsHeader(c.Header(HeaderUserPermissions))
+
+		// An ORG-level admin (gateway/EdgeAuth-minted X-User-IsAdmin=="true", e.g.
+		// an org owner like maxpower) additionally carries org-SCOPED merchant
+		// authority for its OWN org, so self-serve onboarding works: create a store,
+		// then its catalog (products/collections/variants). It deliberately EXCLUDES
+		// permission.Admin — the money/platform authority (credit-mint, card-charge,
+		// cross-org billing gates key on it; see edgeauth.permsHeader) reserved for
+		// the service token and platform super-admins.
+		//
+		// Bind the grant to HOME==EFFECTIVE: the org-admin flag authorizes the caller's
+		// HOME org (X-User-Owner) only. Applying it when the effective namespace
+		// (X-Org-Id, resolved into ownerID) differs would let an org-switched principal
+		// gain merchant authority over a FOREIGN org. Enforced HERE (defense in depth),
+		// not merely trusted from the gateway by comment — a money/multi-tenant boundary
+		// must not delegate its own tenant check.
+		if isOrgAdmin(c) && orgAdminHomeMatches(c, ownerID) {
+			perms |= orgAdminGrant
+		}
 
 		// Mirror onto request locals for legacy handlers.
 		c.Locals("iam_authenticated", true)
