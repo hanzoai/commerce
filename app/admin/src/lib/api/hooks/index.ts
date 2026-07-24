@@ -5,6 +5,8 @@ export {
   useUpdate,
   useDelete,
   useCount,
+  useResourceAction,
+  useResourceActionData,
   useProducts,
   useProduct,
   useOrders,

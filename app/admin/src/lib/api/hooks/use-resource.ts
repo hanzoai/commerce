@@ -2,8 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrganizations } from '@hanzo/iam/react'
-import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels, fetchIntegrations, saveIntegration, setStoreId } from '../data-provider'
-import type { ListParams, ListResponse, CurrentStore, HanzoModel, CommerceIntegration } from '../data-provider'
+import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels, fetchIntegrations, saveIntegration, setStoreId, fetchAction, postAction } from '../data-provider'
+import type { ListParams, ListResponse, CurrentStore, HanzoModel, CommerceIntegration, IntegrationInput } from '../data-provider'
 
 /** Every query key is prefixed with the current org so switching orgs gives a clean cache. */
 function orgKey(org: string | null, kind: string, ...rest: unknown[]) {
@@ -59,6 +59,31 @@ export function useCount(kind: string) {
   return useQuery<number>({
     queryKey: orgKey(currentOrgId, kind, 'count'),
     queryFn: () => fetchCount(kind, currentOrgId),
+  })
+}
+
+/** Read a resource action sub-route (GET /v1/{kind}/{id}/{action}), org-scoped.
+ *  Used for projections like a gift card's live balance + redemption ledger. The
+ *  key is a child of orgKey(org, kind), so any create/update/action invalidation
+ *  of the kind refreshes it too. */
+export function useResourceActionData<T>(kind: string, id: string | undefined, action: string, options?: { enabled?: boolean }) {
+  const { currentOrgId } = useOrganizations()
+  return useQuery<T>({
+    queryKey: orgKey(currentOrgId, kind, 'action', id, action),
+    queryFn: () => fetchAction<T>(kind, id!, action, currentOrgId),
+    enabled: !!id && (options?.enabled ?? true),
+  })
+}
+
+/** Invoke a resource action (POST /v1/{kind}/{id}/{action}) — e.g. redeem/void a
+ *  gift card. On success every query for the kind (list, detail, balance,
+ *  redemptions) is invalidated so the projected balance re-reads. */
+export function useResourceAction<TResult, TBody = unknown>(kind: string, id: string | undefined, action: string) {
+  const { currentOrgId } = useOrganizations()
+  const qc = useQueryClient()
+  return useMutation<TResult, Error, TBody>({
+    mutationFn: (body: TBody) => postAction<TResult>(kind, id!, action, body, currentOrgId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: orgKey(currentOrgId, kind) }),
   })
 }
 
@@ -124,8 +149,10 @@ export function useIntegrations() {
     queryKey,
     queryFn: () => fetchIntegrations(currentOrgId),
   })
+  // One mutation for connect · configure · enable · pause. `data` (creds) is
+  // optional — omit it to just flip `enabled`, include it to (re)sync KMS.
   const save = useMutation({
-    mutationFn: (input: CommerceIntegration) => saveIntegration(input, currentOrgId),
+    mutationFn: (input: IntegrationInput) => saveIntegration(input, currentOrgId),
     onSuccess: integrations => qc.setQueryData(queryKey, integrations),
   })
   return { ...query, save }

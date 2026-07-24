@@ -7,6 +7,7 @@ import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { createOne, fetchCount, fetchList, fetchCurrentStore, fetchModels } from '@/lib/api/data-provider'
 import type { CurrentStore } from '@/lib/api/data-provider'
 import { requestSearch } from '@/lib/search-bus'
+import { consumePendingAiPrompt, onAiPrompt } from '@/lib/ai-bus'
 import {
   SECTION_TO_KIND,
   buildSystemPrompt,
@@ -14,6 +15,8 @@ import {
   parseAssistant,
   type AppHost,
   type CommandLogEntry,
+  type Created,
+  type ProductSpec,
 } from './app-commands'
 
 const AI_URL = process.env.NEXT_PUBLIC_HANZO_AI_URL || 'https://api.hanzo.ai/v1/chat/completions'
@@ -29,6 +32,34 @@ function sectionOf(pathname: string): string {
   const seg = pathname.split('/').filter(Boolean)[0]
   return seg || 'overview'
 }
+
+function slugify(value: string): string {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+// The wire shape POSTed to /v1/product — mirrors the CreateProduct admin form
+// (name/slug/sku/description/available/hidden) plus optional cents price. ONE
+// builder so create_product and generate_catalog derive identical records.
+function productPayload(spec: ProductSpec) {
+  const name = spec.name.trim()
+  const slug = slugify(name)
+  const status = spec.status ?? 'draft'
+  const price =
+    spec.priceUsd != null && Number.isFinite(spec.priceUsd) && spec.priceUsd >= 0
+      ? Math.round(spec.priceUsd * 100)
+      : undefined
+  return {
+    name,
+    slug,
+    sku: spec.sku?.trim() || slug.toUpperCase() || name,
+    description: spec.description?.trim(),
+    ...(price != null ? { price } : {}),
+    available: status === 'live',
+    hidden: status === 'hidden',
+  }
+}
+
+type CreatedRecord = { id?: string; name?: string }
 
 export function AiChatDock() {
   const { accessToken, isAuthenticated } = useIam()
@@ -51,6 +82,19 @@ export function AiChatDock() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, busy])
+
+  // Open the dock pre-filled when another surface (onboarding "generate my
+  // catalog" shortcut) requests a prompt — same-route via the listener,
+  // cross-route via the pending stash consumed on mount.
+  useEffect(() => {
+    const apply = (prompt: string) => {
+      setOpen(true)
+      setInput(prompt)
+    }
+    const queued = consumePendingAiPrompt()
+    if (queued) apply(queued)
+    return onAiPrompt(apply)
+  }, [])
 
   const host: AppHost = useMemo(
     () => ({
@@ -89,24 +133,49 @@ export function AiChatDock() {
         const listings = store?.listings ? Object.keys(store.listings).length : 0
         return `Products: ${products}, Orders: ${orders}, Customers: ${customers}, Collections: ${collections}. Store ${store?.name ?? '—'}: ${listings} listings.`
       },
-      createProduct: async ({ name, sku, description }) => {
-        const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-        const product = await createOne<{
-          id?: string
-          name: string
-          slug: string
-          sku: string
-          description?: string
-          available: boolean
-        }>('product', {
-          name: name.trim(),
-          slug,
-          sku: sku.trim(),
-          description: description?.trim(),
-          available: false,
-        }, currentOrgId)
+      createProduct: async (spec) => {
+        const payload = productPayload(spec)
+        const product = await createOne<CreatedRecord>('product', payload, currentOrgId)
         router.push('/products')
-        return product
+        return { id: product.id, name: product.name || payload.name }
+      },
+      createCollection: async ({ title, handle }) => {
+        const name = title.trim()
+        const collection = await createOne<CreatedRecord & { slug: string }>(
+          'collection',
+          { name, slug: handle?.trim() || slugify(name) },
+          currentOrgId,
+        )
+        router.push('/collections')
+        return { id: collection.id, title: collection.name || name }
+      },
+      createStore: async ({ name, currency }) => {
+        const clean = name.trim()
+        const store = await createOne<CreatedRecord & { currency: string }>(
+          'store',
+          { name: clean, currency: (currency?.trim() || 'usd').toLowerCase() },
+          currentOrgId,
+        )
+        router.push('/settings')
+        return { id: store.id, name: store.name || clean }
+      },
+      generateCatalog: async (theme, count, specs) => {
+        const list: ProductSpec[] = specs.length
+          ? specs.slice(0, count)
+          : Array.from({ length: count }, (_, i) => ({ name: `${theme} ${i + 1}` }))
+        const created: Created[] = []
+        let failed = 0
+        for (const spec of list) {
+          try {
+            const payload = productPayload(spec)
+            const product = await createOne<CreatedRecord>('product', payload, currentOrgId)
+            created.push({ id: product.id, name: product.name || payload.name })
+          } catch {
+            failed += 1
+          }
+        }
+        if (created.length) router.push('/products')
+        return { created, failed }
       },
     }),
     [isAuthenticated, pathname, router, currentOrgId, store],
@@ -180,7 +249,7 @@ export function AiChatDock() {
         <header className="flex items-center justify-between border-b border-ui-border-base px-4 py-3">
           <div>
             <Heading level="h3">Assistant</Heading>
-            <Text size="xsmall" className="text-ui-fg-muted">{store?.name ? `${store.name} · ` : ''}Ask, navigate, summarize</Text>
+            <Text size="xsmall" className="text-ui-fg-muted">{store?.name ? `${store.name} · ` : ''}Ask, create, navigate</Text>
           </div>
           <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="rounded-md p-1 text-ui-fg-muted hover:bg-ui-bg-base-hover">
             <IconX />
@@ -191,11 +260,11 @@ export function AiChatDock() {
           {messages.length === 0 ? (
             <div className="mt-8 text-center">
               <Text size="small" className="text-ui-fg-muted">
-                Try “take me to orders”, “search products for bikini”, or “summarize this view”.
+                Try “add a product called Cold Brew for $6”, “generate a 6-item coffee catalog”, or “summarize this view”.
               </Text>
             </div>
           ) : (
-            messages.map((m, i) => <Bubble key={i} msg={m} />)
+            messages.map((m, i) => <Bubble key={i} msg={m} onOpen={(href) => router.push(href)} />)
           )}
           {busy && (
             <div className="flex gap-1 px-1 py-2">
@@ -230,7 +299,7 @@ export function AiChatDock() {
   )
 }
 
-function Bubble({ msg }: { msg: ChatMsg }) {
+function Bubble({ msg, onOpen }: { msg: ChatMsg; onOpen: (href: string) => void }) {
   const isUser = msg.role === 'user'
   return (
     <div className={clx('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -248,6 +317,15 @@ function Bubble({ msg }: { msg: ChatMsg }) {
             {msg.receipts.map((r, i) => (
               <Text key={i} size="xsmall" className={clx('block', r.ok ? 'text-ui-fg-subtle' : 'text-ui-fg-error')}>
                 {r.ok ? '✓' : '✗'} {r.message}
+                {r.ok && r.href ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpen(r.href!)}
+                    className="ml-1 underline underline-offset-2 hover:text-ui-fg-base"
+                  >
+                    Open
+                  </button>
+                ) : null}
               </Text>
             ))}
           </div>
