@@ -1,90 +1,142 @@
 'use client'
 
-import { Badge, Button, Container, Heading, Text } from '@hanzo/commerce-ui'
+import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
+import { Container, Input, Text } from '@hanzo/commerce-ui'
 import { PageHeader } from '@/components/common/page-header'
+import { ProviderCard } from '@/components/integrations/provider-card'
+import { catalog, groups, type Provider } from '@/lib/integrations/catalog'
 import { useIntegrations } from '@/lib/api/hooks'
+import type { CommerceIntegration, IntegrationInput } from '@/lib/api/data-provider'
 
-interface CatalogItem {
-  type: string
-  name: string
-  group: string
-  note: string
-  builtIn?: boolean
-}
-
-const catalog: CatalogItem[] = [
-  { type: 'square', name: 'Square', group: 'Payments', note: 'Cards, wallets, subscriptions, and checkout', builtIn: true },
-  { type: 'stripe', name: 'Stripe', group: 'Payments', note: 'Card payments and Stripe Connect' },
-  { type: 'paypal', name: 'PayPal', group: 'Payments', note: 'PayPal checkout and capture' },
-  { type: 'authorizeNet', name: 'Authorize.net', group: 'Payments', note: 'Card authorization and capture' },
-  { type: 'mailchimp', name: 'Mailchimp', group: 'Marketing', note: 'Customers, carts, and campaign audiences' },
-  { type: 'sendgrid', name: 'SendGrid', group: 'Messaging', note: 'Transactional email delivery' },
-  { type: 'smtprelay', name: 'SMTP', group: 'Messaging', note: 'Bring your own mail relay' },
-  { type: 'analytics-google-analytics', name: 'Google Analytics', group: 'Analytics', note: 'Store and checkout analytics' },
-  { type: 'analytics-facebook-pixel', name: 'Meta Pixel', group: 'Analytics', note: 'Ads and conversion measurement' },
-  { type: 'analytics-sentry', name: 'Sentry', group: 'Operations', note: 'Storefront error monitoring' },
-  { type: 'shipwire', name: 'Shipwire', group: 'Fulfillment', note: 'Warehousing and fulfillment' },
-  { type: 'salesforce', name: 'Salesforce', group: 'CRM', note: 'Customer and sales data' },
-]
+// The Configure/Connect drawer pulls in react-hook-form + zod — heavy and only
+// needed on interaction. Code-split it so the marketplace grid paints instantly.
+const ConfigureDrawer = dynamic(
+  () => import('@/components/integrations/configure-drawer').then((m) => m.ConfigureDrawer),
+  { ssr: false },
+)
 
 export default function IntegrationsPage() {
   const { data = [], isLoading, save } = useIntegrations()
+  const [query, setQuery] = useState('')
+  const [active, setActive] = useState<{ provider: Provider; integration?: CommerceIntegration } | null>(null)
+
+  // One lookup from provider `type` → its saved integration row.
+  const byType = useMemo(() => {
+    const map = new Map<string, CommerceIntegration>()
+    for (const row of data) map.set(row.type, row)
+    return map
+  }, [data])
+
+  // Filter once, then bucket by group preserving the catalog's group order
+  // (Payments first). Memoized so typing in search never re-walks on unrelated renders.
+  const sections = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const match = (p: Provider) =>
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.group.toLowerCase().includes(q) ||
+      p.note.toLowerCase().includes(q)
+    return groups
+      .map((group) => ({ group, providers: catalog.filter((p) => p.group === group && match(p)) }))
+      .filter((section) => section.providers.length > 0)
+  }, [query])
+
+  const configure = (provider: Provider, integration?: CommerceIntegration) => setActive({ provider, integration })
+
+  const toggle = (provider: Provider, integration: CommerceIntegration, enabled: boolean) => {
+    // Flip enabled only — omit `data` so KMS credentials are left untouched.
+    save.mutate({ id: integration.id, type: integration.type, enabled })
+  }
+
+  const submit = (input: IntegrationInput) => save.mutateAsync(input)
 
   return (
     <div>
       <PageHeader
         title="Integrations"
-        description="Connect payments, fulfillment, marketing, analytics, and operations"
+        description="Browse the marketplace and connect payments, fulfillment, marketing, analytics, and operations in one click"
       />
       <div className="p-8">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {catalog.map((item) => {
-            const integration = data.find((value) => value.type === item.type)
-            const enabled = item.builtIn || !!integration?.enabled
-            const configured = item.builtIn || !!integration
-
-            return (
-              <Container key={item.type} className="flex min-h-48 flex-col p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <Text size="xsmall" className="text-ui-fg-muted">{item.group}</Text>
-                    <Heading level="h3" className="mt-1">{item.name}</Heading>
-                  </div>
-                  <Badge color={enabled ? 'green' : configured ? 'orange' : 'grey'}>
-                    {enabled ? 'Enabled' : configured ? 'Paused' : 'Available'}
-                  </Badge>
-                </div>
-                <Text size="small" className="mt-3 flex-1 text-ui-fg-muted">{item.note}</Text>
-                <div className="mt-5">
-                  {item.builtIn ? (
-                    <Text size="xsmall" className="text-ui-fg-muted">
-                      Built in. Payment credentials are secured in Hanzo KMS.
-                    </Text>
-                  ) : integration ? (
-                    <Button
-                      size="small"
-                      variant={enabled ? 'secondary' : 'primary'}
-                      disabled={save.isPending}
-                      onClick={() => save.mutate({ ...integration, enabled: !enabled })}
-                    >
-                      {enabled ? 'Pause' : 'Enable'}
-                    </Button>
-                  ) : (
-                    <Button size="small" variant="secondary" disabled>
-                      Add credentials
-                    </Button>
-                  )}
-                </div>
-              </Container>
-            )
-          })}
+        <div className="mb-6 max-w-sm">
+          <Input
+            placeholder="Search providers…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </div>
-        {!isLoading && data.length === 0 && (
-          <Text size="xsmall" className="mt-5 text-ui-fg-muted">
-            Provider secrets stay in Hanzo KMS. Add credentials there once, then enable the provider here.
+
+        {isLoading ? (
+          <CardGridSkeleton />
+        ) : sections.length === 0 ? (
+          <Text size="small" className="py-16 text-center text-ui-fg-muted">
+            No providers match “{query}”.
           </Text>
+        ) : (
+          <div className="space-y-10">
+            {sections.map((section) => (
+              <section key={section.group}>
+                <Text size="small" weight="plus" className="mb-3 text-ui-fg-subtle">
+                  {section.group}
+                </Text>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {section.providers.map((provider) => (
+                    <ProviderCard
+                      key={provider.type}
+                      provider={provider}
+                      integration={byType.get(provider.type)}
+                      busy={save.isPending}
+                      onConfigure={configure}
+                      onToggle={toggle}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
+
+        <Text size="xsmall" className="mt-10 text-ui-fg-muted">
+          Provider secrets are encrypted in Hanzo KMS — never persisted in plaintext.
+        </Text>
       </div>
+
+      <ConfigureDrawer
+        provider={active?.provider ?? null}
+        integration={active?.integration}
+        open={!!active}
+        onOpenChange={(open) => !open && setActive(null)}
+        onSubmit={submit}
+        pending={save.isPending}
+      />
+    </div>
+  )
+}
+
+function CardGridSkeleton() {
+  return (
+    <div className="space-y-10">
+      {[0, 1].map((section) => (
+        <div key={section}>
+          <div className="mb-3 h-4 w-24 animate-pulse rounded bg-ui-bg-component" />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {[...Array(3)].map((_, i) => (
+              <Container key={i} className="min-h-52 p-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 animate-pulse rounded-lg bg-ui-bg-component" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-16 animate-pulse rounded bg-ui-bg-component" />
+                    <div className="h-4 w-28 animate-pulse rounded bg-ui-bg-component" />
+                  </div>
+                </div>
+                <div className="mt-4 h-3 w-full animate-pulse rounded bg-ui-bg-component" />
+                <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-ui-bg-component" />
+                <div className="mt-6 h-8 w-full animate-pulse rounded bg-ui-bg-component" />
+              </Container>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
