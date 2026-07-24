@@ -1,11 +1,31 @@
 'use client'
 
-import { Heading, Text, Container } from '@hanzo/commerce-ui'
-import { useStore } from '@/lib/api/hooks'
+import { useEffect, useState } from 'react'
+import { Button, Heading, Input, Text, Container } from '@hanzo/commerce-ui'
+import { useStore, useUpdate } from '@/lib/api/hooks'
+import type { CurrentStore } from '@/lib/api/data-provider'
 import { PageHeader } from '@/components/common/page-header'
 
 export default function SettingsPage() {
   const { data: store, isLoading } = useStore()
+  const update = useUpdate<CurrentStore>('store')
+  const [name, setName] = useState('')
+  const [currency, setCurrency] = useState('usd')
+
+  useEffect(() => {
+    if (!store) return
+    setName(store.name || '')
+    setCurrency(store.currency || store.defaultCurrency || 'usd')
+  }, [store])
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!store) return
+    await update.mutateAsync({
+      id: store.id,
+      data: { name: name.trim(), currency: currency.trim().toLowerCase() },
+    })
+  }
 
   return (
     <div>
@@ -20,12 +40,21 @@ export default function SettingsPage() {
               ))}
             </div>
           ) : store ? (
-            <dl className="space-y-4">
-              <Field label="Store Name" value={store.name} />
-              <Field label="Currency" value={store.defaultCurrency || store.currency} />
+            <form className="max-w-xl space-y-4" onSubmit={save}>
+              <label className="block">
+                <Text as="span" size="xsmall" className="text-ui-fg-muted">Store name</Text>
+                <Input className="mt-1.5" value={name} onChange={(event) => setName(event.target.value)} />
+              </label>
+              <label className="block">
+                <Text as="span" size="xsmall" className="text-ui-fg-muted">Currency</Text>
+                <Input className="mt-1.5" value={currency} onChange={(event) => setCurrency(event.target.value)} maxLength={3} />
+              </label>
               <Field label="Default Region" value={store.defaultRegion || store.region} />
               <Field label="Created" value={store.createdAt ? new Date(store.createdAt).toLocaleString() : undefined} />
-            </dl>
+              <Button size="small" type="submit" disabled={!name.trim() || update.isPending}>
+                {update.isPending ? 'Saving…' : 'Save store'}
+              </Button>
+            </form>
           ) : (
             <Text size="small" className="py-8 text-center text-ui-fg-muted">
               No store configuration found. The API may not be configured yet.

@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/paymentmethod"
+	storemodel "github.com/hanzoai/commerce/models/store"
 	"github.com/hanzoai/commerce/models/subscription"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment"
@@ -85,6 +86,7 @@ type subscribeCardRequest struct {
 	SourceID string `json:"sourceId"` // Square Web Payments SDK nonce (single-use)
 	PlanID   string `json:"planId"`
 	UserID   string `json:"userId,omitempty"`
+	StoreID  string `json:"storeId,omitempty"`
 	Quantity int    `json:"quantity,omitempty"`
 	Currency string `json:"currency,omitempty"`
 }
@@ -125,6 +127,12 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	}
 	if req.PlanID == "" {
 		return http.Fail(c, 400, "planId is required", nil)
+	}
+	if req.StoreID != "" {
+		s := storemodel.New(db)
+		if err := s.GetById(req.StoreID); err != nil {
+			return http.Fail(c, 404, "store not found", err)
+		}
 	}
 
 	// Billing subject: the org slug, or an in-org <org>/<user> ONLY when provably
@@ -180,14 +188,15 @@ func SubscribeWithCard(c *zip.Ctx) error {
 		// No client key: fall back to (subject, planId) bucketed by a coarse time
 		// WINDOW so a lost-response retry (seconds apart) de-dups but a genuine later
 		// re-subscribe is not blocked forever (see subscribeIdemWindowSec).
-		guardKey = "plan:" + req.PlanID + ":w" + strconv.FormatInt(time.Now().Unix()/subscribeIdemWindowSec, 10)
+		guardKey = "store:" + req.StoreID + ":plan:" + req.PlanID + ":w" +
+			strconv.FormatInt(time.Now().Unix()/subscribeIdemWindowSec, 10)
 	}
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
 	// guard store is unavailable OR two submits race — the definitive backstop.
 	squareKey := "subscribe:" + subject + ":" + guardKey
 
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject, guardKey)
+	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject+":"+req.StoreID, guardKey)
 	if gerr != nil {
 		// Guard store unavailable. Proceed WITHOUT the local guard: the stable Square
 		// idempotency key above still makes the CHARGE exactly-once at the processor,
@@ -273,6 +282,7 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	sub, err := createSubscription(c, db, org, p, &createSubscriptionRequest{
 		UserId:               subject,
 		PlanId:               req.PlanID,
+		StoreId:              req.StoreID,
 		DefaultPaymentMethod: pm.Id(),
 		Quantity:             qty,
 		Metadata:             map[string]interface{}{"source": "subscribe/card"},

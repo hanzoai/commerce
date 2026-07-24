@@ -23,15 +23,21 @@ export interface ListParams {
 
 // Auth context — token set from dashboard layout, org passed per-call from hooks
 let _accessToken: string | null = null
+let _storeId: string | null = null
 
 export function setAccessToken(token: string | null) {
   _accessToken = token
+}
+
+export function setStoreId(storeId: string | null) {
+  _storeId = storeId
 }
 
 function headers(org?: string | null): HeadersInit {
   const h: HeadersInit = { 'Content-Type': 'application/json' }
   if (_accessToken) h['Authorization'] = `Bearer ${_accessToken}`
   if (org) h['X-Org-Id'] = org
+  if (_storeId) h['X-Store-Id'] = _storeId
   return h
 }
 
@@ -138,7 +144,9 @@ export async function fetchCurrentStore(org?: string | null): Promise<CurrentSto
     const res = await fetch(`${API_BASE}/v1/store/current`, { headers: headers(org) })
     if (!res.ok) return null
     const body = await res.json()
-    return (body?.store ?? body) as CurrentStore
+    const store = (body?.store ?? body) as CurrentStore
+    _storeId = store?.id || null
+    return store
   } catch {
     return null
   }
@@ -178,4 +186,44 @@ export async function fetchModels(org?: string | null): Promise<HanzoModel[]> {
   } catch {
     return []
   }
+}
+
+// ── Integrations ─────────────────────────────────────────────────────────────
+export interface CommerceIntegration {
+  id: string
+  type: string
+  enabled: boolean
+  show?: boolean
+  data?: unknown
+  createdAt?: string
+  updatedAt?: string
+}
+
+export async function fetchIntegrations(org?: string | null): Promise<CommerceIntegration[]> {
+  if (!org) return []
+  try {
+    const res = await fetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
+      headers: headers(org),
+    })
+    if (!res.ok) return []
+    const body = await res.json()
+    return Array.isArray(body) ? body : []
+  } catch {
+    return []
+  }
+}
+
+export async function saveIntegration(
+  integration: Pick<CommerceIntegration, 'id' | 'type' | 'enabled'> & Partial<CommerceIntegration>,
+  org?: string | null,
+): Promise<CommerceIntegration[]> {
+  if (!org) throw new Error('Select an organization first')
+  const res = await fetch(`${API_BASE}/v1/c/organization/${encodeURIComponent(org)}/integrations`, {
+    method: 'PATCH',
+    headers: headers(org),
+    body: JSON.stringify([{ ...integration, show: integration.show ?? true }]),
+  })
+  if (!res.ok) throw new Error(`Failed to update integration: ${res.status}`)
+  const body = await res.json()
+  return Array.isArray(body) ? body : []
 }

@@ -47,8 +47,8 @@ const FEATURES = [
     ),
   },
   {
-    title: 'Admin Dashboard',
-    description: 'Full-featured admin panel for order management, inventory, customers, and settings. Extensible with custom widgets and views.',
+    title: 'Store Operations',
+    description: 'Run orders, inventory, customers, integrations, billing, and storefront publishing from one workspace.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
@@ -221,7 +221,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-4xl text-center">
           <h2 className="mb-4 text-3xl font-bold text-white sm:text-4xl">Ready to build?</h2>
           <p className="mx-auto mb-10 max-w-xl text-lg text-gray-400">
-            Start building your commerce platform today. Free during beta — no credit card required.
+            Start with a 7-day trial, then keep building for $20 per store each month.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link

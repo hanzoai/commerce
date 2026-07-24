@@ -7,7 +7,9 @@ interface Collection {
   id: string
   name: string
   slug: string
-  productCount: number
+  productIds?: string[]
+  variantIds?: string[]
+  published: boolean
   createdAt: string
 }
 
@@ -22,9 +24,14 @@ const columns = [
     header: 'Slug',
     cell: (info) => <span className="text-ui-fg-muted">{info.getValue() || '-'}</span>,
   }),
-  col.accessor('productCount', {
-    header: 'Products',
-    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() ?? 0}</span>,
+  col.accessor((collection) => (collection.productIds?.length ?? 0) + (collection.variantIds?.length ?? 0), {
+    id: 'items',
+    header: 'Items',
+    cell: (info) => <span className="text-ui-fg-muted">{info.getValue()}</span>,
+  }),
+  col.accessor('published', {
+    header: 'State',
+    cell: (info) => <span className="text-ui-fg-muted">{info.getValue() ? 'Published' : 'Draft'}</span>,
   }),
   col.accessor('createdAt', {
     header: 'Created',
