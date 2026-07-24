@@ -6,11 +6,23 @@ import {
   SquaresPlus,
   AiAssistent,
   ShoppingBag,
+  ShoppingCart,
   ReceiptPercent,
+  Sparkles,
   Users,
+  UserGroup,
+  IdBadge,
   CurrencyDollar,
+  ChartBar,
   Tag,
+  TablePen,
+  GiftCards,
   ArchiveBox,
+  Map,
+  BuildingTax,
+  Channels,
+  Key,
+  Plug,
   CogSixTooth,
   XMark,
 } from '@hanzo/commerce-icons'
@@ -19,17 +31,67 @@ import { useIam, useOrganizations, OrgProjectSwitcher } from '@hanzo/iam/react'
 import { HanzoMark } from '@/components/hanzo-mark'
 import { AccountMenu } from './account-menu'
 
-const navItems = [
-  { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
-  { label: 'Models', href: '/models', icon: AiAssistent },
-  { label: 'Products', href: '/products', icon: ShoppingBag },
-  { label: 'Orders', href: '/orders', icon: ReceiptPercent },
-  { label: 'Customers', href: '/customers', icon: Users },
-  { label: 'Collections', href: '/collections', icon: Tag },
-  { label: 'Inventory', href: '/inventory', icon: ArchiveBox },
-  { label: 'Integrations', href: '/integrations', icon: SquaresPlus },
-  { label: 'Billing', href: '/billing', icon: CurrencyDollar },
-  { label: 'Settings', href: '/settings', icon: CogSixTooth },
+type NavItem = { label: string; href: string; icon: typeof SquaresPlus }
+type NavGroup = { heading?: string; items: NavItem[] }
+
+// Grouped navigation. Each group is one concern; the flat pre-group order
+// (overview → models → catalog → sales → settings) is preserved within.
+const navGroups: NavGroup[] = [
+  {
+    items: [
+      { label: 'Dashboard', href: '/overview', icon: SquaresPlus },
+      { label: 'Models', href: '/models', icon: AiAssistent },
+    ],
+  },
+  {
+    heading: 'Catalog',
+    items: [
+      { label: 'Products', href: '/products', icon: ShoppingBag },
+      { label: 'Collections', href: '/collections', icon: Tag },
+      { label: 'Inventory', href: '/inventory', icon: ArchiveBox },
+      { label: 'Price Lists', href: '/price-lists', icon: TablePen },
+      { label: 'Gift Cards', href: '/gift-cards', icon: GiftCards },
+    ],
+  },
+  {
+    heading: 'Sales',
+    items: [
+      { label: 'Orders', href: '/orders', icon: ShoppingCart },
+      { label: 'Customers', href: '/customers', icon: Users },
+      { label: 'Customer Groups', href: '/customer-groups', icon: UserGroup },
+    ],
+  },
+  {
+    heading: 'Marketing',
+    items: [
+      { label: 'Discounts', href: '/discounts', icon: ReceiptPercent },
+      { label: 'Promotions', href: '/promotions', icon: Sparkles },
+    ],
+  },
+  {
+    heading: 'Configuration',
+    items: [
+      { label: 'Regions', href: '/regions', icon: Map },
+      { label: 'Tax', href: '/tax-regions', icon: BuildingTax },
+      { label: 'Sales Channels', href: '/sales-channels', icon: Channels },
+    ],
+  },
+  {
+    heading: 'Developer',
+    items: [
+      { label: 'API Keys', href: '/api-keys', icon: Key },
+      { label: 'Integrations', href: '/integrations', icon: Plug },
+    ],
+  },
+  {
+    heading: 'Account',
+    items: [
+      { label: 'Usage', href: '/usage', icon: ChartBar },
+      { label: 'Billing', href: '/billing', icon: CurrencyDollar },
+      { label: 'Team', href: '/team', icon: IdBadge },
+      { label: 'Settings', href: '/settings', icon: CogSixTooth },
+    ],
+  },
 ]
 
 export function Sidebar({
@@ -47,7 +109,12 @@ export function Sidebar({
   // commerce feature — show it only when the active org is one of Hanzo's own.
   const orgName = (orgState.currentOrg?.name || '').toLowerCase()
   const isHanzoOrg = orgName === 'hanzo' || orgName === 'admin'
-  const items = navItems.filter((item) => item.href !== '/models' || isHanzoOrg)
+  const groups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.href !== '/models' || isHanzoOrg),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <aside
@@ -87,26 +154,39 @@ export function Sidebar({
         </div>
       )}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onClose}
-              className={clx(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                isActive
-                  ? 'bg-ui-bg-component text-ui-fg-base'
-                  : 'text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        {groups.map((group, i) => (
+          <div key={group.heading ?? `group-${i}`} className="space-y-1">
+            {group.heading && (
+              <Text
+                size="xsmall"
+                weight="plus"
+                className="px-3 pb-1 pt-2 uppercase tracking-wide text-ui-fg-muted"
+              >
+                {group.heading}
+              </Text>
+            )}
+            {group.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  className={clx(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                    isActive
+                      ? 'bg-ui-bg-component text-ui-fg-base'
+                      : 'text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base'
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
 
       <div className="border-t border-ui-border-base p-4">
