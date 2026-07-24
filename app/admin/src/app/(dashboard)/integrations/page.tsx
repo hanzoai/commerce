@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Container, Input, Text } from '@hanzo/commerce-ui'
 import { PageHeader } from '@/components/common/page-header'
@@ -27,6 +28,21 @@ export default function IntegrationsPage() {
     for (const row of data) map.set(row.type, row)
     return map
   }, [data])
+
+  // Deep link from onboarding's payments step (/integrations?provider=stripe): open
+  // that provider's Configure drawer once on arrival. Guarded so a manual close isn't
+  // undone on re-render.
+  const searchParams = useSearchParams()
+  const deepLinked = useRef(false)
+  useEffect(() => {
+    if (deepLinked.current) return
+    const type = searchParams.get('provider')
+    if (!type) return
+    const provider = catalog.find((p) => p.type === type)
+    if (!provider) return
+    deepLinked.current = true
+    setActive({ provider, integration: byType.get(type) })
+  }, [searchParams, byType])
 
   // Filter once, then bucket by group preserving the catalog's group order
   // (Payments first). Memoized so typing in search never re-walks on unrelated renders.
