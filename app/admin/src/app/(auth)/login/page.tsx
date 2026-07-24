@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, Heading, Text } from '@hanzo/commerce-ui'
+import { HanzoMark } from '@/components/hanzo-mark'
 
 const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
 const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce'
@@ -31,9 +32,7 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-8">
         <div className="flex flex-col items-center text-center">
-          <svg viewBox="0 0 24 24" className="mb-6 h-12 w-12 text-white" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 2 H7 V10 H17 V2 H21 V22 H17 V14 H7 V22 H3 Z" fill="currentColor"/>
-          </svg>
+          <HanzoMark className="mb-6 h-12 w-12 text-ui-fg-base" />
 
           <Heading level="h1">Hanzo Commerce</Heading>
           <Text size="small" className="mt-1 text-ui-fg-subtle">
