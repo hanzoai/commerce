@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button, Heading, Text, Textarea, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
-import { fetchCount, fetchList, fetchCurrentStore, fetchModels } from '@/lib/api/data-provider'
+import { createOne, fetchCount, fetchList, fetchCurrentStore, fetchModels } from '@/lib/api/data-provider'
 import type { CurrentStore } from '@/lib/api/data-provider'
 import { requestSearch } from '@/lib/search-bus'
 import {
@@ -88,6 +88,25 @@ export function AiChatDock() {
         ])
         const listings = store?.listings ? Object.keys(store.listings).length : 0
         return `Products: ${products}, Orders: ${orders}, Customers: ${customers}, Collections: ${collections}. Store ${store?.name ?? '—'}: ${listings} listings.`
+      },
+      createProduct: async ({ name, sku, description }) => {
+        const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const product = await createOne<{
+          id?: string
+          name: string
+          slug: string
+          sku: string
+          description?: string
+          available: boolean
+        }>('product', {
+          name: name.trim(),
+          slug,
+          sku: sku.trim(),
+          description: description?.trim(),
+          available: false,
+        }, currentOrgId)
+        router.push('/products')
+        return product
       },
     }),
     [isAuthenticated, pathname, router, currentOrgId, store],
