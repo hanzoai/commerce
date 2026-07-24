@@ -1,6 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import {
+  BookOpen,
+  EllipsisHorizontal,
+  OpenRectArrowOut,
+  User,
+  Users,
+} from '@hanzo/commerce-icons'
 import { Text, clx } from '@hanzo/commerce-ui'
 import { useIam } from '@hanzo/iam/react'
 import { useTheme } from '@/providers/theme-provider'
@@ -20,8 +27,15 @@ export function AccountMenu() {
     const close = (event: MouseEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false)
     }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', escape)
+    }
   }, [])
 
   return (
@@ -31,25 +45,37 @@ export function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-ui-bg-component"
+        className="grid w-full grid-cols-[32px_1fr_16px] items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-ui-bg-component"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ui-bg-component text-sm font-medium text-ui-fg-base">
           {initial}
         </span>
-        <Text size="small" className="hidden max-w-44 truncate text-ui-fg-muted sm:block">
-          {name}
-        </Text>
-        <span aria-hidden className="text-xs text-ui-fg-muted">⌄</span>
+        <span className="min-w-0">
+          <Text size="small" weight="plus" className="block truncate text-ui-fg-base">
+            {name}
+          </Text>
+          <Text size="xsmall" className="block truncate text-ui-fg-muted">
+            {user?.email}
+          </Text>
+        </span>
+        <EllipsisHorizontal className="h-4 w-4 text-ui-fg-muted" />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-2 w-64 rounded-lg border border-ui-border-base bg-ui-bg-subtle p-2 shadow-elevation-flyout"
+          className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-ui-border-base bg-ui-bg-subtle p-2 shadow-elevation-flyout"
         >
-          <div className="border-b border-ui-border-base px-2 pb-2">
-            <Text size="xsmall" className="truncate text-ui-fg-muted">{user?.email}</Text>
-          </div>
+          <MenuLink href="https://console.hanzo.ai/profile" icon={User}>
+            Profile & security
+          </MenuLink>
+          <MenuLink href="https://console.hanzo.ai/team" icon={Users}>
+            Organization & team
+          </MenuLink>
+          <MenuLink href="https://docs.hanzo.ai/commerce" icon={BookOpen} external>
+            Documentation
+          </MenuLink>
+          <div className="my-2 border-t border-ui-border-base" />
           <div className="px-2 py-3">
             <Text size="xsmall" weight="plus" className="mb-2 text-ui-fg-muted">Theme</Text>
             <div className="grid grid-cols-3 gap-1 rounded-md bg-ui-bg-base p-1">
@@ -72,12 +98,38 @@ export function AccountMenu() {
             type="button"
             role="menuitem"
             onClick={() => logout()}
-            className="w-full rounded-md px-2 py-2 text-left text-sm text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base"
           >
+            <OpenRectArrowOut className="h-4 w-4 text-ui-fg-subtle" />
             Sign out
           </button>
         </div>
       )}
     </div>
+  )
+}
+
+function MenuLink({
+  href,
+  icon: Icon,
+  external = false,
+  children,
+}: {
+  href: string
+  icon: typeof User
+  external?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      role="menuitem"
+      target={external ? '_blank' : undefined}
+      rel={external ? 'noreferrer' : undefined}
+      className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-ui-fg-muted hover:bg-ui-bg-component hover:text-ui-fg-base"
+    >
+      <Icon className="h-4 w-4 text-ui-fg-subtle" />
+      {children}
+    </a>
   )
 }
