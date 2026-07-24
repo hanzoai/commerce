@@ -50,7 +50,13 @@ export function Access({ children }: { children: React.ReactNode }) {
 
   if (access === undefined) return spinner
 
-  if (access?.allowed) return children
+  // FAIL OPEN. This client gate is UX only — the AUTHORITATIVE enforcement is the
+  // server-side 402 the commerce API returns on the actual calls. If access could
+  // not be determined (`null`: the endpoint is unavailable / errored / a backend
+  // that doesn't serve the paywall yet), ALLOW — a browser check that cannot confirm
+  // a denial must never lock a user out. Show the paywall ONLY on an EXPLICIT
+  // backend denial (a real StoreAccess with allowed === false).
+  if (!access || access.allowed) return children
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-ui-bg-base p-6">
