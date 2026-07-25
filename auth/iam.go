@@ -764,10 +764,10 @@ func (c *IAMClient) getJWKS(ctx context.Context) (*JWKS, error) {
 	// 1. Explicit JwksURI config override (avoids discovery round-trip and
 	//    HTTPS mismatch when the IAM service is behind an internal HTTP-only endpoint).
 	// 2. OIDC discovery document's jwks_uri field.
-	// 3. Fallback: Issuer + "/.well-known/jwks".
+	// 3. Fallback: Issuer + "/v1/iam/.well-known/jwks".
 	jwksURI := c.config.JwksURI
 	if jwksURI == "" {
-		jwksURI = c.config.Issuer + "/.well-known/jwks"
+		jwksURI = c.config.Issuer + "/v1/iam/.well-known/jwks"
 		if discovery, err := c.getDiscovery(ctx); err == nil && discovery.JwksURI != "" {
 			jwksURI = discovery.JwksURI
 		}
