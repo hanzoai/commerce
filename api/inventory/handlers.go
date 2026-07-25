@@ -58,16 +58,33 @@ func AdjustStock(c *zip.Ctx) error {
 		return http.Fail(c, 400, "Failed to decode request body", err)
 	}
 
-	// Apply deltas
+	// Compute the post-adjustment values WITHOUT mutating yet, so a rejected
+	// oversell leaves the stored level untouched.
+	stocked := level.StockedQuantity
+	reserved := level.ReservedQuantity
+	incoming := level.IncomingQuantity
 	if adj.StockedQuantity != nil {
-		level.StockedQuantity += *adj.StockedQuantity
+		stocked += *adj.StockedQuantity
 	}
 	if adj.ReservedQuantity != nil {
-		level.ReservedQuantity += *adj.ReservedQuantity
+		reserved += *adj.ReservedQuantity
 	}
 	if adj.IncomingQuantity != nil {
-		level.IncomingQuantity += *adj.IncomingQuantity
+		incoming += *adj.IncomingQuantity
 	}
+
+	// Oversell guard: available (stocked − reserved) must never go negative.
+	// Reserving more than is on hand — or stocking down below what is already
+	// reserved — would sell inventory that does not exist. Refuse and DO NOT
+	// persist. Incoming/restock (positive stocked) and releasing a reservation
+	// (negative reserved) stay allowed because they keep available ≥ 0.
+	if stocked-reserved < 0 {
+		return http.Fail(c, 409, "insufficient available stock", nil)
+	}
+
+	level.StockedQuantity = stocked
+	level.ReservedQuantity = reserved
+	level.IncomingQuantity = incoming
 
 	// Persist
 	if err := level.Update(); err != nil {
