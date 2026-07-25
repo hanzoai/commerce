@@ -1,13 +1,9 @@
 package default_
 
 import (
-	"net/http"
-
-	"github.com/zap-proto/fiber/v3/middleware/adaptor"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/config"
-	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	// "github.com/hanzoai/commerce/util/exec"
@@ -47,15 +43,6 @@ func Init(app *zip.App) {
 	router.Get("/wake-up", func(c *zip.Ctx) error {
 		log.Panic("I think I heard, I think I heard a shot.")
 		return nil
-	})
-
-	// Setup routes for delay funcs. delay.RunFunc is net/http-native, so bridge
-	// it through the fiber adaptor.
-	router.Post(delay.Path, func(c *zip.Ctx) error {
-		ctx := c.Context()
-		return adaptor.HTTPHandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			delay.RunFunc(ctx, w, req)
-		})(c.Fiber())
 	})
 
 	// Setup routes for tasks
