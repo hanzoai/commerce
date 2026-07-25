@@ -214,7 +214,7 @@ export class Auth {
         state: `${actor}:${method}`,
       })
 
-      const location = `${HANZO_IAM_ISSUER}/login/oauth/authorize?${params.toString()}`
+      const location = `${HANZO_IAM_ISSUER}/v1/iam/oauth/authorize?${params.toString()}`
       return { location }
     }
 
