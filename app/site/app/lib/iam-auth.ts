@@ -106,7 +106,7 @@ export async function startLogin(
     code_challenge_method: 'S256',
   })
 
-  window.location.href = `${base}/oauth/authorize?${params}`
+  window.location.href = `${base}/v1/iam/oauth/authorize?${params}`
 }
 
 /**
@@ -154,7 +154,7 @@ export async function handleCallback(config?: IamAuthConfig): Promise<string> {
 
   // Exchange code for tokens
   const base = conf.iamServerUrl.replace(/\/+$/, '')
-  const tokenRes = await fetch(`${base}/oauth/token`, {
+  const tokenRes = await fetch(`${base}/v1/iam/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
