@@ -1,14 +1,10 @@
 package api
 
 import (
-	"net/http"
-
-	"github.com/zap-proto/fiber/v3/middleware/adaptor"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/paywall"
 	"github.com/hanzoai/commerce/config"
-	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/demo/disclosure"
 	"github.com/hanzoai/commerce/demo/tokentransaction"
 	"github.com/hanzoai/commerce/middleware"
@@ -120,15 +116,12 @@ func Route(api zip.Router) {
 		return c.Next()
 	})
 
-	// Setup routes for delay funcs. RunFunc is a net/http-shaped handler
-	// (ResponseWriter + *http.Request); adaptor.HTTPHandler bridges it onto the
-	// fiber ctx so the delayed-task dispatch stays byte-for-byte the same.
-	api.Post(delay.Path, func(c *zip.Ctx) error {
-		ctx := c.Context()
-		return adaptor.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			delay.RunFunc(ctx, w, req)
-		}))(c.Fiber())
-	})
+	// NOTE: there is no HTTP dispatch route for delayed funcs. A delayed func is
+	// a typed Go value invoked in process (util/task: `v.Call(ctx, args...)`,
+	// with delay.Function verifying AssignableTo at enqueue). The old
+	// POST /_/queue/delay route decoded a gob body, looked the function up BY
+	// NAME and reflect-called it with caller-supplied arguments — unauthenticated,
+	// untyped, and a second way to do what the typed path already does.
 
 	// Checkout APIs (charge, authorize, capture)
 	checkoutApi.Route(api)
@@ -200,9 +193,9 @@ func Route(api zip.Router) {
 	notificationApi.Route(api, tokenRequired)
 	giftcardApi.Route(api, adminRequired, requireAccess) // gift cards + idempotent redeem/void (money — admin only)
 	b2bApi.Route(api, tokenRequired, requireAccess)      // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired)                         // order exchanges (return + replacement)
-	producttaxonomyApi.Route(api, tokenRequired)                  // product options/values, categories, tags, types, return/refund reasons
-	catalogApi.AdminRoute(api, adminRequired)                     // platform product catalog CMS (global-admin gated inside)
+	exchangeApi.Route(api, tokenRequired)                // order exchanges (return + replacement)
+	producttaxonomyApi.Route(api, tokenRequired)         // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)            // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 
