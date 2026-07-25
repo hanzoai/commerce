@@ -37,7 +37,7 @@ FROM busybox:1.36 AS arrange
 COPY --from=builder /build/app/admin/out /srv
 
 # ── Stage 3: serve via the canonical Hanzo static plugin on :3000, SPA fallback ─
-FROM ghcr.io/hanzoai/static:0.4.1
+FROM ghcr.io/hanzoai/static:v0.5.1
 COPY --from=arrange /srv /srv
 EXPOSE 3000
 ENTRYPOINT ["/static", "--root=/srv", "--spa", "--port=3000"]
