@@ -1,6 +1,8 @@
 package coupon
 
 import (
+	"errors"
+	"sync"
 	"time"
 
 	"github.com/zap-proto/zip"
@@ -9,12 +11,27 @@ import (
 	"github.com/hanzoai/commerce/log"
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/models/coupon"
+	"github.com/hanzoai/commerce/models/couponredemption"
 	"github.com/hanzoai/commerce/models/creditgrant"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/permission"
 	"github.com/hanzoai/commerce/util/rest"
 )
+
+// redeemLocks serializes the guard-check-then-mint critical section per
+// (coupon, user) so two concurrent first-time redeems can't both pass the
+// once-per-user guard and both mint a spendable grant. Correct for single-pod
+// commerce (replicas:1 + Recreate + ReadWriteOnce SQLite PVC), where one
+// process owns the store and an in-process lock is the serialization point —
+// mirrors models/giftcard's redeemLocks. The SAME-(code,user) case is
+// additionally closed by the deterministic-id ON CONFLICT upsert.
+var redeemLocks sync.Map // map[string]*sync.Mutex
+
+func redeemLockFor(key string) *sync.Mutex {
+	m, _ := redeemLocks.LoadOrStore(key, &sync.Mutex{})
+	return m.(*sync.Mutex)
+}
 
 func getCoupon(c *zip.Ctx) error {
 	couponid := c.Param("couponid")
@@ -197,10 +214,37 @@ func redeemCoupon(c *zip.Ctx) error {
 		return http.Fail(c, 401, "Authentication required", nil)
 	}
 
-	// Check if user already redeemed this coupon (via credit grant tag)
-	existing := make([]creditgrant.CreditGrant, 0)
-	if _, err := creditgrant.Query(db).Filter("UserId=", uid).Filter("Tags=", "coupon:"+cpn.Code_).GetAll(&existing); err == nil && len(existing) > 0 {
+	// Once-per-user guard (money-critical). The prior guard queried the credit
+	// grant by Tags="coupon:CODE", but every grant below is written
+	// Tags="promo,coupon:CODE"; the datastore Tags= filter is exact-string, so it
+	// NEVER matched and the SAME user re-minted a fresh spendable grant on every
+	// submit. The guard is now a deterministic-id redemption record — one
+	// immutable row per (code, user), deduped at the storage layer by ON CONFLICT
+	// — so a repeat redeem is refused with the same honest error.
+	redemptionID := couponredemption.DeterministicID(cpn.Code_, uid)
+
+	// Serialize check-then-mint per (code, user) so two concurrent first-time
+	// redeems can't both pass the guard read and both mint.
+	mu := redeemLockFor(redemptionID)
+	mu.Lock()
+	defer mu.Unlock()
+
+	seen := couponredemption.New(db)
+	if err := seen.Get(db.NewKey(seen.Kind(), redemptionID, 0, nil)); err == nil {
 		return http.Fail(c, 400, "Coupon already redeemed", nil)
+	} else if !errors.Is(err, datastore.ErrNoSuchEntity) {
+		return http.Fail(c, 500, "Failed to check coupon redemption", err)
+	}
+
+	// Record the redemption BEFORE minting: the guard row is committed first, so
+	// even a crash mid-mint leaves the coupon spent for this user (fail-closed —
+	// never double-mint) rather than replayable.
+	rec := couponredemption.New(db)
+	rec.SetId(redemptionID)
+	rec.CouponCode = cpn.Code_
+	rec.UserId = uid
+	if err := rec.Create(); err != nil {
+		return http.Fail(c, 500, "Failed to record coupon redemption", err)
 	}
 
 	rewards := make([]couponReward, 0)
