@@ -37,10 +37,12 @@ func Webhook(c *zip.Ctx) error {
 	// Read raw body for signature verification.
 	body := c.Body()
 
-	// Verify signature.
+	// Verify signature — UNCONDITIONALLY. An unset secret used to skip
+	// verification entirely and process the payload, so a missing config was an
+	// open door that credited money. Fail closed: no secret, no trust.
 	signature := c.Header("Mercury-Signature")
 	secret := config.Mercury.WebhookSecret
-	if secret != "" && !mercury.VerifySignature(body, signature, secret) {
+	if secret == "" || !mercury.VerifySignature(body, signature, secret) {
 		log.Error("Mercury webhook: %v", ErrSignatureInvalid, c)
 		return c.String(200, "ok")
 	}
