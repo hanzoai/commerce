@@ -43,20 +43,25 @@ func bucketBalance(t *testing.T, ctx ae.Context, user string, test bool) currenc
 	return 0
 }
 
-// Matrix A — the FREE-MONEY case: SQUARE_ENVIRONMENT=sandbox (a testnet/devnet
-// deploy this feature enables) with a LIVE org. A sandbox charge must credit the
-// TEST bucket; the LIVE (spendable) bucket must stay empty.
-func TestH1_SandboxEnvLiveOrg_CreditsTestBucketNotLive(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
+// Matrix A — the FREE-MONEY case: an org in TEST mode. A sandbox charge must
+// credit the TEST bucket; the LIVE (spendable) bucket must stay empty.
+//
+// The lever is the ORG, not the deployment. This used to force the scenario with
+// SQUARE_ENVIRONMENT=sandbox against a Live org — mode and credentials
+// deliberately disagreeing. That disagreement is now unrepresentable: one org
+// record drives both, so the invariant holds by construction rather than by a
+// deployment being templated correctly. What is asserted is unchanged — whichever
+// way the authority resolves, the ledger bucket must follow it.
+func TestH1_TestModeOrg_CreditsTestBucketNotLive(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	db := datastore.New(ctx)
 
 	org := &organization.Organization{}
-	org.Live = true // org says "live", but the DEPLOYMENT is sandbox
+	org.Live = false // the org itself is in test mode
 
 	if !org.TestMode() {
-		t.Fatal("precondition: sandbox deploy must put a live org in test mode")
+		t.Fatal("precondition: a non-live org must be in test mode")
 	}
 
 	const user = "h1-matrixA-user"
@@ -70,19 +75,19 @@ func TestH1_SandboxEnvLiveOrg_CreditsTestBucketNotLive(t *testing.T) {
 	}
 }
 
-// Matrix B — production deploy with a test-mode org: the charge is real, so it
-// must book the LIVE bucket (real revenue), not the test bucket.
-func TestH1_ProductionEnvTestOrg_CreditsLiveBucketNotTest(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
+// Matrix B — a LIVE org: the charge is real, so it must book the LIVE bucket
+// (real revenue), not the test bucket. Mislabelling real revenue as test
+// under-pays the OSS payout.
+func TestH1_LiveOrg_CreditsLiveBucketNotTest(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
 	db := datastore.New(ctx)
 
 	org := &organization.Organization{}
-	org.Live = false // org in "test mode", but the DEPLOYMENT is production
+	org.Live = true // the org itself is live
 
 	if org.TestMode() {
-		t.Fatal("precondition: production deploy must put a test-mode org in live mode")
+		t.Fatal("precondition: a live org must not be in test mode")
 	}
 
 	const user = "h1-matrixB-user"
