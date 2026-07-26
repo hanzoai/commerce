@@ -4,7 +4,7 @@
 // the distributed lock. By DEFAULT it is served by hanzo/base — a per-org/user
 // embedded SQLite store, so commerce runs WITHOUT any external datastore. When
 // KV_URL is set, the SAME client is instead backed by an external Hanzo KV
-// instance (github.com/hanzoai/kv-go — brand-correct, NOT raw go-redis), selected
+// instance (github.com/hanzokv/go — brand-correct, NOT raw go-redis), selected
 // at construction. The method set the rest of commerce consumes (Get/Set/Delete/
 // Exists/Health/Close plus the SetNX-family the distributed lock builds on) is
 // identical either way, so nothing downstream knows or cares which backend is
@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/store"
-	redis "github.com/hanzoai/kv-go/v9"
+	redis "github.com/hanzokv/go/v9"
 )
 
 // KVConfig holds the base-backed KV configuration. Base needs only a data
