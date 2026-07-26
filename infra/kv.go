@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/hanzoai/commerce/store"
-	redis "github.com/hanzokv/go/v9"
+	kv "github.com/hanzokv/go/v9"
 )
 
 // KVConfig holds the base-backed KV configuration. Base needs only a data
@@ -107,47 +107,47 @@ func (b *baseBackend) close() error {
 // a dedicated lock DB/instance whose keys never expire under pressure) — never
 // the shared allkeys-lru cache DB.
 var (
-	casDelScript    = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`)
-	casExtendScript = redis.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end`)
+	casDelScript    = kv.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`)
+	casExtendScript = kv.NewScript(`if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("pexpire", KEYS[1], ARGV[2]) else return 0 end`)
 )
 
-// redisBackend is the external Hanzo KV engine over the kv-go client.
-type redisBackend struct{ c *redis.Client }
+// externalBackend is the external Hanzo KV engine over the kv-go client.
+type externalBackend struct{ c *kv.Client }
 
-func (r *redisBackend) get(k string) ([]byte, error) {
+func (r *externalBackend) get(k string) ([]byte, error) {
 	v, err := r.c.Get(context.Background(), k).Bytes()
-	if errors.Is(err, redis.Nil) {
+	if errors.Is(err, kv.Nil) {
 		return nil, store.ErrKVNotFound
 	}
 	return v, err
 }
-func (r *redisBackend) set(k string, v []byte, ttl time.Duration) error {
+func (r *externalBackend) set(k string, v []byte, ttl time.Duration) error {
 	return r.c.Set(context.Background(), k, v, ttl).Err()
 }
-func (r *redisBackend) del(k string) error { return r.c.Del(context.Background(), k).Err() }
-func (r *redisBackend) exists(k string) (bool, error) {
+func (r *externalBackend) del(k string) error { return r.c.Del(context.Background(), k).Err() }
+func (r *externalBackend) exists(k string) (bool, error) {
 	n, err := r.c.Exists(context.Background(), k).Result()
 	return n > 0, err
 }
-func (r *redisBackend) setNX(k string, v []byte, ttl time.Duration) (bool, error) {
+func (r *externalBackend) setNX(k string, v []byte, ttl time.Duration) (bool, error) {
 	return r.c.SetNX(context.Background(), k, v, ttl).Result()
 }
-func (r *redisBackend) compareAndDelete(k string, want []byte) (bool, error) {
+func (r *externalBackend) compareAndDelete(k string, want []byte) (bool, error) {
 	n, err := casDelScript.Run(context.Background(), r.c, []string{k}, want).Int()
 	if err != nil {
 		return false, err
 	}
 	return n == 1, nil
 }
-func (r *redisBackend) compareAndExtend(k string, want []byte, ttl time.Duration) (bool, error) {
+func (r *externalBackend) compareAndExtend(k string, want []byte, ttl time.Duration) (bool, error) {
 	n, err := casExtendScript.Run(context.Background(), r.c, []string{k}, want, ttl.Milliseconds()).Int()
 	if err != nil {
 		return false, err
 	}
 	return n == 1, nil
 }
-func (r *redisBackend) ping(ctx context.Context) error { return r.c.Ping(ctx).Err() }
-func (r *redisBackend) close() error                   { return r.c.Close() }
+func (r *externalBackend) ping(ctx context.Context) error { return r.c.Ping(ctx).Err() }
+func (r *externalBackend) close() error                   { return r.c.Close() }
 
 // KVClient is the backend-agnostic cache + lock adapter.
 type KVClient struct {
@@ -178,15 +178,21 @@ func NewKVClientFromStore(cfg *KVConfig, s *store.Store) *KVClient {
 }
 
 // NewKVClientFromURL backs the client with an external Hanzo KV instance reached
-// over kvURL (redis://[:pass@]host:port[/db]) — the KV_URL selection. The method
-// set is identical to the Base-backed client, so every caller is unchanged. A
-// malformed URL is a FAIL-CLOSED config error, never a silent fallback to Base.
+// over kvURL (kv://[:pass@]host:port[/db], or kvs:// for TLS) — the KV_URL
+// selection. The method set is identical to the Base-backed client, so every
+// caller is unchanged. A malformed URL is a FAIL-CLOSED config error, never a
+// silent fallback to Base.
+//
+// SCHEME (kv-go v9.22.0): only kv://, kvs:// and unix:// parse. The legacy
+// redis:// / rediss:// schemes were REMOVED upstream, so any deployment still
+// setting KV_URL=redis://… fails closed at boot (commerce.go turns this error
+// into "commerce: invalid KV_URL"). Operator config must move to kv://.
 func NewKVClientFromURL(cfg *KVConfig, kvURL string) (*KVClient, error) {
-	opts, err := redis.ParseURL(kvURL)
+	opts, err := kv.ParseURL(kvURL)
 	if err != nil {
 		return nil, fmt.Errorf("kv: parse KV_URL: %w", err)
 	}
-	return &KVClient{config: cfg, backend: &redisBackend{c: redis.NewClient(opts)}, owns: true}, nil
+	return &KVClient{config: cfg, backend: &externalBackend{c: kv.NewClient(opts)}, owns: true}, nil
 }
 
 // key returns the full key with prefix.
