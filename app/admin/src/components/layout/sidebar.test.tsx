@@ -19,8 +19,8 @@ vi.mock('@hanzo/iam/react', () => ({
     currentProjectId: null,
     switchOrg: vi.fn(),
     switchProject: vi.fn(),
+    isLoading: false,
   }),
-  OrgProjectSwitcher: () => 'organization-switcher',
 }))
 
 vi.mock('@/lib/api/hooks', () => ({
@@ -33,6 +33,10 @@ vi.mock('./store-menu', () => ({
 
 vi.mock('./account-menu', () => ({
   AccountMenu: () => 'account-menu',
+}))
+
+vi.mock('./org-switcher', () => ({
+  OrgSwitcher: () => 'organization-switcher',
 }))
 
 import { Sidebar } from './sidebar'

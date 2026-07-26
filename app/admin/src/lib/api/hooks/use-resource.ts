@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrganizations } from '@hanzo/iam/react'
-import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels, fetchIntegrations, saveIntegration, setStoreId, fetchAction, postAction } from '../data-provider'
+import { fetchList, fetchOne, createOne, updateOne, deleteOne, fetchCount, fetchCurrentStore, fetchModels, fetchIntegrations, saveIntegration, setStoreId, fetchAction, postAction, uploadImages } from '../data-provider'
 import type { ListParams, ListResponse, CurrentStore, HanzoModel, CommerceIntegration, IntegrationInput } from '../data-provider'
 
 /** Every query key is prefixed with the current org so switching orgs gives a clean cache. */
@@ -84,6 +84,15 @@ export function useResourceAction<TResult, TBody = unknown>(kind: string, id: st
   return useMutation<TResult, Error, TBody>({
     mutationFn: (body: TBody) => postAction<TResult>(kind, id!, action, body, currentOrgId),
     onSuccess: () => qc.invalidateQueries({ queryKey: orgKey(currentOrgId, kind) }),
+  })
+}
+
+/** Upload image file(s) to the caller-org's tenant prefix (POST /v1/upload/images).
+ *  Returns the public CDN URL(s). Org-scoped; used by the <ImageUpload> control. */
+export function useUploadImages() {
+  const { currentOrgId } = useOrganizations()
+  return useMutation<string[], Error, File[]>({
+    mutationFn: (files: File[]) => uploadImages(files, currentOrgId),
   })
 }
 

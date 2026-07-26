@@ -53,13 +53,20 @@ var orgAdminGrant = bit.Field(
 		permission.Variant | permission.ReadVariant | permission.WriteVariant,
 )
 
-// isOrgAdmin reports whether the gateway/EdgeAuth marked this request's caller an
-// ORG-level admin via the trusted (stripped-then-reminted on ingress)
-// X-User-IsAdmin header. Only "true" (case-insensitive) counts; absent/any other
-// value fails closed to false. The gateway binds this flag to the EFFECTIVE org
-// (X-Org-Id), so a caller only ever carries it for an org it actually administers.
+// isOrgAdmin reports whether the identity edge marked this request's caller an
+// ORG-level admin via a trusted (stripped-then-reminted on ingress) header. The
+// in-process host (cloud SanitizeIdentity) mints X-User-IsOrgAdmin for an org admin
+// and X-User-IsAdmin only for a SUPERADMIN — so a real merchant admin carries the
+// FORMER, not the latter; reading only X-User-IsAdmin here (the gateway-era name)
+// left every non-superadmin org admin without WriteStore → self-serve create-store
+// 403'd. Accept EITHER: X-User-IsOrgAdmin (the org admin) OR X-User-IsAdmin (a
+// superadmin, who administers their own org too). Both are authority headers,
+// stripped+re-minted on ingress, so neither is client-forgeable. Only "true"
+// (case-insensitive) counts; absent/any other value fails closed. The caller's
+// call site additionally binds the grant to home==effective (orgAdminHomeMatches).
 func isOrgAdmin(c *zip.Ctx) bool {
-	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
+	return strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsOrgAdmin)), "true") ||
+		strings.EqualFold(strings.TrimSpace(c.Header(HeaderUserIsAdmin)), "true")
 }
 
 // orgAdminHomeMatches reports whether the caller's HOME org (X-User-Owner) equals
@@ -340,6 +347,14 @@ func GetIAMClaims(c *zip.Ctx) *auth.IAMClaims {
 // any other value (including absent) fails closed to false. It is org-scoped
 // only — NEVER gate cross-org/superadmin actions on it; use IsSuperAdmin().
 const HeaderUserIsAdmin = "X-User-IsAdmin"
+
+// HeaderUserIsOrgAdmin is the identity edge's ORG-level admin flag. cloud's
+// SanitizeIdentity (commerce's in-process host) mints THIS for an org admin
+// (claims.IsAdmin) and reserves X-User-IsAdmin for a SUPERADMIN — so a real merchant
+// admin carries X-User-IsOrgAdmin, not X-User-IsAdmin. It is an authority header,
+// stripped-then-reminted on ingress (unforgeable). isOrgAdmin reads it (OR
+// X-User-IsAdmin) so a non-superadmin org admin gets the self-serve store grant.
+const HeaderUserIsOrgAdmin = "X-User-IsOrgAdmin"
 
 // HeaderUserOwner is the gateway/EdgeAuth-minted HOME-org header — the validated
 // JWT `owner`, the identity + platform-sudo anchor. DISTINCT from X-Org-Id (the
