@@ -16,6 +16,7 @@ import { DetailPanel } from '@/components/common/detail-panel'
 import { DeleteButton } from '@/components/common/delete-button'
 import { TextField } from '@/components/common/form-fields'
 import { SelectField } from '@/components/common/choice-fields'
+import { useCurrencyOptions } from '@/lib/currency'
 import { PriceListForm } from './price-list-form'
 import {
   toPayload,
@@ -23,7 +24,6 @@ import {
   priceSchema,
   priceToPayload,
   emptyPrice,
-  CURRENCY_OPTIONS,
   type PriceList,
   type PriceListValues,
   type Price,
@@ -124,6 +124,7 @@ function PricesPanel({ priceListId }: { priceListId: string }) {
   const { data, isLoading } = useList<Price>('price', { display: 200 })
   const create = useCreate<Price>('price')
   const remove = useDelete('price')
+  const currencyOptions = useCurrencyOptions()
 
   const prices = useMemo(
     () => (data?.models ?? []).filter((p) => p.priceListId === priceListId),
@@ -186,7 +187,7 @@ function PricesPanel({ priceListId }: { priceListId: string }) {
       )}
 
       <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <SelectField control={control} name="currencyCode" label="Currency" options={CURRENCY_OPTIONS} placeholder="Select currency" />
+        <SelectField control={control} name="currencyCode" label="Currency" options={currencyOptions} placeholder="Select currency" />
         <TextField control={control} name="amount" label="Amount (cents)" placeholder="1999" />
         <TextField control={control} name="minQuantity" label="Min quantity" optional placeholder="1" />
         <TextField control={control} name="maxQuantity" label="Max quantity" optional placeholder="10" />

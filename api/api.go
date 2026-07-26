@@ -46,9 +46,12 @@ import (
 	costsApi "github.com/hanzoai/commerce/api/costs"
 	counterApi "github.com/hanzoai/commerce/api/counter"
 	couponApi "github.com/hanzoai/commerce/api/coupon"
+	currencyApi "github.com/hanzoai/commerce/api/currency"
 	customergroupApi "github.com/hanzoai/commerce/api/customergroup"
+	claimApi "github.com/hanzoai/commerce/api/claim"
 	dataApi "github.com/hanzoai/commerce/api/data"
 	deployApi "github.com/hanzoai/commerce/api/deploy"
+	draftorderApi "github.com/hanzoai/commerce/api/draftorder"
 	exchangeApi "github.com/hanzoai/commerce/api/exchange"
 	formApi "github.com/hanzoai/commerce/api/form"
 	fulfillmentApi "github.com/hanzoai/commerce/api/fulfillment"
@@ -74,6 +77,7 @@ import (
 	subscriptionApi "github.com/hanzoai/commerce/api/subscription"
 	taxApi "github.com/hanzoai/commerce/api/tax"
 	transactionApi "github.com/hanzoai/commerce/api/transaction"
+	uploadApi "github.com/hanzoai/commerce/api/upload"
 	userApi "github.com/hanzoai/commerce/api/user"
 	xdApi "github.com/hanzoai/commerce/api/xd"
 
@@ -176,6 +180,7 @@ func Route(api zip.Router) {
 	reviewApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	transactionApi.Route(api, tokenRequired)
+	uploadApi.Route(api, adminRequired) // admin product-image uploads → S3 (tenant-prefixed, image-only)
 	userApi.Route(api, tokenRequired)
 	pricingApi.Route(api, tokenRequired, requireAccess)
 	promotionApi.Route(api, tokenRequired, requireAccess)
@@ -193,9 +198,12 @@ func Route(api zip.Router) {
 	notificationApi.Route(api, tokenRequired)
 	giftcardApi.Route(api, adminRequired, requireAccess) // gift cards + idempotent redeem/void (money — admin only)
 	b2bApi.Route(api, tokenRequired, requireAccess)      // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired)                // order exchanges (return + replacement)
-	producttaxonomyApi.Route(api, tokenRequired)         // product options/values, categories, tags, types, return/refund reasons
-	catalogApi.AdminRoute(api, adminRequired)            // platform product catalog CMS (global-admin gated inside)
+	exchangeApi.Route(api, tokenRequired)                         // order exchanges (return + replacement)
+	currencyApi.Route(api, adminRequired)                         // currency reference table CRUD (global default-ns; public list on commerce group)
+	claimApi.Route(api, tokenRequired)                            // order claims (damaged/wrong/missing → refund or replacement)
+	draftorderApi.Route(api, tokenRequired, requireAccess)        // admin order builder: draft orders + line items → complete into a real order
+	producttaxonomyApi.Route(api, tokenRequired)                  // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)                     // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 

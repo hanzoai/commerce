@@ -20,6 +20,7 @@ export {
   useStores,
   useModels,
   useIntegrations,
+  useUploadImages,
 } from './use-resource'
 
 export { useUsageAnalytics } from './use-usage'

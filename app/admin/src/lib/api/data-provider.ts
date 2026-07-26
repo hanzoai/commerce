@@ -29,6 +29,13 @@ export function setAccessToken(token: string | null) {
   _accessToken = token
 }
 
+// The token last set by the dashboard layout. Surfaces (e.g. the AI dock) that
+// fetch outside the hooks read it here so they share ONE token source rather
+// than a possibly-unhydrated `useIam().accessToken`.
+export function getAccessToken(): string | null {
+  return _accessToken
+}
+
 export function setStoreId(storeId: string | null) {
   _storeId = storeId
 }
@@ -210,6 +217,34 @@ export async function fetchCurrentStore(org?: string | null): Promise<CurrentSto
   }
   _storeId = store.id
   return store
+}
+
+// ── Uploads (product images → S3) ─────────────────────────────────────────────
+// POST /v1/upload/images accepts multipart file(s) under the `files` field and
+// returns { url, urls }. The bytes are stored under the caller-org's tenant
+// prefix (tenant/<org>/uploads/) and served from the public CDN. Content-Type is
+// NOT set here — the browser sets the multipart boundary itself. Admin-gated.
+export interface UploadResult {
+  url: string
+  urls: string[]
+}
+
+export async function uploadImages(files: File[], org?: string | null): Promise<string[]> {
+  if (files.length === 0) return []
+  const form = new FormData()
+  for (const f of files) form.append('files', f)
+
+  // Deliberately omit Content-Type (the browser fills in the multipart
+  // boundary); carry the same bearer + org scoping as every other write.
+  const h: Record<string, string> = {}
+  if (_accessToken) h['Authorization'] = `Bearer ${_accessToken}`
+  if (org) h['X-Org-Id'] = org
+  if (_storeId) h['X-Store-Id'] = _storeId
+
+  const res = await apiFetch(`${API_BASE}/v1/upload/images`, { method: 'POST', headers: h, body: form })
+  if (!res.ok) throw new Error(await errorMessage(res, `Upload failed: ${res.status}`))
+  const body = (await res.json()) as UploadResult
+  return body.urls ?? (body.url ? [body.url] : [])
 }
 
 // ── Models (the Hanzo catalog: our "products" are the models) ─────────────────

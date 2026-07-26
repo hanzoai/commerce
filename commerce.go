@@ -36,6 +36,8 @@ import (
 
 	billingPkg "github.com/hanzoai/commerce/api/billing"
 	catalogapi "github.com/hanzoai/commerce/api/catalog"
+	currencyapi "github.com/hanzoai/commerce/api/currency"
+	uploadApi "github.com/hanzoai/commerce/api/upload"
 	"github.com/hanzoai/commerce/auth"
 	billingUI "github.com/hanzoai/commerce/billing"
 	"github.com/hanzoai/commerce/billing/husdledger"
@@ -49,6 +51,7 @@ import (
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/catalogentry"
+	currencymodel "github.com/hanzoai/commerce/models/currency"
 	orgModel "github.com/hanzoai/commerce/models/organization"
 	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/sbomrecord"
@@ -238,6 +241,7 @@ func infraConfigFromEnv() *infra.Config {
 				cfg.Storage.Bucket = bucket
 			}
 			cfg.Storage.UseSSL = parsed.Scheme == "s3s" || parsed.Query().Get("ssl") == "true"
+			cfg.Storage.PublicBaseURL = getEnv("S3_PUBLIC_URL", "")
 		}
 	} else if endpoint := getEnv("S3_ENDPOINT", ""); endpoint != "" {
 		cfg.Storage.Enabled = true
@@ -246,6 +250,7 @@ func infraConfigFromEnv() *infra.Config {
 		cfg.Storage.SecretKey = getEnv("S3_SECRET_KEY", "")
 		cfg.Storage.Bucket = getEnv("S3_BUCKET", "commerce")
 		cfg.Storage.UseSSL = getEnv("S3_USE_SSL", "false") == "true"
+		cfg.Storage.PublicBaseURL = getEnv("S3_PUBLIC_URL", "")
 	}
 
 	// Search (Meilisearch)
@@ -731,6 +736,12 @@ func (app *App) Bootstrap() error {
 		fmt.Fprintf(os.Stderr, "Warning: some infrastructure services unavailable: %v\n", err)
 	}
 
+	// Wire the object store into the admin upload surface (POST /v1/upload).
+	// Absent S3 config ⇒ storage nil ⇒ uploads 503 (never a silent drop).
+	if storageClient, err := app.Infra.Storage(); err == nil {
+		uploadApi.SetStorage(storageClient)
+	}
+
 	// Initialize ZAP node for inter-service vector operations
 	if vector, err := app.Infra.Vector(); err == nil {
 		zapPort := 9090
@@ -848,6 +859,14 @@ func (app *App) Bootstrap() error {
 		app.runInfraCatalogSeed()
 	}
 
+	// Currency reference seed — populate the global (default-namespace) currency
+	// table the store/settings + product/price pickers read. SeedIfEmpty is a
+	// cheap count-gated no-op once populated, so admin edits stay authoritative.
+	// COMMERCE_CURRENCY_SEED=false to skip.
+	if getEnv("COMMERCE_CURRENCY_SEED", "true") != "false" {
+		app.runCurrencySeed()
+	}
+
 	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
 	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
 	// read) to the embedded @hanzo/plans catalog on EVERY boot. Creates missing
@@ -922,6 +941,22 @@ func (app *App) runInfraCatalogSeed() {
 	}
 	if created > 0 {
 		slog.Info("infra catalog seeded", "tiers", created)
+	}
+}
+
+// runCurrencySeed populates the global currency reference table (DEFAULT
+// namespace, like token/user/organization) on first boot from the embedded
+// common-currency list. Cheap count-gated no-op once populated; failures are
+// logged, never fatal — the currency list simply returns empty until seeded.
+func (app *App) runCurrencySeed() {
+	db := commerceDatastore.New(context.Background())
+	created, err := currencymodel.SeedIfEmpty(db)
+	if err != nil {
+		slog.Error("currency seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("currency seeded", "currencies", created)
 	}
 }
 
@@ -1088,6 +1123,9 @@ func (app *App) setupRoutes() {
 	// Public platform product catalog projection (the CMS SOT other surfaces —
 	// docs, console sidebar, pricing — consume). Public + brand-scoped (?brand).
 	public.Get("/catalog", catalogapi.Public)
+	// Public currency reference list (the store/settings + product/price pickers
+	// read this instead of a hardcoded array). Global default-namespace set.
+	currencyapi.PublicRoute(public)
 	public.Post("/deposits", checkout.Deposits(orgResolver, checkout.NewHTTPForwarder()))
 	public.Post("/deposits/:id/confirm", checkout.DepositConfirm(orgResolver, checkout.NewHTTPForwarder()))
 	public.Get("/deposits/:id/status", checkout.DepositStatus(orgResolver, checkout.NewHTTPForwarder()))

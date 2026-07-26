@@ -358,7 +358,7 @@ func (q *Query) ById(id string, dst interface{}) (iface.Key, bool, error) {
 		} else {
 			filterField = "Username="
 		}
-	case "referrer":
+	case "referrer", "currency":
 		filterField = "Code="
 	case "coupon":
 		return q.couponFromId(id, dst)

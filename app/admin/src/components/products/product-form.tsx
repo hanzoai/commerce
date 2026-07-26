@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Input, Textarea, Select, Switch, Text, Badge, toast, clx } from '@hanzo/commerce-ui'
 import { useCreate, useUpdate, useDelete } from '@/lib/api/hooks'
 import { Field, Fieldset } from '@/components/common/field'
+import { ImageUpload } from '@/components/common/image-upload'
 import { ConfirmButton } from '@/components/common/confirm-button'
 import { OptionsEditor } from './options-editor'
 import {
@@ -182,17 +183,49 @@ export function ProductForm({ mode, product, canWrite = true, extraSections }: P
           <SwitchRow control={control} name="taxable" label="Taxable" description="Apply tax at checkout." />
         </Fieldset>
 
-        <Fieldset title="Media" description="Image URLs hosted on your CDN or storage.">
+        <Fieldset title="Media" description="Upload product images — stored on your Hanzo CDN.">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Primary image URL" optional>
-              <Input placeholder="https://…/product.jpg" {...register('imageUrl')} />
+            <Field label="Primary image" optional hint="The main product thumbnail.">
+              <Controller
+                control={control}
+                name="imageUrl"
+                render={({ field: { value, onChange } }) => (
+                  <ImageUpload
+                    multiple={false}
+                    disabled={readOnly}
+                    value={value ? [value] : []}
+                    onChange={(urls) => onChange(urls[0] ?? '')}
+                  />
+                )}
+              />
             </Field>
-            <Field label="Header / banner URL" optional>
-              <Input placeholder="https://…/banner.jpg" {...register('headerUrl')} />
+            <Field label="Header / banner" optional hint="A wide banner for the product page.">
+              <Controller
+                control={control}
+                name="headerUrl"
+                render={({ field: { value, onChange } }) => (
+                  <ImageUpload
+                    multiple={false}
+                    disabled={readOnly}
+                    value={value ? [value] : []}
+                    onChange={(urls) => onChange(urls[0] ?? '')}
+                  />
+                )}
+              />
             </Field>
           </div>
-          <Field label="Gallery" optional hint="One image URL per line.">
-            <Textarea rows={3} placeholder={'https://…/a.jpg\nhttps://…/b.jpg'} {...register('gallery')} />
+          <Field label="Gallery" optional hint="Additional product photos.">
+            <Controller
+              control={control}
+              name="gallery"
+              render={({ field: { value, onChange } }) => (
+                <ImageUpload
+                  disabled={readOnly}
+                  value={value ? value.split('\n').filter(Boolean) : []}
+                  onChange={(urls) => onChange(urls.join('\n'))}
+                />
+              )}
+            />
           </Field>
         </Fieldset>
 

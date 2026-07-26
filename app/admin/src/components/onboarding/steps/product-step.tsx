@@ -81,10 +81,8 @@ export function ProductStep({ onNext, onBack, onSkip }: StepProps) {
           <Label htmlFor="product-price" weight="plus">Price (USD)</Label>
           <Input
             id="product-price"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="6.00"
+            inputMode="decimal"
+            placeholder="0.00"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             onKeyDown={(e) => {
