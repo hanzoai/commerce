@@ -36,9 +36,15 @@ func TestBrandForHost(t *testing.T) {
 
 // The resolver returns a usable tenant for any well-formed host — no separate
 // tenant registry, no 404. The public Square config comes from the org via the
-// env fallback (the cloud-org path), so the pay SPA can mount its card iframe.
+// env credential fallback (the cloud-org path), so the pay SPA can mount its card
+// iframe.
+//
+// A synthetic org (nil loader, no record) is NOT Live, so it resolves SANDBOX
+// whatever SQUARE_ENVIRONMENT says. That is the fail-closed direction and the one
+// we want here: a host with no org record behind it must never have the pay SPA
+// tokenizing against a production Square application.
 func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
+	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-TESTAPP")
 	t.Setenv("SQUARE_LOCATION_ID", "TESTLOC")
 
@@ -57,8 +63,8 @@ func TestOrgResolver_ResolvesOrgAsTenant(t *testing.T) {
 	if ten.Square.ApplicationID != "sq0idp-TESTAPP" || ten.Square.LocationID != "TESTLOC" {
 		t.Errorf("tenant Square = %+v, want env app/location", ten.Square)
 	}
-	if ten.Square.Environment != "production" {
-		t.Errorf("tenant Square env = %q, want production", ten.Square.Environment)
+	if ten.Square.Environment != "sandbox" {
+		t.Errorf("tenant Square env = %q, want sandbox (synthetic org is not Live ⇒ fail closed)", ten.Square.Environment)
 	}
 	// Square must be an enabled provider so the card method surfaces; Stripe never.
 	var hasSquare, hasStripe bool
@@ -91,7 +97,7 @@ func TestOrgResolver_MalformedHostRejected(t *testing.T) {
 // The public tenant JSON built from an org resolution must carry the Square
 // block and enabled square provider, and never leak a secret.
 func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
+	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored, org decides
 	t.Setenv("SQUARE_APPLICATION_ID", "sq0idp-PUBVIEW")
 	t.Setenv("SQUARE_LOCATION_ID", "LOCPUB")
 
@@ -101,8 +107,8 @@ func TestOrgResolver_PublicViewCarriesSquare(t *testing.T) {
 		t.Fatalf("Resolve err = %v", err)
 	}
 	pv := toPublicView(ten)
-	if pv.Square.ApplicationID != "sq0idp-PUBVIEW" || pv.Square.Environment != "production" {
-		t.Errorf("publicView.Square = %+v, want env app/prod", pv.Square)
+	if pv.Square.ApplicationID != "sq0idp-PUBVIEW" || pv.Square.Environment != "sandbox" {
+		t.Errorf("publicView.Square = %+v, want env app + sandbox (synthetic org fails closed)", pv.Square)
 	}
 }
 

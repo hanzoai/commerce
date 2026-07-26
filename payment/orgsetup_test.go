@@ -45,14 +45,14 @@ func squareProcFromReg(t *testing.T, reg *processor.Registry) *square.SquareProc
 	return sp
 }
 
-// SQUARE_ENVIRONMENT=production selects production creds + production base URL,
-// even for a test-mode org (per-env determinism: mainnet charges production).
-func TestProcessorsForOrg_SquareEnvSplit_Production(t *testing.T) {
+// A LIVE org selects production creds + the production base URL. The deployment
+// env is set to the OPPOSITE on purpose: it must not participate.
+func TestProcessorsForOrg_SquareSplit_LiveOrgIsProduction(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
+	t.Setenv("SQUARE_ENVIRONMENT", "sandbox") // hostile: the old authority says sandbox
 
 	org := orgWithSquareCreds()
-	org.Live = false // test-mode org still charges production on a production deployment
+	org.Live = true
 
 	sp := squareProcFromReg(t, ProcessorsForOrg(org))
 	if sp.Environment() != "production" {
@@ -63,14 +63,15 @@ func TestProcessorsForOrg_SquareEnvSplit_Production(t *testing.T) {
 	}
 }
 
-// SQUARE_ENVIRONMENT=sandbox selects sandbox creds + sandbox base URL, even for a
-// live org (testnet/devnet charges sandbox).
-func TestProcessorsForOrg_SquareEnvSplit_Sandbox(t *testing.T) {
+// A TEST-mode org selects sandbox creds + the sandbox base URL, on the very same
+// deployment that just served the live org above — that is the multi-tenancy
+// property. The env again says the opposite and is again ignored.
+func TestProcessorsForOrg_SquareSplit_TestOrgIsSandbox(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
+	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: the old authority says production
 
 	org := orgWithSquareCreds()
-	org.Live = true // live org still charges sandbox on a sandbox deployment
+	org.Live = false
 
 	sp := squareProcFromReg(t, ProcessorsForOrg(org))
 	if sp.Environment() != "sandbox" {
@@ -81,17 +82,22 @@ func TestProcessorsForOrg_SquareEnvSplit_Sandbox(t *testing.T) {
 	}
 }
 
-// Env-var credential fallback (no per-org KMS creds) also respects SQUARE_ENVIRONMENT.
-func TestProcessorsForOrg_SquareEnvVarFallback_Sandbox(t *testing.T) {
+// The env-var credential fallback (an org with no KMS creds) picks its credential
+// set from the ORG's mode, not from SQUARE_ENVIRONMENT. NOTE: this fallback lets a
+// tenant transact on the DEPLOYMENT's payment account, which api/checkout refuses
+// by design ("per-tenant Square credentials can NEVER borrow the deployment's
+// env-configured account"). Retiring it is the next step; this pins that while it
+// exists it at least follows the per-org mode.
+func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
+	t.Setenv("SQUARE_ENVIRONMENT", "production") // hostile: ignored
 	t.Setenv("SQUARE_ACCESS_TOKEN", "prod-env-token")
 	t.Setenv("SQUARE_LOCATION_ID", "prod-env-loc")
 	t.Setenv("SQUARE_SANDBOX_ACCESS_TOKEN", "sandbox-env-token")
 	t.Setenv("SQUARE_SANDBOX_LOCATION_ID", "sandbox-env-loc")
 
 	org := &organization.Organization{} // no KMS creds → env fallback
-	org.Live = true
+	org.Live = false                    // test mode ⇒ sandbox credential set
 
 	sp := squareProcFromReg(t, ProcessorsForOrg(org))
 	if sp.Environment() != "sandbox" {

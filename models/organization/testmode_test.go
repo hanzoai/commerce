@@ -1,56 +1,31 @@
 package organization
 
 import (
-	"os"
+	"sync"
 	"testing"
 )
 
-// SQUARE_ENVIRONMENT is the single authority for the test/live (sandbox vs
-// production) split; org.Live is the fallback only when the var is UNSET. Any
-// SET-but-unrecognized value fails CLOSED to test/sandbox.
+// The org record is the ONLY authority for the test/live (sandbox vs production)
+// split. Fail-closed is per tenant: production requires the org's own Live flag.
 func TestOrganization_TestMode(t *testing.T) {
 	cases := []struct {
-		name   string
-		env    string
-		envSet bool
-		live   bool
-		want   bool // want test mode (sandbox)?
+		name string
+		live bool
+		want bool // want test mode (sandbox)?
 	}{
-		{"production env overrides live org", "production", true, true, false},
-		{"production env overrides test org", "production", true, false, false},
-		{"prod alias", "prod", true, false, false},
-		{"live alias", "live", true, false, false},
-		{"mixed-case PRODUCTION", "PRODUCTION", true, false, false},
-		{"sandbox env overrides live org", "sandbox", true, true, true},
-		{"sandbox env, test org", "sandbox", true, false, true},
-		{"test alias", "test", true, true, true},
-		{"padded sandbox", "  sandbox  ", true, true, true},
-		{"unset -> live org is production", "", false, true, false},
-		{"unset -> test org is sandbox", "", false, false, true},
-		// L1: any SET-but-unrecognized value fails CLOSED to sandbox, even for a
-		// live org — a typo on a sandbox-intended deploy must not charge production.
-		{"garbage set, live org -> fail-closed sandbox", "produciton", true, true, true},
-		{"garbage set, test org -> sandbox", "bogus", true, false, true},
-		{"empty placeholder, live org -> fail-closed sandbox", "", true, true, true},
-		{"whitespace placeholder, live org -> fail-closed sandbox", "   ", true, true, true},
+		{"live org transacts in production", true, false},
+		{"test org transacts in sandbox", false, true},
+		{"zero-value org fails closed to sandbox", false, true},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.envSet {
-				t.Setenv("SQUARE_ENVIRONMENT", tc.env)
-			} else if v, ok := os.LookupEnv("SQUARE_ENVIRONMENT"); ok {
-				os.Unsetenv("SQUARE_ENVIRONMENT")
-				t.Cleanup(func() { _ = os.Setenv("SQUARE_ENVIRONMENT", v) })
-			}
-
 			org := Organization{}
 			org.Live = tc.live
 
 			if got := org.TestMode(); got != tc.want {
-				t.Fatalf("TestMode(live=%v, env=%q set=%v) = %v, want %v", tc.live, tc.env, tc.envSet, got, tc.want)
+				t.Fatalf("TestMode(live=%v) = %v, want %v", tc.live, got, tc.want)
 			}
-
 			wantEnv := "production"
 			if tc.want {
 				wantEnv = "sandbox"
@@ -59,5 +34,68 @@ func TestOrganization_TestMode(t *testing.T) {
 				t.Fatalf("SquareEnvironment = %q, want %q", got, wantEnv)
 			}
 		})
+	}
+}
+
+// The regression this file exists for. SQUARE_ENVIRONMENT used to override every
+// org, which meant a pod served exactly one mode and each tenant's own flag was
+// dead. No environment variable may decide this again — otherwise "one stateless
+// replica serves every tenant" quietly stops being true.
+func TestOrganization_TestMode_IgnoresDeploymentEnv(t *testing.T) {
+	live := Organization{}
+	live.Live = true
+	test := Organization{}
+
+	for _, v := range []string{"production", "prod", "live", "sandbox", "test", "", "   ", "produciton", "bogus"} {
+		t.Run("SQUARE_ENVIRONMENT="+v, func(t *testing.T) {
+			t.Setenv("SQUARE_ENVIRONMENT", v)
+			if live.TestMode() {
+				t.Errorf("live org became test mode under SQUARE_ENVIRONMENT=%q — the env is deciding again", v)
+			}
+			if !test.TestMode() {
+				t.Errorf("test org became production under SQUARE_ENVIRONMENT=%q — the env is deciding again", v)
+			}
+		})
+	}
+}
+
+// Multi-tenancy, stated as a property: two orgs resolved in the SAME process get
+// their OWN environments. This is what a single horizontally-scaled deployment
+// requires, and what the deployment-wide gate made impossible.
+func TestOrganization_TestMode_PerTenantInOneProcess(t *testing.T) {
+	t.Setenv("SQUARE_ENVIRONMENT", "sandbox") // hostile: the old authority says sandbox
+
+	live := Organization{}
+	live.Live = true
+	sandbox := Organization{}
+
+	if live.SquareEnvironment() != "production" || sandbox.SquareEnvironment() != "sandbox" {
+		t.Fatalf("two tenants did not resolve independently: live=%q sandbox=%q",
+			live.SquareEnvironment(), sandbox.SquareEnvironment())
+	}
+
+	// And concurrently, because replicas serve tenants in parallel: resolution
+	// must be pure, holding no process-wide state that interleaving could corrupt.
+	var wg sync.WaitGroup
+	errs := make(chan string, 200)
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if i%2 == 0 {
+				if live.SquareEnvironment() != "production" {
+					errs <- "live org resolved non-production under concurrency"
+				}
+				return
+			}
+			if sandbox.SquareEnvironment() != "sandbox" {
+				errs <- "test org resolved non-sandbox under concurrency"
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	for e := range errs {
+		t.Error(e)
 	}
 }
