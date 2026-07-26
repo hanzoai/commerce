@@ -165,6 +165,7 @@ func DefaultConfig() *Config {
 	cfg.KMS.ClientID = getEnv("KMS_CLIENT_ID", "")
 	cfg.KMS.ClientSecret = getEnv("KMS_CLIENT_SECRET", "")
 	cfg.KMS.ProjectID = getEnv("KMS_PROJECT_ID", "")
+	cfg.KMS.Org = getEnv("KMS_ORG", "hanzo")
 	cfg.KMS.Environment = getEnv("KMS_ENVIRONMENT", "prod")
 
 	cfg.IAM.Enabled = getEnv("IAM_ENABLED", "true") == "true"
@@ -941,7 +942,6 @@ func (app *App) runPlansSeed() {
 		slog.Info("plan authority seeded", "created", created, "corrected", corrected)
 	}
 }
-
 
 // logged but do not abort bootstrap — the service remains usable without
 // Stripe catalog parity in degraded environments.
