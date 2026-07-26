@@ -25,13 +25,13 @@ require (
 	github.com/hanzoai/base v1.5.5
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
-	github.com/hanzokv/go/v9 v9.21.1
 	github.com/hanzoai/orm v0.5.4
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/s3-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
 	github.com/hanzoai/tasks v1.40.0
+	github.com/hanzokv/go/v9 v9.21.1
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
 	github.com/keighl/mandrill v0.0.0-20170605120353-1775dd4b3b41
@@ -54,6 +54,7 @@ require (
 
 require (
 	github.com/hanzo-ds/go v1.0.1
+	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/sqlite v0.2.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/zap v0.8.12
@@ -105,7 +106,7 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.2.0 // indirect
 	github.com/hanzo-ds/native v0.71.0 // indirect
-	github.com/hanzoai/account v0.2.0 // indirect
+	github.com/hanzoai/kv-go/v9 v9.18.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.2.2 // indirect
 	github.com/luxfi/compress v0.0.5 // indirect
@@ -194,13 +195,13 @@ require (
 	github.com/luxfi/mdns v0.1.1 // indirect
 	github.com/luxfi/metric v1.5.8 // indirect
 	github.com/luxfi/mock v0.1.1 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/mr-tron/base58 v1.2.0 // indirect
+	github.com/mr-tron/base58 v1.3.0 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/paulmach/orb v0.13.0 // indirect
@@ -221,7 +222,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
+	golang.org/x/exp v0.0.0-20260529124908-c761662dc8c9 // indirect
 	golang.org/x/image v0.41.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
