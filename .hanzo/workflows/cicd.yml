@@ -20,20 +20,4 @@ on:
 jobs:
   cicd:
     uses: hanzoai/ci/.github/workflows/build.yml@v1
-    with:
-      # Pin the pool as a JSON *string*, not the reusable's default JSON *array*.
-      # git.hanzo.ai evaluates `runs-on` by STRING interpolation — one Interpolate
-      # per entry, modules/actions/jobparser/jobparser.go:67-70 — so the default
-      #   runs-on: ${{ fromJson(inputs.runner) }}   # inputs.runner = '["..."]'
-      # renders an array as the literal label "Array", no runner ever matches, and
-      # the job sits queued forever (run 1688 did exactly that). GitHub evaluates
-      # the same expression structurally, which is why it only breaks on the forge.
-      # fromJson('"x"') is the string "x" under BOTH engines, and one label is all
-      # the <org>-<os>-<arch> pool scheme ever needs.
-      # This is a repo-local unblock, NOT the fix: array-valued runs-on belongs in
-      # hanzo-git's jobparser (or the shape belongs in hanzoai/ci, whose other 8
-      # callers — incl. hanzoai/node, which passes the array form explicitly — are
-      # still on GitHub Actions where it works). hanzoai/cloud is the other repo
-      # already cut over to .hanzo/workflows, and it has built NOTHING since.
-      runner: '"hanzo-build-linux-amd64"'
     secrets: inherit
