@@ -25,7 +25,7 @@ require (
 	github.com/hanzoai/base v1.5.5
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
-	github.com/hanzoai/kv-go/v9 v9.18.0
+	github.com/hanzokv/go/v9 v9.21.1
 	github.com/hanzoai/orm v0.5.4
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/s3-go v1.0.0
