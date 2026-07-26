@@ -185,20 +185,22 @@ func TestTopup_CanonicalLedger_PerOrgIsolation(t *testing.T) {
 }
 
 // TestTopup_SandboxChargeCreditsTestBucket proves the console-sandbox proof
-// path: under SQUARE_ENVIRONMENT=sandbox the credit lands in the TEST bucket
-// (what a sandbox card top-up increases), and the LIVE spendable bucket stays
-// empty — so a sandbox proof can never mint real credit.
+// path: for an org in TEST mode the credit lands in the TEST bucket (what a
+// sandbox card top-up increases), and the LIVE spendable bucket stays empty — so
+// a sandbox proof can never mint real credit.
+//
+// Driven by the org, not SQUARE_ENVIRONMENT: sandbox is now a per-tenant fact, so
+// this holds on the SAME deployment that serves live merchants.
 func TestTopup_SandboxChargeCreditsTestBucket(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "sandbox")
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
 	org := &organization.Organization{}
 	org.Name = "sandbox-proof"
-	org.Live = true // org "live", but the deployment is sandbox → test mode wins
+	org.Live = false // this org transacts in sandbox
 
 	if !org.TestMode() {
-		t.Fatal("precondition: SQUARE_ENVIRONMENT=sandbox must force test mode")
+		t.Fatal("precondition: a non-live org must be in test mode")
 	}
 	creditLikeTopup(t, ctx, org, "sandbox-proof", 1500)
 

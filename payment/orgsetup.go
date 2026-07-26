@@ -52,11 +52,15 @@ func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 		}))
 	}
 
-	// Square. The deployment's SQUARE_ENVIRONMENT is the single authority for
-	// sandbox-vs-production (see org.TestMode): it selects BOTH which
-	// KMS-hydrated credential set to use AND the Environment passed to the
-	// provider (which drives the Square API base URL). Falls back to process env
-	// vars when KMS is disabled or the org has no stored Square credentials.
+	// Square. The ORG is the single authority for sandbox-vs-production (see
+	// org.TestMode): it selects BOTH which KMS-hydrated credential set to use AND
+	// the Environment passed to the provider (which drives the Square API base
+	// URL). This used to be the deployment's SQUARE_ENVIRONMENT, which forced every
+	// tenant in the process into one mode; per-org resolution is what lets one
+	// replica serve a sandbox merchant and a live merchant. Falls back to process
+	// env vars when KMS is disabled or the org has no stored Square credentials —
+	// that fallback still reads the env and is the next thing to retire, since it
+	// lets a tenant transact on the deployment's own payment account.
 	{
 		useSandbox := org.TestMode()
 		env := org.SquareEnvironment()

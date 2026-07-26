@@ -1,37 +1,35 @@
 package organization
 
-import (
-	"os"
-	"strings"
-)
-
-// TestMode reports whether this org transacts in TEST mode on the current
-// deployment. It is the SINGLE authority for BOTH the payment environment
-// (Square sandbox vs production) AND the ledger (trans.Test, balance bucket,
-// pay.Live). Keeping the charge environment and the ledger on ONE authority is
-// what prevents a sandbox charge from crediting the live (spendable) balance and
-// a production charge from booking test (unbilled) revenue.
+// TestMode reports whether this org transacts in TEST mode. It is the SINGLE
+// authority for BOTH the payment environment (Square sandbox vs production) AND
+// the ledger (trans.Test, balance bucket, pay.Live). Keeping the charge
+// environment and the ledger on ONE authority is what prevents a sandbox charge
+// from crediting the live (spendable) balance and a production charge from
+// booking test (unbilled) revenue.
 //
-// SQUARE_ENVIRONMENT is the deployment authority and makes the 3-env split pure
-// per-env config (mainnet=production, testnet/devnet=sandbox). It is fail-CLOSED:
-// only an explicit, recognized "production" (or prod/live) selects production;
-// anything else that is SET — sandbox/test, an empty placeholder, or a typo —
-// selects test/sandbox, so a misconfiguration can never silently charge real
-// cards. When SQUARE_ENVIRONMENT is UNSET, the org's own live flag decides
-// (live→production, test→sandbox) so local and un-templated deploys still resolve.
+// The authority is the ORG RECORD, and nothing else. It used to be the
+// deployment's SQUARE_ENVIRONMENT, which consulted o.Live only when that
+// variable was UNSET — so on any templated deploy every tenant was forced into
+// one mode and each org's own flag was dead. That is what made a second
+// deployment necessary to serve a sandbox merchant (commerce-api.testnet.hanzo.ai
+// exists for exactly this reason), and why a replica was never freely
+// interchangeable: its behaviour depended on which env block started it.
+// Resolving per org is what lets ONE stateless replica serve a sandbox merchant
+// and a live merchant in the same process, on the same request path.
+//
+// It is also what "configured per org, not in env files" means here. The
+// credentials were already per org — o.Square.Sandbox / o.Square.Production,
+// o.Stripe.Test / o.Stripe.Live, KMS-backed — and StripeToken() already chose
+// between them from o.Live alone. Only the mode stayed deployment-wide, so the
+// two could disagree. Now both read the same per-org fact.
+//
+// Still fail-CLOSED, but per tenant instead of per deployment: an org is in
+// production only when its own record says Live, so a new, unset or
+// half-configured org transacts in sandbox and a missing flag can never silently
+// charge real cards. What improves over the env gate is isolation — one org's
+// misconfiguration can no longer drag every other tenant on the pod into the
+// wrong environment, in either direction.
 func (o Organization) TestMode() bool {
-	if v, ok := os.LookupEnv("SQUARE_ENVIRONMENT"); ok {
-		switch strings.ToLower(strings.TrimSpace(v)) {
-		case "production", "prod", "live":
-			return false
-		case "sandbox", "test":
-			return true
-		default:
-			// Set but unrecognized (empty placeholder or typo): fail CLOSED to
-			// test/sandbox — only an explicit "production" unlocks real charges.
-			return true
-		}
-	}
 	return !o.Live
 }
 
