@@ -10,6 +10,7 @@ import { ToasterMount } from '@/components/common/toaster-mount'
 import { ResourceForm } from '@/components/forms/resource-form/resource-form'
 import { useStore, useUpdate } from '@/lib/api/hooks'
 import { storeSchema, storeFields, storeDefaults, storePayload, type StoreRecord } from '@/components/settings/store-form'
+import { useCurrencyOptions, withCurrencyOptions } from '@/lib/currency'
 import { errorMessage } from '@/lib/forms/schema'
 
 export default function StoreSettingsPage() {
@@ -17,6 +18,8 @@ export default function StoreSettingsPage() {
   const { data: store, isLoading } = useStore()
   const record = store as StoreRecord | null
   const update = useUpdate<StoreRecord>('store')
+  // The default-currency field reads the accepted-currency list, not a hardcoded array.
+  const fields = withCurrencyOptions(storeFields, useCurrencyOptions())
 
   return (
     <div>
@@ -42,7 +45,7 @@ export default function StoreSettingsPage() {
             <ResourceForm
               schema={storeSchema}
               defaultValues={storeDefaults(record)}
-              fields={storeFields}
+              fields={fields}
               submitLabel="Save store"
               isPending={update.isPending}
               single

@@ -4,34 +4,42 @@ import { useState } from 'react'
 import { Badge, Input, Label, Select, Text, toast } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
 import { useStores, useStore } from '@/lib/api/hooks'
+import { useCurrencyOptions } from '@/lib/currency'
 import { Commerce } from '@/lib/commerce-client'
 import { WizardStep, StepNav } from '../wizard-step'
 import type { StepProps } from './types'
 
-const CURRENCIES = ['usd', 'eur', 'gbp', 'cad', 'aud', 'jpy']
-
 export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
   const { data: store } = useStore()
+  const currencyOptions = useCurrencyOptions()
   const { create } = useStores()
   const { accessToken } = useIam()
   const { currentOrgId } = useOrganizations()
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('usd')
   const [error, setError] = useState<string | null>(null)
+  // The store this step just created — captured from the entered values so the
+  // confirmation card shows exactly what the merchant typed, never a fetched/
+  // derived name (e.g. the org name).
+  const [created, setCreated] = useState<{ name: string; currency: string } | null>(null)
 
-  // Store already exists (returning merchant / came via ?onboarding=1): confirm
-  // and move on rather than minting a second store.
-  if (store) {
+  // Freshly created here, OR a store already exists (returning merchant / came
+  // via ?onboarding=1): show a clean confirmation and continue rather than
+  // minting a second store. Local `created` wins so the card reflects the
+  // entered name+currency.
+  const confirmed = created ?? (store ? { name: store.name, currency: store.currency ?? '' } : null)
+  if (confirmed) {
     return (
       <WizardStep title="Create your store" description="Your store is ready — continue setting things up.">
         <div className="rounded-lg border border-ui-border-base bg-ui-bg-subtle p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <Text weight="plus" className="text-ui-fg-base">{store.name}</Text>
-              <Text size="small" className="mt-0.5 text-ui-fg-muted">
-                {store.domain ?? store.slug}
-                {store.currency ? ` · ${store.currency.toUpperCase()}` : ''}
-              </Text>
+              <Text weight="plus" className="text-ui-fg-base">{confirmed.name}</Text>
+              {confirmed.currency && (
+                <Text size="small" className="mt-0.5 text-ui-fg-muted">
+                  {confirmed.currency.toUpperCase()}
+                </Text>
+              )}
             </div>
             <Badge color="green">Created</Badge>
           </div>
@@ -46,7 +54,7 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
     if (!clean) return
     setError(null)
     try {
-      const created = await create.mutateAsync({ name: clean, currency })
+      const result = await create.mutateAsync({ name: clean, currency })
       // Start the funded trial IMMEDIATELY so the org has store access through the
       // REST of onboarding: the next step reads/creates products, which are paywall-
       // gated — without an active trial that call 402s and ejects the wizard to
@@ -54,8 +62,8 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
       // returning/comped org) and best-effort (a hiccup here must not block onboarding;
       // the dashboard access gate re-attempts the trial on payment_required).
       const newId =
-        (created as { id?: string; store?: { id?: string } })?.id ??
-        (created as { store?: { id?: string } })?.store?.id
+        (result as { id?: string; store?: { id?: string } })?.id ??
+        (result as { store?: { id?: string } })?.store?.id
       if (newId && accessToken) {
         try {
           await new Commerce({ token: accessToken, org: currentOrgId ?? undefined }).startStoreTrial(newId)
@@ -64,7 +72,7 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
         }
       }
       toast.success('Store created', { description: clean })
-      onNext()
+      setCreated({ name: clean, currency })
     } catch (e) {
       const message = e instanceof Error && e.message ? e.message : 'Please try again.'
       setError(message)
@@ -97,9 +105,9 @@ export function StoreStep({ onNext, onSkip, isFirst }: StepProps) {
               <Select.Value />
             </Select.Trigger>
             <Select.Content>
-              {CURRENCIES.map((code) => (
-                <Select.Item key={code} value={code}>
-                  {code.toUpperCase()}
+              {currencyOptions.map((opt) => (
+                <Select.Item key={opt.value} value={opt.value}>
+                  {opt.label}
                 </Select.Item>
               ))}
             </Select.Content>

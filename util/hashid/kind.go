@@ -184,6 +184,16 @@ var kinds = map[string]int{
 	// global (system-namespace) directory keyed by code; first-touch redeem binds
 	// the code to the redeeming org, idempotently.
 	"commerce-invite": 284,
+
+	// Medusa-parity domains (admin order builder, order claims, currency entity).
+	// Monotonic — never reorder. draft-order → admin builds an order for a customer
+	// with line items, then converts it to a real order; claim → damaged/wrong-item
+	// resolution (refund|replace); currency → the currency entity (was a bare string).
+	"draft-order":      285,
+	"draft-order-item": 286,
+	"claim":            287,
+	"claim-item":       288,
+	"currency":         289,
 }
 
 var kindsReversed = make(map[int]string)

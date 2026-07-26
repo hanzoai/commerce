@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button, Heading, Text, Textarea, clx } from '@hanzo/commerce-ui'
 import { useIam, useOrganizations } from '@hanzo/iam/react'
-import { createOne, fetchCount, fetchList, fetchCurrentStore, fetchModels } from '@/lib/api/data-provider'
+import { createOne, fetchCount, fetchList, fetchCurrentStore, fetchModels, getAccessToken } from '@/lib/api/data-provider'
 import type { CurrentStore } from '@/lib/api/data-provider'
 import { requestSearch } from '@/lib/search-bus'
 import { consumePendingAiPrompt, onAiPrompt } from '@/lib/ai-bus'
@@ -193,6 +193,16 @@ export function AiChatDock() {
   const send = useCallback(async () => {
     const text = input.trim()
     if (!text || busy) return
+
+    // The dashboard layout sets the shared token; prefer it over the hook value,
+    // which can still be null on the first render after the dock opens. Without a
+    // bearer the chat endpoint 401s and the reply reads as a blanket "unavailable".
+    const token = accessToken ?? getAccessToken()
+    if (!token) {
+      setMessages((m) => [...m, { role: 'assistant', content: 'Sign in to use the assistant.' }])
+      return
+    }
+
     setInput('')
     const nextMsgs: ChatMsg[] = [...messages, { role: 'user', content: text }]
     setMessages(nextMsgs)
@@ -205,18 +215,38 @@ export function AiChatDock() {
         temperature: 0.3,
         messages: [{ role: 'system', content: buildSystemPrompt(liveContext()) }, ...history],
       }
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
       if (currentOrgId) headers['X-Org-Id'] = currentOrgId
       const res = await fetch(AI_URL, { method: 'POST', headers, body: JSON.stringify(body) })
-      if (!res.ok) throw new Error(`ai ${res.status}`)
+      if (!res.ok) {
+        // Surface the REAL failure in dev instead of masking it behind a blanket
+        // message — status + body are what actually diagnose a 401/402/5xx.
+        const detail = await res.text().catch(() => '')
+        if (process.env.NODE_ENV !== 'production') {
+          console.error(`[ai-dock] ${AI_URL} ${res.status} ${res.statusText}`, detail)
+        }
+        const message =
+          res.status === 401 || res.status === 403
+            ? 'Your session expired. Refresh the page and sign in again.'
+            : res.status === 402
+              ? 'The assistant needs an active plan on this store.'
+              : `The assistant hit an error (${res.status}). Please try again.`
+        setMessages((m) => [...m, { role: 'assistant', content: message }])
+        return
+      }
       const data = await res.json()
       const content: string = data?.choices?.[0]?.message?.content ?? ''
       const { reply, actions } = parseAssistant(content)
       const receipts = await dispatch(actions, host)
       setMessages((m) => [...m, { role: 'assistant', content: reply || '(no response)', receipts: receipts.length ? receipts : undefined }])
-    } catch {
-      setMessages((m) => [...m, { role: 'assistant', content: 'The assistant is unavailable right now. Please try again.' }])
+    } catch (err) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[ai-dock] request failed', err)
+      }
+      setMessages((m) => [...m, { role: 'assistant', content: 'Could not reach the assistant. Check your connection and try again.' }])
     } finally {
       setBusy(false)
     }
