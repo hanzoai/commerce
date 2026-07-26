@@ -33,7 +33,10 @@ type Config struct {
 	ClientID     string
 	ClientSecret string
 	ProjectID    string
-	Environment  string
+	// Org scopes every secret path and the JWT that reads it. Defaults to
+	// "hanzo" when empty.
+	Org         string
+	Environment string
 }
 
 // Client is a thin HTTP client wrapping the KMS REST API.
@@ -42,6 +45,7 @@ type Client struct {
 	clientID     string
 	clientSecret string
 	projectID    string
+	org          string
 	environment  string
 
 	accessToken string
@@ -52,14 +56,33 @@ type Client struct {
 
 // NewClient creates a new KMS client.
 func NewClient(cfg *Config) *Client {
+	org := cfg.Org
+	if org == "" {
+		org = "hanzo"
+	}
 	return &Client{
 		baseURL:      strings.TrimRight(cfg.URL, "/"),
 		clientID:     cfg.ClientID,
 		clientSecret: cfg.ClientSecret,
 		projectID:    cfg.ProjectID,
+		org:          org,
 		environment:  cfg.Environment,
 		httpClient:   &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+// joinSecretRef renders a (path, name) pair as the {rest...} the server splits
+// at its LAST slash. Each segment is escaped alone so the separators survive.
+func joinSecretRef(secretPath, secretName string) string {
+	segs := append(strings.Split(strings.Trim(secretPath, "/"), "/"), secretName)
+	out := make([]string, 0, len(segs))
+	for _, seg := range segs {
+		if seg == "" {
+			continue
+		}
+		out = append(out, url.PathEscape(seg))
+	}
+	return strings.Join(out, "/")
 }
 
 // authResponse is the response from the KMS auth endpoint.
@@ -122,7 +145,7 @@ func (c *Client) authenticate() error {
 // secretResponse is the response from the KMS secrets endpoint.
 type secretResponse struct {
 	Secret struct {
-		SecretValue string `json:"secretValue"`
+		Value string `json:"value"`
 	} `json:"secret"`
 }
 
@@ -136,14 +159,16 @@ func (c *Client) GetSecretRaw(secretPath, secretName string) (string, error) {
 	token := c.accessToken
 	c.mu.RUnlock()
 
-	// Build request URL — v4 API uses projectId (not workspaceId)
+	// The server takes {rest...} and splits it at the LAST slash into
+	// (path, name), so secretPath and secretName are joined here and each
+	// segment is escaped on its own — escaping the joined string would encode
+	// the separators and the server would read one long name.
 	reqURL := fmt.Sprintf(
-		"%s/api/v4/secrets/%s?projectId=%s&environment=%s&secretPath=%s",
+		"%s/v1/kms/orgs/%s/secrets/%s?env=%s",
 		c.baseURL,
-		url.PathEscape(secretName),
-		url.QueryEscape(c.projectID),
+		url.PathEscape(c.org),
+		joinSecretRef(secretPath, secretName),
 		url.QueryEscape(c.environment),
-		url.QueryEscape(secretPath),
 	)
 
 	req, err := http.NewRequest("GET", reqURL, nil)
@@ -168,7 +193,7 @@ func (c *Client) GetSecretRaw(secretPath, secretName string) (string, error) {
 		return "", fmt.Errorf("kms secret decode error: %w", err)
 	}
 
-	return secretResp.Secret.SecretValue, nil
+	return secretResp.Secret.Value, nil
 }
 
 // SetSecret writes a secret to KMS at the given path.
@@ -181,13 +206,18 @@ func (c *Client) SetSecret(secretPath, secretName, secretValue string) error {
 	token := c.accessToken
 	c.mu.RUnlock()
 
-	// v4 API: secretName in URL path, projectId (not workspaceId) in body
-	payload := fmt.Sprintf(
-		`{"secretValue":%q,"secretPath":%q,"projectId":%q,"environment":%q,"type":"shared"}`,
-		secretValue, secretPath, c.projectID, c.environment,
-	)
+	// One upsert endpoint; path, name and env all travel in the body.
+	payload, err := json.Marshal(map[string]string{
+		"path":  secretPath,
+		"name":  secretName,
+		"env":   c.environment,
+		"value": secretValue,
+	})
+	if err != nil {
+		return fmt.Errorf("kms set secret marshal error: %w", err)
+	}
 
-	req, err := http.NewRequest("POST", c.baseURL+"/api/v4/secrets/"+secretName, strings.NewReader(payload))
+	req, err := http.NewRequest("POST", c.baseURL+"/v1/kms/orgs/"+url.PathEscape(c.org)+"/secrets", bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("kms set secret request build error: %w", err)
 	}
