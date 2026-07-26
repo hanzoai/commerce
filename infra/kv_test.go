@@ -165,17 +165,24 @@ func TestKVBackendSelection(t *testing.T) {
 		t.Fatalf("KV_URL unset must select Base, got %T", base.backend)
 	}
 
-	ext, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "redis://:pw@kv.tenant-acme.svc:6379")
+	ext, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "kv://:pw@kv.tenant-acme.svc:6379")
 	if err != nil {
 		t.Fatalf("NewKVClientFromURL(valid): %v", err)
 	}
-	if _, ok := ext.backend.(*redisBackend); !ok {
+	if _, ok := ext.backend.(*externalBackend); !ok {
 		t.Fatalf("KV_URL set must select external Hanzo KV, got %T", ext.backend)
 	}
 	_ = ext.Close()
 
 	if _, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "://not-a-url"); err == nil {
 		t.Fatal("malformed KV_URL must fail closed, got nil error")
+	}
+
+	// kv-go v9.22.0 REMOVED the legacy redis:// scheme (kv://, kvs://, unix://
+	// only). Pinned so the operator-visible break can never regress silently:
+	// a deployment still on KV_URL=redis://… fails closed at boot.
+	if _, err := NewKVClientFromURL(&KVConfig{Enabled: true}, "redis://kv.tenant-acme.svc:6379"); err == nil {
+		t.Fatal("legacy redis:// scheme must fail closed, got nil error")
 	}
 }
 
