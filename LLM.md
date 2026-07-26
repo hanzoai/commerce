@@ -14,7 +14,7 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
   +-- User SQLite (data/users/{userID}/data.db) + sqlite-vec
   +-- Org SQLite (data/orgs/{orgID}/data.db) + sqlite-vec
   +-- PostgreSQL (alternative, pgvector)
-  +-- ClickHouse via hanzo/datastore-go (analytics)
+  +-- Hanzo Datastore via hanzo-ds/go (analytics)
 ```
 
 ## Commerce Admin
@@ -133,9 +133,9 @@ Call sites read identity via:
 commerce/
   cmd/commerce/    CLI entry point
   commerce.go      Main app framework
-  db/              SQLite, Postgres, ClickHouse backends
+  db/              SQLite, Postgres, Datastore backends
   hooks/           Hook system (Base-compatible): Hook[T], TaggedHook[T], Resolver
-  events/          Unified event forwarding to ClickHouse/Insights/Analytics
+  events/          Unified event forwarding to Datastore/Insights/Analytics
   insights/        Hanzo Insights integration + Gin middleware
   api/             HTTP handlers (store, cart, analytics, namespace, etc.)
   models/          Data models
@@ -158,7 +158,7 @@ go run cmd/commerce/main.go serve --dev     # Development
 | `COMMERCE_SECRET` | `change-me-in-production` | Encryption secret |
 | `COMMERCE_HTTP` | `127.0.0.1:8090` | Listen address |
 | `REDIS_URL` | - | `redis://[:pass@]host:port[/db]` (priority over VALKEY_URL) |
-| `COMMERCE_DATASTORE` | - | ClickHouse DSN |
+| `COMMERCE_DATASTORE` | - | Hanzo Datastore DSN |
 | `INSIGHTS_ENABLED` | `false` | Hanzo Insights product analytics |
 | `ANALYTICS_ENABLED` | `false` | Umami-like web analytics |
 | `KMS_ENABLED` | `false` | Enable KMS secret management |
@@ -203,7 +203,7 @@ is the boundary. The console reaches it through its OWN global-admin-gated proxy
 Deliberately NOT here (owned by the fleet o11y god-view `GET /v1/admin/o11y`):
 per-model LLM tokens/latency/error and the per-org AI-spend ranking. Commerce names
 those in the response `gaps[]` array, never fabricates. Per-model latency is
-captured nowhere in the stack; per-model error rate is in ClickHouse
+captured nowhere in the stack; per-model error rate is in the datastore
 `cloud_usage.status` but not yet surfaced by the o11y `topModels` SQL.
 
 ## Dependencies
