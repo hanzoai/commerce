@@ -43,10 +43,10 @@ scrape_configs:
     static_configs:
       - targets: ['redis-exporter:9121']
 
-  # ClickHouse metrics
-  - job_name: 'clickhouse'
+  # Hanzo Datastore metrics
+  - job_name: 'datastore'
     static_configs:
-      - targets: ['clickhouse:9363']
+      - targets: ['datastore:9363']
 
   # Nginx metrics (via nginx_exporter if deployed)
   - job_name: 'nginx'

@@ -1,4 +1,4 @@
--- Hanzo Commerce - ClickHouse Analytics Schema
+-- Hanzo Commerce - Hanzo Datastore Analytics Schema
 -- This file is automatically executed on first container startup
 
 -- Create commerce database

@@ -28,8 +28,8 @@ services:
       PORT: 8001
       ENV: ${ENV:-staging}
       REDIS_URL: redis://redis:6379
-      CLICKHOUSE_URL: http://clickhouse:8123
-      COMMERCE_DATASTORE: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      DATASTORE_HTTP_URL: http://datastore:8123
+      COMMERCE_DATASTORE: datastore://${DATASTORE_USER:-default}:${DATASTORE_PASSWORD:-}@datastore:9000/commerce
       IAM_URL: ${IAM_URL:-https://api.hanzo.id}
       IAM_API_KEY: ${IAM_API_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -41,7 +41,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      clickhouse:
+      datastore:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8001/healthz"]
@@ -78,8 +78,8 @@ services:
       PORT: 8001
       ENV: ${ENV:-staging}
       REDIS_URL: redis://redis:6379
-      CLICKHOUSE_URL: http://clickhouse:8123
-      COMMERCE_DATASTORE: clickhouse://${CLICKHOUSE_USER:-default}:${CLICKHOUSE_PASSWORD:-}@clickhouse:9000/commerce
+      DATASTORE_HTTP_URL: http://datastore:8123
+      COMMERCE_DATASTORE: datastore://${DATASTORE_USER:-default}:${DATASTORE_PASSWORD:-}@datastore:9000/commerce
       IAM_URL: ${IAM_URL:-https://api.hanzo.id}
       IAM_API_KEY: ${IAM_API_KEY:-}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
@@ -91,7 +91,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      clickhouse:
+      datastore:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8001/healthz"]

@@ -1,7 +1,7 @@
 // Package events provides a thin HTTP client for the analytics collector.
 //
 // Commerce fires events via HTTP to the analytics-collector sidecar
-// rather than writing directly to ClickHouse. This decouples analytics
+// rather than writing directly to the datastore. This decouples analytics
 // from the commerce binary.
 package events
 
@@ -208,7 +208,7 @@ func (c *Client) EmitContributorPayoutSent(ctx context.Context, orgID, userID, p
 // collector lands in commerce.events. The money that MOVES in the event is the
 // top-level revenue (USD, mirroring order.Total); the exact integer cents plus
 // the structured billing fields ride in properties so the fleet read side
-// (admin.hanzo.ai) can aggregate them precisely with ClickHouse JSON functions.
+// (admin.hanzo.ai) can aggregate them precisely with the datastore's JSON functions.
 // All best-effort: EmitRaw no-ops when no collector is configured, and callers
 // fire them fire-and-forget so analytics can never block the money path.
 
