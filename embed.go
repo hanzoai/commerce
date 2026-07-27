@@ -41,6 +41,13 @@ type EmbedConfig struct {
 	// serves standalone.
 	App *zip.App
 
+	// MasterKey is the 32-byte at-rest encryption master key. When set it is used
+	// verbatim and COMMERCE_KMS_MASTER_KEY is never read — so a host that already
+	// holds a KEK passes the one it has instead of a second key being provisioned
+	// for the same process. nil ⇒ the env var decides, unchanged, which is the
+	// standalone path.
+	MasterKey []byte
+
 	// Ledger is the host-injected double-entry credit ledger. When the cloud
 	// binary embeds commerce it passes a ledger-backed impl here, so
 	// POST /v1/billing/credit and GET /v1/billing/balance route to the SAME
@@ -77,6 +84,9 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	}
 	if cfg.Dev {
 		appCfg.Dev = true
+	}
+	if len(cfg.MasterKey) > 0 {
+		appCfg.MasterKey = cfg.MasterKey
 	}
 	if len(cfg.AllowedOrigins) > 0 {
 		appCfg.AllowedOrigins = cfg.AllowedOrigins
