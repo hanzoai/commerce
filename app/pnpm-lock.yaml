@@ -577,8 +577,8 @@ importers:
         specifier: workspace:*
         version: link:../packages/ui
       '@hanzo/event':
-        specifier: ^0.2.0
-        version: 0.2.0(react@19.0.4)
+        specifier: ^0.3.3
+        version: 0.3.3(react@19.0.4)
       '@headlessui/react':
         specifier: ^2.2.0
         version: 2.2.10(react-dom@19.0.4(react@19.0.4))(react@19.0.4)
@@ -1387,8 +1387,8 @@ packages:
   '@formatjs/intl-localematcher@0.6.2':
     resolution: {integrity: sha512-XOMO2Hupl0wdd172Y06h6kLpBz6Dv+J4okPLl4LPtzbr8f66WbIoy4ev98EBuZ6ZK4h5ydTN6XneT4QVpD7cdA==}
 
-  '@hanzo/event@0.2.0':
-    resolution: {integrity: sha512-jx+xlT5no88PYg/k465/pQ7a+oQcfImB5X0dJ4/ZSSF5bwqPCItvN/9Znt4SQpq18EQeMuR5GiLmxo1wSP5uqw==}
+  '@hanzo/event@0.3.3':
+    resolution: {integrity: sha512-faooSLA2UR4N8B0hOcSuQk3yi48Dahp5IMTrQn/WdKQc4JkKGx0lmdASp7os80ita48VQUNheqF6lpdXIj6ZYQ==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
@@ -7648,7 +7648,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@hanzo/event@0.2.0(react@19.0.4)':
+  '@hanzo/event@0.3.3(react@19.0.4)':
     optionalDependencies:
       react: 19.0.4
 
