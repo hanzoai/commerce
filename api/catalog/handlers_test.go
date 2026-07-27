@@ -324,7 +324,7 @@ func TestModelPrice_EditableFromAdmin(t *testing.T) {
 		"markup":    "2.5",
 		"rates":     []map[string]any{{"key": "in", "unit": "mtok", "cost": "1.00", "price": "4.00"}},
 	})
-	if code, b := callPut(t, admin, "/v1/catalog/entries/:slug", "/v1/catalog/entries/zen5", edit, UpdateEntry); code != 200 {
+	if code, b := callPut(t, admin, "/v1/catalog/entries/*", "/v1/catalog/entries/zen5", edit, UpdateEntry); code != 200 {
 		t.Fatalf("update = %d; %s", code, b)
 	}
 

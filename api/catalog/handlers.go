@@ -72,11 +72,22 @@ func AdminRoute(r zip.Router, args ...zip.Handler) {
 	// a platform-admin gate).
 	g.Get("/entries", append(args, ListEntries)...)
 	g.Post("/entries", append(args, CreateEntry)...)
-	g.Put("/entries/:slug", append(args, UpdateEntry)...)
-	g.Delete("/entries/:slug", append(args, DeleteEntry)...)
+	// The slug is a WILDCARD, not a segment param, because a model's slug IS its
+	// callable id and those contain a slash ("anthropic/claude-opus-5"). A :slug
+	// param stops at the slash, so every model row would be listed and
+	// un-editable — a catalog whose own admin surface cannot address most of its
+	// rows. Measured on this router: fiber's `+` param does not bind here, `*`
+	// does, and it matches a single-segment slug identically, so the infra-tier
+	// edits are byte-for-byte unchanged.
+	g.Put("/entries/*", append(args, UpdateEntry)...)
+	g.Delete("/entries/*", append(args, DeleteEntry)...)
 	g.Post("/seed", append(args, SeedCatalog)...)
 	g.Post("/models", append(args, SyncModels)...)
+	g.Post("/models/refresh", append(args, RefreshModels)...)
 }
+
+// entrySlug reads the addressed slug from the wildcard path.
+func entrySlug(c *zip.Ctx) string { return c.Param("*") }
 
 // Public returns the brand-scoped catalog projection. Public + cacheable.
 // Brand from ?brand (default hanzo).
@@ -157,7 +168,7 @@ func UpdateEntry(c *zip.Ctx) error {
 		return nil
 	}
 	db := catalogDB(c)
-	slug := c.Param("slug")
+	slug := entrySlug(c)
 
 	e := catalogentry.New(db)
 	ok, err := e.Query().Filter("Slug=", slug).Get()
@@ -184,7 +195,7 @@ func DeleteEntry(c *zip.Ctx) error {
 		return nil
 	}
 	db := catalogDB(c)
-	slug := c.Param("slug")
+	slug := entrySlug(c)
 	e := catalogentry.New(db)
 	ok, err := e.Query().Filter("Slug=", slug).Get()
 	if err != nil {

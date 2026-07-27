@@ -1043,6 +1043,84 @@ exactly — the shape is NOT ours to change.
   read ns from `d.Context`), a latent gotcha `api/billing/osspayout systemDB`
   also trips (works only because its reads+writes are symmetric in default ns).
 
+### Model catalog — the OpenRouter cost sync (models/catalogentry/{openrouter,sync}.go)
+
+A model IS a `catalogentry` (`model.go`): same kind, same `system` store, same
+super-admin CRUD, same margin projection. Price is a `Rate` VECTOR (`rate.go`) —
+cost is what WE pay (synced), price is what the CUSTOMER pays (set in admin),
+margin is derived. `UpsertModels` is the ONE write seam and enforces `costOnly`.
+This section is the PULL half: reading a live upstream on a schedule.
+
+- **`FetchOpenRouter` / `DecodeOpenRouter`** — split on purpose: the fetch is the
+  only I/O, so every rule about what a payload MEANS is testable against
+  `testdata/openrouter-models.json` (captured from live) with no network. Decode
+  FAILS on a malformed or empty body rather than returning a partial read: a
+  half-decoded catalog looks exactly like an upstream that dropped 200 models,
+  and the sync's answer to that is to withdraw them, so the two must be told
+  apart before that decision is reached.
+- **Per-token → per-MTok is EXACT**: `dec(s).Shift(6)`, decimal all the way, no
+  float. `0.000000003625` → `0.003625`. A component the upstream prices at ZERO
+  is omitted, never stored as cost `"0"` (which would read as 100% margin); a
+  fully free model keeps its row with no rates — it is still a model and this
+  catalog lists every model.
+- **Vendor is the PARTY, not party+product** — "Meta", never "Meta Llama".
+  `resolveVendors` settles ONE name per NAMESPACE across the whole payload
+  (per-model derivation gives "OpenAI" and "Openai" for one vendor). It votes on
+  the upstream's OWN display prefix, so a vendor added tomorrow is named right
+  with no edit; `vendorNames` corrects only the ~5 namespaces publishing no
+  prefix. `~vendor/x-latest` aliases are listed and marked `floating` in metadata
+  — the id does not pin a version, so its cost can move under a stable id.
+
+**`Refresh(db, serves, rows)`** wraps `UpsertModels` with the two things a
+scheduled PULL needs that a push of decided rows does not:
+
+1. **Withdrawal sweep.** Upsert only sees what the upstream still publishes, so
+   on its own a withdrawn model stays listed and routable forever. Refresh
+   withdraws the difference: `Spec.Enabled=false` + `Spec.Unavailable` =
+   `WithdrawnUpstream`. MARKED, NEVER DELETED — usage rows, invoices and old
+   conversations reference it by slug. It stays published and priced. A later run
+   that finds it restores it, but ONLY if WE withdrew it: an operator who
+   disabled a model by hand keeps that decision.
+2. **Fail-safe.** `ErrEmptyUpstream` — zero models is indistinguishable from an
+   outage, and believing it would withdraw the whole catalog in one run. A failed
+   sync writes nothing and the last good catalog stands.
+
+The sweep is **scoped by `Spec.Serves`**, so an OpenRouter outage can never
+withdraw an Enso or Zen model.
+
+**`freezePrice` — why a new row is priced explicitly.** `RetailPrice` falls back
+to cost × markup when no price is stored, which spares a 341-row long tail from
+hand-pricing. But a price COMPUTED FROM A LIVE COST moves whenever the upstream
+moves — raise their cost and every bill rises, decided by nobody. Refresh
+therefore writes the retail price out explicitly at CREATION only: the row
+arrives at cost × markup (so landing it changes no bill and nothing needs
+hand-pricing), and from then on the price is a stored number only a human
+changes, so the next upstream move surfaces as a MARGIN THAT MOVED in
+admin.hanzo.ai. Creation is the only legitimate moment — the row is new, so
+there is no customer relying on a price to disturb. NOTE: a row created by hand
+without a price still tracks cost through the fallback; only synced rows are
+frozen.
+
+- **Route**: `POST /v1/catalog/models/refresh` (super-admin). `POST
+  /v1/catalog/models` remains the PUSH of decided rows; both funnel through
+  `UpsertModels`, so the cost/price rule holds whichever door a row came through.
+  Scheduled by a CronJob curling it with `COMMERCE_SERVICE_TOKEN`, the same shape
+  the contributor payout uses. It deliberately does NOT run at boot — a
+  boot-time call to a third party is a boot hazard.
+- **`/catalog/entries/*` is a WILDCARD, not `:slug`.** A model's slug IS its
+  callable id and those contain a slash; a segment param stops at the slash, so
+  every model row would be listed and un-editable. Measured on this router:
+  fiber's `+` param does not bind, `*` does, and it matches a single-segment slug
+  identically (infra-tier edits unchanged). Pinned by
+  `TestAdminRoute_AddressesASlashBearingSlug`, which drives the real `AdminRoute`.
+- **Proven against live OpenRouter**: 341 models created; a second run against
+  the same payload creates, withdraws and restores nothing; halving the upstream
+  withdrew 171 and deleted ZERO (all 341 rows still present); recovery restored
+  171. claude-opus-5 lands at cost 5/25 → price 6/30 per MTok, margin 16.67% on
+  each rate; the public projection carries price and no cost. `Refresh` is stable
+  on STATE — `UpsertModels` still rewrites every row each run, so the write count
+  is not yet a no-op.
+
 ### Money-correctness design (idempotency WITHOUT working transactions)
 - `datastore.RunInTransaction` (`datastore/datastore.go`) is a **NO-OP** — it
   runs `fn(New(ctx))` with no tx/lock/isolation. `db.SQLiteDB.RunInTransaction`
