@@ -28,9 +28,9 @@ require (
 	github.com/hanzoai/kv-go/v9 v9.18.0
 	github.com/hanzoai/orm v0.5.4
 	github.com/hanzoai/pubsub-go v1.0.0
+	github.com/hanzoai/s3-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
 	github.com/hanzoai/sendgrid-go v3.4.2-0.20180724185151-733a05184a8d+incompatible
-	github.com/hanzoai/s3-go v1.0.0
 	github.com/hanzoai/tasks v1.40.0
 	github.com/huandu/facebook v2.3.1+incompatible
 	github.com/icrowley/fake v0.0.0-20240710202011-f797eb4a99c0
@@ -54,6 +54,7 @@ require (
 
 require (
 	github.com/hanzo-ds/go v1.0.1
+	github.com/hanzoai/account v0.2.0
 	github.com/hanzoai/sqlite v0.2.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/luxfi/zap v0.8.12
@@ -105,7 +106,6 @@ require (
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.2.0 // indirect
 	github.com/hanzo-ds/native v0.71.0 // indirect
-	github.com/hanzoai/account v0.2.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/luxfi/accel v1.2.2 // indirect
 	github.com/luxfi/compress v0.0.5 // indirect
@@ -132,7 +132,6 @@ require (
 	github.com/supranational/blst v0.3.16 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	github.com/zap-proto/fiber/v3 v3.2.1 // indirect
 	github.com/zap-proto/go v1.3.0 // indirect
 	github.com/zap-proto/http v0.2.0 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
