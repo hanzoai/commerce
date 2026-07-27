@@ -5,12 +5,11 @@ import (
 	"testing"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
 func sysDB(c context.Context) *datastore.Datastore {
-	return datastore.New(nscontext.WithNamespace(c, "system"))
+	return SystemDB(c)
 }
 
 func TestSeed_IdempotentAndComplete(t *testing.T) {

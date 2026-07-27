@@ -26,17 +26,12 @@ import (
 	"github.com/hanzoai/commerce/models/catalogentry"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/util/nscontext"
 )
 
-// CatalogNamespace is the platform-global namespace the catalog lives in — not a
-// per-tenant org. Brand partitioning is by the entry's Brand field.
-const CatalogNamespace = "system"
-
-// catalogDB returns a datastore scoped (via CONTEXT, the only namespacing the
-// SQL layer honors) to the platform catalog namespace.
+// catalogDB returns a datastore scoped to the platform catalog namespace.
+// catalogentry.SystemDB owns that scoping — there is one way to reach the store.
 func catalogDB(c *zip.Ctx) *datastore.Datastore {
-	return datastore.New(nscontext.WithNamespace(c.Context(), CatalogNamespace))
+	return catalogentry.SystemDB(c.Context())
 }
 
 // requireSuperAdmin fails closed unless the caller is a Hanzo PLATFORM admin.
