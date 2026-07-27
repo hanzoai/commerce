@@ -5,9 +5,10 @@
 // Run it as a one-shot Job BEFORE flipping COMMERCE_KMS_MASTER_KEY onto the
 // deployment: once the key is set the daemon refuses any tenant file that has no
 // DEK sidecar (fail-closed), so pre-existing plaintext files must be migrated
-// first. It is idempotent (already-encrypted tenants are skipped) and never
-// deletes the plaintext — each converted file is kept as <data.db>.plaintext.bak
-// for operator verification.
+// first. It is idempotent (already-encrypted tenants are skipped). Each tenant's
+// plaintext is set aside as <data.db>.plaintext.bak and — once the encrypted copy
+// passes per-table parity — shredded, so no tenant money data is left in the clear
+// at rest. The encrypted copy is the verified source of truth after conversion.
 //
 // Usage:
 //

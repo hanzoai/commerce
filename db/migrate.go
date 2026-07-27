@@ -6,8 +6,8 @@
 // first. EncryptDataDir does that, without losing a row:
 //
 //	read plaintext → write a fresh encrypted copy → verify per-table content
-//	parity → atomically swap the encrypted copy into place (plaintext kept as a
-//	.plaintext.bak backup).
+//	parity → atomically swap the encrypted copy into place → shred the plaintext
+//	(no tenant money data survives a verified migration in the clear at rest).
 //
 // It is idempotent: a tenant that already has a sidecar is skipped, so it is safe
 // to run repeatedly (and as a one-shot Job before flipping the key on the
@@ -15,6 +15,7 @@
 package db
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/binary"
@@ -43,13 +44,14 @@ func EncryptDataDir(dataDir string, masterKey []byte, dryRun bool) (*MigrateRepo
 	if len(masterKey) != 32 {
 		return nil, fmt.Errorf("migrate: master key must be 32 bytes, got %d", len(masterKey))
 	}
-	if !sqlitedrv.EncryptionAvailable() {
-		return nil, fmt.Errorf("migrate: this build cannot encrypt (pure-Go sqlite); rebuild CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher")
-	}
-	// A cgo build without libsqlcipher linked would write a PLAINTEXT "encrypted"
-	// destination — refuse rather than produce a file that only looks migrated.
+	// Commerce REQUIRES the live libsqlcipher codec — not encryption-in-general. The
+	// migration copies via ATTACH + sqlcipher_export (a libsqlcipher feature) and the
+	// daemon runs a dual concurrent-read/serialized-write pool that the single-writer
+	// codec envelope cannot serve. So gate on CodecLinked, not EncryptionAvailable
+	// (which is always true now): a build routed to the pure-Go envelope would still
+	// ENCRYPT, but it cannot run commerce's migration or dual pool — refuse cleanly.
 	if !sqlitedrv.CodecLinked() {
-		return nil, fmt.Errorf("migrate: cgo build but libsqlcipher is NOT linked (CodecLinked()=false) — the destination would be plaintext; rebuild with -tags \"libsqlite3 sqlite_fts5\" + CGO_LDFLAGS=-lsqlcipher")
+		return nil, fmt.Errorf("migrate: commerce requires the live libsqlcipher codec (its sqlcipher_export migration and dual read/write pool cannot use the codec envelope); build CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" + CGO_CFLAGS=\"-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1\" + CGO_LDFLAGS=-lsqlcipher")
 	}
 
 	rep := &MigrateReport{}
@@ -93,6 +95,13 @@ func EncryptDataDir(dataDir string, masterKey []byte, dryRun bool) (*MigrateRepo
 // false) when the file is absent or already has a DEK sidecar.
 func encryptTenantFile(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string, dryRun bool) (int, bool, error) {
 	if fileExists(dbPath + dekSuffix) {
+		// Already encrypted. Self-heal a plaintext backup orphaned by a crash between
+		// the cutover and the shred (step 6): with the encrypted copy in place as the
+		// source of truth, any lingering .plaintext.bak is only money data in the clear.
+		// A no-op when there is none. (Parity with cek, which self-heals on every open.)
+		if !dryRun {
+			shredPlaintextBak(dbPath)
+		}
 		return 0, false, nil // already encrypted
 	}
 	if !fileExists(dbPath) {
@@ -110,8 +119,9 @@ func encryptTenantFile(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalTy
 	// TRUNCATE checkpoint — this both consolidates the data and proves no other
 	// process holds the db (a still-running daemon makes the checkpoint busy, which
 	// we surface as an error: migrating a live money db could miss in-flight rows).
-	// We only issue SELECTs afterwards, so the source's logical data is unchanged;
-	// it is retained as .plaintext.bak either way.
+	// We only issue SELECTs afterwards, so the source's logical data is unchanged
+	// through the copy; the cutover then sets it aside as .plaintext.bak and, once
+	// the encrypted copy passes parity, shredPlaintextBak removes it.
 	// Open on the ONE canonical "sqlite" driver (hanzoai/sqlite) with no key — a
 	// plaintext read; PragmaDSN escapes the path and emits busy_timeout+WAL in the
 	// active backend's form. This path is CGO-only (encryption) where "sqlite" is
@@ -202,6 +212,11 @@ func encryptTenantFile(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalTy
 	if err := cutover(dbPath, tmpDB); err != nil {
 		return 0, false, err
 	}
+	// 6. The encrypted copy passed per-table parity (step 4) BEFORE the swap, so the
+	// plaintext backup is no longer a rollback safety net — it is only tenant money
+	// data sitting in the clear at rest. Shred it (parity with cek): no plaintext
+	// money survives a verified migration.
+	shredPlaintextBak(dbPath)
 	return rows, true, nil
 }
 
@@ -221,7 +236,7 @@ func cutover(dbPath, tmpDB string) error {
 	for _, suf := range []string{"-wal", "-shm"} {
 		_ = os.Remove(dbPath + suf)
 	}
-	if err := os.Rename(dbPath, dbPath+".plaintext.bak"); err != nil {
+	if err := os.Rename(dbPath, dbPath+plaintextBakSuffix); err != nil {
 		return fmt.Errorf("backup plaintext %q: %w", dbPath, err)
 	}
 	if err := os.Rename(tmpDB, dbPath); err != nil {
@@ -236,6 +251,45 @@ func cutover(dbPath, tmpDB string) error {
 		return fmt.Errorf("swap DEK sidecar into %q: %w", dbPath+dekSuffix, err)
 	}
 	return nil
+}
+
+// shredPlaintextBak securely removes the plaintext backup the cutover set aside. The
+// encrypted destination passed per-table parity BEFORE the swap, so the backup is no
+// longer needed for rollback — leaving it would defeat at-rest encryption for the
+// migrated tenant (money data in the clear). Best-effort random overwrite then remove,
+// parity with cek.shredPlainBak so the platform shreds plaintext one way. Absent
+// backup (already shredded, or a re-run) is a no-op.
+func shredPlaintextBak(dbPath string) {
+	bak := dbPath + plaintextBakSuffix
+	fi, err := os.Stat(bak)
+	if err != nil {
+		return
+	}
+	if f, err := os.OpenFile(bak, os.O_WRONLY, 0); err == nil {
+		overwriteRandom(f, fi.Size())
+		_ = f.Sync()
+		_ = f.Close()
+	}
+	_ = os.Remove(bak)
+}
+
+// overwriteRandom fills the first size bytes of f with random data in 1 MiB chunks.
+func overwriteRandom(f *os.File, size int64) {
+	const chunk = 1 << 20
+	buf := make([]byte, chunk)
+	for remaining := size; remaining > 0; {
+		n := int64(chunk)
+		if remaining < n {
+			n = remaining
+		}
+		if _, err := rand.Read(buf[:n]); err != nil {
+			return
+		}
+		if _, err := f.Write(buf[:n]); err != nil {
+			return
+		}
+		remaining -= n
+	}
 }
 
 // checkpointWAL folds the write-ahead log back into the main database file and
