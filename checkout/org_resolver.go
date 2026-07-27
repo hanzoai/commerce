@@ -114,6 +114,11 @@ func returnHostsFor(slug string) []string {
 			"https://hanzo.bot",
 			"https://console.hanzo.ai",
 			"https://cloud.hanzo.ai",
+			// hanzo.app — the builder. Its /billing and /pricing pages send the
+			// customer to pay.hanzo.ai for a card top-up or a plan and expect to
+			// get them back on /billing afterwards. Without this entry that
+			// returnUrl fails the allowlist and the buyer is stranded on pay.
+			"https://hanzo.app",
 			"https://chat.hanzo.ai",
 			"https://hanzo.chat",
 			"https://analytics.hanzo.ai",
