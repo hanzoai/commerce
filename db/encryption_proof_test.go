@@ -177,8 +177,18 @@ func TestTenantIsolation(t *testing.T) {
 // TestResolveMasterKey covers the env parsing (pure Go; runs under any build).
 func TestResolveMasterKey(t *testing.T) {
 	t.Setenv(masterKeyEnv, "")
-	if k, err := resolveMasterKey(); err != nil || k != nil {
-		t.Fatalf("unset: got (%v,%v), want (nil,nil)", k, err)
+	k, err := resolveMasterKey()
+	if sqlitedrv.CodecLinked() {
+		// Production (codec-linked): an unset key is fatal — never open a money store
+		// plaintext. (Mirrors cek's fail-closed posture.)
+		if err == nil {
+			t.Fatalf("unset on a codec-linked build: got (%v,nil), want a fail-closed error", k)
+		}
+	} else {
+		// pure-Go / codec-unlinked dev/CI: unset → unencrypted dev mode.
+		if err != nil || k != nil {
+			t.Fatalf("unset on a non-codec build: got (%v,%v), want (nil,nil)", k, err)
+		}
 	}
 
 	// A valid key is accepted ONLY on a build that actually encrypts (cgo AND

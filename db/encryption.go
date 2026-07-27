@@ -20,11 +20,14 @@
 //     every encrypted page, is untouched (O(1), cannot brick a file).
 //
 // Posture is decided once, in resolveMasterKey():
-//   - unset            → unencrypted per-tenant files (dev / CGO-off CI).
-//   - set + cgo build  → per-tenant SQLCipher encryption (production).
-//   - set + !cgo build → hard error. A master key was supplied but this binary
-//     cannot encrypt, and silently writing plaintext money data would violate the
-//     security contract.
+//   - unset                 → unencrypted per-tenant files (dev / CI).
+//   - set + live codec       → per-tenant SQLCipher encryption (production).
+//   - set + no live codec    → hard error. Commerce's dual concurrent-read/
+//     serialized-write pool needs the LIVE libsqlcipher codec; it cannot use the
+//     single-writer codec envelope that a non-libsqlcipher build falls back to. So
+//     a build without libsqlcipher is refused. (Such a build would still ENCRYPT via
+//     the envelope — it does not write plaintext — but it cannot serve commerce's
+//     dual pool, so opening it here would be wrong.)
 package db
 
 import (
@@ -49,36 +52,52 @@ const (
 	// dekSuffix names the wrapped-DEK sidecar written beside each tenant data.db.
 	dekSuffix = ".dek"
 
+	// plaintextBakSuffix names the pre-migration plaintext backup the cutover sets
+	// aside; it is SHREDDED once the encrypted copy passes parity (shredPlaintextBak),
+	// so no tenant money data survives a verified migration in the clear at rest.
+	plaintextBakSuffix = ".plaintext.bak"
+
 	// createLockSuffix names the cross-process mint-DEK+create-db lock file.
 	createLockSuffix = ".create.lock"
 )
 
 // resolveMasterKey reads COMMERCE_KMS_MASTER_KEY and validates it. It returns:
 //
-//   - (nil, nil)   when unset → unencrypted dev/CI mode.
+//   - (nil, nil)   when unset on a pure-Go dev/CI build → unencrypted dev mode.
 //   - (key, nil)   when set, 64 hex chars, AND this build ACTUALLY encrypts
 //     (cgo + libsqlcipher linked and proven at runtime).
-//   - (nil, error) when set but malformed, OR set on a build that cannot really
-//     encrypt — we refuse to run rather than silently write plaintext money data.
+//   - (nil, error) when set but malformed; OR set on a build that cannot really
+//     encrypt; OR UNSET on a production (codec-linked) build — we refuse to run
+//     rather than silently write plaintext money data.
 //
-// The codec check is the crux: EncryptionAvailable() is only a backend-capability
-// flag (true for ANY cgo build), but a cgo build that forgot to link libsqlcipher
-// silently no-ops the key and writes PLAINTEXT. CodecLinked() runs a one-time
-// runtime probe (open a keyed temp db, assert the bytes are real ciphertext), so a
-// mis-linked image FAILS CLOSED at boot instead of persisting plaintext balances.
+// The codec check is the crux, and it gates on CodecLinked, NOT EncryptionAvailable.
+// EncryptionAvailable() is always true now (every build encrypts — via the live
+// libsqlcipher codec OR the pure-Go codec envelope), so it no longer distinguishes
+// a commerce-capable build. Commerce needs the LIVE codec specifically: its dual
+// read/write pool (encDriverDSN opens a concurrent read pool + a serialized write
+// pool on the same file) cannot use the single-writer envelope. CodecLinked() runs a
+// one-time runtime probe (open a keyed temp db, assert real ciphertext), so a build
+// without the live codec is refused here rather than mis-opened. A refused build is
+// NOT one that would write plaintext — it would encrypt via the envelope — it simply
+// cannot serve commerce's dual pool.
 //
 // This is the ONE place the master key is sourced, so every tenant store shares an
 // identical posture decision.
 func resolveMasterKey() ([]byte, error) {
 	mkHex := os.Getenv(masterKeyEnv)
 	if mkHex == "" {
+		// No key configured. On a production (codec-linked) build this is a misconfig —
+		// fail closed rather than silently write tenant money data as plaintext at rest
+		// (mirrors cek's fail-closed posture). On a pure-Go dev/CI build — which cannot
+		// link the codec and whose dual pool cannot use the envelope — unencrypted
+		// per-tenant files are the intended zero-config dev path.
+		if sqlitedrv.CodecLinked() {
+			return nil, fmt.Errorf("%s is required on a production (libsqlcipher-linked) build; refusing to open tenant money stores unencrypted — inject the KMS master key, or run a pure-Go dev build", masterKeyEnv)
+		}
 		return nil, nil
 	}
-	if !sqlitedrv.EncryptionAvailable() {
-		return nil, fmt.Errorf("%s is set but this build cannot encrypt (pure-Go sqlite); rebuild with CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or unset the variable for an unencrypted dev build", masterKeyEnv)
-	}
 	if !sqlitedrv.CodecLinked() {
-		return nil, fmt.Errorf("%s is set and this is a cgo build, but libsqlcipher is NOT linked (CodecLinked()=false) — the key would be silently ignored and money data written as PLAINTEXT. Rebuild the image with -tags \"libsqlite3 sqlite_fts5\" + CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1 + CGO_LDFLAGS=-lsqlcipher", masterKeyEnv)
+		return nil, fmt.Errorf("%s is set but the live libsqlcipher codec is not linked; commerce's dual concurrent-read/serialized-write pool cannot use the codec envelope — build the image CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" + CGO_CFLAGS=\"-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1\" + CGO_LDFLAGS=-lsqlcipher, or unset %s for an unencrypted dev build", masterKeyEnv, masterKeyEnv)
 	}
 	mk, err := hex.DecodeString(strings.TrimSpace(mkHex))
 	if err != nil {
@@ -122,16 +141,17 @@ func principalFor(tenantType string) sqlitedrv.PrincipalType {
 // sidecar inside the lock: the loser finds the winner's sidecar and uses it. The
 // common path (sidecar present) takes no lock.
 func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string) ([]byte, error) {
-	// Fail closed on a build that cannot encrypt. resolveMasterKey already refuses
-	// the env-sourced key on the pure-Go backend, but NewSQLiteDB also accepts a
-	// MasterKey injected directly on its config (the encrypt-at-rest migration tool
-	// and the encryption-proof test). Without this guard those paths reach
-	// sqlitedrv.DSN(path, dek), which PANICS on the pure-Go backend — turning a
-	// clear "cannot encrypt" refusal into a crash. Return the error the caller
-	// expects instead, so a keyed open on !cgo never panics and never risks
-	// silently persisting plaintext money data.
-	if !sqlitedrv.EncryptionAvailable() {
-		return nil, fmt.Errorf("cannot open %q encrypted: this build cannot encrypt (pure-Go sqlite); rebuild with CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or open without a master key for an unencrypted dev build", dbPath)
+	// Gate on CodecLinked (the LIVE codec), not EncryptionAvailable (always true now).
+	// resolveMasterKey already refuses the env-sourced key without the live codec, but
+	// NewSQLiteDB also accepts a MasterKey injected directly on its config (the
+	// encrypt-at-rest migration tool and the encryption-proof test). Without the live
+	// codec those paths reach sqlitedrv.DSN(path, dek), which PANICS on a build routed
+	// to the pure-Go backend (the key never rides the pure-Go DSN — the envelope keys
+	// the file out of band). Return the clear refusal instead of crashing. Commerce
+	// cannot use the envelope for its dual pool, so this is a genuine refusal — not a
+	// "would write plaintext" one.
+	if !sqlitedrv.CodecLinked() {
+		return nil, fmt.Errorf("cannot open %q encrypted: commerce requires the live libsqlcipher codec (its dual read/write pool cannot use the codec envelope); build CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or open without a master key for an unencrypted dev build", dbPath)
 	}
 	kek, err := sqlitedrv.DeriveKey(masterKey, pt, id)
 	if err != nil {

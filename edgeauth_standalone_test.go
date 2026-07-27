@@ -148,8 +148,9 @@ func TestStandaloneForge_ListProviders_Blocked(t *testing.T) {
 //
 // The property under test is "not blocked by the boundary" (no boundary 401),
 // asserted by the handler actually running. GET /v1/commerce/tenant is wired to
-// the RESOLVER-backed checkout.TenantJSON(orgResolver) (see commerce.go), NOT the
-// store-backed TenantJSONFromStore. By deliberate, documented design
+// the RESOLVER-backed checkout.TenantJSON(orgResolver) (see commerce.go) — now
+// the only public tenant handler, the store-backed duplicate having been deleted
+// unused. By deliberate, documented design
 // (checkout/org_resolver.go: "Resolution never 404s for a well-formed host"),
 // proven by checkout.TestBrandForHost + TestRoutes_PublicTenantResolvesOrg, the
 // pay-SPA boot endpoint resolves EVERY well-formed host to a usable tenant (a

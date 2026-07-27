@@ -20,7 +20,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/zap-proto/zip"
 )
@@ -139,52 +138,11 @@ type BackendConfig struct {
 // ─── Resolver ────────────────────────────────────────────────────────────
 
 // Resolver resolves a Host header to a Tenant. The default implementation
-// is a StaticResolver driven by a hostname→Tenant map; in production the
+// is an in-memory map driven by hostname→Tenant (tests only); in production the
 // resolver is backed by the commerce organization model (hosts stored on
 // the organization record).
 type Resolver interface {
 	Resolve(host string) (Tenant, error)
-}
-
-// StaticResolver is an in-memory Resolver used for tests and bootstrap.
-// Hostname keys are lowercased and assumed to have no port suffix; the
-// Resolver handles normalization before lookup.
-type StaticResolver struct {
-	mu      sync.RWMutex
-	hostMap map[string]Tenant
-}
-
-// NewStaticResolver copies the input map and lowercases keys so the caller
-// need not normalize ahead of time.
-func NewStaticResolver(hosts map[string]Tenant) *StaticResolver {
-	m := make(map[string]Tenant, len(hosts))
-	for h, t := range hosts {
-		m[strings.ToLower(strings.TrimSpace(h))] = t
-	}
-	return &StaticResolver{hostMap: m}
-}
-
-// Set replaces the tenant for a host (or inserts). Host is normalized.
-// Intended for runtime reconfig (admin API) — thread-safe.
-func (r *StaticResolver) Set(host string, t Tenant) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.hostMap[strings.ToLower(strings.TrimSpace(host))] = t
-}
-
-// Resolve returns the Tenant for host, or ErrUnknownTenant. Exact-match
-// only: suffix spoofing ("pay.example.com.evil.com") does not match.
-func (r *StaticResolver) Resolve(host string) (Tenant, error) {
-	h := normalizeHost(host)
-	if h == "" {
-		return Tenant{}, ErrUnknownTenant
-	}
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	if t, ok := r.hostMap[h]; ok {
-		return t, nil
-	}
-	return Tenant{}, ErrUnknownTenant
 }
 
 // normalizeHost strips :port and lowercases. Any malformed input —

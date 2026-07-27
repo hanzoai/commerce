@@ -43,6 +43,30 @@ React Router tree under `app/admin/src/routes` is not the live shell.
   the root pnpm/Turbo graph, then publishes the standalone server. Do not copy a
   partial package set or introduce a second package manager.
 
+## Three credentials, three distinct jobs — do NOT collapse them
+
+An audit will read commerce as having "three competing auth systems". It has one
+identity system and two machine credentials, and they are different VALUES, not
+three ways to spell one:
+
+- **IAM / OIDC** — human identity. The only source of user identity. A validated
+  principal is proven by `X-User-Id`, which is minted solely from a verified
+  credential and never restored from client input.
+- **`COMMERCE_SERVICE_TOKEN`** — ONE global platform machine identity (the
+  cloud→commerce S2S dispatch). Checked FIRST in `TokenRequired`, ahead of the IAM
+  branch, so an S2S call never meets the per-user scope gate.
+- **Published storefront token** — a PER-ORG machine credential, minted by an org
+  admin via `POST /v1/store/storefront-token` (`org.AddToken("storefront",
+  permission.Published)`) and consumed as `HANZO_COMMERCE_STOREFRONT_TOKEN` by the
+  storefront BFF. Org-bound, scoped, revocable by re-minting.
+
+That third one rides the legacy per-org access-token path in
+`middleware/accesstoken.go` — `GetWithAccessToken` → `tok.Verify(org.SecretKey)` →
+`tok.Permissions` → `org.Live`. It LOOKS like dead duplication and is not: delete
+it and every storefront's checkout stops authenticating. IAM does not currently
+issue per-org, org-admin-mintable, revocable scoped keys, so folding this into IAM
+is a migration that needs that capability first — not a cleanup.
+
 ## Multi-Tenancy
 
 - Namespace-based: `Organization.Name` IS the namespace
@@ -306,8 +330,30 @@ fully closes the bypass (SHIP); 1.46.6 addresses its LOW+INFO findings:
 EdgeAuth strips X-Org-Id; also never leaks an org's bank/routing/SWIFT to an
 unauthenticated caller — test `api/checkout/wire/instructions_test.go`);
 `oauthmiddleware.TokenRequired`'s (currently unwired) IAM branch converged to the
-same mask enforcement; stale `api/billing/handlers.go` comment corrected. Keep
-`COMMERCE_EDGE_AUTH=true` pinned — the Layer-1 defense depends on it.
+same mask enforcement; stale `api/billing/handlers.go` comment corrected.
+
+⚠️ **CORRECTION (2026-07-26): `COMMERCE_EDGE_AUTH` is set in NO deployment, so
+Layer 1 has never been live.** This line used to read "Keep
+`COMMERCE_EDGE_AUTH=true` pinned — the Layer-1 defense depends on it", which read
+as a description of the running system. It is not: `git grep COMMERCE_EDGE_AUTH`
+returns zero hits in hanzoai/cloud and zero in universe's `infra/k8s`. Proven from
+outside, not just by grep — EdgeAuth's Layer 1 *deletes* a client `X-Org-Id`, yet
+`GET /v1/store/current` with a forged `X-Org-Id` and no token returned 200 on
+**both** api.hanzo.ai and commerce.hanzo.ai. That is only possible with EdgeAuth
+off on both.
+
+So of the two "independent" layers, only Layer 2 (the mask enforcement in
+`TokenRequired`) was ever running — and it does not cover no-mask routes, which is
+exactly how `/v1/store/{current,access}` leaked another org's store record to an
+unauthenticated caller. The layer that actually holds now is
+`IAMTokenRequired` requiring a validated principal (X-User-Id), not merely an
+X-Org-Id selector — same predicate as cloud's `clients/principal.Validated`. It
+needs no env flag, which is the point: a defense whose "on" switch is set nowhere
+is not a defense.
+
+Before relying on EdgeAuth for anything, check it is actually enabled where you
+think it is. Deciding whether it survives at all belongs with the standalone
+question below.
 
 **Request**: `{ company, providerHint, currency, customer, items, successUrl, cancelUrl, couponCode? }`
 **Response**: `{ checkoutUrl, sessionId }`
@@ -346,6 +392,30 @@ field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration
 - Boolean false/0 handled via COALESCE: `COALESCE(json_extract(...), 0) = 0` (handles NULL from omitempty)
 
 **Data directory**: `{COMMERCE_DIR}/orgs/{orgName}/data.db` per org. System data in `orgs/system/data.db`.
+
+**Tenant store lifecycle lives in `orm/db.Registry`, not here.** `db.Manager`
+used to hold a `userDBs` and an `orgDBs` map, opening a store per tenant ever
+touched and closing them only at shutdown — descriptors and memory grew with the
+tenant count, with no bound and no replication. It now delegates to
+`ormdb.Registry[db.DB]`: open on demand, bounded by `Config.MaxOpenTenants`
+(256), idle stores closed after `Config.TenantIdleTTL` (5m), coldest evicted
+first, never one that is mid-operation.
+
+`Registry.Do(ctx, tenant, fn)` scopes a handle to a callback, on purpose — a
+handle you can keep is one someone must remember to give back. `Manager.User`/
+`Org` still return a `db.DB` because every call site keeps one (`Store.DB`, the
+namespaced datastore resolver, the user service), but what they return holds no
+handle: `db/tenant.go` is a VALUE that borrows the tenant's store for each
+operation and gives it back. So a held `db.DB` costs four words, never a file
+descriptor, and two consecutive operations on it may run on different open
+handles — nothing needs otherwise, since anything atomic across statements is
+already inside `RunInTransaction` (one borrow).
+
+`Registry`'s `Materialize` (restore a tenant file from object storage on a local
+miss) and `OnOpen`/`OnClose` (bracket a handle's life) are where
+`hanzoai/replicate` attaches. Both are unset today: commerce tenant files are
+still local-only, and turning them on needs an object-store config, not more
+code here.
 
 **PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
 

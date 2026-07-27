@@ -17,16 +17,17 @@ import (
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/transaction/util"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment"
 	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	jsonhttp "github.com/hanzoai/commerce/util/json/http"
 )
 
+// topupTokenRequest is the wire body. There is deliberately NO userId field: the
+// credited subject is resolved from the caller's own identity (topupDestination),
+// never from the request, so a body value can not steer where the money lands.
 type topupTokenRequest struct {
 	SourceID    string `json:"sourceId"` // Square Web Payments SDK nonce
 	AmountCents int64  `json:"amountCents"`
-	UserID      string `json:"userId"`
 	Currency    string `json:"currency,omitempty"`
 }
 
@@ -81,8 +82,10 @@ func topupDestination(c *zip.Ctx) string {
 //
 // Body: { sourceId, amountCents, currency? }
 // Header (optional): X-Idempotency-Key — a retry/double-submit with the same key
-// (or, absent a key, the same single-use nonce) never double-charges or
-// double-credits; it replays the first result.
+// (or, absent a key, the same (subject, amount) inside a 15-minute window) never
+// double-charges or double-credits; it replays the first result. The same key is
+// forwarded to Square, so the charge is exactly-once at the processor even if the
+// local guard store is down.
 // Returns: { transactionId, balanceCents, status }
 func TopupWithToken(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
@@ -133,22 +136,28 @@ func TopupWithToken(c *zip.Ctx) error {
 		cur = currency.USD
 	}
 
-	// Idempotency guard (money-critical). A retry (client lost the response) or
-	// a double-submit must charge + credit AT MOST ONCE. Key on the caller's
-	// X-Idempotency-Key when supplied, else the single-use Square nonce itself
-	// (Square consumes a nonce on first charge, so it is a natural per-attempt
-	// key). Scoped to the org so keys never collide across tenants.
-	idemKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
-	if idemKey == "" {
-		idemKey = "nonce:" + req.SourceID
-	}
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-topup:"+billingKey, idemKey)
+	// Idempotency guard (money-critical). A retry (client lost the response) or a
+	// double-submit must charge + credit AT MOST ONCE. ONE derivation, shared with
+	// every other card money move (idem.go): the caller's X-Idempotency-Key, else
+	// the stable request facts — the AMOUNT, never the single-use nonce — bucketed
+	// into a coarse window.
+	idemKey := guardKey(c, "amount:"+strconv.FormatInt(req.AmountCents, 10)+":cur:"+string(cur))
+	// The gateway key is derived from that SAME stable guard, so Square de-dups
+	// the money move even if our guard store is unavailable or two submits race.
+	// Without it the processor minted a fresh uuid per attempt and Square-side
+	// dedup — the only backstop that survives a guard-store outage — was never
+	// engaged at all.
+	squareKey := gatewayKey("topup", billingKey, idemKey)
+	rec, replay, gerr := idemBegin(db, "billing-topup:"+billingKey, idemKey)
 	if gerr != nil {
-		// The guard store is unavailable; the single-use nonce remains the
-		// double-charge backstop. Log and proceed WITHOUT the replay guard
-		// rather than block a legitimate first charge.
+		// The guard store is unavailable, so we cannot tell a first attempt from a
+		// retry. Refuse. Proceeding used to be justified by "the single-use nonce
+		// is still a backstop", but a re-tokenized retry carries a FRESH nonce, so
+		// in exactly the case this branch fires the backstop does not exist. The
+		// guard's whole purpose is the moment state is uncertain: refusing costs
+		// the customer a retry, proceeding costs them a second real charge.
 		log.Error("topup idempotency Begin failed (org=%s): %v", billingKey, gerr, c)
-		rec = nil
+		return jsonhttp.Fail(c, 503, "billing is temporarily unavailable; please retry", gerr)
 	} else if replay {
 		if rec.Status == idempotencykey.StatusCompleted && rec.Response != "" {
 			c.SetHeader("Content-Type", "application/json")
@@ -169,17 +178,23 @@ func TopupWithToken(c *zip.Ctx) error {
 
 	ctx := c.Context()
 	chargeReq := processor.PaymentRequest{
-		Token:       req.SourceID,
-		Amount:      currency.Cents(req.AmountCents),
-		Currency:    cur,
-		Description: fmt.Sprintf("Top-up %d %s for org %s", req.AmountCents, cur, billingKey),
+		Token:          req.SourceID,
+		Amount:         currency.Cents(req.AmountCents),
+		Currency:       cur,
+		IdempotencyKey: squareKey, // Square de-dups the money move on this key
+		Description:    fmt.Sprintf("Top-up %d %s for org %s", req.AmountCents, cur, billingKey),
 	}
 
 	// Build a per-org processor registry from the org's KMS-hydrated payment
 	// credentials. The global registry holds empty singletons (Square is
 	// registered unconfigured at init), so charges must go through the
 	// org-scoped registry to reach the provider with real credentials.
-	reg := payment.ProcessorsForOrg(org)
+	//
+	// Via the shared `processorsForOrg` seam (production: payment.ProcessorsForOrg)
+	// — the SAME one SubscribeWithCard uses. Calling payment.ProcessorsForOrg
+	// directly is what made this handler untestable: no test could substitute a
+	// processor, so the entire one-off top-up money path had zero coverage.
+	reg := processorsForOrg(org)
 	proc, err := reg.SelectProcessor(ctx, chargeReq)
 	if err != nil {
 		abandon()
