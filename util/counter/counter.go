@@ -78,6 +78,12 @@ func memcacheKey(name string) string {
 	return ShardKind + ":" + name
 }
 
+// shardRetryJitter spreads the re-queue of a shard write that lost a
+// transaction race, so the contending writers do not all come back at once.
+func shardRetryJitter() time.Duration {
+	return time.Duration(rand.Intn(30)) * time.Millisecond
+}
+
 func MemberExists(c context.Context, name string, value string) bool {
 	members, err := Members(c, name)
 	if err != nil {
@@ -260,11 +266,11 @@ func init() {
 		}, nil)
 		if err == datastore.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			// Retry with delay using background goroutine
-			go func() {
-				time.Sleep(time.Duration(rand.Intn(30)) * time.Millisecond)
-				IncrementByTask.Call(c, name, tag, storeId, geo, p, amount, t)
-			}()
+			// Re-queue with jitter. Through the queue, not a bare goroutine:
+			// the queue registers the retry now, while this task is still
+			// counted, so a drain waits for the retry too instead of closing
+			// the datastore out from under it mid-sleep.
+			IncrementByTask.After(shardRetryJitter()).Call(c, name, tag, storeId, geo, p, amount, t)
 			return
 		}
 		err = datastore.IgnoreFieldMismatch(err)
@@ -324,11 +330,8 @@ func init() {
 		}, nil)
 		if err == datastore.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
-			// Retry with delay using background goroutine
-			go func() {
-				time.Sleep(time.Duration(rand.Intn(30)) * time.Millisecond)
-				AddMemberTask.Call(c, name, tag, storeId, geo, p, value, t)
-			}()
+			// Re-queue with jitter — see IncrementByTask above.
+			AddMemberTask.After(shardRetryJitter()).Call(c, name, tag, storeId, geo, p, value, t)
 			return
 		}
 		err = datastore.IgnoreFieldMismatch(err)
