@@ -138,7 +138,7 @@ type BackendConfig struct {
 // ─── Resolver ────────────────────────────────────────────────────────────
 
 // Resolver resolves a Host header to a Tenant. The default implementation
-// is a StaticResolver driven by a hostname→Tenant map; in production the
+// is an in-memory map driven by hostname→Tenant (tests only); in production the
 // resolver is backed by the commerce organization model (hosts stored on
 // the organization record).
 type Resolver interface {

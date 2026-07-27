@@ -42,7 +42,7 @@ import (
 // store-backed instance and the audit-mutation log.
 //
 // The legacy provider-credentials / methods / audit endpoints stay on
-// the older MountAdmin path (StaticResolver-driven) until they migrate
+// the tenant-admin path until every deployment migrates
 // over to the store seam. Both groups can coexist on the same
 // /_/commerce prefix because their handler paths don't overlap.
 func MountTenantAdmin(group zip.Router, s *store.Store) {
@@ -81,7 +81,7 @@ func isAPIPath(path string) bool {
 		return true
 	}
 	// Prefix matches. Keep in sync with the route groups registered in
-	// commerce.go setupRoutes and with MountPublic/MountAdmin above.
+	// commerce.go setupRoutes.
 	for _, p := range apiPrefixes {
 		if strings.HasPrefix(path, p) {
 			return true
