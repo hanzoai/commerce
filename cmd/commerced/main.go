@@ -20,6 +20,8 @@ import (
 	commerce "github.com/hanzoai/commerce"
 	commerceApp "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api"
+
+	"github.com/zap-proto/zip"
 )
 
 func main() {
@@ -71,11 +73,17 @@ func main() {
 	apiGroup := srv.App().Router.Group("/v1")
 	api.Route(apiGroup)
 
-	addr := srv.App().Config().HTTPAddr
+	// ONE address, resolved by the zip Plugin contract. When a host started this
+	// binary as a plugin it passes a unix socket in ZIP_ADDR and zip.Addr returns
+	// it, so Listen serves ZAP over that socket; started directly, zip.Addr falls
+	// back and Listen serves plain HTTP exactly as before. Same binary, same line,
+	// both shapes — which is the point of the contract: a plugin and a linked-in
+	// service compose identically.
+	addr := zip.Addr("http://" + srv.App().Config().HTTPAddr)
 
 	go func() {
-		logger.Info("http listener", "addr", addr, "version", commerceApp.Version)
-		if err := srv.Zip().Listen("http://" + addr); err != nil {
+		logger.Info("listener", "addr", addr, "version", commerceApp.Version)
+		if err := srv.Zip().Listen(addr); err != nil {
 			logger.Error("http", "err", err)
 			stop()
 		}
