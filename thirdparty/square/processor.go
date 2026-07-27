@@ -171,13 +171,17 @@ func (sp *SquareProcessor) Charge(ctx context.Context, req processor.PaymentRequ
 		paymentStatus = *payment.Status
 	}
 
-	// Only a COMPLETED capture is a real success. Autocomplete=true (above)
-	// requests immediate capture, so a healthy charge returns COMPLETED; APPROVED
+	// Only a CAPTURED payment is a real success. Autocomplete=true (above)
+	// requests immediate capture, so a healthy charge settles; APPROVED
 	// (authorized, not captured) or PENDING (risk hold / delayed capture) is a 200
 	// with NO money captured. Treating those as success would confer a paid
 	// subscription + mint included credits against an uncaptured charge — so the
 	// collect/subscribe path must see them as a decline (Success=false).
-	completed := paymentStatus == "COMPLETED"
+	//
+	// processor.Settled is the ONE definition, shared with the inbound webhook
+	// settlement path so a charge and a callback can never disagree about what
+	// counts as money.
+	completed := processor.Settled(paymentStatus)
 	errMsg := ""
 	if !completed {
 		errMsg = "payment not completed (status: " + paymentStatus + ")"
