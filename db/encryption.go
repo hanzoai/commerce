@@ -34,6 +34,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -109,10 +110,6 @@ func resolveMasterKey() ([]byte, error) {
 	return mk, nil
 }
 
-// ResolveMasterKey exposes resolveMasterKey to commands (cmd/commerce-encrypt-dbs)
-// so the master key is sourced from COMMERCE_KMS_MASTER_KEY in exactly ONE place.
-func ResolveMasterKey() ([]byte, error) { return resolveMasterKey() }
-
 // principalFor maps a tenant type ("user"/"org") to the driver's KEK-derivation
 // principal. Unknown types default to org (the shared-tenant store).
 func principalFor(tenantType string) sqlitedrv.PrincipalType {
@@ -129,7 +126,7 @@ func principalFor(tenantType string) sqlitedrv.PrincipalType {
 // the same file with the same DEK.
 //
 // Fail-closed: an existing db file WITHOUT a sidecar is refused — it is either a
-// legacy plaintext file (migrate it with cmd/commerce-encrypt-dbs first) or
+// legacy plaintext file (the manager migrates it in place on open) or
 // corruption, and silently treating it as encrypted — or falling back to
 // plaintext — would be wrong.
 //
@@ -166,9 +163,10 @@ func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id 
 	if fileExists(dekPath) {
 		return unwrapSidecar(dbPath, dekPath, kek, aad)
 	}
-	if fileExists(dbPath) {
-		return nil, fmt.Errorf("encrypted db %q has no DEK sidecar %q; refusing to open (migrate the plaintext file with commerce-encrypt-dbs first)", dbPath, dekPath)
-	}
+	// NO SIDECAR. The file may be plaintext awaiting migration, or an encrypted
+	// db whose sidecar was lost — telling those apart, and migrating, must happen
+	// under the create lock so two processes cannot migrate the same store at
+	// once. Fall through rather than refuse here.
 
 	// Create path: serialize the mint+persist critical section across processes,
 	// then RE-CHECK under the lock so a racing first-touch cannot produce a
@@ -185,7 +183,26 @@ func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id 
 			return nil
 		}
 		if fileExists(dbPath) {
-			return fmt.Errorf("encrypted db %q has no DEK sidecar %q; refusing to open (migrate the plaintext file with commerce-encrypt-dbs first)", dbPath, dekPath)
+			// PLAINTEXT → migrate in place, here, on open. The alternative was a
+			// separate one-shot binary the operator had to remember to run first
+			// (scale to 0, run a Job, scale up) — a second way to do one thing, and
+			// one that refused to boot if skipped. encryptTenantFile is the same
+			// verified cutover that binary called: WAL-folded, per-table row-hash
+			// parity, atomic rename, sidecar written last so a crash fails closed.
+			if isPlaintextSQLite(dbPath) {
+				if _, _, err := encryptTenantFile(dbPath, masterKey, pt, id, false); err != nil {
+					return fmt.Errorf("migrate plaintext db %q to encrypted: %w", dbPath, err)
+				}
+				d, err := unwrapSidecar(dbPath, dekPath, kek, aad)
+				if err != nil {
+					return err
+				}
+				dek = d
+				return nil
+			}
+			// NOT plaintext and no sidecar: the db is ciphertext whose DEK is gone.
+			// No key can open it; refusing is the only honest answer.
+			return fmt.Errorf("encrypted db %q has no DEK sidecar %q; refusing to open — the DEK is unrecoverable, restore %q and %q together from backup", dbPath, dekPath, dbPath, dekPath)
 		}
 
 		// Genuinely fresh: mint a DEK, wrap it, persist the sidecar atomically.
@@ -354,3 +371,21 @@ func zeroBytes(b []byte) {
 // compile-time assertion that *sql.DB is what the driver hands back (documents
 // the integration surface; keeps the import honest if the file is trimmed).
 var _ = (*sql.DB)(nil)
+
+// isPlaintextSQLite reports whether path is an UNENCRYPTED SQLite database, by
+// its 16-byte file header. SQLCipher encrypts from byte 0, so ciphertext never
+// carries this magic — the header is the one reliable way to tell "needs
+// migrating" from "sidecar lost", which are the same shape on disk and have
+// opposite correct responses.
+func isPlaintextSQLite(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	var hdr [16]byte
+	if _, err := io.ReadFull(f, hdr[:]); err != nil {
+		return false
+	}
+	return string(hdr[:]) == "SQLite format 3\x00"
+}
