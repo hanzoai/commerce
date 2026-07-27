@@ -92,6 +92,24 @@ type Config struct {
 	// Defaults to DataDir/orgs
 	OrgDataDir string
 
+	// MasterKey is the 32-byte at-rest encryption master key, supplied by the
+	// EMBEDDER. When non-nil it is used verbatim and COMMERCE_KMS_MASTER_KEY is
+	// never read.
+	//
+	// It exists so a host that already holds a master key does not have to mint a
+	// SECOND one and hand it over through the environment. cloud embeds commerce
+	// in its own process and already resolves a 32-byte KEK
+	// (CLOUD_KMS_MASTER_KEY_REF); making commerce reach independently for an env
+	// var meant two keys, two KMS paths and two sync objects for one process —
+	// and when the second was never provisioned, commerce refused to boot, Mount
+	// never published its handler, and every balance read in the fleet failed.
+	// The embedder passing what it already has is one key, one source, and a
+	// dependency the type system can see.
+	//
+	// nil ⇒ unchanged: resolveMasterKey reads the env, which remains the
+	// standalone deployment's path.
+	MasterKey []byte
+
 	// MaxOpenTenants bounds how many per-tenant stores are open at once; the
 	// least recently used idle one is closed to stay under it.
 	// Defaults to defaultMaxOpenTenants.
@@ -236,9 +254,16 @@ func NewManager(cfg *Config) (*Manager, error) {
 	// Decide at-rest encryption posture ONCE, from COMMERCE_KMS_MASTER_KEY. On a
 	// non-encrypting (pure-Go) build this hard-errors when the key is set rather
 	// than silently persisting plaintext money data.
-	masterKey, err := resolveMasterKey()
-	if err != nil {
-		return nil, err
+	// An embedder-supplied key wins and skips the env entirely; otherwise the
+	// posture is decided from COMMERCE_KMS_MASTER_KEY exactly as before.
+	var err error
+	masterKey := cfg.MasterKey
+	if masterKey == nil {
+		if masterKey, err = resolveMasterKey(); err != nil {
+			return nil, err
+		}
+	} else if len(masterKey) != 32 {
+		return nil, fmt.Errorf("commerce: embedder MasterKey must be 32 bytes, got %d", len(masterKey))
 	}
 
 	m := &Manager{

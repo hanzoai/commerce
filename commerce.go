@@ -82,6 +82,11 @@ type Config struct {
 	// DataDir is the base directory for all data
 	DataDir string
 
+	// MasterKey is the 32-byte at-rest encryption master key supplied by an
+	// EMBEDDER (EmbedConfig.MasterKey). nil ⇒ COMMERCE_KMS_MASTER_KEY decides,
+	// which is the standalone path.
+	MasterKey []byte
+
 	// Dev enables development mode
 	Dev bool
 
@@ -320,7 +325,6 @@ type App struct {
 
 	// HTTP router — the native zip app (zap-proto/fiber underneath).
 	Router *zip.App
-
 
 	// CommerceStore is the hanzo/base-backed persistence seam. When set it
 	// provides the authoritative tenants + hostname-claims collections;
@@ -588,6 +592,7 @@ func (app *App) Bootstrap() error {
 	dbConfig.EnableDatastore = app.config.DatastoreDSN != ""
 	dbConfig.VectorDimensions = 1536
 	dbConfig.IsDev = app.config.Dev
+	dbConfig.MasterKey = app.config.MasterKey
 
 	var err error
 	app.DB, err = db.NewManager(dbConfig)
