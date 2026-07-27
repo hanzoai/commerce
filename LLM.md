@@ -19,29 +19,52 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 
 ## Commerce Admin
 
-The shipped admin is the Next static export in `app/admin/src/app`, built by
-`Dockerfile.commerce-admin` and served by `hanzoai/static`. The older
-React Router tree under `app/admin/src/routes` is not the live shell.
+There is ONE Commerce admin: the Next static export in `app/admin`
+(`@hanzo/commerce-dashboard`), built by `Dockerfile.commerce-admin` and served by
+`hanzoai/static`. It renders **`@hanzo/ui/product`** — the same component set the
+cloud console renders (`DataTable`, `PageHeader`, `StatusTag`, `EmptyState`,
+`MetricCard`, `BackendStateCard`, `CommerceResource`) — on `@hanzo/gui`. There is
+no commerce-local design system for the admin, and no second shell.
 
+The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
+`@hanzogui/admin` `file:` target no longer exists), `hanzoai/admin`
+`apps/admin-commerce` (retired), and the dead Medusa React-Router tree under
+`app/admin/src/routes` (deleted along with the vendored Tailwind surface).
+
+- **The catalog is data.** `src/lib/resources.ts` is a plain list of rows —
+  slug, backend noun, copy, column specs. `src/lib/columns.tsx` turns a column
+  spec into a rendered column; `src/app/(dashboard)/[resource]/page.tsx` emits one
+  static page per row via `generateStaticParams`, and the sidebar reads the same
+  list. Adding a merchant surface is adding a ROW, never a directory. The module is
+  deliberately component-free: `generateStaticParams` runs it in Node at build time.
+- **One client.** `src/lib/commerce.ts` calls the bare `/v1/<kind>` resources
+  (`/v1/product`, `/v1/order`, `/v1/c/user`, `/v1/collection`, `/v1/stocklocation`,
+  `/v1/store/current`) on `NEXT_PUBLIC_COMMERCE_API_URL` with the IAM bearer and
+  `X-Org-Id`. Failures THROW with their status, so `classifyBackend` renders the
+  honest state (402 → add credits, 403 → not enabled, 404 → not mounted) instead of
+  a fabricated empty table.
+- **Effects are injected.** `@hanzo/ui/product` never imports a router or an auth
+  module; `src/app/providers.tsx` supplies `signIn`/`addCredits` once through
+  `HostProvider`.
 - IAM is native PKCE through `@hanzo/iam`; the active organization scopes every
-  query and the org switcher is the sole tenant selector.
-- `ThemeProvider` owns light/dark/system state. Dark is the default, and the
-  live top-bar account menu is the sole theme control.
-- Products use the bare `/v1/product` resource. The Products form and the AI
-  `create_product` command both call the same `createOne("product", ...)` path.
-- The dashboard checklist derives completion from live store, product,
-  integration, and listing data.
-- Integrations read and toggle `/v1/c/:org/integrations`. Secrets never enter
-  the browser or organization rows; providers become toggleable only after
-  their credentials exist in KMS. Square is built in and resolves its public
-  browser configuration through `/v1/billing/payment-config`.
-- Store access is $20/month on the `pro` plan. Each store has one store-bound
-  subscription and an idempotent 7-day trial from `billing/trial`; invited
-  members share that store entitlement. The UI and merchant API routes call the
-  same `api/store.HasAccess` rule, so another store cannot unlock it.
-- `Dockerfile.store` builds the storefront and its workspace packages through
-  the root pnpm/Turbo graph, then publishes the standalone server. Do not copy a
-  partial package set or introduce a second package manager.
+  read and is the sole tenant selector.
+- **`@hanzo/ui` is a workspace SOURCE dep** (`link:../../../ui/pkg/ui`) so the
+  admin and the console cannot drift. A single-repo build context cannot see the
+  sibling checkout, so `Dockerfile.commerce-admin` rewrites that one line to the
+  published range (`--build-arg PNPM_HANZO_UI=^8.0.12`) before `pnpm install`.
+- **The build is a real gate**: `turbo run typecheck build --filter=@hanzo/commerce-dashboard`.
+  `next.config.ts` no longer sets `ignoreBuildErrors`, and `hanzo.yml` runs the
+  typecheck in CI.
+- `@hanzo/commerce-ui` (`app/packages/ui`, the vendored Medusa design system) is now
+  a STOREFRONT-only dependency — `store/` still renders it. The admin is fully off it.
+- The embedded copy in the Go binary is the SAME export: `scripts/sync-admin-ui.sh`
+  copies `app/admin/out` into `ui/dist` for `//go:embed`, served at the root
+  `/admin/*` mount. The old `/_/commerce/ui/*` mount is gone — a root-relative
+  `/_next/*` export cannot be served from a prefixed path, and serving a second,
+  frozen bundle there was the fourth admin.
+- `Dockerfile.store` builds the storefront and its workspace packages through the
+  root pnpm/Turbo graph, then publishes the standalone server. Do not copy a partial
+  package set or introduce a second package manager.
 
 ## Three credentials, three distinct jobs — do NOT collapse them
 
