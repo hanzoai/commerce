@@ -27,7 +27,7 @@ func drive(t *testing.T, h zip.Handler, req *http.Request) *http.Response {
 // ─── Auth required ──────────────────────────────────────────────────────
 
 func TestDeposits_RequiresAuthHeader(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {
 			Name:    "examplecorp",
 			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
@@ -49,7 +49,7 @@ func TestDeposits_RequiresAuthHeader(t *testing.T) {
 // ─── Host-header required ───────────────────────────────────────────────
 
 func TestDeposits_UnknownTenantReturns404(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {
 			Name:    "examplecorp",
 			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
@@ -92,7 +92,7 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 		}, nil
 	})
 
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {
 			Name:    "examplecorp",
 			Backend: BackendConfig{Kind: "bd", URL: "https://bd.example.com"},
@@ -137,7 +137,7 @@ func TestDeposits_ForwardsToTenantBackend(t *testing.T) {
 // Tenant config without a Backend URL is a misconfiguration; the handler
 // must fail closed rather than fall back to some default.
 func TestDeposits_FailsClosedOnMissingBackend(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {
 			Name: "examplecorp",
 			// No Backend configured.

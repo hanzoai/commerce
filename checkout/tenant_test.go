@@ -33,7 +33,7 @@ func serveTenant(t *testing.T, r Resolver, host string) (int, string) {
 // ─── Resolver ────────────────────────────────────────────────────────────
 
 func TestResolveTenant_KnownHostname(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com":      {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
 		"pay.dev.example.com":  {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
 		"pay.test.example.com": {Name: "examplecorp", Brand: Brand{DisplayName: "ExampleCorp"}},
@@ -64,7 +64,7 @@ func TestResolveTenant_KnownHostname(t *testing.T) {
 }
 
 func TestResolveTenant_UnknownHostname(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {Name: "examplecorp"},
 	})
 
@@ -86,7 +86,7 @@ func TestResolveTenant_UnknownHostname(t *testing.T) {
 // not be resolved as examplecorp. Exact-match only (after port/case
 // normalization).
 func TestResolveTenant_SuffixSpoofing(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {Name: "examplecorp"},
 	})
 	spoofs := []string{
@@ -129,7 +129,7 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 		ReturnURLAllowlist: []string{"https://exchange.example.com"},
 		Backend:            BackendConfig{URL: "https://bd.example.com", Kind: "bd"},
 	}
-	r := NewStaticResolver(map[string]Tenant{"pay.example.com": tenant})
+	r := newHostTenants(map[string]Tenant{"pay.example.com": tenant})
 
 	code, body := serveTenant(t, r, "pay.example.com")
 
@@ -187,7 +187,7 @@ func TestTenantJSON_NeverLeaksSecrets(t *testing.T) {
 }
 
 func TestTenantJSON_UnknownHostReturns404(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{
+	r := newHostTenants(map[string]Tenant{
 		"pay.example.com": {Name: "examplecorp"},
 	})
 	code, body := serveTenant(t, r, "evil.com")
@@ -204,7 +204,7 @@ func TestTenantJSON_UnknownHostReturns404(t *testing.T) {
 
 // Host header with no mapping must not panic and must not 500.
 func TestTenantJSON_MalformedHost(t *testing.T) {
-	r := NewStaticResolver(map[string]Tenant{})
+	r := newHostTenants(map[string]Tenant{})
 	for _, h := range []string{"", ":", "::8080", "\x00badhost"} {
 		code, _ := serveTenant(t, r, h)
 		if code != http.StatusNotFound {

@@ -229,7 +229,6 @@ func (a *TenantAdminAPI) findTenantByOwner(owner string) (*store.Tenant, error) 
 
 // ─── tenant JSON (public, read-only) — refactored to use store ──────────
 
-// TenantJSONFromStore is the store-backed variant of TenantJSON. The legacy
 // TenantJSON(Resolver) remains in tenant.go for callers that still hold a
 // StaticResolver; new callers should use this one. Once every deployment
 // is on base, TenantJSON becomes a thin wrapper around this function and

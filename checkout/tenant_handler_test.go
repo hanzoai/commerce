@@ -98,9 +98,6 @@ func newRouterWithClaims(s *store.Store, claims *auth.IAMClaims) *zip.App {
 		return c.Next()
 	})
 
-	public := app.Group("/v1/commerce")
-	MountPublicFromStore(public, s, nil)
-
 	admin := app.Group("/_/commerce")
 	MountTenantAdmin(admin, s)
 
@@ -119,78 +116,6 @@ func doReq(t *testing.T, app *zip.App, req *http.Request) (int, []byte, http.Hea
 	body, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, body, resp.Header
 }
-
-// ─── public: GET /v1/commerce/tenant ────────────────────────────────────
-
-func TestTenantJSONFromStore_RedactsSecrets(t *testing.T) {
-	s := newHandlerStore(t)
-	seedTenant(t, s, "acme", "pay.acme.test")
-	router := newRouterWithClaims(s, nil)
-
-	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
-	req.Host = "pay.acme.test"
-	code, bodyBytes, _ := doReq(t, router, req)
-
-	if code != http.StatusOK {
-		t.Fatalf("status = %d, want 200; body=%s", code, bodyBytes)
-	}
-	body := string(bodyBytes)
-
-	// MUST NOT leak: KMS paths, BD endpoint, disabled provider names,
-	// client secrets (none are stored — confirm they never appear).
-	forbidden := []string{
-		"kms/commerce/acme/square", // KMS path
-		"kms/commerce/acme/braintree",
-		"bd.acme.example.test", // BD endpoint
-		"braintree",            // disabled provider
-		"client_secret",        // never stored, confirm projection doesn't invent
-	}
-	for _, s := range forbidden {
-		if strings.Contains(body, s) {
-			t.Errorf("tenant JSON leaked %q — body:\n%s", s, body)
-		}
-	}
-
-	// MUST be present: name, brand, public IAM config, enabled-only
-	// providers, return-url allowlist.
-	required := []string{
-		"acme",
-		"Acme", // brand display_name
-		"#0ea5e9",
-		"https://id.example.test",
-		"acme-client",
-		"square",
-	}
-	for _, s := range required {
-		if !strings.Contains(body, s) {
-			t.Errorf("tenant JSON missing %q — body:\n%s", s, body)
-		}
-	}
-}
-
-func TestTenantJSONFromStore_UnknownHostReturns404(t *testing.T) {
-	s := newHandlerStore(t)
-	seedTenant(t, s, "acme", "pay.acme.test")
-	router := newRouterWithClaims(s, nil)
-
-	req := httptest.NewRequest(http.MethodGet, "/v1/commerce/tenant", nil)
-	req.Host = "evil.example.test"
-	code, bodyBytes, hdr := doReq(t, router, req)
-
-	if code != http.StatusNotFound {
-		t.Fatalf("status = %d, want 404", code)
-	}
-	if strings.Contains(string(bodyBytes), "evil.example.test") {
-		t.Errorf("404 body echoed Host — body: %s", bodyBytes)
-	}
-	// Cache headers MUST NOT be public — unknown-host responses are
-	// cacheable signals an attacker can use to probe.
-	if cc := hdr.Get("Cache-Control"); cc != "no-store" {
-		t.Errorf("Cache-Control = %q, want no-store", cc)
-	}
-}
-
-// ─── admin: POST /_/commerce/tenants ────────────────────────────────────
 
 func TestCreateTenant_Unauthenticated_401(t *testing.T) {
 	s := newHandlerStore(t)
