@@ -95,12 +95,12 @@ func TestLookupCostRateLongestPrefix(t *testing.T) {
 
 func TestModelCostCents(t *testing.T) {
 	// gpt-4o: 250c/Mtok in, 1000c/Mtok out. 1M in + 1M out = 250 + 1000 = 1250c.
-	got, ok := modelCostCents("gpt-4o", 1_000_000, 1_000_000)
+	got, ok := modelCostCents(nil, "gpt-4o", 1_000_000, 1_000_000)
 	if !ok || got != 1250 {
 		t.Errorf("modelCostCents gpt-4o 1M/1M = %d ok=%v, want 1250 true", got, ok)
 	}
 	// Unknown model -> honest (0,false), never a fabricated cost.
-	if got, ok := modelCostCents("mystery", 5_000_000, 5_000_000); ok || got != 0 {
+	if got, ok := modelCostCents(nil, "mystery", 5_000_000, 5_000_000); ok || got != 0 {
 		t.Errorf("unknown model = %d ok=%v, want 0 false", got, ok)
 	}
 }
