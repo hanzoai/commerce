@@ -45,6 +45,7 @@ import (
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
@@ -1199,6 +1200,17 @@ func (app *App) Shutdown() error {
 				err = shutdownErr
 			}
 		}
+
+		// Drain the background queue. The listener is down, so nothing new is
+		// being queued; what is left are the webhook emits and counter shards
+		// the last requests spawned, and they read the database. Waiting for
+		// them here is what makes closing it below safe — otherwise they come
+		// back to "db: namespaces closed".
+		drain, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if drainErr := delay.Drain(drain); drainErr != nil {
+			slog.Warn("background tasks still running at shutdown", "err", drainErr)
+		}
+		cancelDrain()
 
 		// Stop ZAP node
 		if app.ZAP != nil {
