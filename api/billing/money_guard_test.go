@@ -158,7 +158,7 @@ func TestTopup_ForeignSubject_CreditsOwnOrgOnly(t *testing.T) {
 
 // seedRechargeOrg persists an organization plus an enabled auto-recharge config
 // and a default saved card — everything RunAutoRechargeAllOrgs needs to find it.
-func seedRechargeOrg(t *testing.T, ctx ae.Context, name string, amountCents int64) *organization.Organization {
+func seedRechargeOrg(t *testing.T, ctx ae.Context, name string, amountCents, thresholdCents int64) *organization.Organization {
 	t.Helper()
 	org := organization.New(datastore.New(ctx))
 	org.Name = name
@@ -173,7 +173,10 @@ func seedRechargeOrg(t *testing.T, ctx ae.Context, name string, amountCents int6
 	cfg := autorecharge.New(db)
 	cfg.UserId = name
 	cfg.Enabled = true
-	cfg.ThresholdCents = 1000 // a fresh org sits at 0, so the cron fires
+	// The threshold must stay ABOVE the post-charge balance, or the second run
+	// would skip on "already funded" and the test would pass without the
+	// idempotency guard ever being consulted.
+	cfg.ThresholdCents = thresholdCents
 	cfg.AmountCents = amountCents
 	cfg.Currency = "usd"
 	if err := cfg.Create(); err != nil {
@@ -196,7 +199,7 @@ func runRecharge(ctx context.Context) *http.Response {
 func TestAutoRecharge_DoubleFire_OneCharge(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	org := seedRechargeOrg(t, ctx, "cron-once", 2500)
+	org := seedRechargeOrg(t, ctx, "cron-once", 2500, 100000)
 
 	m := squareMock("", "", "sqpay_cron")
 	withFakeSquare(t, m)
@@ -228,7 +231,7 @@ func TestAutoRecharge_DoubleFire_OneCharge(t *testing.T) {
 func TestAutoRecharge_AmountAboveCap_NeverCharges(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
-	org := seedRechargeOrg(t, ctx, "cron-cap", 100000000) // $1,000,000
+	org := seedRechargeOrg(t, ctx, "cron-cap", 100000000, 100000) // $1,000,000
 
 	m := squareMock("", "", "sqpay_cap")
 	withFakeSquare(t, m)
