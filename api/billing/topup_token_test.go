@@ -1,7 +1,13 @@
 package billing
 
 import (
+	"bytes"
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/zap-proto/zip"
@@ -261,5 +267,115 @@ func TestTopup_Idempotent_NoDoubleCredit(t *testing.T) {
 	// Balance reflects exactly ONE $30 credit, not two.
 	if got := balanceOf(t, ctx, org, "idem-org"); got != 3000 {
 		t.Fatalf("balance = %d, want 3000 — DOUBLE-CREDIT: idempotent retry applied the credit twice", got)
+	}
+}
+
+// --- The Square idempotency key on the one-off top-up ------------------------
+//
+// These drive the REAL TopupWithToken handler (the tests above exercise pure
+// helpers and a ledger replica). They pin the invariant that made a
+// re-tokenized retry charge the card TWICE: the charge request carried NO
+// IdempotencyKey, so `thirdparty/square.Charge` minted a fresh uuid every
+// attempt and Square-side dedup — the only backstop that survives a guard-store
+// outage — was never engaged, while the local guard keyed on the single-use
+// nonce, which changes on every re-tokenization.
+
+func invokeTopupToken(org *organization.Organization, ctx context.Context, body string, headers map[string]string) *http.Response {
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup/token", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	return driveSeeded(func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(ctx)
+	}, "/v1/billing/topup/token", req, TopupWithToken)
+}
+
+// chargedKeys snapshots the idempotency keys the processor actually saw.
+func chargedKeysOf(m *mockSquareProcessor) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]string, 0, len(m.chargedKeys))
+	for k := range m.chargedKeys {
+		out = append(out, k)
+	}
+	return out
+}
+
+// The charge must reach Square WITH a stable key, and that key must not be
+// derived from the single-use nonce.
+func TestTopupWithToken_ForwardsStableSquareKey(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("topupkey")
+	m := squareMock("cust_t", "ccof_t", "sqpay_t")
+	withFakeSquare(t, m)
+
+	resp := invokeTopupToken(org, ctx, `{"sourceId":"cnon:first","amountCents":2500}`, nil)
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status=%d body=%s, want 200", resp.StatusCode, string(b))
+	}
+	if m.chargeCalls != 1 {
+		t.Fatalf("charge calls=%d, want 1", m.chargeCalls)
+	}
+
+	keys := chargedKeysOf(m)
+	if len(keys) != 1 {
+		t.Fatalf("processor saw %d idempotency keys (%v), want exactly 1 — an empty key means Square-side dedup is OFF", len(keys), keys)
+	}
+	if !strings.HasPrefix(keys[0], "topup:topupkey:") {
+		t.Fatalf("square idempotency key=%q, want it scoped to the credited subject (topup:topupkey:…)", keys[0])
+	}
+	if strings.Contains(keys[0], "cnon:") {
+		t.Fatalf("square idempotency key=%q is derived from the single-use nonce — a re-tokenized retry would double-charge", keys[0])
+	}
+}
+
+// "Start over" re-tokenizes a FRESH nonce. Same customer, same amount, no client
+// key: this must NOT become a second charge or a second credit.
+func TestTopupWithToken_ReTokenizedRetry_OneChargeOneCredit(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("topupretry")
+	m := squareMock("cust_r", "ccof_r", "sqpay_r")
+	withFakeSquare(t, m)
+
+	if r := invokeTopupToken(org, ctx, `{"sourceId":"cnon:a","amountCents":2500}`, nil); r.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(r.Body)
+		t.Fatalf("first top-up status=%d body=%s, want 200", r.StatusCode, string(b))
+	}
+	// The customer thinks it failed and starts over — a brand-new nonce.
+	invokeTopupToken(org, ctx, `{"sourceId":"cnon:b","amountCents":2500}`, nil)
+
+	if m.chargeCalls != 1 {
+		t.Fatalf("charge calls=%d after a re-tokenized retry, want 1 — DOUBLE-CHARGE on the customer's card", m.chargeCalls)
+	}
+	if got := balanceOf(t, ctx, org, "topupretry"); got != 2500 {
+		t.Fatalf("balance=%d after a re-tokenized retry, want 2500 — the ledger double-credited", got)
+	}
+}
+
+// An explicit client key is honored verbatim and is the strongest guarantee.
+func TestTopupWithToken_ClientKeyRetry_OneCharge(t *testing.T) {
+	ctx := ae.NewContext()
+	defer ctx.Close()
+	org := moneyOrg("topupclientkey")
+	m := squareMock("cust_c", "ccof_c", "sqpay_c")
+	withFakeSquare(t, m)
+
+	h := map[string]string{"X-Idempotency-Key": "attempt-7"}
+	if r := invokeTopupToken(org, ctx, `{"sourceId":"cnon:x","amountCents":1000}`, h); r.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(r.Body)
+		t.Fatalf("first top-up status=%d body=%s, want 200", r.StatusCode, string(b))
+	}
+	invokeTopupToken(org, ctx, `{"sourceId":"cnon:y","amountCents":1000}`, h)
+
+	if m.chargeCalls != 1 {
+		t.Fatalf("charge calls=%d with a stable X-Idempotency-Key, want 1", m.chargeCalls)
+	}
+	if got := balanceOf(t, ctx, org, "topupclientkey"); got != 1000 {
+		t.Fatalf("balance=%d, want 1000 — double credit under a stable key", got)
 	}
 }
