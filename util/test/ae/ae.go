@@ -4,12 +4,19 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/log"
 )
+
+// drainTimeout bounds the wait for background tasks at suite teardown. Long
+// enough that a task doing real work finishes, short enough that one which
+// wedged fails the suite's clock rather than hanging it.
+const drainTimeout = 10 * time.Second
 
 // NewContext creates a new test context with in-memory SQLite backend.
 // This replaces the App Engine aetest functionality with a lightweight
@@ -116,6 +123,16 @@ func (c *testContext) Close() {
 			log.Warn("Recovered from panic in context.Close()")
 		}
 	}()
+
+	// Let the background queue empty before the database goes away. A spec that
+	// creates an order leaves a webhook emit and a counter shard behind it;
+	// closing the manager first is what produced "db: namespaces closed" out of
+	// a suite that had already reported PASS.
+	drain, cancel := context.WithTimeout(context.Background(), drainTimeout)
+	defer cancel()
+	if err := delay.Drain(drain); err != nil {
+		log.Warn("Background tasks still running after %v: %v", drainTimeout, err)
+	}
 
 	if c.manager != nil {
 		c.manager.Close()
