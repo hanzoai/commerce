@@ -80,8 +80,10 @@ func lookupCostRate(model string) (costRate, bool) {
 // Token counts are clamped to >= 0: a malformed usage row with a negative count
 // would otherwise produce NEGATIVE COGS, understating cost and INFLATING margin (a
 // dishonest figure). COGS never subtracts — a bad row contributes 0, not a credit.
-func modelCostCents(model string, promptTokens, completionTokens int64) (int64, bool) {
-	rate, ok := lookupCostRate(model)
+// catalog is the SYNCED source and wins; a nil catalog means table-only, which
+// is what the fallback tests exercise.
+func modelCostCents(catalog map[string]costRate, model string, promptTokens, completionTokens int64) (int64, bool) {
+	rate, ok := basisRate(catalog, model)
 	if !ok {
 		return 0, false
 	}

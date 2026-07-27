@@ -64,7 +64,6 @@ import (
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/ui"
 	"github.com/hanzoai/commerce/util/husd"
-	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Version, GitCommit, and BuildTime are set via -ldflags at build time.
@@ -916,7 +915,7 @@ func (app *App) Bootstrap() error {
 // populated. Failures are logged, never fatal — the catalog projection simply
 // returns empty until seeded.
 func (app *App) runCatalogSeed() {
-	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedIfEmpty(db)
 	if err != nil {
 		slog.Error("catalog seed failed", "err", err)
@@ -933,7 +932,7 @@ func (app *App) runCatalogSeed() {
 // seed independently of the hanzo product snapshot. Cheap count-gated no-op once
 // populated; failures are logged, never fatal.
 func (app *App) runInfraCatalogSeed() {
-	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedInfraIfEmpty(db)
 	if err != nil {
 		slog.Error("infra catalog seed failed", "err", err)
