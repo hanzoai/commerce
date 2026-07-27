@@ -9,7 +9,7 @@ import (
 // tenantDB is a DB for one tenant that holds no database open.
 //
 // The registry hands a handle to a callback and takes it back when the callback
-// returns (ormdb.Registry.Do), deliberately: a handle you can keep is a handle
+// returns (ormdb.Namespaces.With), deliberately: a handle you can keep is a handle
 // someone must remember to give back, and the forgotten give-back IS the leak
 // this replaced — Manager's old userDBs/orgDBs maps opened a store per tenant
 // ever touched and closed them only at shutdown.
@@ -32,21 +32,22 @@ type tenantDB struct {
 	// the store — see tenantKeys in sqlite.go.
 	tenantKeys
 
-	reg *ormdb.Registry[DB]
-	t   ormdb.Tenant
+	reg *ormdb.Namespaces[DB]
+	t   ormdb.Namespace
 }
 
-func newTenantDB(reg *ormdb.Registry[DB], t ormdb.Tenant) tenantDB {
-	return tenantDB{tenantKeys: tenantKeys(t.ID), reg: reg, t: t}
+func newTenantDB(reg *ormdb.Namespaces[DB], t ormdb.Namespace) tenantDB {
+	_, id, _ := splitTenant(t)
+	return tenantDB{tenantKeys: tenantKeys(id), reg: reg, t: t}
 }
 
 // do borrows this tenant's handle for exactly one operation.
 func (d tenantDB) do(ctx context.Context, fn func(DB) error) error {
-	return d.reg.Do(ctx, d.t, fn)
+	return d.reg.With(ctx, d.t, fn)
 }
 
-func (d tenantDB) TenantID() string   { return d.t.ID }
-func (d tenantDB) TenantType() string { return d.t.Type }
+func (d tenantDB) TenantID() string   { _, id, _ := splitTenant(d.t); return id }
+func (d tenantDB) TenantType() string { typ, _, _ := splitTenant(d.t); return typ }
 
 // Close is a no-op. The registry owns handle lifetime — it opens, bounds and
 // closes them — so a caller closing its view of a tenant must not close the
