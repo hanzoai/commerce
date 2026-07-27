@@ -112,7 +112,7 @@ require (
 	github.com/luxfi/accel v1.2.4 // indirect
 	github.com/luxfi/compress v0.1.1 // indirect
 	github.com/luxfi/concurrent v0.1.1 // indirect
-	github.com/luxfi/consensus v1.36.2 // indirect
+	github.com/luxfi/consensus v1.36.11 // indirect
 	github.com/luxfi/constants v1.6.2 // indirect
 	github.com/luxfi/corona v0.10.4 // indirect
 	github.com/luxfi/database v1.21.1 // indirect
