@@ -88,6 +88,32 @@ type CatalogEntry struct {
 	Private  *Economics `json:"private,omitempty" datastore:"-"`
 	Private_ string     `json:"-" datastore:",noindex"`
 
+	// Rates is the entry's price VECTOR — the one way a price is expressed. A
+	// model charges per input/output/cache component and per context rung; a VM
+	// charges one amount per month. Both are Rates; the VM is the one-element
+	// case. Each rate carries the upstream COST (synced) and the retail PRICE
+	// (set in admin), so margin is derived and displayed per component.
+	//
+	// PriceCents/CostCents below are the LEGACY SCALAR form, still written by
+	// the infra-tier seed and read by the pricing service. Every projection goes
+	// through RatesOf, which synthesizes the one-element vector from them, so a
+	// reader has exactly one shape regardless of which form a row was written
+	// in. New writers use Rates.
+	Rates  []Rate `json:"rates,omitempty" datastore:"-"`
+	Rates_ string `json:"-" datastore:",noindex"`
+
+	// Markup is the retail multiple over a synced upstream cost, as an exact
+	// decimal string ("1.20"), applied to any rate that carries no explicit
+	// Price. Empty ⇒ DefaultMarkup. It is PER ENTRY and editable — never a
+	// global constant buried in a service's env, which is a margin nobody can
+	// read.
+	Markup string `json:"markup,omitempty"`
+
+	// Spec is the model DESCRIPTOR + routing policy, present only on model rows
+	// (see model.go). Stored as a noindex blob like Pricing/Private.
+	Spec  *ModelSpec `json:"spec,omitempty" datastore:"-"`
+	Spec_ string     `json:"-" datastore:",noindex"`
+
 	// PricingId references a pricing plan by key (plans/<key>.json); empty ⇒
 	// projected as JSON null. PriceCents is an optional native fixed-price
 	// override (additive to the contract) — the PUBLIC price a customer pays.
@@ -144,6 +170,16 @@ func (e *CatalogEntry) Load(ps []datastore.Property) (err error) {
 			return err
 		}
 	}
+	if len(e.Rates_) > 0 {
+		if err = json.DecodeBytes([]byte(e.Rates_), &e.Rates); err != nil {
+			return err
+		}
+	}
+	if len(e.Spec_) > 0 {
+		if err = json.DecodeBytes([]byte(e.Spec_), &e.Spec); err != nil {
+			return err
+		}
+	}
 	if len(e.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(e.Metadata_), &e.Metadata)
 	}
@@ -160,6 +196,14 @@ func (e *CatalogEntry) Save() ([]datastore.Property, error) {
 	e.Private_ = ""
 	if e.Private != nil {
 		e.Private_ = string(json.EncodeBytes(e.Private))
+	}
+	e.Rates_ = ""
+	if len(e.Rates) > 0 {
+		e.Rates_ = string(json.EncodeBytes(&e.Rates))
+	}
+	e.Spec_ = ""
+	if e.Spec != nil {
+		e.Spec_ = string(json.EncodeBytes(e.Spec))
 	}
 	return datastore.SaveStruct(e)
 }
