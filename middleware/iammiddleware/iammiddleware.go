@@ -164,8 +164,46 @@ func IAMTokenRequired() zip.Handler {
 			email = c.Header(pkgAuth.HeaderUserEmail)
 		}
 
-		if ownerID == "" {
-			// No identity headers — fall through to legacy auth.
+		// A VALIDATED PRINCIPAL, not merely an org selector.
+		//
+		// This used to admit on ownerID alone, so the mere PRESENCE of X-Org-Id
+		// authenticated the request. That is the forge: cloud's identity boundary
+		// deliberately RESTORES a client's raw X-Org-Id on the bearer-less Phase-1
+		// data path (middleware_identity.go, "PHASE-1 RESIDUAL") while leaving
+		// X-User-Id empty, so an off-gateway caller could send `X-Org-Id: victim`
+		// with no credential at all and be treated as authenticated. Proven live
+		// against api.hanzo.ai: GET /v1/store/current and /v1/store/access answered
+		// 401 with no headers and 200 with `X-Org-Id: hanzo` and no token — another
+		// org's store record and entitlement status, read anonymously.
+		//
+		// The permission bits were already safe (they come only from
+		// X-User-Permissions and fail closed at zero), which is why masked routes
+		// held. The hole was the no-mask reads, which need only iam_authenticated.
+		//
+		// X-User-Id is the right predicate because it is the ONE thing a client
+		// cannot supply: every authority header is stripped on ingress and X-User-Id
+		// is re-injected ONLY from a verified credential, never restored from client
+		// input. This is exactly cloud's own gate — clients/principal.Validated is
+		// `c.User() != ""`, described there as "the ONE predicate that separates a
+		// gateway-minted identity from a client-forged X-Org-Id on the bearer-less
+		// path" — and cloud's whole data plane already enforces it. Commerce was the
+		// outlier, so this removes a divergence rather than adding a rule.
+		//
+		// Nothing legitimate loses access, because this branch was never how the
+		// credentialed callers authenticate:
+		//   - the internal service token is checked FIRST, ahead of the IAM branch
+		//     (middleware/accesstoken.go) — its comment even notes that an S2S call
+		//     "carries no X-User-Permissions" yet IAMTokenRequired stamped it
+		//     authenticated anyway, which is this bug seen from the other side;
+		//   - a legacy per-org access token is verified in its own later branch;
+		//   - a real user always carries X-User-Id, minted from their validated JWT.
+		// What is refused is precisely the credential-less org selector.
+		//
+		// Falling through (rather than 401 here) keeps this middleware additive:
+		// TokenRequired still gets to authenticate a service or per-org token, and
+		// only a caller with no credential at all reaches its 401.
+		if ownerID == "" || userID == "" {
+			// No validated principal — fall through to legacy auth.
 			return c.Next()
 		}
 
