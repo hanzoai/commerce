@@ -42,7 +42,7 @@ func TestRoundMicrosToCents(t *testing.T) {
 // TestRecordUsage_Idempotent_NoDoubleDebit proves the money-critical invariant
 // added to RecordUsage: a retry/double-submit of the SAME usage (same
 // requestId / X-Idempotency-Key) creates AT MOST ONE withdraw. Mirrors
-// TestTopup_Idempotent_NoDoubleCredit (the proven credit-side guard).
+// TestTopupWithToken_ClientKeyRetry_OneCharge (the proven credit-side guard).
 //
 // Chat's spendTokens fires per-completion and is retried on stream/abort, so
 // without this guard every retry would double-debit the ledger.
@@ -56,7 +56,7 @@ func TestRecordUsage_Idempotent_NoDoubleDebit(t *testing.T) {
 	db := datastore.New(org.Namespaced(ctx))
 
 	const subject = "usage-idem-org/alice@example.com"
-	creditLikeTopup(t, ctx, org, subject, 1000) // seed $10.00
+	seedBalance(t, ctx, org, subject, 1000) // seed $10.00
 
 	scope := "billing-usage"
 	const key = "req-abc-123" // the requestId chat sends per spend

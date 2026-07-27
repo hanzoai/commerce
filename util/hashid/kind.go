@@ -194,6 +194,16 @@ var kinds = map[string]int{
 	"claim":            287,
 	"claim-item":       288,
 	"currency":         289,
+
+	// auto-recharge — the per-org off-session top-up config. The model has
+	// registered this kind with the ORM since it was written
+	// (models/autorecharge: orm.Register[AutoRecharge]("auto-recharge")) but was
+	// never added here, so Create() hit encodeKind's panic: enabling
+	// auto-recharge for the first time (PUT /v1/billing/auto-recharge, which
+	// Creates when no row exists) was a hard 500. Updating an existing row never
+	// touched this path, which is why it survived — there was no way to get a
+	// first row in.
+	"auto-recharge": 290,
 }
 
 var kindsReversed = make(map[int]string)
