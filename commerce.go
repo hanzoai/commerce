@@ -321,11 +321,6 @@ type App struct {
 	// HTTP router — the native zip app (zap-proto/fiber underneath).
 	Router *zip.App
 
-	// CheckoutResolver maps hostnames (pay.example.com, …) to Tenant
-	// configs for the embedded checkout SPA. Mutable at runtime so the
-	// admin can add/remove hostnames and toggle providers without a
-	// restart. Legacy resolver — new code reads CommerceStore.Tenants.
-	CheckoutResolver *checkout.StaticResolver
 
 	// CommerceStore is the hanzo/base-backed persistence seam. When set it
 	// provides the authoritative tenants + hostname-claims collections;
