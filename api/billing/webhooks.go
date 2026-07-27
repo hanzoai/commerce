@@ -211,15 +211,21 @@ func applySettlementEvent(db *datastore.Datastore, org *organization.Organizatio
 		return
 	}
 
-	// Only act on terminal success. Square reports COMPLETED/CAPTURED; other
-	// processors use lowercase. Treat payment.completed as already terminal.
-	if event.Type == "payment.updated" {
-		switch strings.ToUpper(stringField(pay, "status")) {
-		case "COMPLETED", "CAPTURED", "APPROVED":
-			// settled — continue
-		default:
-			return
-		}
+	// Only act on CAPTURED funds. Whenever the payment object reports a status it
+	// MUST mean settled — processor.Settled, the SAME definition the charge path
+	// uses, so a callback can never credit something a charge would have refused.
+	// One rule for every payment.* event, not a per-event-type special case.
+	//
+	// This is where an APPROVED authorization used to be credited: funds reserved
+	// but never taken, so a void or an expiry left the balance standing against
+	// money that never arrived (a card-verification pre-auth is authorized and
+	// then deliberately voided). An authorization that is genuinely captured
+	// emits a later status change to COMPLETED, which credits then.
+	//
+	// An event whose object carries no status at all (invoice.paid) is settled by
+	// its event type, which isSettlementEvent already gated.
+	if st := stringField(pay, "status"); st != "" && !processor.Settled(st) {
+		return
 	}
 
 	// Resolve the user this payment funds. Square carries our identifier in

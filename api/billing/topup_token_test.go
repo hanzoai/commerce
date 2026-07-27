@@ -13,7 +13,6 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
-	"github.com/hanzoai/commerce/models/idempotencykey"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/transaction"
 	txutil "github.com/hanzoai/commerce/models/transaction/util"
@@ -119,11 +118,12 @@ func TestTopupBounds(t *testing.T) {
 	}
 }
 
-// creditLikeTopup mirrors TopupWithToken's post-charge credit EXACTLY: a Deposit
-// keyed by the resolved subject, DestinationKind "iam-user", Test = the org's
-// resolved TestMode — the same row GetBalance/GetMyBalance read and the gateway
-// debits.
-func creditLikeTopup(t *testing.T, ctx ae.Context, org *organization.Organization, subject string, cents int64) {
+// seedBalance puts an existing balance on a subject's ledger so a test can start
+// from a funded wallet. It is a SEEDING helper only — never an oracle for what
+// the top-up handler does. Tests that assert top-up behaviour drive
+// TopupWithToken itself; a helper mirroring handler logic only proves a copy of
+// the code agrees with itself.
+func seedBalance(t *testing.T, ctx ae.Context, org *organization.Organization, subject string, cents int64) {
 	t.Helper()
 	db := datastore.New(org.Namespaced(ctx))
 	tr := transaction.New(db)
@@ -149,39 +149,38 @@ func balanceOf(t *testing.T, ctx ae.Context, org *organization.Organization, sub
 	return 0
 }
 
-// TestTopup_CanonicalLedger_PerOrgIsolation proves a card top-up lands on the
-// exact per-org balance the gateway gates on, and NEVER leaks across orgs or
-// across subjects.
+// TestTopup_CanonicalLedger_PerOrgIsolation drives the REAL handler: a card
+// top-up lands on the exact per-org balance the gateway gates on, and never
+// leaks across orgs or across subjects.
 func TestTopup_CanonicalLedger_PerOrgIsolation(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production") // real charge → live (spendable) bucket
 	ctx := ae.NewContext()
 	defer ctx.Close()
 
-	orgA := &organization.Organization{}
-	orgA.Name = "acme-iso"
-	orgA.Live = true
-	orgB := &organization.Organization{}
-	orgB.Name = "globex-iso"
-	orgB.Live = true
+	orgA := moneyOrg("acme-iso") // Live => real charge, live (spendable) bucket
+	orgB := moneyOrg("globex-iso")
+	m := squareMock("cust_iso", "ccof_iso", "sqpay_iso")
+	withFakeSquare(t, m)
 
-	// Cold customer at org A tops up $20.00.
-	creditLikeTopup(t, ctx, orgA, "acme-iso", 2000)
-
+	if r := invokeTopupToken(orgA, ctx, `{"sourceId":"cnon:iso","amountCents":2000}`, nil); r.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(r.Body)
+		t.Fatalf("org A top-up status=%d body=%s, want 200", r.StatusCode, string(b))
+	}
 	if got := balanceOf(t, ctx, orgA, "acme-iso"); got != 2000 {
 		t.Fatalf("org A canonical balance = %d, want 2000 (the bucket the gateway reads)", got)
 	}
-	// Cross-org isolation: org B's ledger is untouched — a top-up for A can
-	// never credit B (different org namespace).
 	if got := balanceOf(t, ctx, orgB, "globex-iso"); got != 0 {
 		t.Fatalf("org B balance = %d, want 0 — CROSS-ORG LEAK: A's top-up credited B", got)
 	}
-	// And A's subject is invisible from B's namespace.
 	if got := balanceOf(t, ctx, orgB, "acme-iso"); got != 0 {
 		t.Fatalf("org B sees A's subject balance = %d, want 0 — namespace isolation broken", got)
 	}
 
-	// Subject isolation WITHIN an org (personal-billing <org>/<name> vs <org>).
-	creditLikeTopup(t, ctx, orgA, "acme-iso/alice", 500)
+	// Subject isolation WITHIN an org: ?user=<org>/<name> credits the sub-user and
+	// leaves the org-slug wallet alone.
+	if r := invokeTopupTokenAs(orgA, ctx, "acme-iso/alice", `{"sourceId":"cnon:iso2","amountCents":500}`, nil); r.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(r.Body)
+		t.Fatalf("sub-user top-up status=%d body=%s, want 200", r.StatusCode, string(b))
+	}
 	if got := balanceOf(t, ctx, orgA, "acme-iso/alice"); got != 500 {
 		t.Fatalf("acme-iso/alice balance = %d, want 500", got)
 	}
@@ -190,13 +189,10 @@ func TestTopup_CanonicalLedger_PerOrgIsolation(t *testing.T) {
 	}
 }
 
-// TestTopup_SandboxChargeCreditsTestBucket proves the console-sandbox proof
-// path: for an org in TEST mode the credit lands in the TEST bucket (what a
-// sandbox card top-up increases), and the LIVE spendable bucket stays empty — so
-// a sandbox proof can never mint real credit.
-//
-// Driven by the org, not SQUARE_ENVIRONMENT: sandbox is now a per-tenant fact, so
-// this holds on the SAME deployment that serves live merchants.
+// TestTopup_SandboxChargeCreditsTestBucket drives the REAL handler for an org
+// that transacts in sandbox (per-tenant: org.Live=false): the credit lands in
+// the TEST bucket and the LIVE spendable bucket stays empty, so a sandbox
+// merchant can never mint real credit — on the same replica serving live orgs.
 func TestTopup_SandboxChargeCreditsTestBucket(t *testing.T) {
 	ctx := ae.NewContext()
 	defer ctx.Close()
@@ -204,69 +200,25 @@ func TestTopup_SandboxChargeCreditsTestBucket(t *testing.T) {
 	org := &organization.Organization{}
 	org.Name = "sandbox-proof"
 	org.Live = false // this org transacts in sandbox
-
 	if !org.TestMode() {
 		t.Fatal("precondition: a non-live org must be in test mode")
 	}
-	creditLikeTopup(t, ctx, org, "sandbox-proof", 1500)
+	m := squareMock("cust_sb", "ccof_sb", "sqpay_sb")
+	withFakeSquare(t, m)
 
-	// org.TestMode()==true, so balanceOf reads the TEST bucket.
-	if got := balanceOf(t, ctx, org, "sandbox-proof"); got != 1500 {
-		t.Fatalf("TEST bucket = %d, want 1500 (sandbox top-up credits the test bucket)", got)
+	if r := invokeTopupToken(org, ctx, `{"sourceId":"cnon:sb","amountCents":1500}`, nil); r.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(r.Body)
+		t.Fatalf("status=%d body=%s, want 200", r.StatusCode, string(b))
 	}
-	// The LIVE (spendable) bucket must be empty — no free money.
+	if got := balanceOf(t, ctx, org, "sandbox-proof"); got != 1500 {
+		t.Fatalf("TEST bucket = %d, want 1500 (a sandbox top-up credits the test bucket)", got)
+	}
 	datas, err := txutil.GetTransactionsByCurrency(org.Namespaced(ctx), "sandbox-proof", "iam-user", currency.USD, false)
 	if err != nil {
 		t.Fatalf("live-bucket read: %v", err)
 	}
 	if d, ok := datas.Data[currency.USD]; ok && d != nil && d.Balance != 0 {
 		t.Fatalf("LIVE bucket = %d, want 0 — a sandbox charge credited the spendable balance", d.Balance)
-	}
-}
-
-// TestTopup_Idempotent_NoDoubleCredit proves a retry / double-submit with the
-// same idempotency key charges + credits AT MOST once: the second Begin replays
-// the completed guard, so the credit is not applied twice.
-func TestTopup_Idempotent_NoDoubleCredit(t *testing.T) {
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-	ctx := ae.NewContext()
-	defer ctx.Close()
-
-	org := &organization.Organization{}
-	org.Name = "idem-org"
-	org.Live = true
-	db := datastore.New(org.Namespaced(ctx))
-
-	scope := "billing-topup:idem-org"
-	const key = "nonce:cnon:card-nonce-ok"
-
-	// First submit: fresh guard → do the money move → seal it.
-	rec, replay, err := idempotencykey.Begin(db, scope, key)
-	if err != nil {
-		t.Fatalf("Begin #1: %v", err)
-	}
-	if replay {
-		t.Fatal("first Begin must not be a replay")
-	}
-	creditLikeTopup(t, ctx, org, "idem-org", 3000)
-	if err := idempotencykey.Complete(rec, `{"status":"ok","balanceCents":3000}`); err != nil {
-		t.Fatalf("Complete: %v", err)
-	}
-
-	// Second submit with the SAME key (retry / double-click): must be a replay
-	// of the completed guard — the handler returns the stored response and does
-	// NOT credit again.
-	rec2, replay2, err := idempotencykey.Begin(db, scope, key)
-	if err != nil {
-		t.Fatalf("Begin #2: %v", err)
-	}
-	if !replay2 || rec2.Status != idempotencykey.StatusCompleted {
-		t.Fatalf("second Begin: replay=%v status=%q, want replay=true status=completed", replay2, rec2.Status)
-	}
-
-	// Balance reflects exactly ONE $30 credit, not two.
-	if got := balanceOf(t, ctx, org, "idem-org"); got != 3000 {
-		t.Fatalf("balance = %d, want 3000 — DOUBLE-CREDIT: idempotent retry applied the credit twice", got)
 	}
 }
 
@@ -282,6 +234,20 @@ func TestTopup_Idempotent_NoDoubleCredit(t *testing.T) {
 
 func invokeTopupToken(org *organization.Organization, ctx context.Context, body string, headers map[string]string) *http.Response {
 	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup/token", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	return driveSeeded(func(c *zip.Ctx) {
+		c.Locals("organization", org)
+		c.SetContext(ctx)
+	}, "/v1/billing/topup/token", req, TopupWithToken)
+}
+
+// invokeTopupTokenAs drives the handler with an explicit ?user= subject — what
+// console2's billing proxy sets from the validated session.
+func invokeTopupTokenAs(org *organization.Organization, ctx context.Context, subject, body string, headers map[string]string) *http.Response {
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/topup/token?user="+url.QueryEscape(subject), bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
 		req.Header.Set(k, v)

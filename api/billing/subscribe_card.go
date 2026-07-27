@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zap-proto/zip"
 
@@ -33,14 +32,6 @@ import (
 // production is payment.ProcessorsForOrg (built from the org's KMS-hydrated
 // credentials). Callers MUST hydrate the org's creds first (hydratePaymentCreds).
 var processorsForOrg = payment.ProcessorsForOrg
-
-// subscribeIdemWindowSec is the fallback idempotency WINDOW for a header-less
-// subscribe: within this window a repeated (subject, planId) subscribe de-dups (a
-// lost-response retry), but after it a genuine later re-subscribe to the same plan
-// proceeds — the guard is not a permanent per-plan lock. Clients that need exact
-// idempotency send an X-Idempotency-Key (the SPA does), which is used verbatim and
-// is never windowed.
-const subscribeIdemWindowSec = 900 // 15 minutes
 
 // hydratePaymentCreds loads the org's payment-provider credentials from KMS (via
 // the request-scoped cached client in c.Locals) so processorsForOrg sees real
@@ -192,20 +183,13 @@ func SubscribeWithCard(c *zip.Ctx) error {
 	// header, fall back to the STABLE (subject, planId): the single-use nonce is NOT a
 	// stable key (a re-tokenized retry mints a new nonce), which is exactly the
 	// double-charge to avoid. Scoped to the subject so keys never collide across tenants.
-	guardKey := strings.TrimSpace(c.Header("X-Idempotency-Key"))
-	if guardKey == "" {
-		// No client key: fall back to (subject, planId) bucketed by a coarse time
-		// WINDOW so a lost-response retry (seconds apart) de-dups but a genuine later
-		// re-subscribe is not blocked forever (see subscribeIdemWindowSec).
-		guardKey = "store:" + req.StoreID + ":plan:" + req.PlanID + ":w" +
-			strconv.FormatInt(time.Now().Unix()/subscribeIdemWindowSec, 10)
-	}
+	guard := guardKey(c, "store:"+req.StoreID+":plan:"+req.PlanID)
 	// The Square idempotency key is derived from the SAME stable guard key (never the
 	// single-use nonce), so Square itself de-dups the money move even if the local
 	// guard store is unavailable OR two submits race — the definitive backstop.
-	squareKey := "subscribe:" + subject + ":" + guardKey
+	squareKey := gatewayKey("subscribe", subject, guard)
 
-	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject+":"+req.StoreID, guardKey)
+	rec, replay, gerr := idempotencykey.Begin(db, "billing-subscribe:"+subject+":"+req.StoreID, guard)
 	if gerr != nil {
 		// Guard store unavailable. Proceed WITHOUT the local guard: the stable Square
 		// idempotency key above still makes the CHARGE exactly-once at the processor,

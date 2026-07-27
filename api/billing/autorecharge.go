@@ -2,6 +2,7 @@ package billing
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,6 +31,13 @@ func loadAutoRecharge(db *datastore.Datastore, userId string) *autorecharge.Auto
 	if len(cfgs) == 0 {
 		return nil
 	}
+	// A query-loaded entity carries no datastore, so calling Update() on it
+	// nil-derefs inside orm.Model.Key(). Both callers mutate and save what this
+	// returns — SetAutoRecharge on an existing row, and the cron when it stamps
+	// LastRechargedAt after a successful charge — so the binding belongs here,
+	// once, rather than at each call site. Rebind, not Init: Init would re-apply
+	// Defaults() over the values just loaded.
+	cfgs[0].Rebind(db)
 	return cfgs[0]
 }
 
@@ -214,8 +222,18 @@ func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 			}
 		}
 
+		// The cron is not a client request, so it has NO X-Idempotency-Key to read
+		// — and reading the run-all request's header would be actively wrong, since
+		// one header would then be shared by every org this loop charges. The key
+		// is derived from the recharge's own identity (org, amount, currency) in a
+		// coarse window: an overlapping or re-fired run collapses onto the same key
+		// and charges once, while a genuine later recharge — the balance fell below
+		// the threshold again — gets a fresh key and proceeds.
+		guard := windowKey("recharge:" + org.Name + ":amount:" +
+			strconv.FormatInt(cfg.AmountCents, 10) + ":cur:" + string(cur))
+
 		desc := fmt.Sprintf("Auto-recharge %d %s for %s", cfg.AmountCents, cur, org.Name)
-		txID, balanceCents, err := chargeAndCredit(c, org, db, pm, cfg.AmountCents, cur, org.Name, desc)
+		txID, balanceCents, err := chargeAndCredit(c, org, db, pm, cfg.AmountCents, cur, org.Name, guard, desc)
 		if err != nil {
 			log.Error("Auto-recharge charge failed for org %q: %v", org.Name, err, c)
 			results = append(results, autoRechargeRunResult{
