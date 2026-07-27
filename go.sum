@@ -436,6 +436,8 @@ github.com/hanzoai/orm v0.6.8-0.20260726154525-27ea3760abb3 h1:gr+mcES810UhA9H0m
 github.com/hanzoai/orm v0.6.8-0.20260726154525-27ea3760abb3/go.mod h1:jmszOBtvtaydmS6k3CuGAKgjAa7wjeIfeVQF3R3Ipy4=
 github.com/hanzoai/orm v0.6.8 h1:llCC1r2lO3PQJqh50vUn209EpXSvpNL6fK2ySEQ5Z3c=
 github.com/hanzoai/orm v0.6.8/go.mod h1:jmszOBtvtaydmS6k3CuGAKgjAa7wjeIfeVQF3R3Ipy4=
+github.com/hanzoai/orm v0.6.9 h1:SKwdmkSyPtvJej2IJbhrR3a08a3OHOFdGsz0iV3v1tc=
+github.com/hanzoai/orm v0.6.9/go.mod h1:jmszOBtvtaydmS6k3CuGAKgjAa7wjeIfeVQF3R3Ipy4=
 github.com/hanzoai/pubsub-go v1.0.0 h1:nUZ4jK+MFlFQ5qTMri/Yffnqs/R5avI99SfZ9e3t6Cs=
 github.com/hanzoai/pubsub-go v1.0.0/go.mod h1:ZHWDgSLsYHK4TiitzNwGc7Cn+oApKyMp0uK8cU7jwpg=
 github.com/hanzoai/s3-go v1.0.0 h1:bDdAsy76iWiraHX+zLZALxICDPtmci0ma6mIhdNlViw=

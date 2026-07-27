@@ -347,6 +347,30 @@ field names in `Filter()`/`Order()` calls (legacy from Cloud Datastore migration
 
 **Data directory**: `{COMMERCE_DIR}/orgs/{orgName}/data.db` per org. System data in `orgs/system/data.db`.
 
+**Tenant store lifecycle lives in `orm/db.Registry`, not here.** `db.Manager`
+used to hold a `userDBs` and an `orgDBs` map, opening a store per tenant ever
+touched and closing them only at shutdown — descriptors and memory grew with the
+tenant count, with no bound and no replication. It now delegates to
+`ormdb.Registry[db.DB]`: open on demand, bounded by `Config.MaxOpenTenants`
+(256), idle stores closed after `Config.TenantIdleTTL` (5m), coldest evicted
+first, never one that is mid-operation.
+
+`Registry.Do(ctx, tenant, fn)` scopes a handle to a callback, on purpose — a
+handle you can keep is one someone must remember to give back. `Manager.User`/
+`Org` still return a `db.DB` because every call site keeps one (`Store.DB`, the
+namespaced datastore resolver, the user service), but what they return holds no
+handle: `db/tenant.go` is a VALUE that borrows the tenant's store for each
+operation and gives it back. So a held `db.DB` costs four words, never a file
+descriptor, and two consecutive operations on it may run on different open
+handles — nothing needs otherwise, since anything atomic across statements is
+already inside `RunInTransaction` (one borrow).
+
+`Registry`'s `Materialize` (restore a tenant file from object storage on a local
+miss) and `OnOpen`/`OnClose` (bracket a handle's life) are where
+`hanzoai/replicate` attaches. Both are unset today: commerce tenant files are
+still local-only, and turning them on needs an object-store config, not more
+code here.
+
 **PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
 
 ## At-Rest Encryption (SQLCipher via hanzoai/sqlite)
