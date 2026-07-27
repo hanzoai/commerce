@@ -165,7 +165,11 @@ func executeTask(parentCtx context.Context, t *Task, f *Function) error {
 		retryDelay = t.Options.RetryDelay
 	}
 
-	go func() {
+	// Read the stop signal here rather than in the goroutine, so a task queued
+	// before a drain begins is bound to that drain and not the one after it.
+	stop := stopped()
+
+	spawn(func() {
 		// Create a new context for the background task
 		// We don't inherit cancellation from parentCtx since this is a background job
 		ctx := context.Background()
@@ -175,9 +179,11 @@ func executeTask(parentCtx context.Context, t *Task, f *Function) error {
 			ctx = context.WithValue(ctx, taskIDContextKey, t.Options.Name)
 		}
 
-		// Apply initial delay if configured
-		if delay > 0 {
-			time.Sleep(delay)
+		// Apply initial delay if configured. A drain ends the wait and the task
+		// with it: it never ran, so there is nothing half-done to finish. A
+		// task with no delay is not waiting on anything and always runs.
+		if !pause(stop, delay) {
+			return
 		}
 
 		// Decode the invocation
@@ -192,7 +198,12 @@ func executeTask(parentCtx context.Context, t *Task, f *Function) error {
 		for attempt := 0; attempt <= retryCount; attempt++ {
 			if attempt > 0 {
 				log.Warn(ctx, "delay: retrying task %s (attempt %d/%d)", f.key, attempt, retryCount)
-				time.Sleep(retryDelay)
+				// A drain ends the retries. Whatever the datastore is doing, it
+				// is not going to look better in five seconds' time.
+				if !pause(stop, retryDelay) {
+					log.Warn(ctx, "delay: draining, abandoning retries for %s: %v", f.key, lastErr)
+					return
+				}
 			}
 
 			lastErr = executeInvocation(ctx, f, inv.Args)
@@ -204,7 +215,7 @@ func executeTask(parentCtx context.Context, t *Task, f *Function) error {
 		}
 
 		log.Error(ctx, "delay: func %s exhausted all retries: %v", f.key, lastErr)
-	}()
+	})
 
 	return nil
 }
@@ -330,31 +341,30 @@ func (f *Function) Task(args ...interface{}) (*Task, error) {
 	}, nil
 }
 
+// clone copies the function so Queue and After can vary one field without
+// mutating a Function that other call sites share.
+func (f *Function) clone() *Function {
+	f2 := *f
+	return &f2
+}
+
 // Queue returns a copy of this Function with the specified queue.
 func (f *Function) Queue(queue string) *Function {
-	f2 := &Function{
-		fv:    f.fv,
-		key:   f.key,
-		err:   f.err,
-		queue: queue,
-		name:  f.name,
-		delay: f.delay,
-	}
+	f2 := f.clone()
+	f2.queue = queue
 	return f2
 }
 
-// Once adds a task only once by using a unique name.
-// This prevents duplicate task execution.
-func (f *Function) Once(ctx context.Context, name string, delay time.Duration, args ...interface{}) error {
-	f2 := &Function{
-		fv:    f.fv,
-		key:   f.key,
-		err:   f.err,
-		queue: f.queue,
-		name:  name,
-		delay: delay,
-	}
-	return f2.Call(ctx, args...)
+// After returns a copy of this Function whose calls wait d before running.
+//
+// It exists so a caller that wants to re-queue work with a backoff can say so
+// through the queue instead of writing its own `go func` around a Sleep. A
+// hand-rolled goroutine is untracked: it registers its task only after waking,
+// which is too late for a Drain that has already counted the parent out.
+func (f *Function) After(d time.Duration) *Function {
+	f2 := f.clone()
+	f2.delay = d
+	return f2
 }
 
 // FuncByKey retrieves a registered function by its key.
@@ -376,14 +386,15 @@ func FuncByKey(key string) *Function {
 // Later executes a function after a delay.
 // This is a simpler API for one-off delayed tasks.
 func Later(ctx context.Context, delay time.Duration, fn func(context.Context) error) error {
-	go func() {
-		if delay > 0 {
-			time.Sleep(delay)
+	stop := stopped()
+	spawn(func() {
+		if !pause(stop, delay) {
+			return
 		}
 		if err := fn(context.Background()); err != nil {
 			log.Error(ctx, "delay: Later func failed: %v", err)
 		}
-	}()
+	})
 	return nil
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/util/json"
+	"github.com/hanzoai/commerce/util/rand"
 	"github.com/hanzoai/commerce/util/timeutil"
 	"github.com/hanzoai/orm"
 
@@ -25,6 +26,21 @@ import (
 )
 
 func init() { orm.Register[Referrer]("referrer") }
+
+const (
+	// CodeLength is how many characters a minted referral code has.
+	CodeLength = 8
+
+	// codeAlphabet is what a referral code is made of: the uppercase
+	// alphanumerics, so it survives being read down a phone line.
+	codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+)
+
+// NewCode mints a referral code. Callers that accept a caller-supplied code
+// still have to check it is free — this only produces the shape.
+func NewCode() string {
+	return rand.String(CodeLength, codeAlphabet)
+}
 
 // Is a link that can refer customers to buy products
 type Referrer struct {
