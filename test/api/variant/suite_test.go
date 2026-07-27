@@ -36,6 +36,10 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
+
+	// Admit the org through the billing paywall; without it every request here
+	// gets 402 subscription_required.
+	fixtures.ProSubscription(c)
 	accessToken, _ := org.GetTokenByName("test-secret-key")
 	org.MustUpdate()
 
