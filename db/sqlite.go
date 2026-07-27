@@ -49,6 +49,9 @@ type SQLiteDBConfig struct {
 
 // SQLiteDB implements the DB interface using SQLite
 type SQLiteDB struct {
+	// Key minting, shared verbatim with the registry-backed handle.
+	tenantKeys
+
 	config *SQLiteDBConfig
 
 	// Concurrent connection for reads
@@ -135,11 +138,12 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	writeDB.SetMaxIdleConns(1)
 
 	db := &SQLiteDB{
-		config:    cfg,
-		readDB:    readDB,
-		writeDB:   writeDB,
-		schemas:   make(map[string]*tableSchema),
-		encrypted: dek != nil,
+		tenantKeys: tenantKeys(cfg.TenantID),
+		config:     cfg,
+		readDB:     readDB,
+		writeDB:    writeDB,
+		schemas:    make(map[string]*tableSchema),
+		encrypted:  dek != nil,
 	}
 
 	// Initialize base schema
@@ -671,36 +675,45 @@ func (db *SQLiteDB) PutVector(ctx context.Context, kind string, id string, vecto
 	return err
 }
 
+// tenantKeys mints the keys a tenant store hands out. It is the tenant's
+// namespace and nothing else, because that is all a key needs: a key is a
+// value, not a query — none of these three touch the file.
+//
+// SQLiteDB embeds it, and so does the registry-backed handle in tenant.go,
+// which must mint identical keys WITHOUT opening the tenant's database to do
+// it. One definition, so the two can never drift.
+type tenantKeys string
+
 // NewKey creates a new key
-func (db *SQLiteDB) NewKey(kind string, stringID string, intID int64, parent Key) Key {
+func (ns tenantKeys) NewKey(kind string, stringID string, intID int64, parent Key) Key {
 	return &sqliteKey{
 		kind:      kind,
 		stringID:  stringID,
 		intID:     intID,
 		parent:    parent,
-		namespace: db.config.TenantID,
+		namespace: string(ns),
 	}
 }
 
 // NewIncompleteKey creates a key that will be assigned an ID on Put
-func (db *SQLiteDB) NewIncompleteKey(kind string, parent Key) Key {
+func (ns tenantKeys) NewIncompleteKey(kind string, parent Key) Key {
 	return &sqliteKey{
 		kind:       kind,
 		parent:     parent,
-		namespace:  db.config.TenantID,
+		namespace:  string(ns),
 		incomplete: true,
 	}
 }
 
 // AllocateIDs pre-allocates entity IDs
-func (db *SQLiteDB) AllocateIDs(kind string, parent Key, n int) ([]Key, error) {
+func (ns tenantKeys) AllocateIDs(kind string, parent Key, n int) ([]Key, error) {
 	keys := make([]Key, n)
 	for i := 0; i < n; i++ {
 		keys[i] = &sqliteKey{
 			kind:      kind,
 			stringID:  generateID(),
 			parent:    parent,
-			namespace: db.config.TenantID,
+			namespace: string(ns),
 		}
 	}
 	return keys, nil
