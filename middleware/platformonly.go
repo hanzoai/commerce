@@ -75,20 +75,30 @@ func PlatformOnly() zip.Handler {
 	}
 }
 
-// MayMintMoney is THE single predicate for "may this caller MINT money /
-// spendable balance". It admits exactly the two principals PlatformOnly admits:
+// IsPlatform is THE definition of the PLATFORM PRINCIPAL — the two callers that
+// act for the platform itself rather than for a tenant:
 //
-//  1. the verified internal service token (cloud-api → commerce), IsServiceToken(c); and
+//  1. the verified internal service token (cloud-api → commerce, a scheduled
+//     job), IsServiceToken(c); and
 //  2. a Hanzo PLATFORM SuperAdmin, auth.IAMClaims.IsSuperAdmin() — the
 //     reserved "admin" org membership (owner=="admin").
 //
 // It deliberately does NOT admit the org-level Admin bit (an org OWNER's IAM
-// isAdmin, or a legacy per-org access token). Use it wherever a mint decision is
-// made OUTSIDE the route-middleware chain — the ZAP-over-HTTP dispatcher gates
-// its money-mint method (billing.deposit) with it, and the allotment grant clamps
-// a client plan override on it — so there is ONE expression of the mint principal,
-// shared by the route gate (PlatformOnly) and every in-handler gate. Fail-closed:
-// neither signal present → false.
-func MayMintMoney(c *zip.Ctx) bool {
+// isAdmin, or a legacy per-org access token).
+//
+// It answers WHO IS CALLING and nothing else. Asking grants no capability — the
+// capability gates are built ON it (MayMintMoney for money, the catalog sync for
+// upstream cost), so who-may-act is defined once and each capability names
+// itself. Fail-closed: neither signal present → false.
+func IsPlatform(c *zip.Ctx) bool {
 	return IsServiceToken(c) || iammiddleware.GetIAMClaims(c).IsSuperAdmin()
 }
+
+// MayMintMoney is THE single predicate for "may this caller MINT money /
+// spendable balance": the platform principal, and only it. Use it wherever a
+// mint decision is made OUTSIDE the route-middleware chain — the ZAP-over-HTTP
+// dispatcher gates its money-mint method (billing.deposit) with it, and the
+// allotment grant clamps a client plan override on it — so there is ONE
+// expression of the mint principal, shared by the route gate (PlatformOnly) and
+// every in-handler gate.
+func MayMintMoney(c *zip.Ctx) bool { return IsPlatform(c) }
