@@ -36,6 +36,13 @@ var brandCategories = map[string][]string{
 	// category sets exclude cloud/gpu/datastore — so a pricing tier never leaks
 	// into a product sidebar. infraCategories is defined once (seed.go).
 	"infra": infraCategories,
+
+	// "models" is the other brand-neutral SCOPE, on the same precedent: the
+	// model catalog (our Enso and Zen families, plus everything we resell)
+	// surfaced at GET /v1/commerce/catalog?brand=models and NOWHERE else, so a
+	// model row never lands in a product sidebar. This is the ONE catalog every
+	// surface reads. modelCategories is defined once (model.go).
+	"models": modelCategories,
 }
 
 // Category is one taxonomy entry in the projection.
@@ -82,6 +89,16 @@ type Item struct {
 	// projection (AdminItem), never this public projection.
 	Pricing *Pricing `json:"pricing,omitempty"`
 
+	// Rates is the public price VECTOR — retail only, one element per metered
+	// component and context rung. Every entry projects it, synthesized from the
+	// legacy scalar when a row predates Rates, so a reader has one shape.
+	Rates []RateView `json:"rates,omitempty"`
+
+	// Spec is the model descriptor + routing policy, present on model rows. It
+	// is projected to EVERY caller: minTier and enabled decide what a caller may
+	// USE, never what they may SEE.
+	Spec *ModelSpec `json:"spec,omitempty"`
+
 	// Metadata is the structured-spec JSON hatch (the entry's Metadata map),
 	// projected verbatim. Empty for console products (omitted); for the infra
 	// tiers it carries the machine-readable spec (vcpus/memoryGB/… for cloud,
@@ -102,6 +119,27 @@ type Catalog struct {
 	Products   []Item     `json:"products"`
 }
 
+// RateView is the PUBLIC projection of one Rate: what the customer pays, per
+// unit and per context rung. Cost and margin are deliberately absent — they
+// ride only AdminRateView.
+type RateView struct {
+	Key        string `json:"key,omitempty"`
+	Unit       string `json:"unit"`
+	MaxContext int    `json:"maxContext,omitempty"`
+	Price      string `json:"price,omitempty"`
+}
+
+// AdminRateView is the admin projection of one Rate: the retail price PLUS the
+// upstream cost we pay and the resulting margin. MarginPct is a pointer so an
+// uncomputable margin is an absent field, never a fabricated 0 — and a NEGATIVE
+// margin is shown plainly rather than suppressed, because selling under cost is
+// a decision that must be visible.
+type AdminRateView struct {
+	RateView
+	Cost      string   `json:"cost,omitempty"`
+	MarginPct *float64 `json:"marginPct,omitempty"`
+}
+
 // AdminItem is the admin projection of a CatalogEntry: the full public Item PLUS
 // the administrative economics (cost + margin) the public projection withholds.
 // Only the owner=="admin" admin catalog emits it, so upstream cost and target
@@ -110,6 +148,11 @@ type AdminItem struct {
 	Item
 	CostCents currency.Cents `json:"costCents"`
 	MarginPct float64        `json:"marginPct"`
+
+	// Markup is the entry's retail multiple over cost, and AdminRates is the
+	// per-component cost/price/margin the CTO reads "on each / all".
+	Markup     string          `json:"markup,omitempty"`
+	AdminRates []AdminRateView `json:"adminRates,omitempty"`
 }
 
 // AdminCatalog is the projection returned by GET /v1/commerce/admin/catalog. It
@@ -187,8 +230,51 @@ func item(e *CatalogEntry) Item {
 		ProductId:   e.ProductId,
 		// Public pricing block only — Private (cost/margin) is never projected here.
 		Pricing:  e.Pricing,
+		Rates:    rateViews(e),
+		Spec:     e.Spec,
 		Metadata: e.Metadata,
 	}
+}
+
+// rateViews projects an entry's price vector for a public reader: retail only.
+func rateViews(e *CatalogEntry) []RateView {
+	rates := RatesOf(e)
+	if len(rates) == 0 {
+		return nil
+	}
+	out := make([]RateView, 0, len(rates))
+	for _, r := range rates {
+		out = append(out, RateView{
+			Key:        r.Key,
+			Unit:       r.Unit,
+			MaxContext: r.MaxContext,
+			Price:      r.RetailPrice(e.Markup),
+		})
+	}
+	return out
+}
+
+// adminRateViews projects the same vector for an admin: retail, upstream cost
+// and the derived margin, per component.
+func adminRateViews(e *CatalogEntry) []AdminRateView {
+	rates := RatesOf(e)
+	if len(rates) == 0 {
+		return nil
+	}
+	out := make([]AdminRateView, 0, len(rates))
+	for _, r := range rates {
+		out = append(out, AdminRateView{
+			RateView: RateView{
+				Key:        r.Key,
+				Unit:       r.Unit,
+				MaxContext: r.MaxContext,
+				Price:      r.RetailPrice(e.Markup),
+			},
+			Cost:      r.Cost,
+			MarginPct: RateMarginPct(r, e.Markup),
+		})
+	}
+	return out
 }
 
 // scoped reads the published catalog entries from db (which MUST be namespaced to
@@ -261,9 +347,11 @@ func ProjectAdmin(db *datastore.Datastore, brand string) (AdminCatalog, error) {
 			pct = marginPct(e.PriceCents, e.CostCents)
 		}
 		items = append(items, AdminItem{
-			Item:      item(e),
-			CostCents: e.CostCents,
-			MarginPct: pct,
+			Item:       item(e),
+			CostCents:  e.CostCents,
+			MarginPct:  pct,
+			Markup:     e.Markup,
+			AdminRates: adminRateViews(e),
 		})
 	}
 	return AdminCatalog{Brand: brand, Categories: cats, Products: items}, nil

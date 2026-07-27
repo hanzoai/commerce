@@ -75,6 +75,7 @@ func AdminRoute(r zip.Router, args ...zip.Handler) {
 	g.Put("/entries/:slug", append(args, UpdateEntry)...)
 	g.Delete("/entries/:slug", append(args, DeleteEntry)...)
 	g.Post("/seed", append(args, SeedCatalog)...)
+	g.Post("/models", append(args, SyncModels)...)
 }
 
 // Public returns the brand-scoped catalog projection. Public + cacheable.
@@ -197,6 +198,28 @@ func DeleteEntry(c *zip.Ctx) error {
 	}
 	c.SetHeader("Content-Type", "application/json")
 	return c.Bytes(204, make([]byte, 0))
+}
+
+// SyncModels lands a syncer's view of the model catalog: it refreshes each
+// model's upstream COST and machine-observable facts and touches nothing a
+// human owns — not the retail price, not the markup, not the entitlement tier
+// (catalogentry.UpsertModels enforces that, so the rule holds no matter which
+// syncer calls). This is the ONE write seam between the model families /
+// upstream and the catalog: they own the structure and publish it, commerce
+// holds the numbers, admin.hanzo.ai edits them. Platform admin only.
+func SyncModels(c *zip.Ctx) error {
+	if !requireSuperAdmin(c) {
+		return nil
+	}
+	var rows []catalogentry.ModelRow
+	if err := json.DecodeBytes(c.Body(), &rows); err != nil {
+		return http.Fail(c, 400, "failed to decode model rows", err)
+	}
+	stats, err := catalogentry.UpsertModels(catalogDB(c), rows)
+	if err != nil {
+		return http.Fail(c, 500, "failed to sync models", err)
+	}
+	return http.Render(c, 200, stats)
 }
 
 // SeedCatalog upserts the embedded Hanzo catalog seed (idempotent,
