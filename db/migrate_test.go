@@ -88,8 +88,8 @@ func TestEncryptDataDirRoundTrip(t *testing.T) {
 	if !fileExists(dbPath + dekSuffix) {
 		t.Fatal("no DEK sidecar after migration")
 	}
-	if !fileExists(dbPath + ".plaintext.bak") {
-		t.Fatal("plaintext backup not retained")
+	if fileExists(dbPath + ".plaintext.bak") {
+		t.Fatal("SECURITY: plaintext backup left at rest after a verified migration (must be shredded)")
 	}
 
 	// 4. COUNT-PRESERVED + VALUE-PRESERVED: every row reads back through the

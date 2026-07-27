@@ -2,10 +2,13 @@ package db
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
+
+	sqlitedrv "github.com/hanzoai/sqlite"
 )
 
 type tenantThing struct {
@@ -16,6 +19,13 @@ type tenantThing struct {
 // so eviction is reachable in a test rather than after 256 tenants.
 func testManager(t *testing.T, maxOpen int) *Manager {
 	t.Helper()
+	// Match the posture of the build under test. A codec-linked build refuses to
+	// open tenant money stores without a master key, so supply one and exercise the
+	// same encrypted path production runs. A build without the live codec refuses a
+	// key instead, and takes the unencrypted dev path — so give it none.
+	if sqlitedrv.CodecLinked() {
+		t.Setenv(masterKeyEnv, hex.EncodeToString(testMasterKey()))
+	}
 	cfg := DefaultConfig()
 	cfg.DataDir = t.TempDir()
 	cfg.EnableVectorSearch = false
