@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Heading, Text } from '@hanzo/commerce-ui'
+import { Card, Spinner, Text, YStack } from '@hanzo/gui'
 
 const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
 const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce'
@@ -12,44 +12,41 @@ export default function CallbackPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Dynamic import to avoid SSR issues with Web Crypto APIs
-    import('@hanzo/iam/browser').then(({ IAM }) => {
-      const sdk = new IAM({
+    void import('@hanzo/iam/browser').then(({ IAM }) =>
+      new IAM({
         serverUrl: IAM_SERVER,
         clientId: CLIENT_ID,
         redirectUri: `${window.location.origin}/callback`,
       })
-      sdk.handleCallback(window.location.href)
-        .then(() => {
-          // Full page load so IamProvider picks up stored tokens
-          window.location.href = '/overview'
-        })
-        .catch((err) => {
-          setError(err.message || 'Authentication failed.')
-        })
-    })
+        .handleCallback(window.location.href)
+        // Full page load so IamProvider picks up the stored tokens.
+        .then(() => window.location.assign('/overview'))
+        .catch((e: Error) => setError(e.message || 'Authentication failed.')),
+    )
   }, [])
 
   if (error) {
     return (
-      <div className="text-center">
-        <Heading level="h2">Sign In Failed</Heading>
-        <Text size="small" className="mt-2 text-ui-fg-subtle">{error}</Text>
-        <Button
-          variant="secondary"
-          className="mt-4"
-          onClick={() => router.replace('/login')}
-        >
-          Back to Login
-        </Button>
-      </div>
+      <Card maxWidth={420} p="$5" gap="$3" borderWidth={1} borderColor="$borderColor">
+        <Text fontSize="$5" fontWeight="500">
+          Sign in failed
+        </Text>
+        <Text fontSize="$3" color="$color11">
+          {error}
+        </Text>
+        <Text fontSize="$3" color="$color11" cursor="pointer" onPress={() => router.replace('/login')}>
+          Back to sign in
+        </Text>
+      </Card>
     )
   }
 
   return (
-    <div className="text-center">
-      <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
-      <Text size="small" className="text-ui-fg-muted">Signing in...</Text>
-    </div>
+    <YStack items="center" gap="$3">
+      <Spinner />
+      <Text fontSize="$3" color="$color11">
+        Signing in…
+      </Text>
+    </YStack>
   )
 }

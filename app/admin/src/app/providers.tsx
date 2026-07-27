@@ -1,9 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+/**
+ * Root client providers — Hanzo GUI theme + IAM session + the `@hanzo/ui/product`
+ * host seam.
+ *
+ * The product layer is presentational and never imports a router or an auth
+ * module, so the two effects its honest-state cards can offer (re-auth on 401,
+ * top-up on 402) are injected here, once.
+ */
+import { useEffect, useState, type ReactNode } from 'react'
+import { GuiProvider } from '@hanzo/gui'
 import { IamProvider } from '@hanzo/iam/react'
-import { QueryProvider } from '@/lib/query-provider'
-import { ThemeProvider } from '@/providers/theme-provider'
+import { HostProvider } from '@hanzo/ui/product'
+
+import config from '../../gui.config'
 
 const IAM_CONFIG = {
   serverUrl: process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id',
@@ -11,21 +21,25 @@ const IAM_CONFIG = {
   redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/callback` : '',
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
-  // IamProvider accesses sessionStorage which doesn't exist during SSR prerender.
-  // Only mount after hydration. Children that call useIam() need the provider present.
+export function Providers({ children }: { children: ReactNode }) {
+  // IamProvider reads sessionStorage, which does not exist during the export
+  // prerender. Mount after hydration; children that call useIam() need it present.
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-
-  if (!mounted) {
-    return null
-  }
+  if (!mounted) return null
 
   return (
-    <QueryProvider>
+    <GuiProvider config={config} defaultTheme="dark">
       <IamProvider config={IAM_CONFIG}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <HostProvider
+          actions={{
+            signIn: () => window.location.assign('/login'),
+            addCredits: () => window.location.assign('/billing'),
+          }}
+        >
+          {children}
+        </HostProvider>
       </IamProvider>
-    </QueryProvider>
+    </GuiProvider>
   )
 }

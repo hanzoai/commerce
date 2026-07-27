@@ -1,326 +1,77 @@
 'use client'
 
-import { Heading, Text, Container, Badge, Button } from '@hanzo/commerce-ui'
-import Link from 'next/link'
+/**
+ * Overview — the store's real counts, nothing else.
+ *
+ * Each tile is one `/v1/<kind>` list read reduced to its envelope `count`; a store
+ * with no catalog shows zeros, never a fabricated trend. A failed read renders the
+ * shared honest state instead of the grid.
+ */
+import { useCallback, useEffect, useState } from 'react'
+import { Button, XStack, YStack } from '@hanzo/gui'
+import { Boxes, Package, Percent, RefreshCw, ShoppingBag, Users, Warehouse } from '@hanzogui/lucide-icons-2'
 import { useOrganizations } from '@hanzo/iam/react'
-import { useCount, useStore, useModels, useIntegrations } from '@/lib/api/hooks'
-import type { CurrentStore, StoreListing } from '@/lib/api/data-provider'
-import { StatCard } from '@/components/common/stat-card'
-import { PageHeader } from '@/components/common/page-header'
-import { OnboardingNudge } from '@/components/onboarding/nudge-banner'
+import { BackendStateCard, MetricCard, PageHeader, classifyBackend, type BackendState } from '@hanzo/ui/product'
 
-export default function DashboardPage() {
-  const { data: models, isLoading: loadingModels } = useModels()
-  const { data: productCount, isLoading: loadingProducts } = useCount('product')
-  const { data: orderCount, isLoading: loadingOrders } = useCount('order')
-  const { data: customerCount, isLoading: loadingCustomers } = useCount('c/user')
-  const { data: collectionCount, isLoading: loadingCollections } = useCount('collection')
-  const { data: store } = useStore()
-  const { data: integrations = [] } = useIntegrations()
-  const { currentOrg } = useOrganizations()
+import { list, currentStore, type Store } from '@/lib/commerce'
 
-  return (
-    <div>
-      <PageHeader
-        title="Dashboard"
-        description={currentOrg?.displayName || currentOrg?.name
-          ? `${currentOrg.displayName || currentOrg.name} · overview of your commerce operations`
-          : 'Overview of your commerce operations'}
-        actions={
-          <>
-            <Link href="/products/create">
-              <Button size="small" variant="secondary">New product</Button>
-            </Link>
-            <Link href="/orders/create">
-              <Button size="small" variant="primary">New order</Button>
-            </Link>
-          </>
-        }
-      />
-      <div className="p-8">
-        <OnboardingNudge />
-        <Setup
-          store={store}
-          products={productCount ?? 0}
-          integrations={integrations.filter((integration) => integration.enabled).length}
-        />
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Models"
-            value={models?.length ?? 0}
-            loading={loadingModels}
-            href="/models"
-            icon={
-              <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23-.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Products"
-            value={productCount ?? 0}
-            loading={loadingProducts}
-            href="/products"
-            icon={
-              <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Orders"
-            value={orderCount ?? 0}
-            loading={loadingOrders}
-            href="/orders"
-            icon={
-              <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Customers"
-            value={customerCount ?? 0}
-            loading={loadingCustomers}
-            href="/customers"
-            icon={
-              <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Collections"
-            value={collectionCount ?? 0}
-            loading={loadingCollections}
-            href="/collections"
-            icon={
-              <svg className="h-5 w-5 text-ui-fg-subtle" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
-              </svg>
-            }
-          />
-        </div>
-
-        <ManageLinks />
-
-        <StoreOverview />
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <RecentOrders />
-          <TopProducts />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const MANAGE_LINKS = [
-  { label: 'Discounts', description: 'Promotions & codes', href: '/discounts' },
-  { label: 'Gift cards', description: 'Prepaid balances', href: '/gift-cards' },
-  { label: 'Integrations', description: 'Payments & apps', href: '/integrations' },
-  { label: 'Inventory', description: 'Stock locations', href: '/inventory' },
+/** The tiles, in reading order: catalog → demand → fulfilment. */
+const TILES = [
+  { kind: 'product', label: 'Products', icon: Package },
+  { kind: 'collection', label: 'Collections', icon: Boxes },
+  { kind: 'order', label: 'Orders', icon: ShoppingBag },
+  { kind: 'c/user', label: 'Customers', icon: Users },
+  { kind: 'promotion', label: 'Promotions', icon: Percent },
+  { kind: 'stocklocation', label: 'Stock locations', icon: Warehouse },
 ]
 
-function ManageLinks() {
-  return (
-    <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-      {MANAGE_LINKS.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className="rounded-lg border border-ui-border-base bg-ui-bg-base p-4 transition-colors hover:border-ui-border-strong hover:bg-ui-bg-component"
-        >
-          <Text size="small" weight="plus" className="text-ui-fg-base">{link.label}</Text>
-          <Text size="xsmall" className="mt-0.5 text-ui-fg-muted">{link.description}</Text>
-        </Link>
-      ))}
-    </div>
-  )
-}
+type State =
+  | { phase: 'loading' }
+  | { phase: 'error'; error: BackendState }
+  | { phase: 'ready'; counts: number[]; store: Store | null }
 
-function Setup({
-  store,
-  products,
-  integrations,
-}: {
-  store?: CurrentStore | null
-  products: number
-  integrations: number
-}) {
-  const listings = store?.listings ? Object.keys(store.listings).length : 0
-  const steps = [
-    { title: 'Name your store', done: !!store && store.name !== 'Default Store', href: '/settings' },
-    { title: 'Add your first product', done: products > 0, href: '/products' },
-    { title: 'Connect a provider', done: integrations > 0, href: '/integrations' },
-    { title: 'Publish your first listing', done: listings > 0, href: '/products' },
-  ]
-  const complete = steps.filter((step) => step.done).length
-  if (complete === steps.length) return null
+export default function OverviewPage() {
+  const { currentOrgId } = useOrganizations()
+  const [state, setState] = useState<State>({ phase: 'loading' })
+
+  const reload = useCallback(() => {
+    setState({ phase: 'loading' })
+    Promise.all([
+      Promise.all(TILES.map((t) => list(t.kind, currentOrgId).then((r) => r.count))),
+      currentStore(currentOrgId),
+    ])
+      .then(([counts, store]) => setState({ phase: 'ready', counts, store }))
+      .catch((e) => setState({ phase: 'error', error: classifyBackend(e) }))
+  }, [currentOrgId])
+
+  useEffect(() => reload(), [reload])
 
   return (
-    <Container className="mb-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Heading level="h2">Launch your store</Heading>
-          <Text size="small" className="mt-1 text-ui-fg-muted">
-            {complete} of {steps.length} steps complete
-          </Text>
-        </div>
-        <Badge color="orange">Setup</Badge>
-      </div>
-      <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        {steps.map((step, index) => (
-          <Link
-            key={step.title}
-            href={step.href}
-            className="flex items-center gap-3 rounded-lg border border-ui-border-base bg-ui-bg-base p-3 hover:bg-ui-bg-component"
-          >
-            <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${step.done ? 'bg-ui-tag-green-bg text-ui-tag-green-text' : 'bg-ui-bg-component text-ui-fg-muted'}`}>
-              {step.done ? '✓' : index + 1}
-            </span>
-            <Text size="small" weight="plus" className={step.done ? 'text-ui-fg-muted line-through' : 'text-ui-fg-base'}>
-              {step.title}
-            </Text>
-          </Link>
-        ))}
-      </div>
-    </Container>
-  )
-}
-
-function money(cents?: number, currency = 'USD') {
-  if (cents == null) return '-'
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100)
-}
-
-function StoreOverview() {
-  const { data: store, isLoading } = useStore()
-  const listings: StoreListing[] = store?.listings ? Object.values(store.listings) : []
-
-  if (isLoading) {
-    return (
-      <Container className="mb-6 p-6">
-        <div className="h-6 w-48 animate-pulse rounded bg-ui-bg-component" />
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-40 animate-pulse rounded-lg bg-ui-bg-component" />
-          ))}
-        </div>
-      </Container>
-    )
-  }
-
-  if (!store) return null
-
-  return (
-    <Container className="mb-6 p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <Link href="/settings" className="hover:text-ui-fg-interactive">
-            <Heading level="h3">{store.name}</Heading>
-          </Link>
-          <Text size="small" className="text-ui-fg-muted">
-            {store.domain ?? store.slug}
-            {store.currency ? ` · ${store.currency.toUpperCase()}` : ''}
-            {` · ${listings.length} listing${listings.length === 1 ? '' : 's'}`}
-          </Text>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge color="green">Live</Badge>
-          <Link href="/settings">
-            <Button size="small" variant="secondary">Manage store</Button>
-          </Link>
-        </div>
-      </div>
-
-      {listings.length === 0 ? (
-        <Text size="small" className="py-8 text-center text-ui-fg-muted">No listings published yet</Text>
+    <>
+      <PageHeader
+        title={state.phase === 'ready' && state.store ? state.store.name : 'Overview'}
+        subtitle="Your store at a glance — real counts from the Hanzo Commerce API."
+        actions={
+          <Button size="$2" icon={<RefreshCw size={15} />} onPress={reload}>
+            Refresh
+          </Button>
+        }
+      />
+      {state.phase === 'error' ? (
+        <BackendStateCard state={state.error} onRetry={reload} hint="endpoint · GET /v1/product (Hanzo Commerce)" />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {listings.slice(0, 8).map((l) => (
-            <StoreListingCard key={l.slug} listing={l} storeCurrency={store.currency} />
+        <XStack gap="$3" flexWrap="wrap">
+          {TILES.map((t, i) => (
+            <YStack key={t.kind} minW={200} flex={1}>
+              <MetricCard
+                icon={<t.icon size={15} color="$color10" />}
+                label={t.label}
+                value={state.phase === 'ready' ? String(state.counts[i]) : '—'}
+              />
+            </YStack>
           ))}
-        </div>
+        </XStack>
       )}
-    </Container>
-  )
-}
-
-function StoreListingCard({ listing, storeCurrency }: { listing: StoreListing; storeCurrency?: string }) {
-  const url = listing.headerImage?.url
-  return (
-    <div className="overflow-hidden rounded-lg border border-ui-border-base bg-ui-bg-subtle">
-      <div className="aspect-square w-full bg-ui-bg-component">
-        {url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={listing.headerImage?.alt ?? listing.name} className="h-full w-full object-cover" loading="lazy" />
-        ) : null}
-      </div>
-      <div className="p-3">
-        <Text size="small" weight="plus" className="truncate text-ui-fg-base">{listing.name}</Text>
-        <div className="mt-1 flex items-center justify-between">
-          <Text size="small" className="text-ui-fg-muted">{money(listing.price, listing.currency ?? storeCurrency ?? 'USD')}</Text>
-          <Badge size="2xsmall" color={listing.available ? 'green' : 'grey'}>
-            {listing.available ? 'Available' : 'Sold out'}
-          </Badge>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function RecentOrders() {
-  const { data, isLoading } = useCount('order')
-  return (
-    <Container className="p-6">
-      <div className="flex items-center justify-between">
-        <Heading level="h3">Recent Orders</Heading>
-        <Link href="/orders" className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
-          <Text size="small">View all</Text>
-        </Link>
-      </div>
-      {isLoading ? (
-        <div className="mt-4 space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-ui-bg-component" />
-          ))}
-        </div>
-      ) : !data ? (
-        <Text size="small" className="mt-4 py-8 text-center text-ui-fg-muted">No orders yet</Text>
-      ) : (
-        <Text size="small" className="mt-4 py-8 text-center text-ui-fg-muted">
-          {data} total orders
-        </Text>
-      )}
-    </Container>
-  )
-}
-
-function TopProducts() {
-  const { data, isLoading } = useCount('product')
-  return (
-    <Container className="p-6">
-      <div className="flex items-center justify-between">
-        <Heading level="h3">Top Products</Heading>
-        <Link href="/products" className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover">
-          <Text size="small">View all</Text>
-        </Link>
-      </div>
-      {isLoading ? (
-        <div className="mt-4 space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-ui-bg-component" />
-          ))}
-        </div>
-      ) : !data ? (
-        <Text size="small" className="mt-4 py-8 text-center text-ui-fg-muted">No products yet</Text>
-      ) : (
-        <Text size="small" className="mt-4 py-8 text-center text-ui-fg-muted">
-          {data} total products
-        </Text>
-      )}
-    </Container>
+    </>
   )
 }
