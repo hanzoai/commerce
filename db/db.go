@@ -20,8 +20,29 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
+
+	ormdb "github.com/hanzoai/orm/db"
+)
+
+// Tenant types. They name the two keyspaces the registry keeps apart — a user
+// and an org may share an id and are still different tenants — and they are the
+// TenantType every store reports.
+const (
+	tenantUser = "user"
+	tenantOrg  = "org"
+)
+
+const (
+	// defaultMaxOpenTenants bounds how many tenant stores stay open. The bound
+	// is what makes this safe on a node serving many tenants: without one, an
+	// open-per-tenant cache is a file descriptor leak with extra steps.
+	defaultMaxOpenTenants = 256
+
+	// defaultTenantIdleTTL closes stores nobody has touched for this long, so a
+	// node that goes quiet hands its descriptors back instead of holding the
+	// high-water mark until restart.
+	defaultTenantIdleTTL = 5 * time.Minute
 )
 
 var (
@@ -70,6 +91,15 @@ type Config struct {
 	// OrgDataDir is the directory for per-org SQLite databases
 	// Defaults to DataDir/orgs
 	OrgDataDir string
+
+	// MaxOpenTenants bounds how many per-tenant stores are open at once; the
+	// least recently used idle one is closed to stay under it.
+	// Defaults to defaultMaxOpenTenants.
+	MaxOpenTenants int
+
+	// TenantIdleTTL closes a per-tenant store untouched for this long, even
+	// below MaxOpenTenants. Defaults to defaultTenantIdleTTL; negative disables.
+	TenantIdleTTL time.Duration
 
 	// DatastoreDSN is the connection string for Hanzo Datastore (DATASTORE_URL)
 	DatastoreDSN string
@@ -166,13 +196,14 @@ func DefaultConfig() *Config {
 // It manages multiple database layers and provides unified access.
 type Manager struct {
 	config *Config
-	mu     sync.RWMutex
 
-	// User databases (userID -> DB)
-	userDBs map[string]*SQLiteDB
-
-	// Organization databases (orgID -> DB)
-	orgDBs map[string]*SQLiteDB
+	// Per-tenant SQLite stores. The lifecycle — open on demand, bound, evict
+	// the coldest idle handle, and the OnOpen/OnClose seam WAL replication
+	// attaches to — lives in orm, because it is not commerce's problem and
+	// commerce's private version of it (a userDBs and an orgDBs map, closed
+	// only by Manager.Close) grew a file descriptor per tenant ever touched
+	// and never gave one back.
+	tenants *ormdb.Registry[DB]
 
 	// Hanzo Datastore (shared)
 	datastoreDB Datastore
@@ -181,9 +212,6 @@ type Manager struct {
 	// (COMMERCE_KMS_MASTER_KEY). Nil => per-tenant SQLite files are unencrypted
 	// (dev/CI). Resolved once in NewManager and passed to every tenant store.
 	masterKey []byte
-
-	// Closed flag
-	closed bool
 }
 
 // NewManager creates a new database manager
@@ -198,6 +226,12 @@ func NewManager(cfg *Config) (*Manager, error) {
 	if cfg.OrgDataDir == "" {
 		cfg.OrgDataDir = cfg.DataDir + "/orgs"
 	}
+	if cfg.MaxOpenTenants <= 0 {
+		cfg.MaxOpenTenants = defaultMaxOpenTenants
+	}
+	if cfg.TenantIdleTTL == 0 {
+		cfg.TenantIdleTTL = defaultTenantIdleTTL
+	}
 
 	// Decide at-rest encryption posture ONCE, from COMMERCE_KMS_MASTER_KEY. On a
 	// non-encrypting (pure-Go) build this hard-errors when the key is set rather
@@ -209,9 +243,18 @@ func NewManager(cfg *Config) (*Manager, error) {
 
 	m := &Manager{
 		config:    cfg,
-		userDBs:   make(map[string]*SQLiteDB),
-		orgDBs:    make(map[string]*SQLiteDB),
 		masterKey: masterKey,
+	}
+
+	m.tenants, err = ormdb.NewRegistry(ormdb.RegistryConfig[DB]{
+		Dir:     cfg.DataDir,
+		MaxOpen: cfg.MaxOpenTenants,
+		IdleTTL: cfg.TenantIdleTTL,
+		PathFor: m.tenantPath,
+		Open:    m.openTenant,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Initialize Hanzo Datastore if enabled
@@ -224,6 +267,32 @@ func NewManager(cfg *Config) (*Manager, error) {
 	}
 
 	return m, nil
+}
+
+// tenantPath places a tenant's file. Users and orgs have separately configurable
+// roots, so the registry's single Dir is ignored in favour of them; the layout
+// is <root>/<id>/data.db, unchanged, because these files already exist on disk.
+func (m *Manager) tenantPath(_ string, t ormdb.Tenant) string {
+	root := m.config.OrgDataDir
+	if t.Type == tenantUser {
+		root = m.config.UserDataDir
+	}
+	return root + "/" + t.ID + "/data.db"
+}
+
+// openTenant opens one tenant's store. The registry decides WHEN a store is
+// open; this decides WHAT one is — same pragmas, same vector settings, same
+// at-rest key for every tenant.
+func (m *Manager) openTenant(t ormdb.Tenant, path string) (DB, error) {
+	return NewSQLiteDB(&SQLiteDBConfig{
+		Path:               path,
+		Config:             m.config.SQLite,
+		EnableVectorSearch: m.config.EnableVectorSearch,
+		VectorDimensions:   m.config.VectorDimensions,
+		TenantID:           t.ID,
+		TenantType:         t.Type,
+		MasterKey:          m.masterKey,
+	})
 }
 
 // isSafeTenantID reports whether id is safe to use as a single filesystem path
@@ -254,73 +323,31 @@ func isSafeTenantID(id string) bool {
 }
 
 // User returns the database for a specific user
-func (m *Manager) User(userID string) (DB, error) {
-	if !isSafeTenantID(userID) {
-		return nil, fmt.Errorf("db: unsafe user id %q", userID)
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.closed {
-		return nil, ErrDatabaseClosed
-	}
-
-	if db, ok := m.userDBs[userID]; ok {
-		return db, nil
-	}
-
-	// Create new user database
-	db, err := NewSQLiteDB(&SQLiteDBConfig{
-		Path:               m.config.UserDataDir + "/" + userID + "/data.db",
-		Config:             m.config.SQLite,
-		EnableVectorSearch: m.config.EnableVectorSearch,
-		VectorDimensions:   m.config.VectorDimensions,
-		TenantID:           userID,
-		TenantType:         "user",
-		MasterKey:          m.masterKey,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.userDBs[userID] = db
-	return db, nil
-}
+func (m *Manager) User(userID string) (DB, error) { return m.tenant(tenantUser, userID) }
 
 // Org returns the database for a specific organization
-func (m *Manager) Org(orgID string) (DB, error) {
-	if !isSafeTenantID(orgID) {
-		return nil, fmt.Errorf("db: unsafe org id %q", orgID)
+func (m *Manager) Org(orgID string) (DB, error) { return m.tenant(tenantOrg, orgID) }
+
+// tenant returns a DB view of one tenant's store.
+//
+// The returned value pins nothing (see tenantDB): it borrows the tenant's
+// handle per operation, so callers may hold it for as long as they like without
+// keeping a file descriptor. The store is opened here rather than on first use
+// so this still reports an unopenable tenant as an error — the namespaced
+// datastore resolver depends on that to fail closed rather than route a
+// merchant's rows somewhere shared.
+func (m *Manager) tenant(typ, id string) (DB, error) {
+	if !isSafeTenantID(id) {
+		return nil, fmt.Errorf("db: unsafe %s id %q", typ, id)
 	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.closed {
-		return nil, ErrDatabaseClosed
-	}
-
-	if db, ok := m.orgDBs[orgID]; ok {
-		return db, nil
-	}
-
-	// Create new org database
-	db, err := NewSQLiteDB(&SQLiteDBConfig{
-		Path:               m.config.OrgDataDir + "/" + orgID + "/data.db",
-		Config:             m.config.SQLite,
-		EnableVectorSearch: m.config.EnableVectorSearch,
-		VectorDimensions:   m.config.VectorDimensions,
-		TenantID:           orgID,
-		TenantType:         "org",
-		MasterKey:          m.masterKey,
-	})
-	if err != nil {
+	t := ormdb.Tenant{Type: typ, ID: id}
+	if err := m.tenants.Do(context.Background(), t, func(DB) error { return nil }); err != nil {
+		if errors.Is(err, ormdb.ErrRegistryClosed) {
+			return nil, ErrDatabaseClosed
+		}
 		return nil, err
 	}
-
-	m.orgDBs[orgID] = db
-	return db, nil
+	return newTenantDB(m.tenants, t), nil
 }
 
 // Datastore returns the Hanzo Datastore for deep analytics queries
@@ -336,28 +363,12 @@ func (m *Manager) Encrypted() bool {
 
 // Close closes all database connections
 func (m *Manager) Close() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.closed {
-		return nil
-	}
-	m.closed = true
-
 	var lastErr error
 
-	// Close user databases
-	for _, db := range m.userDBs {
-		if err := db.Close(); err != nil {
-			lastErr = err
-		}
-	}
-
-	// Close org databases
-	for _, db := range m.orgDBs {
-		if err := db.Close(); err != nil {
-			lastErr = err
-		}
+	// Close every open tenant store. Further User/Org calls report
+	// ErrDatabaseClosed.
+	if err := m.tenants.Close(); err != nil {
+		lastErr = err
 	}
 
 	// Close Hanzo Datastore

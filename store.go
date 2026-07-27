@@ -58,9 +58,11 @@ func (s *Store) Org() string {
 	return s.org
 }
 
-// DB returns the per-org *db.DB shard. It opens the shard lazily; the
-// underlying db.Manager memoizes them so two requests on the same org
-// share the same SQLite handle (with its own connection pool).
+// DB returns the per-org *db.DB shard. The value it returns holds no
+// handle — it borrows the org's store from the tenant registry for each
+// operation — so two requests on the same org share one open SQLite
+// handle (with its own connection pool) while it is resident, and
+// holding this Store costs no file descriptor once it is not.
 func (s *Store) DB() (db.DB, error) {
 	if s == nil || s.mgr == nil {
 		return nil, fmt.Errorf("store: no db manager")
