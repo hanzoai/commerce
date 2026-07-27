@@ -1,40 +1,38 @@
 #!/usr/bin/env bash
-# sync-admin-ui.sh — sync the admin-commerce Hanzo GUI v7 bundle into ui/dist.
+# sync-admin-ui.sh — sync THE Commerce admin export into ui/dist.
 #
-# The Commerce admin SPA is built externally in the Hanzo GUI workspace
-# at ~/work/hanzo/gui/apps/admin-commerce (Vite + Hanzo GUI v7). This
-# script copies the built bundle into ui/dist/ where //go:embed picks it
-# up at compile time of cmd/commerced. Reproducible, idempotent,
-# CI-friendly.
+# There is one Commerce admin: app/admin (@hanzo/commerce-dashboard, Next.js
+# `output: export`, built on @hanzo/ui + @hanzo/gui). Build it first
+# (`cd app && pnpm turbo run typecheck build --filter=@hanzo/commerce-dashboard`)
+# and this copies app/admin/out into ui/dist/ where //go:embed picks it up at
+# compile time of cmd/commerced. Reproducible, idempotent, CI-friendly.
 #
 # Usage:
-#   scripts/sync-admin-ui.sh                       # uses ../gui/apps/admin-commerce
-#   ADMIN_COMMERCE_DIR=/path scripts/sync-admin-ui.sh
+#   scripts/sync-admin-ui.sh                 # uses app/admin/out
+#   ADMIN_COMMERCE_DIR=/path scripts/sync-admin-ui.sh   # dir containing out/
 #
-# Exits non-zero if the source dist/ is missing or empty so CI fails
-# loud instead of shipping a binary with a stale or empty SPA.
+# Exits non-zero if the export is missing or empty so CI fails loud instead
+# of shipping a binary with a stale or empty SPA.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEFAULT_SRC="$(cd "${REPO_ROOT}/../gui/apps/admin-commerce" 2>/dev/null && pwd || echo "")"
-SRC="${ADMIN_COMMERCE_DIR:-${DEFAULT_SRC}}"
+SRC="${ADMIN_COMMERCE_DIR:-${REPO_ROOT}/app/admin}"
 DST="${REPO_ROOT}/ui/dist"
 
-if [[ -z "${SRC}" || ! -d "${SRC}/dist" ]]; then
-  echo "error: admin-commerce dist not found." >&2
-  echo "  expected: ${SRC:-<unset>}/dist" >&2
-  echo "  build it first:  cd \"${SRC:-../gui/apps/admin-commerce}\" && bun run build" >&2
-  echo "  or set ADMIN_COMMERCE_DIR=/abs/path/to/admin-commerce" >&2
+if [[ ! -d "${SRC}/out" ]]; then
+  echo "error: admin export not found." >&2
+  echo "  expected: ${SRC}/out" >&2
+  echo "  build it first:  cd app && pnpm turbo run typecheck build --filter=@hanzo/commerce-dashboard" >&2
   exit 1
 fi
 
-if ! ls "${SRC}/dist"/index.html "${SRC}/dist"/assets/*.js >/dev/null 2>&1; then
-  echo "error: ${SRC}/dist is missing index.html or assets/*.js" >&2
+if ! ls "${SRC}/out"/index.html >/dev/null 2>&1; then
+  echo "error: ${SRC}/out is missing index.html" >&2
   exit 1
 fi
 
 mkdir -p "${DST}"
-rsync -a --delete --exclude=.gitkeep "${SRC}/dist/" "${DST}/"
+rsync -a --delete --exclude=.gitkeep "${SRC}/out/" "${DST}/"
 
 # Stamp the sync so binaries can be traced back to a build.
 {
@@ -51,5 +49,5 @@ rsync -a --delete --exclude=.gitkeep "${SRC}/dist/" "${DST}/"
   fi
 } > "${DST}/.sync-stamp"
 
-echo "synced ${SRC}/dist -> ${DST}"
-ls -lh "${DST}/index.html" "${DST}"/assets/*.js "${DST}"/assets/*.css 2>/dev/null
+echo "synced ${SRC}/out -> ${DST}"
+ls -lh "${DST}/index.html" 2>/dev/null

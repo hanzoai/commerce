@@ -1,23 +1,17 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 
-// Package ui exposes the built admin-commerce (Hanzo GUI v7) bundle as
-// an embedded filesystem.
+// Package ui exposes THE Commerce admin export as an embedded filesystem.
 //
-// The bundle is produced externally in the @hanzo/gui workspace at
-// ~/work/hanzo/gui/apps/admin-commerce (Vite + Hanzo GUI v7) and synced
-// into ui/dist by scripts/sync-admin-ui.sh. The synced dist/ is baked
-// into the commerced binary at compile time — no external static-assets
-// directory, no sidecar, no separate deploy.
+// There is one Commerce admin: app/admin (@hanzo/commerce-dashboard, Next.js
+// `output: export`, built on @hanzo/ui + @hanzo/gui — the same component set
+// the cloud console renders). scripts/sync-admin-ui.sh copies app/admin/out
+// into ui/dist, which is baked into the commerced binary at compile time — no
+// external static-assets directory, no sidecar, no separate deploy.
 //
-// Mount the returned handler at /_/commerce/ in the commerced HTTP
-// router so it serves the SPA shell for every non-API request:
-//
-//	import commerceui "github.com/hanzoai/commerce/ui"
-//	mux.Handle("/_/commerce/", http.StripPrefix("/_/commerce", commerceui.Handler()))
-//
-// API routes under /v1/commerce/* take precedence via earlier route
-// registration; anything else falls through to the SPA, which uses
-// client-side routing so deep links survive reload.
+// Mounted at the ROOT /admin/* only (commerce.go). The export emits
+// root-relative /_next/* chunk URLs, so it can only be served from a mount
+// whose asset paths are root-relative; the old /_/commerce/ui/* mount could
+// not serve it and is gone rather than serving a second, frozen bundle.
 package ui
 
 import (

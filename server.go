@@ -3,13 +3,11 @@
 package commerce
 
 import (
-	"net/http"
 
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/pkg/auth"
-	"github.com/hanzoai/commerce/ui"
 )
 
 // installEdgeAuth registers the directly-exposed-edge anti-spoofing boundary.
@@ -78,27 +76,4 @@ func installRequireGate(app *App, require bool) {
 		return
 	}
 	app.Router.Use(auth.Identity(require))
-}
-
-// mountAdminSPA mounts the embedded admin SPA at /_/commerce/ui/*. It is
-// called AFTER setupRoutes (preserving the historical registration order
-// relative to the /_/commerce JSON admin routes); zip routes by specificity,
-// so the concrete /_/commerce/tenants|providers routes and this subtree never
-// contend. The legacy /admin/* mount stays in place for the in-progress
-// cutover so commerce.hanzo.ai keeps working while it migrates to /_/commerce/.
-//
-// The SPA inherits the identity boundary installed by installEdgeAuth
-// (mounted earlier in Bootstrap), so these routes are header-spoofing safe
-// like every other route. The browser hits /_/commerce/ui/ and the React
-// Router uses basename="/_/commerce/ui", so deep links resolve to the shell
-// via the Static fallback and survive a refresh.
-func mountAdminSPA(app *App) {
-	if app == nil || app.Router == nil {
-		return
-	}
-	spa := zip.Static(ui.FS(), zip.WithIndex("index.html"), zip.WithFallback("index.html"))
-	redirect := func(c *zip.Ctx) error { return c.Redirect(http.StatusFound, "/_/commerce/ui/") }
-	app.Router.Get("/_/commerce", redirect)
-	app.Router.Get("/_/commerce/ui", redirect)
-	app.Router.Get("/_/commerce/ui/*", spa)
 }

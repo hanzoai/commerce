@@ -17,9 +17,10 @@ images:
     context: .
     dockerfile: Dockerfile.production
     repo: ghcr.io/hanzoai/commerce
-  # Admin console (deployed as commerce-admin). From-source build (v0.2.0+):
-  # Dockerfile.commerce-admin builds app/admin (@hanzo/commerce-dashboard) and serves
-  # the export via hanzoai/static — the same Dockerfile the in-cluster buildkit uses.
+  # Admin console (deployed as commerce-admin). From-source build (v0.3.0+):
+  # Dockerfile.commerce-admin typechecks AND builds app/admin
+  # (@hanzo/commerce-dashboard, on @hanzo/ui/product) and serves the export via
+  # hanzoai/static — the same Dockerfile the in-cluster buildkit uses.
   - name: commerce-admin
     context: .
     dockerfile: Dockerfile.commerce-admin
@@ -79,6 +80,16 @@ test:
       go run github.com/onsi/ginkgo/v2/ginkgo -r --randomize-all --fail-fast --trace \
         --skip-package=test-integration \
         test/
+
+  # Admin typecheck — the admin renders @hanzo/ui/product from source, so a drift
+  # in the shared component set fails HERE rather than in a browser. `next build`
+  # no longer sets ignoreBuildErrors, so this gate is real.
+  - name: admin-typecheck
+    run: |
+      set -e
+      cd app
+      pnpm install --no-frozen-lockfile
+      node_modules/.bin/turbo run typecheck --filter=@hanzo/commerce-dashboard
 
 # NO deploy: block by design. commerce is an operator-MANAGED system service —
 # `services.hanzo.ai/commerce` (+ -admin/-site) owns `.spec.image.tag`, and the
