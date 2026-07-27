@@ -6,7 +6,7 @@
     "esModuleInterop": true,
     "declarationMap": true,
     "declaration": true,
-    "module": "CommonJS",
+    "module": "node16",
     "moduleResolution": "node16",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
