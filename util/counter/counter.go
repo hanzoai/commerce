@@ -227,7 +227,13 @@ func init() {
 		}, nil)
 		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
-			log.Panic("IncrementByTask Error %v", err, c)
+			// Log and give up. These run as delay tasks in background goroutines and
+			// delay does not recover(), so a panic here does not fail a counter
+			// increment — it takes the whole process down. A missed analytics
+			// shard is not worth that, and "database closed" during shutdown made
+			// it a routine occurrence rather than a rare one.
+			log.Error("IncrementByTask: %v", err, c)
+			return
 		}
 		var s Shard
 		err = datastore.RunInTransaction(c, func(txDb *datastore.Datastore) error {
@@ -237,7 +243,10 @@ func init() {
 			// A missing entity and a present entity will both work.
 			err = datastore.IgnoreFieldMismatch(err)
 			if err != nil && err != datastore.ErrNoSuchEntity {
-				panic(err)
+				// The closure returns error; RunInTransaction handles it.
+				// Panicking here escaped into a delay goroutine, and delay has
+				// no recover().
+				return err
 			}
 			s.Name = name
 			s.Tag = tag
@@ -260,7 +269,13 @@ func init() {
 		}
 		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
-			log.Panic("IncrementByTask Error %v", err, c)
+			// Log and give up. These run as delay tasks in background goroutines and
+			// delay does not recover(), so a panic here does not fail a counter
+			// increment — it takes the whole process down. A missed analytics
+			// shard is not worth that, and "database closed" during shutdown made
+			// it a routine occurrence rather than a rare one.
+			log.Error("IncrementByTask: %v", err, c)
+			return
 		}
 		cache.IncrementExisting(c, memcacheKey(name), int64(amount))
 	})
@@ -282,7 +297,8 @@ func init() {
 		}, nil)
 		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
-			log.Panic("AddMemberTask Error %v", err, c)
+			log.Error("AddMemberTask: %v", err, c)
+			return
 		}
 		var s Shard
 		err = datastore.RunInTransaction(c, func(txDb *datastore.Datastore) error {
@@ -317,7 +333,8 @@ func init() {
 		}
 		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
-			log.Panic("AddMemberTask Error %v", err, c)
+			log.Error("AddMemberTask: %v", err, c)
+			return
 		}
 
 		mkey := memcacheKey(name)
