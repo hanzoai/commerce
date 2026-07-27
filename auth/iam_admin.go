@@ -58,7 +58,7 @@ func (u AdminUser) Subject() string {
 }
 
 // GetUserByEmail finds a user by email across all organizations. It uses
-// The IAM /api/get-global-users search endpoint with field=email filter.
+// The IAM /v1/iam/get-global-users search endpoint with field=email filter.
 func (c *IAMAdminClient) GetUserByEmail(ctx context.Context, email string) (*AdminUser, error) {
 	if email == "" {
 		return nil, fmt.Errorf("iam admin: email required")
@@ -76,7 +76,7 @@ func (c *IAMAdminClient) GetUserByEmail(ctx context.Context, email string) (*Adm
 	params.Set("p", "1")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		c.BaseURL+"/api/get-global-users?"+params.Encode(), nil)
+		c.BaseURL+"/v1/iam/get-global-users?"+params.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}

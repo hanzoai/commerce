@@ -196,13 +196,13 @@ go run cmd/commerce/main.go serve --dev     # Development
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/analytics/event` | POST | Single event |
-| `/api/v1/analytics/events` | POST | Batch events |
-| `/api/v1/analytics/identify` | POST | User identification |
-| `/api/v1/analytics/ast` | POST | astley.js page AST (JSON-LD) |
-| `/api/v1/analytics/pixel.gif` | GET | Pixel tracking |
-| `/api/v1/analytics/ai/message` | POST | AI message event |
-| `/api/v1/analytics/ai/completion` | POST | AI completion event |
+| `/v1/analytics/event` | POST | Single event |
+| `/v1/analytics/events` | POST | Batch events |
+| `/v1/analytics/identify` | POST | User identification |
+| `/v1/analytics/ast` | POST | astley.js page AST (JSON-LD) |
+| `/v1/analytics/pixel.gif` | GET | Pixel tracking |
+| `/v1/analytics/ai/message` | POST | AI message event |
+| `/v1/analytics/ai/completion` | POST | AI completion event |
 
 ## SaaS Metrics God-View (api/metrics, 2026-07)
 
@@ -466,12 +466,12 @@ never both.
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/billing/balance` | GET | Balance by user+currency (cents) |
-| `/api/v1/billing/balance/all` | GET | All currency balances |
-| `/api/v1/billing/usage` | POST | Record API usage (withdraw) |
-| `/api/v1/billing/deposit` | POST | Create deposit transaction (per-subject money-in / settlement) |
-| `/api/v1/billing/credit` | POST | THE ONE mint-gated, org-keyed credit grant (see below) |
-| `/api/v1/billing/zap` | POST | Clear balance |
+| `/v1/billing/balance` | GET | Balance by user+currency (cents) |
+| `/v1/billing/balance/all` | GET | All currency balances |
+| `/v1/billing/usage` | POST | Record API usage (withdraw) |
+| `/v1/billing/deposit` | POST | Create deposit transaction (per-subject money-in / settlement) |
+| `/v1/billing/credit` | POST | THE ONE mint-gated, org-keyed credit grant (see below) |
+| `/v1/billing/zap` | POST | Clear balance |
 
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
 
