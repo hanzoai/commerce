@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.8.3
+	github.com/zap-proto/zip v1.9.0
 )
 
 require (
@@ -25,7 +25,7 @@ require (
 	github.com/hanzoai/base v1.5.5
 	github.com/hanzoai/goauthorizenet v0.0.0-20180920213706-626992b83568
 	github.com/hanzoai/gochimp3 v0.0.0-20241127054040-6051f77e24f1
-	github.com/hanzoai/orm v0.6.14
+	github.com/hanzoai/orm v0.6.15
 	github.com/hanzoai/pubsub-go v1.0.0
 	github.com/hanzoai/s3-go v1.0.0
 	github.com/hanzoai/search-go v0.36.0
@@ -139,7 +139,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/zap-proto/go v1.3.0 // indirect
-	github.com/zap-proto/http v0.2.0 // indirect
+	github.com/zap-proto/http v0.2.2 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
