@@ -203,7 +203,7 @@ type Manager struct {
 	// commerce's private version of it (a userDBs and an orgDBs map, closed
 	// only by Manager.Close) grew a file descriptor per tenant ever touched
 	// and never gave one back.
-	tenants *ormdb.Registry[DB]
+	tenants *ormdb.Namespaces[DB]
 
 	// Hanzo Datastore (shared)
 	datastoreDB Datastore
@@ -246,7 +246,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 		masterKey: masterKey,
 	}
 
-	m.tenants, err = ormdb.NewRegistry(ormdb.RegistryConfig[DB]{
+	m.tenants, err = ormdb.NewNamespaces(ormdb.NamespacesConfig[DB]{
 		Dir:     cfg.DataDir,
 		MaxOpen: cfg.MaxOpenTenants,
 		IdleTTL: cfg.TenantIdleTTL,
@@ -272,25 +272,45 @@ func NewManager(cfg *Config) (*Manager, error) {
 // tenantPath places a tenant's file. Users and orgs have separately configurable
 // roots, so the registry's single Dir is ignored in favour of them; the layout
 // is <root>/<id>/data.db, unchanged, because these files already exist on disk.
-func (m *Manager) tenantPath(_ string, t ormdb.Tenant) string {
+//
+// Ignoring Dir means opting out of the registry's containment check, which is
+// relative to Dir — so the id is validated here instead. A PathFor that leaves
+// the registry's tree owns the guarantee the registry can no longer make.
+func (m *Manager) tenantPath(_ string, n ormdb.Namespace) (string, error) {
+	typ, id, ok := splitTenant(n)
+	if !ok || !isSafeTenantID(id) {
+		return "", fmt.Errorf("db: unsafe namespace %q", n)
+	}
 	root := m.config.OrgDataDir
-	if t.Type == tenantUser {
+	if typ == tenantUser {
 		root = m.config.UserDataDir
 	}
-	return root + "/" + t.ID + "/data.db"
+	return root + "/" + id + "/data.db", nil
+}
+
+// splitTenant reads a namespace back as the (type, id) pair commerce stores
+// under. A namespace is opaque to orm — one string, one file — so the pair
+// lives here, where the two roots and the SQLite tenant columns need it.
+func splitTenant(n ormdb.Namespace) (typ, id string, ok bool) {
+	typ, id, ok = strings.Cut(string(n), "/")
+	return typ, id, ok && typ != "" && id != ""
 }
 
 // openTenant opens one tenant's store. The registry decides WHEN a store is
 // open; this decides WHAT one is — same pragmas, same vector settings, same
 // at-rest key for every tenant.
-func (m *Manager) openTenant(t ormdb.Tenant, path string) (DB, error) {
+func (m *Manager) openTenant(n ormdb.Namespace, path string) (DB, error) {
+	typ, id, ok := splitTenant(n)
+	if !ok {
+		return nil, fmt.Errorf("db: unsafe namespace %q", n)
+	}
 	return NewSQLiteDB(&SQLiteDBConfig{
 		Path:               path,
 		Config:             m.config.SQLite,
 		EnableVectorSearch: m.config.EnableVectorSearch,
 		VectorDimensions:   m.config.VectorDimensions,
-		TenantID:           t.ID,
-		TenantType:         t.Type,
+		TenantID:           id,
+		TenantType:         typ,
 		MasterKey:          m.masterKey,
 	})
 }
@@ -340,9 +360,9 @@ func (m *Manager) tenant(typ, id string) (DB, error) {
 	if !isSafeTenantID(id) {
 		return nil, fmt.Errorf("db: unsafe %s id %q", typ, id)
 	}
-	t := ormdb.Tenant{Type: typ, ID: id}
-	if err := m.tenants.Do(context.Background(), t, func(DB) error { return nil }); err != nil {
-		if errors.Is(err, ormdb.ErrRegistryClosed) {
+	t := ormdb.Namespace(typ + "/" + id)
+	if err := m.tenants.With(context.Background(), t, func(DB) error { return nil }); err != nil {
+		if errors.Is(err, ormdb.ErrClosed) {
 			return nil, ErrDatabaseClosed
 		}
 		return nil, err
