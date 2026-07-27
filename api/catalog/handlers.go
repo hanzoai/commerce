@@ -22,6 +22,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
+	"github.com/hanzoai/commerce/middleware"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 	"github.com/hanzoai/commerce/models/catalogentry"
 	"github.com/hanzoai/commerce/util/json"
@@ -41,6 +42,26 @@ func requireSuperAdmin(c *zip.Ctx) bool {
 	claims := iammiddleware.GetIAMClaims(c)
 	if claims == nil || !claims.IsSuperAdmin() {
 		http.Fail(c, 403, "platform admin required to edit the catalog", errors.New("not a global admin"))
+		return false
+	}
+	return true
+}
+
+// requirePlatform fails closed unless the caller is the PLATFORM PRINCIPAL —
+// a SuperAdmin or the internal service token (middleware.IsPlatform). It gates
+// the SYNC doors, which a scheduled job has to be able to walk: a sync that only
+// a human can start is a catalog that goes stale, and the model rows stayed
+// empty in production for exactly that reason.
+//
+// Admitting the service token here costs nothing a sync could abuse. A sync
+// writes upstream COST and only ever freezes a retail price on a row BORN in
+// that run (catalogentry.freezePrice); a live model's Price is unreachable from
+// this door, so the money a customer is charged still moves only by a human
+// hand in admin.hanzo.ai. Editing entries stays requireSuperAdmin.
+func requirePlatform(c *zip.Ctx) bool {
+	if !middleware.IsPlatform(c) {
+		http.Fail(c, 403, "platform administrator or internal-service credentials required to sync the catalog",
+			errors.New("caller is neither the internal service token nor a platform admin"))
 		return false
 	}
 	return true
@@ -212,9 +233,13 @@ func DeleteEntry(c *zip.Ctx) error {
 // (catalogentry.UpsertModels enforces that, so the rule holds no matter which
 // syncer calls). This is the ONE write seam between the model families /
 // upstream and the catalog: they own the structure and publish it, commerce
-// holds the numbers, admin.hanzo.ai edits them. Platform admin only.
+// holds the numbers, admin.hanzo.ai edits them.
+//
+// Platform principal, like its sibling RefreshModels — the two sync doors land
+// through the same UpsertModels, so gating them differently would only decide
+// which syncer has to be a human.
 func SyncModels(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
+	if !requirePlatform(c) {
 		return nil
 	}
 	var rows []catalogentry.ModelRow
