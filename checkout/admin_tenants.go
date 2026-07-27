@@ -33,9 +33,9 @@ import (
 )
 
 // TenantAdminAPI wires the /_/commerce/* endpoints that drive the tenant
-// record in the new hanzo/base-backed store. This is distinct from the
-// legacy AdminAPI in admin.go — that one still speaks to the old Resolver;
-// this one speaks to store.Store. Both coexist during migration.
+// record in the hanzo/base-backed store. It is the ONLY admin surface: the
+// legacy AdminAPI it used to coexist with spoke to a Resolver, implemented
+// nothing but notImplemented, and was reachable from no route — deleted.
 type TenantAdminAPI struct {
 	Store *store.Store
 }
@@ -225,34 +225,6 @@ func (a *TenantAdminAPI) findTenantByOwner(owner string) (*store.Tenant, error) 
 		}
 	}
 	return nil, store.ErrTenantNotFound
-}
-
-// ─── tenant JSON (public, read-only) — refactored to use store ──────────
-
-// TenantJSONFromStore is the store-backed variant of TenantJSON. The legacy
-// TenantJSON(Resolver) remains in tenant.go for callers that still hold a
-// StaticResolver; new callers should use this one. Once every deployment
-// is on base, TenantJSON becomes a thin wrapper around this function and
-// StaticResolver is deleted.
-func TenantJSONFromStore(s *store.Store) zip.Handler {
-	return func(c *zip.Ctx) error {
-		c.SetHeader("Content-Type", "application/json; charset=utf-8")
-
-		host, err := normalizeHostForLookup(c.Fiber().Host())
-		if err != nil {
-			// Constant 404 body — never echo host.
-			c.SetHeader("Cache-Control", "no-store")
-			return c.Bytes(http.StatusNotFound, unknownTenant404)
-		}
-
-		t, err := s.Tenants.FindByHostname(host)
-		if err != nil {
-			c.SetHeader("Cache-Control", "no-store")
-			return c.Bytes(http.StatusNotFound, unknownTenant404)
-		}
-		c.SetHeader("Cache-Control", "public, max-age=60")
-		return c.JSON(http.StatusOK, publicTenantDTO(t))
-	}
 }
 
 // unknownTenant404 is the canonical 404 body. Stored as a byte slice so the
