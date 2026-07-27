@@ -19,10 +19,21 @@ import (
 	"time"
 )
 
-// CreditInput is one org-keyed, idempotent credit grant. The ledger is
-// multi-currency, so Currency is explicit. ExpiresAt nil = no expiry.
+// CreditInput is one idempotent credit grant. The ledger is multi-currency, so
+// Currency is explicit. ExpiresAt nil = no expiry.
+//
+// (Org, Subject) IS the address the credit lands at: Org names the ledger, Subject
+// the account within it. Subject is OPTIONAL and empty means the org's pool account
+// — the whole tenant shares one balance, which is what a tenant org wants and what
+// this seam has always done. It exists because that is not universally true: in a
+// shared signup org the members are strangers to each other, each spends from their
+// own account, and a credit keyed on the org alone lands in a pool no gate reads —
+// money that is neither lost nor spendable. A host that resolves per-member accounts
+// names one here, from the SAME rule its gate resolves the payer with, so a credit
+// and the spend it funds address one wallet by construction.
 type CreditInput struct {
 	Org            string
+	Subject        string
 	Currency       string
 	Reason         string
 	Tag            string
@@ -32,9 +43,10 @@ type CreditInput struct {
 }
 
 // CreditLedger is the ONE way credit enters an org ledger when commerce is
-// embedded. Both methods are org-keyed and MUST resolve the SAME per-org account,
-// so a Credit is immediately visible to Balance and to the cloud AI gate that
-// reads the same ledger account.
+// embedded. Both methods MUST resolve the account the SAME way — Balance answers
+// for the pool, and Credit for the pool whenever CreditInput.Subject is empty — so
+// a Credit is immediately visible to Balance and to the cloud AI gate that reads
+// the same ledger account.
 type CreditLedger interface {
 	// Credit appends a BALANCED double-entry credit to the org's account and
 	// returns the posting/tx id and the account's new available balance.
