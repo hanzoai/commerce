@@ -436,24 +436,31 @@ Code: `db/encryption.go` (key posture + per-tenant DEK), `db/migrate.go` (migrat
   only rewraps the sidecar (O(1), never bricks a file).
 - **Posture decided once**: unset key → unencrypted (dev/CI). Set + codec linked
   → encrypted. Set + cgo-but-no-libsqlcipher → **refuse to boot** (CodecLinked()
-  probe), never silent plaintext. Set + existing file without a `.dek` sidecar →
-  refuse (migrate first).
-- **Migration** (`cmd/commerce-encrypt-dbs`, idempotent, keeps `.plaintext.bak`):
+  probe), never silent plaintext. Set + a PLAINTEXT file without a `.dek` sidecar
+  → migrated in place on open (the 16-byte SQLite header tells it apart). Set + a
+  CIPHERTEXT file without a sidecar → refuse: that DEK is unrecoverable, restore
+  the `.db` and `.dek` together from backup.
+- **Migration** (ON OPEN, under the create lock — idempotent, keeps `.plaintext.bak`):
   WAL-safe — folds the source WAL with a verified TRUNCATE checkpoint (opened R/W,
   not mode=ro), verifies per-table row-hash parity, then checkpoints+asserts the
   encrypted temp WAL-free before an atomic cutover (sidecar last = fail-closed).
 
-**Rollout (deliberate; NOT yet enabled — key unset ⇒ current plaintext behavior):**
-1. Build the image with libsqlcipher linked: add `libsqlite3` to the build tags,
-   `CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1 -I/usr/include/sqlcipher`,
-   `CGO_LDFLAGS=-lsqlcipher`, `apk add sqlcipher-dev` (builder) + `sqlcipher-libs`
-   (runtime), and a test stage with `SQLITE_REQUIRE_CODEC=1` so a mis-link fails CI.
-2. Generate a 32-byte key, store at KMS `/commerce/COMMERCE_KMS_MASTER_KEY`.
-3. Scale commerce to 0 (single-writer PVC), run `commerce-encrypt-dbs` as a Job
-   mounting `commerce-data` (or an idempotent initContainer), verify ciphertext +
-   `.plaintext.bak`.
-4. Add the `COMMERCE_KMS_MASTER_KEY` env (secretKeyRef `commerce-secrets`, optional)
-   to the commerce CR; scale up. Daemon now opens encrypted, refuses plaintext.
+**Rollout:** build the image with libsqlcipher linked — add `libsqlite3` to the
+build tags, `CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1
+-I/usr/include/sqlcipher`, `CGO_LDFLAGS=-lsqlcipher`, `apk add sqlcipher-dev`
+(builder) + `sqlcipher-libs` (runtime), and a test stage with
+`SQLITE_REQUIRE_CODEC=1` so a mis-link fails CI — then supply a 32-byte key.
+
+That is all. The first open of each tenant migrates it. There is no
+pre-migration Job, no scale-to-0 window and no ordering to get wrong, because
+the only way a store becomes encrypted is the way it is opened. The one-shot
+`cmd/commerce-encrypt-dbs` that used to own this is gone: a second way to do one
+thing, which refused to boot if you forgot it.
+
+**Where the key comes from:** an EMBEDDER passes `EmbedConfig.MasterKey` (cloud
+hands over the KEK it already resolves, so one process has one key, not two); a
+STANDALONE reads `COMMERCE_KMS_MASTER_KEY`. One source per deployment shape,
+never both.
 
 ## Billing API (2026-02-23)
 
