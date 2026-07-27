@@ -401,7 +401,8 @@ const useDataTable = <TData,>({
   const { state: searchState, onSearchChange, debounce = 300 } = search ?? {}
 
   const [localSearch, setLocalSearch] = React.useState(searchState ?? "")
-  const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>()
+  // React 19 types require an explicit initial value for a mutable ref.
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   React.useEffect(() => {
     setLocalSearch(searchState ?? "")
