@@ -6,7 +6,7 @@
     "declarationMap": true,
     "inlineSources": false,
     "isolatedModules": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "preserveWatchOutput": true,
@@ -20,10 +20,11 @@
     "resolveJsonModule": true,
     "outDir": "dist",
     "esModuleInterop": true,
-    "baseUrl": "src",
     "declarationDir": "dist",
     "paths": {
-      "@hanzo/commerce-icons": ["src/index.ts"]
+      "@hanzo/commerce-icons": [
+        "./src/src/index.ts"
+      ]
     }
   },
   "include": ["src"],
