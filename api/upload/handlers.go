@@ -2,7 +2,7 @@
 // images). A merchant POSTs multipart file(s); each is content-sniffed (image
 // bytes only — the client Content-Type header is never trusted), size-capped,
 // and stored under a per-tenant prefix in the house S3 client
-// (github.com/hanzoai/s3-go). The response is the public URL(s).
+// (github.com/hanzos3/go). The response is the public URL(s).
 //
 // Tenant isolation: every object key is prefixed tenant/<org>/uploads/ from the
 // AUTHENTICATED org (middleware.GetOrganization) — a caller can only ever write
