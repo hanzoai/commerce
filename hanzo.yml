@@ -8,23 +8,31 @@
 # $5 starter-credit change, PR #63) shipped no image. This closes that gap:
 # every push/tag now builds the backend + the deployed frontends automatically.
 #
-# Private hanzoai/* Go modules: the backend Dockerfile.production authenticates
+# Private hanzoai/* Go modules: the backend Dockerfile authenticates
 # `go mod tidy` with the `gh_token` BuildKit secret (supplied by BOTH build
 # paths) + GOPRIVATE — see the Dockerfile's builder stage.
 images:
   # Go backend — the API/billing service (StarterCreditCents lives here) AND the
-  # admin. Dockerfile.production's admin-build stage typechecks and builds
-  # app/admin (@hanzo/commerce-dashboard, on @hanzo/ui/product), syncs the export
-  # into ui/dist, and //go:embed bakes it into the binary, which serves it at
-  # /admin. There is no longer a separate commerce-admin image: the export is
-  # built for basePath /admin, so it has exactly ONE URL contract and exactly one
-  # server. The old static-container image served the same bundle at a second
-  # origin's ROOT — a second URL contract for one artifact, and the reason the
-  # embedded copy was left to rot.
+  # admin. ./Dockerfile's admin-build stage typechecks and builds app/admin
+  # (@hanzo/commerce-dashboard, on @hanzo/ui/product), syncs the export into
+  # ui/dist, and //go:embed bakes it into the binary, which serves it at /admin.
+  # ONE Dockerfile: .platform.yml (the webhook build that actually ships this
+  # image) has always built ./Dockerfile, so a second "production" one only ever
+  # fixed a file nothing deployed — that is how the deployed image came to carry
+  # no admin at all.
   - name: commerce
     context: .
-    dockerfile: Dockerfile.production
+    dockerfile: Dockerfile
     repo: ghcr.io/hanzoai/commerce
+  # The same export, served in the cluster. Production's commerce API is the
+  # cloud unified binary, and a library consumer cannot serve a gitignored
+  # go:embed dir — so commerce.hanzo.ai/admin is the export behind hanzoai/static.
+  # One producer (app/admin), one URL contract (/admin, next.config.ts basePath),
+  # two servers only because prod and standalone are different deployments.
+  - name: commerce-admin
+    context: .
+    dockerfile: Dockerfile.commerce-admin
+    repo: ghcr.io/hanzoai/commerce-admin
   # Marketing/storefront site (deployed as commerce-site, hanzoai/static plugin).
   - name: commerce-site
     context: .
@@ -85,14 +93,14 @@ test:
 
   # Admin typecheck — the admin renders @hanzo/ui/product from source, so a drift
   # in the shared component set fails HERE rather than in a browser, and faster
-  # than the image build (Dockerfile.production runs the same command to produce
+  # than the image build (Dockerfile runs the same command to produce
   # the embedded export). `next build` no longer sets ignoreBuildErrors, so this
   # gate is real.
   - name: admin-typecheck
     run: |
       set -e
       cd app
-      pnpm install --no-frozen-lockfile
+      pnpm install --frozen-lockfile
       node_modules/.bin/turbo run typecheck --filter=@hanzo/commerce-dashboard
 
 # NO deploy: block by design. commerce is an operator-MANAGED system service —

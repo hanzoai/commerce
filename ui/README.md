@@ -11,7 +11,7 @@ scripts/sync-admin-ui.sh          # app/admin/out -> ui/dist
 go build ./cmd/commerced
 ```
 
-`Dockerfile.production` runs exactly those three steps (admin-build stage → sync
+`Dockerfile` runs exactly those three steps (admin-build stage → sync
 → `go build`), so the shipped binary's admin is always this commit's admin.
 
 Served at `/admin/*`, and built for it: `app/admin/next.config.ts` sets

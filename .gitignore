@@ -62,7 +62,7 @@ billing/ui/dist/*
 
 # Commerce admin build artifact. The source of truth is app/admin; the ONLY
 # producer is scripts/sync-admin-ui.sh copying app/admin/out here, run by
-# Dockerfile.production's admin-build stage before the Go build. It was tracked
+# Dockerfile's admin-build stage before the Go build. It was tracked
 # content until now, which is exactly why it went stale: the committed bundle
 # was a retired Vite SPA while app/admin had moved on. Only .gitkeep is tracked
 # so go:embed resolves on a fresh clone. The admin mount is standalone-only

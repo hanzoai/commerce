@@ -11,10 +11,11 @@
   "dependencies": {
     "@hanzo/gui": "7.3.0",
     "@hanzo/iam": "^0.13.1",
-    "@hanzo/ui": "link:../../../ui/pkg/ui",
+    "@hanzo/ui": "^8.0.12",
     "@hanzogui/config": "7.3.0",
     "@hanzogui/core": "7.3.0",
     "@hanzogui/lucide-icons-2": "7.3.0",
+    "@hanzogui/next-theme": "7.3.0",
     "@hanzogui/web": "7.3.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
@@ -27,6 +28,5 @@
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.7.2",
     "react-native": "0.86.2"
-  },
-  "packageManager": "pnpm@9.15.9"
+  }
 }
