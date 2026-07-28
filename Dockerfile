@@ -2,18 +2,41 @@
 # Hanzo Commerce - E-commerce Platform
 # Multi-stage build for minimal production image
 
-# ── Stage 1: Admin SPA — use pre-built static export from app/admin/out ──
-# The admin pnpm workspace has known lockfile drift against an upstream
-# ui-docs dep that 404s on npm — rebuilding it inside the image would
-# block every commerce build until that workspace is repaired. The
-# committed app/admin/out/ tree IS the canonical Next.js static export
-# (rebuilt out-of-band via `pnpm -F admin build` from a clean checkout
-# with the lockfile freshly regenerated). Copying it directly here
-# keeps the image deterministic without depending on the npm registry's
-# moods. Re-enable the in-Docker build by uncommenting the original
-# stage when the workspace lockfile is restored.
-FROM busybox AS admin-build
-COPY app/admin/out /web/admin/out
+# ── Stage 1: THE Commerce admin, built from source ───────────────────────────
+# app/admin (@hanzo/commerce-dashboard, Next.js `output: export`) on @hanzo/ui +
+# @hanzo/gui — the same component set the cloud console renders. This stage IS
+# the producer: it used to `COPY app/admin/out` out of the build context, which
+# stopped existing the moment that export became gitignored build output, and it
+# landed the copy in `admin/dist` — a path no go:embed has ever named — so the
+# binary this Dockerfile ships carried no admin at all.
+#
+# @hanzo/ui comes from the registry at the same range the console pins, so this
+# build and a developer's build resolve the identical package. It was a workspace
+# link to a SIBLING checkout, which no single-repo build context can see: every
+# image rewrote the manifest to the registry range first, and so built something
+# no one had ever built locally — that is how a missing @hanzogui/next-theme
+# reached a release.
+FROM node:20-slim AS admin-build
+RUN npm install -g pnpm@9.15.9
+WORKDIR /build
+# The FE pnpm workspace is the only input the admin build needs.
+COPY app/ ./app/
+WORKDIR /build/app
+RUN pnpm install --frozen-lockfile
+
+# Prod defaults baked into the client bundle (Next inlines NEXT_PUBLIC_*).
+# commerce.hanzo.ai is same-origin for the API (bare /v1/*); hanzo.id is the OIDC
+# issuer; client_id hanzo-commerce is the PKCE client; the AI dock calls the
+# api.hanzo.ai chat-completions gateway.
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+    NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
+    NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
+    NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \
+    NEXT_PUBLIC_HANZO_AI_MODEL=best
+
+# typecheck is a real gate: the admin renders @hanzo/ui/product from source, so a
+# drift in the shared component set fails HERE, not in a browser.
+RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-dashboard
 
 # ── Stage 2: Build pay UI (Vite SPA from hanzoai/pay) ────────────────────
 # Canonical source lives at github.com/hanzoai/pay. Forks override PAY_REPO
@@ -104,10 +127,12 @@ COPY . .
 ARG PLANS_VERSION=1.1.4
 RUN apk add --no-cache curl && sh scripts/fetch-plans.sh
 
-# Replace placeholder dist/ with the real Next.js export so go:embed picks up
-# the actual SPA bundle at compile time.
-RUN rm -rf admin/dist
-COPY --from=admin-build /web/admin/out admin/dist
+# Bake the admin export into ui/dist for //go:embed (ui/embed.go). Same contract
+# as the plans hydrate above: the directory is gitignored build output, so the ONE
+# producer (scripts/sync-admin-ui.sh, fed by app/admin/out) must run before
+# `go build`. bash + rsync are the script's only requirements.
+COPY --from=admin-build /build/app/admin/out ./app/admin/out
+RUN apk add --no-cache bash rsync && bash scripts/sync-admin-ui.sh
 
 # Overlay the pay UI build into checkout/ui/dist so go:embed in
 # checkout/embed.go picks up the real SPA bundle.

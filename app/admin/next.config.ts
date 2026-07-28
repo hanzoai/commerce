@@ -4,28 +4,28 @@ import type { NextConfig } from 'next'
 import { BASE_PATH } from './src/lib/basepath'
 
 // Packages that hold React context or module-level singletons and MUST be one
-// instance. `@hanzo/ui` is consumed from SOURCE via a workspace link, and that
-// linked checkout installs its OWN devDependency copies of all of these — so
-// resolution walking up from an `@hanzo/ui` source file finds THAT node_modules
-// before this app's. The bundle then carries two `@hanzogui/web`s, i.e. two
-// ThemeStateContexts: `GuiProvider` publishes to one, every shared component
-// reads the other, and the admin dies on load with "Missing theme." Pinning
-// them here is what actually makes the admin and the console render the same
-// components off the same instance. An alias applies to EVERY request, whoever
-// the importer is, so it also collapses the copies pulled in transitively (e.g.
-// `@hanzogui/next-theme`'s own `@hanzogui/core`). `@hanzogui/config` is
-// deliberately absent: it is only ever imported by its `/v5` subpath, which a
-// directory alias would resolve past the package's `exports` map — and it is
-// inert data, registered through the one `@hanzo/gui` that IS pinned.
-const SINGLETONS = ['@hanzo/gui', '@hanzogui/core', '@hanzogui/web', '@hanzogui/lucide-icons-2']
+// instance. `@hanzo/ui` imports all of them and declares none — they are its
+// devDependencies — so each consumer installs its own copy and webpack is free
+// to resolve two. Two `@hanzogui/web`s is two ThemeStateContexts: `GuiProvider`
+// publishes to one, every shared component reads the other, and the admin dies
+// on load with "Missing theme." An alias applies to EVERY request, whoever the
+// importer is, so pinning them to this app's copies is what makes the admin and
+// the console render the same components off the same instance — and it also
+// collapses copies pulled in transitively (e.g. `@hanzogui/next-theme`'s own
+// `@hanzogui/core`). `@hanzogui/config` is deliberately absent: it is only ever
+// imported by its `/v5` subpath, which a directory alias would resolve past the
+// package's `exports` map — and it is inert data, registered through the one
+// `@hanzo/gui` that IS pinned.
+const SINGLETONS = ['@hanzo/gui', '@hanzogui/core', '@hanzogui/web', '@hanzogui/lucide-icons-2', '@hanzogui/next-theme']
 
 /**
  * The Commerce admin — a static export baked into the commerced binary (ui/dist,
  * //go:embed) and served from its `/admin/*` mount.
  *
- * @hanzo/ui and @hanzo/gui ship raw TS/ESM source, so they are transpiled here the
- * same way the console does it; `react-native` aliases to `react-native-web`. No
- * error suppression: `tsc --noEmit` is a build gate (`turbo run typecheck build`).
+ * @hanzo/ui and @hanzo/gui ship ESM that still needs the app's own transpile pass,
+ * so they are listed below exactly the way the console lists them; `react-native`
+ * aliases to `react-native-web`. No error suppression: `tsc --noEmit` is a build
+ * gate (`turbo run typecheck build`).
  */
 const config: NextConfig = {
   output: 'export',
@@ -50,12 +50,8 @@ const config: NextConfig = {
     'react-native-web',
   ],
   webpack(config) {
-    // @hanzo/ui is consumed from SOURCE via a workspace link. Keep the symlinked
-    // path so its own imports resolve against THIS app's tree, and pin the
-    // context-bearing packages to this app's copies (see SINGLETONS) — the
-    // symlinked path alone is not enough, because the link target carries its own
-    // node_modules and that shadows ours.
-    config.resolve.symlinks = false
+    // Pin the context-bearing packages to this app's copies (see SINGLETONS) so
+    // a transitive copy can never become a second instance.
     config.resolve.alias = {
       ...config.resolve.alias,
       'react-native$': 'react-native-web',
