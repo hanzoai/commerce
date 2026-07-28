@@ -902,10 +902,6 @@ func (app *App) Bootstrap() error {
 	// as before. See server.go installRequireGate.
 	installRequireGate(app, app.config.RequireIdentity)
 
-	// Admin SPA — registered after the gate so it inherits both EdgeAuth and
-	// auth.Gin (preserving the historical order vs the /_/commerce JSON routes).
-	mountAdminSPA(app)
-
 	app.bootstrapped = true
 	return nil
 }
