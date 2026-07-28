@@ -19,7 +19,7 @@ RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev curl
 ARG TARGETARCH
 WORKDIR /build
 
-ENV GOPRIVATE=github.com/hanzoai,github.com/luxfi,github.com/zooai,github.com/zenlm,github.com/parsdao,github.com/adnexustech
+ENV GOPRIVATE=github.com/hanzoai,github.com/lux-private,github.com/zooai,github.com/zenlm,github.com/parsdao,github.com/adnexustech
 # Disable workspace mode: the repo ships a go.work (use . + ./thirdparty/ethereum)
 # that would force readonly/vendor; we build the single commerce module non-vendored.
 ENV GOWORK=off
