@@ -59,7 +59,7 @@ Commerce is the single source of truth for all monetary operations. IAM handles 
                     [hanzo.id/signup]
                       |           |
                stores ref in     calls IAM
-               sessionStorage    /api/signup
+               sessionStorage    /v1/iam/signup
                       |           |
                [hanzo.id/callback]
                       |
@@ -100,7 +100,7 @@ The correct design: the frontend stores the `ref` param in `sessionStorage` befo
 
 4. Referee clicks link, lands on hanzo.id/signup?ref={code}
 5. SignUpForm reads ?ref param, stores in sessionStorage as hanzo_referral_code
-6. User fills form, submits to IAM /api/signup
+6. User fills form, submits to IAM /v1/iam/signup
 7. IAM creates user, redirects to hanzo.id/callback
 8. Callback page:
    a. Exchanges code for tokens (existing flow)

@@ -1,47 +1,16 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Canonical Hanzo faces — Geist Sans (UI/body/headings) + Geist Mono (data), the
+   same two the console loads, so the shared @hanzo/ui/product components typeset
+   identically in both admins. The component classes themselves (hz-mono, hz-tnum,
+   hz-paper, hz-skeleton, …) travel with the package. */
+@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/style.css');
+@import url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/style.css');
+@import '@hanzo/ui/styles/motion.css';
 
-/*
- * Hanzo dark token set (shadcn-compatible names).
- * Kept alongside the base --bg-base/--fg-base tokens defined in
- * @hanzo/commerce-ui-preset so both consumers resolve correctly.
- */
-@layer base {
-  :root,
-  .dark {
-    --background: #070b13;
-    --card: #0d121d;
-    --border: #1f2937;
-    --input: #1f2937;
-    --primary: #f2f2f2;
-    --primary-fg: #070b13;
-    --muted: #1f2937;
-    --muted-fg: #94a3b8;
-    --accent: #1f2937;
-    --accent-fg: #f2f2f2;
-    --ring: #94a3b8;
-    --destructive: #ef4444;
-
-    /* Map Hanzo palette onto the base tokens used by @hanzo/commerce-ui */
-    --bg-base: #070b13;
-    --bg-component: #0d121d;
-    --bg-subtle: #0d121d;
-    --bg-field: rgba(255, 255, 255, 0.04);
-    --border-base: #1f2937;
-    --border-strong: #1f2937;
-    --fg-base: #f2f2f2;
-    --fg-muted: #94a3b8;
-    --fg-subtle: #94a3b8;
-    --fg-error: #ef4444;
-  }
-
-  html {
-    color-scheme: dark;
-  }
-
-  body {
-    @apply bg-ui-bg-base text-ui-fg-base antialiased;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
 }

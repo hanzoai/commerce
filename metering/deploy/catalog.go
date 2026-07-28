@@ -134,7 +134,7 @@ var Catalog = map[string]Product{
 		Port:         8090,
 		Unit:         UnitRecord,
 		Prices:       "", // metered in-process by base's hook, not the proxy
-		SkipPaths:    []string{"/api/health"},
+		SkipPaths:    []string{"/v1/health"},
 		StorageMount: "/data",
 		StorageSize:  "2Gi",
 		Meterable:    false,

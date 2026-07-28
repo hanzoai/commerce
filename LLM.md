@@ -19,29 +19,72 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 
 ## Commerce Admin
 
-The shipped admin is the Next static export in `app/admin/src/app`, built by
-`Dockerfile.commerce-admin` and served by `hanzoai/static`. The older
-React Router tree under `app/admin/src/routes` is not the live shell.
+There is ONE Commerce admin: the Next static export in `app/admin`
+(`@hanzo/commerce-dashboard`), embedded in the Go binary (`ui/dist`,
+`//go:embed`) and served by it at **`/admin`**. It renders **`@hanzo/ui/product`**
+— the same component set the cloud console renders (`DataTable`, `PageHeader`,
+`StatusTag`, `EmptyState`, `MetricCard`, `BackendStateCard`, `CommerceResource`)
+— on `@hanzo/gui`. There is no commerce-local design system for the admin, and no
+second shell.
 
+**One artifact, one URL contract.** `next.config.ts` sets `basePath: '/admin'`
+(from `src/lib/basepath.ts`), so chunks are `/admin/_next/*` and the client
+router resolves routes under the same prefix. A `basePath`-less export is built
+for `/` and CANNOT be served from a sub-path: its root-absolute `/_next/*`
+escapes the mount and its router 404s on its own pathname. That is why the
+separate `commerce-admin` static-container image is gone — it served the same
+bundle at a second origin's ROOT, i.e. one artifact with two incompatible URL
+contracts, and keeping it is what let the embedded copy rot.
+
+The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
+`@hanzogui/admin` `file:` target no longer exists), `hanzoai/admin`
+`apps/admin-commerce` (retired), and the dead Medusa React-Router tree under
+`app/admin/src/routes` (deleted along with the vendored Tailwind surface).
+
+- **The catalog is data.** `src/lib/resources.ts` is a plain list of rows —
+  slug, backend noun, copy, column specs. `src/lib/columns.tsx` turns a column
+  spec into a rendered column; `src/app/(dashboard)/[resource]/page.tsx` emits one
+  static page per row via `generateStaticParams`, and the sidebar reads the same
+  list. Adding a merchant surface is adding a ROW, never a directory. The module is
+  deliberately component-free: `generateStaticParams` runs it in Node at build time.
+- **One client.** `src/lib/commerce.ts` calls the bare `/v1/<kind>` resources
+  (`/v1/product`, `/v1/order`, `/v1/c/user`, `/v1/collection`, `/v1/stocklocation`,
+  `/v1/store/current`) on `NEXT_PUBLIC_COMMERCE_API_URL` with the IAM bearer and
+  `X-Org-Id`. Failures THROW with their status, so `classifyBackend` renders the
+  honest state (402 → add credits, 403 → not enabled, 404 → not mounted) instead of
+  a fabricated empty table.
+- **Effects are injected.** `@hanzo/ui/product` never imports a router or an auth
+  module; `src/app/providers.tsx` supplies `signIn`/`addCredits` once through
+  `HostProvider`.
 - IAM is native PKCE through `@hanzo/iam`; the active organization scopes every
-  query and the org switcher is the sole tenant selector.
-- `ThemeProvider` owns light/dark/system state. Dark is the default, and the
-  live top-bar account menu is the sole theme control.
-- Products use the bare `/v1/product` resource. The Products form and the AI
-  `create_product` command both call the same `createOne("product", ...)` path.
-- The dashboard checklist derives completion from live store, product,
-  integration, and listing data.
-- Integrations read and toggle `/v1/c/:org/integrations`. Secrets never enter
-  the browser or organization rows; providers become toggleable only after
-  their credentials exist in KMS. Square is built in and resolves its public
-  browser configuration through `/v1/billing/payment-config`.
-- Store access is $20/month on the `pro` plan. Each store has one store-bound
-  subscription and an idempotent 7-day trial from `billing/trial`; invited
-  members share that store entitlement. The UI and merchant API routes call the
-  same `api/store.HasAccess` rule, so another store cannot unlock it.
-- `Dockerfile.store` builds the storefront and its workspace packages through
-  the root pnpm/Turbo graph, then publishes the standalone server. Do not copy a
-  partial package set or introduce a second package manager.
+  read and is the sole tenant selector.
+- **`@hanzo/ui` is a workspace SOURCE dep** (`link:../../../ui/pkg/ui`) so the
+  admin and the console cannot drift. A single-repo build context cannot see the
+  sibling checkout, so `Dockerfile.production`'s admin-build stage rewrites that
+  one line to the published range (`--build-arg PNPM_HANZO_UI=^8.0.12`) before
+  `pnpm install`.
+- **The linked checkout carries its own copies, so webpack must be told.** That
+  link target has its own `node_modules` with `@hanzo/gui` / `@hanzogui/*`
+  devDependencies, and resolution walking up from an `@hanzo/ui` source file hits
+  THOSE first. The bundle then holds two `@hanzogui/web`s — two
+  `ThemeStateContext`s — `GuiProvider` publishes to one, every shared component
+  reads the other, and the admin dies on load with `Missing theme.` `tsconfig`
+  `paths` already pinned this for the TYPE layer; `next.config.ts`'s `SINGLETONS`
+  alias now pins the RUNTIME layer to match. Symptom of a regression here: a
+  blank admin with "Application error: a client-side exception".
+- **The build is a real gate**: `turbo run typecheck build --filter=@hanzo/commerce-dashboard`.
+  `next.config.ts` no longer sets `ignoreBuildErrors`, and `hanzo.yml` runs the
+  typecheck in CI.
+- `@hanzo/commerce-ui` (`app/packages/ui`, the vendored Medusa design system) is now
+  a STOREFRONT-only dependency — `store/` still renders it. The admin is fully off it.
+- The embedded copy in the Go binary is the SAME export: `scripts/sync-admin-ui.sh`
+  copies `app/admin/out` into `ui/dist` for `//go:embed`, served at the root
+  `/admin/*` mount. The old `/_/commerce/ui/*` mount is gone — a root-relative
+  `/_next/*` export cannot be served from a prefixed path, and serving a second,
+  frozen bundle there was the fourth admin.
+- `Dockerfile.store` builds the storefront and its workspace packages through the
+  root pnpm/Turbo graph, then publishes the standalone server. Do not copy a partial
+  package set or introduce a second package manager.
 
 ## Three credentials, three distinct jobs — do NOT collapse them
 
@@ -196,13 +239,13 @@ go run cmd/commerce/main.go serve --dev     # Development
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/analytics/event` | POST | Single event |
-| `/api/v1/analytics/events` | POST | Batch events |
-| `/api/v1/analytics/identify` | POST | User identification |
-| `/api/v1/analytics/ast` | POST | astley.js page AST (JSON-LD) |
-| `/api/v1/analytics/pixel.gif` | GET | Pixel tracking |
-| `/api/v1/analytics/ai/message` | POST | AI message event |
-| `/api/v1/analytics/ai/completion` | POST | AI completion event |
+| `/v1/analytics/event` | POST | Single event |
+| `/v1/analytics/events` | POST | Batch events |
+| `/v1/analytics/identify` | POST | User identification |
+| `/v1/analytics/ast` | POST | astley.js page AST (JSON-LD) |
+| `/v1/analytics/pixel.gif` | GET | Pixel tracking |
+| `/v1/analytics/ai/message` | POST | AI message event |
+| `/v1/analytics/ai/completion` | POST | AI completion event |
 
 ## SaaS Metrics God-View (api/metrics, 2026-07)
 
@@ -466,12 +509,12 @@ never both.
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/api/v1/billing/balance` | GET | Balance by user+currency (cents) |
-| `/api/v1/billing/balance/all` | GET | All currency balances |
-| `/api/v1/billing/usage` | POST | Record API usage (withdraw) |
-| `/api/v1/billing/deposit` | POST | Create deposit transaction (per-subject money-in / settlement) |
-| `/api/v1/billing/credit` | POST | THE ONE mint-gated, org-keyed credit grant (see below) |
-| `/api/v1/billing/zap` | POST | Clear balance |
+| `/v1/billing/balance` | GET | Balance by user+currency (cents) |
+| `/v1/billing/balance/all` | GET | All currency balances |
+| `/v1/billing/usage` | POST | Record API usage (withdraw) |
+| `/v1/billing/deposit` | POST | Create deposit transaction (per-subject money-in / settlement) |
+| `/v1/billing/credit` | POST | THE ONE mint-gated, org-keyed credit grant (see below) |
+| `/v1/billing/zap` | POST | Clear balance |
 
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
 
