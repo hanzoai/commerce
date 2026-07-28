@@ -15,18 +15,18 @@ import (
 // catalogentry.UpsertModels, so the rule that a sync owns cost and admin owns
 // price is enforced in one place regardless of which door a row came through.
 //
-// Scheduling is a CronJob curling this with the service token — the same shape
-// the contributor payout already uses, so there is one way to run a periodic
-// job:
-//
-//	curl -XPOST -H "Authorization: Bearer $COMMERCE_SERVICE_TOKEN" \
-//	  http://commerce.hanzo.svc:8001/v1/catalog/models/refresh
+// Scheduling is a cron entry poking this with the service token, the same shape
+// billing-autorecharge uses, so there is one way to run a periodic job. That is
+// why the gate is requirePlatform and not requireSuperAdmin: the service token
+// is a platform principal but carries no SuperAdmin claim, so under the narrower
+// gate every scheduled run 403'd and the model catalog was never populated at
+// all.
 //
 // It is deliberately NOT run at boot: a boot-time call to a third party is a
 // boot hazard, and the catalog that is already stored is the one to serve until
 // a scheduled run says otherwise.
 func RefreshModels(c *zip.Ctx) error {
-	if !requireSuperAdmin(c) {
+	if !requirePlatform(c) {
 		return nil
 	}
 	rows, err := catalogentry.FetchOpenRouter(c.Context(), os.Getenv("OPENROUTER_API_KEY"))

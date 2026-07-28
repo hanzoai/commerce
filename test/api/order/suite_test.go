@@ -36,6 +36,11 @@ var _ = BeforeSuite(func() {
 
 	// Run default fixtures to setup organization and default store
 	org = fixtures.Organization(c).(*organization.Organization)
+
+	// Admit the org through the billing paywall. Without it every request in
+	// this suite gets 402 subscription_required — the gate doing its job, not
+	// a fault in the test.
+	fixtures.ProSubscription(c)
 	accessToken, _ := org.GetTokenByName("test-secret-key")
 	org.MustUpdate()
 
