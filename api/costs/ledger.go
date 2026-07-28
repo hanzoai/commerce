@@ -30,6 +30,9 @@ type ledgerUsage struct {
 // mirroring monthlyUsageCents' query minus the SourceId filter.
 func aggregateLedger(ctx context.Context, isTest bool, p string) ledgerUsage {
 	start, end := periodBounds(p)
+	// Loaded ONCE per report, never per row: this is a datastore read behind
+	// cost-of-goods, and it is cached besides.
+	catalog := catalogRates()
 	db := datastore.New(ctx)
 	rootKey := db.NewKey("synckey", "", 1, nil)
 
@@ -64,7 +67,7 @@ func aggregateLedger(ctx context.Context, isTest bool, p string) ledgerUsage {
 			promptTok = asInt64(t.Metadata["totalTokens"])
 		}
 
-		cost, ok := modelCostCents(model, promptTok, completionTok)
+		cost, ok := modelCostCents(catalog, model, promptTok, completionTok)
 		if !ok {
 			out.UnknownModelTokens += promptTok + completionTok
 			continue

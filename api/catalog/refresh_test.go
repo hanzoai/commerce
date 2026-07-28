@@ -46,11 +46,11 @@ func TestAdminRoute_AddressesASlashBearingSlug(t *testing.T) {
 	}
 }
 
-// TestRefreshModels_RequiresSuperAdmin: the refresh writes platform-global data,
-// so an org-level admin must not reach it — the same boundary every other
+// TestRefreshModels_RefusesANonPlatformCaller: the refresh writes platform-global
+// data, so an org-level admin must not reach it — the same boundary every other
 // catalog mutation holds. Refused BEFORE any upstream call, so an unauthorized
-// request cannot even cause outbound traffic.
-func TestRefreshModels_RequiresSuperAdmin(t *testing.T) {
+// request cannot even cause outbound traffic. Who IS admitted is in gate_test.go.
+func TestRefreshModels_RefusesANonPlatformCaller(t *testing.T) {
 	tc := ae.NewContext()
 	defer tc.Close()
 

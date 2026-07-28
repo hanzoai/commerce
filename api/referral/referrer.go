@@ -14,7 +14,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/client"
 	"github.com/hanzoai/commerce/util/json"
 	"github.com/hanzoai/commerce/util/json/http"
-	"github.com/hanzoai/commerce/util/rand"
 	"github.com/hanzoai/commerce/util/rest"
 )
 
@@ -41,12 +40,12 @@ func referrerCreate(api *rest.Rest) func(*zip.Ctx) error {
 
 		// Auto-generate code if not provided
 		if ref.Code == "" {
-			ref.Code = generateCode()
+			ref.Code = referrer.NewCode()
 		}
 
 		// Ensure code is unique
 		if _, ok, _ := referrer.Query(db).Filter("Code=", ref.Code).FirstKey(); ok {
-			ref.Code = generateCode()
+			ref.Code = referrer.NewCode()
 		}
 
 		// Save client-related data about request used to create referrer
@@ -148,16 +147,6 @@ func getByCode(c *zip.Ctx) error {
 	}
 
 	return c.JSON(200, map[string]any{"valid": true})
-}
-
-// generateCode creates a short, uppercase, URL-friendly referral code.
-func generateCode() string {
-	id := rand.ShortId()
-	clean := strings.NewReplacer("-", "", "_", "").Replace(id)
-	if len(clean) > 8 {
-		clean = clean[:8]
-	}
-	return strings.ToUpper(clean)
 }
 
 // iamUserIdOrQuery returns the IAM user ID from JWT claims or from query

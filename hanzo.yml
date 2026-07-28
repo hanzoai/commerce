@@ -67,11 +67,13 @@ test:
         ./models/product/... \
         ./payment/...
   # API suites (test/), the gate .github/workflows/test.yml used to own alone.
-  # RED as of this commit and honestly so: test/api/discount fails its BeforeEach
-  # with 402 subscription_required ("This store needs an active subscription")
-  # where it expects 204 — 1 of 49 suites. It failed the same way on every recent
-  # push under the old workflow; moving it here keeps the failure visible in the
-  # ONE pipeline instead of retiring the workflow that reported it.
+  # All 49 green. It was red on arrival for two unrelated reasons, both since
+  # fixed at the cause rather than skipped: four suites got 402
+  # subscription_required because they seeded an organization and nothing else,
+  # which is billing/paywall working (they now seed fixtures.ProSubscription);
+  # and api/checkout died on `panic: db: namespaces closed` because delay ran
+  # its tasks in untracked goroutines that outlived the test database (the queue
+  # now drains before the datastore closes — see delay/drain.go).
   - name: go-api-suites
     run: |
       set -e

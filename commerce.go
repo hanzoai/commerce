@@ -45,6 +45,7 @@ import (
 	commerceDatastore "github.com/hanzoai/commerce/datastore"
 	commerceQuery "github.com/hanzoai/commerce/datastore/query"
 	"github.com/hanzoai/commerce/db"
+	"github.com/hanzoai/commerce/delay"
 	"github.com/hanzoai/commerce/events"
 	"github.com/hanzoai/commerce/hooks"
 	"github.com/hanzoai/commerce/infra"
@@ -64,7 +65,6 @@ import (
 	"github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/ui"
 	"github.com/hanzoai/commerce/util/husd"
-	"github.com/hanzoai/commerce/util/nscontext"
 )
 
 // Version, GitCommit, and BuildTime are set via -ldflags at build time.
@@ -912,7 +912,7 @@ func (app *App) Bootstrap() error {
 // populated. Failures are logged, never fatal — the catalog projection simply
 // returns empty until seeded.
 func (app *App) runCatalogSeed() {
-	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedIfEmpty(db)
 	if err != nil {
 		slog.Error("catalog seed failed", "err", err)
@@ -929,7 +929,7 @@ func (app *App) runCatalogSeed() {
 // seed independently of the hanzo product snapshot. Cheap count-gated no-op once
 // populated; failures are logged, never fatal.
 func (app *App) runInfraCatalogSeed() {
-	db := commerceDatastore.New(nscontext.WithNamespace(context.Background(), catalogapi.CatalogNamespace))
+	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedInfraIfEmpty(db)
 	if err != nil {
 		slog.Error("infra catalog seed failed", "err", err)
@@ -1196,6 +1196,17 @@ func (app *App) Shutdown() error {
 				err = shutdownErr
 			}
 		}
+
+		// Drain the background queue. The listener is down, so nothing new is
+		// being queued; what is left are the webhook emits and counter shards
+		// the last requests spawned, and they read the database. Waiting for
+		// them here is what makes closing it below safe — otherwise they come
+		// back to "db: namespaces closed".
+		drain, cancelDrain := context.WithTimeout(context.Background(), 30*time.Second)
+		if drainErr := delay.Drain(drain); drainErr != nil {
+			slog.Warn("background tasks still running at shutdown", "err", drainErr)
+		}
+		cancelDrain()
 
 		// Stop ZAP node
 		if app.ZAP != nil {
