@@ -5,6 +5,7 @@ package commerce
 import (
 	"context"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hanzoai/commerce/ui"
 )
 
 // TestEmbedRequireIdentity verifies the gateway-trust middleware
@@ -79,6 +82,14 @@ func TestEmbedHandlerExposed(t *testing.T) {
 // tells a real chunk from the fallback. Asserting on the URLs the shell actually
 // asks for keeps the export and the mount one contract.
 func TestEmbedAdminServesItsOwnAssets(t *testing.T) {
+	// ui/dist is BUILD OUTPUT: a fresh clone embeds only .gitkeep, and there is no
+	// admin to assert on. Decide that from the embedded FS rather than from a
+	// response — an unsynced tree must skip here, not fail, or `go test ./...` is
+	// red for anyone who has not run the producer.
+	if _, err := fs.Stat(ui.FS(), "index.html"); err != nil {
+		t.Skip("ui/dist holds no export — run scripts/sync-admin-ui.sh")
+	}
+
 	tmp := t.TempDir()
 	srv, err := Embed(context.Background(), EmbedConfig{
 		DataDir:  filepath.Join(tmp, "data"),
@@ -110,9 +121,7 @@ func TestEmbedAdminServesItsOwnAssets(t *testing.T) {
 	// absent one and skip past the very regression this guards.
 	refs := regexp.MustCompile(`(?:src|href)="(/[^"]*_next/[^"]+)"`).FindAllStringSubmatch(shell, -1)
 	if len(refs) == 0 {
-		// ui/dist is build output: an unsynced tree embeds only .gitkeep, so there
-		// is no admin to assert on. scripts/sync-admin-ui.sh is the producer.
-		t.Skip("ui/dist holds no export — run scripts/sync-admin-ui.sh")
+		t.Fatalf("the shell references no _next assets — this is not the Next export")
 	}
 
 	for _, m := range refs {
