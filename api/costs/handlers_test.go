@@ -103,11 +103,11 @@ func TestRequireCostsAdmin(t *testing.T) {
 // dishonestly inflate margin). Negatives clamp to 0; COGS never subtracts.
 func TestModelCostCentsClampsNegativeTokens(t *testing.T) {
 	// gpt-4o: 250c/Mtok in, 1000c/Mtok out.
-	if got, ok := modelCostCents("gpt-4o", -1_000_000, -1_000_000); !ok || got != 0 {
+	if got, ok := modelCostCents(nil, "gpt-4o", -1_000_000, -1_000_000); !ok || got != 0 {
 		t.Errorf("negative tokens = %d ok=%v, want 0 true (clamped, never negative)", got, ok)
 	}
 	// A mixed row: negative prompt clamps to 0, positive completion still counts.
-	if got, ok := modelCostCents("gpt-4o", -5, 1_000_000); !ok || got != 1000 {
+	if got, ok := modelCostCents(nil, "gpt-4o", -5, 1_000_000); !ok || got != 1000 {
 		t.Errorf("mixed neg/pos tokens = %d ok=%v, want 1000 true", got, ok)
 	}
 }
