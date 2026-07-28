@@ -34,6 +34,30 @@ type MigrateReport struct {
 	Encrypted []string // tenant db paths converted this run
 	Skipped   []string // already-encrypted (sidecar present) or empty
 	Rows      int      // total rows copied
+	Failed    []TenantFailure
+}
+
+// TenantFailure is one tenant the run could not convert. The source file is
+// untouched in every failure path (encryptTenantFile only cuts over after parity
+// passes), so a failure costs that tenant nothing but another attempt.
+type TenantFailure struct {
+	Path string
+	Err  error
+}
+
+// Err reports the run's overall verdict: nil when every tenant converted or was
+// already encrypted. Callers should treat a non-nil Err as "retry the named
+// tenants", not "the fleet is broken" — the successes are real and durable.
+func (r *MigrateReport) Err() error {
+	if len(r.Failed) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(r.Failed))
+	for _, f := range r.Failed {
+		names = append(names, fmt.Sprintf("%s: %v", f.Path, f.Err))
+	}
+	return fmt.Errorf("%d of %d tenants failed to encrypt:\n  %s",
+		len(r.Failed), len(r.Failed)+len(r.Encrypted)+len(r.Skipped), strings.Join(names, "\n  "))
 }
 
 // EncryptDataDir walks the users/ and orgs/ trees under dataDir and encrypts every
@@ -77,7 +101,22 @@ func EncryptDataDir(dataDir string, masterKey []byte, dryRun bool) (*MigrateRepo
 			dbPath := filepath.Join(tt.dir, id, "data.db")
 			n, changed, err := encryptTenantFile(dbPath, masterKey, tt.pt, id, dryRun)
 			if err != nil {
-				return rep, fmt.Errorf("migrate %s %q: %w", tt.pt, id, err)
+				// Record and KEEP GOING. This used to return, which meant one
+				// unconvertible tenant — a busy file, a corrupt page, a schema this
+				// build cannot read — left every tenant after it in the walk
+				// plaintext, and which ones depended on directory order. On a
+				// 65-tenant backfill that is the difference between "64 done, 1 to
+				// look at" and "an unknown prefix done, unknown suffix not".
+				//
+				// Safe to continue because encryptTenantFile is per-file and
+				// atomic-by-cutover: it only renames after content parity passes, so
+				// a failure leaves that tenant's plaintext source exactly as it was.
+				// The run's verdict is Report.Err(); the caller decides.
+				rep.Failed = append(rep.Failed, TenantFailure{
+					Path: dbPath,
+					Err:  fmt.Errorf("migrate %s %q: %w", tt.pt, id, err),
+				})
+				continue
 			}
 			if changed {
 				rep.Encrypted = append(rep.Encrypted, dbPath)

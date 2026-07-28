@@ -19,7 +19,7 @@
 //  4. Rotating the master key only rewraps the sidecar — the DEK, and therefore
 //     every encrypted page, is untouched (O(1), cannot brick a file).
 //
-// Posture is decided once, in resolveMasterKey():
+// Posture is decided once, in ResolveMasterKey():
 //   - unset                 → unencrypted per-tenant files (dev / CI).
 //   - set + live codec       → per-tenant SQLCipher encryption (production).
 //   - set + no live codec    → hard error. Commerce's dual concurrent-read/
@@ -62,7 +62,7 @@ const (
 	createLockSuffix = ".create.lock"
 )
 
-// resolveMasterKey reads COMMERCE_KMS_MASTER_KEY and validates it. It returns:
+// ResolveMasterKey reads COMMERCE_KMS_MASTER_KEY and validates it. It returns:
 //
 //   - (nil, nil)   when unset on a pure-Go dev/CI build → unencrypted dev mode.
 //   - (key, nil)   when set, 64 hex chars, AND this build ACTUALLY encrypts
@@ -84,7 +84,7 @@ const (
 //
 // This is the ONE place the master key is sourced, so every tenant store shares an
 // identical posture decision.
-func resolveMasterKey() ([]byte, error) {
+func ResolveMasterKey() ([]byte, error) {
 	mkHex := os.Getenv(masterKeyEnv)
 	if mkHex == "" {
 		// No key configured. On a production (codec-linked) build this is a misconfig —
@@ -139,7 +139,7 @@ func principalFor(tenantType string) sqlitedrv.PrincipalType {
 // common path (sidecar present) takes no lock.
 func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string) ([]byte, error) {
 	// Gate on CodecLinked (the LIVE codec), not EncryptionAvailable (always true now).
-	// resolveMasterKey already refuses the env-sourced key without the live codec, but
+	// ResolveMasterKey already refuses the env-sourced key without the live codec, but
 	// NewSQLiteDB also accepts a MasterKey injected directly on its config (the
 	// encrypt-at-rest migration tool and the encryption-proof test). Without the live
 	// codec those paths reach sqlitedrv.DSN(path, dek), which PANICS on a build routed
@@ -255,7 +255,7 @@ func unwrapSidecar(dbPath, dekPath string, kek, aad []byte) ([]byte, error) {
 //     driver DSN as SQLCipher's URI `key` param (applied inside sqlite3_open_v2,
 //     before any pragma battery, so create AND reopen succeed); commerce's extra
 //     tuning pragmas are appended. The DSN CONTAINS the key — callers MUST NOT log
-//     it. Reached only under CGO (resolveMasterKey fails closed on the pure-Go
+//     it. Reached only under CGO (ResolveMasterKey fails closed on the pure-Go
 //     build), so sqlitedrv.DSN's key path never panics.
 //   - dek == nil → plaintext (dev/CI + the CGO-off production boot on modernc).
 //     sqlitedrv.PragmaDSN renders plaintextPragmas in the ACTIVE backend's DSN

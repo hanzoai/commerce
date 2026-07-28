@@ -106,7 +106,7 @@ type Config struct {
 	// The embedder passing what it already has is one key, one source, and a
 	// dependency the type system can see.
 	//
-	// nil ⇒ unchanged: resolveMasterKey reads the env, which remains the
+	// nil ⇒ unchanged: ResolveMasterKey reads the env, which remains the
 	// standalone deployment's path.
 	MasterKey []byte
 
@@ -259,7 +259,7 @@ func NewManager(cfg *Config) (*Manager, error) {
 	var err error
 	masterKey := cfg.MasterKey
 	if masterKey == nil {
-		if masterKey, err = resolveMasterKey(); err != nil {
+		if masterKey, err = ResolveMasterKey(); err != nil {
 			return nil, err
 		}
 	} else if len(masterKey) != 32 {
