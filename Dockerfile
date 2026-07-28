@@ -54,7 +54,7 @@ RUN --mount=type=secret,id=netrc,target=/root/.netrc \
 RUN pnpm install --frozen-lockfile && pnpm build
 
 # ── Stage 4: Build Go binary (with embedded admin + pay + billing SPAs) ──
-FROM golang:1.26.4-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev
@@ -74,7 +74,7 @@ COPY go.mod go.sum ./
 # private fetches; GOPRIVATE skips the public proxy + sumdb for hanzoai/* so
 # those go straight to git. Public modules still flow through the proxy with
 # normal sum verification. GOTOOLCHAIN=local pins the builder's own
-# golang:1.26.4 toolchain so go does NOT try to download+verify a toolchain
+# golang:1.26.5 toolchain so go does NOT try to download+verify a toolchain
 # module (which fails as a sumdb "SECURITY ERROR"). The netrc is mounted only
 # for the duration of the step and never lands in a layer.
 # GOWORK=off is critical: the repo commits a go.work (use . ./metering).
