@@ -9,7 +9,7 @@
 // external static-assets directory, no sidecar, no separate deploy.
 //
 // dist/ is BUILD OUTPUT, not tracked content: gitignored but for .gitkeep, and
-// produced by Dockerfile.production's admin-build stage before `go build`. It
+// produced by Dockerfile's admin-build stage before `go build`. It
 // was committed until now, and a committed bundle is a bundle nobody rebuilds —
 // the binary shipped a retired Vite SPA for as long as that was true.
 //

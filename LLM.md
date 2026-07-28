@@ -58,15 +58,17 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
   `HostProvider`.
 - IAM is native PKCE through `@hanzo/iam`; the active organization scopes every
   read and is the sole tenant selector.
-- **`@hanzo/ui` is a workspace SOURCE dep** (`link:../../../ui/pkg/ui`) so the
-  admin and the console cannot drift. A single-repo build context cannot see the
-  sibling checkout, so `Dockerfile.production`'s admin-build stage rewrites that
-  one line to the published range (`--build-arg PNPM_HANZO_UI=^8.0.12`) before
-  `pnpm install`.
-- **The linked checkout carries its own copies, so webpack must be told.** That
-  link target has its own `node_modules` with `@hanzo/gui` / `@hanzogui/*`
-  devDependencies, and resolution walking up from an `@hanzo/ui` source file hits
-  THOSE first. The bundle then holds two `@hanzogui/web`s — two
+- **`@hanzo/ui` comes from the registry at the range the console pins**
+  (`^8.0.12`) so the admin and the console cannot drift, and so a developer's
+  build and an image build resolve the identical package. It was a `link:` to a
+  sibling checkout that every image rewrote to the registry range before
+  installing — an image built what nobody had built locally, which is how a
+  missing `@hanzogui/next-theme` (imported by `@hanzo/ui/product`'s ThemeToggle,
+  declared by `@hanzo/ui` only as a devDependency) reached a release and failed
+  `next build` there and only there.
+- **`@hanzo/ui` declares none of the singletons it imports, so webpack must be
+  told.** Each consumer installs its own `@hanzo/gui` / `@hanzogui/*` and
+  resolution is free to pick a transitive copy. The bundle then holds two `@hanzogui/web`s — two
   `ThemeStateContext`s — `GuiProvider` publishes to one, every shared component
   reads the other, and the admin dies on load with `Missing theme.` `tsconfig`
   `paths` already pinned this for the TYPE layer; `next.config.ts`'s `SINGLETONS`
@@ -82,7 +84,7 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
   mount. `ui/dist` is BUILD OUTPUT — gitignored but for `.gitkeep`, and that sync is
   its ONE producer. It was tracked content until it shipped a retired Vite SPA:
   a committed bundle is a bundle nobody rebuilds. Run the producer before any
-  `go build`, which is exactly what `Dockerfile.production` does.
+  `go build`, which is exactly what `Dockerfile` does.
 - A sub-path mount is not a constraint on the export, it is a PARAMETER of it: an
   export can be served from `/admin` precisely because it was BUILT for `/admin`
   (`basePath`). What cannot be served there is an export built for `/` — its
