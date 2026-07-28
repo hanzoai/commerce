@@ -78,10 +78,17 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
 - `@hanzo/commerce-ui` (`app/packages/ui`, the vendored Medusa design system) is now
   a STOREFRONT-only dependency — `store/` still renders it. The admin is fully off it.
 - The embedded copy in the Go binary is the SAME export: `scripts/sync-admin-ui.sh`
-  copies `app/admin/out` into `ui/dist` for `//go:embed`, served at the root
-  `/admin/*` mount. The old `/_/commerce/ui/*` mount is gone — a root-relative
-  `/_next/*` export cannot be served from a prefixed path, and serving a second,
-  frozen bundle there was the fourth admin.
+  copies `app/admin/out` into `ui/dist` for `//go:embed`, served at the `/admin/*`
+  mount. `ui/dist` is BUILD OUTPUT — gitignored but for `.gitkeep`, and that sync is
+  its ONE producer. It was tracked content until it shipped a retired Vite SPA:
+  a committed bundle is a bundle nobody rebuilds. Run the producer before any
+  `go build`, which is exactly what `Dockerfile.production` does.
+- A sub-path mount is not a constraint on the export, it is a PARAMETER of it: an
+  export can be served from `/admin` precisely because it was BUILT for `/admin`
+  (`basePath`). What cannot be served there is an export built for `/` — its
+  root-absolute `/_next/*` escapes the mount. `TestEmbedAdminServesItsOwnAssets`
+  asserts this, on content type: the static fallback answers every miss with
+  index.html and a 200, so status alone cannot see the break.
 - `Dockerfile.store` builds the storefront and its workspace packages through the
   root pnpm/Turbo graph, then publishes the standalone server. Do not copy a partial
   package set or introduce a second package manager.
