@@ -411,17 +411,83 @@ func (app *App) newServeCmd() *cobra.Command {
 	return cmd
 }
 
-// newMigrateCmd creates the migrate command
+// newMigrateCmd creates the migrate command.
+//
+// `migrate encrypt` is the one-time backfill that converts tenant money stores
+// written before at-rest encryption was switched on. It is deliberately NOT part
+// of boot: a store created today is born encrypted (resolveDEK mints a DEK on
+// first open), so this is a backfill, not a startup step, and unattended
+// re-encryption of money data on every restart is not something anyone should
+// have opted into by deploying.
+//
+// It also requires the daemon STOPPED — the migration proves exclusivity with a
+// verified TRUNCATE checkpoint and refuses a busy file rather than risk missing
+// in-flight rows. Run it as a one-shot against the same data dir, then start the
+// daemon again.
+//
+// This command existed as a stub that printed "Running migrations..." and
+// returned nil, which is why db.EncryptDataDir — complete, parity-verified, and
+// tested — had no caller and 66 of 67 live tenant stores were still plaintext.
 func (app *App) newMigrateCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "migrate",
-		Short: "Run database migrations",
+		Short: "Data migrations",
+	}
+	cmd.AddCommand(app.newMigrateEncryptCmd())
+	return cmd
+}
+
+func (app *App) newMigrateEncryptCmd() *cobra.Command {
+	var dryRun bool
+	var dataDir string
+	cmd := &cobra.Command{
+		Use:   "encrypt",
+		Short: "Encrypt plaintext tenant stores at rest (one-time backfill; daemon must be stopped)",
+		Long: "Walks users/ and orgs/ under the data dir and converts every plaintext\n" +
+			"tenant data.db to an enveloped encrypted file: a fresh random DEK per\n" +
+			"store, wrapped under HKDF(masterKey, principal) in a <data.db>.dek\n" +
+			"sidecar. Content parity is verified per table BEFORE cutover, and the\n" +
+			"plaintext source is kept as .plaintext.bak until the encrypted copy\n" +
+			"opens cleanly — so a failure costs a retry, never data.\n\n" +
+			"The master key comes from COMMERCE_KMS_MASTER_KEY (KMS-sourced). Run\n" +
+			"--dry-run first; it writes nothing and lists what would convert.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("Running migrations...")
-			// TODO: Implement migration system
-			return nil
+			masterKey, err := db.ResolveMasterKey()
+			if err != nil {
+				return err
+			}
+			if masterKey == nil {
+				return fmt.Errorf("COMMERCE_KMS_MASTER_KEY is not set — nothing to encrypt to; " +
+					"inject the KMS master key and re-run")
+			}
+			if dataDir == "" {
+				dataDir = db.DefaultConfig().DataDir
+			}
+			rep, err := db.EncryptDataDir(dataDir, masterKey, dryRun)
+			if err != nil {
+				// A run-level failure (bad key, no codec) — nothing was attempted.
+				return err
+			}
+			verb := "encrypted"
+			if dryRun {
+				verb = "would encrypt"
+			}
+			fmt.Printf("%s: %d %s, %d already encrypted, %d rows copied, %d failed\n",
+				dataDir, len(rep.Encrypted), verb, len(rep.Skipped), rep.Rows, len(rep.Failed))
+			for _, p := range rep.Encrypted {
+				fmt.Printf("  + %s\n", p)
+			}
+			for _, f := range rep.Failed {
+				fmt.Printf("  ! %s: %v\n", f.Path, f.Err)
+			}
+			// Non-zero exit on any failure, but only AFTER the successes are printed
+			// and durable — a partial backfill is a real result, not a rollback.
+			return rep.Err()
 		},
 	}
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "report what would be encrypted, write nothing")
+	cmd.Flags().StringVar(&dataDir, "data-dir", "", "tenant data dir (default: commerce's configured DataDir)")
+	return cmd
 }
 
 // newAdminCmd creates the admin command
