@@ -177,7 +177,7 @@ func TestTenantIsolation(t *testing.T) {
 // TestResolveMasterKey covers the env parsing (pure Go; runs under any build).
 func TestResolveMasterKey(t *testing.T) {
 	t.Setenv(masterKeyEnv, "")
-	k, err := resolveMasterKey()
+	k, err := ResolveMasterKey()
 	if sqlitedrv.CodecLinked() {
 		// Production (codec-linked): an unset key is fatal — never open a money store
 		// plaintext. (Mirrors cek's fail-closed posture.)
@@ -199,22 +199,22 @@ func TestResolveMasterKey(t *testing.T) {
 	canEncrypt := sqlitedrv.EncryptionAvailable() && sqlitedrv.CodecLinked()
 	if canEncrypt {
 		t.Setenv(masterKeyEnv, "not-hex!!")
-		if _, err := resolveMasterKey(); err == nil {
+		if _, err := ResolveMasterKey(); err == nil {
 			t.Fatal("malformed hex accepted")
 		}
 		t.Setenv(masterKeyEnv, "abcd")
-		if _, err := resolveMasterKey(); err == nil {
+		if _, err := ResolveMasterKey(); err == nil {
 			t.Fatal("wrong-length key accepted")
 		}
 		t.Setenv(masterKeyEnv, "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
-		k, err := resolveMasterKey()
+		k, err := ResolveMasterKey()
 		if err != nil || len(k) != 32 {
 			t.Fatalf("valid key: got (len=%d,%v), want (32,nil)", len(k), err)
 		}
 	} else {
 		// No real encryption available: any set key must be refused.
 		t.Setenv(masterKeyEnv, "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
-		if _, err := resolveMasterKey(); err == nil {
+		if _, err := ResolveMasterKey(); err == nil {
 			t.Fatal("build without a linked codec accepted a master key")
 		}
 	}
