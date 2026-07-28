@@ -10,12 +10,6 @@
   "devDependencies": {
     "turbo": "^2.3.0"
   },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "^18.3.0",
-      "@types/react-dom": "^18.3.0"
-    }
-  },
   "packageManager": "pnpm@10.8.0",
   "engines": {
     "node": ">=20"

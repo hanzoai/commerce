@@ -1,11 +1,46 @@
 # Hanzo Commerce - Production Build
 # Multi-stage build for minimal production image
 
-# Build stage
+# ── Stage 1: THE Commerce admin, built from source ────────────────────────────
+# ui/dist is //go:embed'd into the binary and is BUILD OUTPUT, not tracked
+# content — it used to be hand-synced and committed, which is exactly how it went
+# stale (the binary shipped a retired Vite bundle while app/admin had moved on).
+# Building it here makes the embedded admin a function of this commit, always.
+#
+# @hanzo/ui is a WORKSPACE SOURCE dep (`link:../../../ui/pkg/ui`). A single-repo
+# build context cannot see the sibling checkout, so resolve it from the registry:
+# pass the published range as PNPM_HANZO_UI and the manifest is rewritten before
+# install. Local dev keeps the source link.
+FROM node:20-slim AS admin-build
+RUN npm install -g pnpm@9.15.9
+WORKDIR /build
+# The FE pnpm workspace is the only input the admin build needs.
+COPY app/ ./app/
+WORKDIR /build/app
+ARG PNPM_HANZO_UI=^8.0.12
+RUN sed -i "s#\"@hanzo/ui\": \"link:[^\"]*\"#\"@hanzo/ui\": \"${PNPM_HANZO_UI}\"#" admin/package.json \
+ && pnpm install --no-frozen-lockfile
+
+# Prod defaults baked into the client bundle (Next inlines NEXT_PUBLIC_*).
+# commerce.hanzo.ai is same-origin for the API (bare /v1/*) because the admin is
+# served BY this binary; hanzo.id is the OIDC issuer; client_id hanzo-commerce is
+# the PKCE client; the AI dock calls the api.hanzo.ai chat-completions gateway.
+ENV NEXT_PUBLIC_COMMERCE_API_URL=https://commerce.hanzo.ai \
+    NEXT_PUBLIC_IAM_SERVER_URL=https://hanzo.id \
+    NEXT_PUBLIC_IAM_CLIENT_ID=hanzo-commerce \
+    NEXT_PUBLIC_HANZO_AI_URL=https://api.hanzo.ai/v1/chat/completions \
+    NEXT_PUBLIC_HANZO_AI_MODEL=best
+
+# typecheck is a real gate: the admin renders @hanzo/ui/product from source, so a
+# drift in the shared component set fails HERE, not in a browser.
+RUN node_modules/.bin/turbo run typecheck build --filter=@hanzo/commerce-dashboard
+
+# ── Stage 2: the Go binary, with that export baked in ─────────────────────────
 FROM golang:1.26.4-alpine AS builder
 
-# Install build dependencies (curl needed by scripts/fetch-plans.sh below)
-RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev curl
+# Install build dependencies (curl for scripts/fetch-plans.sh; bash + rsync for
+# scripts/sync-admin-ui.sh, which is the one producer of the embedded admin)
+RUN apk add --no-cache git ca-certificates tzdata gcc musl-dev curl bash rsync
 
 WORKDIR /build
 
@@ -34,6 +69,12 @@ RUN --mount=type=secret,id=gh_token \
 # plans/{dns,subscription}.json at compile time, and that dir is gitignored, so
 # the build MUST fetch it before `go build` (same contract as test.yml CI).
 RUN sh scripts/fetch-plans.sh
+
+# Bake the admin export into ui/dist for //go:embed. Same contract as the plans
+# hydrate above: the directory is gitignored build output, so the ONE producer
+# (scripts/sync-admin-ui.sh, fed by app/admin/out) must run before `go build`.
+COPY --from=admin-build /build/app/admin/out ./app/admin/out
+RUN bash scripts/sync-admin-ui.sh
 
 # Build the binary - build the WHOLE cmd/commerce PACKAGE (not just main.go):
 # boot is split across sibling files (legacy.go's bootLegacy + cloud_stub.go's
