@@ -1,7 +1,7 @@
 // Copyright © 2026 Hanzo AI. MIT License.
 //
 // commerced is the Hanzo Commerce daemon: one Go binary, gateway-trust
-// identity (no in-binary JWKS), embedded admin SPA at /_/commerce/.
+// identity (no in-binary JWKS), embedded admin SPA at /admin.
 // Mirrors the cmd/tasksd / cmd/iamd shape — thin entrypoint, all
 // surface area in pkg/commerce.
 

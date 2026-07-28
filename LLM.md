@@ -20,11 +20,21 @@ Commerce App (Cobra CLI + Gin HTTP + Hooks + Events)
 ## Commerce Admin
 
 There is ONE Commerce admin: the Next static export in `app/admin`
-(`@hanzo/commerce-dashboard`), built by `Dockerfile.commerce-admin` and served by
-`hanzoai/static`. It renders **`@hanzo/ui/product`** — the same component set the
-cloud console renders (`DataTable`, `PageHeader`, `StatusTag`, `EmptyState`,
-`MetricCard`, `BackendStateCard`, `CommerceResource`) — on `@hanzo/gui`. There is
-no commerce-local design system for the admin, and no second shell.
+(`@hanzo/commerce-dashboard`), embedded in the Go binary (`ui/dist`,
+`//go:embed`) and served by it at **`/admin`**. It renders **`@hanzo/ui/product`**
+— the same component set the cloud console renders (`DataTable`, `PageHeader`,
+`StatusTag`, `EmptyState`, `MetricCard`, `BackendStateCard`, `CommerceResource`)
+— on `@hanzo/gui`. There is no commerce-local design system for the admin, and no
+second shell.
+
+**One artifact, one URL contract.** `next.config.ts` sets `basePath: '/admin'`
+(from `src/lib/basepath.ts`), so chunks are `/admin/_next/*` and the client
+router resolves routes under the same prefix. A `basePath`-less export is built
+for `/` and CANNOT be served from a sub-path: its root-absolute `/_next/*`
+escapes the mount and its router 404s on its own pathname. That is why the
+separate `commerce-admin` static-container image is gone — it served the same
+bundle at a second origin's ROOT, i.e. one artifact with two incompatible URL
+contracts, and keeping it is what let the embedded copy rot.
 
 The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
 `@hanzogui/admin` `file:` target no longer exists), `hanzoai/admin`
@@ -50,8 +60,18 @@ The other three spellings are gone: the Vite SPA at `frontend/` (deleted — its
   read and is the sole tenant selector.
 - **`@hanzo/ui` is a workspace SOURCE dep** (`link:../../../ui/pkg/ui`) so the
   admin and the console cannot drift. A single-repo build context cannot see the
-  sibling checkout, so `Dockerfile.commerce-admin` rewrites that one line to the
-  published range (`--build-arg PNPM_HANZO_UI=^8.0.12`) before `pnpm install`.
+  sibling checkout, so `Dockerfile.production`'s admin-build stage rewrites that
+  one line to the published range (`--build-arg PNPM_HANZO_UI=^8.0.12`) before
+  `pnpm install`.
+- **The linked checkout carries its own copies, so webpack must be told.** That
+  link target has its own `node_modules` with `@hanzo/gui` / `@hanzogui/*`
+  devDependencies, and resolution walking up from an `@hanzo/ui` source file hits
+  THOSE first. The bundle then holds two `@hanzogui/web`s — two
+  `ThemeStateContext`s — `GuiProvider` publishes to one, every shared component
+  reads the other, and the admin dies on load with `Missing theme.` `tsconfig`
+  `paths` already pinned this for the TYPE layer; `next.config.ts`'s `SINGLETONS`
+  alias now pins the RUNTIME layer to match. Symptom of a regression here: a
+  blank admin with "Application error: a client-side exception".
 - **The build is a real gate**: `turbo run typecheck build --filter=@hanzo/commerce-dashboard`.
   `next.config.ts` no longer sets `ignoreBuildErrors`, and `hanzo.yml` runs the
   typecheck in CI.
