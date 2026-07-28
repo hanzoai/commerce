@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, Spinner, Text, YStack } from '@hanzo/gui'
 
-const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
-const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce'
+import { BASE_PATH } from '@/lib/basepath'
+import { iamConfig } from '@/lib/iam'
 
 export default function CallbackPage() {
   const router = useRouter()
@@ -13,14 +13,11 @@ export default function CallbackPage() {
 
   useEffect(() => {
     void import('@hanzo/iam/browser').then(({ IAM }) =>
-      new IAM({
-        serverUrl: IAM_SERVER,
-        clientId: CLIENT_ID,
-        redirectUri: `${window.location.origin}/callback`,
-      })
+      new IAM(iamConfig())
         .handleCallback(window.location.href)
-        // Full page load so IamProvider picks up the stored tokens.
-        .then(() => window.location.assign('/overview'))
+        // Full page load so IamProvider picks up the stored tokens — a hard
+        // navigation, so it spells the mount point the router would have added.
+        .then(() => window.location.assign(`${BASE_PATH}/overview`))
         .catch((e: Error) => setError(e.message || 'Authentication failed.')),
     )
   }, [])

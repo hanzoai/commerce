@@ -9,19 +9,17 @@
  * top-up on 402) are injected here, once.
  */
 import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { GuiProvider } from '@hanzo/gui'
 import { IamProvider } from '@hanzo/iam/react'
 import { HostProvider } from '@hanzo/ui/product'
 
 import config from '../../gui.config'
-
-const IAM_CONFIG = {
-  serverUrl: process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id',
-  clientId: process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce',
-  redirectUri: typeof window !== 'undefined' ? `${window.location.origin}/callback` : '',
-}
+import { BASE_PATH } from '@/lib/basepath'
+import { iamConfig } from '@/lib/iam'
 
 export function Providers({ children }: { children: ReactNode }) {
+  const router = useRouter()
   // IamProvider reads sessionStorage, which does not exist during the export
   // prerender. Mount after hydration; children that call useIam() need it present.
   const [mounted, setMounted] = useState(false)
@@ -30,11 +28,15 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <GuiProvider config={config} defaultTheme="dark">
-      <IamProvider config={IAM_CONFIG}>
+      <IamProvider config={iamConfig()}>
         <HostProvider
           actions={{
-            signIn: () => window.location.assign('/login'),
-            addCredits: () => window.location.assign('/billing'),
+            // A route of this export — the router applies basePath.
+            signIn: () => router.push('/login'),
+            // NOT a route of this export: `<base>/billing` is the hanzoai/billing
+            // bundle the Go binary mounts alongside us, so this is a real
+            // navigation and has to spell the mount point.
+            addCredits: () => window.location.assign(`${BASE_PATH}/billing`),
           }}
         >
           {children}

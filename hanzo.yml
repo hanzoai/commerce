@@ -12,19 +12,19 @@
 # `go mod tidy` with the `gh_token` BuildKit secret (supplied by BOTH build
 # paths) + GOPRIVATE — see the Dockerfile's builder stage.
 images:
-  # Go backend — the API/billing service (StarterCreditCents lives here).
+  # Go backend — the API/billing service (StarterCreditCents lives here) AND the
+  # admin. Dockerfile.production's admin-build stage typechecks and builds
+  # app/admin (@hanzo/commerce-dashboard, on @hanzo/ui/product), syncs the export
+  # into ui/dist, and //go:embed bakes it into the binary, which serves it at
+  # /admin. There is no longer a separate commerce-admin image: the export is
+  # built for basePath /admin, so it has exactly ONE URL contract and exactly one
+  # server. The old static-container image served the same bundle at a second
+  # origin's ROOT — a second URL contract for one artifact, and the reason the
+  # embedded copy was left to rot.
   - name: commerce
     context: .
     dockerfile: Dockerfile.production
     repo: ghcr.io/hanzoai/commerce
-  # Admin console (deployed as commerce-admin). From-source build (v0.3.0+):
-  # Dockerfile.commerce-admin typechecks AND builds app/admin
-  # (@hanzo/commerce-dashboard, on @hanzo/ui/product) and serves the export via
-  # hanzoai/static — the same Dockerfile the in-cluster buildkit uses.
-  - name: commerce-admin
-    context: .
-    dockerfile: Dockerfile.commerce-admin
-    repo: ghcr.io/hanzoai/commerce-admin
   # Marketing/storefront site (deployed as commerce-site, hanzoai/static plugin).
   - name: commerce-site
     context: .
@@ -82,8 +82,10 @@ test:
         test/
 
   # Admin typecheck — the admin renders @hanzo/ui/product from source, so a drift
-  # in the shared component set fails HERE rather than in a browser. `next build`
-  # no longer sets ignoreBuildErrors, so this gate is real.
+  # in the shared component set fails HERE rather than in a browser, and faster
+  # than the image build (Dockerfile.production runs the same command to produce
+  # the embedded export). `next build` no longer sets ignoreBuildErrors, so this
+  # gate is real.
   - name: admin-typecheck
     run: |
       set -e

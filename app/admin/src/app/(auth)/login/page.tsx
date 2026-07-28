@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card, Text, YStack } from '@hanzo/gui'
 import { HanzoMark, PrimaryButton } from '@hanzo/ui/product'
 
-const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
-const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-commerce'
+import { iamConfig } from '@/lib/iam'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,11 +17,7 @@ export default function LoginPage() {
   // Dynamic import — the SDK touches Web Crypto, which the export prerender lacks.
   const signIn = async () => {
     const { IAM } = await import('@hanzo/iam/browser')
-    await new IAM({
-      serverUrl: IAM_SERVER,
-      clientId: CLIENT_ID,
-      redirectUri: `${window.location.origin}/callback`,
-    }).signinRedirect()
+    await new IAM(iamConfig()).signinRedirect()
   }
 
   return (
@@ -40,7 +35,7 @@ export default function LoginPage() {
         Sign in with Hanzo ID
       </PrimaryButton>
       <Text fontSize="$2" color="$color10" text="center">
-        You will be redirected to {new URL(IAM_SERVER).host} to authenticate via OIDC.
+        You will be redirected to {new URL(iamConfig().serverUrl).host} to authenticate via OIDC.
       </Text>
     </Card>
   )

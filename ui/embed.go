@@ -8,10 +8,16 @@
 // into ui/dist, which is baked into the commerced binary at compile time — no
 // external static-assets directory, no sidecar, no separate deploy.
 //
-// Mounted at the ROOT /admin/* only (commerce.go). The export emits
-// root-relative /_next/* chunk URLs, so it can only be served from a mount
-// whose asset paths are root-relative; the old /_/commerce/ui/* mount could
-// not serve it and is gone rather than serving a second, frozen bundle.
+// dist/ is BUILD OUTPUT, not tracked content: gitignored but for .gitkeep, and
+// produced by Dockerfile.production's admin-build stage before `go build`. It
+// was committed until now, and a committed bundle is a bundle nobody rebuilds —
+// the binary shipped a retired Vite SPA for as long as that was true.
+//
+// Mounted at /admin/* (commerce.go), and the export is BUILT for that path:
+// next.config.ts sets `basePath: '/admin'`, so chunk URLs are /admin/_next/*
+// and the client router resolves routes under the same prefix. An export built
+// for "/" cannot be served from a sub-path at all — its root-absolute /_next/*
+// escapes the mount and its router 404s on its own pathname.
 package ui
 
 import (
