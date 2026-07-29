@@ -147,6 +147,79 @@ func (m *mintRouter) Use(handlers ...zip.Handler) zip.Router {
 
 func (m *mintRouter) Fiber() fiber.Router { return m.inner.Fiber() }
 
+// OpScope carries the gate onto a TYPED op declared on this router, so
+// `zip.Post(mint, "/deposit", Deposit)` is gated exactly as `mint.Post` is.
+//
+// It is not optional and it is not a formality. zip asks a Router where an op it
+// declares should land, and a decorator that answered with the inner router's
+// scope would register a money-mint op with NO gate — this router's entire
+// purpose, skipped silently, on the routes that move money. Folding m.gate into
+// the scope's middleware is what keeps "registration IS the gate" true for the
+// typed registrars as well as the chainable ones.
+//
+// Use [MintOp] to declare one: it records the route in the registry too, which
+// this method cannot do because zip asks for the scope without saying which path
+// is about to be registered under it. A bare zip.Post through a mint router is
+// gated but does not appear in [MintRoutes].
+func (m *mintRouter) OpScope() zip.OpScope {
+	s := m.inner.OpScope()
+	if s.Middleware == nil {
+		s.Middleware = zip.Chain(m.gateMW())
+		return s
+	}
+	s.Middleware = zip.Chain(s.Middleware, m.gateMW())
+	return s
+}
+
+// gateMW is m.gate as middleware: the gate runs FIRST and calls through, which
+// is the same order the chainable methods produce by prepending it.
+func (m *mintRouter) gateMW() zip.Middleware {
+	return func(next zip.Handler) zip.Handler {
+		return func(c *zip.Ctx) error {
+			if err := m.gate(c); err != nil {
+				return err
+			}
+			return next(c)
+		}
+	}
+}
+
+// MintOp declares a TYPED op on a mint router: gated and recorded, the same
+// single declaration `mint.Post(path, h)` makes for an untyped route, and
+// projected into the OpenAPI document, the MCP tool list, the CLI and the
+// op-call plane like any other typed op.
+//
+// It is a function rather than a method because Go methods cannot take type
+// parameters — the same reason zip.Post is one. Pass the mint router as `on`:
+//
+//	middleware.MintOp(mint, http.MethodPost, "/deposit", Deposit)
+//
+// A money route that is not typed is invisible to every projection, which is why
+// this exists; a money route that is typed but declared with a bare zip.Post is
+// gated (see [mintRouter.OpScope]) but missing from [MintRoutes], which is why
+// this is the one to use.
+func MintOp[In, Out any](on zip.Router, method, path string, fn zip.TypedHandler[In, Out], opts ...zip.OpOption) {
+	if m, ok := on.(*mintRouter); ok {
+		mintMu.Lock()
+		mintRegistry[MintRoute{Method: method, Path: joinPath(m.prefix, path)}] = struct{}{}
+		mintMu.Unlock()
+	}
+	switch method {
+	case http.MethodGet:
+		zip.Get(on, path, fn, opts...)
+	case http.MethodPost:
+		zip.Post(on, path, fn, opts...)
+	case http.MethodPut:
+		zip.Put(on, path, fn, opts...)
+	case http.MethodPatch:
+		zip.Patch(on, path, fn, opts...)
+	case http.MethodDelete:
+		zip.Delete(on, path, fn, opts...)
+	default:
+		panic("middleware.MintOp: unsupported method " + method)
+	}
+}
+
 // groupPrefix reports the full prefix of r, read from the SAME value
 // fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
 // app router has no prefix.
