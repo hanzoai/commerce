@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@hanzo/gui": "7.3.0",
-    "@hanzo/iam": "^0.13.1",
+    "@hanzo/iam": "^0.21.2",
     "@hanzo/ui": "^8.0.12",
     "@hanzogui/config": "7.3.0",
     "@hanzogui/core": "7.3.0",
