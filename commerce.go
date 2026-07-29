@@ -281,11 +281,11 @@ func infraConfigFromEnv() *infra.Config {
 		cfg.PubSub.EnableJetStream = getEnv("PUBSUB_JETSTREAM", "true") == "true"
 	}
 
-	// Tasks (Temporal)
+	// Tasks
 	if tasksURL := getEnv("TASKS_URL", ""); tasksURL != "" {
 		if parsed, err := url.Parse(tasksURL); err == nil {
 			cfg.Tasks.Enabled = true
-			cfg.Tasks.HostPort = parsed.Host
+			cfg.Tasks.Address = parsed.Host
 			if ns := strings.TrimPrefix(parsed.Path, "/"); ns != "" {
 				cfg.Tasks.Namespace = ns
 			}
