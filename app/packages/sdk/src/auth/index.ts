@@ -4,8 +4,8 @@ import { ClientHeaders, Config } from "../types"
 
 /**
  * Hanzo IAM (Identity and Access Management) configuration constants.
- * Authentication is handled via Hanzo ID (https://hanzo.id), which is a
- * Casdoor-based OIDC provider.
+ * Authentication is handled via Hanzo ID (https://hanzo.id), an OIDC
+ * provider.
  */
 const HANZO_IAM_ISSUER = "https://hanzo.id"
 const HANZO_IAM_TOKEN_ENDPOINT = "https://hanzo.id/v1/iam/oauth/token"

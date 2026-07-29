@@ -23,7 +23,7 @@ import (
 )
 
 // adminRoles is the set of IAM roles authorized to load the billing admin
-// SPA. IsAdmin (Casdoor bool flag) is also sufficient.
+// SPA. The IsAdmin bool claim is also sufficient.
 var adminRoles = map[string]struct{}{
 	"admin":         {},
 	"billing_admin": {},
