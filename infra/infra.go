@@ -98,7 +98,7 @@ func DefaultConfig() *Config {
 		},
 		Tasks: TasksConfig{
 			Enabled:   false,
-			HostPort:  "localhost:7233",
+			Address:   "localhost:7233",
 			Namespace: "commerce",
 		},
 		ConnectTimeout: 10 * time.Second,

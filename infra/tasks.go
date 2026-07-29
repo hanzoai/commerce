@@ -15,15 +15,17 @@ import (
 	"github.com/hanzoai/tasks/pkg/sdk/workflow"
 )
 
-// TasksConfig holds Temporal configuration
+// TasksConfig holds the Hanzo Tasks connection.
 type TasksConfig struct {
 	// Enabled enables the tasks service
 	Enabled bool
 
-	// HostPort is the Temporal server address
-	HostPort string
+	// Address is where the tasks engine listens. A filesystem path dials a
+	// unix socket — the right shape for traffic that never leaves the host,
+	// and one that needs no port. Anything else is a host:port address.
+	Address string
 
-	// Namespace is the Temporal namespace
+	// Namespace is the tasks namespace
 	Namespace string
 
 	// Identity is the worker identity
@@ -58,7 +60,7 @@ type TasksClient struct {
 	workers map[string]worker.Worker
 }
 
-// NewTasksClient creates a new Temporal tasks client
+// NewTasksClient creates a new Hanzo Tasks client
 func NewTasksClient(ctx context.Context, cfg *TasksConfig) (*TasksClient, error) {
 	if cfg.Namespace == "" {
 		cfg.Namespace = "default"
@@ -68,14 +70,14 @@ func NewTasksClient(ctx context.Context, cfg *TasksConfig) (*TasksClient, error)
 	}
 
 	opts := client.Options{
-		HostPort:  cfg.HostPort,
+		Address:   cfg.Address,
 		Namespace: cfg.Namespace,
 		Identity:  cfg.Identity,
 	}
 
 	c, err := client.Dial(opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to temporal: %w", err)
+		return nil, fmt.Errorf("failed to connect to tasks at %s: %w", cfg.Address, err)
 	}
 
 	return &TasksClient{
