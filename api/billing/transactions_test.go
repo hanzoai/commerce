@@ -107,6 +107,12 @@ func (r *recordingRouter) Group(prefix string, handlers ...zip.Handler) zip.Rout
 }
 func (r *recordingRouter) Fiber() fiber.Router { return r.inner.Fiber() }
 
+// OpScope answers where a TYPED op declared on this recorder lands: the inner
+// router's scope, untouched. This decorator only records, so it has no
+// middleware to fold in and nothing to change about where an op goes — but zip
+// asks every Router, so every Router answers.
+func (r *recordingRouter) OpScope() zip.OpScope { return r.inner.OpScope() }
+
 // ── route registration guards ────────────────────────────────────────────────
 
 // mountRoutes mounts the billing Route() onto a bare zip app under the

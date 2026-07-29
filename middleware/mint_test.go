@@ -3,8 +3,10 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/zap-proto/zip"
@@ -145,4 +147,53 @@ func TestMintUseIsRefused(t *testing.T) {
 	}()
 	app := zip.New(zip.Config{DisableStartupMessage: true})
 	Mint(app.Group("/v1").Group("billing")).Use(func(c *zip.Ctx) error { return nil })
+}
+
+// A TYPED op declared on a mint router is gated exactly as an untyped one is.
+// zip asks a Router where an op should land; a decorator that answered with the
+// inner router's scope would register a money route with no gate at all — this
+// router's whole purpose, skipped silently.
+func TestMintGatesATypedOp(t *testing.T) {
+	app := zip.New(zip.Config{DisableStartupMessage: true})
+	mint := Mint(app.Group("/v1/billing"))
+
+	type depositIn struct {
+		Cents int `json:"cents"`
+	}
+	type depositOut struct {
+		OK bool `json:"ok"`
+	}
+	MintOp(mint, http.MethodPost, "/deposit",
+		func(context.Context, *depositIn) (*depositOut, error) { return &depositOut{OK: true}, nil })
+
+	// Registered, and recorded — one declaration, both effects, same as Route.
+	var recorded bool
+	for _, r := range MintRoutes() {
+		if r.Method == http.MethodPost && r.Path == "/v1/billing/deposit" {
+			recorded = true
+		}
+	}
+	if !recorded {
+		t.Fatalf("typed mint op is not in MintRoutes(): %+v", MintRoutes())
+	}
+
+	// Gated: no platform principal, no deposit.
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/deposit", strings.NewReader(`{"cents":1}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := app.Fiber().Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		t.Fatalf("ungated typed mint op answered %d — PlatformOnly did not run", resp.StatusCode)
+	}
+
+	// And it is a real op: one declaration, every projection.
+	if len(app.Commands()) != 1 || app.Commands()[0].Path != "/v1/billing/deposit" {
+		t.Fatalf("commands = %+v, want the one op", app.Commands())
+	}
+	if len(app.MCPTools()) != 1 {
+		t.Fatalf("tools = %+v, want the one op", app.MCPTools())
+	}
 }
