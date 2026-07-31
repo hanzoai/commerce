@@ -1115,14 +1115,34 @@ func (app *App) setupRoutes() {
 	// pay SPA's card iframe initializes with the exact application commerce will
 	// charge — no build-time VITE_* env, no per-host seed row, no 404.
 	//
-	// The Square public config comes from the deployment's per-brand env
-	// (SQUARE_APPLICATION_ID/LOCATION_ID, KMS-synced) via a synthetic org keyed by
-	// the resolved slug — NOT a per-request DB read. A naive per-request org query
-	// on this public, unauthenticated, SPA-boot endpoint blocks under an unbounded
-	// context and can exhaust the DB pool (regression seen at 1.42.44). Any future
-	// per-org-creds loader passed here MUST be cached + deadline-bounded — see
-	// checkout.OrgLoader. nil keeps resolution pure host→brand→env (no I/O, no hang).
-	orgResolver := checkout.NewOrgResolver(nil)
+	// The Square public config is resolved from the org ROW, because live-vs-sandbox
+	// is org state (TestMode() == !Live) and nothing else can answer it. With the
+	// nil loader this used to be a synthetic org, which is never Live, so the public
+	// tenant JSON advertised the SANDBOX application permanently — flipping the org
+	// live changed the record and nothing else (measured 2026-07-30:
+	// POST /v1/billing/test-mode returned {"live":true,"testMode":false} while the
+	// tenant kept serving sandbox-sq0idb-…). The card iframe then tokenizes against
+	// sandbox while the charge path uses the live org, and a sandbox nonce cannot be
+	// charged by a production account — checkout fails closed and nobody can pay.
+	//
+	// The read is wrapped in the two properties checkout.OrgLoader REQUIRES, since
+	// this is a PUBLIC, unauthenticated endpoint the pay SPA hits on every boot and
+	// an unbounded per-request query is what exhausted the pool at 1.42.44:
+	// a 60s cache (so a boot storm costs one read, and a flip still lands within a
+	// minute with no restart) and a 2s deadline (so a wedged datastore costs one
+	// request, not the pool). Every failure path returns a MISS, which degrades to
+	// exactly the previous synthetic-org behavior — sandbox. An outage can never
+	// promote a tenant onto production rails.
+	orgResolver := checkout.NewOrgResolver(checkout.NewCachedOrgLoader(
+		func(ctx context.Context, slug string) (*orgModel.Organization, error) {
+			org := orgModel.New(commerceDatastore.New(ctx))
+			if _, err := org.Query().Filter("Name=", slug).Get(); err != nil {
+				return nil, err
+			}
+			return org, nil
+		},
+		60*time.Second, 2*time.Second,
+	).Load)
 
 	// forwardedHostMiddleware lifts the original customer-facing host from
 	// X-Forwarded-Host (set by a trusted upstream) since the ingress overwrites
