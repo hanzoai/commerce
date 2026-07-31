@@ -365,3 +365,70 @@ func readEncryptedEntity(t *testing.T, dbPath string, key []byte, pt sqlitedrv.P
 	}
 	return data
 }
+
+// A live tenant file carries tables no schema of OURS declares — every one
+// hanzoai/replicate creates. The encryption migration built its destination from
+// baseSchemaDDL alone and then copied every source table into it, so the first such
+// table aborted the whole migration ("copy table \"_replicate_seq\": no such table").
+// The file stayed half-migrated and every later open bound a nil DB — which is how 63
+// of 65 tenants' stores answered 500 "Failed to list store" with zero log lines.
+func TestEncryptCarriesTablesTheBaseSchemaDoesNotDeclare(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "tenant.db")
+	src, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range baseSchemaDDL {
+		if _, err := src.Exec(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Exactly what replicate adds to every tenant file, plus a row to prove data moves.
+	if _, err := src.Exec(`CREATE TABLE _replicate_seq (id INTEGER PRIMARY KEY, seq INTEGER)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := src.Exec(`INSERT INTO _replicate_seq (id, seq) VALUES (1, 42)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := src.Exec(`CREATE TABLE _replicate_lock (name TEXT PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+
+	dst, err := sql.Open("sqlite", filepath.Join(dir, "dst.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dst.Close()
+	for _, s := range baseSchemaDDL {
+		if _, err := dst.Exec(s); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	tables, err := userTables(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// THE FIX: the destination must be able to hold whatever the source actually has.
+	if err := createMissingTables(src, dst, tables); err != nil {
+		t.Fatalf("createMissingTables: %v", err)
+	}
+	for _, tbl := range tables {
+		if _, err := copyTable(src, dst, tbl); err != nil {
+			t.Fatalf("copy table %q must not fail after createMissingTables: %v", tbl, err)
+		}
+	}
+	var seq int
+	if err := dst.QueryRow(`SELECT seq FROM _replicate_seq WHERE id = 1`).Scan(&seq); err != nil {
+		t.Fatalf("undeclared table did not survive the migration: %v", err)
+	}
+	if seq != 42 {
+		t.Fatalf("row value lost: got %d want 42", seq)
+	}
+	// Idempotent: a second pass over an already-complete destination is a no-op.
+	if err := createMissingTables(src, dst, tables); err != nil {
+		t.Fatalf("createMissingTables must be idempotent: %v", err)
+	}
+	src.Close()
+}

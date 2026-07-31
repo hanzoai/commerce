@@ -110,6 +110,14 @@ func (s *Store) Defaults() {
 	if s.Currency == "" {
 		s.Currency = currency.USD
 	}
+	// A nil map is writable NOWHERE: the first listing upsert on a brand-new store
+	// panicked into 500 "assignment to entry in nil map", so a store could be created
+	// and then never receive its first listing — the one write that makes a storefront
+	// non-empty. `orm:"default:{}"` only covers the DB round-trip; a freshly
+	// constructed Store never went through it. Make the zero value usable.
+	if s.Listings == nil {
+		s.Listings = Listings{}
+	}
 }
 
 func (s *Store) Load(ps []datastore.Property) (err error) {
