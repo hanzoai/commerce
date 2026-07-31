@@ -40,12 +40,12 @@ type benchPlan struct {
 }
 
 type benchEcommerceRef struct {
-	Type   string         `json:"type,omitempty"`
-	Stripe benchStripeRef `json:"stripe,omitempty"`
-	Affirm benchAffirmRef `json:"affirm,omitempty"`
+	Type    string          `json:"type,omitempty"`
+	Catalog benchCatalogRef `json:"catalog,omitempty"`
+	Affirm  benchAffirmRef  `json:"affirm,omitempty"`
 }
 
-type benchStripeRef struct {
+type benchCatalogRef struct {
 	ID string `json:"id,omitempty"`
 }
 
@@ -67,17 +67,17 @@ func samplePlan() benchPlan {
 		IntervalCount:   1,
 		TrialPeriodDays: 14,
 		Metadata: map[string]any{
-			"tier":            "pro",
-			"features":        []string{"analytics", "priority-support", "100gb-storage"},
-			"stripe_price_id": "price_1234567890",
-			"visible":         true,
+			"tier":             "pro",
+			"features":         []string{"analytics", "priority-support", "100gb-storage"},
+			"catalog_price_id": "price_1234567890",
+			"visible":          true,
 		},
 		CreatedAt: "2026-01-15T10:30:00Z",
 		UpdatedAt: "2026-03-01T08:00:00Z",
 		Deleted:   false,
 		Ref: benchEcommerceRef{
-			Type:   "stripe",
-			Stripe: benchStripeRef{ID: "prod_ABC123"},
+			Type:    "square",
+			Catalog: benchCatalogRef{ID: "prod_ABC123"},
 		},
 	}
 }

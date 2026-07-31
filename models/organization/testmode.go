@@ -19,9 +19,8 @@ package organization
 //
 // It is also what "configured per org, not in env files" means here. The
 // credentials were already per org — o.Square.Sandbox / o.Square.Production,
-// o.Stripe.Test / o.Stripe.Live, KMS-backed — and StripeToken() already chose
-// between them from o.Live alone. Only the mode stayed deployment-wide, so the
-// two could disagree. Now both read the same per-org fact.
+// KMS-backed — chosen from o.Live alone. Only the mode stayed deployment-wide,
+// so the two could disagree. Now both read the same per-org fact.
 //
 // Still fail-CLOSED, but per tenant instead of per deployment: an org is in
 // production only when its own record says Live, so a new, unset or

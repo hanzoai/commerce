@@ -7,18 +7,6 @@ import (
 	"github.com/hanzoai/commerce/models/types/analytics"
 )
 
-// StripeConnectToken holds legacy Stripe Connect OAuth credentials.
-// Retained for backward compatibility with stored data.
-type StripeConnectToken struct {
-	AccessToken    string `json:"accessToken,omitempty"`
-	PublishableKey string `json:"publishableKey,omitempty"`
-	RefreshToken   string `json:"refreshToken,omitempty"`
-	UserId         string `json:"userId,omitempty"`
-	Livemode       bool   `json:"livemode,omitempty"`
-	Scope          string `json:"scope,omitempty"`
-	TokenType      string `json:"tokenType,omitempty"`
-}
-
 type Type string
 
 const (
@@ -49,7 +37,6 @@ const (
 	SendGridType      Type = "sendgrid"
 	ShipwireType      Type = "shipwire"
 	SMTPRelayType     Type = "smtprelay"
-	StripeType        Type = "stripe"
 	WoopraType        Type = "woopra"
 )
 
@@ -213,20 +200,6 @@ type SMTPRelay struct {
 	Msg      string   `json:"msg"`
 }
 
-// Stripe holds legacy Stripe integration credentials.
-// Retained for backward compatibility with stored organization data.
-type Stripe struct {
-	// For convenience duplicated
-	AccessToken    string `json:"accessToken,omitempty"`
-	PublishableKey string `json:"publishableKey,omitempty"`
-	RefreshToken   string `json:"refreshToken,omitempty"`
-	UserId         string `json:"userId,omitempty"`
-
-	// Save entire live and test tokens
-	Live StripeConnectToken `json:"live,omitempty" datastore:",noindex"`
-	Test StripeConnectToken `json:"test,omitempty" datastore:",noindex"`
-}
-
 // Square connection
 type SquareConnection struct {
 	ApplicationId string `json:"applicationId,omitempty"`
@@ -369,7 +342,6 @@ type Integration struct {
 	Shipwire      Shipwire      `json:"-"`
 	SendGrid      SendGrid      `json:"-"`
 	SMTPRelay     SMTPRelay     `json:"-"`
-	Stripe        Stripe        `json:"-"`
 	SecurityToken SecurityToken `json:"-"`
 	Woopra        Woopra        `json:"-"`
 }

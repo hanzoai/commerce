@@ -17,7 +17,6 @@ const (
 	NullType         Type = "null"
 	PayPalType       Type = "paypal"
 	SquareType       Type = "square"
-	StripeType       Type = "stripe"
 	PlaidType        Type = "plaid"
 )
 

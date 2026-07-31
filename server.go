@@ -3,7 +3,6 @@
 package commerce
 
 import (
-
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/middleware"

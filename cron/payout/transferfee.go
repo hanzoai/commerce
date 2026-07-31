@@ -24,15 +24,17 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 	// Setup transfer
 	switch fe.Type {
 	case fee.Affiliate:
-		aff := affiliate.New(db)
-		aff.MustGetById(fe.AffiliateId)
+		// The lookup stays: a fee must name a real affiliate.
+		affiliate.New(db).MustGetById(fe.AffiliateId)
 		tr.Description = fmt.Sprintf("Affiliate transfer '%s'", tr.Id())
-		tr.Destination = aff.Stripe.UserId
+		// No destination: payouts rode Stripe Connect account ids, and we do not
+		// use Stripe. The transfer records what is OWED; the rail that settles it
+		// is pending, exactly as the Platform case has always said.
+		tr.Destination = ""
 	case fee.Partner:
-		par := partner.New(db)
-		par.MustGetById(fe.PartnerId)
+		partner.New(db).MustGetById(fe.PartnerId)
 		tr.Description = fmt.Sprintf("Partner transfer '%s'", tr.Id())
-		tr.Destination = par.Stripe.UserId
+		tr.Destination = ""
 	case fee.Platform:
 		tr.Description = fmt.Sprintf("Platform fee transfer '%s', fee '%s'", tr.Id(), fe.Id())
 		tr.Destination = "" // External payout destination to be configured
