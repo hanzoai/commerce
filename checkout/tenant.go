@@ -149,6 +149,43 @@ type Resolver interface {
 // embedded whitespace, control bytes, empty string — is rejected (returns
 // ""). We deliberately do NOT trim: a well-formed Host header has none,
 // and silently repairing input turns a bug into an attack surface.
+// RequestHost is the ONE way commerce learns the customer-facing hostname.
+//
+// fiber parses the request URI ONCE, so a middleware that rewrites the Host
+// HEADER afterwards does not change what Host() returns. That is why lifting
+// X-Forwarded-Host into the header (forwardedHostMiddleware) was a silent
+// no-op behind the ingress: Host() stayed empty, normalizeHost returned "",
+// and Resolve's only error path fired — 404 {"error":"unknown tenant"} on
+// EVERY well-formed host. Measured live 2026-07-30 on pay.hanzo.ai and
+// api.hanzo.ai, with the sibling /v1/commerce/catalog on the same group
+// answering 200 (it reads ?brand=, never the host, so it could not see this).
+//
+// Order: the parsed host, then the forwarded host set by the trusted ingress,
+// then the raw Host header. brandForHost is exact-suffix and an unknown host
+// falls back to the deployment default, so a spoofed value can only ever
+// select a brand's ALREADY-PUBLIC config (brand chrome, IAM client id, the
+// Square PUBLIC application id). There is no probe oracle and nothing private
+// behind it — the 404 body still never echoes the host.
+func RequestHost(c *zip.Ctx) string {
+	if h := normalizeHost(c.Host()); h != "" {
+		return h
+	}
+	if h := normalizeHost(firstForwarded(c.Header("X-Forwarded-Host"))); h != "" {
+		return h
+	}
+	return normalizeHost(c.Header("Host"))
+}
+
+// firstForwarded takes the LEFT-MOST entry of a comma-separated forwarding
+// header: each proxy appends, so the left-most is the original client-facing
+// value and every later one is an internal hop.
+func firstForwarded(v string) string {
+	if i := strings.IndexByte(v, ','); i >= 0 {
+		v = v[:i]
+	}
+	return strings.TrimSpace(v)
+}
+
 func normalizeHost(host string) string {
 	if host == "" {
 		return ""
@@ -227,7 +264,7 @@ func toPublicView(t Tenant) publicView {
 // without leaking per-user state. Tenant config is not user-specific.
 func TenantJSON(r Resolver) zip.Handler {
 	return func(c *zip.Ctx) error {
-		t, err := r.Resolve(c.Fiber().Host())
+		t, err := r.Resolve(RequestHost(c))
 		if err != nil {
 			// Do NOT include the Host in the 404 body. Attackers probing
 			// for tenant existence should see a constant response.

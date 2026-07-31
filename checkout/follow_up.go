@@ -100,7 +100,7 @@ func WebhookIntake(r Resolver) zip.Handler {
 // resolveOr404 is the common tenant-resolve preamble. On failure it
 // writes a 404 with no Host echo and returns ok=false.
 func resolveOr404(c *zip.Ctx, r Resolver) (Tenant, bool) {
-	t, err := r.Resolve(c.Fiber().Host())
+	t, err := r.Resolve(RequestHost(c))
 	if err != nil {
 		_ = writeJSONError(c, http.StatusNotFound, "unknown tenant")
 		return Tenant{}, false
