@@ -144,7 +144,7 @@ func saveAlert(db *datastore.Datastore, a *spendalert.SpendAlert) error {
 // period spend. It is the console Budgets read AND the source ScopeRules uses for
 // the rate-limit config, so it MUST key on the same org the writer stored under.
 //
-//	GET /v1/billing/spend-alerts
+//	GET /v1/billing/alerts
 func ListSpendAlerts(c *zip.Ctx) error {
 	// #146: never panic on a missing org. The co-resident embed path can reach this read
 	// with no "organization" local (IAMTokenRequired no-ops with no gateway X-Org-Id) —
@@ -182,7 +182,7 @@ func ListSpendAlerts(c *zip.Ctx) error {
 // or project/service scope cap has none). At least one limit must be meaningful:
 // a Threshold>0 (spend cap) or a RateLimitRpm>0 (rate limit).
 //
-//	POST /v1/billing/spend-alerts
+//	POST /v1/billing/alerts
 func CreateSpendAlert(c *zip.Ctx) error {
 	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
 	// never a nil-deref panic (→ 502).
@@ -254,7 +254,7 @@ func CreateSpendAlert(c *zip.Ctx) error {
 // UpdateSpendAlert patches an existing spend alert / cap. Only the fields present
 // in the body change; the rest are preserved.
 //
-//	PATCH /v1/billing/spend-alerts/:id
+//	PATCH /v1/billing/alerts/:id
 func UpdateSpendAlert(c *zip.Ctx) error {
 	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
 	// never a nil-deref panic (→ 502).
@@ -321,7 +321,7 @@ func UpdateSpendAlert(c *zip.Ctx) error {
 
 // DeleteSpendAlert deletes a spend alert by ID.
 //
-//	DELETE /v1/billing/spend-alerts/:id
+//	DELETE /v1/billing/alerts/:id
 func DeleteSpendAlert(c *zip.Ctx) error {
 	// #146: resolve the org safely (see ListSpendAlerts). No validated org ⇒ a clean 401,
 	// never a nil-deref panic (→ 502).
