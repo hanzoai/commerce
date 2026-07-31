@@ -186,10 +186,10 @@ func seedRechargeOrg(t *testing.T, ctx ae.Context, name string, amountCents, thr
 }
 
 func runRecharge(ctx context.Context) *http.Response {
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/auto-recharge/run-all", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/recharge/run-all", nil)
 	return driveSeeded(func(c *zip.Ctx) {
 		c.SetContext(ctx)
-	}, "/v1/billing/auto-recharge/run-all", req, RunAutoRechargeAllOrgs)
+	}, "/v1/billing/recharge/run-all", req, RunAutoRechargeAllOrgs)
 }
 
 // THE off-session hole: a cron that re-fires (overlapping run, retried job)

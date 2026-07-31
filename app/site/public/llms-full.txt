@@ -97838,9 +97838,9 @@ Refer to the [API routes](https://commerce.hanzo.ai/docs/learn/fundamentals/api-
 
 An API route is created in a `route.ts` file under a sub-directory of the `src/api` directory. The path of the API route is the file's path relative to `src/api`, and it can include path parameters using square brackets.
 
-So, to create an API route at the path `/store/payment-methods/:account-holder-id`, create the file `src/api/store/payment-methods/[account_holder_id]/route.ts` with the following content:
+So, to create an API route at the path `/store/methods/:account-holder-id`, create the file `src/api/store/methods/[account_holder_id]/route.ts` with the following content:
 
-```ts title="src/api/store/payment-methods/[account_holder_id]/route.ts" highlights={apiRouteHighlights}
+```ts title="src/api/store/methods/[account_holder_id]/route.ts" highlights={apiRouteHighlights}
 import { HanzoError } from "@hanzo/commerce-framework/utils"
 import { HanzoRequest, HanzoResponse } from "@hanzo/commerce-framework/http"
 
@@ -97889,7 +97889,7 @@ export async function GET(
 }
 ```
 
-Since you export a route handler function named `GET`, you expose a `GET` API route at `/store/payment-methods/:account-holder-id`. The route handler function accepts two parameters:
+Since you export a route handler function named `GET`, you expose a `GET` API route at `/store/methods/:account-holder-id`. The route handler function accepts two parameters:
 
 1. A request object with details and context on the request, such as body parameters or authenticated customer details.
 2. A response object to manipulate and send the response.
@@ -97926,7 +97926,7 @@ import { authenticate, defineMiddlewares } from "@hanzo/commerce-framework/http"
 export default defineMiddlewares({
   routes: [
     {
-      matcher: "/store/payment-methods/:provider_id/:account_holder_id",
+      matcher: "/store/methods/:provider_id/:account_holder_id",
       method: "GET",
       middlewares: [
         authenticate("customer", ["bearer", "session"]),
@@ -98046,7 +98046,7 @@ export const getSavedPaymentMethods = async (accountHolderId: string) => {
   return sdk.client.fetch<{
     payment_methods: SavedPaymentMethod[]
   }>(
-    `/store/payment-methods/${accountHolderId}`,
+    `/store/methods/${accountHolderId}`,
     {
       method: "GET",
       headers,
@@ -130247,7 +130247,7 @@ For every payment method you want to customize its display, add an entry in the 
 
 ### Test it out
 
-Before you test out the payment checkout step, make sure you have the necessary [payment methods configured in Stripe](https://docs.stripe.com/payments/payment-methods/overview).
+Before you test out the payment checkout step, make sure you have the necessary [payment methods configured in Stripe](https://docs.stripe.com/payments/methods/overview).
 
 Then, follow these steps to test the payment checkout step in your Next.js Starter Storefront:
 

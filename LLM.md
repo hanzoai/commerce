@@ -785,11 +785,11 @@ and `topup`/deposits (real money) were all `transaction.Deposit` rolled into ONE
   forward the split verbatim; console shows credits vs prepaid distinctly).
   `util.GetRawByCurrency` fetches the raw (un-expiry-filtered) ledger the split needs.
 - **GPU rule (server-enforced, fail-closed)** — `api/billing/gpu_charge.go`:
-  - `GET /v1/billing/gpu-eligibility?user=&amountCents=&minPrepaidCents=` — the
+  - `GET /v1/billing/gpu/eligibility?user=&amountCents=&minPrepaidCents=` — the
     launch gate: `{eligible,reason}` where reason ∈ `card_required` /
     `insufficient_prepaid` / `ok`, reading `PrepaidAvailable` (never the combined
     balance) + card-on-file.
-  - `POST /v1/billing/gpu-charge {user,amountCents,tag?}` — the ONLY writer of a
+  - `POST /v1/billing/gpu/charge {user,amountCents,tag?}` — the ONLY writer of a
     `gpu`-tagged Withdraw. Two gates: (1) a chargeable card MUST be on file
     (402 `card_required`); (2) `PrepaidAvailable >= amountCents` (402
     `insufficient_prepaid`) — credits are NEVER consulted, so a GPU can never draw

@@ -339,7 +339,7 @@ var _ = Describe("billing", Ordered, func() {
 				"expiresIn":   "720h",
 			}
 			res := &creditGrantResponse{}
-			cl.Post("/billing/credit-grants", req, res)
+			cl.Post("/billing/credits", req, res)
 
 			Expect(res.Id).NotTo(BeEmpty())
 			Expect(res.UserId).To(Equal("hanzo/alice"))
@@ -362,7 +362,7 @@ var _ = Describe("billing", Ordered, func() {
 				"tags":        "promo",
 			}
 			res := &creditGrantResponse{}
-			cl.Post("/billing/credit-grants", req, res)
+			cl.Post("/billing/credits", req, res)
 
 			Expect(res.Id).NotTo(BeEmpty())
 			Expect(res.AmountCents).To(Equal(int64(1000)))
@@ -375,7 +375,7 @@ var _ = Describe("billing", Ordered, func() {
 				"amountCents": int64(100),
 			}
 			res := &ApiError{}
-			cl.Post("/billing/credit-grants", req, res)
+			cl.Post("/billing/credits", req, res)
 
 			Expect(res.Error.Message).To(ContainSubstring("userId is required"))
 		})
@@ -386,7 +386,7 @@ var _ = Describe("billing", Ordered, func() {
 				"amountCents": int64(0),
 			}
 			res := &ApiError{}
-			cl.Post("/billing/credit-grants", req, res)
+			cl.Post("/billing/credits", req, res)
 
 			Expect(res.Error.Message).To(ContainSubstring("amountCents must be positive"))
 		})
@@ -399,14 +399,14 @@ var _ = Describe("billing", Ordered, func() {
 				"expiresIn":   "not-a-duration",
 			}
 			res := &ApiError{}
-			cl.Post("/billing/credit-grants", req, res)
+			cl.Post("/billing/credits", req, res)
 
 			Expect(res.Error.Message).To(ContainSubstring("invalid expiresIn"))
 		})
 
 		It("Should list grants for a user", func() {
 			res := &creditGrantListResponse{}
-			cl.Get("/billing/credit-grants?userId=hanzo/alice", res)
+			cl.Get("/billing/credits?userId=hanzo/alice", res)
 
 			Expect(res.Count).To(BeNumerically(">=", 2))
 
@@ -426,7 +426,7 @@ var _ = Describe("billing", Ordered, func() {
 
 		It("Should fail list without userId", func() {
 			res := &ApiError{}
-			cl.Get("/billing/credit-grants", res)
+			cl.Get("/billing/credits", res)
 
 			Expect(res.Error.Message).To(ContainSubstring("userId"))
 		})
@@ -450,21 +450,21 @@ var _ = Describe("billing", Ordered, func() {
 
 		It("Should void a credit grant", func() {
 			res := &map[string]interface{}{}
-			cl.Post("/billing/credit-grants/"+creditGrantId+"/void", nil, res)
+			cl.Post("/billing/credits/"+creditGrantId+"/void", nil, res)
 
 			Expect((*res)["voided"]).To(Equal(true))
 		})
 
 		It("Should fail to void already voided grant", func() {
 			res := &ApiError{}
-			cl.Post("/billing/credit-grants/"+creditGrantId+"/void", nil, res)
+			cl.Post("/billing/credits/"+creditGrantId+"/void", nil, res)
 
 			Expect(res.Error.Message).To(ContainSubstring("already voided"))
 		})
 
 		It("Should fail to void non-existent grant", func() {
 			res := &ApiError{}
-			cl.Post("/billing/credit-grants/nonexistent/void", nil, res)
+			cl.Post("/billing/credits/nonexistent/void", nil, res)
 
 			Expect(res.Error.Message).To(ContainSubstring("not found"))
 		})
@@ -732,7 +732,7 @@ var _ = Describe("billing", Ordered, func() {
 
 		It("Should report the catalog included amount before any grant", func() {
 			res := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user="+user+"&plan="+plan, res)
+			cl.Get("/billing/usage/rollup?user="+user+"&plan="+plan, res)
 
 			included := (*res)["included"].(map[string]interface{})
 			wantCents = included["monthlyCents"].(float64)
@@ -768,7 +768,7 @@ var _ = Describe("billing", Ordered, func() {
 
 		It("Should surface included/consumed/overage in the rollup", func() {
 			res := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user="+user+"&plan="+plan, res)
+			cl.Get("/billing/usage/rollup?user="+user+"&plan="+plan, res)
 
 			included := (*res)["included"].(map[string]interface{})
 			Expect(included["grantedCents"]).To(BeEquivalentTo(wantCents))
@@ -790,7 +790,7 @@ var _ = Describe("billing", Ordered, func() {
 			// includes no usage credit; if it ever gains one this pre-check fails
 			// loudly here rather than as a mystery 201 below.
 			roll := &map[string]interface{}{}
-			cl.Get("/billing/usage-rollup?user=hanzo/allotnone&plan=world-pro", roll)
+			cl.Get("/billing/usage/rollup?user=hanzo/allotnone&plan=world-pro", roll)
 			included := (*roll)["included"].(map[string]interface{})
 			Expect(included["monthlyCents"]).To(BeEquivalentTo(0))
 

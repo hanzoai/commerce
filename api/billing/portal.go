@@ -122,7 +122,7 @@ func PortalSubscriptions(c *zip.Ctx) error {
 
 // PortalPaymentMethods returns the customer's payment methods.
 //
-//	GET /v1/billing/portal/payment-methods?customerId=...
+//	GET /v1/billing/portal/methods?customerId=...
 func PortalPaymentMethods(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
