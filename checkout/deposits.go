@@ -48,7 +48,7 @@ func (f ForwarderFunc) Forward(req *http.Request, tenant Tenant) (*http.Response
 // verbatim so the SPA can consume { id, provider, clientToken, ... }.
 func Deposits(r Resolver, fwd Forwarder) zip.Handler {
 	return func(c *zip.Ctx) error {
-		tenant, err := r.Resolve(c.Fiber().Host())
+		tenant, err := r.Resolve(RequestHost(c))
 		if err != nil {
 			return writeJSONError(c, http.StatusNotFound, "unknown tenant")
 		}
