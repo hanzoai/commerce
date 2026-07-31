@@ -210,6 +210,19 @@ func encryptTenantFile(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalTy
 		dst.Close()
 		return 0, false, err
 	}
+	// The destination was built from baseSchemaDDL, which is this package's OWN schema.
+	// A live tenant file also carries tables no schema of ours declares — every one
+	// hanzoai/replicate creates (_replicate_seq, _replicate_lock) — so the copy below
+	// hit "copy table \"_replicate_seq\": no such table" and aborted the whole
+	// migration. The file then stayed unencrypted-but-half-migrated and every later
+	// open bound a nil DB, which is why 63 of 65 tenants' stores answered 500 "Failed
+	// to list store" with ZERO log lines. Carry the SOURCE's own DDL for anything the
+	// base schema does not already provide: the destination must be able to hold
+	// whatever the source actually has, not only what we expected it to have.
+	if err := createMissingTables(src, dst, tables); err != nil {
+		dst.Close()
+		return 0, false, err
+	}
 	rows := 0
 	for _, tbl := range tables {
 		n, err := copyTable(src, dst, tbl)
@@ -371,6 +384,49 @@ func assertNoPendingWAL(dbPath string) error {
 }
 
 // userTables lists concrete (non-virtual, non-internal) tables to copy.
+// createMissingTables gives the destination every table the source has that its base
+// schema did not create, using the SOURCE's own CREATE statement (indexes included).
+// Idempotent: each statement is rewritten to IF NOT EXISTS, so a table the base schema
+// already made is left exactly as the base schema made it.
+func createMissingTables(src, dst *sql.DB, tables []string) error {
+	have := map[string]bool{}
+	rows, err := dst.Query(`SELECT name FROM sqlite_master WHERE type='table'`)
+	if err != nil {
+		return fmt.Errorf("read destination schema: %w", err)
+	}
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			rows.Close()
+			return err
+		}
+		have[n] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, tbl := range tables {
+		if have[tbl] {
+			continue
+		}
+		var ddl string
+		if err := src.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name = ?`, tbl).Scan(&ddl); err != nil {
+			return fmt.Errorf("read source DDL for %q: %w", tbl, err)
+		}
+		if strings.TrimSpace(ddl) == "" {
+			continue // an implicit table (e.g. sqlite internal) has no DDL to replay
+		}
+		if !strings.Contains(strings.ToUpper(ddl), "IF NOT EXISTS") {
+			ddl = strings.Replace(ddl, "CREATE TABLE", "CREATE TABLE IF NOT EXISTS", 1)
+		}
+		if _, err := dst.Exec(ddl); err != nil {
+			return fmt.Errorf("create missing table %q in destination: %w", tbl, err)
+		}
+	}
+	return nil
+}
+
 func userTables(db *sql.DB) ([]string, error) {
 	rows, err := db.Query(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`)
 	if err != nil {
