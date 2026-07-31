@@ -15,7 +15,6 @@ type secretMapping struct {
 
 // mappings returns all provider credential mappings for a given org name.
 func mappings(orgName string) []secretMapping {
-	stripe := "/tenants/" + orgName + "/stripe"
 	square := "/tenants/" + orgName + "/square"
 	authnet := "/tenants/" + orgName + "/authorizenet"
 	paypal := "/tenants/" + orgName + "/paypal"
@@ -26,17 +25,7 @@ func mappings(orgName string) []secretMapping {
 	wire := "/tenants/" + orgName + "/wire"
 	merc := "/tenants/" + orgName + "/mercury"
 
-	return []secretMapping{
-		// Stripe — Live
-		{stripe, "STRIPE_LIVE_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Live.AccessToken = v }},
-		{stripe, "STRIPE_LIVE_PUBLISHABLE_KEY", func(o *organization.Organization, v string) { o.Stripe.Live.PublishableKey = v }},
-		{stripe, "STRIPE_LIVE_REFRESH_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Live.RefreshToken = v }},
-		{stripe, "STRIPE_LIVE_USER_ID", func(o *organization.Organization, v string) { o.Stripe.Live.UserId = v }},
-		// Stripe — Test
-		{stripe, "STRIPE_TEST_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Test.AccessToken = v }},
-		{stripe, "STRIPE_TEST_PUBLISHABLE_KEY", func(o *organization.Organization, v string) { o.Stripe.Test.PublishableKey = v }},
-		{stripe, "STRIPE_TEST_REFRESH_TOKEN", func(o *organization.Organization, v string) { o.Stripe.Test.RefreshToken = v }},
-		{stripe, "STRIPE_TEST_USER_ID", func(o *organization.Organization, v string) { o.Stripe.Test.UserId = v }},
+	return []secretMapping{ // Stripe — Test
 
 		// Square — Production
 		{square, "SQUARE_PRODUCTION_ACCESS_TOKEN", func(o *organization.Organization, v string) { o.Square.Production.AccessToken = v }},

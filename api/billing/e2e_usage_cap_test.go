@@ -11,15 +11,15 @@ import (
 // TestE2E_SelfServiceUsageCap_Flow walks the ENTIRE self-service usage-cap flow the
 // way a live customer experiences it, driving the REAL handlers end to end:
 //
-//	1. customer creates a usage cap (spend-alert, ENFORCE) via the CRUD;
-//	2. billable usage accrues under the cap → the gate ALLOWS;
-//	3. usage crosses the soft threshold → still ALLOWED, but the gate WARNS (warnPct);
-//	4. the alert FIRES on that crossing (TriggeredAt stamped, debounced);
-//	5. usage reaches the cap → the next request is STOPPED with the spend_cap verdict
-//	   (distinct from insufficient_balance), carrying capCents/spentCents;
-//	6. the alert ESCALATES to over;
-//	7. the cap view exposes the monthly window (period + resetsAt = first of next UTC
-//	   month) the spend resets on.
+//  1. customer creates a usage cap (spend-alert, ENFORCE) via the CRUD;
+//  2. billable usage accrues under the cap → the gate ALLOWS;
+//  3. usage crosses the soft threshold → still ALLOWED, but the gate WARNS (warnPct);
+//  4. the alert FIRES on that crossing (TriggeredAt stamped, debounced);
+//  5. usage reaches the cap → the next request is STOPPED with the spend_cap verdict
+//     (distinct from insufficient_balance), carrying capCents/spentCents;
+//  6. the alert ESCALATES to over;
+//  7. the cap view exposes the monthly window (period + resetsAt = first of next UTC
+//     month) the spend resets on.
 //
 // This is the deterministic money-logic proof behind the ship gate: cap set → hit →
 // stopped + alerted → resets, on one org, in one test.

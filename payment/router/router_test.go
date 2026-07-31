@@ -14,12 +14,11 @@ import (
 )
 
 // TestMain runs the router's strategy tests with NO disabled-processor policy.
-// These tests use Stripe/Adyen/PayPal mocks as fixtures to exercise routing
-// strategies (primary-fallback, round-robin, weighted, currency-based, circuit
-// breaker), which are orthogonal to the production deny policy (which disables
-// Stripe for new-charge selection by default). The explicit "none" sentinel
-// keeps every fixture selectable without weakening the production default (an
-// empty value now keeps the safe default — see disabledProcessors).
+// The fixtures are MOCK processors with invented names (alpha/beta beside the
+// real adyen/paypal shapes) because what is under test is the routing STRATEGY
+// — primary-fallback, round-robin, weighted, currency-based, circuit breaker —
+// not any particular rail. The explicit "none" sentinel keeps every fixture
+// selectable regardless of a deployment's deny list.
 func TestMain(m *testing.M) {
 	os.Setenv("COMMERCE_DISABLED_PROCESSORS", "none")
 	os.Exit(m.Run())
@@ -148,14 +147,14 @@ func baseReq() processor.PaymentRequest {
 // ---------------------------------------------------------------------------
 
 func TestPrimaryFallback_HappyPath(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	result, err := r.Charge(context.Background(), baseReq())
@@ -165,11 +164,11 @@ func TestPrimaryFallback_HappyPath(t *testing.T) {
 	if !result.Success {
 		t.Fatal("expected success")
 	}
-	if result.TransactionID != "stripe:tx_stripe" {
+	if result.TransactionID != "alpha:tx_alpha" {
 		t.Fatalf("expected prefixed txID, got %q", result.TransactionID)
 	}
 	if atomic.LoadInt64(&m1.chargeCalls) != 1 {
-		t.Fatalf("expected 1 call to stripe, got %d", m1.chargeCalls)
+		t.Fatalf("expected 1 call to alpha, got %d", m1.chargeCalls)
 	}
 	if atomic.LoadInt64(&m2.chargeCalls) != 0 {
 		t.Fatal("square should not have been called")
@@ -177,15 +176,15 @@ func TestPrimaryFallback_HappyPath(t *testing.T) {
 }
 
 func TestPrimaryFallback_PrimaryFails(t *testing.T) {
-	m1 := newMock("stripe", true)
-	m1.chargeErr = fmt.Errorf("stripe down")
+	m1 := newMock("alpha", true)
+	m1.chargeErr = fmt.Errorf("alpha down")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	result, err := r.Charge(context.Background(), baseReq())
@@ -198,16 +197,16 @@ func TestPrimaryFallback_PrimaryFails(t *testing.T) {
 }
 
 func TestPrimaryFallback_AllFail(t *testing.T) {
-	m1 := newMock("stripe", true)
-	m1.chargeErr = fmt.Errorf("stripe down")
+	m1 := newMock("alpha", true)
+	m1.chargeErr = fmt.Errorf("alpha down")
 	m2 := newMock("square", true)
 	m2.chargeErr = fmt.Errorf("square down")
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	_, err := r.Charge(context.Background(), baseReq())
@@ -221,14 +220,14 @@ func TestPrimaryFallback_AllFail(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRoundRobin(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	m3 := newMock("paypal", true)
 	reg := setupRegistry(m1, m2, m3)
 
 	r := NewRouter(reg, Config{
 		Strategy:   RoundRobin,
-		Processors: []processor.ProcessorType{"stripe", "square", "paypal"},
+		Processors: []processor.ProcessorType{"alpha", "square", "paypal"},
 	})
 
 	// Send 6 requests; each processor should get 2.
@@ -246,7 +245,7 @@ func TestRoundRobin(t *testing.T) {
 	q := atomic.LoadInt64(&m2.chargeCalls)
 	p := atomic.LoadInt64(&m3.chargeCalls)
 	if s != 2 || q != 2 || p != 2 {
-		t.Fatalf("expected 2/2/2, got stripe=%d square=%d paypal=%d", s, q, p)
+		t.Fatalf("expected 2/2/2, got alpha=%d square=%d paypal=%d", s, q, p)
 	}
 }
 
@@ -255,17 +254,17 @@ func TestRoundRobin(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCurrencyBased(t *testing.T) {
-	mStripe := newMock("stripe", true)
+	mAlpha := newMock("alpha", true)
 	mAdyen := newMock("adyen", true)
-	reg := setupRegistry(mStripe, mAdyen)
+	reg := setupRegistry(mAlpha, mAdyen)
 
 	r := NewRouter(reg, Config{
 		Strategy:   CurrencyBased,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "adyen"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "adyen"},
 		CurrencyMap: map[string]processor.ProcessorType{
 			"eur": "adyen",
-			"usd": "stripe",
+			"usd": "alpha",
 		},
 	})
 
@@ -280,13 +279,13 @@ func TestCurrencyBased(t *testing.T) {
 		t.Fatalf("EUR should route to adyen, got %q", result.TransactionID)
 	}
 
-	// USD request -> stripe
+	// USD request -> alpha
 	result, err = r.Charge(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TransactionID != "stripe:tx_stripe" {
-		t.Fatalf("USD should route to stripe, got %q", result.TransactionID)
+	if result.TransactionID != "alpha:tx_alpha" {
+		t.Fatalf("USD should route to alpha, got %q", result.TransactionID)
 	}
 }
 
@@ -295,15 +294,15 @@ func TestCurrencyBased(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWeightedRandom(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   WeightedRandom,
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		Weights: map[processor.ProcessorType]int{
-			"stripe": 90,
+			"alpha":  90,
 			"square": 10,
 		},
 	})
@@ -320,10 +319,10 @@ func TestWeightedRandom(t *testing.T) {
 	if s+q != 100 {
 		t.Fatalf("total calls should be 100, got %d", s+q)
 	}
-	// With 90/10 weights, stripe should get the majority.
+	// With 90/10 weights, alpha should get the majority.
 	// Allowing generous margin for randomness.
 	if s < 50 {
-		t.Fatalf("stripe (weight 90) got only %d/100 calls", s)
+		t.Fatalf("alpha (weight 90) got only %d/100 calls", s)
 	}
 }
 
@@ -332,17 +331,17 @@ func TestWeightedRandom(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestLeastLoad(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   LeastLoad,
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
-	// Artificially set stripe inflight high.
-	if c := r.getInflight("stripe"); c != nil {
+	// Artificially set alpha inflight high.
+	if c := r.getInflight("alpha"); c != nil {
 		c.Store(100)
 	}
 
@@ -361,14 +360,14 @@ func TestLeastLoad(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCapture_RoutesToOriginalProcessor(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	// Simulate an auth that went through square.
@@ -385,18 +384,18 @@ func TestCapture_RoutesToOriginalProcessor(t *testing.T) {
 		t.Fatal("capture should have gone to square")
 	}
 	if atomic.LoadInt64(&m1.captureCalls) != 0 {
-		t.Fatal("capture should NOT have gone to stripe")
+		t.Fatal("capture should NOT have gone to alpha")
 	}
 }
 
 func TestCapture_NoPrefixReturnsError(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	reg := setupRegistry(m1)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	_, err := r.Capture(context.Background(), "no_prefix_id", 5000)
@@ -410,14 +409,14 @@ func TestCapture_NoPrefixReturnsError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRefund_RoutesToOriginalProcessor(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	req := processor.RefundRequest{
@@ -446,14 +445,14 @@ func TestRefund_RoutesToOriginalProcessor(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestGetTransaction_WithPrefix(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	tx, err := r.GetTransaction(context.Background(), "square:tx_123")
@@ -466,15 +465,15 @@ func TestGetTransaction_WithPrefix(t *testing.T) {
 }
 
 func TestGetTransaction_WithoutPrefix_TriesAll(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.txErr = fmt.Errorf("not found")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	tx, err := r.GetTransaction(context.Background(), "raw_tx_456")
@@ -491,15 +490,15 @@ func TestGetTransaction_WithoutPrefix_TriesAll(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestValidateWebhook(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.webhookErr = fmt.Errorf("bad sig")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	event, err := r.ValidateWebhook(context.Background(), []byte("payload"), "sig")
@@ -512,7 +511,7 @@ func TestValidateWebhook(t *testing.T) {
 }
 
 func TestValidateWebhook_AllFail(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.webhookErr = fmt.Errorf("bad")
 	m2 := newMock("square", true)
 	m2.webhookErr = fmt.Errorf("bad")
@@ -520,8 +519,8 @@ func TestValidateWebhook_AllFail(t *testing.T) {
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	_, err := r.ValidateWebhook(context.Background(), []byte("x"), "y")
@@ -535,15 +534,15 @@ func TestValidateWebhook_AllFail(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCircuitBreaker_OpensAfterThreshold(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.chargeErr = fmt.Errorf("fail")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		CircuitBreaker: CircuitBreakerConfig{
 			FailureThreshold: 3,
 			ResetTimeout:     1 * time.Second,
@@ -556,9 +555,9 @@ func TestCircuitBreaker_OpensAfterThreshold(t *testing.T) {
 		r.Charge(context.Background(), baseReq())
 	}
 
-	// Now stripe breaker is open; next call should go straight to square
-	// without even trying stripe.
-	stripeBefore := atomic.LoadInt64(&m1.chargeCalls)
+	// Now alpha breaker is open; next call should go straight to square
+	// without even trying alpha.
+	alphaBefore := atomic.LoadInt64(&m1.chargeCalls)
 	result, err := r.Charge(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
@@ -566,22 +565,22 @@ func TestCircuitBreaker_OpensAfterThreshold(t *testing.T) {
 	if result.TransactionID != "square:tx_square" {
 		t.Fatalf("expected square after circuit opens, got %q", result.TransactionID)
 	}
-	stripeAfter := atomic.LoadInt64(&m1.chargeCalls)
-	if stripeAfter != stripeBefore {
-		t.Fatal("stripe should not have received more calls while circuit is open")
+	alphaAfter := atomic.LoadInt64(&m1.chargeCalls)
+	if alphaAfter != alphaBefore {
+		t.Fatal("alpha should not have received more calls while circuit is open")
 	}
 }
 
 func TestCircuitBreaker_HalfOpenRecovery(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.chargeErr = fmt.Errorf("fail")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		CircuitBreaker: CircuitBreakerConfig{
 			FailureThreshold: 2,
 			ResetTimeout:     50 * time.Millisecond,
@@ -597,16 +596,16 @@ func TestCircuitBreaker_HalfOpenRecovery(t *testing.T) {
 	// Wait for reset timeout.
 	time.Sleep(60 * time.Millisecond)
 
-	// Fix stripe.
+	// Fix alpha.
 	m1.chargeErr = nil
 
-	// Next call should probe stripe (half-open) and succeed.
+	// Next call should probe alpha (half-open) and succeed.
 	result, err := r.Charge(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TransactionID != "stripe:tx_stripe" {
-		t.Fatalf("expected stripe after recovery, got %q", result.TransactionID)
+	if result.TransactionID != "alpha:tx_alpha" {
+		t.Fatalf("expected alpha after recovery, got %q", result.TransactionID)
 	}
 }
 
@@ -615,14 +614,14 @@ func TestCircuitBreaker_HalfOpenRecovery(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestIsAvailable(t *testing.T) {
-	m1 := newMock("stripe", false)
+	m1 := newMock("alpha", false)
 	m2 := newMock("square", false)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	if r.IsAvailable(context.Background()) {
@@ -637,13 +636,13 @@ func TestIsAvailable(t *testing.T) {
 }
 
 func TestSupportedCurrencies(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	reg := setupRegistry(m1)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	currencies := r.SupportedCurrencies()
@@ -680,20 +679,20 @@ func TestType(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestAuthorize(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	reg := setupRegistry(m1)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	result, err := r.Authorize(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TransactionID != "stripe:auth_stripe" {
+	if result.TransactionID != "alpha:auth_alpha" {
 		t.Fatalf("expected prefixed auth txID, got %q", result.TransactionID)
 	}
 	if atomic.LoadInt64(&m1.authCalls) != 1 {
@@ -706,7 +705,7 @@ func TestAuthorize(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestMaxRetries(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.chargeErr = fmt.Errorf("fail")
 	m2 := newMock("square", true)
 	m2.chargeErr = fmt.Errorf("fail")
@@ -715,8 +714,8 @@ func TestMaxRetries(t *testing.T) {
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square", "paypal"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square", "paypal"},
 		MaxRetries: 1, // Only 1 retry after initial = 2 total attempts
 	})
 
@@ -735,13 +734,13 @@ func TestMaxRetries(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestConcurrentCharges(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   RoundRobin,
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	var wg sync.WaitGroup
@@ -793,7 +792,7 @@ func TestNoProcessors(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestUnsuccessfulResultFallback(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	// Override Charge to return non-success result without error.
 	origCharge := m1.Charge
 	_ = origCharge
@@ -802,15 +801,15 @@ func TestUnsuccessfulResultFallback(t *testing.T) {
 
 	// We need a custom processor that returns success=false with no error.
 	failProc := &failResultProcessor{
-		BaseProcessor: processor.NewBaseProcessor("stripe", []currency.Type{currency.USD}),
+		BaseProcessor: processor.NewBaseProcessor("alpha", []currency.Type{currency.USD}),
 	}
 	failProc.SetConfigured(true)
 	reg.Register(failProc)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	result, err := r.Charge(context.Background(), baseReq())
@@ -858,7 +857,7 @@ func TestParseTransactionID_EmptyRawID(t *testing.T) {
 	reg := processor.NewRegistry(nil)
 	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
 
-	_, _, err := r.parseTransactionID("stripe:")
+	_, _, err := r.parseTransactionID("alpha:")
 	if err == nil {
 		t.Fatal("expected error for empty raw ID")
 	}
@@ -883,7 +882,7 @@ func TestPrefixResult_NilResult(t *testing.T) {
 	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{}})
 
 	// Should not panic.
-	r.prefixResult(nil, "stripe")
+	r.prefixResult(nil, "alpha")
 }
 
 // ---------------------------------------------------------------------------
@@ -901,11 +900,11 @@ func TestGetProcessor_NotFound(t *testing.T) {
 }
 
 func TestGetProcessor_NotAvailable(t *testing.T) {
-	m := newMock("stripe", false) // not available
+	m := newMock("alpha", false) // not available
 	reg := setupRegistry(m)
-	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"stripe"}})
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"alpha"}})
 
-	_, err := r.getProcessor(context.Background(), "stripe")
+	_, err := r.getProcessor(context.Background(), "alpha")
 	if err == nil {
 		t.Fatal("expected error for unavailable processor")
 	}
@@ -926,27 +925,27 @@ func TestCapture_ProcessorNotFound(t *testing.T) {
 }
 
 func TestCapture_ProcessorUnavailable(t *testing.T) {
-	m := newMock("stripe", false)
+	m := newMock("alpha", false)
 	reg := setupRegistry(m)
-	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"stripe"}})
+	r := NewRouter(reg, Config{Processors: []processor.ProcessorType{"alpha"}})
 
-	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	_, err := r.Capture(context.Background(), "alpha:tx-1", 1000)
 	if err == nil {
 		t.Fatal("expected error for unavailable processor")
 	}
 }
 
 func TestCapture_ProcessorError(t *testing.T) {
-	m := newMock("stripe", true)
+	m := newMock("alpha", true)
 	m.captureErr = fmt.Errorf("capture failed")
 	reg := setupRegistry(m)
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
-	_, err := r.Capture(context.Background(), "stripe:tx-1", 1000)
+	_, err := r.Capture(context.Background(), "alpha:tx-1", 1000)
 	if err == nil {
 		t.Fatal("expected error for capture failure")
 	}
@@ -957,12 +956,12 @@ func TestCapture_ProcessorError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRefund_NoPrefixReturnsError(t *testing.T) {
-	m := newMock("stripe", true)
+	m := newMock("alpha", true)
 	reg := setupRegistry(m)
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	_, err := r.Refund(context.Background(), processor.RefundRequest{
@@ -988,17 +987,17 @@ func TestRefund_ProcessorNotFound(t *testing.T) {
 }
 
 func TestRefund_ProcessorError(t *testing.T) {
-	m := newMock("stripe", true)
+	m := newMock("alpha", true)
 	m.refundErr = fmt.Errorf("refund failed")
 	reg := setupRegistry(m)
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	_, err := r.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "stripe:tx-1",
+		TransactionID: "alpha:tx-1",
 		Amount:        500,
 	})
 	if err == nil {
@@ -1021,23 +1020,23 @@ func TestGetTransaction_PrefixedButProcessorNotFound(t *testing.T) {
 }
 
 func TestGetTransaction_PrefixedButProcessorError(t *testing.T) {
-	m := newMock("stripe", true)
+	m := newMock("alpha", true)
 	m.txErr = fmt.Errorf("not found")
 	reg := setupRegistry(m)
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
-	_, err := r.GetTransaction(context.Background(), "stripe:tx-bad")
+	_, err := r.GetTransaction(context.Background(), "alpha:tx-bad")
 	if err == nil {
 		t.Fatal("expected error for transaction not found")
 	}
 }
 
 func TestGetTransaction_WithoutPrefix_AllFail(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.txErr = fmt.Errorf("not found")
 	m2 := newMock("square", true)
 	m2.txErr = fmt.Errorf("not found")
@@ -1045,8 +1044,8 @@ func TestGetTransaction_WithoutPrefix_AllFail(t *testing.T) {
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	_, err := r.GetTransaction(context.Background(), "raw_tx_missing")
@@ -1056,14 +1055,14 @@ func TestGetTransaction_WithoutPrefix_AllFail(t *testing.T) {
 }
 
 func TestGetTransaction_WithoutPrefix_UnavailableSkipped(t *testing.T) {
-	m1 := newMock("stripe", false) // unavailable
+	m1 := newMock("alpha", false) // unavailable
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	tx, err := r.GetTransaction(context.Background(), "raw_tx_456")
@@ -1080,14 +1079,14 @@ func TestGetTransaction_WithoutPrefix_UnavailableSkipped(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestValidateWebhook_UnavailableSkipped(t *testing.T) {
-	m1 := newMock("stripe", false) // unavailable
+	m1 := newMock("alpha", false) // unavailable
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 	})
 
 	event, err := r.ValidateWebhook(context.Background(), []byte("payload"), "sig")
@@ -1105,9 +1104,9 @@ func TestValidateWebhook_UnavailableSkipped(t *testing.T) {
 
 func TestIsAvailable_RegistryError(t *testing.T) {
 	reg := processor.NewRegistry(nil)
-	// "stripe" not registered, so Get will fail.
+	// "alpha" not registered, so Get will fail.
 	r := NewRouter(reg, Config{
-		Processors: []processor.ProcessorType{"stripe"},
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	if r.IsAvailable(context.Background()) {
@@ -1120,21 +1119,21 @@ func TestIsAvailable_RegistryError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSelectCandidates_DefaultStrategy(t *testing.T) {
-	m := newMock("stripe", true)
+	m := newMock("alpha", true)
 	reg := setupRegistry(m)
 
 	r := NewRouter(reg, Config{
 		Strategy:   Strategy("unknown_strategy"),
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	result, err := r.Charge(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TransactionID != "stripe:tx_stripe" {
-		t.Fatalf("expected stripe txID, got %q", result.TransactionID)
+	if result.TransactionID != "alpha:tx_alpha" {
+		t.Fatalf("expected alpha txID, got %q", result.TransactionID)
 	}
 }
 
@@ -1143,13 +1142,13 @@ func TestSelectCandidates_DefaultStrategy(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWeightedRandom_NoWeights(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   WeightedRandom,
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		Weights:    nil, // No weights.
 	})
 
@@ -1174,15 +1173,15 @@ func TestWeightedRandom_NoWeights(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWeightedRandom_ZeroWeight(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   WeightedRandom,
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		Weights: map[processor.ProcessorType]int{
-			"stripe": 0,  // defaults to 1
+			"alpha":  0,  // defaults to 1
 			"square": -1, // defaults to 1
 		},
 	})
@@ -1239,15 +1238,15 @@ func TestLeastLoad_EmptyProcessors(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCircuitBreaker_HalfOpenMaxExceeded(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.chargeErr = fmt.Errorf("fail")
 	m2 := newMock("square", true)
 	reg := setupRegistry(m1, m2)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "square"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "square"},
 		CircuitBreaker: CircuitBreakerConfig{
 			FailureThreshold: 2,
 			ResetTimeout:     50 * time.Millisecond,
@@ -1263,11 +1262,11 @@ func TestCircuitBreaker_HalfOpenMaxExceeded(t *testing.T) {
 	// Wait for reset timeout to enter half-open.
 	time.Sleep(60 * time.Millisecond)
 
-	// First call should go to stripe (half-open probe), fails, re-opens.
+	// First call should go to alpha (half-open probe), fails, re-opens.
 	r.Charge(context.Background(), baseReq())
 
-	// Immediately after, another call should skip stripe (half-open max exceeded/re-opened).
-	stripeBefore := atomic.LoadInt64(&m1.chargeCalls)
+	// Immediately after, another call should skip alpha (half-open max exceeded/re-opened).
+	alphaBefore := atomic.LoadInt64(&m1.chargeCalls)
 	result, err := r.Charge(context.Background(), baseReq())
 	if err != nil {
 		t.Fatal(err)
@@ -1275,10 +1274,10 @@ func TestCircuitBreaker_HalfOpenMaxExceeded(t *testing.T) {
 	if result.TransactionID != "square:tx_square" {
 		t.Fatalf("expected square, got %q", result.TransactionID)
 	}
-	// Stripe should not have been called (still open after half-open failure).
-	stripeAfter := atomic.LoadInt64(&m1.chargeCalls)
-	if stripeAfter != stripeBefore {
-		t.Fatal("stripe should not have been called while circuit re-opened")
+	// Alpha should not have been called (still open after half-open failure).
+	alphaAfter := atomic.LoadInt64(&m1.chargeCalls)
+	if alphaAfter != alphaBefore {
+		t.Fatal("alpha should not have been called while circuit re-opened")
 	}
 }
 
@@ -1327,14 +1326,14 @@ func TestCircuitBreaker_FailureInHalfOpenReopens(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRoutePayment_NoCBAllowed(t *testing.T) {
-	m1 := newMock("stripe", true)
+	m1 := newMock("alpha", true)
 	m1.chargeErr = fmt.Errorf("fail")
 	reg := setupRegistry(m1)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 		CircuitBreaker: CircuitBreakerConfig{
 			FailureThreshold: 1,
 			ResetTimeout:     10 * time.Second,
@@ -1376,13 +1375,13 @@ func TestRoutePayment_ProcessorNotInRegistry(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRoutePayment_ProcessorNotAvailable(t *testing.T) {
-	m := newMock("stripe", false) // not available
+	m := newMock("alpha", false) // not available
 	reg := setupRegistry(m)
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	_, err := r.Charge(context.Background(), baseReq())
@@ -1396,28 +1395,28 @@ func TestRoutePayment_ProcessorNotAvailable(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCurrencyBased_FallbackToPrimary(t *testing.T) {
-	mStripe := newMock("stripe", true)
+	mAlpha := newMock("alpha", true)
 	mAdyen := newMock("adyen", true)
-	reg := setupRegistry(mStripe, mAdyen)
+	reg := setupRegistry(mAlpha, mAdyen)
 
 	r := NewRouter(reg, Config{
 		Strategy:   CurrencyBased,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe", "adyen"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha", "adyen"},
 		CurrencyMap: map[string]processor.ProcessorType{
 			"eur": "adyen",
 		},
 	})
 
-	// GBP not in map -> falls back to primary (stripe).
+	// GBP not in map -> falls back to primary (alpha).
 	gbpReq := baseReq()
 	gbpReq.Currency = currency.GBP
 	result, err := r.Charge(context.Background(), gbpReq)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.TransactionID != "stripe:tx_stripe" {
-		t.Fatalf("expected stripe for GBP fallback, got %q", result.TransactionID)
+	if result.TransactionID != "alpha:tx_alpha" {
+		t.Fatalf("expected alpha for GBP fallback, got %q", result.TransactionID)
 	}
 }
 
@@ -1446,7 +1445,7 @@ func TestNewRouter_ProcessorNotInRegistry(t *testing.T) {
 
 func TestRefund_EmptyRefundIDNotPrefixed(t *testing.T) {
 	m := &emptyRefundProcessor{
-		BaseProcessor: processor.NewBaseProcessor("stripe", []currency.Type{currency.USD}),
+		BaseProcessor: processor.NewBaseProcessor("alpha", []currency.Type{currency.USD}),
 	}
 	m.SetConfigured(true)
 	reg := processor.NewRegistry(nil)
@@ -1454,12 +1453,12 @@ func TestRefund_EmptyRefundIDNotPrefixed(t *testing.T) {
 
 	r := NewRouter(reg, Config{
 		Strategy:   PrimaryFallback,
-		Primary:    "stripe",
-		Processors: []processor.ProcessorType{"stripe"},
+		Primary:    "alpha",
+		Processors: []processor.ProcessorType{"alpha"},
 	})
 
 	result, err := r.Refund(context.Background(), processor.RefundRequest{
-		TransactionID: "stripe:tx-1",
+		TransactionID: "alpha:tx-1",
 		Amount:        500,
 	})
 	if err != nil {

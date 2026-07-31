@@ -65,7 +65,7 @@ func FakeSubscription(db *datastore.Datastore) *Subscription {
 		},
 	}
 
-	sub.Account.Type = accounts.StripeType
+	sub.Account.Type = accounts.SquareType
 	sub.Account.Number = "4242424242424242"
 	sub.Account.CVC = "424"
 	sub.Account.Month = 12

@@ -163,9 +163,6 @@ type Organization struct {
 	// Square connection
 	Square integration.Square `json:"-"`
 
-	// Stripe connection
-	Stripe integration.Stripe `json:"-"`
-
 	// Wire transfer settings
 	Wire integration.WireTransfer `json:"-"`
 
@@ -219,16 +216,6 @@ func (o *Organization) Save() (ps []datastore.Property, err error) {
 
 	// Save properties
 	return datastore.SaveStruct(o)
-}
-
-func (o Organization) GetStripeAccessToken(userId string) (string, error) {
-	if o.Stripe.Live.UserId == userId {
-		return o.Stripe.Live.AccessToken, nil
-	}
-	if o.Stripe.Test.UserId == userId {
-		return o.Stripe.Test.AccessToken, nil
-	}
-	return "", StripeAccessTokenNotFound{userId, o.Stripe.Live.UserId, o.Stripe.Test.UserId}
 }
 
 func (o *Organization) Validator() *val.Validator {
@@ -408,14 +395,6 @@ func (o Organization) SquareConfig(sandbox bool) integration.SquareConnection {
 		return o.Square.Sandbox
 	}
 	return o.Square.Production
-}
-
-func (o Organization) StripeToken() string {
-	if o.Live {
-		return o.Stripe.Live.AccessToken
-	}
-
-	return o.Stripe.Test.AccessToken
 }
 
 func (o Organization) AuthorizeNetToken(sandbox bool) integration.AuthorizeNetConnection {

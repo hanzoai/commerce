@@ -1,18 +1,16 @@
 package payment
 
 import (
-	"context"
 	"os"
 	"testing"
 
 	"github.com/hanzoai/commerce/models/organization"
-	"github.com/hanzoai/commerce/models/types/currency"
 	"github.com/hanzoai/commerce/payment/processor"
 	square "github.com/hanzoai/commerce/thirdparty/square"
 )
 
 // ensureDefaultProcessorPolicy guarantees COMMERCE_DISABLED_PROCESSORS is UNSET
-// so the default (Stripe disabled) applies. t.Setenv cannot unset.
+// so the default policy (deny nothing) applies. t.Setenv cannot unset.
 func ensureDefaultProcessorPolicy(t *testing.T) {
 	t.Helper()
 	if v, ok := os.LookupEnv("COMMERCE_DISABLED_PROCESSORS"); ok {
@@ -105,41 +103,5 @@ func TestProcessorsForOrg_SquareEnvVarFallback_FollowsOrgMode(t *testing.T) {
 	}
 	if sp.LocationID() != "sandbox-env-loc" {
 		t.Fatalf("LocationID = %q, want sandbox-env-loc (sandbox env vars chosen)", sp.LocationID())
-	}
-}
-
-// A hydrated Stripe token leaves Stripe REGISTERED (inert, for historical data)
-// but a USD charge selects Square and Stripe is never selectable directly.
-func TestProcessorsForOrg_StripeHydratedButSquareSelected(t *testing.T) {
-	ensureDefaultProcessorPolicy(t)
-	t.Setenv("SQUARE_ENVIRONMENT", "production")
-
-	org := orgWithSquareCreds()
-	org.Live = true
-	org.Stripe.Live.AccessToken = "sk_live_HYDRATED" // org HAS a Stripe token
-
-	reg := ProcessorsForOrg(org)
-
-	// Stripe IS registered (inert historical provider) ...
-	registered := false
-	for _, tp := range reg.ListTypes() {
-		if tp == processor.Stripe {
-			registered = true
-		}
-	}
-	if !registered {
-		t.Fatal("Stripe should be REGISTERED (inert) when the org has a Stripe token")
-	}
-	// ... but it is disabled for direct Get ...
-	if _, err := reg.Get(processor.Stripe); err == nil {
-		t.Fatal("Get(Stripe) must error (disabled) under the default policy")
-	}
-	// ... and a USD charge selects Square, never Stripe.
-	proc, err := reg.SelectProcessor(context.Background(), processor.PaymentRequest{Amount: 500, Currency: currency.USD})
-	if err != nil {
-		t.Fatalf("SelectProcessor(USD): %v", err)
-	}
-	if proc.Type() != processor.Square {
-		t.Fatalf("USD selected %q; want square (Stripe hydrated but must not be selected)", proc.Type())
 	}
 }

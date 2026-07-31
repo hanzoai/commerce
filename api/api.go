@@ -43,12 +43,12 @@ import (
 	catalogApi "github.com/hanzoai/commerce/api/catalog"
 	cdnApi "github.com/hanzoai/commerce/api/cdn"
 	checkoutApi "github.com/hanzoai/commerce/api/checkout"
+	claimApi "github.com/hanzoai/commerce/api/claim"
 	costsApi "github.com/hanzoai/commerce/api/costs"
 	counterApi "github.com/hanzoai/commerce/api/counter"
 	couponApi "github.com/hanzoai/commerce/api/coupon"
 	currencyApi "github.com/hanzoai/commerce/api/currency"
 	customergroupApi "github.com/hanzoai/commerce/api/customergroup"
-	claimApi "github.com/hanzoai/commerce/api/claim"
 	dataApi "github.com/hanzoai/commerce/api/data"
 	deployApi "github.com/hanzoai/commerce/api/deploy"
 	draftorderApi "github.com/hanzoai/commerce/api/draftorder"
@@ -196,14 +196,14 @@ func Route(api zip.Router) {
 	customergroupApi.Route(api, tokenRequired)
 	apikeyApi.Route(api, tokenRequired) // publishable API keys, roles, api permissions
 	notificationApi.Route(api, tokenRequired)
-	giftcardApi.Route(api, adminRequired, requireAccess) // gift cards + idempotent redeem/void (money — admin only)
-	b2bApi.Route(api, tokenRequired, requireAccess)      // B2B: companies, employees, quotes, approvals
-	exchangeApi.Route(api, tokenRequired)                         // order exchanges (return + replacement)
-	currencyApi.Route(api, adminRequired)                         // currency reference table CRUD (global default-ns; public list on commerce group)
-	claimApi.Route(api, tokenRequired)                            // order claims (damaged/wrong/missing → refund or replacement)
-	draftorderApi.Route(api, tokenRequired, requireAccess)        // admin order builder: draft orders + line items → complete into a real order
-	producttaxonomyApi.Route(api, tokenRequired)                  // product options/values, categories, tags, types, return/refund reasons
-	catalogApi.AdminRoute(api, adminRequired)                     // platform product catalog CMS (global-admin gated inside)
+	giftcardApi.Route(api, adminRequired, requireAccess)   // gift cards + idempotent redeem/void (money — admin only)
+	b2bApi.Route(api, tokenRequired, requireAccess)        // B2B: companies, employees, quotes, approvals
+	exchangeApi.Route(api, tokenRequired)                  // order exchanges (return + replacement)
+	currencyApi.Route(api, adminRequired)                  // currency reference table CRUD (global default-ns; public list on commerce group)
+	claimApi.Route(api, tokenRequired)                     // order claims (damaged/wrong/missing → refund or replacement)
+	draftorderApi.Route(api, tokenRequired, requireAccess) // admin order builder: draft orders + line items → complete into a real order
+	producttaxonomyApi.Route(api, tokenRequired)           // product options/values, categories, tags, types, return/refund reasons
+	catalogApi.AdminRoute(api, adminRequired)              // platform product catalog CMS (global-admin gated inside)
 	// Public catalog projection GET /v1/commerce/catalog is wired on the
 	// commerce public group (commerce.go) so it serves that exact path.
 
