@@ -46,9 +46,9 @@ func userSeed(org *organization.Organization, subject string) func(*zip.Ctx) {
 // deterministic owner) and returns the status.
 func createCap(t *testing.T, org *organization.Organization, body string) int {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/alerts", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	w := driveSeeded(userSeed(org, "owner"), "/v1/billing/spend-alerts", req, CreateSpendAlert)
+	w := driveSeeded(userSeed(org, "owner"), "/v1/billing/alerts", req, CreateSpendAlert)
 	if w.StatusCode != 201 {
 		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
@@ -67,8 +67,8 @@ func recordUsage(t *testing.T, org *organization.Organization, body string) int 
 // authorize drives AuthorizeSpendCap and returns the parsed verdict.
 func authorize(t *testing.T, org *organization.Organization, query string) authorizeResult {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts/authorize?"+query, nil)
-	w := driveSeeded(capSeed(org), "/v1/billing/spend-alerts/authorize", req, AuthorizeSpendCap)
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/alerts/authorize?"+query, nil)
+	w := driveSeeded(capSeed(org), "/v1/billing/alerts/authorize", req, AuthorizeSpendCap)
 	if w.StatusCode != 200 {
 		t.Fatalf("AuthorizeSpendCap status = %d, body=%s", w.StatusCode, func() string { b, _ := io.ReadAll(w.Body); return string(b) }())
 	}
@@ -176,9 +176,9 @@ func TestSpendCap_TenantIsolation(t *testing.T) {
 // createCapAs drives CreateSpendAlert as IAM user `subject` and returns the row id.
 func createCapAs(t *testing.T, org *organization.Organization, subject, body string) string {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/v1/billing/spend-alerts", bytes.NewReader([]byte(body)))
+	req := httptest.NewRequest(http.MethodPost, "/v1/billing/alerts", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	w := driveSeeded(userSeed(org, subject), "/v1/billing/spend-alerts", req, CreateSpendAlert)
+	w := driveSeeded(userSeed(org, subject), "/v1/billing/alerts", req, CreateSpendAlert)
 	raw, _ := io.ReadAll(w.Body)
 	if w.StatusCode != 201 {
 		t.Fatalf("CreateSpendAlert status = %d, body=%s", w.StatusCode, string(raw))
@@ -196,16 +196,16 @@ func createCapAs(t *testing.T, org *organization.Organization, subject, body str
 // attacker-chosen ?user= query that MUST be ignored for ownership.
 func patchCapAs(t *testing.T, org *organization.Organization, id, caller, userQuery, body string) int {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPatch, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, bytes.NewReader([]byte(body)))
+	req := httptest.NewRequest(http.MethodPatch, "/v1/billing/alerts/"+id+"?user="+userQuery, bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	w := driveSeeded(userSeed(org, caller), "/v1/billing/spend-alerts/:id", req, UpdateSpendAlert)
+	w := driveSeeded(userSeed(org, caller), "/v1/billing/alerts/:id", req, UpdateSpendAlert)
 	return w.StatusCode
 }
 
 func deleteCapAs(t *testing.T, org *organization.Organization, id, caller, userQuery string) int {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodDelete, "/v1/billing/spend-alerts/"+id+"?user="+userQuery, nil)
-	w := driveSeeded(userSeed(org, caller), "/v1/billing/spend-alerts/:id", req, DeleteSpendAlert)
+	req := httptest.NewRequest(http.MethodDelete, "/v1/billing/alerts/"+id+"?user="+userQuery, nil)
+	w := driveSeeded(userSeed(org, caller), "/v1/billing/alerts/:id", req, DeleteSpendAlert)
 	return w.StatusCode
 }
 
@@ -213,8 +213,8 @@ func deleteCapAs(t *testing.T, org *organization.Organization, id, caller, userQ
 // reader path ScopeRules and the console Budgets page both use.
 func listCaps(t *testing.T, org *organization.Organization) []map[string]any {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/v1/billing/spend-alerts", nil)
-	w := driveSeeded(capSeed(org), "/v1/billing/spend-alerts", req, ListSpendAlerts)
+	req := httptest.NewRequest(http.MethodGet, "/v1/billing/alerts", nil)
+	w := driveSeeded(capSeed(org), "/v1/billing/alerts", req, ListSpendAlerts)
 	raw, _ := io.ReadAll(w.Body)
 	if w.StatusCode != 200 {
 		t.Fatalf("ListSpendAlerts = %d, body=%s", w.StatusCode, string(raw))

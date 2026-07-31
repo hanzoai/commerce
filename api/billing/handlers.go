@@ -312,11 +312,11 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// rows; /authorize is the per-request cap verdict the cloud metering gate
 	// consumes (service-token S2S). Org-scoped via X-Org-Id, so a cap on org X
 	// can never gate org Y.
-	user.Get("/spend-alerts", ListSpendAlerts)
-	user.Post("/spend-alerts", CreateSpendAlert)
-	user.Get("/spend-alerts/authorize", AuthorizeSpendCap)
-	user.Patch("/spend-alerts/:id", UpdateSpendAlert)
-	user.Delete("/spend-alerts/:id", DeleteSpendAlert)
+	user.Get("/alerts", ListSpendAlerts)
+	user.Post("/alerts", CreateSpendAlert)
+	user.Get("/alerts/authorize", AuthorizeSpendCap)
+	user.Patch("/alerts/:id", UpdateSpendAlert)
+	user.Delete("/alerts/:id", DeleteSpendAlert)
 
 	// Billing status — hasPaymentMethod + creditBalance in one call (used by bot gateway)
 	user.Get("/status", GetBillingStatus)
