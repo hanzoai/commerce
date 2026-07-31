@@ -19,7 +19,7 @@ import (
 )
 
 // affiliateConnect initiates payment processor OAuth for an affiliate.
-// Affiliate payout rail pending — the transfer records what is owed.
+// Legacy Stripe Connect removed; affiliate payment integration pending.
 func affiliateConnect(c *zip.Ctx) error {
 	return http.Fail(c, 503, "affiliate payment connect not available", errors.New("payment processor connect not configured"))
 }

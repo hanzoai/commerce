@@ -43,6 +43,8 @@ func bootEdgeCommerce(t *testing.T) *App {
 	// require-identity OFF: the binary-edge gate is incompatible with the
 	// service-token money path (no X-Org-Id). This is the deployed default.
 	t.Setenv("COMMERCED_REQUIRE_IDENTITY", "false")
+	t.Setenv("STRIPE_SECRET_KEY", "")
+	t.Setenv("COMMERCE_STRIPE_SEED", "false")
 	t.Setenv("SQL_URL", "")
 
 	dir := t.TempDir()

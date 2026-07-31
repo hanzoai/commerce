@@ -33,8 +33,8 @@ import (
 	"github.com/hanzoai/commerce/models/spendalert"
 	"github.com/hanzoai/commerce/models/transaction"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/util/json/http"
 	"github.com/hanzoai/commerce/util/nscontext"
+	"github.com/hanzoai/commerce/util/json/http"
 )
 
 // PeriodSpendFunc reports a scope's cumulative spend (cents) in the CURRENT UTC
