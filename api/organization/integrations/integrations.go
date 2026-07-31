@@ -32,6 +32,8 @@ func Get(c *zip.Ctx) error {
 
 		//  Scrub really sensitive data
 		switch in.Type {
+		case integration.StripeType:
+			in.Data = nil
 		case integration.PlaidType:
 			in.Data = nil
 		}

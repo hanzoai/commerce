@@ -29,6 +29,14 @@ type Partner struct {
 
 	Commission commission.Commission `json:"commission"`
 	Schedule   schedule.Schedule     `json:"schedule"`
+
+	// Wallet is how this partner is PAID: a web3 address they connect
+	// themselves. Payouts settle in crypto (or by wire, arranged off this
+	// record) — there is no processor account id here, because Hanzo does
+	// not disburse through a payment processor. An empty wallet does not
+	// stop a fee from being EARNED; it only means the transfer that records
+	// what is owed has nowhere to send it yet.
+	Wallet string `json:"wallet,omitempty"`
 }
 
 // New creates a new Partner wired to the given datastore.

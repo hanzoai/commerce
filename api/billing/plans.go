@@ -71,7 +71,7 @@ type canonicalPlan struct {
 	// plan. The actual on-ramp length is decided at signup by billing/trial
 	// (7 days without a card, 30 with one) — this only surfaces the base offer
 	// on GET /v1/billing/plans.
-	TrialPeriodDays *int        `json:"trialPeriodDays,omitempty"`
+	TrialPeriodDays *int     `json:"trialPeriodDays,omitempty"`
 	Features        []string    `json:"features"`
 	Bundles         []string    `json:"bundles,omitempty"`    // slugs of plans whose entitlement this plan also grants
 	IncludedIn      []string    `json:"includedIn,omitempty"` // slugs of plans that include this plan as a bundle
@@ -92,18 +92,18 @@ type canonicalPlan struct {
 // staticPlan is the wire type returned by GET /billing/plans.
 // Fields match the Plan type in the billing frontend's commerce-client.ts.
 type staticPlan struct {
-	Slug            string `json:"slug"`
-	Name            string `json:"name"`
-	Description     string `json:"description"`
-	Category        string `json:"category"`
-	Price           int64  `json:"price"`       // monthly price in cents (0 = free)
-	PriceAnnual     int64  `json:"priceAnnual"` // annual price in cents per month
-	Currency        string `json:"currency"`
-	Interval        string `json:"interval"`
-	IntervalCount   int    `json:"intervalCount"`
-	TrialPeriodDays int    `json:"trialPeriodDays"`
-	ContactSales    bool   `json:"contactSales,omitempty"`
-	Popular         bool   `json:"popular,omitempty"`
+	Slug            string   `json:"slug"`
+	Name            string   `json:"name"`
+	Description     string   `json:"description"`
+	Category        string   `json:"category"`
+	Price           int64    `json:"price"`       // monthly price in cents (0 = free)
+	PriceAnnual     int64    `json:"priceAnnual"` // annual price in cents per month
+	Currency        string   `json:"currency"`
+	Interval        string   `json:"interval"`
+	IntervalCount   int      `json:"intervalCount"`
+	TrialPeriodDays int      `json:"trialPeriodDays"`
+	ContactSales    bool     `json:"contactSales,omitempty"`
+	Popular         bool     `json:"popular,omitempty"`
 	// PromoPercent / PromoUntil surface the ACTIVE, admin-configured platform plan
 	// promo for this plan (percent off + when it ends) — sourced from the promo
 	// package (a Promotion), never hardcoded in the catalog. Zero/empty when no promo

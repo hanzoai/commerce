@@ -28,6 +28,7 @@ import (
 	// registry race over thirdparty/square's env-var init() because it
 	// is imported after.
 	_ "github.com/hanzoai/commerce/payment/providers/square"
+	_ "github.com/hanzoai/commerce/payment/providers/stripe"
 	_ "github.com/hanzoai/commerce/thirdparty/mpc"
 	_ "github.com/hanzoai/commerce/thirdparty/wire"
 )

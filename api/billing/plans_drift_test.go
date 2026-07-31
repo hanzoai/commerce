@@ -71,18 +71,18 @@ func TestVendoredPlanPrices(t *testing.T) {
 		contactSales    bool
 	}
 	cases := map[string]want{
-		"developer":        {0, 0, false},
-		"pro":              {2000, 1600, false},
-		"plus":             {10000, 8000, false},
-		"max":              {20000, 16000, false},
-		"team":             {2500, 2000, false},
-		"team-max":         {22500, 18000, false},
-		"enterprise":       {999900, 799900, false},
-		"custom":           {0, 0, true}, // null price → 0 + contactSales
+		"developer":      {0, 0, false},
+		"pro":            {2000, 1600, false},
+		"plus":           {10000, 8000, false},
+		"max":            {20000, 16000, false},
+		"team":           {2500, 2000, false},
+		"team-max":       {22500, 18000, false},
+		"enterprise":     {999900, 799900, false},
+		"custom":         {0, 0, true}, // null price → 0 + contactSales
 		"world-enterprise": {0, 0, true},
-		"dns-free":         {0, 0, false},
-		"dns-pro":          {500, 400, false},
-		"dns-enterprise":   {2500, 2000, false},
+		"dns-free":       {0, 0, false},
+		"dns-pro":        {500, 400, false},
+		"dns-enterprise": {2500, 2000, false},
 	}
 	for slug, w := range cases {
 		p, ok := bySlug[slug]

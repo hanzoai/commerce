@@ -15,6 +15,11 @@ import (
 	"github.com/hanzoai/commerce/util/nscontext"
 )
 
+// destinationWallet names how a payee is paid: a web3 address they connected.
+// Transfers are RECORDS of what is owed — an empty destination is a payee who
+// has not connected a wallet yet, not a lost fee.
+const destinationWallet = "wallet"
+
 func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 	tr := transfer.New(db)
 	tr.Amount = fe.Amount
@@ -24,17 +29,17 @@ func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
 	// Setup transfer
 	switch fe.Type {
 	case fee.Affiliate:
-		// The lookup stays: a fee must name a real affiliate.
-		affiliate.New(db).MustGetById(fe.AffiliateId)
+		aff := affiliate.New(db)
+		aff.MustGetById(fe.AffiliateId)
 		tr.Description = fmt.Sprintf("Affiliate transfer '%s'", tr.Id())
-		// No destination: payouts rode Stripe Connect account ids, and we do not
-		// use Stripe. The transfer records what is OWED; the rail that settles it
-		// is pending, exactly as the Platform case has always said.
-		tr.Destination = ""
+		tr.Destination = aff.Wallet
+		tr.DestinationType = destinationWallet
 	case fee.Partner:
-		partner.New(db).MustGetById(fe.PartnerId)
+		par := partner.New(db)
+		par.MustGetById(fe.PartnerId)
 		tr.Description = fmt.Sprintf("Partner transfer '%s'", tr.Id())
-		tr.Destination = ""
+		tr.Destination = par.Wallet
+		tr.DestinationType = destinationWallet
 	case fee.Platform:
 		tr.Description = fmt.Sprintf("Platform fee transfer '%s', fee '%s'", tr.Id(), fe.Id())
 		tr.Destination = "" // External payout destination to be configured

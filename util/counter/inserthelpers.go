@@ -196,8 +196,8 @@ func IncrStoreSales(ctx context.Context, org *organization.Organization, storeId
 	var cur currency.Type
 
 	for _, pay := range pays {
-		// The fiat rail first, because that is where the money is.
-		if (pay.Account.Type == accounts.SquareType && pay.CurrencyTransferred != "") || (pay.Type == accounts.SquareType && pay.CurrencyTransferred != "") {
+		// This is first because we care about it more :p
+		if (pay.Account.Type == accounts.StripeType && pay.CurrencyTransferred != "") || (pay.Type == accounts.StripeType && pay.CurrencyTransferred != "") {
 			total += pay.AmountTransferred
 			if cur == "" {
 				cur = pay.CurrencyTransferred

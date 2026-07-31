@@ -29,11 +29,9 @@ var Prefixes = []string{
 	// (sk-proj-), DigitalOcean (sk-do-), Hanzo (sk-hz-).
 	"hk-",
 	"sk-",
-	// The sk_/pk_/rk_/whsec_ key family used by common payment and SaaS
-	// vendors. We do not transact on those rails — this is a DEFENSIVE pattern
-	// about OTHER people's credentials, which are exactly the ones most likely
-	// to be pasted into a tenant header by mistake. The trailing underscore
-	// covers both the _live_ and _test_ variants of each.
+	// Stripe. This is a billing system, so these are the keys most likely to
+	// reach a tenant header. The trailing underscore covers both the _live_
+	// and _test_ variants of each.
 	"sk_",
 	"pk_",
 	"rk_",
