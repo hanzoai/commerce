@@ -358,7 +358,7 @@ Console fetches from Commerce, not from an analytics service:
 ```
 GET /v1/referrer/me           -- code, share URL, tier
 GET /v1/referrer/:id/stats    -- referral count, conversion rate, earnings
-GET /v1/billing/credit-grants -- user's credits with tag filtering
+GET /v1/billing/credits -- user's credits with tag filtering
 ```
 
 Analytics data (click counts, funnel visualization) comes from the analytics

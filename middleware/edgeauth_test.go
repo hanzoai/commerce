@@ -224,7 +224,7 @@ func TestLockBillingSubjectBody(t *testing.T) {
 	// amount is 2^53+1: a value float64 cannot hold exactly, so a clean
 	// round-trip proves the rewrite preserves numeric precision (json.Number).
 	const body = `{"customerId":"victim/other","amount":9007199254740993,"currency":"usd","brand":"visa"}`
-	req := billingReq("POST", "/v1/billing/payment-methods", body)
+	req := billingReq("POST", "/v1/billing/methods", body)
 
 	lockBillingSubjectBody(req, "hanzo")
 
@@ -253,7 +253,7 @@ func TestLockBillingSubjectBody(t *testing.T) {
 // the body (user/userId/customerId) is pinned, mirroring the query lock's set.
 func TestLockBillingSubjectBody_PinsAllSubjectKeys(t *testing.T) {
 	const body = `{"user":"a/b","userId":"c/d","customerId":"e/f","note":"keep"}`
-	req := billingReq("PUT", "/v1/billing/payment-methods/123", body)
+	req := billingReq("PUT", "/v1/billing/methods/123", body)
 
 	lockBillingSubjectBody(req, "hanzo")
 
@@ -311,7 +311,7 @@ func TestLockBillingSubjectBody_NonJSONIgnored(t *testing.T) {
 	const body = `customerId=victim%2Fother&amount=100`
 	req := &fasthttp.Request{}
 	req.Header.SetMethod("POST")
-	req.SetRequestURI("/v1/billing/payment-methods")
+	req.SetRequestURI("/v1/billing/methods")
 	req.Header.SetContentType("application/x-www-form-urlencoded")
 	req.SetBody([]byte(body))
 	lockBillingSubjectBody(req, "hanzo")

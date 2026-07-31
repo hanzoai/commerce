@@ -254,7 +254,7 @@ export class Commerce {
 
   async getPaymentMethods(userId: string, token?: string): Promise<CommercePaymentMethod[]> {
     try {
-      return await this.request<CommercePaymentMethod[]>('/api/v1/billing/payment-methods', {
+      return await this.request<CommercePaymentMethod[]>('/api/v1/billing/methods', {
         params: { user: userId },
         token,
       })
@@ -267,7 +267,7 @@ export class Commerce {
     params: CommercePaymentMethod,
     token?: string,
   ): Promise<CommercePaymentMethod> {
-    return this.request<CommercePaymentMethod>('/api/v1/billing/payment-methods', {
+    return this.request<CommercePaymentMethod>('/api/v1/billing/methods', {
       method: 'POST',
       body: params,
       token,
@@ -275,14 +275,14 @@ export class Commerce {
   }
 
   async removePaymentMethod(methodId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/billing/payment-methods/${methodId}`, {
+    await this.request<void>(`/api/v1/billing/methods/${methodId}`, {
       method: 'DELETE',
       token,
     })
   }
 
   async setDefaultPaymentMethod(methodId: string, token?: string): Promise<void> {
-    await this.request<void>(`/api/v1/billing/payment-methods/${methodId}/default`, {
+    await this.request<void>(`/api/v1/billing/methods/${methodId}/default`, {
       method: 'POST',
       token,
     })
@@ -357,7 +357,7 @@ export class Commerce {
 
   async getCreditGrants(userId: string, token?: string): Promise<CommerceCreditGrant[]> {
     try {
-      return await this.request<CommerceCreditGrant[]>('/api/v1/billing/credit-grants', {
+      return await this.request<CommerceCreditGrant[]>('/api/v1/billing/credits', {
         params: { userId },
         token,
       })

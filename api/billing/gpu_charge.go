@@ -31,8 +31,8 @@ import (
 //     customer sitting on $100 of free credit and $0 prepaid is refused a GPU,
 //     exactly as intended.
 //
-// The cloud GPU launch gate calls GET /gpu-eligibility before provisioning and
-// POST /gpu-charge to debit; neither path ever calls BurnCredits.
+// The cloud GPU launch gate calls GET /gpu/eligibility before provisioning and
+// POST /gpu/charge to debit; neither path ever calls BurnCredits.
 
 // gpuEligibilityRequest is read from query params on the read gate.
 type gpuChargeRequest struct {
@@ -50,7 +50,7 @@ type gpuChargeRequest struct {
 // GPUChargeEligibility is the read-only launch gate: may a GPU of this size be
 // launched/charged from prepaid right now?
 //
-//	GET /v1/billing/gpu-eligibility?user=<subj>&amountCents=<n>&minPrepaidCents=<m>
+//	GET /v1/billing/gpu/eligibility?user=<subj>&amountCents=<n>&minPrepaidCents=<m>
 //
 // Returns 200 with {eligible,reason,...} in ALL cases (the caller decides how to
 // render) — it never 402s, so the launch UI can show the exact remedy (add a
@@ -111,7 +111,7 @@ func GPUChargeEligibility(c *zip.Ctx) error {
 // ChargeGPU debits a GPU charge from PREPAID real money only. It is the ONLY
 // commerce write that records a "gpu"-tagged withdrawal, and it is fail-closed:
 //
-//		POST /v1/billing/gpu-charge  { user, amountCents, currency?, requestId?, tag? }
+//		POST /v1/billing/gpu/charge  { user, amountCents, currency?, requestId?, tag? }
 //
 //	  - 402 {code: card_required}         — no chargeable card on file.
 //	  - 402 {code: insufficient_prepaid}  — prepaid real money can't cover it

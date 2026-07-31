@@ -25,7 +25,7 @@ type SquarePublic struct {
 // vault/charge with.
 //
 // This is the ONE place that resolution lives: both the authenticated
-// /v1/billing/payment-config handler and the public host→org tenant projection
+// /v1/billing/settings handler and the public host→org tenant projection
 // (/v1/commerce/tenant) call it, so a card form and its charge can never drift
 // onto different Square applications.
 func SquarePublicConfig(org *organization.Organization) SquarePublic {

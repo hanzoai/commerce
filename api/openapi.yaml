@@ -412,7 +412,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /customers/{id}/payment-methods:
+  /customers/{id}/methods:
     get:
       tags: [Payment Methods]
       summary: List payment methods for a customer
@@ -435,7 +435,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/PaymentMethod'
 
-  /customers/{id}/payment-methods/attach:
+  /customers/{id}/methods/attach:
     post:
       tags: [Payment Methods]
       summary: Attach a payment method to a customer
@@ -486,7 +486,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /payment-methods:
+  /methods:
     post:
       tags: [Payment Methods]
       summary: Create a payment method
@@ -531,7 +531,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/PaymentMethod'
 
-  /payment-methods/{id}:
+  /methods/{id}:
     get:
       tags: [Payment Methods]
       summary: Retrieve a payment method
@@ -1365,7 +1365,7 @@ paths:
   # =====================================================================
   # J) VAULT (CDE, internal only)
   # =====================================================================
-  /vault/payment-methods:
+  /vault/methods:
     post:
       tags: [Vault]
       summary: Tokenize a payment method
@@ -1390,7 +1390,7 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
-  /vault/payment-methods/{pm_tok}:
+  /vault/methods/{pm_tok}:
     get:
       tags: [Vault]
       summary: Retrieve vault token metadata
@@ -1414,7 +1414,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /vault/payment-methods/{pm_tok}/detokenize:
+  /vault/methods/{pm_tok}/detokenize:
     post:
       tags: [Vault]
       summary: Detokenize (restricted)
@@ -1440,7 +1440,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /vault/payment-methods/{pm_tok}/delete:
+  /vault/methods/{pm_tok}/delete:
     post:
       tags: [Vault]
       summary: Delete a vault token

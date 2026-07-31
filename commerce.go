@@ -1120,7 +1120,7 @@ func (app *App) setupRoutes() {
 	// nil loader this used to be a synthetic org, which is never Live, so the public
 	// tenant JSON advertised the SANDBOX application permanently — flipping the org
 	// live changed the record and nothing else (measured 2026-07-30:
-	// POST /v1/billing/test-mode returned {"live":true,"testMode":false} while the
+	// POST /v1/billing/mode returned {"live":true,"testMode":false} while the
 	// tenant kept serving sandbox-sq0idb-…). The card iframe then tokenizes against
 	// sandbox while the charge path uses the live org, and a sandbox nonce cannot be
 	// charged by a production account — checkout fails closed and nobody can pay.
