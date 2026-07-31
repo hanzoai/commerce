@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { createAnalytics } from "@hanzo/event"
 import { AnalyticsProvider, useAnalytics, usePageview } from "@hanzo/event/react"
 
-/** Cloud analytics ingest — api.hanzo.ai fronts /v1/analytics (+ /v1/tracker). */
+/** Cloud event ingest — api.hanzo.ai fronts the one door, POST /v1/event. */
 const HOST = "https://api.hanzo.ai"
 
 function Pageview() {
