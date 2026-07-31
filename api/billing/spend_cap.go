@@ -195,7 +195,7 @@ type authorizeResult struct {
 // memoized so covering rows sharing a scope cost one query. The row scan is bounded
 // (loadOrgScopes).
 //
-//	GET /v1/billing/spend-alerts/authorize?user=&project=&service=&amount=&pv=
+//	GET /v1/billing/alerts/authorize?user=&project=&service=&amount=&pv=
 func AuthorizeSpendCap(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
