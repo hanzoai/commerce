@@ -133,25 +133,6 @@ var _ = New("update-integrations",
 			org.Integrations = org.Integrations.MustUpdate(&s)
 		}
 
-		// Stripe has third party structs where json is not set to omit empty,
-		// therefore we have to use Data instead
-		if stripes := org.Integrations.FilterByType(integration.StripeType); len(stripes) > 0 {
-			s := stripes[0]
-			s.Data = json.EncodeBytes(org.Stripe)
-			org.Integrations = org.Integrations.MustUpdate(&s)
-			// log.Warn("Updating Stripe1 '%s'", string(json.EncodeBytes(org.Stripe)), db.Context)
-			// log.Warn("Updating Stripe2 '%s'", string(json.EncodeBytes(s.Stripe)), db.Context)
-		} else {
-			s := integration.Integration{
-				Type:    integration.StripeType,
-				Enabled: org.Stripe.AccessToken != "",
-				Data:    json.EncodeBytes(org.Stripe),
-			}
-			org.Integrations = org.Integrations.MustUpdate(&s)
-			// log.Warn("Updating Stripe3 '%s'", string(json.EncodeBytes(org.Stripe)), db.Context)
-			// log.Warn("Updating Stripe4 '%s'", string(json.EncodeBytes(s.Stripe)), db.Context)
-		}
-
 		// log.Warn("Updating Integrations '%s'", string(json.Encode(org.Integrations)), db.Context)
 		org.MustUpdate()
 	},

@@ -176,7 +176,6 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Get("/events", ListBillingEvents)
 	api.Get("/events/:id", GetBillingEvent)
 
-
 	// Inbound webhook ingress (unauthenticated — signature-verified per provider).
 	// Registered outside the admin-token group because providers do not carry
 	// commerce admin tokens; the provider's signature is the trust anchor.

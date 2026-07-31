@@ -20,7 +20,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// mintRequired gates the treasury payout machinery on the internal service
 	// token OR a platform global admin ONLY — NEVER an org-level Admin (a legacy
 	// per-org access token or a gateway-minted org owner). executePayouts
-	// DISBURSES real value (CreditGrants, queued Stripe transfers, on-chain HUSD);
+	// DISBURSES real value (CreditGrants, queued transfers, on-chain HUSD);
 	// calculatePayouts computes the split; the SBOM writes feed that attribution.
 	// adminRequired alone let any org owner drive the treasury (latent while
 	// mainnet HUSD is off, HIGH once enabled) — the same C1 org-owner-mint hole

@@ -2,11 +2,8 @@ package checkout
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	nethttp "net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -28,7 +25,6 @@ import (
 	"github.com/hanzoai/commerce/models/coupon"
 	"github.com/hanzoai/commerce/models/organization"
 	"github.com/hanzoai/commerce/models/store"
-	"github.com/hanzoai/commerce/payment/processor"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -442,23 +438,10 @@ func Sessions(c *zip.Ctx) error {
 	discountCents := applyDiscount(subtotalCents, cpn)
 	finalCents := subtotalCents - discountCents
 
-	// Select payment provider, honoring the SAME disabled-processor policy
-	// SelectProcessor enforces (processor.DisabledByPolicy). Stripe is disabled
-	// by default — "we do NOT use Stripe" — so neither an explicit stripe hint
-	// nor a hydrated Stripe token routes a NEW checkout to Stripe; Square is
-	// used. Stripe checkout code stays for historical / existing-customer flows.
-	hint := strings.ToLower(strings.TrimSpace(req.ProviderHint))
-	stripeAllowed := !processor.DisabledByPolicy(processor.Stripe)
-	var sessionResp checkoutSessionResponse
-
-	switch {
-	case stripeAllowed && (hint == "stripe" || (hint == "" && org.StripeToken() != "")):
-		sessionResp, err = createStripeCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-
-	default:
-		// Square Payment Links (default).
-		sessionResp, err = createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
-	}
+	// Square Payment Links — the ONE fiat rail. There is no provider switch
+	// here because there is no second provider to switch to: a hint naming
+	// anything else names a rail this platform does not have.
+	sessionResp, err := createSquareCheckout(c, org, items, subtotalCents, discountCents, finalCents, cpn, currency, req)
 
 	if err != nil {
 		return http.Fail(c, 500, "Failed to create checkout session", err)
@@ -500,91 +483,6 @@ func Sessions(c *zip.Ctx) error {
 	})
 
 	return http.Render(c, 200, sessionResp)
-}
-
-// createStripeCheckout creates a Stripe Checkout Session using the org's Stripe credentials.
-func createStripeCheckout(c *zip.Ctx, org *organization.Organization, items []checkoutLineItem, subtotalCents, discountCents, finalCents int64, cpn *coupon.Coupon, currency string, req checkoutSessionRequest) (checkoutSessionResponse, error) {
-	sk := org.StripeToken()
-	if sk == "" {
-		return checkoutSessionResponse{}, errors.New("stripe is not configured for this organization")
-	}
-
-	// Build Stripe Checkout Session line_items
-	params := url.Values{}
-	params.Set("mode", "payment")
-	params.Set("success_url", req.SuccessURL)
-	if isValidRedirect(req.CancelURL) {
-		params.Set("cancel_url", req.CancelURL)
-	}
-	if req.Customer.Email != "" {
-		params.Set("customer_email", strings.TrimSpace(req.Customer.Email))
-	}
-
-	for i, it := range items {
-		prefix := fmt.Sprintf("line_items[%d]", i)
-		params.Set(prefix+"[price_data][currency]", strings.ToLower(currency))
-		params.Set(prefix+"[price_data][unit_amount]", fmt.Sprintf("%d", it.Amount))
-		params.Set(prefix+"[price_data][product_data][name]", it.Name)
-		params.Set(prefix+"[quantity]", fmt.Sprintf("%d", it.Quantity))
-	}
-
-	// Apply coupon as a discount if present
-	if discountCents > 0 && cpn != nil {
-		// Create an inline coupon via discounts parameter
-		params.Set("discounts[0][coupon]", "")
-		// Use a promotion code or just adjust — Stripe Checkout doesn't support inline flat discounts
-		// directly, so we add a negative line item or use automatic_tax. For simplicity, adjust via
-		// a coupon created on-the-fly is complex. Instead, we adjust the unit amounts proportionally
-		// or note the discount in metadata.
-		params.Set("metadata[coupon_code]", cpn.Code())
-		params.Set("metadata[discount_cents]", fmt.Sprintf("%d", discountCents))
-		params.Del("discounts[0][coupon]")
-	}
-
-	params.Set("metadata[org]", org.Name)
-	if req.ReferrerId != "" {
-		params.Set("metadata[referrer_id]", req.ReferrerId)
-	}
-	if req.AffiliateId != "" {
-		params.Set("metadata[affiliate_id]", req.AffiliateId)
-	}
-
-	stripeReq, err := nethttp.NewRequestWithContext(c.Context(), nethttp.MethodPost,
-		"https://api.stripe.com/v1/checkout/sessions",
-		strings.NewReader(params.Encode()))
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe request: %w", err)
-	}
-	stripeReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	stripeReq.SetBasicAuth(sk, "")
-
-	resp, err := nethttp.DefaultClient.Do(stripeReq)
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe read: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe error %d: %s", resp.StatusCode, string(body))
-	}
-
-	var stripeResp struct {
-		ID  string `json:"id"`
-		URL string `json:"url"`
-	}
-	if err := json.Unmarshal(body, &stripeResp); err != nil {
-		return checkoutSessionResponse{}, fmt.Errorf("stripe parse: %w", err)
-	}
-
-	return checkoutSessionResponse{
-		CheckoutURL: stripeResp.URL,
-		SessionID:   stripeResp.ID,
-	}, nil
 }
 
 // createSquareCheckout creates a Square Payment Link using the org's Square credentials.

@@ -20,7 +20,6 @@ import (
 	"github.com/hanzoai/commerce/payment/providers/lemonsqueezy"
 	"github.com/hanzoai/commerce/payment/providers/paypal"
 	"github.com/hanzoai/commerce/payment/providers/recurly"
-	"github.com/hanzoai/commerce/payment/providers/stripe"
 	square "github.com/hanzoai/commerce/thirdparty/square"
 )
 
@@ -41,16 +40,6 @@ const defaultSquareWebhookURL = "https://pay.hanzo.ai/v1/billing/webhooks/square
 // as unavailable (IsAvailable returns false).
 func ProcessorsForOrg(org *organization.Organization) *processor.Registry {
 	reg := processor.NewRegistry(processor.DefaultConfig())
-
-	// Stripe
-	sk := org.StripeToken()
-	if sk != "" {
-		reg.Register(stripe.NewProvider(stripe.Config{
-			SecretKey:      sk,
-			PublishableKey: org.Stripe.Live.PublishableKey,
-			WebhookSecret:  "", // webhook secret is global, not per-org
-		}))
-	}
 
 	// Square. The ORG is the single authority for sandbox-vs-production (see
 	// org.TestMode): it selects BOTH which KMS-hydrated credential set to use AND

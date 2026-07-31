@@ -5,7 +5,6 @@ import (
 	"github.com/hanzoai/commerce/models/mixin"
 	"github.com/hanzoai/commerce/models/types/commission"
 	"github.com/hanzoai/commerce/models/types/schedule"
-	"github.com/hanzoai/commerce/types/integration"
 	"github.com/hanzoai/orm"
 )
 
@@ -27,17 +26,6 @@ type Affiliate struct {
 	Commission commission.Commission `json:"commission,omitempty"`
 	Schedule   schedule.Schedule     `json:"schedule,omitempty"`
 	CouponId   string                `json:"couponId,omitempty"`
-
-	Stripe struct {
-		AccessToken    string
-		PublishableKey string
-		RefreshToken   string
-		UserId         string
-
-		// Save entire live and test tokens (legacy)
-		Live integration.StripeConnectToken
-		Test integration.StripeConnectToken
-	} `json:"-"`
 }
 
 func New(db *datastore.Datastore) *Affiliate {

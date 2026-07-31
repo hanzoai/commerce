@@ -57,8 +57,6 @@ import (
 	planModel "github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/models/sbomrecord"
 	"github.com/hanzoai/commerce/models/types/currency"
-	"github.com/hanzoai/commerce/payment/providers/stripe"
-	"github.com/hanzoai/commerce/seed"
 	commercestore "github.com/hanzoai/commerce/store"
 	"github.com/hanzoai/commerce/thirdparty/kms"
 	"github.com/hanzoai/commerce/treasury"
@@ -909,13 +907,6 @@ func (app *App) Bootstrap() error {
 		app.config.IAM.Enabled = false
 	}
 
-	// Stripe catalog seed — ensure @hanzo/plans entries exist as Stripe
-	// Products + Prices. Idempotent, cheap, and gated on STRIPE_SECRET_KEY.
-	// Set COMMERCE_STRIPE_SEED=false to disable (useful for test environments).
-	if os.Getenv("STRIPE_SECRET_KEY") != "" && getEnv("COMMERCE_STRIPE_SEED", "true") != "false" {
-		app.runStripeSeed()
-	}
-
 	// Platform product catalog seed — populate the CMS source-of-truth for
 	// Hanzo's own products (the list docs/console/pricing derive from) on first
 	// boot. SeedIfEmpty is a cheap count-gated no-op once populated, so CMS
@@ -972,11 +963,6 @@ func (app *App) Bootstrap() error {
 	return nil
 }
 
-// runStripeSeed syncs every static plan in api/billing to Stripe. Errors are
-// runCatalogSeed populates the platform product catalog (the "system" namespace
-// CMS store) on first boot from the embedded seed. Cheap count-gated no-op once
-// populated. Failures are logged, never fatal — the catalog projection simply
-// returns empty until seeded.
 func (app *App) runCatalogSeed() {
 	db := catalogentry.SystemDB(context.Background())
 	created, err := catalogentry.SeedIfEmpty(db)
@@ -1024,11 +1010,6 @@ func (app *App) runCurrencySeed() {
 
 // runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
 // "system" ns) to the embedded @hanzo/plans catalog on EVERY boot — the SAME
-// embed SyncStripe/StaticPlans read. Cheap (one point query per plan; writes only
-// to create missing rows or force-correct an unmanaged partial). Failures are
-// logged, never fatal — GET /v1/billing/plans and resolveSubscriptionPlan fall
-// back to the embed. Seed values equal the embed, so this changes NO charge; it
-// makes pricing admin-editable and repairs bad rows.
 func (app *App) runPlansSeed() {
 	created, corrected, err := billingPkg.SeedPlans(context.Background())
 	if err != nil {
@@ -1038,38 +1019,6 @@ func (app *App) runPlansSeed() {
 	if created > 0 || corrected > 0 {
 		slog.Info("plan authority seeded", "created", created, "corrected", corrected)
 	}
-}
-
-// logged but do not abort bootstrap — the service remains usable without
-// Stripe catalog parity in degraded environments.
-func (app *App) runStripeSeed() {
-	stripeProv := stripe.NewProvider(stripe.Config{
-		SecretKey:      os.Getenv("STRIPE_SECRET_KEY"),
-		PublishableKey: os.Getenv("STRIPE_PUBLISHABLE_KEY"),
-		WebhookSecret:  os.Getenv("STRIPE_WEBHOOK_SECRET"),
-	})
-
-	catalog := billingPkg.StaticPlans()
-	plans := make([]seed.Plan, 0, len(catalog))
-	for _, p := range catalog {
-		plans = append(plans, seed.Plan{
-			Slug:        p.Slug,
-			Name:        p.Name,
-			Description: p.Description,
-			Category:    p.Category,
-			PriceMonth:  p.PriceMonth,
-			PriceYear:   p.PriceYear,
-			Currency:    p.Currency,
-		})
-	}
-
-	started := time.Now()
-	category := getEnv("COMMERCE_STRIPE_SEED_CATEGORY", "")
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	res, err := seed.SyncStripe(ctx, stripeProv, plans, category)
-	seed.LogResult(os.Stdout, res, err, started)
 }
 
 // setupRoutes configures HTTP routes

@@ -63,8 +63,6 @@ func Encode(src *Integration, dst *Integration) error {
 		dst.Data = json.EncodeBytes(src.SecurityToken)
 	case ShipwireType:
 		dst.Data = json.EncodeBytes(src.Shipwire)
-	case StripeType:
-		dst.Data = json.EncodeBytes(src.Stripe)
 	case WoopraType:
 		dst.Data = json.EncodeBytes(src.Woopra)
 	default:
@@ -129,8 +127,6 @@ func Decode(src *Integration, dst *Integration) error {
 		dst.SecurityToken = src.SecurityToken
 	case ShipwireType:
 		dst.Shipwire = src.Shipwire
-	case StripeType:
-		dst.Stripe = src.Stripe
 	case WoopraType:
 		dst.Woopra = src.Woopra
 	default:
@@ -182,8 +178,6 @@ func Decode(src *Integration, dst *Integration) error {
 			json.DecodeBytes(src.Data, &dst.SecurityToken)
 		case ShipwireType:
 			json.DecodeBytes(src.Data, &dst.Shipwire)
-		case StripeType:
-			json.DecodeBytes(src.Data, &dst.Stripe)
 		case WoopraType:
 			json.DecodeBytes(src.Data, &dst.Woopra)
 		default:

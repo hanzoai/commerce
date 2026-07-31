@@ -83,11 +83,6 @@ func Payout(ctx context.Context) error {
 				continue
 			}
 
-			// Skip partners without a payout access token
-			if par.Stripe.AccessToken == "" {
-				continue
-			}
-
 			log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
 			transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff(time.Now()))
 		}
