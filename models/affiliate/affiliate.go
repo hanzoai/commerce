@@ -26,6 +26,14 @@ type Affiliate struct {
 	Commission commission.Commission `json:"commission,omitempty"`
 	Schedule   schedule.Schedule     `json:"schedule,omitempty"`
 	CouponId   string                `json:"couponId,omitempty"`
+
+	// Wallet is how this affiliate is PAID: a web3 address they connect
+	// themselves. Payouts settle in crypto (or by wire, arranged off this
+	// record) — there is no processor account id here, because Hanzo does
+	// not disburse through a payment processor. An empty wallet does not
+	// stop a fee from being EARNED; it only means the transfer that records
+	// what is owed has nowhere to send it yet.
+	Wallet string `json:"wallet,omitempty"`
 }
 
 func New(db *datastore.Datastore) *Affiliate {

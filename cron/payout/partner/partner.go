@@ -83,6 +83,12 @@ func Payout(ctx context.Context) error {
 				continue
 			}
 
+			// Skip partners with nowhere to send it. The fees stay earned
+			// and unpaid until a wallet is connected.
+			if par.Wallet == "" {
+				continue
+			}
+
 			log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
 			transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff(time.Now()))
 		}
