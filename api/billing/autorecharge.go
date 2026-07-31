@@ -78,7 +78,7 @@ func autoRechargeResponse(cfg *autorecharge.AutoRecharge, userId string) map[str
 
 // GetAutoRecharge returns the org's auto-recharge config (or disabled defaults).
 //
-//	GET /v1/billing/auto-recharge
+//	GET /v1/billing/recharge
 func GetAutoRecharge(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -95,7 +95,7 @@ type autoRechargeRequest struct {
 
 // SetAutoRecharge upserts the org's auto-recharge config.
 //
-//	PUT /v1/billing/auto-recharge
+//	PUT /v1/billing/recharge
 //
 // Enabling requires a default payment method on file (the card that will be
 // charged off-session when the balance runs low).
@@ -164,7 +164,7 @@ type autoRechargeRunResult struct {
 // the default payment method and credits the balance. Intended to be invoked on
 // a recurring schedule (CronJob) by the platform.
 //
-//	POST /v1/billing/auto-recharge/run-all
+//	POST /v1/billing/recharge/run-all
 func RunAutoRechargeAllOrgs(c *zip.Ctx) error {
 	var kmsClient *kms.CachedClient
 	if v := c.Locals("kms"); v != nil {

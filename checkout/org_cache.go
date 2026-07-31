@@ -18,7 +18,7 @@ import (
 // loader every host resolves to a SYNTHETIC org, a synthetic org is never Live,
 // and the public tenant JSON therefore advertises the SANDBOX Square application
 // forever — even after the org record is flipped Live (measured 2026-07-30:
-// POST /v1/billing/test-mode returned {"live":true} and the tenant kept serving
+// POST /v1/billing/mode returned {"live":true} and the tenant kept serving
 // sandbox-sq0idb-…, so the card iframe tokenized against sandbox while the charge
 // path used the live org — a nonce the production account cannot charge).
 //

@@ -72,9 +72,9 @@ func TestMintRegistry_DeclarationImpliesEnforcement(t *testing.T) {
 //
 //   - routes that MUTATE money state without creating it: /cycle/run-user drives
 //     an invoice collection (engine.CollectInvoice burns credits and writes a
-//     Withdraw — a DEBIT), and /credit-grants/:id/void flips Voided on an
+//     Withdraw — a DEBIT), and /credits/:id/void flips Voided on an
 //     existing grant. Neither mints, so no mint sink exists to find.
-//   - routes that change money POLICY rather than money: /test-mode flips
+//   - routes that change money POLICY rather than money: /mode flips
 //     org.Live, which decides whether charges are real or sandboxed.
 //
 // Those are gated by declaration because forcing a charge on a named user, or

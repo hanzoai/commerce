@@ -82,7 +82,7 @@ func TestUIHandler_NoAuth_Returns404(t *testing.T) {
 	cases := []string{
 		"/admin/billing",
 		"/admin/billing/",
-		"/admin/billing/payment-methods",
+		"/admin/billing/methods",
 		"/admin/billing/_next/static/chunks/x.js",
 	}
 	for _, path := range cases {

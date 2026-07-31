@@ -111,7 +111,7 @@ func (sp *SquareProcessor) Type() processor.ProcessorType {
 func (sp *SquareProcessor) Environment() string { return sp.environment }
 
 // LocationID returns the configured Square merchant location id. Non-secret
-// (it is also returned by the public /v1/billing/payment-config endpoint).
+// (it is also returned by the public /v1/billing/settings endpoint).
 func (sp *SquareProcessor) LocationID() string { return sp.locationID }
 
 // Charge processes a payment

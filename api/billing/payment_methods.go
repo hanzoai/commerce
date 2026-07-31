@@ -126,7 +126,7 @@ type createPaymentMethodRequest struct {
 
 // CreatePaymentMethod creates and attaches a payment method to a customer.
 //
-//	POST /v1/billing/payment-methods
+//	POST /v1/billing/methods
 func CreatePaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
@@ -242,7 +242,7 @@ func CreatePaymentMethod(c *zip.Ctx) error {
 
 // GetPaymentMethod retrieves a payment method by ID.
 //
-//	GET /v1/billing/payment-methods/:id
+//	GET /v1/billing/methods/:id
 func GetPaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -267,7 +267,7 @@ func GetPaymentMethod(c *zip.Ctx) error {
 
 // ListPaymentMethods lists payment methods for a customer.
 //
-//	GET /v1/billing/payment-methods?customerId=...&type=...
+//	GET /v1/billing/methods?customerId=...&type=...
 func ListPaymentMethods(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -321,7 +321,7 @@ type updatePaymentMethodRequest struct {
 
 // UpdatePaymentMethod updates a payment method.
 //
-//	PATCH /v1/billing/payment-methods/:id
+//	PATCH /v1/billing/methods/:id
 func UpdatePaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -362,7 +362,7 @@ func UpdatePaymentMethod(c *zip.Ctx) error {
 
 // DetachPaymentMethod detaches (soft-deletes) a payment method.
 //
-//	DELETE /v1/billing/payment-methods/:id
+//	DELETE /v1/billing/methods/:id
 func DetachPaymentMethod(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))

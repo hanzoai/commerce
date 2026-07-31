@@ -199,7 +199,7 @@ var kinds = map[string]int{
 	// registered this kind with the ORM since it was written
 	// (models/autorecharge: orm.Register[AutoRecharge]("auto-recharge")) but was
 	// never added here, so Create() hit encodeKind's panic: enabling
-	// auto-recharge for the first time (PUT /v1/billing/auto-recharge, which
+	// auto-recharge for the first time (PUT /v1/billing/recharge, which
 	// Creates when no row exists) was a hard 500. Updating an existing row never
 	// touched this path, which is why it survived — there was no way to get a
 	// first row in.

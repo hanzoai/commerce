@@ -41,14 +41,14 @@ var mintRoutes = []struct{ method, path, body string }{
 	{http.MethodPost, "/v1/billing/deposit", `{"user":"acme/alice","amount":100}`},
 	{http.MethodPost, "/v1/billing/refund", `{"user":"acme/alice","amount":100,"originalTransactionId":"x"}`},
 	{http.MethodPost, "/v1/billing/credit", `{"org":"acme","amountCents":100,"reason":"c1"}`},
-	{http.MethodPost, "/v1/billing/credit-grants", `{"userId":"acme/alice","amountCents":100}`},
-	{http.MethodPost, "/v1/billing/credit-grants/abc/void", `{}`},
+	{http.MethodPost, "/v1/billing/credits", `{"userId":"acme/alice","amountCents":100}`},
+	{http.MethodPost, "/v1/billing/credits/abc/void", `{}`},
 	{http.MethodPost, "/v1/billing/customer-balance/adjustments", `{"customerId":"acme/alice","amount":100}`},
 	{http.MethodPost, "/v1/billing/payouts", `{"amount":100}`},
 	{http.MethodPost, "/v1/billing/payouts/abc/cancel", `{}`},
 	{http.MethodPost, "/v1/billing/reconciliation/match", `{"reference":"x","amount":100}`},
 	{http.MethodPost, "/v1/billing/cycle/run-user", `{"userId":"acme/alice"}`},
-	{http.MethodPost, "/v1/billing/test-mode", `{"testMode":true}`},
+	{http.MethodPost, "/v1/billing/mode", `{"testMode":true}`},
 }
 
 // engineWithSeed mounts the REAL billing Route() behind a pre-group middleware

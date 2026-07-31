@@ -140,10 +140,10 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 
 		idorCl = zipclient.New(ctx)
 		idorCl.Router.Use(idorShim)
-		idorCl.Router.Get("/billing/payment-methods", billingApi.ListPaymentMethods)
-		idorCl.Router.Get("/billing/payment-methods/:id", billingApi.GetPaymentMethod)
-		idorCl.Router.Patch("/billing/payment-methods/:id", billingApi.UpdatePaymentMethod)
-		idorCl.Router.Delete("/billing/payment-methods/:id", billingApi.DetachPaymentMethod)
+		idorCl.Router.Get("/billing/methods", billingApi.ListPaymentMethods)
+		idorCl.Router.Get("/billing/methods/:id", billingApi.GetPaymentMethod)
+		idorCl.Router.Patch("/billing/methods/:id", billingApi.UpdatePaymentMethod)
+		idorCl.Router.Delete("/billing/methods/:id", billingApi.DetachPaymentMethod)
 		idorCl.Router.Post("/billing/customers/:id/default-payment-method", billingApi.SetDefaultPaymentMethod)
 
 		realCl = zipclient.New(ctx)
@@ -159,7 +159,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 
 	// ── read / mutate a card by :id (unpinned path-param) ────────────────────
 	Context("payment-method read/mutate", func() {
-		pmPath := func(id string) string { return "/billing/payment-methods/" + id }
+		pmPath := func(id string) string { return "/billing/methods/" + id }
 
 		It("DENIES a non-privileged caller reading another subject's card (404 — no existence oracle)", func() {
 			Expect(idorGet(pmPath(seedPaymentMethod(other)), idorNonPriv).Code).To(Equal(404))
@@ -224,7 +224,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		It("EXCLUDES another subject's methods from an unfiltered non-privileged list", func() {
 			seedPaymentMethod(other)
 			seedPaymentMethod(subject)
-			w := idorGet("/billing/payment-methods", idorNonPriv)
+			w := idorGet("/billing/methods", idorNonPriv)
 			Expect(w.Code).To(Equal(200))
 			custs := customerIdsIn(w)
 			Expect(custs[other]).To(BeFalse())  // victim's methods never leak
@@ -232,7 +232,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 		})
 		It("INCLUDES any subject for a privileged (service) unfiltered list — cloud-api unchanged", func() {
 			seedPaymentMethod(other)
-			w := idorGet("/billing/payment-methods", idorService)
+			w := idorGet("/billing/methods", idorService)
 			Expect(w.Code).To(Equal(200))
 			Expect(customerIdsIn(w)[other]).To(BeTrue())
 		})
@@ -243,7 +243,7 @@ var _ = Describe("billing IDOR scoping", Ordered, ContinueOnFailure, func() {
 	// gate: a non-admin authenticated IAM member is 403 before the handler runs.
 	Context("admin-gated money routes (real router)", func() {
 		It("403s a non-admin on the admin-only money routes (admin gate is the sole, sufficient guard)", func() {
-			for _, uri := range []string{"/billing/topup", "/billing/credit-grants/anyid/void"} {
+			for _, uri := range []string{"/billing/topup", "/billing/credits/anyid/void"} {
 				r := realCl.NewRequest(http.MethodPost, uri, strings.NewReader("{}"))
 				r.Header.Set("Content-Type", "application/json")
 				w := realCl.Do(r)

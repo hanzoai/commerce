@@ -38,7 +38,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// grant/run mutate; usage-rollup is the read surface for console.
 	api.Post("/allotment/grant", GrantAllotment)
 	api.Post("/allotment/run", RunAllotments)
-	api.Get("/usage-rollup", GetUsageRollup)
+	api.Get("/usage/rollup", GetUsageRollup)
 
 	// Balance & usage (existing)
 	api.Get("/balance", GetBalance)
@@ -90,8 +90,8 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// to the user group below. Void is a grant mutation in the same resource
 	// family — same platform-only bar, so an org owner can neither create nor
 	// alter a grant.
-	mint.Post("/credit-grants", CreateCreditGrant)
-	mint.Post("/credit-grants/:id/void", VoidCreditGrant)
+	mint.Post("/credits", CreateCreditGrant)
+	mint.Post("/credits/:id/void", VoidCreditGrant)
 
 	// Pricing rules
 	api.Post("/pricing-rules", CreatePricingRule)
@@ -186,7 +186,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Get("/portal/overview", PortalOverview)
 	api.Get("/portal/invoices", PortalInvoices)
 	api.Get("/portal/subscriptions", PortalSubscriptions)
-	api.Get("/portal/payment-methods", PortalPaymentMethods)
+	api.Get("/portal/methods", PortalPaymentMethods)
 
 	// Subscription schedules
 	api.Post("/subscription-schedules", CreateSubscriptionSchedule)
@@ -232,10 +232,10 @@ func Route(r zip.Router, args ...zip.Handler) {
 	api.Post("/topup", Topup)
 
 	// GPU billing (server-enforced prepaid-only + card-required). The cloud GPU
-	// launch gate reads /gpu-eligibility before provisioning and POSTs /gpu-charge
+	// launch gate reads /gpu/eligibility before provisioning and POSTs /gpu/charge
 	// to debit; a GPU charge NEVER draws credit grants (see api/billing/gpu_charge.go).
-	api.Get("/gpu-eligibility", GPUChargeEligibility)
-	api.Post("/gpu-charge", ChargeGPU)
+	api.Get("/gpu/eligibility", GPUChargeEligibility)
+	api.Post("/gpu/charge", ChargeGPU)
 
 	// ZAP protocol endpoint
 	api.Post("/zap", ZapDispatch)
@@ -259,12 +259,12 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Platform-wide card charging — money-MINT bar (service-token / global-admin
 	// ONLY). An org owner reaching this could sweep-charge saved cards across
 	// every org.
-	mint.Post("/auto-recharge/run-all", RunAutoRechargeAllOrgs)
+	mint.Post("/recharge/run-all", RunAutoRechargeAllOrgs)
 
 	// Test mode toggle: move an org between Square sandbox and production. This
 	// flips whether charges hit real cards, so it is a money-mode change —
 	// service-token / global-admin ONLY, never an org owner.
-	mint.Post("/test-mode", SetOrgTestMode)
+	mint.Post("/mode", SetOrgTestMode)
 
 	// ── User-facing billing endpoints ─────────────────────────────────────
 	// Called by billing.hanzo.ai with user OIDC tokens. Gated by a NO-MASK
@@ -292,7 +292,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	// Public Square config for THIS org's Web Payments SDK (sandbox for test
 	// orgs, production for live orgs) — so the browser tokenizes against the
 	// same Square account commerce vaults/charges with.
-	user.Get("/payment-config", GetPaymentConfig)
+	user.Get("/settings", GetPaymentConfig)
 
 	// Plans (public catalog — cacheable, no writes).
 	// CF caches for 1 hour; plans rarely change.
@@ -305,8 +305,8 @@ func Route(r zip.Router, args ...zip.Handler) {
 	dnsUser.Get("/plans", middleware.CachePublic(3600), middleware.CFCacheTags("dns-plans"), ListDNSPlans)
 
 	// Auto-recharge config (user-scoped; one per org)
-	user.Get("/auto-recharge", GetAutoRecharge)
-	user.Put("/auto-recharge", SetAutoRecharge)
+	user.Get("/recharge", GetAutoRecharge)
+	user.Put("/recharge", SetAutoRecharge)
 
 	// Spend alerts + per-scope spend caps (issue #70). CRUD manages the budget
 	// rows; /authorize is the per-request cap verdict the cloud metering gate
@@ -328,7 +328,7 @@ func Route(r zip.Router, args ...zip.Handler) {
 	user.Get("/me/balance", GetMyBalance)
 
 	// Credit grants & balance (read-only, user-scoped)
-	user.Get("/credit-grants", ListCreditGrants)
+	user.Get("/credits", ListCreditGrants)
 	user.Get("/credit-balance", GetCreditBalance)
 	user.Get("/credit-balance/breakdown", GetCreditBalanceBreakdown)
 
@@ -356,11 +356,11 @@ func Route(r zip.Router, args ...zip.Handler) {
 	user.Post("/subscribe/card", SubscribeWithCard)
 
 	// Payment methods (user-scoped CRUD)
-	user.Post("/payment-methods", CreatePaymentMethod)
-	user.Get("/payment-methods", ListPaymentMethods)
-	user.Get("/payment-methods/:id", GetPaymentMethod)
-	user.Patch("/payment-methods/:id", UpdatePaymentMethod)
-	user.Delete("/payment-methods/:id", DetachPaymentMethod)
+	user.Post("/methods", CreatePaymentMethod)
+	user.Get("/methods", ListPaymentMethods)
+	user.Get("/methods/:id", GetPaymentMethod)
+	user.Patch("/methods/:id", UpdatePaymentMethod)
+	user.Delete("/methods/:id", DetachPaymentMethod)
 	user.Post("/customers/:id/default-payment-method", SetDefaultPaymentMethod)
 
 	// Billing accounts (org-wrapper)

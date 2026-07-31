@@ -28,7 +28,7 @@ type createCreditGrantRequest struct {
 
 // CreateCreditGrant creates a new credit grant for a user.
 //
-//	POST /v1/billing/credit-grants
+//	POST /v1/billing/credits
 func CreateCreditGrant(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -95,7 +95,7 @@ func CreateCreditGrant(c *zip.Ctx) error {
 
 // ListCreditGrants lists credit grants for a user.
 //
-//	GET /v1/billing/credit-grants?userId=...
+//	GET /v1/billing/credits?userId=...
 func ListCreditGrants(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))
@@ -240,7 +240,7 @@ func GetCreditBalanceBreakdown(c *zip.Ctx) error {
 
 // VoidCreditGrant voids a specific credit grant, making it unusable.
 //
-//	POST /v1/billing/credit-grants/:id/void
+//	POST /v1/billing/credits/:id/void
 func VoidCreditGrant(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c.Context()))

@@ -283,7 +283,7 @@ func RunAllotments(c *zip.Ctx) error {
 // read surface the console billing UI renders. All figures are derived from the
 // same transactions the gateway's balance gate reads — no separate store.
 //
-//	GET /v1/billing/usage-rollup?user=hanzo/alice&plan=pro
+//	GET /v1/billing/usage/rollup?user=hanzo/alice&plan=pro
 //
 // `plan` is optional; when omitted it is resolved from the user's subscription.
 func GetUsageRollup(c *zip.Ctx) error {

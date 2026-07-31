@@ -17,7 +17,7 @@ import (
 // access token commerce will vault/charge with. All values are public (safe to
 // expose to the client).
 //
-//	GET /v1/billing/payment-config
+//	GET /v1/billing/settings
 func GetPaymentConfig(c *zip.Ctx) error {
 	// #146 class: resolve the org nil-safely. On the co-resident embed path there may be
 	// no "organization" local; SquarePublicConfig handles a nil org (env-fallback public
@@ -57,7 +57,7 @@ type testModeRequest struct {
 // sandbox charge. Admin-only — a user must not be able to move their own org to
 // sandbox to dodge real charges.
 //
-//	POST /v1/billing/test-mode   { testMode: bool }
+//	POST /v1/billing/mode   { testMode: bool }
 func SetOrgTestMode(c *zip.Ctx) error {
 	org := middleware.GetOrganization(c)
 
