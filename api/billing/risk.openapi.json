@@ -1,0 +1,962 @@
+{
+  "components": {
+    "schemas": {
+      "DisputeEvidence": {
+        "properties": {
+          "customerEmailAddress": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "productDescription": {
+            "type": "string"
+          },
+          "serviceDate": {
+            "type": "string"
+          },
+          "uncategorizedText": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Evidence": {
+        "properties": {
+          "assembled": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "charge": {
+            "$ref": "#/components/schemas/evidenceCharge"
+          },
+          "dispute": {
+            "$ref": "#/components/schemas/evidenceDispute"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/DisputeEvidence"
+          },
+          "gaps": {
+            "description": "Gaps names every fact a complete defence wants that this org's record does\nnot hold. It is stated rather than left blank because a merchant reading a\npacket has to know what to add, and a blank field looks like a fact that\nwas checked and found empty.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/evidenceOutcome"
+            },
+            "type": "array"
+          },
+          "screens": {
+            "items": {
+              "$ref": "#/components/schemas/evidenceScreen"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "evidenceCharge": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "string"
+          },
+          "describe": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "evidenceDispute": {
+        "properties": {
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "dueBy": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "evidenceOutcome": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "evidenceScreen": {
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "agency": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": {
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "refusal": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "stage": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskControlIn": {
+        "properties": {
+          "effect": {
+            "description": "Effect is reserve, hold or block. A reserve withholds a share of every\noutbound move; a hold stops money leaving; a block stops it moving at all.",
+            "type": "string"
+          },
+          "rate": {
+            "description": "Rate is BASIS POINTS withheld, for a reserve: 2500 is a quarter. It is\nbasis points and not a fraction because money is integer arithmetic, and\na float rate drifts the withheld amount by a cent per move at scale.",
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "description": "SubjectKind and Subject name what is restrained, inside this org.",
+            "type": "string"
+          },
+          "until": {
+            "description": "Until lapses the control, RFC 3339. Empty means it stands until released,\nwhich is what a fraud restraint should do.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effect",
+          "subjectKind",
+          "subject"
+        ],
+        "type": "object"
+      },
+      "riskControlOut": {
+        "properties": {
+          "by": {
+            "description": "By is who placed it, from the validated principal.",
+            "type": "string"
+          },
+          "effect": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "live": {
+            "type": "boolean"
+          },
+          "rate": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "released": {
+            "type": "boolean"
+          },
+          "releasedAt": {
+            "type": "string"
+          },
+          "releasedBy": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "type": "string"
+          },
+          "until": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskControlPage": {
+        "properties": {
+          "controls": {
+            "items": {
+              "$ref": "#/components/schemas/riskControlOut"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "riskEvidenceOut": {
+        "properties": {
+          "evidence": {
+            "$ref": "#/components/schemas/Evidence"
+          }
+        },
+        "type": "object"
+      },
+      "riskOutcomeIn": {
+        "properties": {
+          "amount": {
+            "description": "Amount is exact minor units of Currency.",
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "event": {
+            "description": "Event is dispute, won, lost, refund, payoutfail, negative or abuse.",
+            "type": "string"
+          },
+          "idem": {
+            "description": "Idem makes a repeated report return the first record rather than a second.",
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "reference": {
+            "description": "Reference is the money object — a dispute, a payout, a charge.",
+            "type": "string"
+          },
+          "screen": {
+            "description": "Screen anchors the outcome to the judgement it corrects. Naming one also\nwrites the label onto that screen, which is what the org's own model\nlearns from.",
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjectKind": {
+            "description": "SubjectKind and Subject name what the outcome happened to.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "subjectKind",
+          "subject"
+        ],
+        "type": "object"
+      },
+      "riskOutcomeOut": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "refusal": {
+            "type": "string"
+          },
+          "reported": {
+            "description": "Reported states whether the scoring plane accepted the label, and Refusal\nwhy it did not. An unreported outcome is still a durable record here, so a\nscoring outage costs learning latency and never evidence.",
+            "type": "boolean"
+          },
+          "screen": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "riskReviewIn": {
+        "properties": {
+          "act": {
+            "description": "Act places the control the answer implies: a block on block, and on\nrestrict a reserve when Reserve is a rate, else a payout hold.",
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "reserve": {
+            "description": "Reserve is BASIS POINTS to withhold when the answer restricts. Zero means\nhold instead of reserving.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "riskScreenIn": {
+        "properties": {
+          "amount": {
+            "description": "Amount is exact minor units. Zero is allowed: a merchant review judges no\nparticular move.",
+            "type": "integer"
+          },
+          "currency": {
+            "description": "Currency is the ISO code of Amount.",
+            "type": "string"
+          },
+          "idem": {
+            "description": "Idem makes a repeated screen of the same move return the first answer\nrather than a second, possibly different, one.",
+            "type": "string"
+          },
+          "out": {
+            "description": "Out is true when money is LEAVING — a payout or a refund. Reserves and\npayout holds bear only on money that leaves.",
+            "type": "boolean"
+          },
+          "processor": {
+            "description": "Processor names the gateway, when there is one. A merchant who processes\npayments elsewhere leaves it empty and is screened just the same.",
+            "type": "string"
+          },
+          "reference": {
+            "description": "Reference is the money object being judged — a payment intent, a payout,\nan order — so the record joins back to the books.",
+            "type": "string"
+          },
+          "signals": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Signals are the facts the scoring plane reads: ip, email, device, bin,\nasn, ua and their kin.",
+            "type": "object"
+          },
+          "stage": {
+            "description": "Stage is the lifecycle moment: payment, usage, payout, dispute or\nmerchant. It selects the feature window and rule set on the scoring plane.",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Subject is the subject's id within this org.",
+            "type": "string"
+          },
+          "subjectKind": {
+            "description": "SubjectKind is what is being judged: merchant, customer, account,\ntransaction or payout.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage",
+          "subjectKind",
+          "subject"
+        ],
+        "type": "object"
+      },
+      "riskScreenOut": {
+        "properties": {
+          "action": {
+            "description": "Action is what the money plane did: allow, challenge, review, restrict or\nblock. Restrict and block mean the money did not move.",
+            "type": "string"
+          },
+          "agency": {
+            "description": "Agency is who acted: agent, human, bot or unknown.",
+            "type": "string"
+          },
+          "allowed": {
+            "type": "integer"
+          },
+          "at": {
+            "type": "string"
+          },
+          "decision": {
+            "description": "Decision is the /v1/risk decision this record is anchored to.",
+            "type": "string"
+          },
+          "detail": {
+            "additionalProperties": {
+              "type": "object"
+            },
+            "description": "Detail carries the evidence: the signals sent, the rules that hit and the\ncontrols that bore on the move.",
+            "type": "object"
+          },
+          "held": {
+            "description": "Held and Allowed are exact minor units: what a reserve withheld and what\nmay still move. They always sum to the amount asked about.",
+            "type": "integer"
+          },
+          "id": {
+            "description": "ID is the screen record, quotable in an appeal or a dispute.",
+            "type": "string"
+          },
+          "moves": {
+            "description": "Moves states the same fact the way a caller acts on it.",
+            "type": "boolean"
+          },
+          "reason": {
+            "description": "Reason is the strictest applying control's reason.",
+            "type": "string"
+          },
+          "refusal": {
+            "description": "Refusal states why the scoring plane could not judge. A screen carrying a\nrefusal was decided by the controls alone — it is not a clean result.",
+            "type": "string"
+          },
+          "score": {
+            "description": "Score is the scoring plane's weight of evidence in [0,1].",
+            "type": "number"
+          },
+          "shadow": {
+            "description": "Shadow marks a judgement that was recorded and deliberately not enforced.",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "riskScreenPage": {
+        "properties": {
+          "screens": {
+            "items": {
+              "$ref": "#/components/schemas/riskScreenOut"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "riskStandingOut": {
+        "properties": {
+          "controls": {
+            "items": {
+              "$ref": "#/components/schemas/riskControlOut"
+            },
+            "type": "array"
+          },
+          "disputeRate": {
+            "type": "integer"
+          },
+          "disputes": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "held": {
+            "type": "integer"
+          },
+          "lost": {
+            "type": "integer"
+          },
+          "negative": {
+            "type": "integer"
+          },
+          "placed": {
+            "description": "Placed names a control the review placed.",
+            "type": "string"
+          },
+          "refunds": {
+            "type": "integer"
+          },
+          "refusalRate": {
+            "type": "integer"
+          },
+          "refused": {
+            "type": "integer"
+          },
+          "screen": {
+            "$ref": "#/components/schemas/riskScreenOut",
+            "description": "Screen is the merchant-stage judgement, present when the standing was\nreviewed rather than merely counted."
+          },
+          "screens": {
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "volumeIn": {
+            "description": "VolumeIn, VolumeOut and Held are exact minor units.",
+            "type": "integer"
+          },
+          "volumeOut": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "riskSubmitIn": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "processor": {
+            "description": "Processor names which of the org's processors carries the submission. It\ndefaults to the one that took the charge.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "riskSubmitOut": {
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "",
+    "title": "risk-wire-test",
+    "version": "0.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/billing/risk/controls": {
+      "get": {
+        "description": "Lists the controls this org has placed, and whether each still\nbears on a move.",
+        "operationId": "riskControls",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "live",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskControlPage"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "List the controls in force",
+        "tags": [
+          "risk"
+        ]
+      },
+      "post": {
+        "description": "Places a reserve, a payout hold or a block on one subject.\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
+        "operationId": "riskControlPlace",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/riskControlIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskControlOut"
+                }
+              }
+            },
+            "description": "created"
+          }
+        },
+        "summary": "Place a reserve, payout hold or block on a subject",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/controls/{id}": {
+      "delete": {
+        "description": "Lifts a control. Releasing one already released is not an\nerror and does not rewrite who lifted it first.",
+        "operationId": "riskControlRelease",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskControlOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Release a control",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/disputes/{id}/evidence": {
+      "get": {
+        "description": "Assembles a dispute defence out of this org's own record: the\ncharge, the risk judgement that admitted it, the rules that hit, the controls\nin force, and every later outcome for the same customer.\n\nWhat it cannot find it NAMES, in gaps. A blank evidence field looks like a\nfact that was checked and found empty; a stated gap tells the merchant what\nto add.",
+        "operationId": "riskEvidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskEvidenceOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Assemble a dispute defence from this org's record",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/disputes/{id}/submit": {
+      "post": {
+        "description": "Submits an assembled dispute defence to the adjudicator that can\ncarry it.\n\nTODAY IT ALWAYS REFUSES, and that is the honest answer rather than a defect\nhidden behind a 200. Two routes exist in principle: the processor that took\nthe payment forwards evidence to the issuing network — no provider in this\ntree implements that yet — or a dispute network stops the chargeback before\nit becomes one, and we are a member of none. A merchant must not believe a\ndefence was filed because a button returned success.",
+        "operationId": "riskSubmit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/riskSubmitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskSubmitOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Submit an assembled dispute defence to the adjudicator",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/merchants/{id}": {
+      "get": {
+        "description": "Reads a merchant's standing from this org's own record. It\ncounts and reports; it scores nothing and changes nothing, so a console may\npoll it.",
+        "operationId": "riskMerchant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskStandingOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Read a merchant's standing from this org's own record",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/merchants/{id}/review": {
+      "post": {
+        "description": "Reviews a merchant now: it counts the standing, puts it to\nthe risk plane as a merchant-stage question, records the judgement, and —\nwhen asked to act — places the control the answer implies.\n\nThis is the continuous monitoring a platform runs on its merchants. It is a\nPOST because it records a judgement and may restrain money.",
+        "operationId": "riskMerchantReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/riskReviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskStandingOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Review a merchant now, and act on the answer",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/outcomes": {
+      "post": {
+        "description": "Records how a scored money event turned out and reports the label\nto the risk plane so the org's own model learns from its own outcomes.\n\nThe record is written to this org's books FIRST and forwarded second. Wired\nthe other way a scoring hiccup loses the label and the loss is invisible.",
+        "operationId": "riskOutcome",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/riskOutcomeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskOutcomeOut"
+                }
+              }
+            },
+            "description": "created"
+          }
+        },
+        "summary": "Report how a scored money event turned out",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/screen": {
+      "post": {
+        "description": "Scores one money move against this org's own model and controls,\nrecords the judgement, and returns it.\n\nIt is processor-agnostic: it takes facts, not a payment. A merchant whose\npayments run through another processor calls this at authorization time and\nenforces the answer itself; a merchant on our own processors gets the same\njudgement automatically, from the same code, before the gateway is reached.",
+        "operationId": "riskScreen",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/riskScreenIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskScreenOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Screen a money move and return the decision",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/screens": {
+      "get": {
+        "description": "Lists the screens this org recorded, newest first.",
+        "operationId": "riskScreens",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "subjectKind",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "subject",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskScreenPage"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "List recorded screens",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/v1/billing/risk/screens/{id}": {
+      "get": {
+        "description": "Reads one recorded screen.",
+        "operationId": "riskScreenView",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/riskScreenOut"
+                }
+              }
+            },
+            "description": "ok"
+          }
+        },
+        "summary": "Read one recorded screen",
+        "tags": [
+          "risk"
+        ]
+      }
+    }
+  }
+}

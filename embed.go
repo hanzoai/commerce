@@ -20,6 +20,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/billing/creditledger"
+	"github.com/hanzoai/commerce/risk"
 )
 
 // EmbedConfig configures the in-process Commerce server. Empty values
@@ -47,6 +48,13 @@ type EmbedConfig struct {
 	// for the same process. nil ⇒ the env var decides, unchanged, which is the
 	// standalone path.
 	MasterKey []byte
+
+	// Risk is the host-injected scoring plane. When the cloud binary embeds
+	// commerce and /v1/risk is co-resident it passes an in-process client, so
+	// an authorization-time screen costs no network hop. nil → commerce reads
+	// Config.RiskURL (RISK_URL) and calls the fleet's api host; empty too →
+	// no plane, and every screen records that refusal rather than scoring zero.
+	Risk risk.Client
 
 	// Ledger is the host-injected double-entry credit ledger. When the cloud
 	// binary embeds commerce it passes a ledger-backed impl here, so
@@ -103,6 +111,15 @@ func Embed(ctx context.Context, cfg EmbedConfig) (*Embedded, error) {
 	// registered, so the billing credit + balance handlers resolve it. nil is a
 	// no-op: commerce keeps its datastore path (standalone-safe).
 	creditledger.Set(cfg.Ledger)
+
+	// Install the scoring plane the same way and for the same reason: one
+	// process-wide seam, resolved before any route can ask it a question.
+	switch {
+	case cfg.Risk != nil:
+		risk.Set(cfg.Risk)
+	case appCfg.RiskURL != "":
+		risk.Set(risk.At(appCfg.RiskURL))
+	}
 
 	app := NewWithConfig(appCfg)
 

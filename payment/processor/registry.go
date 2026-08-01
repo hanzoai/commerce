@@ -215,6 +215,22 @@ func (r *Registry) GetCrypto(t ProcessorType) (CryptoProcessor, error) {
 	return cp, nil
 }
 
+// GetDispute retrieves a processor that can submit chargeback evidence. No
+// provider implements DisputeProcessor today, so this reports the gap honestly
+// rather than a caller discovering it as a silently dropped submission.
+func (r *Registry) GetDispute(t ProcessorType) (DisputeProcessor, error) {
+	p, err := r.Get(t)
+	if err != nil {
+		return nil, err
+	}
+
+	dp, ok := p.(DisputeProcessor)
+	if !ok {
+		return nil, fmt.Errorf("processor %s does not support dispute evidence submission", t)
+	}
+	return dp, nil
+}
+
 // GetSubscription retrieves a subscription processor
 func (r *Registry) GetSubscription(t ProcessorType) (SubscriptionProcessor, error) {
 	p, err := r.Get(t)

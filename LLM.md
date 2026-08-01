@@ -1266,3 +1266,49 @@ no gofiber, no net/http adaptation in the serving path. Handlers are
   req.PostForm). zip TestCtx for direct handler calls.
 - Pre-existing debt unchanged: test-integration/* needs external services;
   thirdparty/reamaze verifyHMAC has an inversion bug (flagged, not fixed here).
+
+## The money plane's risk face — `/v1/billing/risk`
+Commerce owns the money; it does not own judgement. Hanzo Risk (`/v1/risk`)
+scores, commerce ENFORCES at the money boundary, and the two never trade
+places: nothing here scores, and nothing at `/v1/risk` moves money.
+
+- `risk/` is the seam. `risk.Client` is the ONE door to `/v1/risk`
+  (`Decide`/`Label`) — injected by the host (`EmbedConfig.Risk`) or built from
+  `RISK_URL`, and absent by default, in which case every screen records the
+  refusal instead of silently scoring zero. `risk.Screener` screens one org's
+  moves; `risk.NewGuard` decorates ANY `processor.PaymentProcessor` so
+  authorization-time screening is processor-agnostic by construction.
+- FAIL POLICY: an unreachable scorer must never take the payment plane down, so
+  it yields allow + a recorded `Refusal`. CONTROLS are the other way round —
+  they are durable rows in the org's own store, read with no network in the
+  path, so a scoring outage can never lift a reserve. A move the controls
+  already stop is not sent for scoring at all.
+- CONTROLS (`models/control`): `reserve` withholds a share of every outbound
+  move, `hold` stops money leaving, `block` stops it moving at all. Composition
+  is the STRICTEST, never the sum. Rates are BASIS POINTS and the split rounds
+  UP; `Held+Allowed` is the requested amount exactly, at every rate, on every
+  amount (`risk.Restrain`, proven by test). At the payout boundary a reserve
+  WITHHOLDS its share and discloses it (`requested`/`held`/`screen` in the
+  response) — refusing instead walks the caller in a circle, because a reserve
+  applies to whatever is asked for.
+- RECORDS: `models/screen` is one judgement (and the countable unit the tiers
+  price); `models/outcome` is how it turned out. Both are written to the org's
+  own books BEFORE the label is forwarded, so a scoring hiccup costs learning
+  latency and never evidence.
+- DISPUTES: `risk.Assemble` builds a defence from our own record — the charge,
+  the judgement that admitted it, the rules that hit, later outcomes — and NAMES
+  what it cannot find in `gaps`. SUBMISSION has no adjudicator: no provider
+  implements `processor.DisputeProcessor` and we belong to no dispute network,
+  so `POST /v1/billing/risk/disputes/:id/submit` answers 501 with the reason
+  rather than a success that went nowhere.
+- Every route is a TYPED zip op (`api/billing/risk.go`), registered on the ROOT
+  with the whole path in one literal — `zipdoc` resolves an op's identity from
+  the group literal it can read, so a prefix assembled from a parameter files
+  every doc comment under a path that does not exist. Gates:
+  `zipdoc -check` (per package), `risk.openapi.json` regenerating unchanged, a
+  closed `untypedByDesign` list, and a schema scan proving no op takes the
+  tenant as an input field.
+- A model field named `Kind` SHADOWS the ORM's `Kind()` method and the entity
+  silently stops satisfying `mixin.Entity` — a nil dereference on the first read
+  rather than a build error. Hence `control.Effect` and `outcome.Event`, and a
+  `var _ mixin.Entity` assertion on all three models.
