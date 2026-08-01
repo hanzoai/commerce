@@ -12,6 +12,7 @@ import (
 
 	commerce "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api"
+	billingapi "github.com/hanzoai/commerce/api/billing"
 	"github.com/hanzoai/commerce/middleware/iammiddleware"
 )
 
@@ -69,6 +70,9 @@ func bootLegacy(dataDir, httpAddr string, dev, requireIdentity bool) error {
 	// header → org resolution runs for everything api.Route() registers.
 	apiGroup.Use(iammiddleware.IAMTokenRequired())
 	api.Route(apiGroup)
+	// The money plane's risk face names its whole path on the root — see
+	// api/billing/risk.go.
+	billingapi.RiskRoute(srv.App().Router)
 
 	addr := srv.App().Config().HTTPAddr
 

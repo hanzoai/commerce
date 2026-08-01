@@ -25,6 +25,7 @@ import (
 
 	"github.com/hanzoai/cloud"
 	api "github.com/hanzoai/commerce/api"
+	billingapi "github.com/hanzoai/commerce/api/billing"
 	"github.com/zap-proto/zip"
 )
 
@@ -92,6 +93,11 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 	// routes. See cmd/commerce/main.go for the standalone-binary call.
 	apiGroup := embedded.App().Router.Group("/v1")
 	api.Route(apiGroup)
+
+	// The money plane's risk face registers on the ROOT and names its whole
+	// path in one literal, because the doc generator resolves an op's identity
+	// from the group literal it can read — see api/billing/risk.go.
+	billingapi.RiskRoute(embedded.App().Router)
 
 	// Native zip health endpoint — independent of the gin handler so
 	// liveness/readiness probes survive a router-wide outage. Use a

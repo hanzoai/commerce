@@ -20,6 +20,7 @@ import (
 	commerce "github.com/hanzoai/commerce"
 	commerceApp "github.com/hanzoai/commerce"
 	api "github.com/hanzoai/commerce/api"
+	billingapi "github.com/hanzoai/commerce/api/billing"
 
 	"github.com/zap-proto/zip"
 )
@@ -72,6 +73,9 @@ func main() {
 	// "/v1/ only" rule and the Prefixes["api"]="/v1/" config.
 	apiGroup := srv.App().Router.Group("/v1")
 	api.Route(apiGroup)
+	// The money plane's risk face names its whole path on the root — see
+	// api/billing/risk.go.
+	billingapi.RiskRoute(srv.App().Router)
 
 	// ONE address, resolved by the zip Plugin contract. When a host started this
 	// binary as a plugin it passes a unix socket in ZIP_ADDR and zip.Addr returns
