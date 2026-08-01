@@ -66,6 +66,7 @@ test:
       sh scripts/fetch-plans.sh
       go test -count=1 -timeout=10m \
         ./billing/... \
+        ./risk/... \
         ./delay/... \
         ./models/creditgrant/... \
         ./models/pricingrule/... \
@@ -74,6 +75,27 @@ test:
         ./models/networktoken/... \
         ./models/product/... \
         ./payment/...
+  # The money plane's risk face: the domain under -race (tenant isolation, the
+  # exact reserve arithmetic, idempotency) and the wire gates that keep the face
+  # typed. Kept separate from go-unit because it is the only suite that must run
+  # under the race detector to mean anything.
+  - name: go-risk
+    run: |
+      set -e
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off CGO_ENABLED=1
+      sh scripts/fetch-plans.sh
+      go test -count=1 -race -timeout=10m ./risk/...
+      go test -count=1 -race -timeout=10m -run 'TestRisk|TestPayout_' ./api/billing/...
+  # zipdoc lifts each typed op's doc comment into zipdoc_gen.go, which is
+  # committed and compiled in — so a bare `go build` cannot regenerate it and a
+  # drifted lift ships a document with the wrong prose. Run PER PACKAGE, the way
+  # `go generate` runs it: a whole-module load extracts differently, and a gate
+  # that disagrees with the generator it polices is worse than no gate.
+  - name: zipdoc-check
+    run: |
+      set -e
+      export GOPRIVATE='github.com/hanzoai/*' GOWORK=off
+      cd api/billing && go run github.com/zap-proto/zip/cmd/zipdoc -check
   # API suites (test/), the gate .github/workflows/test.yml used to own alone.
   # All 49 green. It was red on arrival for two unrelated reasons, both since
   # fixed at the cause rather than skipped: four suites got 402

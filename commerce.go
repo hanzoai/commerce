@@ -138,6 +138,12 @@ type Config struct {
 	// Query timeout
 	QueryTimeout time.Duration
 
+	// RiskURL is where /v1/risk answers — the fleet's api host. Empty means no
+	// scoring plane is configured, and every screen records that refusal
+	// instead of silently scoring zero. It is an ADDRESS, never a secret: the
+	// call carries the caller's own forwarded identity.
+	RiskURL string
+
 	// KMS configuration for secret management
 	KMS kms.Config
 
@@ -166,6 +172,7 @@ func DefaultConfig() *Config {
 		DatastoreDSN:      getEnv("DATASTORE_URL", ""),
 		Infra:             *infraConfigFromEnv(),
 		QueryTimeout:      30 * time.Second,
+		RiskURL:           getEnv("RISK_URL", ""),
 	}
 
 	cfg.KMS.Enabled = getEnv("KMS_ENABLED", "false") == "true"

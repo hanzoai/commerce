@@ -204,6 +204,15 @@ var kinds = map[string]int{
 	// touched this path, which is why it survived — there was no way to get a
 	// first row in.
 	"auto-recharge": 290,
+
+	// The money plane's risk record. risk-screen is one judgement of one move
+	// (what we decided); risk-outcome is how it actually turned out (what the
+	// world decided) — the pair is the only thing an org's own model can learn
+	// from. risk-control is a standing restraint the money plane enforces:
+	// a reserve, a payout hold or a block.
+	"risk-screen":  291,
+	"risk-outcome": 292,
+	"risk-control": 293,
 }
 
 var kindsReversed = make(map[int]string)

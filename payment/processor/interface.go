@@ -53,6 +53,34 @@ type CryptoProcessor interface {
 	SupportedChains() []string
 }
 
+// DisputeProcessor extends PaymentProcessor with chargeback defence: delivering
+// an assembled evidence packet to whoever adjudicates the dispute.
+//
+// It is an OPTIONAL extension, like CryptoProcessor and SubscriptionProcessor,
+// because who adjudicates is not ours to choose: for a card dispute it is the
+// issuing network, reached through whichever processor took the payment, and
+// for an early warning it is a dispute network we would have to be a member of.
+// NO provider in this tree implements it yet and none is faked — a merchant
+// whose processor does not implement it gets a stated refusal from
+// POST /v1/billing/risk/disputes/:id/submit, never a silent success.
+type DisputeProcessor interface {
+	PaymentProcessor
+
+	// SubmitEvidence delivers evidence for the dispute the processor knows by
+	// disputeRef. Fields are the network's own evidence field names; the
+	// assembled packet is rendered into them by the caller so this method needs
+	// no knowledge of commerce's records.
+	SubmitEvidence(ctx context.Context, disputeRef string, fields map[string]string) (*DisputeReceipt, error)
+}
+
+// DisputeReceipt is what the adjudicator returned for a submission — the
+// reference to quote when asking what became of it, and the state it moved to.
+type DisputeReceipt struct {
+	Reference string `json:"reference"`
+	Status    string `json:"status"`
+	Accepted  bool   `json:"accepted"`
+}
+
 // SubscriptionProcessor extends PaymentProcessor with subscription methods
 type SubscriptionProcessor interface {
 	PaymentProcessor
