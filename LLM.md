@@ -108,7 +108,7 @@ three ways to spell one:
   cloud→commerce S2S dispatch). Checked FIRST in `TokenRequired`, ahead of the IAM
   branch, so an S2S call never meets the per-user scope gate.
 - **Published storefront token** — a PER-ORG machine credential, minted by an org
-  admin via `POST /v1/store/storefront-token` (`org.AddToken("storefront",
+  admin via `POST /v1/store/token` (`org.AddToken("storefront",
   permission.Published)`) and consumed as `HANZO_COMMERCE_STOREFRONT_TOKEN` by the
   storefront BFF. Org-bound, scoped, revocable by re-minting.
 
@@ -427,7 +427,7 @@ Security invariants (do not regress):
   (`catalogPrice`); the client `unitPrice` is ignored. Emits `checkout.started`.
 
 The legitimate storefront BFF (server-side, holds the service token or the
-per-org Published storefront token — mint via `POST /v1/store/storefront-token`)
+per-org Published storefront token — mint via `POST /v1/store/token`)
 is the ONE reachable checkout entry. A browser must never call this endpoint
 directly with a client-chosen org.
 
