@@ -282,9 +282,18 @@ func IncludedMonthlyCents(slug string) int64 {
 // by slug so a stored subscription's spoofable plan copy can never inflate it.
 // Unknown slugs are not paid. The self-subscribe gate and the entitlement-anchor
 // clamp gate on this; the allotment AMOUNT stays IncludedMonthlyCents.
+//
+// A CONTACT-SALES plan counts as paid even though it stores Price=0. Its price is
+// null, not free — the row records "talk to us", and a plan you must negotiate for
+// is by definition not self-serve. Reading Price alone made a null-priced plan
+// indistinguishable from a $0 one, so a catalog holding a contact-sales tier with
+// a real included allotment would let an org admin self-subscribe and mint it with
+// no payment. That was previously true only by luck: the tier with the large
+// allotment happened to also carry a large price, and the null-priced tier happened
+// to carry no allotment. Luck is not the gate.
 func paidTier(slug string) bool {
 	p := lookupPlan(slug)
-	return p != nil && p.Price > 0
+	return p != nil && (p.Price > 0 || p.ContactSales)
 }
 
 // perSeat reports whether the catalog bills the plan per seat
