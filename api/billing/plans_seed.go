@@ -2,7 +2,6 @@ package billing
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 
 	"github.com/hanzoai/commerce/log"
@@ -25,23 +24,13 @@ import (
 // the seed writes and resolveSubscriptionPlan charges) fails CI loudly.
 // NOTE: the vendored plans/package.json is gitignored (a broad package.json
 // ignore), so it is NOT the pin — this const + the digest test are.
-const PinnedPlansVersion = "1.4.4"
+const PinnedPlansVersion = "1.4.8"
 
-// planEnvelopeKey is the single Metadata key that carries a plan's rich display
-// envelope (the fields that are NOT typed money columns). One key, one JSON
-// string, so it round-trips cleanly through the Map[string]interface{} the ORM
-// deserializes Metadata into (a string survives; a nested struct would degrade
-// to map[string]interface{} and lose the typed limits shape).
-const planEnvelopeKey = "envelope"
-
-// planEnvelope is the display-only envelope stored in plan.Metadata. The money
-// authority stays the typed columns; these are presentation the client renders.
-type planEnvelope struct {
-	Features   []string    `json:"features,omitempty"`
-	Bundles    []string    `json:"bundles,omitempty"`
-	IncludedIn []string    `json:"includedIn,omitempty"`
-	Limits     *planLimits `json:"limits,omitempty"`
-}
+// The display envelope (features/bundles/includedIn/limits) is the MODEL's, not
+// this package's: plan.Plan carries those fields and packs them itself. This file
+// used to declare a private copy plus its own pack/unpack pair, which is why the
+// admin CRUD could not write them — the shape lived here, where the admin handler
+// could not reach it.
 
 // SeedRows projects the embedded plan catalog onto authority model rows. Typed
 // money fields (Price/PriceAnnual/Category/ContactSales/PerSeat/…) become
@@ -74,35 +63,12 @@ func planFromStatic(sp *staticPlan) *plan.Plan {
 		PerSeat:         sp.PerSeat,
 		ContactSales:    sp.ContactSales,
 		Popular:         sp.Popular,
+		Features:        sp.Features,
+		Bundles:         sp.Bundles,
+		IncludedIn:      sp.IncludedIn,
+		Limits:          sp.Limits,
 	}
-	p.Metadata = envelopeMeta(sp)
 	return p
-}
-
-// envelopeMeta packs the display envelope into a plan's Metadata under one key.
-// Returns nil when there is nothing to carry (so a bare plan has empty Metadata).
-func envelopeMeta(sp *staticPlan) types.Map {
-	env := planEnvelope{Features: sp.Features, Bundles: sp.Bundles, IncludedIn: sp.IncludedIn, Limits: sp.Limits}
-	if len(env.Features) == 0 && len(env.Bundles) == 0 && len(env.IncludedIn) == 0 && env.Limits == nil {
-		return nil
-	}
-	b, err := json.Marshal(env)
-	if err != nil {
-		return nil
-	}
-	return types.Map{planEnvelopeKey: string(b)}
-}
-
-// envelopeFrom unpacks the display envelope stored by envelopeMeta.
-func envelopeFrom(m types.Map) planEnvelope {
-	var env planEnvelope
-	if m == nil {
-		return env
-	}
-	if s, ok := m[planEnvelopeKey].(string); ok && s != "" {
-		_ = json.Unmarshal([]byte(s), &env)
-	}
-	return env
 }
 
 // staticPlanFromModel projects an authority row back onto the wire type served by
@@ -110,7 +76,6 @@ func envelopeFrom(m types.Map) planEnvelope {
 // edit wins); the rich display envelope comes from Metadata. The promo overlay is
 // applied separately at the read edge (withPromo), exactly as for the embed.
 func staticPlanFromModel(p *plan.Plan) staticPlan {
-	env := envelopeFrom(p.Metadata)
 	return staticPlan{
 		Slug:            p.Slug,
 		Name:            p.Name,
@@ -125,10 +90,10 @@ func staticPlanFromModel(p *plan.Plan) staticPlan {
 		ContactSales:    p.ContactSales,
 		Popular:         p.Popular,
 		PerSeat:         p.PerSeat,
-		Features:        env.Features,
-		Bundles:         env.Bundles,
-		IncludedIn:      env.IncludedIn,
-		Limits:          env.Limits,
+		Features:        p.Features,
+		Bundles:         p.Bundles,
+		IncludedIn:      p.IncludedIn,
+		Limits:          p.Limits,
 	}
 }
 
@@ -159,8 +124,20 @@ func planAuthorityRows(ctx context.Context) ([]staticPlan, bool) {
 	}
 	out := make([]staticPlan, 0, len(rows))
 	for _, p := range rows {
+		// Draft and archived rows exist but are not sold. This is the whole point
+		// of Status: before it, the only way to unlist a plan was to DELETE it,
+		// which takes the row's history and orphans any subscription that recorded
+		// the slug. An archived plan still resolves for renewals and invoices —
+		// it just stops being offered.
+		if !p.Listed() {
+			continue
+		}
 		out = append(out, staticPlanFromModel(p))
 	}
+	// An authority holding ONLY unlisted rows is not the same as an empty one: the
+	// seed ran, the operator archived everything. Serving the embed fallback there
+	// would resurrect retired tiers on the public page, which is the exact failure
+	// this field exists to prevent. Empty-and-deliberate is a valid answer.
 	sortByEmbedOrder(out)
 	return out, true
 }

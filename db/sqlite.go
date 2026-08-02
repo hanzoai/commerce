@@ -41,9 +41,9 @@ type SQLiteDBConfig struct {
 	TenantType string
 
 	// MasterKey is the 32-byte KMS-sourced master key. When non-nil the file is
-	// opened SQLCipher-encrypted at rest (per-tenant DEK wrapped under a KEK
-	// derived from this key). Nil means unencrypted (dev/CI). Set once by the
-	// Manager from COMMERCE_KMS_MASTER_KEY — see encryption.go.
+	// opened SQLCipher-encrypted at rest, under a key DERIVED from it and this
+	// tenant's namespace (cek.DeriveKey). Nil means unencrypted (dev/CI). Set once
+	// by the Manager from COMMERCE_KMS_MASTER_KEY — see encryption.go.
 	MasterKey []byte
 }
 
@@ -102,21 +102,21 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	}
 
 	// Resolve the at-rest encryption key for this tenant. When a master key is
-	// configured, derive/unwrap the per-tenant DEK (creating its sidecar on first
-	// use); otherwise dek stays nil and the file is opened as plaintext (dev/CI).
-	// The read and write connections MUST key the same file with the same DEK, so
-	// it is resolved once here and reused for both.
-	var dek []byte
+	// configured, derive this tenant's file key from it; otherwise key stays nil
+	// and the file is opened as plaintext (dev/CI). Derivation is pure, but the
+	// read and write connections MUST key the same file identically, so it is done
+	// once here and reused for both.
+	var key []byte
 	if cfg.MasterKey != nil {
-		d, err := resolveDEK(cfg.Path, cfg.MasterKey, principalFor(cfg.TenantType), cfg.TenantID)
+		k, err := tenantKey(cfg.MasterKey, cfg.TenantType, cfg.TenantID)
 		if err != nil {
-			return nil, fmt.Errorf("db: resolve encryption key for tenant %q: %w", cfg.TenantID, err)
+			return nil, fmt.Errorf("db: derive encryption key for tenant %q: %w", cfg.TenantID, err)
 		}
-		dek = d
-		defer zeroBytes(dek) // SQLCipher copies the key into its own state at Open
+		key = k
+		defer zeroBytes(key) // SQLCipher copies the key into its own state at Open
 	}
 
-	driverName, dsn := encDriverDSN(cfg.Path, dek, cfg.Config)
+	driverName, dsn := encDriverDSN(cfg.Path, key, cfg.Config)
 
 	// Open read connection (concurrent)
 	readDB, err := sql.Open(driverName, dsn)
@@ -143,7 +143,7 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 		readDB:     readDB,
 		writeDB:    writeDB,
 		schemas:    make(map[string]*tableSchema),
-		encrypted:  dek != nil,
+		encrypted:  key != nil,
 	}
 
 	// Initialize base schema
@@ -164,10 +164,8 @@ func NewSQLiteDB(cfg *SQLiteDBConfig) (*SQLiteDB, error) {
 	return db, nil
 }
 
-// baseSchemaDDL is the tenant store's base schema, applied on create and reused
-// by the encrypt-at-rest migration (cmd/commerce-encrypt-dbs) so a migrated
-// encrypted file is byte-schema-identical to a freshly created one — one
-// definition, no drift.
+// baseSchemaDDL is the tenant store's base schema, applied on create. It is the
+// ONE definition of what a fresh tenant store contains.
 var baseSchemaDDL = []string{
 	`CREATE TABLE IF NOT EXISTS _metadata (
 		key TEXT PRIMARY KEY,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/types/currency"
+	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -96,8 +97,9 @@ func TestSeed_CorrectsUnmanagedPartialRow(t *testing.T) {
 	}
 }
 
-// TestSeed_PreservesManagedEdit: an admin price edit (Managed) survives a re-seed.
-func TestSeed_PreservesManagedEdit(t *testing.T) {
+// TestSeed_PreservesAdminEdit: a price a HUMAN set through the admin CRUD
+// survives a re-seed. The published catalog decides; an admin edit overrides.
+func TestSeed_PreservesAdminEdit(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
@@ -109,7 +111,10 @@ func TestSeed_PreservesManagedEdit(t *testing.T) {
 	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
 		t.Fatal("pro missing")
 	}
-	p.Price = 9900 // admin edit; row stays Managed
+	// Modelled the way api/plan's UpdateEntry writes it — the flag is what makes
+	// this an override rather than just a mutated row.
+	p.Price = 9900
+	p.AdminEdited = true
 	if err := p.Update(); err != nil {
 		t.Fatalf("edit: %v", err)
 	}
@@ -119,14 +124,14 @@ func TestSeed_PreservesManagedEdit(t *testing.T) {
 		t.Fatalf("re-seed: %v", err)
 	}
 	if corrected != 0 {
-		t.Fatalf("re-seed corrected=%d, want 0 (managed edit preserved)", corrected)
+		t.Fatalf("re-seed corrected=%d, want 0 (admin edit preserved)", corrected)
 	}
 	got := New(db)
 	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
 		t.Fatal("pro gone")
 	}
 	if got.Price != 9900 {
-		t.Fatalf("re-seed CLOBBERED managed edit: pro price=%d, want 9900", got.Price)
+		t.Fatalf("re-seed CLOBBERED an admin edit: pro price=%d, want 9900", got.Price)
 	}
 }
 
@@ -166,5 +171,222 @@ func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 		if len(got) != 1 {
 			t.Fatalf("slug %q has %d rows, want 1 (no duplicate)", r.Slug, len(got))
 		}
+	}
+}
+
+
+// The seed must be able to correct ITS OWN prior output. This is the property
+// Managed made impossible: it was set by the seed and by the admin CRUD alike, so
+// once a row existed nothing could tell a stale seeded price from a deliberate
+// one, and publishing a new catalog left every changed plan at its old price
+// while creating the new ones beside them — half-new, half-stale.
+func TestSeed_ReconcilesItsOwnRowsToANewCatalog(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// The catalog reprices pro. Nobody edited the row by hand.
+	next := sampleRows()
+	for _, r := range next {
+		if r.Slug == "pro" {
+			r.Price = 4900
+		}
+	}
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected != 1 {
+		t.Fatalf("re-seed corrected=%d, want 1 (the repriced row)", corrected)
+	}
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro gone")
+	}
+	if int64(got.Price) != 4900 {
+		t.Fatalf("pro price=%d after the catalog repriced it, want 4900", got.Price)
+	}
+
+	// And it is genuinely idempotent: nothing left to change, nothing written.
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("third seed: %v", err)
+	} else if corrected != 0 {
+		t.Fatalf("third seed corrected=%d, want 0 (idempotent)", corrected)
+	}
+}
+
+// A plan the catalog stops publishing is ARCHIVED on the next boot — not deleted,
+// and not left on sale. Otherwise retiring a tier needs a second manual step, and
+// the tier goes on selling until someone remembers to take it.
+func TestSeed_ArchivesWhatTheCatalogStoppedPublishing(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// The next catalog drops every row but the first.
+	next := sampleRows()[:1]
+	if _, _, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	}
+
+	var all []*Plan
+	if _, err := Query(db).GetAll(&all); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	kept := next[0].Slug
+	for _, p := range all {
+		if p.Slug == kept {
+			if !p.Listed() {
+				t.Fatalf("still-published %q was archived", p.Slug)
+			}
+			continue
+		}
+		if p.Listed() {
+			t.Errorf("unpublished %q is still listed", p.Slug)
+		}
+		// The ROW SURVIVES — an invoice that recorded the slug must still resolve.
+		if p.Price == 0 && p.Name == "" {
+			t.Errorf("unpublished %q was destroyed rather than archived", p.Slug)
+		}
+	}
+}
+
+// An admin-created plan is not "missing from the catalog" — it is theirs, and the
+// archive sweep must leave it alone.
+func TestSeed_DoesNotArchiveAnAdminsOwnPlan(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	mine := New(db)
+	mine.Slug, mine.Name, mine.Category, mine.Price = "bespoke", "Bespoke", "personal", 12345
+	mine.AdminEdited, mine.Managed = true, true
+	if err := mine.Create(); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	}
+
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "bespoke").Get(); !ok {
+		t.Fatal("admin plan gone")
+	}
+	if !got.Listed() {
+		t.Fatal("the seed archived a plan an admin created; it is not the catalog's to retire")
+	}
+	if int64(got.Price) != 12345 {
+		t.Fatalf("admin plan price=%d, want 12345 untouched", got.Price)
+	}
+}
+
+// limitsEqual must compare Limits BY VALUE. Every field is a *int, so `*a == *b`
+// compares ADDRESSES — two Limits decoded from the same JSON would read unequal,
+// and the seed would rewrite every row on every boot. The values would still be
+// right, so nothing would look broken; what breaks is `corrected` never reaching
+// zero, which is the only signal that says the catalog has converged.
+func TestLimitsEqual_ComparesValuesNotAddresses(t *testing.T) {
+	two, alsoTwo, three := 2, 2, 3
+	if !limitsEqual(&Limits{MinSeats: &two}, &Limits{MinSeats: &alsoTwo}) {
+		t.Fatal("equal values at different addresses read as unequal")
+	}
+	if limitsEqual(&Limits{MinSeats: &two}, &Limits{MinSeats: &three}) {
+		t.Fatal("different values read as equal")
+	}
+	if !limitsEqual(nil, nil) {
+		t.Fatal("both-absent must be equal")
+	}
+	if limitsEqual(&Limits{MinSeats: &two}, nil) {
+		t.Fatal("present and absent must differ")
+	}
+	// A field set on one side only is a difference, not a match.
+	if limitsEqual(&Limits{MinSeats: &two}, &Limits{}) {
+		t.Fatal("set-vs-unset field read as equal")
+	}
+}
+
+// And the whole point: a second boot against an unchanged catalog writes NOTHING,
+// including for rows that carry limits.
+func TestSeed_IdempotentWithLimits(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	two := 2
+	rows := []*Plan{{Slug: "seat", Name: "Seat", Category: "team", Price: 2500, Limits: &Limits{MinSeats: &two}}}
+	if _, _, err := Seed(db, rows); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	// Fresh values at fresh addresses — exactly what a re-decoded catalog looks like.
+	twoAgain := 2
+	same := []*Plan{{Slug: "seat", Name: "Seat", Category: "team", Price: 2500, Limits: &Limits{MinSeats: &twoAgain}}}
+	if _, corrected, err := Seed(db, same); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected != 0 {
+		t.Fatalf("re-seed corrected=%d, want 0 — an unchanged catalog must write nothing", corrected)
+	}
+}
+
+// copyInto and planEqual must agree on what a plan IS. A field copied but not
+// compared gets rewritten forever (planEqual never sees it converge) or cleared
+// silently (copyInto assigns it while planEqual reports "equal"), depending on
+// which other fields happened to differ. This asserts the invariant directly.
+func TestCopyIntoAndPlanEqual_AgreeOnEveryField(t *testing.T) {
+	// A row carrying values the CATALOG DOES NOT PUBLISH.
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	rows := sampleRows()
+	if _, _, err := Seed(db, rows); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	slug := rows[0].Slug
+
+	stored := New(db)
+	if ok, _ := stored.Query().Filter("Slug=", slug).Get(); !ok {
+		t.Fatalf("%s missing", slug)
+	}
+	stored.SKU = "OPERATOR-SET"
+	if stored.Metadata == nil {
+		stored.Metadata = types.Map{}
+	}
+	stored.Metadata["operatorNote"] = "keep me"
+	if err := stored.Update(); err != nil {
+		t.Fatalf("annotate: %v", err)
+	}
+
+	// A catalog change forces a reconcile of this row.
+	next := sampleRows()
+	next[0].Description = next[0].Description + " (revised)"
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected < 1 {
+		t.Fatal("the revised row was not reconciled")
+	}
+
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", slug).Get(); !ok {
+		t.Fatalf("%s gone", slug)
+	}
+	if got.SKU != "OPERATOR-SET" {
+		t.Errorf("SKU = %q after reconcile, want it preserved — the catalog publishes no SKU", got.SKU)
+	}
+	if v, _ := got.Metadata["operatorNote"].(string); v != "keep me" {
+		t.Errorf("Metadata[operatorNote] = %q after reconcile, want it preserved", v)
+	}
+	// And the thing the catalog DOES publish did change.
+	if got.Description != next[0].Description {
+		t.Errorf("description = %q, want the revised catalog value", got.Description)
 	}
 }

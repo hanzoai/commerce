@@ -99,7 +99,10 @@ func CreateEntry(c *zip.Ctx) error {
 	if ok, _ := dup.Query().Filter("Slug=", p.Slug).Get(); ok {
 		return http.Fail(c, 409, "a plan with this slug already exists", errors.New("duplicate slug"))
 	}
-	p.Managed = true // admin-authored → authoritative; the corrective seed leaves it
+	// A human decided this row, so the published catalog does not get to overwrite
+	// it on the next boot. Managed alone could not say that — the seed sets it too.
+	p.AdminEdited = true
+	p.Managed = true
 	if err := p.Create(); err != nil {
 		return http.Fail(c, 500, "failed to create plan", err)
 	}
@@ -142,7 +145,11 @@ func UpdateEntry(c *zip.Ctx) error {
 		return http.Fail(c, 400, "failed to decode request body", err)
 	}
 	p.Slug = slug    // identity is immutable — the path slug wins over any body value
-	p.Managed = true // an admin edit makes the row authoritative; the seed leaves it
+	// Same: this value is now a human's decision, and the reconciling seed leaves
+	// it alone — including the archive sweep, since a plan an admin added on
+	// purpose is not "missing from the catalog", it is theirs.
+	p.AdminEdited = true
+	p.Managed = true
 	if err := p.Update(); err != nil {
 		return http.Fail(c, 500, "failed to update plan", err)
 	}

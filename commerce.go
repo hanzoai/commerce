@@ -70,7 +70,7 @@ import (
 // the immutable image tag (-X github.com/hanzoai/commerce.Version=<tag>) so
 // the running binary's /healthz version always equals its deployed tag.
 var (
-	Version   = "1.49.21"
+	Version   = "1.49.43"
 	GitCommit = "dev"
 	BuildTime = "unknown"
 )
@@ -389,7 +389,6 @@ func (app *App) initCLI() {
 
 	// Add commands
 	app.RootCmd.AddCommand(app.newServeCmd())
-	app.RootCmd.AddCommand(app.newMigrateCmd())
 	app.RootCmd.AddCommand(app.newAdminCmd())
 	app.RootCmd.AddCommand(app.newSeedCmd())
 }
@@ -413,85 +412,6 @@ func (app *App) newServeCmd() *cobra.Command {
 	cmd.Flags().StringVar(&app.config.TLSCert, "cert", "", "TLS certificate path")
 	cmd.Flags().StringVar(&app.config.TLSKey, "key", "", "TLS key path")
 
-	return cmd
-}
-
-// newMigrateCmd creates the migrate command.
-//
-// `migrate encrypt` is the one-time backfill that converts tenant money stores
-// written before at-rest encryption was switched on. It is deliberately NOT part
-// of boot: a store created today is born encrypted (resolveDEK mints a DEK on
-// first open), so this is a backfill, not a startup step, and unattended
-// re-encryption of money data on every restart is not something anyone should
-// have opted into by deploying.
-//
-// It also requires the daemon STOPPED — the migration proves exclusivity with a
-// verified TRUNCATE checkpoint and refuses a busy file rather than risk missing
-// in-flight rows. Run it as a one-shot against the same data dir, then start the
-// daemon again.
-//
-// This command existed as a stub that printed "Running migrations..." and
-// returned nil, which is why db.EncryptDataDir — complete, parity-verified, and
-// tested — had no caller and 66 of 67 live tenant stores were still plaintext.
-func (app *App) newMigrateCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "migrate",
-		Short: "Data migrations",
-	}
-	cmd.AddCommand(app.newMigrateEncryptCmd())
-	return cmd
-}
-
-func (app *App) newMigrateEncryptCmd() *cobra.Command {
-	var dryRun bool
-	var dataDir string
-	cmd := &cobra.Command{
-		Use:   "encrypt",
-		Short: "Encrypt plaintext tenant stores at rest (one-time backfill; daemon must be stopped)",
-		Long: "Walks users/ and orgs/ under the data dir and converts every plaintext\n" +
-			"tenant data.db to an enveloped encrypted file: a fresh random DEK per\n" +
-			"store, wrapped under HKDF(masterKey, principal) in a <data.db>.dek\n" +
-			"sidecar. Content parity is verified per table BEFORE cutover, and the\n" +
-			"plaintext source is kept as .plaintext.bak until the encrypted copy\n" +
-			"opens cleanly — so a failure costs a retry, never data.\n\n" +
-			"The master key comes from COMMERCE_KMS_MASTER_KEY (KMS-sourced). Run\n" +
-			"--dry-run first; it writes nothing and lists what would convert.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			masterKey, err := db.ResolveMasterKey()
-			if err != nil {
-				return err
-			}
-			if masterKey == nil {
-				return fmt.Errorf("COMMERCE_KMS_MASTER_KEY is not set — nothing to encrypt to; " +
-					"inject the KMS master key and re-run")
-			}
-			if dataDir == "" {
-				dataDir = db.DefaultConfig().DataDir
-			}
-			rep, err := db.EncryptDataDir(dataDir, masterKey, dryRun)
-			if err != nil {
-				// A run-level failure (bad key, no codec) — nothing was attempted.
-				return err
-			}
-			verb := "encrypted"
-			if dryRun {
-				verb = "would encrypt"
-			}
-			fmt.Printf("%s: %d %s, %d already encrypted, %d rows copied, %d failed\n",
-				dataDir, len(rep.Encrypted), verb, len(rep.Skipped), rep.Rows, len(rep.Failed))
-			for _, p := range rep.Encrypted {
-				fmt.Printf("  + %s\n", p)
-			}
-			for _, f := range rep.Failed {
-				fmt.Printf("  ! %s: %v\n", f.Path, f.Err)
-			}
-			// Non-zero exit on any failure, but only AFTER the successes are printed
-			// and durable — a partial backfill is a real result, not a rollback.
-			return rep.Err()
-		},
-	}
-	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "report what would be encrypted, write nothing")
-	cmd.Flags().StringVar(&dataDir, "data-dir", "", "tenant data dir (default: commerce's configured DataDir)")
 	return cmd
 }
 
@@ -921,6 +841,7 @@ func (app *App) Bootstrap() error {
 	if getEnv("COMMERCE_CATALOG_SEED", "true") != "false" {
 		app.runCatalogSeed()
 		app.runInfraCatalogSeed()
+		app.runEnsoCatalogSeed()
 	}
 
 	// Currency reference seed — populate the global (default-namespace) currency
@@ -933,10 +854,18 @@ func (app *App) Bootstrap() error {
 
 	// Subscription/DNS plan authority seed — reconcile models/plan (the editable
 	// pricing source of truth that GET /v1/billing/plans and resolveSubscriptionPlan
-	// read) to the embedded @hanzo/plans catalog on EVERY boot. Creates missing
-	// plans and force-corrects any unmanaged partial row (a subscription-flow path
-	// wrote it) while leaving admin edits authoritative. Seed values EQUAL the
-	// embed, so it changes NO charge — it makes prices editable + repairs bad rows.
+	// read) to the embedded @hanzo/plans catalog on EVERY boot.
+	//
+	// THIS CAN CHANGE WHAT A PLAN CHARGES. That is the point, and it is a reversal
+	// of what this comment used to claim ("seed values EQUAL the embed, so it
+	// changes NO charge"), which stopped being true the moment the seed could
+	// correct rows it had written itself. Shipping a new @hanzo/plans reprices the
+	// live catalog on the next boot, and retires what the catalog stopped
+	// publishing by archiving it. An admin edit (plan.AdminEdited) is never
+	// touched, and no row is ever deleted.
+	//
+	// So a catalog change is a DEPLOY, with the same review a deploy gets — not a
+	// script someone runs against production holding a SuperAdmin bearer.
 	// COMMERCE_PLANS_SEED=false to skip.
 	if getEnv("COMMERCE_PLANS_SEED", "true") != "false" {
 		app.runPlansSeed()
@@ -999,6 +928,24 @@ func (app *App) runInfraCatalogSeed() {
 	}
 }
 
+// runEnsoCatalogSeed populates the Enso family's model rows on first boot from
+// the embedded snapshot, at the retail the enso service already bills. Gated
+// SEPARATELY (SeedEnsoModelsIfEmpty counts only enso-category rows) so the family
+// seeds independently of the product and infra snapshots — per-family isolation,
+// the same rule sync.go applies so one family's failure cannot touch another's.
+// Cheap count-gated no-op once populated; failures are logged, never fatal.
+func (app *App) runEnsoCatalogSeed() {
+	db := catalogentry.SystemDB(context.Background())
+	created, err := catalogentry.SeedEnsoModelsIfEmpty(db)
+	if err != nil {
+		slog.Error("enso catalog seed failed", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.Info("enso catalog seeded", "models", created)
+	}
+}
+
 // runCurrencySeed populates the global currency reference table (DEFAULT
 // namespace, like token/user/organization) on first boot from the embedded
 // common-currency list. Cheap count-gated no-op once populated; failures are
@@ -1016,7 +963,9 @@ func (app *App) runCurrencySeed() {
 }
 
 // runPlansSeed reconciles the subscription/DNS plan authority (models/plan,
-// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot — the SAME
+// "system" ns) to the embedded @hanzo/plans catalog on EVERY boot. It logs the
+// counts because a boot that silently reprices the catalog is a boot nobody can
+// audit afterwards — the SAME
 func (app *App) runPlansSeed() {
 	created, corrected, err := billingPkg.SeedPlans(context.Background())
 	if err != nil {

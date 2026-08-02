@@ -10,6 +10,7 @@ import (
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/api/promo"
+	"github.com/hanzoai/commerce/models/plan"
 	"github.com/hanzoai/commerce/util/json/http"
 )
 
@@ -19,36 +20,11 @@ var subscriptionJSON embed.FS
 //go:embed plans/dns.json
 var dnsJSON embed.FS
 
-// planLimits is the catalog `limits` block, shared verbatim by the canonical
-// JSON shape and the wire type — the catalog publishes it and the API serves it.
-type planLimits struct {
-	// Subscription (API) limits
-	RequestsPerMinute *int `json:"requestsPerMinute,omitempty"`
-	TokensPerMinute   *int `json:"tokensPerMinute,omitempty"`
-	FreeCredit        *int `json:"freeCredit,omitempty"`
-	MaxMembers        *int `json:"maxMembers,omitempty"`
-
-	// MinSeats is the minimum billable seat count for per-seat plans
-	// (price_ref.recurring.per_seat) — the ONE canonical home for seat minimums.
-	// Billing charges at least this many seats.
-	MinSeats *int `json:"minSeats,omitempty"`
-
-	// TeamGuests is the back-compat source for the team.guests entitlement:
-	// max invited guests on the holder's hanzo.team workspace (-1 = unlimited).
-	TeamGuests *int `json:"teamGuests,omitempty"`
-
-	// IncludedCreditUsd is a legacy alias (entitlements["commerce.included_credit_usd"]).
-	// IncludedCloudCredits(+PerUser) is the cloud allowance the monthly allotment
-	// grants (the canonical cloud.included_credits_usd entitlement).
-	IncludedCreditUsd           *int `json:"includedCreditUsd,omitempty"`
-	IncludedCloudCredits        *int `json:"includedCloudCredits,omitempty"`
-	IncludedCloudCreditsPerUser *int `json:"includedCloudCreditsPerUser,omitempty"`
-
-	// DNS limits
-	Zones          *int `json:"zones,omitempty"`
-	RecordsPerZone *int `json:"recordsPerZone,omitempty"`
-	QueriesPerDay  *int `json:"queriesPerDay,omitempty"`
-}
+// planLimits is the catalog `limits` block. It is an ALIAS of plan.Limits, not a
+// second declaration: the block is plan data, so it lives with the plan, and the
+// catalog JSON, the stored row and this wire type are then one shape by
+// construction rather than by three structs agreeing.
+type planLimits = plan.Limits
 
 // canonicalPlan is the JSON shape from @hanzo/plans/*.json.
 //
@@ -306,9 +282,18 @@ func IncludedMonthlyCents(slug string) int64 {
 // by slug so a stored subscription's spoofable plan copy can never inflate it.
 // Unknown slugs are not paid. The self-subscribe gate and the entitlement-anchor
 // clamp gate on this; the allotment AMOUNT stays IncludedMonthlyCents.
+//
+// A CONTACT-SALES plan counts as paid even though it stores Price=0. Its price is
+// null, not free — the row records "talk to us", and a plan you must negotiate for
+// is by definition not self-serve. Reading Price alone made a null-priced plan
+// indistinguishable from a $0 one, so a catalog holding a contact-sales tier with
+// a real included allotment would let an org admin self-subscribe and mint it with
+// no payment. That was previously true only by luck: the tier with the large
+// allotment happened to also carry a large price, and the null-priced tier happened
+// to carry no allotment. Luck is not the gate.
 func paidTier(slug string) bool {
 	p := lookupPlan(slug)
-	return p != nil && p.Price > 0
+	return p != nil && (p.Price > 0 || p.ContactSales)
 }
 
 // perSeat reports whether the catalog bills the plan per seat

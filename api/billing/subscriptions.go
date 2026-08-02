@@ -70,6 +70,12 @@ func CreateBillingSubscription(c *zip.Ctx) error {
 	if err != nil {
 		return http.Fail(c, 404, "plan not found", err)
 	}
+	if !p.Listed() {
+		// Retired/draft tier: it still resolves (renewals need it) but is not on
+		// sale — see plan.Listed. Same 404 as a slug that never existed, so the
+		// refusal tells a prober nothing about which slugs are real.
+		return http.Fail(c, 404, "plan not found", nil)
+	}
 
 	// C1-a: a PAID-tier subscription confers a spendable entitlement — its
 	// included monthly allotment is MINTED onto the user's gateway balance — yet
@@ -492,6 +498,11 @@ func UpdateBillingSubscription(c *zip.Ctx) error {
 		newPlan, err := resolveSubscriptionPlan(db, req.PlanId)
 		if err != nil {
 			return http.Fail(c, 404, "new plan not found", err)
+		}
+		if !newPlan.Listed() {
+			// You may keep a retired tier you are already on; you may not MOVE onto
+			// one. Without this, archiving a plan leaves it purchasable by PATCH.
+			return http.Fail(c, 404, "new plan not found", nil)
 		}
 
 		// C1-a mint gate, PATCH parity (Red F1): CreateBillingSubscription gates a

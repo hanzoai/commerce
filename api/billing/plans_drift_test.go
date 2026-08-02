@@ -22,6 +22,10 @@ var versionDigests = map[string]struct{ subscription, dns string }{
 		subscription: "e490185e58b4e83d925eaf2dfd4778e28023655b610d0504b8058670bbdf2f79",
 		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
 	},
+	"1.4.8": {
+		subscription: "7affa8d6d75bf28fed1f014e96bffe25f08b6c0df008cdc24d375a3d3107b38d",
+		dns:          "de7da2ab600268bdf5528b9ec1fd037bdbe8f9112f3755d80b5f93a4cbf1cd87",
+	},
 }
 
 func digest(t *testing.T, fs interface {
@@ -53,11 +57,12 @@ func TestVendoredPlansMatchPinnedVersion(t *testing.T) {
 
 // TestVendoredPlanPrices is a diagnostic price-canary: if a money-bearing plan's
 // cents change, THIS test names which one (the digest test only says "drifted").
-// These are the @hanzo/plans@1.4.4 monthly/annual cents. contactSales plans are
-// null-priced → stored as 0 + ContactSales (never a chargeable $0).
+// These are the @hanzo/plans@1.4.8 monthly/annual cents — the published ladder.
+// contactSales plans are null-priced → stored as 0 + ContactSales (never a
+// chargeable $0).
 func TestVendoredPlanPrices(t *testing.T) {
-	if got := len(hanzoPlans); got != 20 { // 17 subscription + 3 dns
-		t.Fatalf("hanzoPlans = %d, want 20 (17 subscription + 3 dns)", got)
+	if got := len(hanzoPlans); got != 9 { // 6 subscription + 3 dns
+		t.Fatalf("hanzoPlans = %d, want 9 (6 subscription + 3 dns)", got)
 	}
 	if got := len(dnsPlans); got != 3 {
 		t.Fatalf("dnsPlans = %d, want 3", got)
@@ -71,15 +76,12 @@ func TestVendoredPlanPrices(t *testing.T) {
 		contactSales    bool
 	}
 	cases := map[string]want{
-		"developer":      {0, 0, false},
-		"pro":            {2000, 1600, false},
-		"plus":           {10000, 8000, false},
-		"max":            {20000, 16000, false},
+		"go":             {900, 825, false},
+		"dev":            {1900, 1650, false},
+		"pro":            {4900, 4150, false},
+		"max":            {9900, 8325, false},
 		"team":           {2500, 2000, false},
-		"team-max":       {22500, 18000, false},
-		"enterprise":     {999900, 799900, false},
-		"custom":         {0, 0, true}, // null price → 0 + contactSales
-		"world-enterprise": {0, 0, true},
+		"enterprise":     {0, 0, true}, // null price → 0 + contactSales
 		"dns-free":       {0, 0, false},
 		"dns-pro":        {500, 400, false},
 		"dns-enterprise": {2500, 2000, false},
@@ -98,6 +100,26 @@ func TestVendoredPlanPrices(t *testing.T) {
 	}
 }
 
+// A retired slug must STAY retired in the embed. The embed is what a fresh
+// database seeds from, so a tier that comes back here comes back on the pricing
+// page of every new deployment — which is exactly the resurrection plan.Status
+// prevents for rows that already exist, and cannot prevent for rows that do not.
+func TestRetiredSlugsAreNotInTheEmbed(t *testing.T) {
+	bySlug := map[string]bool{}
+	for _, p := range hanzoPlans {
+		bySlug[p.Slug] = true
+	}
+	for _, slug := range []string{
+		"developer", "plus", "team-max", "custom",
+		"world-free", "world-pro", "world-team", "world-enterprise",
+		"social-free", "social-pro", "social-team", "social-team-max", "social-enterprise",
+	} {
+		if bySlug[slug] {
+			t.Errorf("retired plan %q is back in the embed", slug)
+		}
+	}
+}
+
 // TestVendoredAllotmentAmounts canaries the money-adjacent entitlement that
 // actually MOVES money: limits.includedCloudCredits (→ IncludedMonthlyCents) is
 // the allotment a subscription MINTS, and it's the value the C1-a PATCH gate
@@ -105,13 +127,13 @@ func TestVendoredPlanPrices(t *testing.T) {
 // loudly + named — the price canary above does NOT cover it (Red F4).
 func TestVendoredAllotmentAmounts(t *testing.T) {
 	want := map[string]int64{ // slug -> allotment mint amount (cents)
-		"developer":  500,    // includedCreditUsd 5 (legacy alias)
-		"pro":        500,    // includedCloudCredits 5
-		"plus":       2500,   // includedCloudCredits 25
-		"max":        10000,  // includedCloudCredits 100
-		"team":       10000,  // includedCloudCreditsPerUser 100
-		"enterprise": 100000, // includedCreditUsd 1000
-		"dns-pro":    0,      // dns tiers mint no cloud allotment
+		"go":         500,   // includedCreditUsd 5 — the one the spec states in dollars
+		"dev":        500,   // includedCloudCredits 5
+		"pro":        2500,  // includedCloudCredits 25
+		"max":        10000, // includedCloudCredits 100
+		"team":       10000, // includedCloudCredits 100
+		"enterprise": 0,     // contact-sales: terms are negotiated, so none is published
+		"dns-pro":    0,     // dns tiers mint no cloud allotment
 	}
 	for slug, cents := range want {
 		if got := IncludedMonthlyCents(slug); got != cents {

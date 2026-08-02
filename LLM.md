@@ -471,43 +471,53 @@ code here.
 
 **PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
 
-## At-Rest Encryption (SQLCipher via hanzoai/sqlite)
+## At-Rest Encryption (SQLCipher via hanzoai/cek)
 
 Per-tenant SQLite files hold money data (balances, transactions, usage), so they
-can be encrypted at rest with `github.com/hanzoai/sqlite` v0.2.0 (SQLCipher
-AES-256), the SAME envelope scheme Hanzo IAM uses — one at-rest model platform-wide.
-Code: `db/encryption.go` (key posture + per-tenant DEK), `db/migrate.go` (migration).
+can be encrypted at rest with `github.com/hanzoai/cek` on top of
+`github.com/hanzoai/sqlite` v0.5.0 (SQLCipher AES-256) — the SAME derived-key
+scheme cloud and IAM use, so there is one at-rest model platform-wide.
+Code: `db/encryption.go`.
 
 - **Master key from KMS, ONE source**: `COMMERCE_KMS_MASTER_KEY` (64 hex), read
-  ONLY by `resolveMasterKey()`. Materialised from `kms.hanzo.ai` into
+  ONLY by `ResolveMasterKey()`. Materialised from `kms.hanzo.ai` into
   `commerce-secrets` by the existing `commerce-kms-sync` KMSSecret (path
   `/commerce`), same mechanism as `HUSD_TREASURY_KEY`. Never in git/code.
-- **Envelope**: each `data.db` has its own random DEK → SQLCipher pages; the DEK
-  is wrapped (AES-256-GCM, principal-AAD bound) under `KEK = DeriveKey(master,
-  principal, tenantID)` into a `<data.db>.dek` sidecar. Rotating the master key
-  only rewraps the sidecar (O(1), never bricks a file).
+- **Derived, not wrapped**: a tenant's file key is `cek.DeriveKey(master, ns,
+  "commerce")` — HKDF over the master, the tenant's `hanzoai/namespace` name and
+  the subsystem. It is a pure function of the tenant's name, so there is NO DEK,
+  no sidecar, no unwrap step, no rewrap and no per-file key material to lose. A
+  file reopens after a restart with nothing persisted beside it. Losing the
+  master loses the data, which is the property at-rest encryption is for.
+- **Why DeriveKey and not `cek.Open`**: commerce opens a DUAL pool — a concurrent
+  read pool and a serialized single-connection writer — against ONE file under
+  ONE key. `cek.Open` hands back a single `*sql.DB`. The key is the shared part;
+  the pool is commerce's.
 - **Posture decided once**: unset key → unencrypted (dev/CI). Set + codec linked
-  → encrypted. Set + cgo-but-no-libsqlcipher → **refuse to boot** (CodecLinked()
-  probe), never silent plaintext. Set + a PLAINTEXT file without a `.dek` sidecar
-  → migrated in place on open (the 16-byte SQLite header tells it apart). Set + a
-  CIPHERTEXT file without a sidecar → refuse: that DEK is unrecoverable, restore
-  the `.db` and `.dek` together from backup.
-- **Migration** (ON OPEN, under the create lock — idempotent, keeps `.plaintext.bak`):
-  WAL-safe — folds the source WAL with a verified TRUNCATE checkpoint (opened R/W,
-  not mode=ro), verifies per-table row-hash parity, then checkpoints+asserts the
-  encrypted temp WAL-free before an atomic cutover (sidecar last = fail-closed).
+  → encrypted. Set + cgo-but-no-libsqlcipher → **refuse** (`CodecLinked()`
+  probe), never silent plaintext — commerce's dual pool cannot use the
+  single-writer codec envelope a non-libsqlcipher build falls back to.
+- **Layout**: an ORG's store is `<DataDir>/orgs/<slug>/commerce.db`, placed by
+  `namespace.Path`, so the file's key and the file's path are two renderings of
+  one name. This is the layout every Hanzo service shares.
+- **Per-USER stores are UNENCRYPTED, and this is a real limit**:
+  `namespace.Key` refuses `KindUser` — the shared layout has no place for a user
+  — so a per-user store cannot be *named*, and therefore cannot be *keyed*, in
+  this scheme. An encrypted open of a user tenant fails closed with an error
+  naming the limitation (`TestEncryptedUserTenantIsRefused`); the unencrypted
+  path is unaffected. Per-user files stay at `<UserDataDir>/<id>/data.db`. Giving
+  `hanzoai/namespace` a user layout is the prerequisite for closing this.
+
+**No migration.** Databases written under the previous DEK-sidecar scheme do not
+open under this derivation, by design — there is no fallback, dual-read, version
+probe or config flag, because a second way to key a file is how two of them end
+up disagreeing. Wipe and recreate.
 
 **Rollout:** build the image with libsqlcipher linked — add `libsqlite3` to the
 build tags, `CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1
 -I/usr/include/sqlcipher`, `CGO_LDFLAGS=-lsqlcipher`, `apk add sqlcipher-dev`
 (builder) + `sqlcipher-libs` (runtime), and a test stage with
 `SQLITE_REQUIRE_CODEC=1` so a mis-link fails CI — then supply a 32-byte key.
-
-That is all. The first open of each tenant migrates it. There is no
-pre-migration Job, no scale-to-0 window and no ordering to get wrong, because
-the only way a store becomes encrypted is the way it is opened. The one-shot
-`cmd/commerce-encrypt-dbs` that used to own this is gone: a second way to do one
-thing, which refused to boot if you forgot it.
 
 **Where the key comes from:** an EMBEDDER passes `EmbedConfig.MasterKey` (cloud
 hands over the KEK it already resolves, so one process has one key, not two); a
@@ -528,6 +538,85 @@ never both.
 All require `permission.Admin` token (org live/test JWT). Cloud-api connects via `commerceEndpoint` + `commerceToken` env vars.
 
 **Current org**: `hanzo` (ID: `gzh2BOBnV6gKZQ0CP`)
+
+## One way to price a plan — the published catalog, applied by a DEPLOY
+
+The plan catalog is `@hanzo/plans` (npm, public). `scripts/fetch-plans.sh` vendors
+it into `api/billing/plans/*.json` at build time, `go:embed` bakes it in, and
+`plan.Seed` reconciles the live `models/plan` rows to it on EVERY boot. So
+changing a price is: edit the package → publish → re-vendor + bump
+`PinnedPlansVersion` → bump commerce → bump cloud's `go.mod` → deploy. Every step
+versioned, reviewed and revertible.
+
+There is no second way. `cloud/scripts/seed-plans.sh` (a human curling production
+with a SuperAdmin bearer, with the ladder retyped in bash) is DELETED — it was a
+second statement of the ladder kept in step by hand, which is exactly how the
+pricing page came to publish Pro at $49 while billing charged $20.
+
+**The boot seed CAN change what a plan charges.** An older comment claimed the
+opposite ("seed values EQUAL the embed, so it changes NO charge"); that stopped
+being true when the seed gained the ability to correct its own prior output.
+
+### Why the seed could not correct itself (and what fixed it)
+
+`Managed` was set by BOTH `plan.Seed` and `api/plan`'s Create/Update, so one bit
+carried two facts — "authoritative" and "who decided it" — and
+`if existing.Managed { continue }` skipped every row the seed had ever written.
+Publishing a new catalog would therefore CREATE the plans that were missing and
+LEAVE every plan that had changed at its old price: half-new, half-stale.
+
+`AdminEdited` is the discriminator that was missing. ONLY `api/plan` sets it.
+`Seed` reconciles anything else to the catalog — the rule everyone already assumed
+held: the package decides, an admin edit overrides. Proven end to end by
+`api/billing/plans_converge_test.go`, which plants the real production catalog
+(Managed rows, retired tiers, old prices) and boots it against the published one.
+
+### Lifecycle: archive, never delete (the Shopify product model)
+
+`plan.Status` is `active | draft | archived`, and **empty means active** — every
+row written before the field existed has no value for it, and a zero-value meaning
+"draft" would blank the catalog on deploy. `plan.Listed()` is the ONE predicate,
+gating both halves of "on sale":
+
+- the public catalog (`planAuthorityRows` skips unlisted rows), and
+- the three purchase entrypoints — `CreateBillingSubscription`, the PATCH
+  plan-change, and the card subscribe — which 404 an unlisted plan. Hiding a tier
+  from the page is worth nothing if the API still sells it, and the card path
+  refuses BEFORE the charge.
+
+`resolveSubscriptionPlan` is deliberately NOT gated: it answers "which row is
+this" and must keep answering for an archived plan, or a renewal on a retired tier
+could not price itself. Retiring stops new sales; it never strands a subscriber.
+Seed archives what the catalog stopped publishing; an admin-created plan is exempt
+(it is not "missing from the catalog", it is theirs).
+
+### The wire shape IS the model shape
+
+A plan's display envelope (features/limits/bundles/includedIn) used to live only
+as a packed JSON string in `Metadata`, with the packer private to `api/billing` —
+somewhere the admin handler could not reach. So `PUT /v1/plans/entries/:slug`
+carrying `features` set the price and SILENTLY DISCARDED the copy: a tier could be
+repriced but never re-described. Those fields are now first-class on `plan.Plan`
+(JSON-visible, `datastore:"-"`, still persisted packed under the same one key), so
+whatever `GET /v1/billing/plans` emits, the admin CRUD accepts. `planLimits` is an
+ALIAS of `plan.Limits`, not a second declaration.
+
+### Gotchas this cost
+
+- **A row from `GetAll` is a VALUE with no datastore binding.** `Update()` on it
+  writes nowhere AND RETURNS NO ERROR. Re-load through the bound point query
+  (`New(db)` + `Query().Filter("Slug=",…).Get()`) before writing.
+- **`Save()` must pack into `Metadata`, not `Metadata_`.** The ORM stores a row as
+  JSON of the struct and `Metadata_` is `json:"-"`, so a value written only there
+  does not survive. Measured, not assumed.
+- **`paidTier` counts a contact-sales plan as paid.** It stores `Price=0` because
+  its price is null, not free; reading price alone made a negotiated tier
+  self-serve, so a catalog row with a real allotment could be minted with no
+  payment. That never fired before only because the tier with the large allotment
+  also carried a large price — luck, not a gate.
+- **A cgo build needs `-tags sqlite_math_functions`** (hanzoai/base asserts it at
+  compile time). Without it v1.49.26–v1.49.37 each pushed a release tag and
+  published NO image — twelve dead releases.
 
 ## One way to grant credit — POST /v1/billing/credit (2026-07-16)
 
@@ -659,8 +748,14 @@ CI injects the immutable image tag at build time so `/healthz` `version` always
 equals the deployed tag:
 
 - `docker-deploy.yml` passes `VERSION=<git tag>` (build-arg) on `v*` tag pushes.
-- `Dockerfile` / `Dockerfile.sqfix` strip the leading `v` and apply
-  `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`.
+- `Dockerfile` strips the leading `v` and applies
+  `-ldflags "-X github.com/hanzoai/commerce.Version=<ver>"`. It is the ONLY
+  Dockerfile that builds the binary — `Dockerfile.sqfix`, `Dockerfile.prebuilt`
+  and `Dockerfile.sqfix-prebuilt` are gone. All three packaged a binary compiled
+  by hand on a laptop (zig cross-compile / hotfix builds), which is not how
+  anything ships, and none was ever referenced by `hanzo.yml`. One had drifted
+  to build tags that no longer compile, so the only thing they could still do
+  was mislead.
 - Branch builds leave `VERSION` empty → the in-source default holds.
 
 Cut releases with a `v*` git tag (`git tag -aX vX.Y.Z && git push origin vX.Y.Z`)

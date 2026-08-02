@@ -1,23 +1,27 @@
 // At-rest encryption for the per-tenant SQLite stores.
 //
 // Commerce keeps each tenant's data (balances, transactions, usage — MONEY) in
-// its own SQLite file (users/<id>/data.db, orgs/<id>/data.db). This file wires
-// those files to the Hanzo encrypted SQLite driver (github.com/hanzoai/sqlite):
-// SQLCipher page-level AES-256 at rest, keyed per-tenant, with the master key
-// sourced from KMS.
+// its own SQLite file. This file wires those files to the Hanzo encrypted SQLite
+// driver (github.com/hanzoai/sqlite): SQLCipher page-level AES-256 at rest,
+// keyed per-tenant, with the master key sourced from KMS.
 //
-// ENVELOPE MODEL (identical to Hanzo IAM's object/orgdb.go, so there is exactly
-// ONE at-rest encryption scheme across the platform):
+// DERIVED-KEY MODEL (github.com/hanzoai/cek, the ONE at-rest scheme across the
+// platform — cloud and IAM open their stores the same way):
 //
-//  1. A master key (32 bytes) is supplied via COMMERCE_KMS_MASTER_KEY, sourced
-//     from KMS at deploy time — never hardcoded, never in git.
-//  2. Each tenant file gets its OWN random Data Encryption Key (DEK). SQLCipher
-//     encrypts the pages with the DEK; it never changes for the life of the file.
-//  3. The DEK is wrapped (AES-256-GCM) under a per-tenant KEK =
-//     HKDF(masterKey, principal) and stored in a sidecar (<data.db>.dek). The raw
-//     DEK is never written to disk.
-//  4. Rotating the master key only rewraps the sidecar — the DEK, and therefore
-//     every encrypted page, is untouched (O(1), cannot brick a file).
+//  1. A master key (32 bytes) is supplied via COMMERCE_KMS_MASTER_KEY or handed
+//     over by an embedding host — sourced from KMS, never hardcoded, never in git.
+//  2. A tenant's file key is DERIVED: HKDF(master, namespace + subsystem), via
+//     cek.DeriveKey. It is a pure function of the tenant's name, so the file
+//     reopens after a restart with nothing persisted beside it.
+//  3. There is no per-file key material. No DEK is generated, wrapped, stored or
+//     rotated in place — so there is no sidecar to lose, no unwrap step, and no
+//     migration path to maintain. Losing the master loses the data, which is the
+//     property at-rest encryption is for and the reason the master lives in KMS.
+//
+// Commerce derives rather than calling cek.Open because it opens a DUAL pool — a
+// concurrent read pool and a serialized single-connection writer — against ONE
+// file under ONE key, and cek.Open hands back a single *sql.DB. cek.DeriveKey is
+// exported for exactly this: the key is the shared part, the pool is ours.
 //
 // Posture is decided once, in ResolveMasterKey():
 //   - unset                 → unencrypted per-tenant files (dev / CI).
@@ -31,15 +35,14 @@
 package db
 
 import (
-	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/hanzoai/cek"
+	"github.com/hanzoai/namespace"
 	sqlitedrv "github.com/hanzoai/sqlite"
 )
 
@@ -50,16 +53,12 @@ const (
 	// by the kms-operator — see universe/infra/k8s/commerce/master-key-kmssecret.yaml.
 	masterKeyEnv = "COMMERCE_KMS_MASTER_KEY"
 
-	// dekSuffix names the wrapped-DEK sidecar written beside each tenant data.db.
-	dekSuffix = ".dek"
-
-	// plaintextBakSuffix names the pre-migration plaintext backup the cutover sets
-	// aside; it is SHREDDED once the encrypted copy passes parity (shredPlaintextBak),
-	// so no tenant money data survives a verified migration in the clear at rest.
-	plaintextBakSuffix = ".plaintext.bak"
-
-	// createLockSuffix names the cross-process mint-DEK+create-db lock file.
-	createLockSuffix = ".create.lock"
+	// tenantSubsystem names what commerce's per-tenant store HOLDS. It is the
+	// second half of every derived key and the file's basename, so one org's
+	// commerce store can never share a key or a path with another subsystem's
+	// store for the same org — cloud's treasury.db and this commerce.db sit side
+	// by side under one namespace and are independently keyed.
+	tenantSubsystem = "commerce"
 )
 
 // ResolveMasterKey reads COMMERCE_KMS_MASTER_KEY and validates it. It returns:
@@ -110,140 +109,53 @@ func ResolveMasterKey() ([]byte, error) {
 	return mk, nil
 }
 
-// principalFor maps a tenant type ("user"/"org") to the driver's KEK-derivation
-// principal. Unknown types default to org (the shared-tenant store).
-func principalFor(tenantType string) sqlitedrv.PrincipalType {
-	if tenantType == "user" {
-		return sqlitedrv.PrincipalUser
+// tenantNamespace names the database one tenant's records live in. It is the ONE
+// place a commerce tenant becomes a namespace, so the file's key and the file's
+// path are two renderings of one name and cannot drift apart.
+//
+// A USER tenant has no namespace. namespace.Key deliberately refuses KindUser —
+// the org layout has no place for a user and inventing one silently is how a
+// second convention starts — so commerce cannot name a per-user database in the
+// shared scheme. Encrypted user stores are therefore refused outright (see
+// tenantKey); the unencrypted dev path never reaches here and is unaffected.
+func tenantNamespace(tenantType, tenantID string) (namespace.Namespace, error) {
+	if tenantType == tenantUser {
+		return namespace.Namespace{}, fmt.Errorf(
+			"cannot encrypt the per-user store for %q: hanzoai/namespace has no database layout for a user "+
+				"(namespace.Key refuses KindUser), so a user store cannot be named — and therefore cannot be "+
+				"keyed — in the platform's one at-rest scheme. Per-user stores are supported UNENCRYPTED only; "+
+				"give namespace a user layout before turning a master key on for them", tenantID)
 	}
-	return sqlitedrv.PrincipalOrg
+	return namespace.OrgProject(tenantID, "")
 }
 
-// resolveDEK returns the per-tenant DEK for dbPath, creating and persisting a
-// wrapped-DEK sidecar on first use. It mirrors IAM object.openEncrypted but
-// returns the DEK (rather than a *sql.DB) because commerce opens two separate
-// connections — a concurrent read pool and a serialized writer — that must key
-// the same file with the same DEK.
+// tenantKey returns the at-rest encryption key for one tenant's store: the
+// master, bound to the namespace that owns the file and the subsystem it holds.
 //
-// Fail-closed: an existing db file WITHOUT a sidecar is refused — it is either a
-// legacy plaintext file (the manager migrates it in place on open) or
-// corruption, and silently treating it as encrypted — or falling back to
-// plaintext — would be wrong.
-//
-// CONCURRENCY: minting a fresh DEK and writing its sidecar is a read-decide-write.
-// Two processes sharing the data dir (an accidental >1 replica, or the migration
-// tool beside the daemon) could both observe "no sidecar", both mint a DIFFERENT
-// DEK, and brick the file (the surviving .db/.dek pair would mismatch). The create
-// path therefore runs under an exclusive cross-process lock and RE-CHECKS the
-// sidecar inside the lock: the loser finds the winner's sidecar and uses it. The
-// common path (sidecar present) takes no lock.
-func resolveDEK(dbPath string, masterKey []byte, pt sqlitedrv.PrincipalType, id string) ([]byte, error) {
-	// Gate on CodecLinked (the LIVE codec), not EncryptionAvailable (always true now).
-	// ResolveMasterKey already refuses the env-sourced key without the live codec, but
-	// NewSQLiteDB also accepts a MasterKey injected directly on its config (the
-	// encrypt-at-rest migration tool and the encryption-proof test). Without the live
-	// codec those paths reach sqlitedrv.DSN(path, dek), which PANICS on a build routed
-	// to the pure-Go backend (the key never rides the pure-Go DSN — the envelope keys
+// It is a pure function of its inputs — nothing is minted, written or read from
+// disk — so the read pool and the write pool key the same file identically, and
+// a restart reopens it with no state carried alongside.
+func tenantKey(masterKey []byte, tenantType, tenantID string) ([]byte, error) {
+	// The namespace refusal comes FIRST because it is unconditional: a user store
+	// is unnameable on every build, so it must fail the same way on every build.
+	// The codec gate below is a property of how this binary was linked.
+	ns, err := tenantNamespace(tenantType, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	// Gate on CodecLinked (the LIVE codec), not EncryptionAvailable (always true
+	// now). ResolveMasterKey already refuses the env-sourced key without the live
+	// codec, but NewSQLiteDB also accepts a MasterKey injected directly on its
+	// config (an embedding host, the encryption-proof test). Without the live codec
+	// those paths reach sqlitedrv.DSN(path, key), which PANICS on a build routed to
+	// the pure-Go backend (the key never rides the pure-Go DSN — the envelope keys
 	// the file out of band). Return the clear refusal instead of crashing. Commerce
-	// cannot use the envelope for its dual pool, so this is a genuine refusal — not a
-	// "would write plaintext" one.
+	// cannot use the envelope for its dual pool, so this is a genuine refusal — not
+	// a "would write plaintext" one.
 	if !sqlitedrv.CodecLinked() {
-		return nil, fmt.Errorf("cannot open %q encrypted: commerce requires the live libsqlcipher codec (its dual read/write pool cannot use the codec envelope); build CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or open without a master key for an unencrypted dev build", dbPath)
+		return nil, fmt.Errorf("commerce requires the live libsqlcipher codec (its dual read/write pool cannot use the codec envelope); build CGO_ENABLED=1 -tags \"libsqlite3 sqlite_fts5\" linked against libsqlcipher, or open without a master key for an unencrypted dev build")
 	}
-	kek, err := sqlitedrv.DeriveKey(masterKey, pt, id)
-	if err != nil {
-		return nil, fmt.Errorf("derive KEK for %s:%s: %w", pt, id, err)
-	}
-	defer zeroBytes(kek)
-
-	dekPath := dbPath + dekSuffix
-	aad := sqlitedrv.PrincipalAAD(pt, id)
-
-	// Fast path: sidecar present → unwrap, no lock needed.
-	if fileExists(dekPath) {
-		return unwrapSidecar(dbPath, dekPath, kek, aad)
-	}
-	// NO SIDECAR. The file may be plaintext awaiting migration, or an encrypted
-	// db whose sidecar was lost — telling those apart, and migrating, must happen
-	// under the create lock so two processes cannot migrate the same store at
-	// once. Fall through rather than refuse here.
-
-	// Create path: serialize the mint+persist critical section across processes,
-	// then RE-CHECK under the lock so a racing first-touch cannot produce a
-	// mismatched .db/.dek pair.
-	lockPath := dbPath + createLockSuffix
-	var dek []byte
-	lockErr := withExclusiveFileLock(lockPath, func() error {
-		if fileExists(dekPath) {
-			d, err := unwrapSidecar(dbPath, dekPath, kek, aad)
-			if err != nil {
-				return err
-			}
-			dek = d
-			return nil
-		}
-		if fileExists(dbPath) {
-			// PLAINTEXT → migrate in place, here, on open. The alternative was a
-			// separate one-shot binary the operator had to remember to run first
-			// (scale to 0, run a Job, scale up) — a second way to do one thing, and
-			// one that refused to boot if skipped. encryptTenantFile is the same
-			// verified cutover that binary called: WAL-folded, per-table row-hash
-			// parity, atomic rename, sidecar written last so a crash fails closed.
-			if isPlaintextSQLite(dbPath) {
-				if _, _, err := encryptTenantFile(dbPath, masterKey, pt, id, false); err != nil {
-					return fmt.Errorf("migrate plaintext db %q to encrypted: %w", dbPath, err)
-				}
-				d, err := unwrapSidecar(dbPath, dekPath, kek, aad)
-				if err != nil {
-					return err
-				}
-				dek = d
-				return nil
-			}
-			// NOT plaintext and no sidecar: the db is ciphertext whose DEK is gone.
-			// No key can open it; refusing is the only honest answer.
-			return fmt.Errorf("encrypted db %q has no DEK sidecar %q; refusing to open — the DEK is unrecoverable, restore %q and %q together from backup", dbPath, dekPath, dbPath, dekPath)
-		}
-
-		// Genuinely fresh: mint a DEK, wrap it, persist the sidecar atomically.
-		// The .db itself is created — keyed with this DEK — by the first Open in
-		// NewSQLiteDB; because the DEK is now fixed by the sidecar, any concurrent
-		// opener uses the SAME key, so the pair can never mismatch.
-		fresh, err := sqlitedrv.NewDEK()
-		if err != nil {
-			return err
-		}
-		blob, err := sqlitedrv.WrapDEK(kek, fresh, aad)
-		if err != nil {
-			zeroBytes(fresh)
-			return err
-		}
-		if err := writeFileAtomic(dekPath, blob, 0o600); err != nil {
-			zeroBytes(fresh)
-			return fmt.Errorf("write wrapped DEK %q: %w", dekPath, err)
-		}
-		dek = fresh
-		return nil
-	})
-	if lockErr != nil {
-		return nil, lockErr
-	}
-	return dek, nil
-}
-
-// unwrapSidecar reads the sidecar and unwraps the DEK under kek+aad. A wrong
-// master key, a sidecar lifted from another principal, or a tampered blob fails
-// the GCM tag and returns an error — never a partial/garbage key (fail-closed).
-func unwrapSidecar(dbPath, dekPath string, kek, aad []byte) ([]byte, error) {
-	blob, err := os.ReadFile(dekPath)
-	if err != nil {
-		return nil, fmt.Errorf("read wrapped DEK %q: %w", dekPath, err)
-	}
-	dek, err := sqlitedrv.UnwrapDEK(kek, blob, aad)
-	if err != nil {
-		return nil, fmt.Errorf("unwrap DEK for %q (wrong master key or corrupt sidecar): %w", dbPath, err)
-	}
-	return dek, nil
+	return cek.DeriveKey(masterKey, ns, tenantSubsystem)
 }
 
 // encDriverDSN returns the (driverName, dsn) to open dbPath. Both branches use
@@ -326,66 +238,9 @@ func extraEncPragmas(cfg SQLiteConfig) string {
 	return strings.Join(p, "&")
 }
 
-// --- small helpers (no third-party deps) ---
-
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-// writeFileAtomic writes data to a temp file in the same directory and renames it
-// into place, so a crash never leaves a half-written sidecar.
-func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".dek-*")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer os.Remove(tmpName) // no-op after a successful rename
-	if err := tmp.Chmod(perm); err != nil {
-		tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, path)
-}
-
 // zeroBytes overwrites a key buffer in place.
 func zeroBytes(b []byte) {
 	for i := range b {
 		b[i] = 0
 	}
-}
-
-// compile-time assertion that *sql.DB is what the driver hands back (documents
-// the integration surface; keeps the import honest if the file is trimmed).
-var _ = (*sql.DB)(nil)
-
-// isPlaintextSQLite reports whether path is an UNENCRYPTED SQLite database, by
-// its 16-byte file header. SQLCipher encrypts from byte 0, so ciphertext never
-// carries this magic — the header is the one reliable way to tell "needs
-// migrating" from "sidecar lost", which are the same shape on disk and have
-// opposite correct responses.
-func isPlaintextSQLite(path string) bool {
-	f, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-	var hdr [16]byte
-	if _, err := io.ReadFull(f, hdr[:]); err != nil {
-		return false
-	}
-	return string(hdr[:]) == "SQLite format 3\x00"
 }
