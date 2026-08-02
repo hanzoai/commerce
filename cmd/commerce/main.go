@@ -10,7 +10,7 @@
 //
 //	cloud:             flag --cloud OR env COMMERCE_MODE=cloud
 //	                   → bootCloud(): zip.App with commerce mounted via
-//	                     zip.AdaptNetHTTP(ginEngine) — gin is sealed as an
+//	                     the host app directly — commerce is native zip, so
 //	                     inner handler, no public route surface of its own.
 //	                     Requires a build with `-tags cloud`; without the
 //	                     tag the cloud entry returns a clear error and the

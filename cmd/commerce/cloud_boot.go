@@ -24,7 +24,7 @@ import (
 
 // bootCloud serves commerce as a subsystem inside a zip.App per the
 // HIP-0106 unified Hanzo Cloud binary contract. The gin engine is
-// adapted via zip.AdaptNetHTTP and mounted under /v1/commerce + /_/commerce
+// registered natively on the host zip.App under /v1/commerce + /_/commerce
 // by commerce.Mount(); zip owns the listener.
 //
 // Same artifact runs every white-label deployment — only the gateway and

@@ -11,20 +11,26 @@
 // (ZAP-RPC clients that resolve to the out-of-process Payments + Vault
 // services).
 //
-// The legacy gin engine inside *commerceApp.App owns the full
-// /v1/commerce, /_/commerce and /admin route surface — Mount adapts it
-// onto zip via zip.AdaptNetHTTP so cmd/cloud can serve commerce inside
-// the unified binary without reimplementing every handler.
+// NATIVE zip/ZAP — no gin, no net/http adaptation. Commerce registers its
+// handlers directly on the host binary's zip.App: one router, one specificity
+// space, one middleware chain. There is no second engine and no request
+// crossing an adapter boundary.
+//
+// This file used to bring up a gin engine, take its http.Handler, and front it
+// with `app.All("/v1/commerce/*", zip.AdaptNetHTTP(handler))`. v1.48.0 removed
+// gin from the serving path, which deleted Embedded.HTTPHandler and left this
+// file referring to a method that no longer exists — so every build carrying
+// `-tags cloud` failed to compile, and the cloud mount shipped nothing. The
+// adapter is not replaced with another adapter; it is deleted, because the
+// co-residence contract exists precisely so there is nothing to adapt.
 
 package commerce
 
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/hanzoai/cloud"
-	api "github.com/hanzoai/commerce/api"
 	"github.com/zap-proto/zip"
 )
 
@@ -56,7 +62,6 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 		logger.Warn("commerce.Mount: deps.Vault is nil — vault charge paths unavailable; tenant config + admin still served")
 	}
 
-	// Bring up the legacy commerce app (gin engine + DB + hooks + KMS).
 	// The DataDir flows from cloud.Deps so every per-tenant SQLite lands
 	// under one tree per HIP-0302.
 	dataDir := deps.DataDir
@@ -64,11 +69,18 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 		dataDir = "/var/lib/cloud/commerce"
 	}
 
+	// App: app is the whole mount. Bootstrap registers commerce's route groups
+	// (/v1/commerce public, /_/commerce admin) ON THE HOST'S ROUTER and skips
+	// every standalone-only surface — /healthz, the legacy admin SPA, the
+	// checkout SPA catch-all, and Listen, since the host owns the listener.
+	// HTTPAddr stays empty for the same reason.
+	//
+	// Logger is left unset: deps.Logger is luxfi/log.Logger and EmbedConfig wants
+	// *slog.Logger, so passing it would need a shim. Embed defaults to
+	// slog.Default(), which the host has already configured.
 	embedded, err := Embed(context.Background(), EmbedConfig{
 		DataDir: dataDir,
-		// HTTPAddr is intentionally unset: the cloud binary owns the
-		// listener; commerce only contributes its http.Handler.
-		HTTPAddr: "",
+		App:     app,
 		// RequireIdentity stays env-driven; the gateway in front of the
 		// cloud binary is the trust boundary per HIP-0026.
 		RequireIdentity: false,
@@ -76,51 +88,30 @@ func Mount(app *zip.App, deps cloud.Deps) error {
 	if err != nil {
 		return fmt.Errorf("commerce.Mount: embed: %w", err)
 	}
+	_ = embedded
 
-	handler := embedded.HTTPHandler()
-	if handler == nil {
-		return fmt.Errorf("commerce.Mount: nil HTTPHandler")
-	}
-
-	// Wire the full Commerce API surface (/v1/billing, /v1/checkout,
-	// /v1/subscription, /v1/store, /v1/account, …) directly on the live
-	// gin engine. Embed() ran Bootstrap() which fired setupRoutes(), but
-	// setupRoutes() registers only the per-tenant checkout group + admin
-	// SPA — not the legacy api.Route() bundle. The same imperative call
-	// the legacy commerce/commerced binaries make is mirrored here so the
-	// cloud-mounted surface and the standalone surface expose identical
-	// routes. See cmd/commerce/main.go for the standalone-binary call.
-	apiGroup := embedded.App().Router.Group("/v1")
-	api.Route(apiGroup)
-
-	// Native zip health endpoint — independent of the gin handler so
-	// liveness/readiness probes survive a router-wide outage. Use a
-	// commerce-scoped path so probes can target this subsystem specifically.
+	// Native zip health endpoint, on a commerce-scoped path so a probe can
+	// target this subsystem specifically rather than the whole binary.
 	app.Get("/_/commerce/healthz", func(c *zip.Ctx) error {
-		return c.JSON(http.StatusOK, map[string]string{
+		return c.JSON(200, map[string]string{
 			"status":  "ok",
 			"service": "commerce",
 		})
 	})
 
-	// Public + admin surface — adapted via zip.AdaptNetHTTP. The gin
-	// engine retains its full middleware chain (RequestContext, IAM,
-	// AccessControl, CachePrivate, OnRouteSetup hooks). Cost is ~5%
-	// per request vs native fiber — acceptable for the migration.
+	// The /v1 model bundle (api.Route — ~140 routes across /v1/billing,
+	// /v1/product, /v1/order …) is deliberately NOT registered here.
 	//
-	// A wildcard All + AdaptNetHTTP is the supported way to front a foreign
-	// subtree (zip/adapt.go). It is what the removed App.Mount helper did
-	// verbatim — `a.All(prefix+"/*", AdaptNetHTTP(h))` — so the served route
-	// set is unchanged.
-	app.All("/v1/commerce/*", zip.AdaptNetHTTP(handler))
-	app.All("/_/commerce/*", zip.AdaptNetHTTP(handler))
-
-	// The embedded admin Next.js bundle still lives at /admin behind
-	// the same gin engine; cloud may not be the right surface for /admin
-	// (consoles run at console.hanzo.ai), so we adapt it only when
-	// explicitly enabled via env. The legacy commerced binary still
-	// serves /admin standalone.
-	// Intentionally NOT mounting /admin here — that is console territory.
+	// In the cloud binary those prefixes are cloud's own: /v1/billing is served
+	// by clients/billing + clients/account. Registering them again on the same
+	// app is not additive — byte-identical patterns MERGE silently with the
+	// first registration winning, and two params at equal specificity with
+	// different names PANIC at registration. Either way the money path would be
+	// decided by import order.
+	//
+	// So the mounted surface is exactly the commerce-scoped one, which is what
+	// it has always been in practice. cmd/commerced still calls api.Route for
+	// the standalone binary, where those prefixes have no other owner.
 
 	logger.Info("commerce mounted",
 		"prefix.public", "/v1/commerce",
