@@ -321,7 +321,7 @@ func TestLockBillingSubjectBody_NonJSONIgnored(t *testing.T) {
 }
 
 func TestLooksLikeJWTAndBearer(t *testing.T) {
-	cases := map[string]bool{"a.b.c": true, "hk-abc123": false, "": false, "a.b": false}
+	cases := map[string]bool{"a.b.c": true, "sk-abc123": false, "": false, "a.b": false}
 	for tok, want := range cases {
 		if got := looksLikeJWT(tok); got != want {
 			t.Fatalf("looksLikeJWT(%q)=%v want %v", tok, got, want)
