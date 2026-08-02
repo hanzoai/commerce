@@ -4,7 +4,7 @@ go 1.26.5
 
 require (
 	github.com/hanzoai/cloud v0.1.1
-	github.com/zap-proto/zip v1.18.22
+	github.com/zap-proto/zip v1.20.1
 )
 
 require (

@@ -197,11 +197,11 @@ func TestRequire_Denies402Shape(t *testing.T) {
 
 	reached := false
 	app := zip.New(zip.Config{DisableStartupMessage: true})
-	app.Use(func(c *zip.Ctx) error {
+	app.Use(zip.H(func(c *zip.Ctx) error {
 		c.Locals("organization", o)
 		return c.Next()
-	})
-	app.Use(Require)
+	}))
+	app.Use(zip.H(Require))
 	app.Get("/x", func(c *zip.Ctx) error { reached = true; return c.NoContent(http.StatusOK) })
 
 	resp, err := app.Fiber().Test(httptest.NewRequest(http.MethodGet, "/x", nil))
