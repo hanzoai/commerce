@@ -14,6 +14,24 @@ func init() {
 			"riskControlOut.held": "Held is the cumulative exact minor units this reserve has withheld — what\nthe ceiling is measured against, and what a release returns.",
 		},
 	})
+	zip.Describe("DELETE billing/accounts/:id/members/:memberId", zip.Doc{
+		Description: "Is a stub. Member removal is done via IAM.\n\n\tDELETE /v1/billing/accounts/:id/members/:memberId",
+	})
+	zip.Describe("DELETE billing/alerts/:id", zip.Doc{
+		Description: "Deletes a spend alert by ID.\n\n\tDELETE /v1/billing/alerts/:id",
+	})
+	zip.Describe("DELETE billing/invoices/:id/line-items/:itemId", zip.Doc{
+		Description: "Removes a line item from a draft invoice by index\nor line item ID.\n\n\tDELETE /v1/billing/invoices/:id/line-items/:itemId",
+	})
+	zip.Describe("DELETE billing/methods/:id", zip.Doc{
+		Description: "Detaches (soft-deletes) a payment method.\n\n\tDELETE /v1/billing/methods/:id",
+	})
+	zip.Describe("DELETE billing/pricing-rules/:id", zip.Doc{
+		Description: "Removes a pricing rule by ID.\n\n\tDELETE /v1/billing/pricing-rules/:id",
+	})
+	zip.Describe("DELETE billing/subscription-items/:id", zip.Doc{
+		Description: "Removes an item from a subscription.\n\n\tDELETE /v1/billing/subscription-items/:id",
+	})
 	zip.Describe("GET /v1/billing/risk/controls", zip.Doc{
 		Description: "Lists the controls this org has placed, and whether each still\nbears on a move.",
 		Fields: map[string]string{
@@ -85,6 +103,270 @@ func init() {
 			"riskScreenOut.score":    "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":   "Shadow marks a judgement that was recorded and deliberately not enforced.",
 		},
+	})
+	zip.Describe("GET billing/accounts", zip.Doc{
+		Description: "Returns billing accounts visible to the caller.\nIn Commerce each organization is one billing account. The authenticated\norg is returned as the single account for the current token.\n\n\tGET /v1/billing/accounts",
+	})
+	zip.Describe("GET billing/accounts/:id/members", zip.Doc{
+		Description: "Returns the members of a billing account (org).\nCurrently returns the requesting IAM user as the sole member, since\nCommerce does not store a full membership roster (that lives in IAM).\n\n\tGET /v1/billing/accounts/:id/members",
+	})
+	zip.Describe("GET billing/alerts", zip.Doc{
+		Description: "Returns the ORG's spend alerts (budgets/caps) plus derived\nperiod spend. It is the console Budgets read AND the source ScopeRules uses for\nthe rate-limit config, so it MUST key on the same org the writer stored under.\n\n\tGET /v1/billing/alerts",
+	})
+	zip.Describe("GET billing/alerts/authorize", zip.Doc{
+		Description: "Is the per-request cap verdict for a (project,service) scope\nand a proposed amount, over the org's spend-alert rows. It evaluates EVERY\ncovering row (most-restrictive-wins) and DENIES when any HARD-enforceable\nENFORCE=true row is exceeded, reporting the tightest one. Soft rows — and a\nproject-scoped enforce row whose project axis is NOT validated (pv=0) — never\nblock; they only raise the warn utilization.\n\nFAIL OPEN on UNKNOWN spend: if an enforce row's spend sum cannot be read (a transient\nfinance-ledger error), the verdict does NOT block — a backend blip must not 402 an\nunder-cap customer, nor storm every capped org at once. A row DENIES only when spend is\nKNOWN and over the cap, so this never fails open on a real overage. Per-scope sums are\nmemoized so covering rows sharing a scope cost one query. The row scan is bounded\n(loadOrgScopes).\n\n\tGET /v1/billing/alerts/authorize?user=&project=&service=&amount=&pv=",
+	})
+	zip.Describe("GET billing/balance", zip.Doc{
+		Description: "Returns the current balance for an IAM user.\n\n\tGET /v1/billing/balance?user=hanzo/alice&currency=usd\n\nAll amounts in cents. available = balance - holds.",
+	})
+	zip.Describe("GET billing/balance-transactions", zip.Doc{
+		Description: "Lists balance transactions for a customer.\n\n\tGET /v1/billing/balance-transactions?customerId=...",
+	})
+	zip.Describe("GET billing/balance/all", zip.Doc{
+		Description: "Returns balances across all currencies for an IAM user.\n\n\tGET /v1/billing/balance/all?user=hanzo/alice",
+	})
+	zip.Describe("GET billing/bank-transfer-instructions", zip.Doc{
+		Description: "Lists bank transfer instructions, optionally\nfiltered by customerId.\n\n\tGET /v1/billing/bank-transfer-instructions?customerId=...",
+	})
+	zip.Describe("GET billing/bank-transfer-instructions/:id", zip.Doc{
+		Description: "Returns a single bank transfer instruction by ID.\n\n\tGET /v1/billing/bank-transfer-instructions/:id",
+	})
+	zip.Describe("GET billing/capabilities", zip.Doc{
+		Description: "Returns the billing platform's supported features,\npayment methods, and currencies.\n\n\tGET /v1/billing/capabilities",
+	})
+	zip.Describe("GET billing/credit-balance", zip.Doc{
+		Description: "Returns the total available credit balance for a user.\n\n\tGET /v1/billing/credit-balance?userId=...",
+	})
+	zip.Describe("GET billing/credit-balance/breakdown", zip.Doc{
+		Description: "Returns the credit balance grouped by tag.\nUsed by Chat to distinguish trial vs paid credits.\n\n\tGET /v1/billing/credit-balance/breakdown?userId=...",
+	})
+	zip.Describe("GET billing/credit-notes", zip.Doc{
+		Description: "Lists credit notes, optionally filtered by invoiceId or customerId.\n\n\tGET /v1/billing/credit-notes?invoiceId=...&customerId=...",
+	})
+	zip.Describe("GET billing/credit-notes/:id", zip.Doc{
+		Description: "Retrieves a credit note by ID.\n\n\tGET /v1/billing/credit-notes/:id",
+	})
+	zip.Describe("GET billing/credits", zip.Doc{
+		Description: "Lists credit grants for a user.\n\n\tGET /v1/billing/credits?userId=...",
+	})
+	zip.Describe("GET billing/customer-balance", zip.Doc{
+		Description: "Retrieves the customer balance for a customer+currency.\n\n\tGET /v1/billing/customer-balance?customerId=...&currency=...",
+	})
+	zip.Describe("GET billing/disputes", zip.Doc{
+		Description: "Lists disputes.\n\n\tGET /v1/billing/disputes?paymentIntentId=...",
+	})
+	zip.Describe("GET billing/disputes/:id", zip.Doc{
+		Description: "Retrieves a dispute by ID.\n\n\tGET /v1/billing/disputes/:id",
+	})
+	zip.Describe("GET billing/events", zip.Doc{
+		Description: "Lists billing events, optionally filtered by type or objectId.\n\n\tGET /v1/billing/events?type=...&objectId=...",
+	})
+	zip.Describe("GET billing/events/:id", zip.Doc{
+		Description: "Retrieves a single billing event.\n\n\tGET /v1/billing/events/:id",
+	})
+	zip.Describe("GET billing/gpu/eligibility", zip.Doc{
+		Description: "Is the read-only launch gate: may a GPU of this size be\nlaunched/charged from prepaid right now?\n\n\tGET /v1/billing/gpu/eligibility?user=<subj>&amountCents=<n>&minPrepaidCents=<m>\n\nReturns 200 with {eligible,reason,...} in ALL cases (the caller decides how to\nrender) — it never 402s, so the launch UI can show the exact remedy (add a\ncard / add prepaid). amountCents is the immediate charge; minPrepaidCents is\nthe 24h-minimum prepaid the GPU policy requires before launch (the gate needs\nprepaidAvailable >= max(amountCents, minPrepaidCents)).",
+	})
+	zip.Describe("GET billing/husd/status", zip.Doc{
+		Description: "Reports the chain-ledger configuration + whether it is enabled — a\nread-only observability surface (no secrets: the treasury key is never exposed).\n\n\tGET /v1/billing/husd/status",
+	})
+	zip.Describe("GET billing/invoices", zip.Doc{
+		Description: "Lists billing invoices, optionally filtered by userId and status.\n\n\tGET /v1/billing/invoices?userId=...&status=...",
+	})
+	zip.Describe("GET billing/invoices/:id", zip.Doc{
+		Description: "Returns a single billing invoice by ID.\n\n\tGET /v1/billing/invoices/:id",
+	})
+	zip.Describe("GET billing/invoices/:id/pdf", zip.Doc{
+		Description: "Renders and serves an invoice as a PDF.\n\n\tGET /v1/billing/invoices/:id/pdf\n\nTenant isolation: the invoice is loaded from the caller's OWN org namespace\n(datastore.New(org.Namespaced(c.Context()))). GetById scopes the lookup to that\nnamespace at the storage layer, so an org can only ever fetch its own\ninvoice — a foreign id resolves to nothing and returns 404. It is mounted on\nthe user group so a normal authenticated org member can download their own\ninvoice.",
+	})
+	zip.Describe("GET billing/invoices/upcoming", zip.Doc{
+		Description: "Generates a preview of the next invoice for a subscription.\n\n\tGET /v1/billing/invoices/upcoming?userId=...&subscriptionId=...",
+	})
+	zip.Describe("GET billing/me/balance", zip.Doc{
+		Description: "Returns the calling user's balance for a given currency.\nIdentity comes from the gateway-injected X-Org-Id / X-User-Id headers;\nno admin token required.\n\n\tGET /v1/billing/me/balance?currency=usd",
+	})
+	zip.Describe("GET billing/meter-events/summary", zip.Doc{
+		Description: "Returns aggregated usage for a meter+user+period.\n\n\tGET /v1/billing/meter-events/summary?meterId=...&userId=...&periodStart=...&periodEnd=...",
+	})
+	zip.Describe("GET billing/meters", zip.Doc{
+		Description: "Returns all meters for the organization.\n\n\tGET /v1/billing/meters",
+	})
+	zip.Describe("GET billing/meters/:id", zip.Doc{
+		Description: "Returns a single meter by ID.\n\n\tGET /v1/billing/meters/:id",
+	})
+	zip.Describe("GET billing/methods", zip.Doc{
+		Description: "Lists payment methods for a customer.\n\n\tGET /v1/billing/methods?customerId=...&type=...",
+	})
+	zip.Describe("GET billing/methods/:id", zip.Doc{
+		Description: "Retrieves a payment method by ID.\n\n\tGET /v1/billing/methods/:id",
+	})
+	zip.Describe("GET billing/oss-accruals", zip.Doc{
+		Description: "Returns accrual ledger lines, optionally filtered by package\nPURL or spending org.\n\n\tGET /v1/billing/oss-accruals?purl=&org=",
+	})
+	zip.Describe("GET billing/oss-payout/summary", zip.Doc{
+		Description: "Rolls up accruals per package: the running total Hanzo\nowes each OSS package and where it would be paid. This is the payout-ready\nview — the disbursement job consumes it.\n\n\tGET /v1/billing/oss-payout/summary?org=",
+	})
+	zip.Describe("GET billing/payment-intents", zip.Doc{
+		Description: "Lists payment intents, optionally filtered by customerId.\n\n\tGET /v1/billing/payment-intents?customerId=...",
+	})
+	zip.Describe("GET billing/payment-intents/:id", zip.Doc{
+		Description: "Retrieves a payment intent by ID.\n\n\tGET /v1/billing/payment-intents/:id",
+	})
+	zip.Describe("GET billing/payouts", zip.Doc{
+		Description: "Lists payouts.\n\n\tGET /v1/billing/payouts",
+	})
+	zip.Describe("GET billing/payouts/:id", zip.Doc{
+		Description: "Retrieves a payout by ID.\n\n\tGET /v1/billing/payouts/:id",
+	})
+	zip.Describe("GET billing/plans", zip.Doc{
+		Description: "Returns middleware that sets public cache headers with the given TTL.\n\nCF caches for ttl seconds (s-maxage). Browsers cache for ttl/2 seconds\nto ensure fresh content at browser re-visits. stale-while-revalidate\nallows CF to serve stale content while fetching fresh in background.\n\nMutations (POST/PUT/PATCH/DELETE) are always no-store regardless.",
+	})
+	zip.Describe("GET billing/plans/:id", zip.Doc{
+		Description: "Returns middleware that sets public cache headers with the given TTL.\n\nCF caches for ttl seconds (s-maxage). Browsers cache for ttl/2 seconds\nto ensure fresh content at browser re-visits. stale-while-revalidate\nallows CF to serve stale content while fetching fresh in background.\n\nMutations (POST/PUT/PATCH/DELETE) are always no-store regardless.",
+	})
+	zip.Describe("GET billing/portal/invoices", zip.Doc{
+		Description: "Returns the customer's invoice list.\n\n\tGET /v1/billing/portal/invoices?customerId=...",
+	})
+	zip.Describe("GET billing/portal/methods", zip.Doc{
+		Description: "Returns the customer's payment methods.\n\n\tGET /v1/billing/portal/methods?customerId=...",
+	})
+	zip.Describe("GET billing/portal/overview", zip.Doc{
+		Description: "Returns a billing summary for the authenticated customer.\n\n\tGET /v1/billing/portal/overview?customerId=...",
+	})
+	zip.Describe("GET billing/portal/subscriptions", zip.Doc{
+		Description: "Returns the customer's subscriptions.\n\n\tGET /v1/billing/portal/subscriptions?customerId=...",
+	})
+	zip.Describe("GET billing/pricing-rules", zip.Doc{
+		Description: "Lists pricing rules, optionally filtered by meter or plan.\n\n\tGET /v1/billing/pricing-rules?meterId=...&planId=...",
+	})
+	zip.Describe("GET billing/recharge", zip.Doc{
+		Description: "Returns the org's auto-recharge config (or disabled defaults).\n\n\tGET /v1/billing/recharge",
+	})
+	zip.Describe("GET billing/refunds", zip.Doc{
+		Description: "Lists refunds, optionally filtered by paymentIntentId or invoiceId.\n\n\tGET /v1/billing/refunds?paymentIntentId=...&invoiceId=...",
+	})
+	zip.Describe("GET billing/refunds/:id", zip.Doc{
+		Description: "Retrieves a refund by ID.\n\n\tGET /v1/billing/refunds/:id",
+	})
+	zip.Describe("GET billing/sbom", zip.Doc{
+		Description: "Returns the stored SBOM records (metadata only, not components).\n\n\tGET /v1/billing/sbom",
+	})
+	zip.Describe("GET billing/settings", zip.Doc{
+		Description: "Returns the PUBLIC Square config (application id, location id,\nenvironment) the browser's Web Payments SDK must use to tokenize a card for\nTHIS org. It resolves sandbox-vs-production through the SAME single authority\nas the charge path (org.TestMode / SQUARE_ENVIRONMENT) and the same KMS-then-env\nfallback, so the app id the browser tokenizes with always matches the env +\naccess token commerce will vault/charge with. All values are public (safe to\nexpose to the client).\n\n\tGET /v1/billing/settings",
+	})
+	zip.Describe("GET billing/setup-intents/:id", zip.Doc{
+		Description: "Retrieves a setup intent by ID.\n\n\tGET /v1/billing/setup-intents/:id",
+	})
+	zip.Describe("GET billing/subscription-items", zip.Doc{
+		Description: "Lists items for a subscription.\n\n\tGET /v1/billing/subscription-items?subscriptionId=...",
+	})
+	zip.Describe("GET billing/subscription-items/:id", zip.Doc{
+		Description: "Retrieves a subscription item by ID.\n\n\tGET /v1/billing/subscription-items/:id",
+	})
+	zip.Describe("GET billing/subscription-schedules", zip.Doc{
+		Description: "Lists subscription schedules.\n\n\tGET /v1/billing/subscription-schedules?customerId=...&status=...",
+	})
+	zip.Describe("GET billing/subscription-schedules/:id", zip.Doc{
+		Description: "Retrieves a subscription schedule by ID.\n\n\tGET /v1/billing/subscription-schedules/:id",
+	})
+	zip.Describe("GET billing/subscriptions", zip.Doc{
+		Description: "Lists subscriptions for a user.\n\n\tGET /v1/billing/subscriptions?userId=...",
+	})
+	zip.Describe("GET billing/subscriptions/:id", zip.Doc{
+		Description: "Returns a single subscription.\n\n\tGET /v1/billing/subscriptions/:id",
+	})
+	zip.Describe("GET billing/tier", zip.Doc{
+		Description: "Returns the billing tier, limits, and effective balance for a user.\n\nFor IAM-authenticated requests the tier is read from the JWT claim.\nFor service-to-service calls the tier may be passed as a query parameter.\n\n\tGET /v1/billing/tier?user=hanzo/alice\n\nResponse includes the tier config plus the effective available balance.\nThere is no free tier: a zero-balance account has effectiveAvailable == 0\nand is gated. The daily-credit term is 0 for every tier (see billing/tier);\nonboarding funds an account once via the starter-credit grant, and once\nthat is spent the account is gated until it is topped up.",
+	})
+	zip.Describe("GET billing/tier-check", zip.Doc{
+		Description: "Is a lightweight endpoint for model-access gating.\nIt returns the tier config and whether a specific model is allowed,\nwithout computing the full balance. Used by Chat and white-label services.\n\n\tGET /v1/billing/tier-check?user=hanzo/alice&model=zen4-max",
+	})
+	zip.Describe("GET billing/usage", zip.Doc{
+		Description: "Returns usage transactions for an IAM user, filtered by tag \"api-usage\".\n\n\tGET /v1/billing/usage?user=hanzo/alice&currency=usd",
+	})
+	zip.Describe("GET billing/usage/rollup", zip.Doc{
+		Description: "Returns the unified plan + included-usage + consumed + overage\n+ balance view for a user, for the current UTC month. This is the single\nread surface the console billing UI renders. All figures are derived from the\nsame transactions the gateway's balance gate reads — no separate store.\n\n\tGET /v1/billing/usage/rollup?user=hanzo/alice&plan=pro\n\n`plan` is optional; when omitted it is resolved from the user's subscription.",
+	})
+	zip.Describe("GET dns/plans", zip.Doc{
+		Description: "Returns middleware that sets public cache headers with the given TTL.\n\nCF caches for ttl seconds (s-maxage). Browsers cache for ttl/2 seconds\nto ensure fresh content at browser re-visits. stale-while-revalidate\nallows CF to serve stale content while fetching fresh in background.\n\nMutations (POST/PUT/PATCH/DELETE) are always no-store regardless.",
+	})
+	zip.Describe("GET dns/usage/summary", zip.Doc{
+		Description: "Returns a usage summary for DNS queries, zones, and records.\n\n\tGET /v1/dns/usage/summary?user={owner/name}&period=day|month",
+	})
+	zip.Describe("PATCH billing/accounts/:id/members/:memberId", zip.Doc{
+		Description: "Is a stub. Role updates are done via IAM.\n\n\tPATCH /v1/billing/accounts/:id/members/:memberId",
+	})
+	zip.Describe("PATCH billing/alerts/:id", zip.Doc{
+		Description: "Patches an existing spend alert / cap. Only the fields present\nin the body change; the rest are preserved.\n\n\tPATCH /v1/billing/alerts/:id",
+	})
+	zip.Describe("PATCH billing/disputes/:id", zip.Doc{
+		Description: "Submits evidence for a dispute.\n\n\tPATCH /v1/billing/disputes/:id",
+	})
+	zip.Describe("PATCH billing/methods/:id", zip.Doc{
+		Description: "Updates a payment method.\n\n\tPATCH /v1/billing/methods/:id",
+	})
+	zip.Describe("PATCH billing/subscription-items/:id", zip.Doc{
+		Description: "Updates a subscription item (e.g. seat count).\n\n\tPATCH /v1/billing/subscription-items/:id",
+	})
+	zip.Describe("PATCH billing/subscription-schedules/:id", zip.Doc{
+		Description: "Updates phases or end behavior.\n\n\tPATCH /v1/billing/subscription-schedules/:id",
+	})
+	zip.Describe("PATCH billing/subscriptions/:id", zip.Doc{
+		Description: "Updates a subscription (plan change, quantity).\n\n\tPATCH /v1/billing/subscriptions/:id",
+	})
+	zip.Describe("POST /billing/webhooks/:provider", zip.Doc{
+		Description: "Is the single ingress for payment-provider webhooks.\nIt dispatches to the matching processor in payment/router, validates the\nsignature, records the event in billing_events, and — for subscription\nlifecycle events — updates the local subscription row keyed by ProviderId.\n\n\tPOST /v1/billing/webhooks/:provider\n\nThe :provider path segment is informational; signature verification picks\nthe right processor regardless. We pass the path segment as a lightweight\nfilter so webhook endpoints are URL-scoped per-provider (easier in Stripe\ndashboard configuration).",
+	})
+	zip.Describe("POST /credit", zip.Doc{
+		Description: "Is THE ONE way credit enters an org ledger. It appends a single\norg-keyed, non-cash credit grant to the org's balance — the same ledger\nGET /v1/billing/balance and the cloud AI spend-gate read, so a granted credit\nis immediately spendable.\n\n\tPOST /v1/billing/credit\n\t{\"org\":\"acme\",\"amountCents\":500,\"reason\":\"welcome\",\"tag\":\"starter-credit\",\n\t \"currency\":\"usd\",\"expiresAt\":\"2027-01-01T00:00:00Z\",\"idempotencyKey\":\"signup:acme\"}\n\nMINT-GATED. The route is registered through middleware.Mint, which puts it\nbehind middleware.PlatformOnly and records it in middleware.MintRoutes(),\nso ONLY the internal service token (cloud-api → commerce, COMMERCE_SERVICE_TOKEN)\nor a platform global admin (auth.IAMClaims.IsSuperAdmin, owner==\"admin\") reaches\nit; every self-service / org-owner / no-auth caller is refused (403/401) BEFORE\nthe handler. A client-supplied mint amount is exactly what must never be\nself-service — that is why this is mint-gated and a user cannot credit itself.\n\nBacking: when the host injects a double-entry ledger (creditledger, set by\ncommerce.EmbedConfig.Ledger — the cloud-embedded path), the credit is a balanced\nposting to the org account the AI gate reads (one ledger, no split). Standalone\n(no ledger injected), it appends a tagged Deposit to commerce's own datastore.\n\n\"Starter credit\" is not a special case — it is a parameterized call with\ntag=credit.StarterCreditTag, amountCents=credit.StarterCreditCents, and\nexpiresAt=now+credit.StarterCreditDays; the billing/credit constants are the\ndata a caller passes, not a second code path.\n\nIdempotent on idempotencyKey: the same key credits AT MOST ONCE.",
+	})
+	zip.Describe("POST /credits", zip.Doc{
+		Description: "Creates a new credit grant for a user.\n\n\tPOST /v1/billing/credits",
+	})
+	zip.Describe("POST /credits/:id/void", zip.Doc{
+		Description: "Voids a specific credit grant, making it unusable.\n\n\tPOST /v1/billing/credits/:id/void",
+	})
+	zip.Describe("POST /customer-balance/adjustments", zip.Doc{
+		Description: "Manually adjusts a customer's balance.\n\n\tPOST /v1/billing/customer-balance/adjustments",
+	})
+	zip.Describe("POST /cycle/run", zip.Doc{
+		Description: "Processes all subscriptions whose current period has ended\nfor the request's organization. It generates invoices and attempts collection\nfor each due subscription.\n\n\tPOST /v1/billing/cycle/run",
+	})
+	zip.Describe("POST /cycle/run-all", zip.Doc{
+		Description: "Iterates every organization and processes due\nsubscriptions across all of them. This is intended for the platform\nscheduler to invoke on a recurring basis.\n\n\tPOST /v1/billing/cycle/run-all",
+	})
+	zip.Describe("POST /cycle/run-user", zip.Doc{
+		Description: "Processes due subscriptions for a single user within the\nrequest's organization.\n\n\tPOST /v1/billing/cycle/run-user",
+	})
+	zip.Describe("POST /deposit", zip.Doc{
+		Description: "Creates a deposit (credit) transaction for an IAM user.\n\n\tPOST /v1/billing/deposit\n\nUsed by internal services to add funds to a user's account (payment\nprocessor settlement, manual credit, promotional grants, etc.).",
+	})
+	zip.Describe("POST /husd/migrate", zip.Doc{
+		Description: "Moves every org's existing DB-ledger balance onto chain with zero\ndrift (one-time). Dry-run by default (reports the snapshot + reconcile without\nminting); pass ?execute=true to mint. Platform-only.\n\n\tPOST /v1/billing/husd/migrate?execute=true",
+	})
+	zip.Describe("POST /husd/settle", zip.Doc{
+		Description: "Sweeps every org's on-chain drift back to the treasury (metered\nusage settled org→treasury). Platform-only, CronJob-driven. Idempotent\n(self-correcting drift). Returns the per-org settlement outcomes.\n\n\tPOST /v1/billing/husd/settle",
+	})
+	zip.Describe("POST /husd/sync", zip.Doc{
+		Description: "Runs one indexer pass — the backfill + reconcile safety net behind the\nsynchronous mint-time projection. Driven by an external CronJob (mirrors the\ncontributor-payout execute endpoint). Platform-only (touches the money ledger).\n\n\tPOST /v1/billing/husd/sync",
+	})
+	zip.Describe("POST /mode", zip.Doc{
+		Description: "Toggles the org's live flag (org.Live) and its test-mode view.\norg.Live marks transactions Test=true and is the FALLBACK Square-environment\nsignal: when the deployment does NOT set SQUARE_ENVIRONMENT, a test org uses\nSquare sandbox and a live org uses production (via org.TestMode).\nWhen the deployment DOES set SQUARE_ENVIRONMENT (the per-env authority:\nmainnet=production, testnet/devnet=sandbox), that env governs which Square\nenvironment is charged regardless of this flag — on mainnet there is no\nsandbox charge. Admin-only — a user must not be able to move their own org to\nsandbox to dodge real charges.\n\n\tPOST /v1/billing/mode   { testMode: bool }",
+	})
+	zip.Describe("POST /payouts", zip.Doc{
+		Description: "Creates a new outbound payout.\n\n\tPOST /v1/billing/payouts\n\nIT IS IDEMPOTENT, and the guard is CLAIMED before anything happens. A payout\nis money leaving with no natural backstop — no nonce is consumed, no card\nrefuses the second charge — so a retried request, a double-clicked console,\nor a client that resends because it never saw the response is a SECOND\nPAYOUT unless something says otherwise. The claim is one store statement that\nexactly one of N concurrent callers wins; a guard read and then written would\nlet all N through, which is the same duplicate disbursement wearing a lock.\n\nThe claim also carries a DIGEST of the request, so one key used for a\nDIFFERENT payout is refused (409) rather than answered with the first\npayout's receipt. That is the same answer the screen door gives to the same\nmistake, from the same predicate — two doors must not disagree about what an\nidempotency key means.\n\nIt fails CLOSED. If the guard store cannot tell a first attempt from a retry,\nthe payout is refused: that costs the caller a retry, while proceeding costs\nthe merchant a duplicate disbursement.\n\nTHE ORDER IS THE MONEY. Claim, judge, WITHHOLD, write the row, seal — the\nreserve's share is taken at the disbursement and for exactly what leaves, and\nif the row fails to write the share is returned. A judgement takes nothing.",
+	})
+	zip.Describe("POST /payouts/:id/cancel", zip.Doc{
+		Description: "Cancels a pending payout.\n\n\tPOST /v1/billing/payouts/:id/cancel",
+	})
+	zip.Describe("POST /recharge/run-all", zip.Doc{
+		Description: "Iterates every organization and, for those with\nauto-recharge enabled whose available balance is below the threshold, charges\nthe default payment method and credits the balance. Intended to be invoked on\na recurring schedule (CronJob) by the platform.\n\n\tPOST /v1/billing/recharge/run-all",
+	})
+	zip.Describe("POST /reconciliation/match", zip.Doc{
+		Description: "Matches an incoming bank transfer by reference\nand creates a balance transaction for the customer.\n\n\tPOST /v1/billing/bank-transfer-instructions/reconciliation/match",
+	})
+	zip.Describe("POST /refund", zip.Doc{
+		Description: "Creates a deposit tagged \"refund\" to REVERSE a prior charge, correcting\nan overcharge. The metadata links back to the original transaction.\n\nH1 (money-correctness). Previously this minted an arbitrary, uncapped credit\nagainst an UNVALIDATED originalTransactionId — a refund could exceed the\noriginal, name a non-existent or foreign transaction, refund a credit (doubling\na deposit), or be replayed to double-refund. It is now fully validated and\nidempotent: the original MUST exist in THIS org's ledger, be a charge\n(Withdraw) for the SAME subject, and bound the amount (refund ≤ original); and\nthere is AT MOST ONE refund per original transaction (keyed idempotency), so a\nretry replays and any second refund of the same charge is refused. Fail-closed\nthroughout.\n\n\tPOST /v1/billing/refund",
 	})
 	zip.Describe("POST /v1/billing/risk/controls", zip.Doc{
 		Description: "Places a reserve, a payout hold or a block on one subject.\n\nPlacing is idempotent while a control is in force: a monitor that runs every\ncycle does not accumulate a hundred identical holds on one merchant, and\nreleasing takes one act rather than a hundred.",
@@ -170,5 +452,149 @@ func init() {
 			"riskScreenOut.score":      "Score is the scoring plane's weight of evidence in [0,1].",
 			"riskScreenOut.shadow":     "Shadow marks a judgement that was recorded and deliberately not enforced.",
 		},
+	})
+	zip.Describe("POST billing/accounts", zip.Doc{
+		Description: "Is a no-op stub. Billing accounts are provisioned via\nIAM/console org creation; Commerce does not manage org lifecycle.\nReturns 501 to signal the caller to redirect to the org provisioning flow.\n\n\tPOST /v1/billing/accounts",
+	})
+	zip.Describe("POST billing/accounts/:id/members", zip.Doc{
+		Description: "Is a stub. Member management is done via IAM.\n\n\tPOST /v1/billing/accounts/:id/members",
+	})
+	zip.Describe("POST billing/alerts", zip.Doc{
+		Description: "Creates a spend alert / cap. UserId is optional (an org-wide\nor project/service scope cap has none). At least one limit must be meaningful:\na Threshold>0 (spend cap) or a RateLimitRpm>0 (rate limit).\n\n\tPOST /v1/billing/alerts",
+	})
+	zip.Describe("POST billing/allotment/grant", zip.Doc{
+		Description: "Grants the calling/target user's plan-included monthly usage\ncredit for the current UTC month, idempotently.\n\n\tPOST /v1/billing/allotment/grant   { \"user\": \"hanzo/alice\", \"plan\": \"pro\" }\n\nThe credit lands as an expiring balance deposit, so the gateway prepaid\nbalance gate (available > 0) passes while the tenant is within allotment and\nfails closed once both the included credit and any purchased balance are\nexhausted. Admin token required.",
+	})
+	zip.Describe("POST billing/allotment/run", zip.Doc{
+		Description: "Grants the monthly included allotment to every user with an\nactive/trialing subscription in the request's organization, for the current\nUTC month. Idempotent per (user, period). Intended for the platform\nscheduler to invoke at period start (alongside the billing cycle).\n\n\tPOST /v1/billing/allotment/run",
+	})
+	zip.Describe("POST billing/bank-transfer-instructions", zip.Doc{
+		Description: "Creates bank transfer details for a customer.\n\n\tPOST /v1/billing/bank-transfer-instructions",
+	})
+	zip.Describe("POST billing/credit-notes", zip.Doc{
+		Description: "Creates a credit note against an invoice.\n\n\tPOST /v1/billing/credit-notes",
+	})
+	zip.Describe("POST billing/credit-notes/:id/void", zip.Doc{
+		Description: "Voids a credit note.\n\n\tPOST /v1/billing/credit-notes/:id/void",
+	})
+	zip.Describe("POST billing/customers/:id/default-payment-method", zip.Doc{
+		Description: "Sets the default payment method for a customer.\n\n\tPOST /v1/billing/customers/:id/default-payment-method",
+	})
+	zip.Describe("POST billing/disputes/:id/close", zip.Doc{
+		Description: "Closes a dispute.\n\n\tPOST /v1/billing/disputes/:id/close",
+	})
+	zip.Describe("POST billing/gpu/charge", zip.Doc{
+		Description: "Debits a GPU charge from PREPAID real money only. It is the ONLY\ncommerce write that records a \"gpu\"-tagged withdrawal, and it is fail-closed:\n\n\t\tPOST /v1/billing/gpu/charge  { user, amountCents, currency?, requestId?, tag? }\n\n\t  - 402 {code: card_required}         — no chargeable card on file.\n\t  - 402 {code: insufficient_prepaid}  — prepaid real money can't cover it\n\t    (credits are NEVER consulted or consumed).\n\t  - 201 {transactionId, prepaidBalance, ...} on success.\n\nAdmin/service token (mounted on the admin group) — called by the cloud GPU\nlaunch/meter path, never the browser.",
+	})
+	zip.Describe("POST billing/invoice-preview", zip.Doc{
+		Description: "Calculates an invoice preview: usage x pricing - credits.\n\n\tPOST /v1/billing/invoice-preview",
+	})
+	zip.Describe("POST billing/invoices", zip.Doc{
+		Description: "Creates a new draft billing invoice.\n\n\tPOST /v1/billing/invoices",
+	})
+	zip.Describe("POST billing/invoices/:id/apply-discount", zip.Doc{
+		Description: "Applies a discount to a draft invoice and recalculates\nthe amount due.\n\n\tPOST /v1/billing/invoices/:id/apply-discount",
+	})
+	zip.Describe("POST billing/invoices/:id/calculate-tax", zip.Doc{
+		Description: "Computes tax for an invoice based on a customer address\nand updates the invoice with the resulting tax lines.\n\n\tPOST /v1/billing/invoices/:id/calculate-tax?country=...&state=...",
+	})
+	zip.Describe("POST billing/invoices/:id/finalize", zip.Doc{
+		Description: "Transitions an invoice from draft to open.\n\n\tPOST /v1/billing/invoices/:id/finalize",
+	})
+	zip.Describe("POST billing/invoices/:id/line-items", zip.Doc{
+		Description: "Appends a line item to a draft invoice and recalculates\nthe subtotal.\n\n\tPOST /v1/billing/invoices/:id/line-items",
+	})
+	zip.Describe("POST billing/invoices/:id/pay", zip.Doc{
+		Description: "Attempts to collect payment on an open invoice.\n\n\tPOST /v1/billing/invoices/:id/pay",
+	})
+	zip.Describe("POST billing/invoices/:id/void", zip.Doc{
+		Description: "Voids a draft or open invoice.\n\n\tPOST /v1/billing/invoices/:id/void",
+	})
+	zip.Describe("POST billing/meter-events", zip.Doc{
+		Description: "Records one or more meter events (batch up to 100).\n\n\tPOST /v1/billing/meter-events",
+	})
+	zip.Describe("POST billing/meters", zip.Doc{
+		Description: "Creates a new usage meter definition.\n\n\tPOST /v1/billing/meters",
+	})
+	zip.Describe("POST billing/methods", zip.Doc{
+		Description: "Creates and attaches a payment method to a customer.\n\n\tPOST /v1/billing/methods",
+	})
+	zip.Describe("POST billing/payment-intents", zip.Doc{
+		Description: "Creates a new payment intent.\n\n\tPOST /v1/billing/payment-intents",
+	})
+	zip.Describe("POST billing/payment-intents/:id/cancel", zip.Doc{
+		Description: "Cancels a payment intent.\n\n\tPOST /v1/billing/payment-intents/:id/cancel",
+	})
+	zip.Describe("POST billing/payment-intents/:id/capture", zip.Doc{
+		Description: "Captures a previously authorized payment intent.\n\n\tPOST /v1/billing/payment-intents/:id/capture",
+	})
+	zip.Describe("POST billing/payment-intents/:id/confirm", zip.Doc{
+		Description: "Confirms a payment intent.\n\n\tPOST /v1/billing/payment-intents/:id/confirm",
+	})
+	zip.Describe("POST billing/pricing-rules", zip.Doc{
+		Description: "Creates a new pricing rule for a meter.\n\n\tPOST /v1/billing/pricing-rules",
+	})
+	zip.Describe("POST billing/refunds", zip.Doc{
+		Description: "Creates a full or partial refund.\n\n\tPOST /v1/billing/refunds",
+	})
+	zip.Describe("POST billing/sbom", zip.Doc{
+		Description: "Stores the normalized SBOM for a built image.\n\n\tPOST /v1/billing/sbom\n\nCalled by the arcd build pipeline after `docker push`: it runs\n`syft <image> -o cyclonedx-json`, normalizes the component graph to\n{purl, name, ecosystem, version, scope}, and POSTs it here keyed by the\nimmutable image digest. Idempotent on ImageDigest — re-ingesting the same\nimage updates the record in place.",
+	})
+	zip.Describe("POST billing/setup-intents", zip.Doc{
+		Description: "Creates a new setup intent for saving a payment method.\n\n\tPOST /v1/billing/setup-intents",
+	})
+	zip.Describe("POST billing/setup-intents/:id/cancel", zip.Doc{
+		Description: "Cancels a setup intent.\n\n\tPOST /v1/billing/setup-intents/:id/cancel",
+	})
+	zip.Describe("POST billing/setup-intents/:id/confirm", zip.Doc{
+		Description: "Confirms a setup intent, saving the payment method.\n\n\tPOST /v1/billing/setup-intents/:id/confirm",
+	})
+	zip.Describe("POST billing/subscribe/card", zip.Doc{
+		Description: "Vaults a Square card nonce as a reusable card-on-file, charges\nit for the plan's FIRST period at the SERVER-AUTHORITATIVE catalog price, and\ncreates the subscription — all server-side, in one transaction of intent. The\nsettled charge IS the mint authority (mirrors topup_token's mintauth.WithAuthorized\nrationale), so it creates the paid-tier subscription WITHOUT the\nCreateBillingSubscription C1-a mint gate (which forbids a self-serve paid tier\nwith zero payment). The plan's INCLUDED monthly credits flow through the existing\nallotment path unchanged; the plan FEE is NOT credited to the spendable AI-credit\nwallet (a subscription is not a top-up).\n\n\tPOST /v1/billing/subscribe/card\n\nBody: { sourceId, planId, userId?, quantity?, currency? } — NO client amount:\nthe price is the plan's catalog price, always.\nHeader (optional): X-Idempotency-Key — a retry/double-submit with the same key\n(or, absent a key, the same single-use nonce) never double-charges: it replays\nthe first result.\nReturns: { subscriptionId, invoiceId, planId, amountCents, currency, status }",
+	})
+	zip.Describe("POST billing/subscription-items", zip.Doc{
+		Description: "Adds an item to a subscription.\n\n\tPOST /v1/billing/subscription-items",
+	})
+	zip.Describe("POST billing/subscription-schedules", zip.Doc{
+		Description: "Creates a new subscription schedule.\n\n\tPOST /v1/billing/subscription-schedules",
+	})
+	zip.Describe("POST billing/subscription-schedules/:id/cancel", zip.Doc{
+		Description: "Cancels a subscription schedule.\n\n\tPOST /v1/billing/subscription-schedules/:id/cancel",
+	})
+	zip.Describe("POST billing/subscription-schedules/:id/release", zip.Doc{
+		Description: "Releases a subscription schedule.\n\n\tPOST /v1/billing/subscription-schedules/:id/release",
+	})
+	zip.Describe("POST billing/subscriptions", zip.Doc{
+		Description: "Creates a new subscription and starts the billing lifecycle.\n\n\tPOST /v1/billing/subscriptions",
+	})
+	zip.Describe("POST billing/subscriptions/:id/cancel", zip.Doc{
+		Description: "Cancels a subscription.\n\n\tPOST /v1/billing/subscriptions/:id/cancel",
+	})
+	zip.Describe("POST billing/subscriptions/:id/reactivate", zip.Doc{
+		Description: "Reactivates a canceled subscription.\n\n\tPOST /v1/billing/subscriptions/:id/reactivate",
+	})
+	zip.Describe("POST billing/subscriptions/:id/renew", zip.Doc{
+		Description: "Manually triggers a billing cycle renewal.\nNormally this would be automated by Temporal, but this endpoint allows\nmanual triggering for testing and for deployments without Temporal.\n\n\tPOST /v1/billing/subscriptions/:id/renew",
+	})
+	zip.Describe("POST billing/topup", zip.Doc{
+		Description: "Charges a saved payment method and credits the user's balance.\n\n\tPOST /v1/billing/topup\n\nBody: { userId, paymentMethodId, amountCents, currency? }\nReturns: { transactionId, balanceCents, status }",
+	})
+	zip.Describe("POST billing/topup/token", zip.Doc{
+		Description: "Charges a Square Web Payments SDK nonce and credits the org's\ncanonical balance. Use this for one-time card top-ups without saving a payment\nmethod first — the cold-customer \"add credits\" path.\n\n\tPOST /v1/billing/topup/token\n\nBody: { sourceId, amountCents, currency? }\nHeader (optional): X-Idempotency-Key — a retry/double-submit with the same key\n(or, absent a key, the same (subject, amount) inside a 15-minute window) never\ndouble-charges or double-credits; it replays the first result. The same key is\nforwarded to Square, so the charge is exactly-once at the processor even if the\nlocal guard store is down.\nReturns: { transactionId, balanceCents, status }",
+	})
+	zip.Describe("POST billing/usage", zip.Doc{
+		Description: "Records an API usage event as a Withdraw transaction.\n\n\tPOST /v1/billing/usage\n\nCreates a withdraw transaction deducting the cost from the user's balance.",
+	})
+	zip.Describe("POST billing/withdraw", zip.Doc{
+		Description: "Creates a withdrawal transaction for an IAM user.\n\n\tPOST /v1/billing/withdraw\n\nUsed when a user explicitly moves funds out of their Commerce balance\n(e.g. funding a bot wallet, manual withdrawal). Non-admin callers may\nonly withdraw from their own account; admin callers may withdraw on\nbehalf of any user.\n\nFails with 402 if the user has insufficient available balance.",
+	})
+	zip.Describe("POST billing/zap", zip.Doc{
+		Description: "Is the single ZAP-over-HTTP endpoint for billing.",
+	})
+	zip.Describe("POST dns/usage", zip.Doc{
+		Description: "Records a batch of DNS query usage for a zone owner.\nThe zone's owner is looked up via the user field. Usage is checked against\nthe plan's daily query limit.\n\n\tPOST /v1/dns/usage",
+	})
+	zip.Describe("PUT billing/recharge", zip.Doc{
+		Description: "Upserts the org's auto-recharge config.\n\n\tPUT /v1/billing/recharge\n\nEnabling requires a default payment method on file (the card that will be\ncharged off-session when the balance runs low).",
 	})
 }

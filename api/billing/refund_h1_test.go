@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/zap-proto/fiber/v3"
 	"github.com/zap-proto/zip"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -19,12 +20,12 @@ import (
 	"github.com/hanzoai/commerce/util/test/ae"
 )
 
-// noDeadline turns off fiber Test's 1-second wall clock. It defaults to 1s, so
-// on a loaded runner a money gate fails for the runner's reason and not the
-// code's — and a gate that goes red at random is a gate people learn to ignore.
-// A handler that genuinely wedges is still caught, by go test's own timeout,
-// with a goroutine dump that says far more than "i/o timeout".
-const noDeadline = -1
+// noDeadline turns fiber Test's wall clock off (0 disables it). It defaults to
+// one second, so on a loaded runner a money gate fails for the runner's reason
+// and not the code's — and a gate that goes red at random is a gate people
+// learn to ignore. A handler that genuinely wedges is still caught, by go
+// test's own timeout, whose goroutine dump says far more than "i/o timeout".
+var noDeadline = fiber.TestConfig{Timeout: 0, FailOnTimeout: false}
 
 // invokeMoneyHandler drives a single billing handler directly with a real
 // org + datastore context and an optional header set — the harness for the H1
