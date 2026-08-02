@@ -46,9 +46,16 @@ ARG PAY_REPO=https://github.com/hanzoai/pay.git
 ARG PAY_VERSION=v0.1.2
 WORKDIR /pay
 RUN apk add --no-cache git && corepack enable pnpm
-# hanzoai/pay is private. Mount the netrc build secret so git over HTTPS
-# authenticates; the secret never lands in a layer.
-RUN --mount=type=secret,id=netrc,target=/root/.netrc \
+# hanzoai/pay is private. The credential arrives as the `gh_token` build secret
+# -- the id the CI reusable actually passes (`--secret id=gh_token,env=GIT_TOKEN`).
+# It used to mount `id=netrc`, which nothing supplies, so /root/.netrc never
+# existed and git fell through to prompting:
+#   fatal: could not read Username for 'https://github.com': No such device or address
+# The secret is scoped to this RUN and never lands in a layer.
+RUN --mount=type=secret,id=gh_token \
+    if [ -s /run/secrets/gh_token ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
+    fi; \
     git clone --depth=1 --branch=${PAY_VERSION} ${PAY_REPO} /pay
 RUN pnpm install --frozen-lockfile && pnpm build
 
@@ -71,8 +78,11 @@ WORKDIR /billing
 # python3/make/g++ needed for node-gyp on arm64 where bufferutil/utf-8-validate
 # have no prebuilt aarch64 binary and fall back to source compile.
 RUN apk add --no-cache git python3 make g++ && corepack enable && corepack prepare pnpm@9.15.4 --activate
-# hanzoai/billing is private — mount the netrc build secret for git over HTTPS.
-RUN --mount=type=secret,id=netrc,target=/root/.netrc \
+# hanzoai/billing is private — same `gh_token` build secret as the pay stage.
+RUN --mount=type=secret,id=gh_token \
+    if [ -s /run/secrets/gh_token ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
+    fi; \
     git clone --depth=1 --branch=${BILLING_VERSION} ${BILLING_REPO} /billing
 RUN pnpm install --frozen-lockfile && pnpm build
 
@@ -108,7 +118,10 @@ ENV GOPRIVATE=github.com/hanzoai/* \
     GOTOOLCHAIN=local \
     GOWORK=off
 RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=secret,id=netrc,target=/root/.netrc \
+    --mount=type=secret,id=gh_token \
+    if [ -s /run/secrets/gh_token ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
+    fi; \
     go mod download
 
 # Copy source code (note: api/billing/plans/ is gitignored — the pre-build
@@ -176,7 +189,10 @@ ARG VERSION=""
 # build add the correct Linux hashes is the robust fix.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=secret,id=netrc,target=/root/.netrc \
+    --mount=type=secret,id=gh_token \
+    if [ -s /run/secrets/gh_token ]; then \
+      git config --global url."https://x-access-token:$(cat /run/secrets/gh_token)@github.com/".insteadOf "https://github.com/"; \
+    fi; \
     CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} \
     CGO_CFLAGS="-D_LARGEFILE64_SOURCE -D_GNU_SOURCE" \
     VER="${VERSION#v}" && \
