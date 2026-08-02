@@ -24,13 +24,14 @@ import (
 // the seed writes and resolveSubscriptionPlan charges) fails CI loudly.
 // NOTE: the vendored plans/package.json is gitignored (a broad package.json
 // ignore), so it is NOT the pin — this const + the digest test are.
-const PinnedPlansVersion = "1.4.4"
+const PinnedPlansVersion = "1.4.8"
 
 // The display envelope (features/bundles/includedIn/limits) is the MODEL's, not
 // this package's: plan.Plan carries those fields and packs them itself. This file
 // used to declare a private copy plus its own pack/unpack pair, which is why the
 // admin CRUD could not write them — the shape lived here, where the admin handler
 // could not reach it.
+
 // SeedRows projects the embedded plan catalog onto authority model rows. Typed
 // money fields (Price/PriceAnnual/Category/ContactSales/PerSeat/…) become
 // columns; the rich display envelope rides Metadata. This is the ONE seed
