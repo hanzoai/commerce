@@ -2,6 +2,7 @@ package plan
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/hanzoai/commerce/datastore"
@@ -107,6 +108,22 @@ type Plan struct {
 	ContactSales bool `json:"contactSales,omitempty"`
 	// Popular flags the highlighted tier within a category (display only).
 	Popular bool `json:"popular,omitempty"`
+
+	// AdminEdited marks a row whose CURRENT VALUE WAS DECIDED BY A HUMAN through
+	// the SuperAdmin CRUD. It is the discriminator Managed could never be.
+	//
+	// Managed is set by BOTH the seed and the admin CRUD, so it carries two
+	// different facts under one name and the seed cannot tell its own prior
+	// output from a deliberate price edit. The consequence was that the seed
+	// could never correct itself: once a row existed it was frozen forever, so
+	// publishing a new catalog created the plans that were missing and left every
+	// plan that had changed at its old price — a catalog half-new and half-stale,
+	// which is worse than either.
+	//
+	// Only api/plan's Create/Update sets this. Seed reconciles anything else to
+	// the published catalog, which is exactly the rule everyone assumed already
+	// held: the package is the source, an admin edit is an override.
+	AdminEdited bool `json:"adminEdited,omitempty"`
 
 	// Managed marks a row OWNED by the seed or the SuperAdmin CRUD (authoritative).
 	// The corrective boot seed force-corrects UNMANAGED rows — accidental partials
@@ -303,23 +320,31 @@ func Query(db *datastore.Datastore) datastore.Query {
 	return db.Query("plan")
 }
 
-// Seed reconciles the plan authority to the given embed rows. It is safe to run
+// Seed reconciles the plan authority to the published catalog. It is safe to run
 // on EVERY boot (cheap: one point query per row; writes only when needed) and is
-// the ONE seeder — the count-gated variant is gone, because a count gate makes a
-// fixed re-seed a no-op that keeps serving bad rows.
+// the ONE seeder.
 //
-// Per embed row:
-//   - MISSING          → create it, Managed=true.
-//   - present, UNMANAGED → FORCE-CORRECT its typed money fields + envelope to the
-//     embed and mark Managed=true. An unmanaged row was written by a
-//     subscription-flow path (bundle expansion / lazy resolve) and may be partial
-//     or wrong (Red: bundle wrote Price=0) — this is the corrective repair.
-//   - present, MANAGED  → LEAVE. Seed/admin already own it, so an admin price edit
-//     is preserved (the whole point of the editable authority).
+// The rule is simply: the published catalog decides, an admin edit overrides.
 //
-// Idempotent: after the first corrective pass every row is Managed, so later runs
-// write nothing. seedMu makes the per-slug check-then-write atomic in-process.
-// Returns (created, corrected).
+//   - MISSING            → create it.
+//   - present, ADMIN-EDITED → LEAVE. A human decided this value; the catalog does
+//     not get to overwrite it. That is the whole point of an editable authority.
+//   - present, otherwise → RECONCILE its typed money fields + display envelope to
+//     the catalog. This covers both a row the seed itself wrote earlier (which it
+//     previously could never correct — see AdminEdited) and a partial row written
+//     by a subscription-flow path such as the bundle expansion, which once wrote
+//     Price=0 and under-charged.
+//
+// Rows the catalog NO LONGER publishes are ARCHIVED, not deleted and not left
+// listed. A tier that stops being published must stop being sold, or retiring it
+// requires a second manual step that is easy to forget and easy to get wrong;
+// archiving keeps the row resolvable for invoices and renewals that recorded the
+// slug. An admin-edited row is never archived this way — a plan a human added on
+// purpose is not "missing from the catalog", it is theirs.
+//
+// Idempotent: a second run finds every row already equal to the catalog and
+// writes nothing. seedMu makes the per-slug check-then-write atomic in-process.
+// Returns (created, corrected) where corrected counts reconciles + archives.
 func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err error) {
 	seedMu.Lock()
 	defer seedMu.Unlock()
@@ -333,8 +358,11 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 			return created, corrected, qerr
 		}
 		if ok {
-			if existing.Managed {
+			if existing.AdminEdited {
 				continue
+			}
+			if planEqual(existing, r) {
+				continue // already the published value — write nothing
 			}
 			copyInto(existing, r)
 			existing.Managed = true
@@ -352,7 +380,64 @@ func Seed(db *datastore.Datastore, rows []*Plan) (created, corrected int, err er
 		}
 		created++
 	}
+
+	// Retire what the catalog stopped publishing.
+	published := make(map[string]bool, len(rows))
+	for _, r := range rows {
+		if r != nil {
+			published[r.Slug] = true
+		}
+	}
+	var all []*Plan
+	if _, qerr := Query(db).GetAll(&all); qerr != nil {
+		return created, corrected, qerr
+	}
+	for _, row := range all {
+		if row.AdminEdited || published[row.Slug] || !row.Listed() {
+			continue
+		}
+		// Re-load through the same point query the reconcile above uses. A row
+		// that arrived via GetAll is a VALUE — it carries no datastore binding,
+		// so Update on it writes nowhere and reports no error.
+		existing := New(db)
+		ok, qerr := existing.Query().Filter("Slug=", row.Slug).Get()
+		if qerr != nil {
+			return created, corrected, qerr
+		}
+		if !ok {
+			continue
+		}
+		existing.Status = StatusArchived
+		if uerr := existing.Update(); uerr != nil {
+			return created, corrected, uerr
+		}
+		corrected++
+	}
 	return created, corrected, nil
+}
+
+// planEqual reports whether a stored row already carries the catalog's values, so
+// a reconciling boot writes nothing when there is nothing to change. Compares the
+// fields copyInto actually sets — money, identity and the display envelope.
+func planEqual(a, b *Plan) bool {
+	if a.Name != b.Name || a.Description != b.Description || a.Category != b.Category ||
+		a.Price != b.Price || a.PriceAnnual != b.PriceAnnual || a.Currency != b.Currency ||
+		a.Interval != b.Interval || a.IntervalCount != b.IntervalCount ||
+		a.TrialPeriodDays != b.TrialPeriodDays || a.PerSeat != b.PerSeat ||
+		a.ContactSales != b.ContactSales || a.Popular != b.Popular {
+		return false
+	}
+	return slices.Equal(a.Features, b.Features) &&
+		slices.Equal(a.Bundles, b.Bundles) &&
+		slices.Equal(a.IncludedIn, b.IncludedIn) &&
+		limitsEqual(a.Limits, b.Limits)
+}
+
+func limitsEqual(a, b *Limits) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // copyInto copies the seed fields from src onto the fresh, db-bound dst so the

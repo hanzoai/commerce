@@ -96,8 +96,9 @@ func TestSeed_CorrectsUnmanagedPartialRow(t *testing.T) {
 	}
 }
 
-// TestSeed_PreservesManagedEdit: an admin price edit (Managed) survives a re-seed.
-func TestSeed_PreservesManagedEdit(t *testing.T) {
+// TestSeed_PreservesAdminEdit: a price a HUMAN set through the admin CRUD
+// survives a re-seed. The published catalog decides; an admin edit overrides.
+func TestSeed_PreservesAdminEdit(t *testing.T) {
 	c := ae.NewContext()
 	defer c.Close()
 	db := sysDB(c)
@@ -109,7 +110,10 @@ func TestSeed_PreservesManagedEdit(t *testing.T) {
 	if ok, _ := p.Query().Filter("Slug=", "pro").Get(); !ok {
 		t.Fatal("pro missing")
 	}
-	p.Price = 9900 // admin edit; row stays Managed
+	// Modelled the way api/plan's UpdateEntry writes it — the flag is what makes
+	// this an override rather than just a mutated row.
+	p.Price = 9900
+	p.AdminEdited = true
 	if err := p.Update(); err != nil {
 		t.Fatalf("edit: %v", err)
 	}
@@ -119,14 +123,14 @@ func TestSeed_PreservesManagedEdit(t *testing.T) {
 		t.Fatalf("re-seed: %v", err)
 	}
 	if corrected != 0 {
-		t.Fatalf("re-seed corrected=%d, want 0 (managed edit preserved)", corrected)
+		t.Fatalf("re-seed corrected=%d, want 0 (admin edit preserved)", corrected)
 	}
 	got := New(db)
 	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
 		t.Fatal("pro gone")
 	}
 	if got.Price != 9900 {
-		t.Fatalf("re-seed CLOBBERED managed edit: pro price=%d, want 9900", got.Price)
+		t.Fatalf("re-seed CLOBBERED an admin edit: pro price=%d, want 9900", got.Price)
 	}
 }
 
@@ -166,5 +170,121 @@ func TestSeed_ConcurrentNoDuplicate(t *testing.T) {
 		if len(got) != 1 {
 			t.Fatalf("slug %q has %d rows, want 1 (no duplicate)", r.Slug, len(got))
 		}
+	}
+}
+
+
+// The seed must be able to correct ITS OWN prior output. This is the property
+// Managed made impossible: it was set by the seed and by the admin CRUD alike, so
+// once a row existed nothing could tell a stale seeded price from a deliberate
+// one, and publishing a new catalog left every changed plan at its old price
+// while creating the new ones beside them — half-new, half-stale.
+func TestSeed_ReconcilesItsOwnRowsToANewCatalog(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// The catalog reprices pro. Nobody edited the row by hand.
+	next := sampleRows()
+	for _, r := range next {
+		if r.Slug == "pro" {
+			r.Price = 4900
+		}
+	}
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected != 1 {
+		t.Fatalf("re-seed corrected=%d, want 1 (the repriced row)", corrected)
+	}
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "pro").Get(); !ok {
+		t.Fatal("pro gone")
+	}
+	if int64(got.Price) != 4900 {
+		t.Fatalf("pro price=%d after the catalog repriced it, want 4900", got.Price)
+	}
+
+	// And it is genuinely idempotent: nothing left to change, nothing written.
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("third seed: %v", err)
+	} else if corrected != 0 {
+		t.Fatalf("third seed corrected=%d, want 0 (idempotent)", corrected)
+	}
+}
+
+// A plan the catalog stops publishing is ARCHIVED on the next boot — not deleted,
+// and not left on sale. Otherwise retiring a tier needs a second manual step, and
+// the tier goes on selling until someone remembers to take it.
+func TestSeed_ArchivesWhatTheCatalogStoppedPublishing(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// The next catalog drops every row but the first.
+	next := sampleRows()[:1]
+	if _, _, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	}
+
+	var all []*Plan
+	if _, err := Query(db).GetAll(&all); err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	kept := next[0].Slug
+	for _, p := range all {
+		if p.Slug == kept {
+			if !p.Listed() {
+				t.Fatalf("still-published %q was archived", p.Slug)
+			}
+			continue
+		}
+		if p.Listed() {
+			t.Errorf("unpublished %q is still listed", p.Slug)
+		}
+		// The ROW SURVIVES — an invoice that recorded the slug must still resolve.
+		if p.Price == 0 && p.Name == "" {
+			t.Errorf("unpublished %q was destroyed rather than archived", p.Slug)
+		}
+	}
+}
+
+// An admin-created plan is not "missing from the catalog" — it is theirs, and the
+// archive sweep must leave it alone.
+func TestSeed_DoesNotArchiveAnAdminsOwnPlan(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	mine := New(db)
+	mine.Slug, mine.Name, mine.Category, mine.Price = "bespoke", "Bespoke", "personal", 12345
+	mine.AdminEdited, mine.Managed = true, true
+	if err := mine.Create(); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if _, _, err := Seed(db, sampleRows()); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	}
+
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", "bespoke").Get(); !ok {
+		t.Fatal("admin plan gone")
+	}
+	if !got.Listed() {
+		t.Fatal("the seed archived a plan an admin created; it is not the catalog's to retire")
+	}
+	if int64(got.Price) != 12345 {
+		t.Fatalf("admin plan price=%d, want 12345 untouched", got.Price)
 	}
 }
