@@ -60,6 +60,19 @@ func AuthorizeMint(c *zip.Ctx) {
 //
 // Fail-closed: neither signal present → 403, handler not reached.
 func PlatformOnly() zip.Handler {
+	// The fiber-handler shape: continue by advancing fiber's own chain.
+	return func(c *zip.Ctx) error { return PlatformOnlyMW(func(c *zip.Ctx) error { return c.Next() })(c) }
+}
+
+// PlatformOnlyMW is the SAME decision in middleware shape, for zip's typed-op
+// path: an op's continuation is the `next` it is handed, not fiber's chain, so a
+// gate written only as a Handler would either skip the gate or skip the handler
+// when a typed op is registered through a gated router (zip.Router.OpScope).
+//
+// One decision, two shapes — deliberately not two copies. This is a money-mint
+// gate; a second implementation is a second thing to get wrong, and the failure
+// would be silent authorization rather than a compile error.
+func PlatformOnlyMW(next zip.Handler) zip.Handler {
 	return func(c *zip.Ctx) error {
 		if MayMintMoney(c) {
 			// Proven mint principal → authorize the ledger sink for this request,
@@ -67,7 +80,7 @@ func PlatformOnly() zip.Handler {
 			// credit-grants, payouts, cycle, auto-recharge, …) all mint without
 			// per-handler changes while org-admins are still 403'd above.
 			AuthorizeMint(c)
-			return c.Next()
+			return next(c)
 		}
 		return http.Fail(c, 403,
 			"This operation requires platform-administrator or internal-service credentials.",

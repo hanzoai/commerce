@@ -147,6 +147,22 @@ func (m *mintRouter) Use(handlers ...zip.Handler) zip.Router {
 
 func (m *mintRouter) Fiber() fiber.Router { return m.inner.Fiber() }
 
+// OpScope carries the mint gate down to TYPED ops, exactly as it is prepended to
+// untyped routes in add(). zip added this to Router in v1.18.x, and delegating
+// without the gate would register a money-mint op with NO authorization — zip's
+// own note calls that "a hole, not an inconvenience". Chained after the inner
+// scope's middleware so an outer gate still runs first.
+func (m *mintRouter) OpScope() zip.OpScope {
+	s := m.inner.OpScope()
+	if s.Middleware == nil {
+		s.Middleware = PlatformOnlyMW
+		return s
+	}
+	s.Middleware = zip.Chain(s.Middleware, PlatformOnlyMW)
+	return s
+}
+
+
 // groupPrefix reports the full prefix of r, read from the SAME value
 // fiber routes on (Group.Prefix, which fiber builds by joining parents). A root
 // app router has no prefix.
