@@ -171,17 +171,14 @@ func (m *mintRouter) OpScope() zip.OpScope {
 	return s
 }
 
-// gateMW is m.gate as middleware: the gate runs FIRST and calls through, which
-// is the same order the chainable methods produce by prepending it.
+// gateMW is the mint gate in middleware shape. It delegates to PlatformOnlyMW
+// rather than calling m.gate: m.gate is PlatformOnly, whose continuation is
+// c.Next() — fiber's chain — and on the typed-op path the handler is wrapped
+// INSIDE this middleware, not chained after it. c.Next() therefore finds nothing
+// to run, yields 404, and the gate reports that as an error, so an authorized
+// request to a typed mint op never reaches its handler.
 func (m *mintRouter) gateMW() zip.Middleware {
-	return func(next zip.Handler) zip.Handler {
-		return func(c *zip.Ctx) error {
-			if err := m.gate(c); err != nil {
-				return err
-			}
-			return next(c)
-		}
-	}
+	return PlatformOnlyMW
 }
 
 // MintOp declares a TYPED op on a mint router: gated and recorded, the same
