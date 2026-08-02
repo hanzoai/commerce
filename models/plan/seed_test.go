@@ -288,3 +288,50 @@ func TestSeed_DoesNotArchiveAnAdminsOwnPlan(t *testing.T) {
 		t.Fatalf("admin plan price=%d, want 12345 untouched", got.Price)
 	}
 }
+
+// limitsEqual must compare Limits BY VALUE. Every field is a *int, so `*a == *b`
+// compares ADDRESSES — two Limits decoded from the same JSON would read unequal,
+// and the seed would rewrite every row on every boot. The values would still be
+// right, so nothing would look broken; what breaks is `corrected` never reaching
+// zero, which is the only signal that says the catalog has converged.
+func TestLimitsEqual_ComparesValuesNotAddresses(t *testing.T) {
+	two, alsoTwo, three := 2, 2, 3
+	if !limitsEqual(&Limits{MinSeats: &two}, &Limits{MinSeats: &alsoTwo}) {
+		t.Fatal("equal values at different addresses read as unequal")
+	}
+	if limitsEqual(&Limits{MinSeats: &two}, &Limits{MinSeats: &three}) {
+		t.Fatal("different values read as equal")
+	}
+	if !limitsEqual(nil, nil) {
+		t.Fatal("both-absent must be equal")
+	}
+	if limitsEqual(&Limits{MinSeats: &two}, nil) {
+		t.Fatal("present and absent must differ")
+	}
+	// A field set on one side only is a difference, not a match.
+	if limitsEqual(&Limits{MinSeats: &two}, &Limits{}) {
+		t.Fatal("set-vs-unset field read as equal")
+	}
+}
+
+// And the whole point: a second boot against an unchanged catalog writes NOTHING,
+// including for rows that carry limits.
+func TestSeed_IdempotentWithLimits(t *testing.T) {
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	two := 2
+	rows := []*Plan{{Slug: "seat", Name: "Seat", Category: "team", Price: 2500, Limits: &Limits{MinSeats: &two}}}
+	if _, _, err := Seed(db, rows); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	// Fresh values at fresh addresses — exactly what a re-decoded catalog looks like.
+	twoAgain := 2
+	same := []*Plan{{Slug: "seat", Name: "Seat", Category: "team", Price: 2500, Limits: &Limits{MinSeats: &twoAgain}}}
+	if _, corrected, err := Seed(db, same); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected != 0 {
+		t.Fatalf("re-seed corrected=%d, want 0 — an unchanged catalog must write nothing", corrected)
+	}
+}

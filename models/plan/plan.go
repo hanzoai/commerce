@@ -433,7 +433,34 @@ func planEqual(a, b *Plan) bool {
 		limitsEqual(a.Limits, b.Limits)
 }
 
+// limitsEqual compares Limits BY VALUE.
+//
+// `*a == *b` is wrong here and quietly so: every field is a *int, and struct
+// equality compares pointer fields by ADDRESS. Two Limits decoded separately from
+// the same JSON hold equal numbers at different addresses, so the seed would find
+// every row unequal and rewrite all of them on every boot — values still correct,
+// but `corrected` never reaching zero, which is precisely the signal that tells
+// an operator the catalog has converged.
 func limitsEqual(a, b *Limits) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return eqInt(a.RequestsPerMinute, b.RequestsPerMinute) &&
+		eqInt(a.TokensPerMinute, b.TokensPerMinute) &&
+		eqInt(a.FreeCredit, b.FreeCredit) &&
+		eqInt(a.MaxMembers, b.MaxMembers) &&
+		eqInt(a.MinSeats, b.MinSeats) &&
+		eqInt(a.TeamGuests, b.TeamGuests) &&
+		eqInt(a.IncludedCreditUsd, b.IncludedCreditUsd) &&
+		eqInt(a.IncludedCloudCredits, b.IncludedCloudCredits) &&
+		eqInt(a.IncludedCloudCreditsPerUser, b.IncludedCloudCreditsPerUser) &&
+		eqInt(a.Zones, b.Zones) &&
+		eqInt(a.RecordsPerZone, b.RecordsPerZone) &&
+		eqInt(a.QueriesPerDay, b.QueriesPerDay)
+}
+
+// eqInt compares two optional ints by value; both-absent counts as equal.
+func eqInt(a, b *int) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
