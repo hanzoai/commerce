@@ -22,7 +22,7 @@ func TestPlansLoaded(t *testing.T) {
 	bySlug := indexBySlug(hanzoPlans)
 
 	// Core subscription plans that must exist regardless of catalog growth.
-	must := []string{"developer", "pro", "team", "enterprise"}
+	must := []string{"go", "dev", "pro", "max", "team", "enterprise"}
 	for _, slug := range must {
 		p, ok := bySlug[slug]
 		if !ok {
@@ -36,19 +36,45 @@ func TestPlansLoaded(t *testing.T) {
 		}
 	}
 
-	// Developer is free; Enterprise is a real paid plan; both have limits.
-	dev := bySlug["developer"]
-	if dev.Price != 0 {
-		t.Errorf("Developer price = %d cents, want 0", dev.Price)
+	// `go` is the entry rung and carries the entry rate ceilings; `enterprise` is
+	// priced by conversation, so it is the one row with a null price.
+	entry := bySlug["go"]
+	if entry.Price != 900 {
+		t.Errorf("Go price = %d cents, want 900", entry.Price)
 	}
-	if dev.Limits == nil {
-		t.Fatal("Developer plan should have limits")
+	if entry.Limits == nil {
+		t.Fatal("Go plan should have limits")
 	}
-	if dev.Limits.RequestsPerMinute == nil || *dev.Limits.RequestsPerMinute != 60 {
-		t.Error("Developer requestsPerMinute should be 60")
+	if entry.Limits.RequestsPerMinute == nil || *entry.Limits.RequestsPerMinute != 60 {
+		t.Error("Go requestsPerMinute should be 60")
 	}
-	if dev.Limits.TokensPerMinute == nil || *dev.Limits.TokensPerMinute != 100000 {
-		t.Error("Developer tokensPerMinute should be 100000")
+	if entry.Limits.TokensPerMinute == nil || *entry.Limits.TokensPerMinute != 100000 {
+		t.Error("Go tokensPerMinute should be 100000")
+	}
+
+	// The ladder climbs. Asserted as an ORDERING rather than four numbers, so it
+	// keeps holding after a reprice and only fails on a rung that is out of order.
+	prev := int64(-1)
+	for _, slug := range []string{"go", "dev", "pro", "max"} {
+		p := bySlug[slug]
+		if p.Price <= prev {
+			t.Errorf("ladder is not ascending at %q: %d cents follows %d", slug, p.Price, prev)
+		}
+		prev = p.Price
+	}
+
+	// Annual is a real discount on every rung, never merely equal to monthly —
+	// which is what "no annual offer" looks like in this data.
+	for _, slug := range []string{"go", "dev", "pro", "max", "team"} {
+		p := bySlug[slug]
+		if p.PriceAnnual <= 0 || p.PriceAnnual >= p.Price {
+			t.Errorf("plan %q annual = %d cents/mo, monthly = %d; annual must be a discount", slug, p.PriceAnnual, p.Price)
+		}
+		// Stored per-month must multiply to a round annual total; otherwise the
+		// page can advertise a yearly figure the stored number does not reach.
+		if (p.PriceAnnual*12)%100 != 0 {
+			t.Errorf("plan %q annual %d cents/mo x12 = %d cents, not a round dollar year", slug, p.PriceAnnual, p.PriceAnnual*12)
+		}
 	}
 }
 
@@ -90,12 +116,12 @@ func TestDNSPlansLoaded(t *testing.T) {
 }
 
 func TestLookupPlan(t *testing.T) {
-	p := lookupPlan("developer")
+	p := lookupPlan("go")
 	if p == nil {
-		t.Fatal("lookupPlan(developer) returned nil")
+		t.Fatal("lookupPlan(go) returned nil")
 	}
-	if p.Slug != "developer" {
-		t.Errorf("lookupPlan(developer).Slug = %q", p.Slug)
+	if p.Slug != "go" {
+		t.Errorf("lookupPlan(go).Slug = %q", p.Slug)
 	}
 
 	p = lookupPlan("dns-pro")
