@@ -2,6 +2,7 @@ package shipnotify
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -127,7 +128,11 @@ func ShipNotify(c *zip.Ctx) error {
 		ord.Fulfillment.Trackings[0].LabelCreatedAt = parseTime(req.LabelCreateDate)
 		ord.Fulfillment.Service = req.Service
 		ord.Fulfillment.Carrier = req.Carrier
-		ord.Fulfillment.Pricing = currency.CentsFromString(req.ShippingCost)
+		shipCost, err := currency.CentsFromString(req.ShippingCost)
+		if err != nil {
+			return fmt.Errorf("shipstation shipping cost: %w", err)
+		}
+		ord.Fulfillment.Pricing = shipCost
 
 		usr := user.New(db)
 		usr.MustGetById(ord.UserId)
