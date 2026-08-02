@@ -246,28 +246,6 @@ func TestPlanMeta_FromCatalog(t *testing.T) {
 	}
 }
 
-// TestMonthlyNormalizedCents checks interval normalization matches the cloud
-// admin's MRR normalizer so MRR agrees across surfaces.
-func TestMonthlyNormalizedCents(t *testing.T) {
-	cases := []struct {
-		price    int64
-		interval string
-		want     int64
-	}{
-		{2000, "month", 2000},
-		{2000, "monthly", 2000},
-		{12000, "year", 1000},
-		{12000, "annual", 1000},
-		{700, "week", 700 * 52 / 12},
-		{2000, "", 2000}, // unknown → monthly
-	}
-	for _, c := range cases {
-		if got := monthlyNormalizedCents(c.price, c.interval); got != c.want {
-			t.Errorf("monthlyNormalizedCents(%d,%q) = %d, want %d", c.price, c.interval, got, c.want)
-		}
-	}
-}
-
 // TestWindowBounds checks window parsing + inWindow, including the "all" (zero
 // start) and skew-tolerance behaviour.
 func TestWindowBounds(t *testing.T) {

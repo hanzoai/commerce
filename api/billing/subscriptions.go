@@ -656,14 +656,18 @@ func RenewBillingSubscription(c *zip.Ctx) error {
 
 func subscriptionResponse(sub *subscription.Subscription) map[string]any {
 	resp := map[string]any{
-		"id":                   sub.Id(),
-		"userId":               sub.UserId,
-		"planId":               sub.PlanId,
-		"status":               sub.Status,
-		"quantity":             sub.Quantity,
-		"currentPeriodStart":   sub.PeriodStart,
-		"currentPeriodEnd":     sub.PeriodEnd,
-		"cancelAtPeriodEnd":    sub.EndCancel,
+		"id":                 sub.Id(),
+		"userId":             sub.UserId,
+		"planId":             sub.PlanId,
+		"status":             sub.Status,
+		"quantity":           sub.Quantity,
+		"currentPeriodStart": sub.PeriodStart,
+		"currentPeriodEnd":   sub.PeriodEnd,
+		"cancelAtPeriodEnd":  sub.EndCancel,
+		// What this subscription contributes to MRR, computed here so no reader
+		// has to re-derive it from price and interval. The hanzoai/cloud admin
+		// used to, with its own copy of the normalization.
+		"mrrCents":             SubscriptionMRRCents(sub),
 		"providerType":         sub.ProviderType,
 		"defaultPaymentMethod": sub.DefaultPaymentMethod,
 		"plan": map[string]any{

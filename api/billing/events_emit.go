@@ -38,10 +38,18 @@ func fireEvent(c *zip.Ctx, fn func(context.Context, *events.Client)) {
 	go fn(ctx, ev)
 }
 
-// monthlyNormalizedCents normalizes a plan price to a monthly figure by its
+// MonthlyNormalizedCents normalizes a plan price to a monthly figure by its
 // billing interval so annual and monthly plans are comparable in one MRR sum.
 // The read side never re-normalizes — the cents emitted here ARE the MRR.
-func monthlyNormalizedCents(price int64, interval string) int64 {
+//
+// This is the ONE definition of that normalization. api/metrics and the
+// hanzoai/cloud admin each used to carry a copy, each with a comment promising
+// it mirrored this one; the copies are gone and both now read the number this
+// package produces.
+//
+// It is deliberately about a price and an interval only. What a whole
+// subscription contributes is SubscriptionMRRCents.
+func MonthlyNormalizedCents(price int64, interval string) int64 {
 	switch strings.ToLower(strings.TrimSpace(interval)) {
 	case "year", "yearly", "annual", "annually":
 		return price / 12
@@ -52,6 +60,24 @@ func monthlyNormalizedCents(price int64, interval string) int64 {
 	default: // month/monthly and anything unrecognized → treat as monthly
 		return price
 	}
+}
+
+// SubscriptionMRRCents is what ONE subscription contributes to MRR: its
+// interval-normalized price times the seats it bills for.
+//
+// Seats are part of the figure, not a footnote beside it. A 10-seat plan at
+// $20/seat/month is $200 of monthly recurring revenue, and a caller that
+// reports the $20 has not reported this subscription's MRR — it has reported
+// the price. Every surface that says "MRR" now means this.
+//
+// A quantity below 1 is read as 1: a subscription that exists bills for at
+// least one seat, and legacy rows written before the field existed carry 0.
+func SubscriptionMRRCents(sub *subscription.Subscription) int64 {
+	qty := sub.Quantity
+	if qty < 1 {
+		qty = 1
+	}
+	return MonthlyNormalizedCents(int64(sub.Plan.Price), string(sub.Plan.Interval)) * int64(qty)
 }
 
 // planCategoryForSlug resolves a plan's mix category from the static catalog
@@ -95,7 +121,7 @@ func subscriptionEvent(orgName string, sub *subscription.Subscription) *events.S
 		Status:      status,
 		Interval:    interval,
 		PriceCents:  price,
-		MRRCents:    monthlyNormalizedCents(price, interval),
+		MRRCents:    SubscriptionMRRCents(sub),
 		Seats:       sub.Quantity,
 		Trial:       trial,
 		PeriodStart: rfc3339(sub.PeriodStart),
