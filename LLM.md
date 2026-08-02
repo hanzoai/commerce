@@ -471,43 +471,53 @@ code here.
 
 **PVC**: `commerce-data` (10Gi, do-block-storage) — deployment uses `Recreate` strategy (not RollingUpdate) because the PVC is ReadWriteOnce.
 
-## At-Rest Encryption (SQLCipher via hanzoai/sqlite)
+## At-Rest Encryption (SQLCipher via hanzoai/cek)
 
 Per-tenant SQLite files hold money data (balances, transactions, usage), so they
-can be encrypted at rest with `github.com/hanzoai/sqlite` v0.2.0 (SQLCipher
-AES-256), the SAME envelope scheme Hanzo IAM uses — one at-rest model platform-wide.
-Code: `db/encryption.go` (key posture + per-tenant DEK), `db/migrate.go` (migration).
+can be encrypted at rest with `github.com/hanzoai/cek` on top of
+`github.com/hanzoai/sqlite` v0.5.0 (SQLCipher AES-256) — the SAME derived-key
+scheme cloud and IAM use, so there is one at-rest model platform-wide.
+Code: `db/encryption.go`.
 
 - **Master key from KMS, ONE source**: `COMMERCE_KMS_MASTER_KEY` (64 hex), read
-  ONLY by `resolveMasterKey()`. Materialised from `kms.hanzo.ai` into
+  ONLY by `ResolveMasterKey()`. Materialised from `kms.hanzo.ai` into
   `commerce-secrets` by the existing `commerce-kms-sync` KMSSecret (path
   `/commerce`), same mechanism as `HUSD_TREASURY_KEY`. Never in git/code.
-- **Envelope**: each `data.db` has its own random DEK → SQLCipher pages; the DEK
-  is wrapped (AES-256-GCM, principal-AAD bound) under `KEK = DeriveKey(master,
-  principal, tenantID)` into a `<data.db>.dek` sidecar. Rotating the master key
-  only rewraps the sidecar (O(1), never bricks a file).
+- **Derived, not wrapped**: a tenant's file key is `cek.DeriveKey(master, ns,
+  "commerce")` — HKDF over the master, the tenant's `hanzoai/namespace` name and
+  the subsystem. It is a pure function of the tenant's name, so there is NO DEK,
+  no sidecar, no unwrap step, no rewrap and no per-file key material to lose. A
+  file reopens after a restart with nothing persisted beside it. Losing the
+  master loses the data, which is the property at-rest encryption is for.
+- **Why DeriveKey and not `cek.Open`**: commerce opens a DUAL pool — a concurrent
+  read pool and a serialized single-connection writer — against ONE file under
+  ONE key. `cek.Open` hands back a single `*sql.DB`. The key is the shared part;
+  the pool is commerce's.
 - **Posture decided once**: unset key → unencrypted (dev/CI). Set + codec linked
-  → encrypted. Set + cgo-but-no-libsqlcipher → **refuse to boot** (CodecLinked()
-  probe), never silent plaintext. Set + a PLAINTEXT file without a `.dek` sidecar
-  → migrated in place on open (the 16-byte SQLite header tells it apart). Set + a
-  CIPHERTEXT file without a sidecar → refuse: that DEK is unrecoverable, restore
-  the `.db` and `.dek` together from backup.
-- **Migration** (ON OPEN, under the create lock — idempotent, keeps `.plaintext.bak`):
-  WAL-safe — folds the source WAL with a verified TRUNCATE checkpoint (opened R/W,
-  not mode=ro), verifies per-table row-hash parity, then checkpoints+asserts the
-  encrypted temp WAL-free before an atomic cutover (sidecar last = fail-closed).
+  → encrypted. Set + cgo-but-no-libsqlcipher → **refuse** (`CodecLinked()`
+  probe), never silent plaintext — commerce's dual pool cannot use the
+  single-writer codec envelope a non-libsqlcipher build falls back to.
+- **Layout**: an ORG's store is `<DataDir>/orgs/<slug>/commerce.db`, placed by
+  `namespace.Path`, so the file's key and the file's path are two renderings of
+  one name. This is the layout every Hanzo service shares.
+- **Per-USER stores are UNENCRYPTED, and this is a real limit**:
+  `namespace.Key` refuses `KindUser` — the shared layout has no place for a user
+  — so a per-user store cannot be *named*, and therefore cannot be *keyed*, in
+  this scheme. An encrypted open of a user tenant fails closed with an error
+  naming the limitation (`TestEncryptedUserTenantIsRefused`); the unencrypted
+  path is unaffected. Per-user files stay at `<UserDataDir>/<id>/data.db`. Giving
+  `hanzoai/namespace` a user layout is the prerequisite for closing this.
+
+**No migration.** Databases written under the previous DEK-sidecar scheme do not
+open under this derivation, by design — there is no fallback, dual-read, version
+probe or config flag, because a second way to key a file is how two of them end
+up disagreeing. Wipe and recreate.
 
 **Rollout:** build the image with libsqlcipher linked — add `libsqlite3` to the
 build tags, `CGO_CFLAGS=-DSQLITE_HAS_CODEC -DSQLITE_USE_URI=1
 -I/usr/include/sqlcipher`, `CGO_LDFLAGS=-lsqlcipher`, `apk add sqlcipher-dev`
 (builder) + `sqlcipher-libs` (runtime), and a test stage with
 `SQLITE_REQUIRE_CODEC=1` so a mis-link fails CI — then supply a 32-byte key.
-
-That is all. The first open of each tenant migrates it. There is no
-pre-migration Job, no scale-to-0 window and no ordering to get wrong, because
-the only way a store becomes encrypted is the way it is opened. The one-shot
-`cmd/commerce-encrypt-dbs` that used to own this is gone: a second way to do one
-thing, which refused to boot if you forgot it.
 
 **Where the key comes from:** an EMBEDDER passes `EmbedConfig.MasterKey` (cloud
 hands over the KEK it already resolves, so one process has one key, not two); a
