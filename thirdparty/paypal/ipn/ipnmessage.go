@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hanzoai/money"
+
 	"github.com/hanzoai/commerce/models/types/currency"
 )
 
@@ -38,11 +40,11 @@ func NewIpnMessage(form url.Values) (*IpnMessage, error) {
 		return nil, fmt.Errorf("ipn: amount %q is not \"&lt;CURRENCY&gt; &lt;decimal&gt;\"", raw)
 	}
 
-	amount, err := currency.CentsFromString(parts[1])
+	amount, err := money.ParseCents(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("ipn: %w", err)
 	}
-	message.Amount = amount
+	message.Amount = currency.Cents(amount)
 	message.Currency = currency.Type(strings.ToLower(parts[0]))
 
 	return message, nil
