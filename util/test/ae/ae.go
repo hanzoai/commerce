@@ -54,7 +54,6 @@ func NewContext(args ...Options) Context {
 	cfg := db.DefaultConfig()
 	cfg.DataDir = tempDir
 	cfg.UserDataDir = filepath.Join(tempDir, "users")
-	cfg.OrgDataDir = filepath.Join(tempDir, "orgs")
 	cfg.EnableDatastore = false // Use SQLite only for tests
 	cfg.EnableVectorSearch = false
 	cfg.IsDev = opts.Debug

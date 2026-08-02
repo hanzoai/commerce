@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hanzoai/namespace"
 	ormdb "github.com/hanzoai/orm/db"
 )
 
@@ -84,13 +85,15 @@ type Config struct {
 	// DataDir is the base directory for data storage
 	DataDir string
 
-	// UserDataDir is the directory for per-user SQLite databases
-	// Defaults to DataDir/users
+	// UserDataDir is the directory for per-user SQLite databases.
+	// Defaults to DataDir/users.
+	//
+	// There is no OrgDataDir counterpart: an org's file is placed by
+	// hanzoai/namespace under DataDir (namespace.Path → DataDir/orgs/<slug>/…),
+	// which is the ONE layout every Hanzo service renders. This field survives
+	// only because namespace has no layout for a user, so the per-user tree stays
+	// commerce's own — see tenantNamespace in encryption.go.
 	UserDataDir string
-
-	// OrgDataDir is the directory for per-org SQLite databases
-	// Defaults to DataDir/orgs
-	OrgDataDir string
 
 	// MasterKey is the 32-byte at-rest encryption master key, supplied by the
 	// EMBEDDER. When non-nil it is used verbatim and COMMERCE_KMS_MASTER_KEY is
@@ -241,9 +244,6 @@ func NewManager(cfg *Config) (*Manager, error) {
 	if cfg.UserDataDir == "" {
 		cfg.UserDataDir = cfg.DataDir + "/users"
 	}
-	if cfg.OrgDataDir == "" {
-		cfg.OrgDataDir = cfg.DataDir + "/orgs"
-	}
 	if cfg.MaxOpenTenants <= 0 {
 		cfg.MaxOpenTenants = defaultMaxOpenTenants
 	}
@@ -294,23 +294,34 @@ func NewManager(cfg *Config) (*Manager, error) {
 	return m, nil
 }
 
-// tenantPath places a tenant's file. Users and orgs have separately configurable
-// roots, so the registry's single Dir is ignored in favour of them; the layout
-// is <root>/<id>/data.db, unchanged, because these files already exist on disk.
+// tenantPath places a tenant's file.
 //
-// Ignoring Dir means opting out of the registry's containment check, which is
-// relative to Dir — so the id is validated here instead. A PathFor that leaves
+// An ORG's file is placed by hanzoai/namespace — DataDir/orgs/<slug>/commerce.db
+// — so the path and the at-rest key are two renderings of ONE name (see
+// tenantNamespace) and cannot drift apart. It is also the layout every other
+// Hanzo service writes, so an org's commerce store sits beside its other stores
+// under one directory instead of in a tree only commerce knows about.
+//
+// A USER's file stays commerce's own <UserDataDir>/<id>/data.db, because
+// namespace has no layout for a user and inventing one here would be a second
+// convention. That half is unencryptable for the same reason.
+//
+// The registry's single Dir is ignored, which means opting out of its
+// containment check — so the id is validated here instead. A PathFor that leaves
 // the registry's tree owns the guarantee the registry can no longer make.
 func (m *Manager) tenantPath(_ string, n ormdb.Namespace) (string, error) {
 	typ, id, ok := splitTenant(n)
 	if !ok || !isSafeTenantID(id) {
 		return "", fmt.Errorf("db: unsafe namespace %q", n)
 	}
-	root := m.config.OrgDataDir
 	if typ == tenantUser {
-		root = m.config.UserDataDir
+		return m.config.UserDataDir + "/" + id + "/data.db", nil
 	}
-	return root + "/" + id + "/data.db", nil
+	ns, err := tenantNamespace(typ, id)
+	if err != nil {
+		return "", err
+	}
+	return namespace.Path(m.config.DataDir, ns, tenantSubsystem)
 }
 
 // splitTenant reads a namespace back as the (type, id) pair commerce stores

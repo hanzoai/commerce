@@ -153,10 +153,14 @@ func TestIteratorSurvivesHandleEviction(t *testing.T) {
 	}
 }
 
-// TestTenantFilePathsUnchanged pins the on-disk layout. These files already
-// exist in production; a registry that placed them anywhere else would look
-// like every tenant lost its data.
-func TestTenantFilePathsUnchanged(t *testing.T) {
+// TestTenantFilePaths pins the on-disk layout: where a tenant's file lands is a
+// fact other things depend on (durability ships the same key to object storage),
+// so it is asserted rather than left to whatever the code happens to do.
+//
+// An ORG's file is placed by hanzoai/namespace — <DataDir>/orgs/<slug>/commerce.db
+// — the layout every Hanzo service shares. A USER's file is still commerce's own
+// <UserDataDir>/<id>/data.db, because namespace has no layout for a user.
+func TestTenantFilePaths(t *testing.T) {
 	m := testManager(t, 8)
 	if _, err := m.Org("acme"); err != nil {
 		t.Fatalf("Org: %v", err)
@@ -165,7 +169,7 @@ func TestTenantFilePathsUnchanged(t *testing.T) {
 		t.Fatalf("User: %v", err)
 	}
 	for _, want := range []string{
-		filepath.Join(m.config.OrgDataDir, "acme", "data.db"),
+		filepath.Join(m.config.DataDir, "orgs", "acme", tenantSubsystem+".db"),
 		filepath.Join(m.config.UserDataDir, "bob", "data.db"),
 	} {
 		if _, err := os.Stat(want); err != nil {

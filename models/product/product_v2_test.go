@@ -23,7 +23,6 @@ func setupTestDB(t *testing.T) (db.DB, func()) {
 
 	cfg := db.DefaultConfig()
 	cfg.DataDir = tmpDir
-	cfg.OrgDataDir = tmpDir + "/orgs"
 	cfg.EnableVectorSearch = false // Don't require sqlite-vec for tests
 
 	manager, err := db.NewManager(cfg)

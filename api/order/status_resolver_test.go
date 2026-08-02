@@ -44,7 +44,6 @@ func TestStatus_ResolverInstalled_FindsPerOrgOrder(t *testing.T) {
 	cfg := db.DefaultConfig()
 	cfg.DataDir = dir
 	cfg.UserDataDir = filepath.Join(dir, "users")
-	cfg.OrgDataDir = filepath.Join(dir, "orgs")
 	cfg.EnableDatastore = false // SQLite only
 	cfg.EnableVectorSearch = false
 

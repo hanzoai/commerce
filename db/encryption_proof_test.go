@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	sqlitedrv "github.com/hanzoai/sqlite"
@@ -51,10 +52,10 @@ func newEncryptedTenant(t *testing.T, path string, key []byte) *SQLiteDB {
 // per-tenant money stores. Under a cgo+libsqlcipher build it writes a marker to a
 // tenant DB opened with a master key and asserts:
 //
-//   - the on-disk data.db is real ciphertext (no "SQLite format 3" header, no
+//   - the on-disk file is real ciphertext (no "SQLite format 3" header, no
 //     plaintext marker),
-//   - a wrapped-DEK sidecar was written,
-//   - reopening with the SAME master key reads the row back,
+//   - reopening with the SAME master key reads the row back — the key is DERIVED,
+//     so nothing had to be persisted beside the file for that to work,
 //   - reopening with a WRONG master key fails closed.
 //
 // A cgo build WITHOUT libsqlcipher linked would silently write plaintext; this
@@ -104,11 +105,6 @@ func TestTenantEncryptionProof(t *testing.T) {
 		t.Fatalf("close: %v", err)
 	}
 
-	// The DEK sidecar must exist and NOT contain the raw marker.
-	if !fileExists(dbPath + dekSuffix) {
-		t.Fatalf("no DEK sidecar written at %q", dbPath+dekSuffix)
-	}
-
 	// The raw db file must be ciphertext.
 	raw, err := os.ReadFile(dbPath)
 	if err != nil {
@@ -132,7 +128,8 @@ func TestTenantEncryptionProof(t *testing.T) {
 	}
 	db2.Close()
 
-	// Reopen with a WRONG master key: the DEK unwrap must fail closed.
+	// Reopen with a WRONG master key: it derives a DIFFERENT file key, so SQLCipher
+	// must reject it rather than open the file.
 	wrong := testMasterKey()
 	wrong[0] ^= 0xFF
 	if _, err := NewSQLiteDB(&SQLiteDBConfig{
@@ -146,9 +143,9 @@ func TestTenantEncryptionProof(t *testing.T) {
 	}
 }
 
-// TestTenantIsolation proves two tenants get independent DEKs: a file wrapped for
-// "acme" cannot be opened as "globex" even under the same master key (principal
-// AAD binding). Runs only with the codec linked.
+// TestTenantIsolation proves two tenants get independent keys: a file created for
+// "acme" cannot be opened as "globex" even under the same master key, because the
+// namespace is bound into the derivation. Runs only with the codec linked.
 func TestTenantIsolation(t *testing.T) {
 	if !sqlitedrv.EncryptionAvailable() || !sqlitedrv.CodecLinked() {
 		t.Skip("codec not linked; isolation proof requires SQLCipher")
@@ -161,8 +158,8 @@ func TestTenantIsolation(t *testing.T) {
 	db := newEncryptedTenant(t, dbPath, key)
 	db.Close()
 
-	// Opening the SAME file+key but as tenant "globex" must fail: the DEK sidecar
-	// is AAD-bound to acme, so the unwrap GCM tag rejects it.
+	// Opening the SAME file+master but as tenant "globex" must fail: "globex"
+	// derives a different file key, so SQLCipher rejects it.
 	if _, err := NewSQLiteDB(&SQLiteDBConfig{
 		Path:       dbPath,
 		Config:     DefaultConfig().SQLite,
@@ -170,7 +167,7 @@ func TestTenantIsolation(t *testing.T) {
 		TenantType: "org",
 		MasterKey:  key,
 	}); err == nil {
-		t.Fatal("cross-tenant open succeeded — per-tenant DEK isolation broken")
+		t.Fatal("cross-tenant open succeeded — per-tenant key isolation broken")
 	}
 }
 
@@ -217,5 +214,51 @@ func TestResolveMasterKey(t *testing.T) {
 		if _, err := ResolveMasterKey(); err == nil {
 			t.Fatal("build without a linked codec accepted a master key")
 		}
+	}
+}
+
+// TestEncryptedUserTenantIsRefused pins the ONE thing this migration could not
+// carry over: hanzoai/namespace has no database layout for a user (namespace.Key
+// refuses KindUser), so a per-user store cannot be named — and therefore cannot
+// be keyed — in the platform's shared at-rest scheme.
+//
+// The refusal is explicit and build-independent, which is the point: the
+// alternative was inventing a user layout here, and a second convention for
+// where a database lives is how two services end up disagreeing about which file
+// an entity's data is in. Per-user stores remain supported UNENCRYPTED.
+func TestEncryptedUserTenantIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	_, err := NewSQLiteDB(&SQLiteDBConfig{
+		Path:       filepath.Join(dir, "data.db"),
+		Config:     DefaultConfig().SQLite,
+		TenantID:   "bob",
+		TenantType: "user",
+		MasterKey:  testMasterKey(),
+	})
+	if err == nil {
+		t.Fatal("an encrypted per-user store was opened; namespace cannot name one, so this must fail closed")
+	}
+	if !strings.Contains(err.Error(), "no database layout for a user") {
+		t.Fatalf("refusal does not name the limitation: %v", err)
+	}
+}
+
+// TestUnencryptedUserTenantStillWorks is the other half: the user tree is only
+// unencryptABLE, not unusable. The dev/CI posture (no master key) never reaches
+// the derivation, so both tenant types open exactly as before.
+func TestUnencryptedUserTenantStillWorks(t *testing.T) {
+	dir := t.TempDir()
+	db, err := NewSQLiteDB(&SQLiteDBConfig{
+		Path:       filepath.Join(dir, "data.db"),
+		Config:     DefaultConfig().SQLite,
+		TenantID:   "bob",
+		TenantType: "user",
+	})
+	if err != nil {
+		t.Fatalf("unencrypted per-user store must still open: %v", err)
+	}
+	defer db.Close()
+	if db.Encrypted() {
+		t.Fatal("a store opened with no master key reports Encrypted()=true")
 	}
 }
