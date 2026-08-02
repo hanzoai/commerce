@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/commerce/datastore"
 	"github.com/hanzoai/commerce/models/types/currency"
+	types "github.com/hanzoai/commerce/types"
 	"github.com/hanzoai/commerce/util/nscontext"
 	"github.com/hanzoai/commerce/util/test/ae"
 )
@@ -333,5 +334,59 @@ func TestSeed_IdempotentWithLimits(t *testing.T) {
 		t.Fatalf("re-seed: %v", err)
 	} else if corrected != 0 {
 		t.Fatalf("re-seed corrected=%d, want 0 — an unchanged catalog must write nothing", corrected)
+	}
+}
+
+// copyInto and planEqual must agree on what a plan IS. A field copied but not
+// compared gets rewritten forever (planEqual never sees it converge) or cleared
+// silently (copyInto assigns it while planEqual reports "equal"), depending on
+// which other fields happened to differ. This asserts the invariant directly.
+func TestCopyIntoAndPlanEqual_AgreeOnEveryField(t *testing.T) {
+	// A row carrying values the CATALOG DOES NOT PUBLISH.
+	c := ae.NewContext()
+	defer c.Close()
+	db := sysDB(c)
+
+	rows := sampleRows()
+	if _, _, err := Seed(db, rows); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	slug := rows[0].Slug
+
+	stored := New(db)
+	if ok, _ := stored.Query().Filter("Slug=", slug).Get(); !ok {
+		t.Fatalf("%s missing", slug)
+	}
+	stored.SKU = "OPERATOR-SET"
+	if stored.Metadata == nil {
+		stored.Metadata = types.Map{}
+	}
+	stored.Metadata["operatorNote"] = "keep me"
+	if err := stored.Update(); err != nil {
+		t.Fatalf("annotate: %v", err)
+	}
+
+	// A catalog change forces a reconcile of this row.
+	next := sampleRows()
+	next[0].Description = next[0].Description + " (revised)"
+	if _, corrected, err := Seed(db, next); err != nil {
+		t.Fatalf("re-seed: %v", err)
+	} else if corrected < 1 {
+		t.Fatal("the revised row was not reconciled")
+	}
+
+	got := New(db)
+	if ok, _ := got.Query().Filter("Slug=", slug).Get(); !ok {
+		t.Fatalf("%s gone", slug)
+	}
+	if got.SKU != "OPERATOR-SET" {
+		t.Errorf("SKU = %q after reconcile, want it preserved — the catalog publishes no SKU", got.SKU)
+	}
+	if v, _ := got.Metadata["operatorNote"].(string); v != "keep me" {
+		t.Errorf("Metadata[operatorNote] = %q after reconcile, want it preserved", v)
+	}
+	// And the thing the catalog DOES publish did change.
+	if got.Description != next[0].Description {
+		t.Errorf("description = %q, want the revised catalog value", got.Description)
 	}
 }

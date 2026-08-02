@@ -467,13 +467,20 @@ func eqInt(a, b *int) bool {
 	return *a == *b
 }
 
-// copyInto copies the seed fields from src onto the fresh, db-bound dst so the
-// created row keeps dst's datastore binding while taking src's values. The
-// authoritative money fields are the typed columns (Price/PriceAnnual/…); the
-// rich display envelope rides Metadata.
+// copyInto applies what the CATALOG PUBLISHES onto dst, which keeps its own
+// datastore binding. Every field here is one planEqual also compares — that is
+// not a coincidence to maintain by hand, it is the invariant that makes "reconcile
+// only when different" mean the same thing as "copy": a field copied but not
+// compared would be rewritten forever or cleared silently, depending on which
+// other fields happened to differ.
+//
+// So SKU and Metadata are deliberately NOT here. The catalog publishes neither
+// (canonicalPlan has no SKU field, and the display envelope now rides typed
+// fields that Save packs), so assigning them would only ever clear a stored value
+// the catalog has no opinion about. Save updates the envelope key inside whatever
+// Metadata the row already carries, leaving any other key intact.
 func copyInto(dst, src *Plan) {
 	dst.Slug = src.Slug
-	dst.SKU = src.SKU
 	dst.Name = src.Name
 	dst.Description = src.Description
 	dst.Category = src.Category
@@ -490,5 +497,4 @@ func copyInto(dst, src *Plan) {
 	dst.Bundles = src.Bundles
 	dst.IncludedIn = src.IncludedIn
 	dst.Limits = src.Limits
-	dst.Metadata = src.Metadata
 }
