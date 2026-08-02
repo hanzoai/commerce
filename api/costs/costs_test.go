@@ -53,24 +53,72 @@ func TestGrossMarginPct(t *testing.T) {
 	}
 }
 
-func TestUsdStringToCents(t *testing.T) {
+// TestDigitalOceanCostAmounts pins how DO invoice AMOUNTS become the reported line.
+// The conversion is money.ParseCents and is tested there; commerce's own contract is
+// what the summed line says, and it changed in two ways worth stating.
+//
+// A CREDIT NOW SUBTRACTS. The replaced converter clamped a negative to 0, so a
+// refunded month reported the gross charge and the refund was invisible — the report
+// overstated spend by exactly the amount returned to us.
+//
+// AN UNREADABLE AMOUNT DEGRADES THE LINE instead of summing 0. The old behaviour
+// reported a smaller bill than DO sent while still labelling it source=actual, which
+// is the one combination a reader cannot catch: a wrong number that claims to be
+// ground truth.
+func TestDigitalOceanCostAmounts(t *testing.T) {
 	cases := []struct {
-		in   string
-		want int64
+		name    string
+		amounts []string
+		want    int64
+		source  Source
 	}{
-		{"12.34", 1234},
-		{"1,234.56", 123456},
-		{"100", 10000},
-		{"0", 0},
-		{"", 0},
-		{"-5.00", 0}, // credits/negatives ignored as spend
-		{"  9.99 ", 999},
-		{"notanumber", 0},
+		{"ordinary invoices", []string{"12.34", "100"}, 11234, SourceActual},
+		{"cent-precise amount keeps its cent", []string{"19.99"}, 1999, SourceActual},
+		{"thousands separator", []string{"1,234.56"}, 123456, SourceActual},
+		{"grouped millions", []string{"1,234,567.89"}, 123456789, SourceActual},
+		{"surrounding space", []string{"  9.99 "}, 999, SourceActual},
+		{"zero", []string{"0"}, 0, SourceActual},
+
+		// A credit is money coming BACK. It must move the total down.
+		{"credit subtracts", []string{"100.00", "-5.00"}, 9500, SourceActual},
+		{"credit alone is negative", []string{"-5.00"}, -500, SourceActual},
+		{"grouped credit", []string{"2,000.00", "-1,234.56"}, 76544, SourceActual},
+
+		// Unreadable: the line degrades and stops claiming to be actual.
+		{"unparseable amount degrades", []string{"12.34", "notanumber"}, 0, SourceEstimated},
+		{"empty amount degrades", []string{""}, 0, SourceEstimated},
+		{"malformed sign degrades", []string{"--5.00"}, 0, SourceEstimated},
 	}
-	for _, c := range cases {
-		if got := usdStringToCents(c.in); got != c.want {
-			t.Errorf("usdStringToCents(%q) = %d, want %d", c.in, got, c.want)
-		}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rows := make([]map[string]any, 0, len(tc.amounts))
+			for _, a := range tc.amounts {
+				rows = append(rows, map[string]any{
+					"type": "Invoice", "amount": a, "date": "2026-07-15T00:00:00Z",
+				})
+			}
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_ = json.NewEncoder(w).Encode(map[string]any{"billing_history": rows})
+			}))
+			defer srv.Close()
+
+			old := doAPIBaseOverride
+			doAPIBaseOverride = srv.URL
+			defer func() { doAPIBaseOverride = old }()
+
+			t.Setenv("DO_API_TOKEN", "dop_v1_secrettoken")
+			line := digitalOceanCost(context.Background(), srv.Client(), "2026-07")
+
+			if line.Source != tc.source {
+				t.Fatalf("source = %q, want %q (note=%q)", line.Source, tc.source, line.Note)
+			}
+			if line.AmountCents != tc.want {
+				t.Fatalf("amount = %d, want %d", line.AmountCents, tc.want)
+			}
+			if tc.source == SourceEstimated && line.Note == "" {
+				t.Error("a degraded line must carry an honest note")
+			}
+		})
 	}
 }
 

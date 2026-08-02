@@ -7,9 +7,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hanzoai/money"
 )
 
 // doAPIBase is the DigitalOcean API root. The billing endpoints are stable v2
@@ -100,7 +101,17 @@ func digitalOceanCost(ctx context.Context, client *http.Client, p string) Vendor
 		if d.Before(start) || !d.Before(end) {
 			continue
 		}
-		cents += usdStringToCents(row.Amount)
+		c, err := money.ParseCents(row.Amount)
+		if err != nil {
+			// An amount we cannot read is NOT zero. Summing a 0 here would report a
+			// smaller bill than DO actually sent, with source=actual claiming it is
+			// ground truth. Degrading the line is the same honest fallback this
+			// function already uses for an unreachable API.
+			line.Source = SourceEstimated
+			line.Note = "DigitalOcean billing row has an unreadable amount — actual spend unavailable"
+			return line
+		}
+		cents += c
 	}
 
 	line.AmountCents = cents
@@ -134,22 +145,4 @@ func doGet(ctx context.Context, client *http.Client, token, path string) ([]byte
 		return nil, fmt.Errorf("digitalocean: status %d", resp.StatusCode)
 	}
 	return body, nil
-}
-
-// usdStringToCents parses a decimal USD string ("12.34", "1,234.56", "-5") to
-// cents. Non-negative result (a credit/negative row is ignored as spend). Returns
-// 0 for an unparseable value.
-func usdStringToCents(s string) int64 {
-	s = strings.ReplaceAll(strings.TrimSpace(s), ",", "")
-	if s == "" {
-		return 0
-	}
-	f, err := strconv.ParseFloat(s, 64)
-	if err != nil {
-		return 0
-	}
-	if f < 0 {
-		return 0
-	}
-	return int64(f*100 + 0.5)
 }
